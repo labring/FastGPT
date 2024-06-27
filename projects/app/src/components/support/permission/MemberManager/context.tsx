@@ -13,6 +13,8 @@ import dynamic from 'next/dynamic';
 import MemberListCard, { MemberListCardProps } from './MemberListCard';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { useI18n } from '@/web/context/I18n';
 const AddMemberModal = dynamic(() => import('./AddMemberModal'));
 const ManageModal = dynamic(() => import('./ManageModal'));
 
@@ -68,10 +70,12 @@ const CollaboratorContextProvider = ({
   onDelOneCollaborator,
   children,
   refetchResource,
-  refreshDeps = []
+  refreshDeps = [],
+  isInheritPermission
 }: MemberManagerInputPropsType & {
   children: (props: ChildrenProps) => ReactNode;
   refetchResource?: () => void;
+  isInheritPermission?: boolean;
 }) => {
   const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
     await onUpdateCollaborators(props);
@@ -83,6 +87,7 @@ const CollaboratorContextProvider = ({
   };
 
   const { feConfigs } = useSystemStore();
+  const { commonT } = useI18n();
 
   const {
     data: collaboratorList = [],
@@ -127,6 +132,7 @@ const CollaboratorContextProvider = ({
     [permissionList]
   );
 
+  const { ConfirmModal, openConfirm } = useConfirm({});
   const {
     isOpen: isOpenAddMember,
     onOpen: onOpenAddMember,
@@ -149,9 +155,40 @@ const CollaboratorContextProvider = ({
     onDelOneCollaborator: onDelOneCollaboratorThen,
     getPerLabelList
   };
+
+  const onOpenAddMemberModal = () => {
+    if (isInheritPermission) {
+      openConfirm(
+        () => {
+          onOpenAddMember();
+        },
+        undefined,
+        commonT('permission.Remove InheritPermission Confirm')
+      )();
+    } else {
+      onOpenAddMember();
+    }
+  };
+  const onOpenManageModalModal = () => {
+    if (isInheritPermission) {
+      openConfirm(
+        () => {
+          onOpenManageModal();
+        },
+        undefined,
+        commonT('permission.Remove InheritPermission Confirm')
+      )();
+    } else {
+      onOpenManageModal();
+    }
+  };
   return (
     <CollaboratorContext.Provider value={contextValue}>
-      {children({ onOpenAddMember, onOpenManageModal, MemberListCard })}
+      {children({
+        onOpenAddMember: onOpenAddMemberModal,
+        onOpenManageModal: onOpenManageModalModal,
+        MemberListCard
+      })}
       {isOpenAddMember && (
         <AddMemberModal
           onClose={() => {
@@ -168,6 +205,7 @@ const CollaboratorContextProvider = ({
           }}
         />
       )}
+      <ConfirmModal />
     </CollaboratorContext.Provider>
   );
 };

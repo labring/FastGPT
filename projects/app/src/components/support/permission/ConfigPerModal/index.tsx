@@ -82,21 +82,18 @@ const ConfigPerModal = ({
               mt="1"
               per={defaultPer.value}
               defaultPer={defaultPer.defaultValue}
+              isInheritPermission={isInheritPermission}
               onChange={(v) => {
-                if (isInheritPermission) {
-                  openConfirm(
-                    () => defaultPer.onChange(v),
-                    undefined,
-                    commonT('permission.Remove InheritPermission Confirm')
-                  )();
-                } else {
-                  defaultPer.onChange(v);
-                }
+                defaultPer.onChange(v);
               }}
             />
           </Box>
           <Box mt={4}>
-            <CollaboratorContextProvider {...managePer} refetchResource={refetchResource}>
+            <CollaboratorContextProvider
+              {...managePer}
+              refetchResource={refetchResource}
+              isInheritPermission={isInheritPermission}
+            >
               {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
                 return (
                   <>
@@ -112,17 +109,7 @@ const ConfigPerModal = ({
                           size="sm"
                           variant="whitePrimary"
                           leftIcon={<MyIcon w="4" name="common/settingLight" />}
-                          onClick={() => {
-                            if (isInheritPermission) {
-                              openConfirm(
-                                onOpenManageModal,
-                                undefined,
-                                commonT('permission.Remove InheritPermission Confirm')
-                              )();
-                            } else {
-                              onOpenManageModal();
-                            }
-                          }}
+                          onClick={onOpenManageModal}
                         >
                           {t('permission.Manage')}
                         </Button>
@@ -130,17 +117,7 @@ const ConfigPerModal = ({
                           size="sm"
                           variant="whitePrimary"
                           leftIcon={<MyIcon w="4" name="support/permission/collaborator" />}
-                          onClick={() => {
-                            if (isInheritPermission) {
-                              openConfirm(
-                                onOpenAddMember,
-                                undefined,
-                                commonT('permission.Remove InheritPermission Confirm')
-                              )();
-                            } else {
-                              onOpenAddMember();
-                            }
-                          }}
+                          onClick={onOpenAddMember}
                         >
                           {t('common.Add')}
                         </Button>

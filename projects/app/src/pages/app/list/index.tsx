@@ -33,6 +33,7 @@ import type { CreateAppType } from './components/CreateModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const CreateModal = dynamic(() => import('./components/CreateModal'));
 const EditFolderModal = dynamic(
@@ -42,8 +43,9 @@ const HttpEditModal = dynamic(() => import('./components/HttpPluginEditModal'));
 
 const MyApps = () => {
   const { t } = useTranslation();
-  const { appT } = useI18n();
+  const { appT, commonT } = useI18n();
   const router = useRouter();
+  const { toast } = useToast();
   const { isPc } = useSystemStore();
   const {
     paths,
@@ -214,7 +216,12 @@ const MyApps = () => {
             <FolderSlideCard
               refetchResource={loadMyApps}
               resumeInheritPermission={() =>
-                onUpdateApp(folderDetail._id, { inheritPermission: true })
+                onUpdateApp(folderDetail._id, { inheritPermission: true }).then(() => {
+                  toast({
+                    title: commonT('permission.Resume InheritPermission Success'),
+                    status: 'success'
+                  });
+                })
               }
               isInheritPermission={folderDetail.inheritPermission}
               hasParent={!!folderDetail.parentId}

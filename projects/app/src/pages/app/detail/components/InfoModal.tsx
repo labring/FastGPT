@@ -225,20 +225,10 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                 mt="2"
                 per={appDetail.defaultPermission}
                 defaultPer={AppDefaultPermissionVal}
+                isInheritPermission={appDetail.inheritPermission}
                 onChange={(v) => {
-                  if (appDetail.inheritPermission) {
-                    openConfirm(
-                      () => {
-                        setValue('defaultPermission', v);
-                        handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)();
-                      },
-                      undefined,
-                      commonT('permission.Remove InheritPermission Confirm')
-                    )();
-                  } else {
-                    setValue('defaultPermission', v);
-                    handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)();
-                  }
+                  setValue('defaultPermission', v);
+                  handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)();
                 }}
               />
             </Box>
@@ -250,6 +240,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                 onUpdateCollaborators={onUpdateCollaborators}
                 onDelOneCollaborator={onDelCollaborator}
                 refreshDeps={[appDetail.inheritPermission]}
+                isInheritPermission={appDetail.inheritPermission}
               >
                 {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
                   return (
@@ -260,25 +251,13 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                         justifyContent="space-between"
                         w="full"
                       >
-                        <Box fontSize={'sm'}>协作者</Box>
+                        <Box fontSize={'sm'}>{commonT('permission.Collaborator')}</Box>
                         <Flex flexDirection="row" gap="2">
                           <Button
                             size="sm"
                             variant="whitePrimary"
                             leftIcon={<MyIcon w="4" name="common/settingLight" />}
-                            onClick={() => {
-                              if (appDetail.inheritPermission) {
-                                openConfirm(
-                                  () => {
-                                    onOpenManageModal();
-                                  },
-                                  undefined,
-                                  '此操作会导致权限继承失效，是否进行？'
-                                )();
-                              } else {
-                                onOpenManageModal();
-                              }
-                            }}
+                            onClick={onOpenManageModal}
                           >
                             {t('permission.Manage')}
                           </Button>
@@ -286,19 +265,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                             size="sm"
                             variant="whitePrimary"
                             leftIcon={<MyIcon w="4" name="support/permission/collaborator" />}
-                            onClick={() => {
-                              if (appDetail.inheritPermission) {
-                                openConfirm(
-                                  () => {
-                                    onOpenAddMember();
-                                  },
-                                  undefined,
-                                  '此操作会导致权限继承失效，是否进行？'
-                                )();
-                              } else {
-                                onOpenAddMember();
-                              }
-                            }}
+                            onClick={onOpenAddMember}
                           >
                             {t('common.Add')}
                           </Button>

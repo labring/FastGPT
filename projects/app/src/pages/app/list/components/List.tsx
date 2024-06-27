@@ -43,7 +43,7 @@ const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
   const { t } = useTranslation();
-  const { appT } = useI18n();
+  const { appT, commonT } = useI18n();
   const router = useRouter();
   const { parentId = null } = router.query;
   const { isPc } = useSystem();
@@ -115,8 +115,8 @@ const ListItem = () => {
     },
     {
       manual: true,
-      successToast: t('permission.Resume inherit permission success'),
-      errorToast: t('permission.Resume inherit permission failed'),
+      successToast: commonT('permission.Resume InheritPermission Success'),
+      errorToast: commonT('permission.Resume InheritPermission Failed'),
       onSuccess() {
         loadMyApps();
       }

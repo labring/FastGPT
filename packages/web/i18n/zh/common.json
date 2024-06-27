@@ -1250,6 +1250,8 @@
     "Set Public": "设为团队可用",
     "No InheritPermission": "已限制权限，不再继承父级文件夹的权限",
     "Resume InheritPermission Confirm": "是否恢复为继承父级文件夹的权限？",
+    "Resume InheritPermission Success": "恢复成功",
+    "Resume InheritPermission Failed": "恢复失败",
     "Remove InheritPermission Confirm": "此操作会导致权限继承失效，是否进行？"
   },
   "plugin": {
