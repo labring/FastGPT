@@ -27,7 +27,10 @@ const SelectAppModal = ({
 
   const getAppList = useCallback(
     async ({ parentId }: GetResourceFolderListProps) => {
-      return getMyApps({ parentId }).then((res) =>
+      return getMyApps({
+        parentId,
+        type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+      }).then((res) =>
         res
           .filter((item) => !filterAppIds.includes(item._id))
           .map<GetResourceListItemResponse>((item) => ({

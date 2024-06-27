@@ -23,7 +23,7 @@ export const simpleBotTemplates: TemplateType = [
   {
     id: 'simpleChat',
     avatar: '/imgs/workflow/AI.png',
-    name: '简易模板',
+    name: '简易机器人',
     intro: '一个极其简单的 AI 应用，你可以绑定知识库或工具。',
     type: AppTypeEnum.simple,
     modules: [
@@ -3048,4 +3048,9 @@ export const pluginTemplates: TemplateType = [
   }
 ];
 
-export const defaultAppTemplates = simpleBotTemplates.concat(workflowTemplates[0]);
+export const defaultAppTemplates = [
+  simpleBotTemplates[0],
+  simpleBotTemplates[1],
+  workflowTemplates[0],
+  workflowTemplates[1]
+];

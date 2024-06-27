@@ -180,8 +180,8 @@ const ListItem = () => {
                 })}
               >
                 <HStack>
-                  <Avatar src={app.avatar} borderRadius={'md'} w={'1.5rem'} />
-                  <Box flex={'1 0 0'} fontSize={'1.125rem'}>
+                  <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
+                  <Box flex={'1 0 0'} color={'myGray.900'}>
                     {app.name}
                   </Box>
                   <Box mr={'-1.25rem'}>
@@ -189,7 +189,7 @@ const ListItem = () => {
                   </Box>
                 </HStack>
                 <Box
-                  flex={['1 0 60px', '1 0 80px']}
+                  flex={['1 0 60px', '1 0 72px']}
                   mt={3}
                   pr={8}
                   textAlign={'justify'}
@@ -209,21 +209,26 @@ const ListItem = () => {
                   <HStack spacing={3.5}>
                     {owner && (
                       <HStack spacing={1}>
-                        <Avatar src={owner.avatar} w={'0.875rem'} />
+                        <Avatar src={owner.avatar} w={'0.875rem'} borderRadius={'50%'} />
                         <Box maxW={'150px'} className="textEllipsis">
                           {owner.memberName}
                         </Box>
                       </HStack>
                     )}
 
-                    <PermissionIconText defaultPermission={app.defaultPermission} w={'0.875rem'} />
+                    <PermissionIconText
+                      defaultPermission={app.defaultPermission}
+                      color={'myGray.500'}
+                      iconColor={'myGray.400'}
+                      w={'0.875rem'}
+                    />
                   </HStack>
 
                   <HStack>
                     {isPc && (
                       <HStack spacing={0.5} className="time">
-                        <MyIcon name={'history'} w={'0.85rem'} />
-                        <Box>{formatTimeToChatTime(app.updateTime)}</Box>
+                        <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
+                        <Box color={'myGray.500'}>{formatTimeToChatTime(app.updateTime)}</Box>
                       </HStack>
                     )}
                     {app.permission.hasManagePer && (
@@ -292,17 +297,21 @@ const ListItem = () => {
                                 }
                               ]
                             },
-                            {
-                              children: [
-                                {
-                                  icon: 'core/chat/chatLight',
-                                  label: appT('Go to chat'),
-                                  onClick: () => {
-                                    router.push(`/chat?appId=${app._id}`);
+                            ...([AppTypeEnum.simple, AppTypeEnum.workflow].includes(app.type)
+                              ? [
+                                  {
+                                    children: [
+                                      {
+                                        icon: 'core/chat/chatLight',
+                                        label: appT('Go to chat'),
+                                        onClick: () => {
+                                          router.push(`/chat?appId=${app._id}`);
+                                        }
+                                      }
+                                    ]
                                   }
-                                }
-                              ]
-                            },
+                                ]
+                              : []),
                             ...(app.permission.isOwner
                               ? [
                                   {

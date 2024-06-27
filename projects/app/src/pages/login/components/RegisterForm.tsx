@@ -73,6 +73,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
               avatar: template.avatar,
               name: t(template.name),
               modules: template.modules,
+              edges: template.edges,
               type: template.type
             });
           });

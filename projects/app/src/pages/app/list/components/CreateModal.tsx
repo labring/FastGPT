@@ -50,15 +50,18 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
     [AppTypeEnum.simple]: {
       icon: 'core/app/simpleBot',
       title: appT('type.Create simple bot'),
+      avatar: '/imgs/app/avatar/simple.svg',
       templates: simpleBotTemplates
     },
     [AppTypeEnum.workflow]: {
       icon: 'core/app/type/workflowFill',
+      avatar: '/imgs/app/avatar/workflow.svg',
       title: appT('type.Create workflow bot'),
       templates: workflowTemplates
     },
     [AppTypeEnum.plugin]: {
       icon: 'core/app/type/pluginFill',
+      avatar: '/imgs/app/avatar/plugin.svg',
       title: appT('type.Create plugin bot'),
       templates: pluginTemplates
     }
@@ -67,7 +70,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {
-      avatar: '',
+      avatar: typeData.avatar,
       name: '',
       templateId: typeData.templates[0].id
     }
@@ -146,7 +149,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
               w={['28px', '32px']}
               h={['28px', '32px']}
               cursor={'pointer'}
-              borderRadius={'md'}
+              borderRadius={'sm'}
               onClick={onOpenSelectFile}
             />
           </MyTooltip>

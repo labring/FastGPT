@@ -57,6 +57,7 @@ const BoxStyles: BoxProps = {
 };
 const LabelStyles: BoxProps = {
   w: ['60px', '100px'],
+  whiteSpace: 'nowrap',
   flexShrink: 0,
   fontSize: 'xs'
 };
