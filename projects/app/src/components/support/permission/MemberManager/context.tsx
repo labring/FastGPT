@@ -1,4 +1,4 @@
-import { BoxProps, useDisclosure } from '@chakra-ui/react';
+import { useDisclosure } from '@chakra-ui/react';
 import {
   CollaboratorItemType,
   UpdateClbPermissionProps
@@ -66,11 +66,22 @@ const CollaboratorContextProvider = ({
   permissionList,
   onUpdateCollaborators,
   onDelOneCollaborator,
-  refreshDeps = [],
-  children
+  children,
+  refetchResource,
+  refreshDeps = []
 }: MemberManagerInputPropsType & {
   children: (props: ChildrenProps) => ReactNode;
+  refetchResource?: () => void;
 }) => {
+  const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
+    await onUpdateCollaborators(props);
+    refetchCollaboratorList();
+  };
+  const onDelOneCollaboratorThen = async (tmbId: string) => {
+    await onDelOneCollaborator(tmbId);
+    refetchCollaboratorList();
+  };
+
   const { feConfigs } = useSystemStore();
 
   const {
@@ -86,18 +97,9 @@ const CollaboratorContextProvider = ({
     },
     {
       manual: false,
-      refreshDeps
+      refreshDeps: refreshDeps
     }
   );
-
-  const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
-    await onUpdateCollaborators(props);
-    refetchCollaboratorList();
-  };
-  const onDelOneCollaboratorThen = async (tmbId: string) => {
-    await onDelOneCollaborator(tmbId);
-    refetchCollaboratorList();
-  };
 
   const getPerLabelList = useCallback(
     (per: PermissionValueType) => {
@@ -150,8 +152,22 @@ const CollaboratorContextProvider = ({
   return (
     <CollaboratorContext.Provider value={contextValue}>
       {children({ onOpenAddMember, onOpenManageModal, MemberListCard })}
-      {isOpenAddMember && <AddMemberModal onClose={onCloseAddMember} />}
-      {isOpenManageModal && <ManageModal onClose={onCloseManageModal} />}
+      {isOpenAddMember && (
+        <AddMemberModal
+          onClose={() => {
+            onCloseAddMember();
+            refetchResource?.();
+          }}
+        />
+      )}
+      {isOpenManageModal && (
+        <ManageModal
+          onClose={() => {
+            onCloseManageModal();
+            refetchResource?.();
+          }}
+        />
+      )}
     </CollaboratorContext.Provider>
   );
 };

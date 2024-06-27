@@ -22,6 +22,7 @@ export type ConfigPerModalProps = {
   isInheritPermission?: boolean;
   resumeInheritPermission?: () => void;
   hasParent?: boolean;
+  refetchResource?: () => void;
 };
 
 const ConfigPerModal = ({
@@ -32,7 +33,8 @@ const ConfigPerModal = ({
   isInheritPermission,
   resumeInheritPermission,
   hasParent,
-  onClose
+  onClose,
+  refetchResource
 }: ConfigPerModalProps & {
   onClose: () => void;
 }) => {
@@ -60,7 +62,7 @@ const ConfigPerModal = ({
                 variant="whitePrimary"
                 onClick={() => {
                   openConfirm(
-                    () => {
+                    async () => {
                       resumeInheritPermission?.();
                     },
                     undefined,
@@ -92,7 +94,7 @@ const ConfigPerModal = ({
             />
           </Box>
           <Box mt={4}>
-            <CollaboratorContextProvider {...managePer}>
+            <CollaboratorContextProvider {...managePer} refetchResource={refetchResource}>
               {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
                 return (
                   <>
@@ -108,7 +110,17 @@ const ConfigPerModal = ({
                           size="sm"
                           variant="whitePrimary"
                           leftIcon={<MyIcon w="4" name="common/settingLight" />}
-                          onClick={onOpenManageModal}
+                          onClick={() => {
+                            if (isInheritPermission) {
+                              openConfirm(
+                                onOpenManageModal,
+                                undefined,
+                                '此操作会导致权限继承失效，是否进行？'
+                              )();
+                            } else {
+                              onOpenManageModal();
+                            }
+                          }}
                         >
                           {t('permission.Manage')}
                         </Button>
@@ -116,7 +128,17 @@ const ConfigPerModal = ({
                           size="sm"
                           variant="whitePrimary"
                           leftIcon={<MyIcon w="4" name="support/permission/collaborator" />}
-                          onClick={onOpenAddMember}
+                          onClick={() => {
+                            if (isInheritPermission) {
+                              openConfirm(
+                                onOpenAddMember,
+                                undefined,
+                                '此操作会导致权限继承失效，是否进行？'
+                              )();
+                            } else {
+                              onOpenAddMember();
+                            }
+                          }}
                         >
                           {t('common.Add')}
                         </Button>

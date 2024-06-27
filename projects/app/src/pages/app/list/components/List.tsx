@@ -378,6 +378,7 @@ const ListItem = () => {
       )}
       {!!editPerApp && (
         <ConfigPerModal
+          refetchResource={loadMyApps}
           hasParent={Boolean(parentId)}
           resumeInheritPermission={onResumeInheritPermission}
           isInheritPermission={editPerApp.inheritPermission}
@@ -411,7 +412,8 @@ const ListItem = () => {
               deleteAppCollaborators({
                 appId: editPerApp._id,
                 tmbId
-              })
+              }),
+            refreshDeps: [editPerApp.inheritPermission]
           }}
           onClose={() => setEditPerAppIndex(undefined)}
         />

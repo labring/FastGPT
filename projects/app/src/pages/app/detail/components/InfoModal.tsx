@@ -247,6 +247,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                 permissionList={AppPermissionList}
                 onUpdateCollaborators={onUpdateCollaborators}
                 onDelOneCollaborator={onDelCollaborator}
+                refreshDeps={[appDetail.inheritPermission]}
               >
                 {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
                   return (
@@ -263,7 +264,19 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                             size="sm"
                             variant="whitePrimary"
                             leftIcon={<MyIcon w="4" name="common/settingLight" />}
-                            onClick={onOpenManageModal}
+                            onClick={() => {
+                              if (appDetail.inheritPermission) {
+                                openConfirm(
+                                  () => {
+                                    onOpenManageModal();
+                                  },
+                                  undefined,
+                                  '此操作会导致权限继承失效，是否进行？'
+                                )();
+                              } else {
+                                onOpenManageModal();
+                              }
+                            }}
                           >
                             {t('permission.Manage')}
                           </Button>
@@ -271,7 +284,19 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                             size="sm"
                             variant="whitePrimary"
                             leftIcon={<MyIcon w="4" name="support/permission/collaborator" />}
-                            onClick={onOpenAddMember}
+                            onClick={() => {
+                              if (appDetail.inheritPermission) {
+                                openConfirm(
+                                  () => {
+                                    onOpenAddMember();
+                                  },
+                                  undefined,
+                                  '此操作会导致权限继承失效，是否进行？'
+                                )();
+                              } else {
+                                onOpenAddMember();
+                              }
+                            }}
                           >
                             {t('common.Add')}
                           </Button>

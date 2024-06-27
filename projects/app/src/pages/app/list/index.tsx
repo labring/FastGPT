@@ -212,12 +212,13 @@ const MyApps = () => {
         {!!folderDetail && isPc && (
           <Box pt={[4, 6]} pr={[4, 6]}>
             <FolderSlideCard
+              refetchResource={loadMyApps}
               resumeInheritPermission={() =>
                 onUpdateApp(folderDetail._id, { inheritPermission: true })
               }
               isInheritPermission={folderDetail.inheritPermission}
-              isParent={folderDetail.parentId !== undefined}
-              refreshDeps={[folderDetail._id]}
+              hasParent={!!folderDetail.parentId}
+              refreshDeps={[folderDetail._id, folderDetail.inheritPermission]}
               name={folderDetail.name}
               intro={folderDetail.intro}
               onEdit={() => {

@@ -27,7 +27,8 @@ const FolderSlideCard = ({
   managePer,
   isInheritPermission,
   resumeInheritPermission,
-  isParent
+  hasParent,
+  refetchResource
 }: {
   refreshDeps?: any[];
   name: string;
@@ -46,7 +47,8 @@ const FolderSlideCard = ({
 
   isInheritPermission?: boolean;
   resumeInheritPermission?: () => void;
-  isParent?: boolean;
+  hasParent?: boolean;
+  refetchResource?: () => void;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -126,7 +128,7 @@ const FolderSlideCard = ({
           <Box>
             <FormLabel>{t('support.permission.Permission')}</FormLabel>
 
-            {!isInheritPermission && !isParent && (
+            {!isInheritPermission && hasParent && (
               <Flex mt={5} alignItems={'start'} flexDirection={'column'}>
                 <Box fontSize="sm">已限制权限，不再继承父级文件夹的权限</Box>
                 <Button
@@ -159,7 +161,7 @@ const FolderSlideCard = ({
                   defaultPer={defaultPer.defaultValue}
                   onChange={(v) => {
                     if (isInheritPermission) {
-                      openConfirm(
+                      openCommonConfirm(
                         () => defaultPer.onChange(v),
                         undefined,
                         '此操作会导致权限继承失效，是否进行？'
@@ -172,7 +174,11 @@ const FolderSlideCard = ({
               </Box>
             )}
             <Box mt={6}>
-              <CollaboratorContextProvider {...managePer} refreshDeps={refreshDeps}>
+              <CollaboratorContextProvider
+                {...managePer}
+                refreshDeps={refreshDeps}
+                refetchResource={refetchResource}
+              >
                 {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
                   return (
                     <>
@@ -188,7 +194,17 @@ const FolderSlideCard = ({
                                 name="common/settingLight"
                                 cursor={'pointer'}
                                 _hover={{ color: 'primary.600' }}
-                                onClick={onOpenManageModal}
+                                onClick={() => {
+                                  if (isInheritPermission) {
+                                    openCommonConfirm(
+                                      onOpenManageModal,
+                                      undefined,
+                                      '此操作会导致权限继承失效，是否进行？'
+                                    )();
+                                  } else {
+                                    onOpenManageModal();
+                                  }
+                                }}
                               />
                             </MyTooltip>
                             <MyTooltip label={t('common.Add')}>
@@ -197,7 +213,17 @@ const FolderSlideCard = ({
                                 name="support/permission/collaborator"
                                 cursor={'pointer'}
                                 _hover={{ color: 'primary.600' }}
-                                onClick={onOpenAddMember}
+                                onClick={() => {
+                                  if (isInheritPermission) {
+                                    openCommonConfirm(
+                                      onOpenAddMember,
+                                      undefined,
+                                      '此操作会导致权限继承失效，是否进行？'
+                                    )();
+                                  } else {
+                                    onOpenAddMember();
+                                  }
+                                }}
                               />
                             </MyTooltip>
                           </HStack>
