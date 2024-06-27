@@ -84,7 +84,10 @@ try {
     { background: true }
   );
   // full text index
-  DatasetDataSchema.index({ teamId: 1, datasetId: 1, fullTextToken: 'text' }, { background: true });
+  DatasetDataSchema.index(
+    { teamId: 1, datasetId: 1, collectionId: 1, fullTextToken: 'text' },
+    { background: true }
+  );
   // Recall vectors after data matching
   DatasetDataSchema.index(
     { teamId: 1, datasetId: 1, collectionId: 1, 'indexes.dataId': 1 },

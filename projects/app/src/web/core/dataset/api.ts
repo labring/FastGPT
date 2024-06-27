@@ -10,8 +10,7 @@ import type {
 } from '@fastgpt/global/core/dataset/type.d';
 import type {
   GetDatasetCollectionsProps,
-  GetDatasetDataListProps,
-  UpdateDatasetCollectionParams
+  GetDatasetDataListProps
 } from '@/global/core/api/datasetReq.d';
 import type {
   CreateDatasetCollectionParams,
@@ -35,10 +34,7 @@ import type {
   InsertOneDatasetDataProps
 } from '@/global/core/dataset/api.d';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
-import {
-  DatasetCollectionSyncResultEnum,
-  DatasetTypeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import { PagingData } from '@/types';
@@ -50,6 +46,7 @@ import type {
 } from '@/pages/api/core/dataset/file/getPreviewChunks';
 import type { readCollectionSourceResponse } from '@/pages/api/core/dataset/collection/read';
 import type { GetDatasetListBody } from '@/pages/api/core/dataset/list';
+import type { UpdateDatasetCollectionParams } from '@/pages/api/core/dataset/collection/update';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>

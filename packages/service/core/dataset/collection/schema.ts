@@ -48,12 +48,12 @@ const DatasetCollectionSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
+  forbid: Boolean,
 
   // chunk filed
   trainingType: {
     type: String,
-    enum: Object.keys(TrainingTypeMap),
-    required: true
+    enum: Object.keys(TrainingTypeMap)
   },
   chunkSize: {
     type: Number,
@@ -105,6 +105,9 @@ try {
     },
     { background: true }
   );
+
+  // get forbid
+  DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, forbid: 1 }, { background: true });
 } catch (error) {
   console.log(error);
 }

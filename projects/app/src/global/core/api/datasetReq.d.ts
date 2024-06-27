@@ -22,12 +22,6 @@ export type GetDatasetCollectionsProps = RequestPaging & {
   selectFolder?: boolean;
 };
 
-export type UpdateDatasetCollectionParams = {
-  id: string;
-  parentId?: string;
-  name?: string;
-};
-
 /* ==== data ===== */
 export type GetDatasetDataListProps = RequestPaging & {
   searchText?: string;

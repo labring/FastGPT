@@ -48,6 +48,7 @@ export type DatasetCollectionSchemaType = {
   type: DatasetCollectionTypeEnum;
   createTime: Date;
   updateTime: Date;
+  forbid?: boolean;
 
   trainingType: TrainingModeEnum;
   chunkSize: number;

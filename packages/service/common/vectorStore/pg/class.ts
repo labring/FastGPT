@@ -118,7 +118,12 @@ export class PgVectorCtrl {
     }
   };
   embRecall = async (props: EmbeddingRecallCtrlProps): Promise<EmbeddingRecallResponse> => {
-    const { teamId, datasetIds, vector, limit, retry = 2 } = props;
+    const { teamId, datasetIds, vector, limit, forbidCollectionIdList, retry = 2 } = props;
+
+    const forbidCollectionSql =
+      forbidCollectionIdList.length > 0
+        ? `AND collection_id NOT IN (${forbidCollectionIdList.map((id) => `'${String(id)}'`).join(',')})`
+        : 'AND collection_id IS NOT NULL';
 
     try {
       const results: any = await PgClient.query(
@@ -129,6 +134,7 @@ export class PgVectorCtrl {
             from ${DatasetVectorTableName} 
             where team_id='${teamId}'
               AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+              ${forbidCollectionSql}
             order by score limit ${limit};
         COMMIT;`
       );
