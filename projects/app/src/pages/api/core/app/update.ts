@@ -48,7 +48,6 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
     // if move, auth the parent folder
     if (isMoveToRoot) {
       // if move to root, then no need to auth the parent folder. Auth the user instead
-      parentFolder = null;
       await authUserPer({ req, authToken: true, per: ManagePermissionVal });
     } else {
       parentFolder = (
@@ -109,6 +108,7 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
 
   if (isDefaultPermissionChanged) {
     onUpdate();
+    if (!parentFolder) parentFolder = await MongoApp.findById(parentId).lean();
     syncPermission({
       resource: {
         ...app,
@@ -116,7 +116,8 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
       },
       permissionType: PerResourceTypeEnum.app,
       resourceModel: MongoApp,
-      folderTypeList: [AppTypeEnum.folder, AppTypeEnum.httpPlugin]
+      folderTypeList: [AppTypeEnum.folder, AppTypeEnum.httpPlugin],
+      parentResource: parentFolder
     });
     return;
   }

@@ -42,7 +42,7 @@ export async function syncPermission({
   const isFolder = folderTypeList.includes(resource.type);
   const isInherit = parentResource !== undefined;
 
-  if (!isFolder) {
+  if (!isFolder && !parentResource) {
     return;
   }
 
