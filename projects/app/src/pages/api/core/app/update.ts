@@ -9,7 +9,7 @@ import {
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { AppDetailType } from '@fastgpt/global/core/app/type';
+import { AppDetailType, AppSchema } from '@fastgpt/global/core/app/type';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import {
@@ -43,7 +43,7 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
   const isMove = parentId !== undefined;
   const isMoveToRoot = isMove && parentId === null;
 
-  let parentFolder;
+  let parentFolder: AppSchema;
   if (isMove) {
     // if move, auth the parent folder
     if (isMoveToRoot) {
@@ -108,7 +108,7 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
 
   if (isDefaultPermissionChanged) {
     onUpdate();
-    if (!parentFolder) parentFolder = await MongoApp.findById(parentId).lean();
+    parentFolder = await MongoApp.findById(parentId).lean();
     syncPermission({
       resource: {
         ...app,

@@ -1,6 +1,5 @@
-import type { NextApiResponse } from 'next';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { AppListItemType } from '@fastgpt/global/core/app/type';
+import { AppListItemType, AppSchema } from '@fastgpt/global/core/app/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import {
@@ -15,6 +14,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { Permission } from '@fastgpt/global/support/permission/controller';
 
 export type ListAppBody = {
   parentId?: ParentIdType;
@@ -23,14 +23,12 @@ export type ListAppBody = {
   searchKey?: string;
 };
 
-async function handler(
-  req: ApiRequestProps<ListAppBody>,
-  res: NextApiResponse<any>
-): Promise<AppListItemType[]> {
+async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemType[]> {
   const { parentId, type, getRecentlyChat, searchKey } = req.body;
 
   // 凭证校验
-  let ParentApp, tmbId, teamId, tmbPer;
+  let ParentApp: AppSchema;
+  let tmbId: string, teamId: string, tmbPer: Permission;
 
   if (parentId) {
     const result = await authApp({
