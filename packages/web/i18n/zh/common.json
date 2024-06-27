@@ -387,7 +387,7 @@
         "Speech speed": "语速",
         "Test Listen": "试听",
         "Test Listen Text": "你好，这是语音测试，如果你能听到这句话，说明语音播放功能正常",
-        "Web": "浏览器自带（免费）"
+        "Web": "浏览器自带(免费)"
       },
       "whisper": {
         "Auto send": "自动发送",

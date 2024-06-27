@@ -37,7 +37,7 @@ async function handler(req: NextApiRequest) {
     fileId,
     isQAImport: true
   });
-  console.log(rawText);
+
   // 2. split chunks
   const chunks = rawText2Chunks({
     rawText,

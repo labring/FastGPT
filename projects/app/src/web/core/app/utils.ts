@@ -17,6 +17,7 @@ import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import { TFunction } from 'next-i18next';
 import { ToolModule } from '@fastgpt/global/core/workflow/template/system/tools';
+import { useDatasetStore } from '../dataset/store/dataset';
 
 type WorkflowType = {
   nodes: StoreNodeItemType[];
@@ -26,6 +27,12 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
   chatConfig: AppChatConfigType;
 } {
   const workflowStartNodeId = 'workflowStartNodeId';
+
+  const allDatasets = useDatasetStore.getState().allDatasets;
+  const selectedDatasets = data.dataset.datasets.filter((item) =>
+    allDatasets.some((ds) => ds._id === item.datasetId)
+  );
+
   function systemConfigTemplate(formData: AppSimpleEditFormType): StoreNodeItemType {
     return {
       nodeId: 'userGuide',
@@ -351,7 +358,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
                 FlowNodeInputTypeEnum.reference
               ],
               label: 'core.module.input.label.Select dataset',
-              value: formData.dataset.datasets,
+              value: selectedDatasets,
               valueType: WorkflowIOValueTypeEnum.selectDataset,
               list: [],
               required: true
@@ -447,7 +454,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
     const datasetNodeId = getNanoid(6);
 
     const datasetTool: WorkflowType | null =
-      formData.dataset.datasets.length > 0
+      selectedDatasets.length > 0
         ? {
             nodes: [
               {
@@ -470,7 +477,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
                       FlowNodeInputTypeEnum.reference
                     ],
                     label: 'core.module.input.label.Select dataset',
-                    value: formData.dataset.datasets,
+                    value: selectedDatasets,
                     valueType: WorkflowIOValueTypeEnum.selectDataset,
                     list: [],
                     required: true
@@ -690,7 +697,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
 
   const workflow = (() => {
     if (data.selectedTools.length > 0) return toolTemplates(data);
-    if (data.dataset.datasets.length > 0) return datasetTemplate(data);
+    if (selectedDatasets.length > 0) return datasetTemplate(data);
     return simpleChatTemplate(data);
   })();
 

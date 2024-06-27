@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, Flex, Button, IconButton } from '@chakra-ui/react';
+import { Box, Flex, Button, IconButton, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 
@@ -79,9 +79,10 @@ const Header = () => {
           pl={[2, 4]}
           pr={[2, 6]}
           borderBottom={'base'}
-          alignItems={'center'}
+          alignItems={['flex-start', 'center']}
           userSelect={'none'}
-          h={'67px'}
+          h={['auto', '67px']}
+          flexWrap={'wrap'}
           {...(currentTab === TabEnum.appEdit
             ? {
                 bg: 'myGray.25'
@@ -115,10 +116,9 @@ const Header = () => {
           <Box flex={1} />
 
           {currentTab === TabEnum.appEdit && (
-            <>
+            <HStack flexDirection={['column', 'row']} spacing={[2, 3]}>
               {!historiesDefaultData && (
                 <IconButton
-                  mr={[2, 4]}
                   icon={<MyIcon name={'history'} w={'18px'} />}
                   aria-label={''}
                   size={'sm'}
@@ -157,7 +157,6 @@ const Header = () => {
                     <Box>
                       <MyTooltip label={t('core.app.Publish app tip')}>
                         <Button
-                          ml={[2, 4]}
                           size={'sm'}
                           leftIcon={<MyIcon name={'common/publishFill'} w={['14px', '16px']} />}
                         >
@@ -169,7 +168,7 @@ const Header = () => {
                   onConfirm={() => onclickPublish()}
                 />
               )}
-            </>
+            </HStack>
           )}
         </Flex>
         {historiesDefaultData && (

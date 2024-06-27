@@ -96,16 +96,6 @@ const AppCard = () => {
           >
             {t('core.Chat')}
           </Button>
-          {appDetail.permission.hasWritePer && feConfigs?.show_team_chat && (
-            <Button
-              size={['sm', 'md']}
-              variant={'whitePrimary'}
-              leftIcon={<DragHandleIcon w={'16px'} />}
-              onClick={() => setTeamTagsSet(appDetail)}
-            >
-              {t('common.Team Tags Set')}
-            </Button>
-          )}
           {appDetail.permission.hasManagePer && (
             <Button
               size={['sm', 'md']}
@@ -133,7 +123,16 @@ const AppCard = () => {
                       icon: 'core/app/type/workflow',
                       label: appT('Transition to workflow'),
                       onClick: () => setTransitionCreateNew(true)
-                    }
+                    },
+                    ...(appDetail.permission.hasWritePer && feConfigs?.show_team_chat
+                      ? [
+                          {
+                            icon: 'core/chat/fileSelect',
+                            label: t('common.Team Tags Set'),
+                            onClick: () => setTeamTagsSet(appDetail)
+                          }
+                        ]
+                      : [])
                   ]
                 },
                 {

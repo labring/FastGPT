@@ -106,8 +106,9 @@ const InputGuideConfig = ({
         iconSrc="core/app/inputGuides"
         isOpen={isOpen}
         onClose={onClose}
+        w={'500px'}
       >
-        <ModalBody px={[5, 16]} py={[4, 8]} w={'500px'}>
+        <ModalBody px={[5, 16]} py={[4, 8]}>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
             <FormLabel>{t('Is open')}</FormLabel>
             <Switch
