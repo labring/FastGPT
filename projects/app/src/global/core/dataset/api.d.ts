@@ -37,15 +37,6 @@ export type InsertOneDatasetDataProps = PushDatasetDataChunkProps & {
   collectionId: string;
 };
 
-export type UpdateDatasetDataProps = {
-  id: string;
-  q?: string; // embedding content
-  a?: string; // bonus content
-  indexes: (Omit<DatasetDataIndexItemType, 'dataId'> & {
-    dataId?: string; // pg data id
-  })[];
-};
-
 export type GetTrainingQueueProps = {
   vectorModel: string;
   agentModel: string;
