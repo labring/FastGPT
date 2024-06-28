@@ -596,7 +596,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1517,6 +1518,7 @@
     }
   },
   "system": {
+    "Concat us": "联系我们",
     "Help Document": "帮助文档"
   },
   "template": {
