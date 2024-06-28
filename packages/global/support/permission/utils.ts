@@ -38,7 +38,7 @@ export function getPermissionSchema(defaultPermission: PermissionValueType = Nul
     },
     inheritPermission: {
       type: Boolean,
-      default: false
+      default: true
     }
   };
 }
