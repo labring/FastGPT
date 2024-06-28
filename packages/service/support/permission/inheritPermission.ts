@@ -1,6 +1,6 @@
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { MongoResourcePermission } from './schema';
-import { Model } from 'mongoose';
+import { ClientSession, Model } from 'mongoose';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import {
   PermissionValueType,
@@ -18,27 +18,14 @@ type ResourceType = {
   inheritPermission: boolean;
 };
 
-// sync the permission to all children folders, or sync from parent folder.
-// hint: Only folder save the permission.
-// @param resource: the resource (as the root of the tree). The children of it will be synced.
-// @param folderTypeList: the type of folder. To determine if the resource is a folder.
-// @param resourceType: the type of the resource in ResourcePermission Table.
-// @param parentResource(optional): the parent resource of the resource.
-//  If the [parentResource] is provided, the permission of the resource will be synced from the parent.
-//  Otherwise, the permission of the resource will be synced to all children folders.
-// @example:
-// await syncPermission({
-//  resource: app,
-//  folderTypeList: AppFolderTypeList,
-//  resourceType: PerResourceTypeEnum.App,
-//  resourceModel: AppModel
-//});
-export async function syncPermission({
+// sync the permission to all children folders.
+export async function syncChildrenPermission({
   resource,
   folderTypeList,
   resourceType,
   resourceModel,
-  parentResource
+  session,
+  collaborators
 }: {
   resource: ResourceType;
 
@@ -49,18 +36,18 @@ export async function syncPermission({
   resourceType: PerResourceTypeEnum;
 
   // should be provided when inheritPermission is true
-  parentResource?: ResourceType;
+  session?: ClientSession;
+  collaborators: ResourcePermissionType[];
 }) {
   // only folder has permission
   const isFolder = folderTypeList.includes(resource.type);
-  const isInherit = parentResource !== undefined;
 
-  if (!isFolder && !parentResource) {
+  if (!isFolder) {
     return;
   }
 
   // get all folders and the resource permission of the app
-  mongoSessionRun(async (session) => {
+  const fn = async (session: ClientSession) => {
     const allFolders = await resourceModel
       .find(
         {
@@ -71,15 +58,9 @@ export async function syncPermission({
         '_id parentId'
       )
       .lean();
-    const resourceId = isInherit ? resource.parentId : resource._id;
-    const rp = await MongoResourcePermission.find({
-      teamId: resource.teamId,
-      resourceId, // get from parent if inherit is true
-      resourceType: resourceType
-    }).lean();
 
     // bfs to get all children
-    const queue = [resource._id.toString()];
+    const queue = [String(resource._id)];
     const children: string[] = [];
 
     while (queue.length) {
@@ -91,9 +72,6 @@ export async function syncPermission({
       queue.push(...folderChildren.map((folder) => folder._id));
     }
 
-    if (isInherit) {
-      children.push(resource._id); // push the resource itself
-    }
     if (!children.length) {
       return;
     }
@@ -102,69 +80,49 @@ export async function syncPermission({
       await resourceModel.findByIdAndUpdate(
         childId,
         {
-          defaultPermission: isInherit
-            ? parentResource!.defaultPermission
-            : resource.defaultPermission
+          defaultPermission: resource.defaultPermission
         },
         { session }
       );
     }
 
     // sync the resource permission
-    if (!rp.length) {
+    if (!collaborators.length) {
       return;
     }
 
     for (const childId of children) {
-      await MongoResourcePermission.deleteMany(
-        {
-          teamId: resource.teamId,
-          resourceId: childId,
-          resourceType: resourceType
-        },
-        { session }
-      );
-      // then write in
-      for (const item of rp) {
-        await MongoResourcePermission.updateOne(
-          {
-            teamId: resource.teamId,
-            resourceId: childId,
-            resourceType: resourceType,
-            tmbId: item.tmbId
-          },
-          {
-            permission: item.permission
-          },
-          { session, upsert: true }
-        );
-      }
+      updateCollaborators({
+        resourceType,
+        session,
+        collaborators,
+        teamId: resource.teamId,
+        resourceId: childId
+      });
     }
-  });
+  };
+  if (session) {
+    await fn(session);
+  } else {
+    await mongoSessionRun(fn);
+  }
 }
 
 // resume the inherit permission of the resource.
-// @param resource: the resource to resume the inherit permission.
-// @param folderTypeList: the type of folder. To determine if the resource is a folder.
-// @param resourceType: the type of the resource in ResourcePermission Table.
-// @param resourceModel: the model of the resource.
-// @example:
-// await resumeInheritPermission({
-//   resource: app,
-//   folderTypeList: AppFolderTypeList,
-//   resourceType: PerResourceTypeEnum.App,
-//   resourceModel: AppModel
-// });
 export async function resumeInheritPermission({
   resource,
   folderTypeList,
   resourceType,
-  resourceModel
+  resourceModel,
+  session,
+  parentResource
 }: {
   resource: ResourceType;
   folderTypeList: string[];
   resourceType: PerResourceTypeEnum;
   resourceModel: typeof Model;
+  parentResource: ResourceType;
+  session?: ClientSession;
 }) {
   const isFolder = folderTypeList.includes(resource.type);
 
@@ -173,36 +131,62 @@ export async function resumeInheritPermission({
     return Promise.reject(CommonErrEnum.inheritPermissionError);
   }
 
-  mongoSessionRun(async (session) => {
-    const parent = await resourceModel.findById(resource.parentId).lean().session(session);
-
-    resource.inheritPermission = true;
-    resource.defaultPermission = parent.defaultPermission;
-
-    // update the app's defaultPermission and inheritPermission itself
+  const fn = async (session: ClientSession) => {
+    // const parent = await resourceModel.findById(resource.parentId).lean().session(session);
     await resourceModel.updateOne(
       {
         _id: resource._id
       },
       {
         inheritPermission: true,
-        defaultPermission: parent.defaultPermission // it is ok even it is a app, as we will not use it anyway.
+        defaultPermission: parentResource.defaultPermission // it is ok even it is a app, as we will not use it anyway.
       },
       { session }
     );
-    if (!isFolder) {
-      // app. Collaborator on it is unnessary anymore. delete them.
-      await MongoResourcePermission.deleteMany({ resourceId: resource._id }, { session });
-    }
 
-    await syncPermission({
+    resource.inheritPermission = true;
+    resource.defaultPermission = parentResource.defaultPermission;
+
+    const collaborators = await (async () => {
+      if (!isFolder) {
+        // if it is not a folder, delete all the collaborators
+        await MongoResourcePermission.deleteMany({ resourceId: resource._id }, { session });
+        return [];
+      } else {
+        const collaborators = await getParentCollaborators({
+          resource,
+          resourceType,
+          session
+        });
+
+        // update myself
+        await updateCollaborators({
+          resourceType,
+          session,
+          collaborators: collaborators,
+          teamId: resource.teamId,
+          resourceId: resource._id
+        });
+
+        return collaborators;
+      }
+    })();
+
+    await syncChildrenPermission({
       resource,
       resourceModel,
       folderTypeList,
-      resourceType: resourceType,
-      parentResource: parent
+      resourceType,
+      session,
+      collaborators
     });
-  });
+  };
+
+  if (session) {
+    fn(session);
+  } else {
+    mongoSessionRun(fn);
+  }
 }
 
 // get the parent collaborators of the resource.
@@ -210,14 +194,61 @@ export async function resumeInheritPermission({
 // @param resourceType: the type of the resource in ResourcePermission Table.
 export async function getParentCollaborators({
   resource,
-  resourceType
+  resourceType,
+  session
 }: {
   resource: ResourceType;
   resourceType: PerResourceTypeEnum;
+  session?: ClientSession;
 }): Promise<ResourcePermissionType[]> {
-  return await MongoResourcePermission.find({
-    resourceId: resource.parentId,
-    resourceType: resourceType,
-    teamId: resource.teamId
-  }).lean();
+  return await MongoResourcePermission.find(
+    {
+      resourceId: resource.parentId,
+      resourceType: resourceType,
+      teamId: resource.teamId
+    },
+    null,
+    {
+      session
+    }
+  ).lean();
+}
+
+// delete all the collaborators and then insert the new collaborators.
+export async function updateCollaborators({
+  resourceType,
+  session,
+  teamId,
+  resourceId,
+  collaborators
+}: {
+  resourceType: PerResourceTypeEnum;
+  session: ClientSession;
+  teamId: string;
+  resourceId: string;
+  collaborators: ResourcePermissionType[];
+}) {
+  await MongoResourcePermission.deleteMany(
+    {
+      teamId,
+      resourceId,
+      resourceType
+    },
+    { session }
+  );
+  // then write in
+  for (const item of collaborators) {
+    await MongoResourcePermission.updateOne(
+      {
+        teamId: teamId,
+        resourceId,
+        resourceType: resourceType,
+        tmbId: item.tmbId
+      },
+      {
+        permission: item.permission
+      },
+      { session, upsert: true }
+    );
+  }
 }
