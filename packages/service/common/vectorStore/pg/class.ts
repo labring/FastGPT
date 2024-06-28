@@ -124,8 +124,23 @@ export class PgVectorCtrl {
       forbidCollectionIdList.length > 0
         ? `AND collection_id NOT IN (${forbidCollectionIdList.map((id) => `'${String(id)}'`).join(',')})`
         : 'AND collection_id IS NOT NULL';
+    // const forbidDataSql =
+    //   forbidEmbIndexIdList.length > 0 ? `AND id NOT IN (${forbidEmbIndexIdList.join(',')})` : '';
 
     try {
+      // const explan: any = await PgClient.query(
+      //   `BEGIN;
+      //     SET LOCAL hnsw.ef_search = ${global.systemEnv?.pgHNSWEfSearch || 100};
+      //   EXPLAIN ANALYZE  select id, collection_id, vector <#> '[${vector}]' AS score
+      //       from ${DatasetVectorTableName}
+      //       where team_id='${teamId}'
+      //         AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+      //         ${forbidCollectionSql}
+      //       order by score limit ${limit};
+      //   COMMIT;`
+      // );
+      // console.log(explan[2].rows);
+
       const results: any = await PgClient.query(
         `
         BEGIN;

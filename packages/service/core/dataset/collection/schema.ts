@@ -48,7 +48,10 @@ const DatasetCollectionSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
-  forbid: Boolean,
+  forbid: {
+    type: Boolean,
+    default: false
+  },
 
   // chunk filed
   trainingType: {
@@ -91,26 +94,25 @@ const DatasetCollectionSchema = new Schema({
   }
 });
 
+export const MongoDatasetCollection: Model<DatasetCollectionSchemaType> =
+  models[DatasetColCollectionName] || model(DatasetColCollectionName, DatasetCollectionSchema);
+
 try {
   // auth file
-  DatasetCollectionSchema.index({ teamId: 1, fileId: 1 }, { background: true });
+  DatasetCollectionSchema.index({ teamId: 1, fileId: 1 });
 
   // list collection; deep find collections
-  DatasetCollectionSchema.index(
-    {
-      teamId: 1,
-      datasetId: 1,
-      parentId: 1,
-      updateTime: -1
-    },
-    { background: true }
-  );
+  DatasetCollectionSchema.index({
+    teamId: 1,
+    datasetId: 1,
+    parentId: 1,
+    updateTime: -1
+  });
 
   // get forbid
-  DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, forbid: 1 }, { background: true });
+  // DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, forbid: 1 });
+
+  MongoDatasetCollection.syncIndexes({ background: true });
 } catch (error) {
   console.log(error);
 }
-
-export const MongoDatasetCollection: Model<DatasetCollectionSchemaType> =
-  models[DatasetColCollectionName] || model(DatasetColCollectionName, DatasetCollectionSchema);

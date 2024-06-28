@@ -12,13 +12,14 @@ import {
   DatasetDataWithCollectionType,
   SearchDataResponseItemType
 } from '@fastgpt/global/core/dataset/type';
-import { MongoDatasetCollection } from '../collection/schema';
+import { DatasetColCollectionName, MongoDatasetCollection } from '../collection/schema';
 import { reRankRecall } from '../../../core/ai/rerank';
 import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { datasetSearchResultConcat } from '@fastgpt/global/core/dataset/search/utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { jiebaSplit } from '../../../common/string/jieba';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
+import { Types } from '../../../common/mongo';
 
 type SearchDatasetDataProps = {
   teamId: string;
@@ -164,12 +165,10 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   };
   const fullTextRecall = async ({
     query,
-    limit,
-    forbidCollectionIdList
+    limit
   }: {
     query: string;
     limit: number;
-    forbidCollectionIdList: string[];
   }): Promise<{
     fullTextRecallResults: SearchDataResponseItemType[];
     tokenLen: number;
@@ -183,28 +182,66 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
 
     let searchResults = (
       await Promise.all(
-        datasetIds.map((id) =>
-          MongoDatasetData.find(
+        datasetIds.map(async (id) => {
+          return MongoDatasetData.aggregate([
             {
-              teamId,
-              datasetId: id,
-              collectionId: { $nin: forbidCollectionIdList },
-              $text: { $search: jiebaSplit({ text: query }) }
+              $match: {
+                teamId: new Types.ObjectId(teamId),
+                datasetId: new Types.ObjectId(id),
+                $text: { $search: jiebaSplit({ text: query }) }
+              }
             },
             {
-              score: { $meta: 'textScore' },
-              _id: 1,
-              datasetId: 1,
-              collectionId: 1,
-              q: 1,
-              a: 1,
-              chunkIndex: 1
+              $addFields: {
+                score: { $meta: 'textScore' }
+              }
+            },
+            {
+              $sort: {
+                score: { $meta: 'textScore' }
+              }
+            },
+            {
+              $limit: limit
+            },
+            {
+              $lookup: {
+                from: DatasetColCollectionName,
+                let: { collectionId: '$collectionId' },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: { $eq: ['$_id', '$$collectionId'] },
+                      forbid: { $eq: false } // 直接在lookup阶段过滤
+                    }
+                  },
+                  {
+                    $project: {
+                      _id: 1 // 只需要_id字段来确认匹配
+                    }
+                  }
+                ],
+                as: 'collection'
+              }
+            },
+            {
+              $match: {
+                collection: { $ne: [] }
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                datasetId: 1,
+                collectionId: 1,
+                q: 1,
+                a: 1,
+                chunkIndex: 1,
+                score: 1
+              }
             }
-          )
-            .sort({ score: { $meta: 'textScore' } })
-            .limit(limit)
-            .lean()
-        )
+          ]);
+        })
       )
     ).flat() as (DatasetDataSchemaType & { score: number })[];
 
@@ -302,8 +339,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
           }),
           fullTextRecall({
             query,
-            limit: fullTextLimit,
-            forbidCollectionIdList
+            limit: fullTextLimit
           })
         ]);
         totalTokens += tokens;

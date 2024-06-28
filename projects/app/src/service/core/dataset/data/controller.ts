@@ -115,7 +115,7 @@ export async function insertData2Dataset({
  */
 export async function updateData2Dataset({
   dataId,
-  q,
+  q = '',
   a,
   indexes,
   model
@@ -140,7 +140,7 @@ export async function updateData2Dataset({
     formatIndexes.unshift(defaultIndex ? defaultIndex : getDefaultIndex({ q, a }));
   }
   formatIndexes = formatIndexes.slice(0, 6);
-
+  console.log(formatIndexes);
   // patch indexes, create, update, delete
   const patchResult: PatchIndexesProps[] = [];
 

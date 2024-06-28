@@ -89,16 +89,12 @@ const CollectionCard = () => {
               statusText: t('dataset.collections.Collection Embedding', {
                 total: collection.trainingAmount
               }),
-              color: 'myGray.600',
-              bg: 'myGray.50',
-              borderColor: 'borderColor.low'
+              colorSchema: 'gray'
             };
           }
           return {
             statusText: t('core.dataset.collection.status.active'),
-            color: 'green.600',
-            bg: 'green.50',
-            borderColor: 'green.300'
+            colorSchema: 'green'
           };
         })();
 
@@ -219,14 +215,14 @@ const CollectionCard = () => {
                   draggable={false}
                   onClick={() => {
                     if (collection.type === DatasetCollectionTypeEnum.folder) {
-                      router.replace({
+                      router.push({
                         query: {
                           ...router.query,
                           parentId: collection._id
                         }
                       });
                     } else {
-                      router.replace({
+                      router.push({
                         query: {
                           ...router.query,
                           collectionId: collection._id,
@@ -259,7 +255,7 @@ const CollectionCard = () => {
                     <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
                   </Td>
                   <Td py={2}>
-                    <MyTag showDot colorSchema="green" type={'borderFill'}>
+                    <MyTag showDot colorSchema={collection.colorSchema as any} type={'borderFill'}>
                       {t(collection.statusText)}
                     </MyTag>
                   </Td>

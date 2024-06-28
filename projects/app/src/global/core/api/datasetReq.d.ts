@@ -23,7 +23,3 @@ export type GetDatasetCollectionsProps = RequestPaging & {
 };
 
 /* ==== data ===== */
-export type GetDatasetDataListProps = RequestPaging & {
-  searchText?: string;
-  collectionId: string;
-};
