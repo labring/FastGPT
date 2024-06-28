@@ -9,7 +9,7 @@ import { PluginInputModule } from '../../workflow/template/system/pluginInput';
 import { PluginOutputModule } from '../../workflow/template/system/pluginOutput';
 import { HttpModule468 } from '../../workflow/template/system/http468';
 import { HttpParamAndHeaderItemType } from '../../workflow/api';
-import { StoreNodeItemType } from '../../workflow/type';
+import { StoreNodeItemType } from '../../workflow/type/node';
 import { HttpImgUrl } from '../../../common/file/image/constants';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import { getHandleId } from '../../workflow/utils';
@@ -185,10 +185,10 @@ export const httpApiSchema2Plugins = async ({
           valueType: getType(param.schema),
           label: param.name,
           renderTypeList: [FlowNodeInputTypeEnum.reference],
-          canEdit: true,
-          editField: {
-            key: true,
-            valueType: true
+          customInputConfig: {
+            selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
+            showDescription: false,
+            showDefaultValue: true
           },
           value: [pluginInputId, inputIdMap.get(param.name)]
         };
@@ -271,7 +271,7 @@ export const httpApiSchema2Plugins = async ({
     }
 
     /* Combine complete modules */
-    const modules: StoreNodeItemType[] = [
+    const nodes: StoreNodeItemType[] = [
       {
         nodeId: pluginInputId,
         name: PluginInputModule.name,
@@ -340,18 +340,9 @@ export const httpApiSchema2Plugins = async ({
         version: HttpModule468.version,
         inputs: [
           {
-            key: NodeInputKeyEnum.addInputParam,
-            renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
-            valueType: WorkflowIOValueTypeEnum.dynamic,
-            label: '',
-            required: false,
-            description: 'core.module.input.description.HTTP Dynamic Input',
-            editField: {
-              key: true,
-              valueType: true
-            }
+            ...HttpModule468.inputs[0],
+            value: httpInputs
           },
-          ...httpInputs,
           {
             key: 'system_httpMethod',
             renderTypeList: [FlowNodeInputTypeEnum.custom],
@@ -422,7 +413,7 @@ export const httpApiSchema2Plugins = async ({
       intro: item.description,
       parentId,
       type: AppTypeEnum.plugin,
-      modules,
+      modules: nodes,
       edges,
       pluginData: {
         pluginUniId: item.name

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 //@ts-ignore
-import type { HttpBodyType } from '@fastgpt/global/core/module/api.d';
+import type { HttpBodyType } from '@fastgpt/global/core/workflow/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { authRequestFromLocal } from '@fastgpt/service/support/permission/auth/common';
@@ -14,9 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     const {
       text,
-      DYNAMIC_INPUT_KEY: { ...obj }
+      system_addInputParam: { ...obj }
     } = req.body as Props;
-
+    console.log(text, obj, '=====');
     await authRequestFromLocal({ req });
 
     // string all value

@@ -1,12 +1,13 @@
 import { DELETE, GET, POST } from '@/web/common/api/request';
 import type { createHttpPluginBody } from '@/pages/api/core/app/httpPlugin/create';
 import type { UpdateHttpPluginBody } from '@/pages/api/core/app/httpPlugin/update';
-import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getMyApps } from '../api';
 import type { ListAppBody } from '@/pages/api/core/app/list';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { GetPreviewNodeQuery } from '@/pages/api/core/app/plugin/getPreviewNode';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = (data?: ListAppBody) =>
@@ -14,7 +15,7 @@ export const getTeamPlugTemplates = (data?: ListAppBody) =>
     res.map<FlowNodeTemplateType>((app) => ({
       id: app._id,
       pluginId: app._id,
-      pluginType: app.type,
+      isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.httpPlugin,
       templateType: FlowNodeTemplateTypeEnum.personalPlugin,
       flowNodeType: FlowNodeTypeEnum.pluginModule,
       avatar: app.avatar,

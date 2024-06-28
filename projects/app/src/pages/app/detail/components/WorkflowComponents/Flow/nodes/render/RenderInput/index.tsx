@@ -53,7 +53,7 @@ const RenderList: {
   },
   {
     types: [FlowNodeInputTypeEnum.addInputParam],
-    Component: dynamic(() => import('./templates/AddInputParam'))
+    Component: dynamic(() => import('./templates/DynamicInputs/index'))
   },
   {
     types: [FlowNodeInputTypeEnum.JSONEditor],

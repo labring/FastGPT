@@ -6,7 +6,7 @@ import {
   VariableInputEnum
 } from '../constants';
 import { DispatchNodeResponseKeyEnum } from '../runtime/constants';
-import { FlowNodeInputItemType, FlowNodeOutputItemType } from './io.d';
+import { CustomInputItemType, FlowNodeInputItemType, FlowNodeOutputItemType } from './io.d';
 import { UserModelSchema } from '../../../support/user/type';
 import {
   ChatHistoryItemResType,
@@ -20,88 +20,38 @@ import { RuntimeNodeItemType } from '../runtime/type';
 import { PluginTypeEnum } from '../../plugin/constants';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from './edge';
 import { NextApiResponse } from 'next';
-import { AppDetailType, AppSchema } from '../../app/type';
+import { AppChatConfigType, AppDetailType, AppSchema } from '../../app/type';
 import { ParentIdType } from 'common/parentFolder/type';
 import { AppTypeEnum } from 'core/app/constants';
+import { FlowNodeTemplateType, StoreNodeItemType } from './node';
 
-export type FlowNodeCommonType = {
-  flowNodeType: FlowNodeTypeEnum; // render node card
+export type WorkflowTemplateBasicType = {
+  nodes: StoreNodeItemType[];
+  edges: StoreEdgeItemType[];
+  chatConfigs: AppChatConfigType;
+};
+export type WorkflowTemplateType = WorkflowTemplateBasicType & {
+  id: string;
+  parentId?: string;
+  isFolder?: boolean;
 
-  avatar?: string;
   name: string;
-  intro?: string; // template list intro
-  showStatus?: boolean; // chatting response step status
-  version: string;
-
-  // data
-  inputs: FlowNodeInputItemType[];
-  outputs: FlowNodeOutputItemType[];
-
-  // plugin data
-  pluginId?: string;
-  pluginType?: AppTypeEnum;
-  // parentId: ParentIdType;
+  avatar: string;
+  intro?: string;
+  author?: string;
+  version?: string;
 };
-
-export type FlowNodeTemplateType = FlowNodeCommonType & {
-  id: string; // node id, unique
-  templateType: `${FlowNodeTemplateTypeEnum}`;
-
-  // show handle
-  sourceHandle?: {
-    left: boolean;
-    right: boolean;
-    top: boolean;
-    bottom: boolean;
-  };
-  targetHandle?: {
-    left: boolean;
-    right: boolean;
-    top: boolean;
-    bottom: boolean;
-  };
-
-  // info
-  isTool?: boolean; // can be connected by tool
-
-  // action
-  forbidDelete?: boolean; // forbid delete
-  unique?: boolean;
+// template market
+export type TemplateMarketItemType = WorkflowTemplateBasicType & {
+  tags?: { id: string; label: string }[];
 };
-export type FlowNodeItemType = FlowNodeTemplateType & {
-  nodeId: string;
-  isError?: boolean;
-  debugResult?: {
-    status: 'running' | 'success' | 'skipped' | 'failed';
-    message?: string;
-    showResult?: boolean; // show and hide result modal
-    response?: ChatHistoryItemResType;
-    isExpired?: boolean;
-  };
-};
-export type nodeTemplateListType = {
-  type: `${FlowNodeTemplateTypeEnum}`;
-  label: string;
-  list: FlowNodeTemplateType[];
-}[];
+// system plugin
+export type SystemPluginTemplateItemType = WorkflowTemplateBasicType & {
+  templateType: FlowNodeTemplateTypeEnum;
+  isTool?: boolean;
 
-// store node type
-export type StoreNodeItemType = FlowNodeCommonType & {
-  nodeId: string;
-  position?: {
-    x: number;
-    y: number;
-  };
-};
-
-/* connection type */
-export type NodeTargetNodeItemType = {
-  nodeId: string;
-  sourceHandle: string;
-  targetHandle: string;
-};
-export type NodeSourceNodeItemType = {
-  nodeId: string;
+  originCost: number; // n points/one time
+  currentCost: number;
 };
 
 /* --------------- function type -------------------- */

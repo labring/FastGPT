@@ -1,5 +1,5 @@
 import { FlowNodeTypeEnum } from '../../node/constant';
-import { FlowNodeTemplateType } from '../../type';
+import { FlowNodeTemplateType } from '../../type/node';
 import { FlowNodeTemplateTypeEnum } from '../../constants';
 import { getHandleConfig } from '../utils';
 

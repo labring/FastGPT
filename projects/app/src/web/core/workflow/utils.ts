@@ -1,14 +1,15 @@
 import type {
   StoreNodeItemType,
-  FlowNodeItemType,
-  FlowNodeTemplateType
-} from '@fastgpt/global/core/workflow/type/index.d';
+  FlowNodeItemType
+} from '@fastgpt/global/core/workflow/type/node.d';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import type { Edge, Node, XYPosition } from 'reactflow';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import {
   EDGE_TYPE,
   FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
+  FlowNodeTypeEnum,
+  defaultNodeVersion
 } from '@fastgpt/global/core/workflow/node/constant';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -70,39 +71,55 @@ export const storeNode2FlowNode = ({
     EmptyNode;
 
   // replace item data
-  const moduleItem: FlowNodeItemType = {
+  const nodeItem: FlowNodeItemType = {
     ...template,
     ...storeNode,
-    avatar: storeNode?.avatar || template?.avatar,
-    inputs: storeNode.inputs
-      .map((storeInput) => {
-        const templateInput =
-          template.inputs.find((item) => item.key === storeInput.key) || storeInput;
+    version: storeNode.version ?? template.version ?? defaultNodeVersion,
+
+    inputs: template.inputs
+      .map<FlowNodeInputItemType>((templateInput) => {
+        const storeInput =
+          storeNode.inputs.find((item) => item.key === templateInput.key) || templateInput;
+
         return {
-          ...templateInput,
           ...storeInput,
-          renderTypeList: templateInput.renderTypeList
+          ...templateInput,
+
+          selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
+          value: storeInput.value ?? templateInput.value,
+          label: storeInput.label ?? templateInput.label
         };
       })
       .concat(
-        template.inputs.filter((item) => !storeNode.inputs.some((input) => input.key === item.key))
+        /* 
+          1. Plugin input
+          2. Old version adapt: Dynamic input will be added to the node inputs.
+        */
+        storeNode.inputs.filter((item) => !template.inputs.find((input) => input.key === item.key))
       ),
-    outputs: storeNode.outputs.map((storeOutput) => {
-      const templateOutput =
-        template.outputs.find((item) => item.key === storeOutput.key) || storeOutput;
-      return {
-        ...storeOutput,
-        ...templateOutput,
-        value: storeOutput.value
-      };
-    }),
-    version: storeNode.version || '481'
+    outputs: template.outputs
+      .map<FlowNodeOutputItemType>((templateOutput) => {
+        const storeOutput =
+          template.outputs.find((item) => item.key === templateOutput.key) || templateOutput;
+        return {
+          ...storeOutput,
+          ...templateOutput,
+
+          id: storeOutput.id ?? templateOutput.id,
+          value: storeOutput.value ?? templateOutput.value
+        };
+      })
+      .concat(
+        storeNode.outputs.filter(
+          (item) => !template.outputs.find((output) => output.key === item.key)
+        )
+      )
   };
 
   return {
     id: storeNode.nodeId,
     type: storeNode.flowNodeType,
-    data: moduleItem,
+    data: nodeItem,
     selected,
     position: storeNode.position || { x: 0, y: 0 }
   };

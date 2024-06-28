@@ -50,42 +50,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     (item) => item.flowNodeType === FlowNodeTypeEnum.pluginInput
   );
   if (!inputModule) return Promise.reject('Plugin error, It has no set input.');
-  const hasDynamicInput = inputModule.inputs.find(
-    (input) => input.key === NodeInputKeyEnum.addInputParam
-  );
-
-  const startParams: Record<string, any> = (() => {
-    if (!hasDynamicInput) return data;
-
-    const params: Record<string, any> = {
-      [NodeInputKeyEnum.addInputParam]: {}
-    };
-
-    for (const key in data) {
-      if (key === NodeInputKeyEnum.addInputParam) continue;
-
-      const input = inputModule.inputs.find((input) => input.key === key);
-      if (input) {
-        params[key] = data[key];
-      } else {
-        params[NodeInputKeyEnum.addInputParam][key] = data[key];
-      }
-    }
-
-    return params;
-  })();
-
-  // replace input by dynamic variables
-  if (hasDynamicInput) {
-    for (const key in startParams) {
-      if (key === NodeInputKeyEnum.addInputParam) continue;
-      startParams[key] = replaceVariable(
-        startParams[key],
-        startParams[NodeInputKeyEnum.addInputParam]
-      );
-    }
-  }
-
+  console.log(data, '==');
   const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
     runtimeNodes: storeNodes2RuntimeNodes(plugin.nodes, getDefaultEntryNodeIds(plugin.nodes)).map(
@@ -96,7 +61,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
             showStatus: false,
             inputs: updateToolInputValue({
               inputs: node.inputs,
-              params: startParams
+              params: data
             })
           };
         }

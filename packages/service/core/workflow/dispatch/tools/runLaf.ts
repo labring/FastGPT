@@ -39,11 +39,13 @@ export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafRes
   }
 
   const concatVariables = {
+    ...variables,
+    ...body,
+    ...dynamicInput,
     appId,
     chatId,
     responseChatItemId,
-    ...variables,
-    ...body
+    histories: histories?.slice(-10) || []
   };
 
   httpReqUrl = replaceVariable(httpReqUrl, concatVariables);

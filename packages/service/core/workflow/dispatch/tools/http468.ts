@@ -66,13 +66,13 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   }
 
   const concatVariables = {
+    ...variables,
+    ...body,
+    ...dynamicInput,
     appId,
     chatId,
     responseChatItemId,
-    ...variables,
-    histories: histories?.slice(-10) || [],
-    ...body,
-    ...dynamicInput
+    histories: histories?.slice(-10) || []
   };
 
   const allVariables = {
@@ -114,7 +114,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       return Promise.reject(`Invalid JSON body: ${httpJsonBody}`);
     }
   })();
-
+  console.log(httpReqUrl, requestBody);
   try {
     const { formatResponse, rawResponse } = await fetchData({
       method: httpMethod,

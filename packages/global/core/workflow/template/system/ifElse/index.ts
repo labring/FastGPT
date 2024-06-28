@@ -9,7 +9,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../node/constant';
-import { FlowNodeTemplateType } from '../../../type';
+import { FlowNodeTemplateType } from '../../../type/node';
 import { getHandleConfig } from '../../utils';
 
 export const IfElseNode: FlowNodeTemplateType = {

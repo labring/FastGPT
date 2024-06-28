@@ -1,9 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Flex, IconButton, Input, InputGroup, InputLeftElement, css } from '@chakra-ui/react';
-import type {
-  FlowNodeTemplateType,
-  nodeTemplateListType
-} from '@fastgpt/global/core/workflow/type/index.d';
+import type { NodeTemplateListType } from '@fastgpt/global/core/workflow/type/node.d';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
@@ -270,8 +268,8 @@ const RenderList = React.memo(function RenderList({
   const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
   const { computedNewNodeName } = useWorkflowUtils();
 
-  const formatTemplates = useMemo<nodeTemplateListType>(() => {
-    const copy: nodeTemplateListType = JSON.parse(JSON.stringify(workflowNodeTemplateList(t)));
+  const formatTemplates = useMemo<NodeTemplateListType>(() => {
+    const copy: NodeTemplateListType = JSON.parse(JSON.stringify(workflowNodeTemplateList(t)));
     templates.forEach((item) => {
       const index = copy.findIndex((template) => template.type === item.templateType);
       if (index === -1) return;
@@ -390,7 +388,7 @@ const RenderList = React.memo(function RenderList({
                       cursor={'pointer'}
                       _hover={{ bg: 'myWhite.600' }}
                       borderRadius={'sm'}
-                      draggable={template.pluginType !== AppTypeEnum.folder}
+                      draggable={!template.isFolder}
                       onDragEnd={(e) => {
                         if (e.clientX < sliderWidth) return;
                         onAddNode({
@@ -399,10 +397,7 @@ const RenderList = React.memo(function RenderList({
                         });
                       }}
                       onClick={(e) => {
-                        if (
-                          template.pluginType === AppTypeEnum.folder ||
-                          template.pluginType === AppTypeEnum.httpPlugin
-                        ) {
+                        if (template.isFolder) {
                           return setParentId(template.id);
                         }
                         if (isPc) {

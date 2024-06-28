@@ -1,4 +1,4 @@
-import type { FlowNodeTemplateType, StoreNodeItemType } from '../workflow/type';
+import type { FlowNodeTemplateType, StoreNodeItemType } from '../workflow/type/node';
 import { AppTypeEnum } from './constants';
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import { VariableInputEnum } from '../workflow/constants';

@@ -6,7 +6,7 @@ import {
   variableMap
 } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './type/io.d';
-import { StoreNodeItemType } from './type';
+import { StoreNodeItemType } from './type/node';
 import type {
   VariableItemType,
   AppTTSConfigType,

@@ -18,7 +18,7 @@ import { PluginOutputModule } from './system/pluginOutput';
 import { RunPluginModule } from './system/runPlugin';
 import { AiQueryExtension } from './system/queryExtension';
 
-import type { FlowNodeTemplateType } from '../type';
+import type { FlowNodeTemplateType } from '../type/node';
 import { LafModule } from './system/laf';
 import { IfElseNode } from './system/ifElse/index';
 import { VariableUpdateNode } from './system/variableUpdate';

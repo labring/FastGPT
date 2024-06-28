@@ -10,11 +10,8 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
-import {
-  FlowNodeItemType,
-  FlowNodeTemplateType,
-  StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type';
+import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';

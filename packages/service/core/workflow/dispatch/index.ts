@@ -1,5 +1,5 @@
 import { NextApiResponse } from 'next';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { ChatDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
@@ -47,6 +47,7 @@ import { dispatchUpdateVariable } from './tools/runUpdateVar';
 import { addLog } from '../../../common/system/log';
 import { surrenderProcess } from '../../../common/system/tools';
 import { dispatchRunCode } from './code/run';
+import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -260,7 +261,18 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   /* Inject data into module input */
   function getNodeRunParams(node: RuntimeNodeItemType) {
     const params: Record<string, any> = {};
-    node.inputs.forEach((input) => {
+
+    const parseInputValue = (input: FlowNodeInputItemType) => {
+      if (input.valueType === WorkflowIOValueTypeEnum.dynamic && Array.isArray(input.value)) {
+        const value = (input.value || []) as FlowNodeInputItemType[];
+
+        const params = value.reduce<Record<string, any>>((acc, item) => {
+          acc[item.key] = parseInputValue(item);
+          return acc;
+        }, {});
+        return params;
+      }
+
       // replace {{}} variables
       let value = replaceVariable(input.value, variables);
 
@@ -270,6 +282,14 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         nodes: runtimeNodes,
         variables
       });
+
+      return value;
+    };
+
+    node.inputs.forEach((input) => {
+      // replace {{}} variables
+      const value = parseInputValue(input);
+
       // format valueType
       params[input.key] = valueTypeFormat(value, input.valueType);
     });

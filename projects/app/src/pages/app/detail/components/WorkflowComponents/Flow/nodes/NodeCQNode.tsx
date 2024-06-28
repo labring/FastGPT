@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { NodeProps, Position } from 'reactflow';
 import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/type/index.d';

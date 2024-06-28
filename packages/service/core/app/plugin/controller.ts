@@ -1,4 +1,4 @@
-import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/index.d';
+import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
 import { FlowNodeTypeEnum, defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
 import { pluginData2FlowNodeIO } from '@fastgpt/global/core/workflow/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';

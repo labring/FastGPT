@@ -11,16 +11,12 @@ import type {
   ChatHistoryItemResType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type.d';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { responseWriteNodeStatus } from '../../../common/response';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 
-import { dispatchHistory } from './init/history';
 import { dispatchChatInput } from './init/userChatInput';
 import { dispatchChatCompletion } from './chat/oneapi';
 import { dispatchDatasetSearch } from './dataset/search';

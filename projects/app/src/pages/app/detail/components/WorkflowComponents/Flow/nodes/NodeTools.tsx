@@ -1,7 +1,7 @@
 import React from 'react';
 import { NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Divider from '../components/Divider';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';

@@ -1,8 +1,8 @@
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { nodeTemplateListType } from '@fastgpt/global/core/workflow/type';
+import { NodeTemplateListType } from '@fastgpt/global/core/workflow/type/node';
 import { TFunction } from 'next-i18next';
 
-export const workflowNodeTemplateList = (t: TFunction): nodeTemplateListType => [
+export const workflowNodeTemplateList = (t: TFunction): NodeTemplateListType => [
   {
     type: FlowNodeTemplateTypeEnum.systemInput,
     label: t('core.module.template.System input module'),

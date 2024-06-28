@@ -24,19 +24,16 @@
         {
           "key": "system_addInputParam",
           "valueType": "dynamic",
-          "label": "动态外部数据",
+          "label": "自定义输入",
           "renderTypeList": ["addInputParam"],
           "required": false,
           "description": "",
           "canEdit": true,
           "value": "",
-          "editField": {
-            "key": true
-          },
-          "dynamicParamDefaultValue": {
-            "inputType": "reference",
-            "valueType": "string",
-            "required": true
+          "customInputConfig": {
+            "selectValueTypeList": ["string"],
+            "showDescription": false,
+            "showDefaultValue": false
           }
         },
         {

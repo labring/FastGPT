@@ -6,6 +6,7 @@ import {
   NodeOutputKeyEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 export const filterToolNodeIdByEdges = ({
   nodeId,

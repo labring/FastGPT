@@ -3,7 +3,7 @@ import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { NodeInputKeyEnum, FlowNodeTemplateTypeEnum } from '../workflow/constants';
 import type { FlowNodeInputItemType } from '../workflow/type/io.d';
 import { getAppChatConfig } from '../workflow/utils';
-import { StoreNodeItemType } from '../workflow/type';
+import { StoreNodeItemType } from '../workflow/type/node';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 
 export const getDefaultAppForm = (): AppSimpleEditFormType => ({

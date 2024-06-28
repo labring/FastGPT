@@ -47,6 +47,8 @@ const CurlImportModal = ({
       const headers = inputs.find((item) => item.key === NodeInputKeyEnum.httpHeaders);
       const jsonBody = inputs.find((item) => item.key === NodeInputKeyEnum.httpJsonBody);
 
+      if (!requestUrl || !requestMethod || !params || !headers || !jsonBody) return;
+
       const parsed = parse(content);
       if (!parsed.url) {
         throw new Error('url not found');

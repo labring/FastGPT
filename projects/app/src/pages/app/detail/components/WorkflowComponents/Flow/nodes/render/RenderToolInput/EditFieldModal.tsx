@@ -38,8 +38,11 @@ const EditFieldModal = ({
 
   const { mutate: onclickSubmit } = useRequest({
     mutationFn: async (e: FlowNodeInputItemType) => {
+      e.key = e.key.trim();
+
       const inputConfig: FlowNodeInputItemType = {
         ...e,
+        description: e.toolDescription,
         label: e.key
       };
       if (defaultValue.key) {

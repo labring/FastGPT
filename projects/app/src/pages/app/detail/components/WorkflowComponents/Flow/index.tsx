@@ -18,7 +18,7 @@ import ButtonEdge from './components/ButtonEdge';
 import NodeTemplatesModal from './NodeTemplatesModal';
 
 import 'reactflow/dist/style.css';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { connectionLineStyle, defaultEdgeOptions } from '../constants';
@@ -40,8 +40,8 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.contentExtract]: dynamic(() => import('./nodes/NodeExtract')),
   [FlowNodeTypeEnum.httpRequest468]: dynamic(() => import('./nodes/NodeHttp')),
   [FlowNodeTypeEnum.runApp]: NodeSimple,
-  [FlowNodeTypeEnum.pluginInput]: dynamic(() => import('./nodes/NodePluginInput')),
-  [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./nodes/NodePluginOutput')),
+  [FlowNodeTypeEnum.pluginInput]: dynamic(() => import('./nodes/NodePluginIO/PluginInput')),
+  [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./nodes/NodePluginIO/PluginOutput')),
   [FlowNodeTypeEnum.pluginModule]: NodeSimple,
   [FlowNodeTypeEnum.queryExtension]: NodeSimple,
   [FlowNodeTypeEnum.tools]: dynamic(() => import('./nodes/NodeTools')),

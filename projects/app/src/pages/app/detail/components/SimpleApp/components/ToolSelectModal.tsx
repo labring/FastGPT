@@ -22,14 +22,13 @@ import {
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/index.d';
+import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AddIcon } from '@chakra-ui/icons';
 import { getPreviewPluginNode, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import { useForm } from 'react-hook-form';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -247,8 +246,7 @@ const RenderList = React.memo(function RenderList({
               >
                 {t('common.Remove')}
               </Button>
-            ) : item.pluginType === PluginTypeEnum.folder ||
-              item.pluginType === AppTypeEnum.httpPlugin ? (
+            ) : item.isFolder ? (
               <Button size={'sm'} variant={'whiteBase'} onClick={() => setParentId(item.id)}>
                 {t('common.Open')}
               </Button>

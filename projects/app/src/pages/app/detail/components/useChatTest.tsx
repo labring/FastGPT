@@ -14,7 +14,7 @@ import { useMemoizedFn } from 'ahooks';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 
 export const useChatTest = ({
