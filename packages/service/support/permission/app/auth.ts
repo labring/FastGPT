@@ -1,6 +1,6 @@
 /* Auth app permission */
 import { MongoApp } from '../../../core/app/schema';
-import { AppDetailType, AppSchema } from '@fastgpt/global/core/app/type.d';
+import { AppDetailType } from '@fastgpt/global/core/app/type.d';
 import { AuthPropsType } from '../type/auth.d';
 import { parseHeaderCert } from '../controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
@@ -50,15 +50,12 @@ export const authAppByTmbId = async ({
           resourceType: PerResourceTypeEnum.app
         });
         const Per = new AppPermission({ per: rp?.permission ?? app.defaultPermission, isOwner });
-        if (!Per.checkPer(per)) {
-          return Promise.reject(AppErrEnum.unAuthApp);
-        }
         return Per;
       } else {
         // is not folder and inheritPermission is true and is not root folder.
         const { app: parent } = await authAppByTmbId({
           tmbId,
-          appId: app.parentId.toString(),
+          appId: app.parentId,
           per
         });
 
@@ -66,13 +63,13 @@ export const authAppByTmbId = async ({
           per: parent.permission.value,
           isOwner
         });
-
-        if (!Per.checkPer(per)) {
-          return Promise.reject(AppErrEnum.unAuthApp);
-        }
         return Per;
       }
     })();
+
+    if (!Per.checkPer(per)) {
+      return Promise.reject(AppErrEnum.unAuthApp);
+    }
 
     return {
       ...app,
@@ -88,7 +85,7 @@ export const authApp = async ({
   per,
   ...props
 }: AuthPropsType & {
-  appId: string | ParentIdType;
+  appId: ParentIdType;
 }): Promise<
   AuthResponseType & {
     app: AppDetailType;

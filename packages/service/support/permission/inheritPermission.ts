@@ -9,7 +9,7 @@ import {
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
-type resourceType = {
+type ResourceType = {
   _id: string;
   type: string;
   teamId: string;
@@ -40,7 +40,7 @@ export async function syncPermission({
   resourceModel,
   parentResource
 }: {
-  resource: resourceType;
+  resource: ResourceType;
 
   // when the resource is a folder
   folderTypeList: string[];
@@ -49,7 +49,7 @@ export async function syncPermission({
   resourceType: PerResourceTypeEnum;
 
   // should be provided when inheritPermission is true
-  parentResource?: resourceType;
+  parentResource?: ResourceType;
 }) {
   // only folder has permission
   const isFolder = folderTypeList.includes(resource.type);
@@ -68,7 +68,7 @@ export async function syncPermission({
           type: { $in: folderTypeList },
           inheritPermission: true
         },
-        null
+        '_id parentId'
       )
       .lean();
     const resourceId = isInherit ? resource.parentId : resource._id;
@@ -99,10 +99,8 @@ export async function syncPermission({
     }
 
     for (const childId of children) {
-      await resourceModel.updateOne(
-        {
-          _id: childId
-        },
+      await resourceModel.findByIdAndUpdate(
+        childId,
         {
           defaultPermission: isInherit
             ? parentResource!.defaultPermission
@@ -163,7 +161,7 @@ export async function resumeInheritPermission({
   resourceType,
   resourceModel
 }: {
-  resource: resourceType;
+  resource: ResourceType;
   folderTypeList: string[];
   resourceType: PerResourceTypeEnum;
   resourceModel: typeof Model;
@@ -214,7 +212,7 @@ export async function getParentCollaborators({
   resource,
   resourceType
 }: {
-  resource: resourceType;
+  resource: ResourceType;
   resourceType: PerResourceTypeEnum;
 }): Promise<ResourcePermissionType[]> {
   return await MongoResourcePermission.find({

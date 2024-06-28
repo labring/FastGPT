@@ -33,12 +33,10 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
 
   // 凭证校验
   const { teamId, tmbId } = await authUserPer({ req, authToken: true, per: WritePermissionVal });
-  let parentApp: AppSchema | null = null;
   if (parentId) {
     // if it is not a root app
-    parentApp = (await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true }))
-      .app;
     // check the parent folder permission
+    await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true });
   }
 
   // 上限校验

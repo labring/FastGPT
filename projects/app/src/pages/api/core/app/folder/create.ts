@@ -12,7 +12,6 @@ import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
-import { AppDetailType } from '@fastgpt/global/core/app/type';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -33,17 +32,19 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
 
   // 凭证校验
   const { teamId, tmbId } = await authUserPer({ req, authToken: true, per: WritePermissionVal });
-  let parentApp: AppDetailType | null = null;
-  if (parentId) {
-    // if it is not a root folder
-    const result = await authApp({
-      req,
-      appId: parentId,
-      per: WritePermissionVal,
-      authToken: true
-    }); // check the parent folder permission
-    parentApp = result.app;
-  }
+  const parentApp = await (async () => {
+    if (parentId) {
+      // if it is not a root folder
+      return (
+        await authApp({
+          req,
+          appId: parentId,
+          per: WritePermissionVal,
+          authToken: true
+        })
+      ).app; // check the parent folder permission
+    }
+  })();
 
   // Create app
   mongoSessionRun(async (session) => {
@@ -55,8 +56,8 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
       teamId,
       tmbId,
       type: AppTypeEnum.folder,
-      inheritPermission: parentId ? true : false,
-      defaultPermission: parentId ? parentApp!.defaultPermission : AppDefaultPermissionVal
+      inheritPermission: !!parentApp ? true : false,
+      defaultPermission: !!parentApp ? parentApp.defaultPermission : AppDefaultPermissionVal
     });
 
     if (parentId) {
@@ -69,7 +70,7 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
         rp.map((item) => {
           return {
             teamId: teamId,
-            resourceId: app._id.toString(),
+            resourceId: app._id,
             resourceType: PerResourceTypeEnum.app,
             permission: item.permission,
             tmbId: item.tmbId

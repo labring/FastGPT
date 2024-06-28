@@ -10,7 +10,7 @@ import { AppPermission } from '@fastgpt/global/support/permission/app/controller
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -98,12 +98,10 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     }).lean()
   ]);
 
-  const appFolderTypes = [AppTypeEnum.folder, AppTypeEnum.httpPlugin];
-
   const filterApps = myApps
     .map((app) => {
       let Per: AppPermission;
-      if (app.inheritPermission && app.parentId && !appFolderTypes.includes(app.type)) {
+      if (app.inheritPermission && app.parentId && !AppFolderTypeList.includes(app.type)) {
         // get its parent's permission as its permission
         app.defaultPermission = ParentApp!.defaultPermission;
         const perVal = rpList.find(
@@ -112,7 +110,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
 
         Per = new AppPermission({
           per: perVal ?? app.defaultPermission,
-          isOwner: String(app.tmbId) === tmbId || tmbPer.isOwner
+          isOwner: String(app.tmbId) === String(tmbId) || tmbPer.isOwner
         });
       } else {
         const perVal = rpList.find(
@@ -120,7 +118,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
         )?.permission;
         Per = new AppPermission({
           per: perVal ?? app.defaultPermission,
-          isOwner: String(app.tmbId) === tmbId || tmbPer.isOwner
+          isOwner: String(app.tmbId) === String(tmbId) || tmbPer.isOwner
         });
       }
 
