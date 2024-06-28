@@ -14,7 +14,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'next-i18next';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
@@ -183,13 +183,14 @@ const InputDataModal = ({
     errorToast: t('common.error.unKnow')
   });
   // update
-  const { mutate: onUpdateData, isLoading: isUpdating } = useRequest({
-    mutationFn: async (e: InputDataType) => {
-      if (!dataId) return e;
+
+  const { runAsync: onUpdateData, loading: isUpdating } = useRequest2(
+    async (e: InputDataType) => {
+      if (!dataId) return Promise.reject(t('common.error.unKnow'));
 
       // not exactly same
       await putDatasetDataById({
-        id: dataId,
+        dataId,
         ...e,
         indexes:
           e.indexes?.map((index) =>
@@ -202,13 +203,14 @@ const InputDataModal = ({
         ...e
       };
     },
-    successToast: t('dataset.data.Update Success Tip'),
-    errorToast: t('common.error.unKnow'),
-    onSuccess(data) {
-      onSuccess(data);
-      onClose();
+    {
+      successToast: t('dataset.data.Update Success Tip'),
+      onSuccess(data) {
+        onSuccess(data);
+        onClose();
+      }
     }
-  });
+  );
   // delete
   const { mutate: onDeleteData, isLoading: isDeleting } = useRequest({
     mutationFn: () => {
@@ -224,10 +226,7 @@ const InputDataModal = ({
     errorToast: t('common.error.unKnow')
   });
 
-  const isLoading = useMemo(
-    () => isImporting || isUpdating || isFetchingData || isDeleting,
-    [isImporting, isUpdating, isFetchingData, isDeleting]
-  );
+  const isLoading = isFetchingData || isDeleting;
 
   return (
     <MyModal isOpen={true} isCentered w={'90vw'} maxW={'1440px'} h={'90vh'}>
@@ -370,6 +369,7 @@ const InputDataModal = ({
             >
               <Button
                 isDisabled={!collection.permission.hasWritePer}
+                isLoading={isImporting || isUpdating}
                 // @ts-ignore
                 onClick={handleSubmit(dataId ? onUpdateData : sureImportData)}
               >

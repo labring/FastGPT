@@ -24,6 +24,9 @@ export type InsertVectorControllerProps = InsertVectorProps & {
 export type EmbeddingRecallProps = {
   teamId: string;
   datasetIds: string[];
+
+  forbidCollectionIdList: string[];
+  // forbidEmbIndexIdList: string[];
   // similarity?: number;
   // efSearch?: number;
 };
