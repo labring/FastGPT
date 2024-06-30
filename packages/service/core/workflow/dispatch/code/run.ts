@@ -42,6 +42,7 @@ export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeRespon
           customOutputs: runResult.data.codeReturn,
           codeLog: runResult.data.log
         },
+        [DispatchNodeResponseKeyEnum.toolResponses]: runResult.data.codeReturn,
         ...runResult.data.codeReturn
       };
     } else {

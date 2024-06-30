@@ -17,6 +17,6 @@
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^20.8.5"
+    "@types/node": "^20.14.2"
   }
 }

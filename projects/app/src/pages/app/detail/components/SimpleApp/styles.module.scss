@@ -1,0 +1,10 @@
+.EditAppBox {
+  &::-webkit-scrollbar-thumb {
+    background: #dfe2ea !important;
+    transition: background 1s;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--chakra-colors-gray-300) !important;
+  }
+}

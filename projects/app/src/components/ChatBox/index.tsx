@@ -997,7 +997,7 @@ const ChatBox = (
         </Box>
       </Box>
       {/* message input */}
-      {onStartChat && (chatStarted || filterVariableNodes.length === 0) && active && (
+      {onStartChat && (chatStarted || filterVariableNodes.length === 0) && active && appId && (
         <ChatInput
           onSendMessage={sendPrompt}
           onStop={() => chatController.current?.abort('stop')}

@@ -1,0 +1,24 @@
+{
+  "Click to view raw source": "点击查看来源",
+  "Click to view file": "点击查看原始文件",
+  "Release the mouse to upload the file": "松开鼠标上传文件",
+  "upload error description": "单次只支持上传多个文件或者一个文件夹",
+
+  "Empty file tip": "文件内容为空，可能该文件无法读取或为纯图片文件内容。",
+  "File Content": "文件内容",
+  "File Name": "文件名",
+  "File Size": "文件大小",
+  "File content can not be empty": "文件内容不能为空",
+  "Filename Can not Be Empty": "文件名不能为空",
+  "Read File Error": "解析文件失败",
+  "Select and drag file tip": "点击或拖动文件到此处上传",
+  "Select failed": "选择文件异常",
+  "Select file amount limit": "最多选择 {{max}} 个文件",
+  "Select file amount limit 100": "每次最多选择 100 个文件",
+  "Some file count exceeds limit": "超出 {{maxCount}} 个文件，已自动截取",
+  "Some file size exceeds limit": "部分文件超出 {{maxSize}}，已被过滤",
+  "Support file type": "支持 {{fileType}} 类型文件",
+  "Support max count": "最多支持 {{maxCount}} 个文件",
+  "Support max size": "单个文件最大 {{maxSize}}",
+  "Upload failed": "上传异常"
+}

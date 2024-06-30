@@ -11,7 +11,6 @@ export type AppUpdateParams = {
   nodes?: AppSchema['modules'];
   edges?: AppSchema['edges'];
   chatConfig?: AppSchema['chatConfig'];
-  permission?: AppSchema['permission'];
   teamTags?: AppSchema['teamTags'];
   defaultPermission?: AppSchema['defaultPermission'];
 };
@@ -28,4 +27,5 @@ export type PostRevertAppProps = {
   // edit workflow
   editNodes: AppSchema['modules'];
   editEdges: AppSchema['edges'];
+  editChatConfig: AppSchema['chatConfig'];
 };

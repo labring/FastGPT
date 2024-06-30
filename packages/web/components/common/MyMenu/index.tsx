@@ -11,6 +11,7 @@ import {
 import MyIcon from '../Icon';
 import MyDivider from '../MyDivider';
 import type { IconNameType } from '../Icon/type';
+import { useSystem } from '../../../hooks/useSystem';
 
 export type MenuItemType = 'primary' | 'danger';
 
@@ -46,11 +47,25 @@ const MyMenu = ({
       _hover: {
         backgroundColor: 'primary.50',
         color: 'primary.600'
+      },
+      _focus: {
+        backgroundColor: 'primary.50',
+        color: 'primary.600'
+      },
+      _active: {
+        backgroundColor: 'primary.50',
+        color: 'primary.600'
       }
     },
     danger: {
       color: 'red.600',
       _hover: {
+        background: 'red.1'
+      },
+      _focus: {
+        background: 'red.1'
+      },
+      _active: {
         background: 'red.1'
       }
     }
@@ -63,9 +78,13 @@ const MyMenu = ({
     alignItems: 'center',
     fontSize: 'sm'
   };
+
+  const { isPc } = useSystem();
   const ref = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<any>();
   const [isOpen, setIsOpen] = useState(false);
+
+  const formatTrigger = !isPc ? 'click' : trigger;
 
   useOutsideClick({
     ref: ref,
@@ -88,17 +107,19 @@ const MyMenu = ({
       direction={'ltr'}
       isLazy
       lazyBehavior={'keepMounted'}
+      placement="bottom-start"
+      computePositionOnMount
     >
       <Box
         ref={ref}
         onMouseEnter={() => {
-          if (trigger === 'hover') {
+          if (formatTrigger === 'hover') {
             setIsOpen(true);
           }
           clearTimeout(closeTimer.current);
         }}
         onMouseLeave={() => {
-          if (trigger === 'hover') {
+          if (formatTrigger === 'hover') {
             closeTimer.current = setTimeout(() => {
               setIsOpen(false);
             }, 100);
@@ -109,7 +130,7 @@ const MyMenu = ({
           position={'relative'}
           onClickCapture={(e) => {
             e.stopPropagation();
-            if (trigger === 'click') {
+            if (formatTrigger === 'click') {
               setIsOpen(!isOpen);
             }
           }}
@@ -126,12 +147,11 @@ const MyMenu = ({
           <Box position={'relative'}>{Button}</Box>
         </Box>
         <MenuList
-          minW={isOpen ? `${width}px !important` : 0}
+          minW={isOpen ? `${width}px !important` : '80px'}
+          maxW={'300px'}
           p={'6px'}
           border={'1px solid #fff'}
-          boxShadow={
-            '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
-          }
+          boxShadow={'3'}
         >
           {menuList.map((item, i) => {
             return (

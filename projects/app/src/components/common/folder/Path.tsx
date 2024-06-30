@@ -1,4 +1,4 @@
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, BoxProps, Flex } from '@chakra-ui/react';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -9,9 +9,17 @@ const FolderPath = (props: {
   FirstPathDom?: React.ReactNode;
   onClick: (parentId: string) => void;
   fontSize?: string;
+  hoverStyle?: BoxProps;
 }) => {
   const { t } = useTranslation();
-  const { paths, rootName = t('common.folder.Root Path'), FirstPathDom, onClick, fontSize } = props;
+  const {
+    paths,
+    rootName = t('common.folder.Root Path'),
+    FirstPathDom,
+    onClick,
+    fontSize,
+    hoverStyle
+  } = props;
 
   const concatPaths = useMemo(
     () => [
@@ -43,9 +51,10 @@ const FolderPath = (props: {
                 }
               : {
                   cursor: 'pointer',
-                  color: 'myGray.600',
+                  color: 'myGray.500',
                   _hover: {
-                    bg: 'myGray.100'
+                    bg: 'myGray.100',
+                    ...hoverStyle
                   },
                   onClick: () => {
                     onClick(item.parentId);

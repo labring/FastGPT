@@ -1,7 +1,5 @@
 import React, { useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { Box, Flex, IconButton, useTheme, Progress } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
@@ -10,9 +8,9 @@ import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import SideTabs from '@/components/SideTabs';
 import { useRouter } from 'next/router';
-import Tabs from '@/components/Tabs';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useI18n } from '@/web/context/I18n';
 
 export enum TabEnum {
@@ -29,7 +27,6 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
   const { datasetT } = useI18n();
   const router = useRouter();
   const query = router.query;
-  const { userInfo } = useUserStore();
   const { isPc } = useSystemStore();
   const { datasetDetail, vectorTrainingMap, agentTrainingMap, rebuildingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
@@ -37,12 +34,12 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
   const tabList = [
     {
       label: t('core.dataset.Collection'),
-      id: TabEnum.collectionCard,
+      value: TabEnum.collectionCard,
       icon: 'common/overviewLight'
     },
-    { label: t('core.dataset.test.Search Test'), id: TabEnum.test, icon: 'kbTest' },
-    ...(userInfo?.team.permission.hasManagePer || datasetDetail.isOwner
-      ? [{ label: t('common.Config'), id: TabEnum.info, icon: 'common/settingLight' }]
+    { label: t('core.dataset.test.Search Test'), value: TabEnum.test, icon: 'kbTest' },
+    ...(datasetDetail.permission.hasManagePer
+      ? [{ label: t('common.Config'), value: TabEnum.info, icon: 'common/settingLight' }]
       : [])
   ];
 
@@ -81,16 +78,14 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
               </Flex>
             )}
           </Box>
-          <SideTabs
+          <SideTabs<TabEnum>
             px={4}
             flex={1}
             mx={'auto'}
             w={'100%'}
             list={tabList}
-            activeId={currentTab}
-            onChange={(e: any) => {
-              setCurrentTab(e);
-            }}
+            value={currentTab}
+            onChange={setCurrentTab}
           />
           <Box px={4}>
             {rebuildingCount > 0 && (
@@ -152,16 +147,13 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
         </Flex>
       ) : (
         <Box mb={3}>
-          <Tabs
+          <LightRowTabs<TabEnum>
             m={'auto'}
             w={'260px'}
             size={isPc ? 'md' : 'sm'}
-            list={tabList.map((item) => ({
-              id: item.id,
-              label: item.label
-            }))}
-            activeId={currentTab}
-            onChange={(e: any) => setCurrentTab(e)}
+            list={tabList}
+            value={currentTab}
+            onChange={setCurrentTab}
           />
         </Box>
       )}

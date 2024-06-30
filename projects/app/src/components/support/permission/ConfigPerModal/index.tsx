@@ -40,7 +40,7 @@ const ConfigPerModal = ({
       <ModalBody>
         <HStack>
           <Avatar src={avatar} w={'1.75rem'} />
-          <Box fontSize={'lg'}>{name}</Box>
+          <Box>{name}</Box>
         </HStack>
         <Box mt={6}>
           <Box fontSize={'sm'}>{t('permission.Default permission')}</Box>

@@ -4,37 +4,30 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { autChatCrud } from '@/service/support/permission/auth/chat';
 import type { DeleteChatItemProps } from '@/global/core/chat/api.d';
+import { NextAPI } from '@/service/middleware/entry';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    await connectToDatabase();
-    const { appId, chatId, contentId, shareId, outLinkUid } = req.query as DeleteChatItemProps;
+async function handler(req: ApiRequestProps<{}, DeleteChatItemProps>, res: NextApiResponse) {
+  const { appId, chatId, contentId, shareId, outLinkUid } = req.query;
 
-    if (!contentId || !chatId) {
-      return jsonRes(res);
-    }
-
-    await autChatCrud({
-      req,
-      authToken: true,
-      appId,
-      chatId,
-      shareId,
-      outLinkUid,
-      per: 'w'
-    });
-
-    await MongoChatItem.deleteOne({
-      appId,
-      chatId,
-      dataId: contentId
-    });
-
-    jsonRes(res);
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
+  if (!contentId || !chatId) {
+    return jsonRes(res);
   }
+
+  await autChatCrud({
+    req,
+    authToken: true,
+    ...req.query,
+    per: 'w'
+  });
+
+  await MongoChatItem.deleteOne({
+    appId,
+    chatId,
+    dataId: contentId
+  });
+
+  jsonRes(res);
 }
+
+export default NextAPI(handler);

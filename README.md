@@ -120,9 +120,9 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 🏘️ 社区交流群
 
-wx 扫一下加入：
+扫码加入飞书话题群（新开，逐渐弃用微信群）：
 
-![](https://oss.laf.run/htr4n1-images/wechat-qr-code.jpg)
+![](https://oss.laf.run/otnvvf-imgs/1719505774252.jpg)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">

@@ -63,7 +63,7 @@ const Account = () => {
   useQuery(['init'], initUserInfo);
 
   return (
-    <Box py={[3, '28px']} px={['5vw', '64px']}>
+    <Box py={[3, '28px']} maxW={['95vw', '1080px']} px={[5, 10]} mx={'auto'}>
       {isPc ? (
         <Flex justifyContent={'center'}>
           <Box flex={'0 0 330px'}>
@@ -661,7 +661,7 @@ const Other = () => {
             h={'48px'}
             fontSize={'sm'}
           >
-            联系我们
+            {t('system.Concat us')}
           </Button>
         )}
       </Grid>

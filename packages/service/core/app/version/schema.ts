@@ -24,8 +24,7 @@ const AppVersionSchema = new Schema({
     default: []
   },
   chatConfig: {
-    type: chatConfigType,
-    default: {}
+    type: chatConfigType
   }
 });
 

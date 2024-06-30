@@ -3,22 +3,28 @@ import {
   DatasetCollectionSchemaType,
   DatasetDataSchemaType
 } from '@fastgpt/global/core/dataset/type.d';
+import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
 /* ================= dataset ===================== */
 
 /* ================= collection ===================== */
 export type DatasetCollectionsListItemType = {
   _id: string;
-  parentId?: string;
-  tmbId: string;
-  name: string;
+  parentId?: DatasetCollectionSchemaType['parentId'];
+  tmbId: DatasetCollectionSchemaType['tmbId'];
+  name: DatasetCollectionSchemaType['name'];
   type: DatasetCollectionSchemaType['type'];
-  updateTime: Date;
-  dataAmount: number;
-  trainingAmount: number;
+  createTime: DatasetCollectionSchemaType['createTime'];
+  updateTime: DatasetCollectionSchemaType['updateTime'];
+  forbid?: DatasetCollectionSchemaType['forbid'];
+  trainingType?: DatasetCollectionSchemaType['trainingType'];
+
   fileId?: string;
   rawLink?: string;
-  canWrite: boolean;
+  permission: DatasetPermission;
+
+  dataAmount: number;
+  trainingAmount: number;
 };
 
 /* ================= data ===================== */
@@ -29,5 +35,5 @@ export type DatasetDataListItemType = {
   q: string; // embedding content
   a: string; // bonus content
   chunkIndex?: number;
-  indexes: DatasetDataSchemaType['indexes'];
+  // indexes: DatasetDataSchemaType['indexes'];
 };

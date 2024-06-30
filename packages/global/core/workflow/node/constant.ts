@@ -118,3 +118,4 @@ export enum FlowNodeTypeEnum {
 }
 
 export const EDGE_TYPE = 'default';
+export const defaultNodeVersion = '481';

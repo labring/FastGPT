@@ -55,6 +55,12 @@ export async function insertData2Dataset({
 
   if (!indexes.find((index) => index.defaultIndex)) {
     indexes.unshift(getDefaultIndex({ q, a }));
+  } else if (q && a && !indexes.find((index) => index.text === q)) {
+    // push a q index
+    indexes.push({
+      defaultIndex: false,
+      text: q
+    });
   }
 
   indexes = indexes.slice(0, 6);
@@ -109,7 +115,7 @@ export async function insertData2Dataset({
  */
 export async function updateData2Dataset({
   dataId,
-  q,
+  q = '',
   a,
   indexes,
   model
@@ -134,7 +140,7 @@ export async function updateData2Dataset({
     formatIndexes.unshift(defaultIndex ? defaultIndex : getDefaultIndex({ q, a }));
   }
   formatIndexes = formatIndexes.slice(0, 6);
-
+  console.log(formatIndexes);
   // patch indexes, create, update, delete
   const patchResult: PatchIndexesProps[] = [];
 

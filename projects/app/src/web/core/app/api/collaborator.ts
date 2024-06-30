@@ -11,5 +11,5 @@ export const getCollaboratorList = (appId: string) =>
 export const postUpdateAppCollaborators = (body: UpdateAppCollaboratorBody) =>
   POST('/proApi/core/app/collaborator/update', body);
 
-export const deleteAppCollaborators = ({ ...params }: AppCollaboratorDeleteParams) =>
-  DELETE('/proApi/core/app/collaborator/delete', { ...params });
+export const deleteAppCollaborators = (params: AppCollaboratorDeleteParams) =>
+  DELETE('/proApi/core/app/collaborator/delete', params);

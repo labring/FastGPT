@@ -12,17 +12,15 @@ import { AuthResponseType } from '../type/auth.d';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 
 export const authAppByTmbId = async ({
-  teamId,
   tmbId,
   appId,
   per
 }: {
-  teamId: string;
   tmbId: string;
   appId: string;
   per: PermissionValueType;
 }) => {
-  const { permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
+  const { teamId, permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
 
   const app = await (async () => {
     // get app and per
@@ -40,7 +38,7 @@ export const authAppByTmbId = async ({
       return Promise.reject(AppErrEnum.unExist);
     }
 
-    const isOwner = tmbPer.isOwner || String(app.tmbId) === tmbId;
+    const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
     const Per = new AppPermission({ per: rp?.permission ?? app.defaultPermission, isOwner });
 
     if (!Per.checkPer(per)) {
@@ -68,10 +66,9 @@ export const authApp = async ({
   }
 > => {
   const result = await parseHeaderCert(props);
-  const { teamId, tmbId } = result;
+  const { tmbId } = result;
 
   const { app } = await authAppByTmbId({
-    teamId,
     tmbId,
     appId,
     per

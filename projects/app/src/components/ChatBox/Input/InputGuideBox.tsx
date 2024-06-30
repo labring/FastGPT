@@ -29,10 +29,12 @@ export default function InputGuideBox({
   const { data = [] } = useRequest2(
     async () => {
       if (!text) return [];
+      // More than 20 characters, it's basically meaningless
+      if (text.length > 20) return [];
       return await queryChatInputGuideList(
         {
           appId,
-          searchKey: text.slice(0, 50),
+          searchKey: text,
           ...outLinkAuthData
         },
         chatInputGuide.customUrl ? chatInputGuide.customUrl : undefined

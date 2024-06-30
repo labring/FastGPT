@@ -9,6 +9,8 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import { useContextSelector } from 'use-context-selector';
+import { ChatContext } from '@/web/core/chat/context/chatContext';
 
 const ChatHeader = ({
   history,
@@ -16,8 +18,7 @@ const ChatHeader = ({
   appAvatar,
   chatModels,
   showHistory,
-  onRoute2AppDetail,
-  onOpenSlider
+  onRoute2AppDetail
 }: {
   history: ChatItemType[];
   appName: string;
@@ -25,7 +26,6 @@ const ChatHeader = ({
   chatModels?: string[];
   showHistory?: boolean;
   onRoute2AppDetail?: () => void;
-  onOpenSlider: () => void;
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -35,6 +35,8 @@ const ChatHeader = ({
       getChatTitleFromChatMessage(history[history.length - 2], appName || t('core.chat.New Chat')),
     [appName, history, t]
   );
+
+  const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
   return (
     <Flex

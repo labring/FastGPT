@@ -26,8 +26,6 @@ import EditFolderModal, { useEditFolder } from '../../../component/EditFolderMod
 import { TabEnum } from '../../index';
 import ParentPath from '@/components/common/ParentPaths';
 import dynamic from 'next/dynamic';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useContextSelector } from 'use-context-selector';
@@ -40,7 +38,6 @@ const Header = ({}: {}) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { setLoading } = useSystemStore();
-  const { userInfo } = useUserStore();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   const router = useRouter();
@@ -189,7 +186,7 @@ const Header = ({}: {}) => {
       )}
 
       {/* diff collection button */}
-      {userInfo?.team?.role !== TeamMemberRoleEnum.visitor && (
+      {datasetDetail.permission.hasWritePer && (
         <>
           {datasetDetail?.type === DatasetTypeEnum.dataset && (
             <MyMenu

@@ -18,11 +18,6 @@ const Tools = () => {
       label: '我的知识库',
       link: '/dataset/list'
     },
-    {
-      icon: 'common/navbar/pluginLight',
-      label: '自定义模块',
-      link: '/plugin/list'
-    },
     ...(feConfigs?.show_git
       ? [
           {

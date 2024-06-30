@@ -1,0 +1,20 @@
+{
+  "Create API Key": "创建新 key",
+  "Create Link": "创建链接",
+  "Default Response": "默认回复",
+  "Delete Link": "删除链接",
+  "Edit API Key": "编辑 key 信息",
+  "Edit IFrame Link": "更新嵌入链接",
+  "Edit Link": "编辑",
+  "Edit Share Window": "更新分享窗口",
+  "Feishu name": "飞书",
+  "Link Name": "分享链接的名字",
+  "QPM Tips": "每个 IP 每分钟最多提问多少次",
+  "QPM is empty": "QPM 不能为空",
+  "app key tips": "这些 key 已有当前应用标识，具体使用可参考文档",
+  "key alias": "key 的别名，仅用于展示",
+  "key tips": "你可以使用 API 秘钥访问一些特定的接口（无法访问应用，访问应用需使用应用内的 API key）",
+  "token auth": "身份验证",
+  "token auth Tips": "身份校验服务器地址，如填写该值，每次对话前都会向指定服务器发送一个请求，进行身份校验",
+  "token auth use cases": "查看身份验证使用说明"
+}

@@ -1,7 +1,6 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
-import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
+import type { NextApiRequest } from 'next';
+import type { SearchTestProps } from '@/global/core/dataset/api.d';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { searchDatasetData } from '@fastgpt/service/core/dataset/search/controller';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
@@ -13,8 +12,10 @@ import {
   checkTeamReRankPermission
 } from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function handler(req: NextApiRequest) {
   const {
     datasetId,
     text,
@@ -29,8 +30,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   } = req.body as SearchTestProps;
 
   if (!datasetId || !text) {
-    throw new Error('缺少参数');
+    return Promise.reject(CommonErrEnum.missingParams);
   }
+
   const start = Date.now();
 
   // auth dataset role
@@ -39,7 +41,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     authToken: true,
     authApiKey: true,
     datasetId,
-    per: 'r'
+    per: ReadPermissionVal
   });
   // auth balance
   await checkTeamAIPoints(teamId);
@@ -88,14 +90,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     });
   }
 
-  jsonRes<SearchTestResponse>(res, {
-    data: {
-      list: searchRes,
-      duration: `${((Date.now() - start) / 1000).toFixed(3)}s`,
-      queryExtensionModel: aiExtensionResult?.model,
-      ...result
-    }
-  });
+  return {
+    list: searchRes,
+    duration: `${((Date.now() - start) / 1000).toFixed(3)}s`,
+    queryExtensionModel: aiExtensionResult?.model,
+    ...result
+  };
 }
 
 export default NextAPI(handler);
