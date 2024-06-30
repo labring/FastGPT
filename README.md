@@ -120,7 +120,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 🏘️ 社区交流群
 
-扫码加入飞书话题群（新开，逐渐弃用微信群）：
+扫码加入飞书话题群 (新开，逐渐弃用微信群)：
 
 ![](https://oss.laf.run/otnvvf-imgs/1719505774252.jpg)
 
