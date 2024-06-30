@@ -312,6 +312,11 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       return {};
     })();
 
+    // in case of multiple AI chat flow with vision, query is only needed for the first chat node
+    if (node.flowNodeType === FlowNodeTypeEnum.chatNode) {
+      props.query = [];
+    }
+
     // format response data. Add modulename and module type
     const formatResponseData: ChatHistoryItemResType = (() => {
       if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
