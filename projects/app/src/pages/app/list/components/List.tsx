@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Grid, Flex, IconButton, HStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { delAppById, putAppById } from '@/web/core/app/api';
+import { delAppById, putAppById, resumeInheritPer } from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
@@ -43,12 +43,15 @@ const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
   const { t } = useTranslation();
-  const { appT } = useI18n();
+  const { appT, commonT } = useI18n();
   const router = useRouter();
+  const { parentId = null } = router.query;
   const { isPc } = useSystem();
 
-  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail, appType } =
-    useContextSelector(AppListContext, (v) => v);
+  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail } = useContextSelector(
+    AppListContext,
+    (v) => v
+  );
   const [loadingAppId, setLoadingAppId] = useState<string>();
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
@@ -105,6 +108,20 @@ const ListItem = () => {
   const { data: members = [] } = useRequest2(getTeamMembers, {
     manual: !feConfigs.isPlus
   });
+
+  const { runAsync: onResumeInheritPermission } = useRequest2(
+    () => {
+      return resumeInheritPer(editPerApp!._id);
+    },
+    {
+      manual: true,
+      successToast: commonT('permission.Resume InheritPermission Success'),
+      errorToast: commonT('permission.Resume InheritPermission Failed'),
+      onSuccess() {
+        loadMyApps();
+      }
+    }
+  );
 
   return (
     <>
@@ -360,6 +377,10 @@ const ListItem = () => {
       )}
       {!!editPerApp && (
         <ConfigPerModal
+          refetchResource={loadMyApps}
+          hasParent={Boolean(parentId)}
+          resumeInheritPermission={onResumeInheritPermission}
+          isInheritPermission={editPerApp.inheritPermission}
           avatar={editPerApp.avatar}
           name={editPerApp.name}
           defaultPer={{
@@ -390,7 +411,8 @@ const ListItem = () => {
               deleteAppCollaborators({
                 appId: editPerApp._id,
                 tmbId
-              })
+              }),
+            refreshDeps: [editPerApp.inheritPermission]
           }}
           onClose={() => setEditPerAppIndex(undefined)}
         />

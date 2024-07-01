@@ -34,3 +34,6 @@ export const putAppById = (id: string, data: AppUpdateParams) =>
 
 // =================== chat logs
 export const getAppChatLogs = (data: GetAppChatLogsParams) => POST(`/core/app/getChatLogs`, data);
+
+export const resumeInheritPer = (appId: string) =>
+  GET(`/core/app/resumeInheritPermission`, { appId });

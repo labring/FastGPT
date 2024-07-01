@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { Box, Flex, Button, useDisclosure } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/utils/i18n';
@@ -18,7 +18,7 @@ import AppListContextProvider, { AppListContext } from './components/context';
 import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
-import { delAppById } from '@/web/core/app/api';
+import { delAppById, resumeInheritPer } from '@/web/core/app/api';
 import {
   AppDefaultPermissionVal,
   AppPermissionList
@@ -33,6 +33,7 @@ import type { CreateAppType } from './components/CreateModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const CreateModal = dynamic(() => import('./components/CreateModal'));
 const EditFolderModal = dynamic(
@@ -42,8 +43,9 @@ const HttpEditModal = dynamic(() => import('./components/HttpPluginEditModal'));
 
 const MyApps = () => {
   const { t } = useTranslation();
-  const { appT } = useI18n();
+  const { appT, commonT } = useI18n();
   const router = useRouter();
+  const { toast } = useToast();
   const { isPc } = useSystemStore();
   const {
     paths,
@@ -54,7 +56,8 @@ const MyApps = () => {
     onUpdateApp,
     setMoveAppId,
     isFetchingApps,
-    folderDetail
+    folderDetail,
+    refetchFolderDetail
   } = useContextSelector(AppListContext, (v) => v);
   const { userInfo } = useUserStore();
 
@@ -212,7 +215,21 @@ const MyApps = () => {
         {!!folderDetail && isPc && (
           <Box pt={[4, 6]} pr={[4, 6]}>
             <FolderSlideCard
-              refreshDeps={[folderDetail._id]}
+              refetchResource={() => {
+                refetchFolderDetail();
+                loadMyApps();
+              }}
+              resumeInheritPermission={() =>
+                resumeInheritPer(folderDetail._id).then(() => {
+                  toast({
+                    title: commonT('permission.Resume InheritPermission Success'),
+                    status: 'success'
+                  });
+                })
+              }
+              isInheritPermission={folderDetail.inheritPermission}
+              hasParent={!!folderDetail.parentId}
+              refreshDeps={[folderDetail._id, folderDetail.inheritPermission]}
               name={folderDetail.name}
               intro={folderDetail.intro}
               onEdit={() => {
@@ -249,6 +266,7 @@ const MyApps = () => {
                     appId: folderDetail._id
                   });
                 },
+                refreshDeps: [folderDetail._id, folderDetail.inheritPermission],
                 onDelOneCollaborator: (tmbId: string) =>
                   deleteAppCollaborators({
                     appId: folderDetail._id,

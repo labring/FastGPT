@@ -12,6 +12,7 @@
   "New Create": "新建",
   "No data": "暂无数据",
   "Rename": "重命名",
+  "Resume": "恢复",
   "Running": "运行中",
   "UnKnow": "未知",
   "Warning": "提示",
@@ -1205,7 +1206,9 @@
     "fileNotFound": "文件找不到了~",
     "team": {
       "overSize": "团队成员超出上限"
-    }
+    },
+    "missingParams": "参数缺失",
+    "inheritPermissionError": "权限继承错误"
   },
   "module": {
     "Confirm Delete Module": "确认删除该自定义模块？",
@@ -1245,7 +1248,12 @@
     "Public": "团队",
     "Public Tip": "团队所有成员可使用",
     "Set Private": "设为私有",
-    "Set Public": "设为团队可用"
+    "Set Public": "设为团队可用",
+    "No InheritPermission": "已限制权限，不再继承父级文件夹的权限",
+    "Resume InheritPermission Confirm": "是否恢复为继承父级文件夹的权限？",
+    "Resume InheritPermission Success": "恢复成功",
+    "Resume InheritPermission Failed": "恢复失败",
+    "Remove InheritPermission Confirm": "此操作会导致权限继承失效，是否进行？"
   },
   "plugin": {
     "App": "选择应用",
