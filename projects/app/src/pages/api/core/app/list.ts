@@ -1,5 +1,5 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { AppListItemType, AppSchema } from '@fastgpt/global/core/app/type';
+import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import {
@@ -14,7 +14,6 @@ import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constan
 import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { Permission } from '@fastgpt/global/support/permission/controller';
 
 export type ListAppBody = {
   parentId?: ParentIdType;
@@ -27,31 +26,31 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   const { parentId, type, getRecentlyChat, searchKey } = req.body;
 
   // 凭证校验
-  let ParentApp: AppSchema;
-  let tmbId: string, teamId: string, tmbPer: Permission;
+  const {
+    app: ParentApp,
+    tmbId,
+    teamId,
+    permission: tmbPer
+  } = await (async () => {
+    if (parentId) {
+      return await authApp({
+        req,
+        authToken: true,
+        appId: parentId,
+        per: ReadPermissionVal
+      });
+    } else {
+      return {
+        ...(await authUserPer({
+          req,
+          authToken: true,
+          per: ReadPermissionVal
+        })),
+        app: undefined
+      };
+    }
+  })();
 
-  if (parentId) {
-    const result = await authApp({
-      req,
-      authToken: true,
-      appId: parentId,
-      per: ReadPermissionVal
-    });
-    ParentApp = result.app;
-    tmbId = result.tmbId;
-    teamId = result.teamId;
-    tmbPer = result.permission;
-  } else {
-    const result = await authUserPer({
-      req,
-      authToken: true,
-      per: ReadPermissionVal
-    });
-
-    tmbId = result.tmbId;
-    teamId = result.teamId;
-    tmbPer = result.permission;
-  }
   const findAppsQuery = (() => {
     const searchMatch = searchKey
       ? {

@@ -66,7 +66,7 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
         resourceType: PerResourceTypeEnum.app
       });
 
-      MongoResourcePermission.create(
+      MongoResourcePermission.insertMany(
         rp.map((item) => {
           return {
             teamId: teamId,

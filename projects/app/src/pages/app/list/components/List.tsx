@@ -109,7 +109,7 @@ const ListItem = () => {
     manual: !feConfigs.isPlus
   });
 
-  const { run: onResumeInheritPermission } = useRequest2(
+  const { runAsync: onResumeInheritPermission } = useRequest2(
     () => {
       return resumeInheritPer(editPerApp!._id);
     },

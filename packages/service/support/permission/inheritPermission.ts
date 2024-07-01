@@ -6,8 +6,8 @@ import {
   PermissionValueType,
   ResourcePermissionType
 } from '@fastgpt/global/support/permission/type';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { MongoApp } from '../../core/app/schema';
 
 type ResourceType = {
   _id: string;
@@ -127,12 +127,23 @@ export async function resumeInheritPermission({
 }) {
   const isFolder = folderTypeList.includes(resource.type);
 
-  if (!resource.parentId) {
-    // it is a root folder. which does not have a parent.
-    return Promise.reject(CommonErrEnum.inheritPermissionError);
-  }
+  // if (!resource.parentId) {
+  //   // it is a root folder. which does not have a parent.
+  //   return Promise.reject(CommonErrEnum.inheritPermissionError);
+  // }
 
   const fn = async (session: ClientSession) => {
+    if (!resource.parentId) {
+      await MongoApp.updateOne(
+        {
+          _id: resource._id
+        },
+        {
+          inheritPermission: true
+        },
+        { session }
+      );
+    }
     // const parent = await resourceModel.findById(resource.parentId).lean().session(session);
     await resourceModel.updateOne(
       {
@@ -144,9 +155,6 @@ export async function resumeInheritPermission({
       },
       { session }
     );
-
-    resource.inheritPermission = true;
-    resource.defaultPermission = parentResource.defaultPermission;
 
     const collaborators = await (async () => {
       if (!isFolder) {
@@ -174,7 +182,11 @@ export async function resumeInheritPermission({
     })();
 
     await syncChildrenPermission({
-      resource,
+      resource: {
+        ...resource,
+        defaultPermission: parentResource.defaultPermission,
+        inheritPermission: true
+      },
       resourceModel,
       folderTypeList,
       resourceType,

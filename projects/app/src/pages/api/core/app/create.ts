@@ -99,10 +99,7 @@ export const onCreateApp = async ({
           type,
           version: 'v2',
           pluginData,
-          ...(type === AppTypeEnum.plugin && { 'pluginData.nodeVersion': defaultNodeVersion }),
-          ...(parentId && {
-            inheritPermission: true
-          })
+          ...(type === AppTypeEnum.plugin && { 'pluginData.nodeVersion': defaultNodeVersion })
         }
       ],
       { session }

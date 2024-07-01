@@ -142,7 +142,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
 
   const { ConfirmModal, openConfirm } = useConfirm({});
 
-  const { run: resumeInheritPermission } = useRequest2(
+  const { runAsync: resumeInheritPermission } = useRequest2(
     () => resumeInheritPer(appDetail._id),
     // () => putAppById(appDetail._id, { inheritPermission: true }),
     {
@@ -207,9 +207,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                   variant="whitePrimary"
                   onClick={() => {
                     openConfirm(
-                      () => {
-                        resumeInheritPermission?.();
-                      },
+                      () => resumeInheritPermission?.(),
                       undefined,
                       commonT('permission.Resume InheritPermission Confirm')
                     )();

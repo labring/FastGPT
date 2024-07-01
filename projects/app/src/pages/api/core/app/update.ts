@@ -43,12 +43,12 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
     Promise.reject(CommonErrEnum.missingParams);
   }
 
-  const app = await (async () => {
+  const { app } = await (async () => {
     if (defaultPermission) {
       // if defaultPermission or inheritPermission is set, then need manage permission
-      return (await authApp({ req, authToken: true, appId, per: ManagePermissionVal })).app;
+      return authApp({ req, authToken: true, appId, per: ManagePermissionVal });
     } else {
-      return (await authApp({ req, authToken: true, appId, per: WritePermissionVal })).app;
+      return authApp({ req, authToken: true, appId, per: WritePermissionVal });
     }
   })();
 
