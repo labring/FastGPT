@@ -13,6 +13,7 @@ import CollaboratorContextProvider, {
 } from '../../support/permission/MemberManager/context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useI18n } from '@/web/context/I18n';
 
 const FolderSlideCard = ({
   refreshDeps,
@@ -24,7 +25,11 @@ const FolderSlideCard = ({
   onDelete,
 
   defaultPer,
-  managePer
+  managePer,
+  isInheritPermission,
+  resumeInheritPermission,
+  hasParent,
+  refetchResource
 }: {
   refreshDeps?: any[];
   name: string;
@@ -40,14 +45,21 @@ const FolderSlideCard = ({
     onChange: (v: PermissionValueType) => Promise<any>;
   };
   managePer: MemberManagerInputPropsType;
+
+  isInheritPermission?: boolean;
+  resumeInheritPermission?: () => void;
+  hasParent?: boolean;
+  refetchResource?: () => void;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const { commonT } = useI18n();
 
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
     content: deleteTip
   });
+  const { ConfirmModal: CommonConfirmModal, openConfirm: openCommonConfirm } = useConfirm({});
 
   return (
     <Box w={'13rem'}>
@@ -118,6 +130,29 @@ const FolderSlideCard = ({
           <Box>
             <FormLabel>{t('support.permission.Permission')}</FormLabel>
 
+            {!isInheritPermission && hasParent && (
+              <Flex mt={5} alignItems={'start'} flexDirection={'column'}>
+                <Box fontSize="sm">{commonT('permission.No InheritPermission')}</Box>
+                <Button
+                  mt={2}
+                  size="sm"
+                  variant="whitePrimary"
+                  onClick={() => {
+                    openCommonConfirm(
+                      () => {
+                        resumeInheritPermission?.();
+                        refetchResource?.();
+                      },
+                      undefined,
+                      commonT('permission.Resume InheritPermission Confirm')
+                    )();
+                  }}
+                >
+                  {commonT('Resume')}
+                </Button>
+              </Flex>
+            )}
+
             {managePer.permission.hasManagePer && (
               <Box mt={5}>
                 <Box fontSize={'sm'} color={'myGray.500'}>
@@ -127,12 +162,22 @@ const FolderSlideCard = ({
                   mt="1"
                   per={defaultPer.value}
                   defaultPer={defaultPer.defaultValue}
-                  onChange={defaultPer.onChange}
+                  isInheritPermission={isInheritPermission}
+                  onChange={(v) => {
+                    defaultPer.onChange(v);
+                  }}
+                  hasParent={hasParent}
                 />
               </Box>
             )}
             <Box mt={6}>
-              <CollaboratorContextProvider {...managePer} refreshDeps={refreshDeps}>
+              <CollaboratorContextProvider
+                {...managePer}
+                refreshDeps={refreshDeps}
+                refetchResource={refetchResource}
+                isInheritPermission={isInheritPermission}
+                hasParent={hasParent}
+              >
                 {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
                   return (
                     <>
@@ -180,6 +225,7 @@ const FolderSlideCard = ({
       )}
 
       <ConfirmModal />
+      <CommonConfirmModal />
     </Box>
   );
 };

@@ -26,6 +26,7 @@ type AppListContextType = {
   paths: ParentTreePathItemType[];
   onUpdateApp: (id: string, data: AppUpdateParams) => Promise<any>;
   setMoveAppId: React.Dispatch<React.SetStateAction<string | undefined>>;
+  refetchFolderDetail: () => void;
 };
 
 export const AppListContext = createContext<AppListContextType>({
@@ -43,7 +44,10 @@ export const AppListContext = createContext<AppListContextType>({
   setMoveAppId: function (value: React.SetStateAction<string | undefined>): void {
     throw new Error('Function not implemented.');
   },
-  appType: 'ALL'
+  appType: 'ALL',
+  refetchFolderDetail: function (): void {
+    throw new Error('Function not implemented.');
+  }
 });
 
 const AppListContextProvider = ({ children }: { children: ReactNode }) => {
@@ -129,6 +133,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     appType: type,
     myApps: data,
     loadMyApps,
+    refetchFolderDetail,
     isFetchingApps,
     folderDetail,
     paths,

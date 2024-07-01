@@ -8,6 +8,8 @@ export enum AppTypeEnum {
   httpPlugin = 'httpPlugin'
 }
 
+export const AppFolderTypeList = [AppTypeEnum.folder, AppTypeEnum.httpPlugin];
+
 export const defaultTTSConfig: AppTTSConfigType = { type: 'web' };
 
 export const defaultWhisperConfig: AppWhisperConfigType = {
