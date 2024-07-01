@@ -64,9 +64,7 @@ const ConfigPerModal = ({
                 variant="whitePrimary"
                 onClick={() => {
                   openConfirm(
-                    async () => {
-                      resumeInheritPermission?.();
-                    },
+                    async () => resumeInheritPermission?.(),
                     undefined,
                     commonT('permission.Resume InheritPermission Confirm')
                   )();
@@ -83,9 +81,7 @@ const ConfigPerModal = ({
               per={defaultPer.value}
               defaultPer={defaultPer.defaultValue}
               isInheritPermission={isInheritPermission}
-              onChange={(v) => {
-                defaultPer.onChange(v);
-              }}
+              onChange={(v) => defaultPer.onChange(v)}
               hasParent={hasParent}
             />
           </Box>

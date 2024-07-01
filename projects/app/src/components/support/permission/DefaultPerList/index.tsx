@@ -42,7 +42,7 @@ const DefaultPermissionList = ({
     { label: '团队可编辑', value: writePer }
   ];
 
-  const { runAsync: onRequestChange, loading } = useRequest2(async (v: PermissionValueType) =>
+  const { runAsync: onRequestChange, loading } = useRequest2((v: PermissionValueType) =>
     onChange(v)
   );
 
@@ -61,7 +61,7 @@ const DefaultPermissionList = ({
                 commonT('permission.Remove InheritPermission Confirm')
               )();
             } else {
-              onRequestChange(per);
+              return onRequestChange(per);
             }
           }}
         />

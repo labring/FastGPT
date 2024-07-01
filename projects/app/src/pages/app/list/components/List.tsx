@@ -13,7 +13,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
@@ -177,7 +177,7 @@ const ListItem = () => {
                   }
                 }}
                 onClick={() => {
-                  if (app.type === AppTypeEnum.folder || app.type === AppTypeEnum.httpPlugin) {
+                  if (AppFolderTypeList.includes(app.type)) {
                     router.push({
                       query: {
                         ...router.query,
@@ -259,6 +259,21 @@ const ListItem = () => {
                             />
                           }
                           menuList={[
+                            ...([AppTypeEnum.simple, AppTypeEnum.workflow].includes(app.type)
+                              ? [
+                                  {
+                                    children: [
+                                      {
+                                        icon: 'core/chat/chatLight',
+                                        label: appT('Go to chat'),
+                                        onClick: () => {
+                                          router.push(`/chat?appId=${app._id}`);
+                                        }
+                                      }
+                                    ]
+                                  }
+                                ]
+                              : []),
                             {
                               children: [
                                 {
@@ -303,31 +318,21 @@ const ListItem = () => {
                                   : [])
                               ]
                             },
-                            {
-                              children: [
-                                {
-                                  icon: 'copy',
-                                  label: appT('Copy one app'),
-                                  onClick: () =>
-                                    openConfirmCopy(() => onclickCopy({ appId: app._id }))()
-                                }
-                              ]
-                            },
-                            ...([AppTypeEnum.simple, AppTypeEnum.workflow].includes(app.type)
-                              ? [
+                            ...(AppFolderTypeList.includes(app.type)
+                              ? []
+                              : [
                                   {
                                     children: [
                                       {
-                                        icon: 'core/chat/chatLight',
-                                        label: appT('Go to chat'),
-                                        onClick: () => {
-                                          router.push(`/chat?appId=${app._id}`);
-                                        }
+                                        icon: 'copy',
+                                        label: appT('Copy one app'),
+                                        onClick: () =>
+                                          openConfirmCopy(() => onclickCopy({ appId: app._id }))()
                                       }
                                     ]
                                   }
-                                ]
-                              : []),
+                                ]),
+
                             ...(app.permission.isOwner
                               ? [
                                   {
