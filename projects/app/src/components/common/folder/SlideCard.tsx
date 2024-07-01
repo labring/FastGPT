@@ -141,6 +141,7 @@ const FolderSlideCard = ({
                     openCommonConfirm(
                       () => {
                         resumeInheritPermission?.();
+                        refetchResource?.();
                       },
                       undefined,
                       commonT('permission.Resume InheritPermission Confirm')

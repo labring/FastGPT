@@ -57,7 +57,8 @@ export async function syncChildrenPermission({
         },
         '_id parentId'
       )
-      .lean();
+      .lean()
+      .session(session);
 
     // bfs to get all children
     const queue = [String(resource._id)];
@@ -92,7 +93,7 @@ export async function syncChildrenPermission({
     }
 
     for (const childId of children) {
-      updateCollaborators({
+      await updateCollaborators({
         resourceType,
         session,
         collaborators,

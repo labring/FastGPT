@@ -159,7 +159,7 @@ const CollaboratorContextProvider = ({
   };
 
   const onOpenAddMemberModal = () => {
-    if (isInheritPermission && !hasParent) {
+    if (isInheritPermission && hasParent) {
       openConfirm(
         () => {
           onOpenAddMember();
@@ -172,7 +172,7 @@ const CollaboratorContextProvider = ({
     }
   };
   const onOpenManageModalModal = () => {
-    if (isInheritPermission && !hasParent) {
+    if (isInheritPermission && hasParent) {
       openConfirm(
         () => {
           onOpenManageModal();

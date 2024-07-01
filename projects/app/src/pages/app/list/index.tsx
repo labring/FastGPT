@@ -56,7 +56,8 @@ const MyApps = () => {
     onUpdateApp,
     setMoveAppId,
     isFetchingApps,
-    folderDetail
+    folderDetail,
+    refetchFolderDetail
   } = useContextSelector(AppListContext, (v) => v);
   const { userInfo } = useUserStore();
 
@@ -214,7 +215,10 @@ const MyApps = () => {
         {!!folderDetail && isPc && (
           <Box pt={[4, 6]} pr={[4, 6]}>
             <FolderSlideCard
-              refetchResource={loadMyApps}
+              refetchResource={() => {
+                refetchFolderDetail();
+                loadMyApps();
+              }}
               resumeInheritPermission={() =>
                 resumeInheritPer(folderDetail._id).then(() => {
                   toast({
@@ -262,6 +266,7 @@ const MyApps = () => {
                     appId: folderDetail._id
                   });
                 },
+                refreshDeps: [folderDetail._id, folderDetail.inheritPermission],
                 onDelOneCollaborator: (tmbId: string) =>
                   deleteAppCollaborators({
                     appId: folderDetail._id,
