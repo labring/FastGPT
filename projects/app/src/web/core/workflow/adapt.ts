@@ -318,16 +318,6 @@ export const v1Workflow2V2 = (
           step: input.step,
           max: input.max,
           min: input.min,
-          editField: input.editField,
-          dynamicParamDefaultValue: input.defaultEditField
-            ? {
-                inputType: input.defaultEditField.inputType
-                  ? inputTypeMap[input.defaultEditField.inputType]
-                  : undefined,
-                valueType: input.defaultEditField.valueType,
-                required: input.defaultEditField.required
-              }
-            : undefined,
           llmModelType: input.llmModelType
         };
 

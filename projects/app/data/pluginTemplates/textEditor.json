@@ -45,15 +45,7 @@
           "description": "",
           "canEdit": true,
           "value": "",
-          "editField": {
-            "key": true
-          },
-          "maxLength": "",
-          "dynamicParamDefaultValue": {
-            "inputType": "reference",
-            "valueType": "string",
-            "required": true
-          }
+          "maxLength": ""
         }
       ],
       "outputs": [

@@ -68,7 +68,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   const concatVariables = {
     ...variables,
     ...body,
-    ...dynamicInput,
+    // ...dynamicInput,
     appId,
     chatId,
     responseChatItemId,

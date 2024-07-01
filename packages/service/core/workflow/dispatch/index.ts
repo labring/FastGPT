@@ -262,10 +262,17 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   }
   /* Inject data into module input */
   function getNodeRunParams(node: RuntimeNodeItemType) {
+    if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
+      return node.inputs.reduce<Record<string, any>>((acc, item) => {
+        acc[item.key] = valueTypeFormat(item.value, item.valueType);
+        return acc;
+      }, {});
+    }
+
+    // common nodes
     const dynamicInput = node.inputs.find(
       (item) => item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam
     );
-
     const params: Record<string, any> = dynamicInput
       ? {
           [dynamicInput.key]: {}
@@ -285,15 +292,14 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         variables
       });
 
+      // concat dynamic inputs
       if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
         params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
-      } else {
-        // Not dynamic input
-        params[input.key] = valueTypeFormat(value, input.valueType);
       }
-    });
 
-    // concat dynamic input
+      // Not dynamic input
+      params[input.key] = valueTypeFormat(value, input.valueType);
+    });
 
     return params;
   }
