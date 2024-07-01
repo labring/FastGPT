@@ -44,11 +44,13 @@ export const defaultInput: FlowNodeInputItemType = {
 const FieldEditModal = ({
   defaultValue,
   keys = [],
+  hasDynamicInput,
   onClose,
   onSubmit
 }: {
   defaultValue: FlowNodeInputItemType;
   keys: string[];
+  hasDynamicInput: boolean;
   onClose: () => void;
   onSubmit: (e: { data: FlowNodeInputItemType; isChangeKey: boolean }) => void;
 }) => {
@@ -103,13 +105,17 @@ const FieldEditModal = ({
         value: FlowNodeInputTypeEnum.selectDataset,
         defaultValueType: WorkflowIOValueTypeEnum.selectDataset
       },
-      {
-        label: t('core.workflow.inputType.dynamicTargetInput'),
-        value: FlowNodeInputTypeEnum.addInputParam,
-        defaultValueType: WorkflowIOValueTypeEnum.dynamic
-      }
+      ...(hasDynamicInput
+        ? []
+        : [
+            {
+              label: t('core.workflow.inputType.dynamicTargetInput'),
+              value: FlowNodeInputTypeEnum.addInputParam,
+              defaultValueType: WorkflowIOValueTypeEnum.dynamic
+            }
+          ])
     ],
-    [t]
+    [hasDynamicInput, t]
   );
 
   const isEdit = !!defaultValue.key;

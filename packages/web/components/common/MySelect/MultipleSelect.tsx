@@ -101,12 +101,12 @@ const MultipleSelect = <T = any,>({
             </Box>
           ) : (
             <Flex alignItems={'center'} gap={2} flexWrap={'wrap'}>
-              {value.map((item) => {
+              {value.map((item, i) => {
                 const listItem = list.find((i) => i.value === item);
                 if (!listItem) return null;
 
                 return (
-                  <MyTag colorSchema="blue" type={'borderFill'}>
+                  <MyTag key={i} colorSchema="blue" type={'borderFill'}>
                     {listItem.label}
                     {/* <MyIcon
                       name={'common/closeLight'}

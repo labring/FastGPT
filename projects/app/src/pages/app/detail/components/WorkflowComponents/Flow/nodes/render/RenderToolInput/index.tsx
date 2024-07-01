@@ -16,7 +16,7 @@ import {
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
-import { defaultEditFormData } from './constants';
+import { defaultEditFormData } from './EditFieldModal';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
 import IOTitle from '../../../components/IOTitle';

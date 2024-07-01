@@ -1,10 +1,10 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Container from '../components/Container';
 import { Box, Button, Center, Flex, useDisclosure } from '@chakra-ui/react';
-import { WorkflowIOValueTypeEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { getLafAppDetail } from '@/web/support/laf/api';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -24,7 +24,7 @@ import RenderToolInput from './render/RenderToolInput';
 import RenderInput from './render/RenderInput';
 import RenderOutput from './render/RenderOutput';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
@@ -49,9 +49,6 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
 
   const requestUrl = inputs.find(
     (item) => item.key === NodeInputKeyEnum.httpReqUrl
-  ) as FlowNodeInputItemType;
-  const lafCustomInput = inputs.find(
-    (item) => item.key === NodeInputKeyEnum.addInputParam
   ) as FlowNodeInputItemType;
 
   const { userInfo, initUserInfo } = useUserStore();
@@ -153,6 +150,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
       const requiredParams =
         lafFunction?.request?.content?.['application/json']?.schema?.required || [];
 
+      // add new params
       const allParams = [
         ...Object.keys(bodyParams).map((key) => ({
           name: key,
@@ -163,7 +161,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
         }))
       ].filter((item) => !inputs.find((input) => input.key === item.name));
 
-      const customInputs = allParams.map((param) => {
+      allParams.forEach((param) => {
         const newInput: FlowNodeInputItemType = {
           key: param.name,
           valueType: param.type,
@@ -171,16 +169,16 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
           renderTypeList: [FlowNodeInputTypeEnum.reference],
           required: param.required,
           description: param.desc || '',
-          toolDescription: param.desc || '未设置参数描述',
-          customInputConfig: nodeLafCustomInputConfig
+          toolDescription: param.desc || param.name,
+          customInputConfig: nodeLafCustomInputConfig,
+          canEdit: true
         };
-        return newInput;
-      });
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: NodeInputKeyEnum.addInputParam,
-        value: { ...lafCustomInput, value: customInputs }
+
+        onChangeNode({
+          nodeId,
+          type: 'addInput',
+          value: newInput
+        });
       });
 
       /* add output variables */
@@ -304,7 +302,7 @@ const ConfigLaf = () => {
   );
 };
 
-const RenderIO = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const RenderIO = ({ data }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
   const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);

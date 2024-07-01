@@ -13,7 +13,6 @@ import {
   Textarea
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { defaultEditFormData } from './constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -21,6 +20,8 @@ import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
 import { fnValueTypeSelect } from '@/web/core/workflow/constants/dataType';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const EditFieldModal = ({
   defaultValue = defaultEditFormData,
@@ -139,3 +140,17 @@ const EditFieldModal = ({
 };
 
 export default React.memo(EditFieldModal);
+
+export const defaultEditFormData: FlowNodeInputItemType = {
+  valueType: WorkflowIOValueTypeEnum.string,
+  renderTypeList: [FlowNodeInputTypeEnum.reference],
+  key: '',
+  label: '',
+  toolDescription: '',
+  required: true,
+  canEdit: true,
+  customInputConfig: {
+    selectValueTypeList: Object.values(fnValueTypeSelect).map((item) => item.value),
+    showDescription: true
+  }
+};

@@ -50,10 +50,8 @@ export type FlowNodeInputItemType = InputComponentPropsType & {
   required?: boolean;
   toolDescription?: string; // If this field is not empty, it is entered as a tool
 
-  // edit
-  // canEdit?: boolean;
-
   // render components params
+  canEdit?: boolean; // dynamic inputs
 };
 
 export type FlowNodeOutputItemType = {

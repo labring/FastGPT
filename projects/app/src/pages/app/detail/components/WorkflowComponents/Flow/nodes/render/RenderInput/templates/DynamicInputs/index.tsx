@@ -11,7 +11,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
 import { defaultInput } from '../../FieldEditModal';
 import { getInputComponentProps } from '@fastgpt/global/core/workflow/node/io/utils';
-import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { ReferSelector, useReference } from '../Reference';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from '../../../ValueTypeLabel';
@@ -28,15 +28,9 @@ const DynamicInputs = (props: RenderInputProps) => {
   const { workflowT } = useI18n();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
-  const inputValue = useMemo(() => (item.value || []) as FlowNodeInputItemType[], [item.value]);
+  const dynamicInputs = useMemo(() => inputs.filter((item) => item.canEdit), [inputs]);
   const keys = useMemo(() => {
-    const getInputKey = (input: FlowNodeInputItemType) => {
-      if (input.key === NodeInputKeyEnum.addInputParam) {
-        return (input.value?.map((item: FlowNodeInputItemType) => item.key) || []) as string[];
-      }
-      return [input.key];
-    };
-    return inputs.map(getInputKey).flat();
+    return inputs.map((input) => input.key);
   }, [inputs]);
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
@@ -52,16 +46,11 @@ const DynamicInputs = (props: RenderInputProps) => {
 
       onChangeNode({
         nodeId,
-        type: 'updateInput',
-        key: item.key,
-        value: {
-          ...item,
-          value: [newInput].concat(inputValue)
-        }
+        type: 'addInput',
+        value: newInput
       });
-      setEditField(undefined);
     },
-    [inputValue, item, nodeId, onChangeNode]
+    [nodeId, onChangeNode]
   );
 
   const Render = useMemo(() => {
@@ -90,9 +79,9 @@ const DynamicInputs = (props: RenderInputProps) => {
         </HStack>
         {/* field render */}
         <Box mt={2}>
-          {inputValue.map((children) => (
+          {dynamicInputs.map((children) => (
             <Box key={children.key} _notLast={{ mb: 3 }}>
-              <Reference nodeId={nodeId} dynamicInput={item} keys={keys} inputChildren={children} />
+              <Reference {...props} inputChildren={children} />
             </Box>
           ))}
         </Box>
@@ -108,7 +97,7 @@ const DynamicInputs = (props: RenderInputProps) => {
         )}
       </Box>
     );
-  }, [editField, inputValue, item, keys, nodeId, onAddField, t]);
+  }, [editField, dynamicInputs, item, keys, onAddField, props, t, workflowT]);
 
   return Render;
 };
@@ -116,16 +105,12 @@ const DynamicInputs = (props: RenderInputProps) => {
 export default React.memo(DynamicInputs);
 
 function Reference({
-  nodeId,
-  dynamicInput,
-  keys,
-  inputChildren
-}: {
-  nodeId: string;
-  dynamicInput: FlowNodeInputItemType;
-  keys: string[];
+  inputChildren,
+  ...props
+}: RenderInputProps & {
   inputChildren: FlowNodeInputItemType;
 }) {
+  const { nodeId, inputs = [], item } = props;
   const { t } = useTranslation();
   const { workflowT } = useI18n();
   const { ConfirmModal, openConfirm } = useConfirm({
@@ -134,10 +119,10 @@ function Reference({
   });
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const inputValue = useMemo(
-    () => (dynamicInput.value || []) as FlowNodeInputItemType[],
-    [dynamicInput.value]
-  );
+
+  const keys = useMemo(() => {
+    return inputs.map((input) => input.key);
+  }, [inputs]);
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
   const onSelect = useCallback(
@@ -146,28 +131,22 @@ function Reference({
         (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
       );
 
-      const newValue = inputValue.map((item) => {
-        if (item.key !== inputChildren.key) return item;
-        return {
-          ...item,
-          value:
-            e[0] === workflowStartNode?.id && !isWorkflowStartOutput(e[1])
-              ? [VARIABLE_NODE_ID, e[1]]
-              : e
-        };
-      });
+      const newValue =
+        e[0] === workflowStartNode?.id && !isWorkflowStartOutput(e[1])
+          ? [VARIABLE_NODE_ID, e[1]]
+          : e;
 
       onChangeNode({
         nodeId,
-        type: 'updateInput',
-        key: dynamicInput.key,
+        type: 'replaceInput',
+        key: inputChildren.key,
         value: {
-          ...dynamicInput,
+          ...inputChildren,
           value: newValue
         }
       });
     },
-    [dynamicInput, inputChildren.key, inputValue, nodeId, nodeList, onChangeNode]
+    [inputChildren, nodeId, nodeList, onChangeNode]
   );
 
   const { referenceList, formatValue } = useReference({
@@ -180,36 +159,22 @@ function Reference({
     ({ data }: { data: FlowNodeInputItemType }) => {
       if (!data.key) return;
 
-      const newValue = inputValue.map((item) => {
-        if (item.key === inputChildren.key) {
-          return data;
-        }
-        return item;
-      });
-
       onChangeNode({
         nodeId,
-        type: 'updateInput',
-        key: dynamicInput.key,
-        value: {
-          ...dynamicInput,
-          value: newValue
-        }
+        type: 'replaceInput',
+        key: inputChildren.key,
+        value: data
       });
     },
-    [dynamicInput, inputChildren.key, inputValue, nodeId, onChangeNode]
+    [inputChildren.key, nodeId, onChangeNode]
   );
   const onDel = useCallback(() => {
     onChangeNode({
       nodeId,
-      type: 'updateInput',
-      key: dynamicInput.key,
-      value: {
-        ...dynamicInput,
-        value: inputValue.filter((item) => item.key !== inputChildren.key)
-      }
+      type: 'delInput',
+      key: inputChildren.key
     });
-  }, [dynamicInput, inputChildren.key, inputValue, nodeId, onChangeNode]);
+  }, [inputChildren.key, nodeId, onChangeNode]);
 
   return (
     <>
@@ -249,10 +214,10 @@ function Reference({
         onSelect={onSelect}
       />
 
-      {!!editField && !!dynamicInput.customInputConfig && (
+      {!!editField && !!item.customInputConfig && (
         <FieldEditModal
           defaultInput={editField}
-          customInputConfig={dynamicInput.customInputConfig}
+          customInputConfig={item.customInputConfig}
           keys={keys}
           onClose={() => setEditField(undefined)}
           onSubmit={onUpdateField}

@@ -10,7 +10,10 @@ import type {
   ChatHistoryItemResType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type.d';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { responseWriteNodeStatus } from '../../../common/response';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
@@ -47,7 +50,6 @@ import { dispatchUpdateVariable } from './tools/runUpdateVar';
 import { addLog } from '../../../common/system/log';
 import { surrenderProcess } from '../../../common/system/tools';
 import { dispatchRunCode } from './code/run';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -260,18 +262,18 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   }
   /* Inject data into module input */
   function getNodeRunParams(node: RuntimeNodeItemType) {
-    const params: Record<string, any> = {};
+    const dynamicInput = node.inputs.find(
+      (item) => item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam
+    );
 
-    const parseInputValue = (input: FlowNodeInputItemType) => {
-      if (input.valueType === WorkflowIOValueTypeEnum.dynamic && Array.isArray(input.value)) {
-        const value = (input.value || []) as FlowNodeInputItemType[];
+    const params: Record<string, any> = dynamicInput
+      ? {
+          [dynamicInput.key]: {}
+        }
+      : {};
 
-        const params = value.reduce<Record<string, any>>((acc, item) => {
-          acc[item.key] = parseInputValue(item);
-          return acc;
-        }, {});
-        return params;
-      }
+    node.inputs.forEach((input) => {
+      if (input.key === dynamicInput?.key) return;
 
       // replace {{}} variables
       let value = replaceVariable(input.value, variables);
@@ -283,16 +285,15 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         variables
       });
 
-      return value;
-    };
-
-    node.inputs.forEach((input) => {
-      // replace {{}} variables
-      const value = parseInputValue(input);
-
-      // format valueType
-      params[input.key] = valueTypeFormat(value, input.valueType);
+      if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
+        params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
+      } else {
+        // Not dynamic input
+        params[input.key] = valueTypeFormat(value, input.valueType);
+      }
     });
+
+    // concat dynamic input
 
     return params;
   }

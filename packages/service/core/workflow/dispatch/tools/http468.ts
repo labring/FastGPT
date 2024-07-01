@@ -114,7 +114,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       return Promise.reject(`Invalid JSON body: ${httpJsonBody}`);
     }
   })();
-  console.log(httpReqUrl, requestBody);
+
   try {
     const { formatResponse, rawResponse } = await fetchData({
       method: httpMethod,

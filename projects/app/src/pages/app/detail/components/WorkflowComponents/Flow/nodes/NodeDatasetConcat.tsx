@@ -24,7 +24,6 @@ import RenderOutput from './render/RenderOutput';
 import IOTitle from '../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
-import { useI18n } from '@/web/context/I18n';
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from './render/ValueTypeLabel';
@@ -37,6 +36,8 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, outputs } = data;
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+
+  const quoteList = useMemo(() => inputs.filter((item) => item.canEdit), [inputs]);
 
   const tokenLimit = useMemo(() => {
     let maxTokens = 3000;
@@ -84,8 +85,6 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         </Box>
       ),
       [NodeInputKeyEnum.datasetQuoteList]: (item: FlowNodeInputItemType) => {
-        const inputValue = (item.value || []) as FlowNodeInputItemType[];
-
         return (
           <>
             <HStack className="nodrag" cursor={'default'} position={'relative'}>
@@ -101,14 +100,8 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 onClick={() => {
                   onChangeNode({
                     nodeId,
-                    type: 'updateInput',
-                    key: item.key,
-                    value: {
-                      ...item,
-                      value: inputValue.concat(
-                        getOneQuoteInputTemplate({ index: inputValue.length + 1 })
-                      )
-                    }
+                    type: 'addInput',
+                    value: getOneQuoteInputTemplate({ index: quoteList.length + 1 })
                   });
                 }}
               >
@@ -116,9 +109,9 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               </Button>
             </HStack>
             <Box mt={2}>
-              {inputValue.map((children) => (
+              {quoteList.map((children) => (
                 <Box key={children.key} _notLast={{ mb: 3 }}>
-                  <Reference nodeId={nodeId} dynamicInput={item} inputChildren={children} />
+                  <Reference nodeId={nodeId} inputChildren={children} />
                 </Box>
               ))}
             </Box>
@@ -126,7 +119,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     };
-  }, [nodeId, onChangeNode, t, tokenLimit]);
+  }, [nodeId, onChangeNode, quoteList, t, tokenLimit]);
 
   return (
     <NodeCard minW={'400px'} selected={selected} {...data}>
@@ -145,19 +138,13 @@ export default React.memo(NodeDatasetConcat);
 
 function Reference({
   nodeId,
-  dynamicInput,
   inputChildren
 }: {
   nodeId: string;
-  dynamicInput: FlowNodeInputItemType;
   inputChildren: FlowNodeInputItemType;
 }) {
   const { t } = useTranslation();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const inputValue = useMemo(
-    () => (dynamicInput.value || []) as FlowNodeInputItemType[],
-    [dynamicInput.value]
-  );
 
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
@@ -166,47 +153,36 @@ function Reference({
     valueType: inputChildren.valueType,
     value: inputChildren.value
   });
+
   const onSelect = useCallback(
     (e: ReferenceValueProps) => {
       const workflowStartNode = nodeList.find(
         (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
       );
 
-      const newValue = inputValue.map((item) => {
-        if (item.key !== inputChildren.key) return item;
-        return {
-          ...item,
+      onChangeNode({
+        nodeId,
+        type: 'replaceInput',
+        key: inputChildren.key,
+        value: {
+          ...inputChildren,
           value:
             e[0] === workflowStartNode?.id && !isWorkflowStartOutput(e[1])
               ? [VARIABLE_NODE_ID, e[1]]
               : e
-        };
-      });
-
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: dynamicInput.key,
-        value: {
-          ...dynamicInput,
-          value: newValue
         }
       });
     },
-    [dynamicInput, inputChildren.key, inputValue, nodeId, nodeList, onChangeNode]
+    [inputChildren, nodeId, nodeList, onChangeNode]
   );
 
   const onDel = useCallback(() => {
     onChangeNode({
       nodeId,
-      type: 'updateInput',
-      key: dynamicInput.key,
-      value: {
-        ...dynamicInput,
-        value: inputValue.filter((item) => item.key !== inputChildren.key)
-      }
+      type: 'delInput',
+      key: inputChildren.key
     });
-  }, [dynamicInput, inputChildren.key, inputValue, nodeId, onChangeNode]);
+  }, [inputChildren.key, nodeId, onChangeNode]);
 
   return (
     <>

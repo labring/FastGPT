@@ -12,6 +12,7 @@ import Container from '../../components/Container';
 import { useTranslation } from 'next-i18next';
 import {
   FlowNodeInputMap,
+  FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
@@ -117,6 +118,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 icon: FlowNodeInputMap[inputType]?.icon as string,
                 label: t(input.label),
                 type: input.valueType ? t(FlowValueTypeMap[input.valueType]?.label) : '-',
+                isTool: !!input.toolDescription,
                 key: input.key
               };
             })}
@@ -150,6 +152,13 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <FieldEditModal
           defaultValue={editField}
           keys={inputs.map((item) => item.key)}
+          hasDynamicInput={
+            !!inputs.find(
+              (input) =>
+                input.key !== editField.key &&
+                input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam)
+            )
+          }
           onClose={() => setEditField(undefined)}
           onSubmit={onSubmit}
         />

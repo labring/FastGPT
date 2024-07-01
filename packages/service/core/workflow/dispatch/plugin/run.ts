@@ -1,7 +1,6 @@
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
 import { dispatchWorkFlow } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getPluginRuntimeById, splitCombinePluginId } from '../../../app/plugin/controller';
 import {
@@ -11,7 +10,6 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { updateToolInputValue } from '../agent/runTool/utils';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
@@ -50,7 +48,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     (item) => item.flowNodeType === FlowNodeTypeEnum.pluginInput
   );
   if (!inputModule) return Promise.reject('Plugin error, It has no set input.');
-  console.log(data, '==');
+
   const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
     runtimeNodes: storeNodes2RuntimeNodes(plugin.nodes, getDefaultEntryNodeIds(plugin.nodes)).map(

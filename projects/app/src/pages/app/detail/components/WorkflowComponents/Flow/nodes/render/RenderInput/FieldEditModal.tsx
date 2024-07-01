@@ -24,6 +24,8 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { useMount } from 'ahooks';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../../../context';
 
 const FieldModal = ({
   customInputConfig,
@@ -59,12 +61,10 @@ const FieldModal = ({
   const valueTypeSelectLit = useMemo(() => {
     if (!customInputConfig.selectValueTypeList) return [];
 
-    const dataTypeSelectList = Object.values(FlowValueTypeMap)
-      .slice(0, -1)
-      .map((item) => ({
-        label: t(item.label),
-        value: item.value
-      }));
+    const dataTypeSelectList = Object.values(FlowValueTypeMap).map((item) => ({
+      label: t(item.label),
+      value: item.value
+    }));
 
     return dataTypeSelectList.filter((item) =>
       customInputConfig.selectValueTypeList?.includes(item.value)
@@ -184,6 +184,7 @@ export default FieldModal;
 export const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference],
   valueType: WorkflowIOValueTypeEnum.string,
+  canEdit: true,
   key: '',
   label: ''
 };

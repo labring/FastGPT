@@ -14,12 +14,20 @@ import { getNanoid } from '../../../../common/string/tools';
 import { getHandleConfig } from '../utils';
 import { FlowNodeInputItemType } from '../../type/io.d';
 
-export const getOneQuoteInputTemplate = ({ index }: { index: number }): FlowNodeInputItemType => ({
-  key: getNanoid(),
+const defaultQuoteKey = 'defaultQuoteKey';
+
+export const getOneQuoteInputTemplate = ({
+  key = getNanoid(),
+  index
+}: {
+  key?: string;
+  index: number;
+}): FlowNodeInputItemType => ({
+  key,
   renderTypeList: [FlowNodeInputTypeEnum.reference],
   label: `引用${index}`,
   debugLabel: '知识库引用',
-  description: '',
+  canEdit: true,
   valueType: WorkflowIOValueTypeEnum.datasetQuote
 });
 
@@ -45,9 +53,9 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
     {
       key: NodeInputKeyEnum.datasetQuoteList,
       renderTypeList: [FlowNodeInputTypeEnum.custom],
-      label: '',
-      value: []
+      label: ''
     }
+    // getOneQuoteInputTemplate({ key: defaultQuoteKey, index: 1 })
   ],
   outputs: [
     {

@@ -397,15 +397,8 @@ const WorkflowContextProvider = ({
               status: 'warning',
               title: 'key 重复'
             });
-            updateObj.inputs = node.data.inputs;
           } else {
-            if (props.index !== undefined) {
-              const inputs = [...node.data.inputs];
-              inputs.splice(props.index, 0, props.value);
-              updateObj.inputs = inputs;
-            } else {
-              updateObj.inputs = node.data.inputs.concat(props.value);
-            }
+            updateObj.inputs.push(props.value);
           }
         } else if (type === 'delInput') {
           updateObj.inputs = node.data.inputs.filter((item) => item.key !== props.key);
@@ -452,17 +445,9 @@ const WorkflowContextProvider = ({
       const node = nodeList.find((node) => node.nodeId === nodeId);
       if (!node) return [];
 
-      const dynamicInputs = node.inputs.filter(
-        (input) => input.valueType === WorkflowIOValueTypeEnum.dynamic
-      );
+      const dynamicInputs = node.inputs.filter((input) => input.canEdit);
 
-      const inputs = dynamicInputs
-        .map<FlowNodeInputItemType[]>((item) => {
-          return item.value ?? [];
-        })
-        .flat();
-
-      return inputs;
+      return dynamicInputs;
     },
     [nodeList]
   );
