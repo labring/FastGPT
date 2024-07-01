@@ -63,17 +63,10 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     WorkflowContext,
     (v) => v
   );
-  const [pluginBuffer, setPluginBuffer] = useState<{
-    systemPlugin: FlowNodeTemplateType[];
-    teamPlugin: FlowNodeTemplateType[];
-  }>({
-    [TemplateTypeEnum.systemPlugin]: [],
-    [TemplateTypeEnum.teamPlugin]: []
-  });
 
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
-  const { data: templates = [], loading } = useRequest2(
+  const { data: basicNodes, loading } = useRequest2(
     async () => {
       if (templateType === TemplateTypeEnum.basic) {
         return basicNodeTemplates.filter((item) => {
@@ -95,43 +88,45 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
           return true;
         });
       }
-      if (templateType === TemplateTypeEnum.systemPlugin) {
-        if (pluginBuffer.systemPlugin.length === 0) {
-          return getSystemPlugTemplates().then((res) => {
-            setPluginBuffer((state) => ({
-              ...state,
-              systemPlugin: res
-            }));
-            return res;
-          });
-        } else {
-          return pluginBuffer.systemPlugin;
-        }
-      }
-      if (templateType === TemplateTypeEnum.teamPlugin) {
-        if (pluginBuffer.teamPlugin.length === 0) {
-          return getTeamPlugTemplates({
-            parentId,
-            searchKey,
-            type: [AppTypeEnum.folder, AppTypeEnum.httpPlugin, AppTypeEnum.plugin]
-          }).then((res) => {
-            setPluginBuffer((state) => ({
-              ...state,
-              teamPlugin: res
-            }));
-            return res;
-          });
-        } else {
-          return pluginBuffer.teamPlugin;
-        }
-      }
-      return [];
     },
     {
       manual: false,
       throttleWait: 300,
       refreshDeps: [basicNodeTemplates, nodeList, hasToolNode, templateType, searchKey, parentId]
     }
+  );
+  const { data: teamApps, loading: isLoadingTeamApp } = useRequest2(
+    async () => {
+      if (templateType === TemplateTypeEnum.teamPlugin) {
+        return getTeamPlugTemplates({
+          parentId,
+          searchKey,
+          type: [AppTypeEnum.folder, AppTypeEnum.httpPlugin, AppTypeEnum.plugin]
+        });
+      }
+    },
+    {
+      manual: false,
+      throttleWait: 300,
+      refreshDeps: [templateType, searchKey, parentId]
+    }
+  );
+  const { data: systemPlugins, loading: isLoadingSystemPlugins } = useRequest2(
+    async () => {
+      if (templateType === TemplateTypeEnum.systemPlugin) {
+        return getSystemPlugTemplates();
+      }
+    },
+    {
+      manual: false,
+      refreshDeps: [templateType]
+    }
+  );
+
+  const isLoading = loading || isLoadingTeamApp || isLoadingSystemPlugins;
+  const templates = useMemo(
+    () => basicNodes || teamApps || systemPlugins || [],
+    [basicNodes, systemPlugins, teamApps]
   );
 
   const { data: paths = [] } = useRequest2(() => getAppFolderPath(parentId), {
@@ -154,7 +149,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
           fontSize={'sm'}
         />
         <MyBox
-          isLoading={loading}
+          isLoading={isLoading}
           display={'flex'}
           zIndex={3}
           flexDirection={'column'}
@@ -249,7 +244,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         </MyBox>
       </>
     );
-  }, [isOpen, onClose, loading, t, templateType, searchKey, parentId, paths, templates, router]);
+  }, [isOpen, onClose, isLoading, t, templateType, searchKey, parentId, paths, templates, router]);
 
   return Render;
 };
@@ -272,7 +267,7 @@ const RenderList = React.memo(function RenderList({
   const reactFlowWrapper = useContextSelector(WorkflowContext, (v) => v.reactFlowWrapper);
   const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
   const { computedNewNodeName } = useWorkflowUtils();
-
+  console.log(templates, '--');
   const formatTemplates = useMemo<NodeTemplateListType>(() => {
     const copy: NodeTemplateListType = cloneDeep(workflowNodeTemplateList(t));
     templates.forEach((item) => {
