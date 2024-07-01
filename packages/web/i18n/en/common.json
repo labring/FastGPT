@@ -957,6 +957,7 @@
         }
       },
       "template": {
+        "AI function": "AI function",
         "AI response switch tip": "If you wish the current node not to output content, you can turn off this switch. AI output content will not be displayed to the user, you can manually use 'AI response content' for special processing.",
         "AI support tool tip": "Supports function calls model, can better use tool invocation.",
         "Ai chat": "AI chat",

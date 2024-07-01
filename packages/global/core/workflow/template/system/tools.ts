@@ -23,7 +23,7 @@ import { getHandleConfig } from '../utils';
 export const ToolModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.tools,
-  templateType: FlowNodeTemplateTypeEnum.functionCall,
+  templateType: FlowNodeTemplateTypeEnum.ai,
   sourceHandle: getHandleConfig(true, true, false, true),
   targetHandle: getHandleConfig(true, true, false, true),
   avatar: '/imgs/workflow/tool.svg',

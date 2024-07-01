@@ -9,7 +9,7 @@ import { getHandleConfig } from '../utils';
 
 export const AssignedAnswerModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.answerNode,
-  templateType: FlowNodeTemplateTypeEnum.textAnswer,
+  templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.answerNode,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),

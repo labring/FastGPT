@@ -5,7 +5,7 @@ import { getHandleConfig } from '../utils';
 
 export const RunPluginModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.pluginModule,
-  templateType: FlowNodeTemplateTypeEnum.externalCall,
+  templateType: FlowNodeTemplateTypeEnum.other,
   flowNodeType: FlowNodeTypeEnum.pluginModule,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),

@@ -22,7 +22,7 @@ import { getHandleConfig } from '../utils';
 
 export const AiChatModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.chatNode,
-  templateType: FlowNodeTemplateTypeEnum.textAnswer,
+  templateType: FlowNodeTemplateTypeEnum.ai,
   flowNodeType: FlowNodeTypeEnum.chatNode,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),

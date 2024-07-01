@@ -1,11 +1,8 @@
 export enum FlowNodeTemplateTypeEnum {
   systemInput = 'systemInput',
+  ai = 'ai',
+  function = 'function',
   tools = 'tools',
-  textAnswer = 'textAnswer',
-  functionCall = 'functionCall',
-  externalCall = 'externalCall',
-
-  personalPlugin = 'personalPlugin',
 
   other = 'other'
 }

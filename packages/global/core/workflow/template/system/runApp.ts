@@ -15,7 +15,7 @@ import { getHandleConfig } from '../utils';
 
 export const RunAppModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.runApp,
-  templateType: FlowNodeTemplateTypeEnum.externalCall,
+  templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.runApp,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),

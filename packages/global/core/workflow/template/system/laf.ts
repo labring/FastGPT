@@ -22,7 +22,7 @@ export const nodeLafCustomInputConfig = {
 
 export const LafModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.lafModule,
-  templateType: FlowNodeTemplateTypeEnum.externalCall,
+  templateType: FlowNodeTemplateTypeEnum.other,
   flowNodeType: FlowNodeTypeEnum.lafModule,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),

@@ -21,7 +21,7 @@ import { getHandleConfig } from '../utils';
 
 export const ClassifyQuestionModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.classifyQuestion,
-  templateType: FlowNodeTemplateTypeEnum.functionCall,
+  templateType: FlowNodeTemplateTypeEnum.ai,
   flowNodeType: FlowNodeTypeEnum.classifyQuestion,
   sourceHandle: getHandleConfig(false, false, false, false),
   targetHandle: getHandleConfig(true, false, true, true),

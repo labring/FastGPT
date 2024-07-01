@@ -19,7 +19,7 @@ export const Dataset_SEARCH_DESC =
 
 export const DatasetSearchModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.datasetSearchNode,
-  templateType: FlowNodeTemplateTypeEnum.functionCall,
+  templateType: FlowNodeTemplateTypeEnum.ai,
   flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),

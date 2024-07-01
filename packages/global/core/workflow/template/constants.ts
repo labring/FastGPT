@@ -29,7 +29,6 @@ const systemNodes: FlowNodeTemplateType[] = [
   AssignedAnswerModule,
   DatasetSearchModule,
   DatasetConcatModule,
-  RunAppModule,
   ToolModule,
   StopToolNode,
   ClassifyQuestionModule,
@@ -39,7 +38,8 @@ const systemNodes: FlowNodeTemplateType[] = [
   LafModule,
   IfElseNode,
   VariableUpdateNode,
-  CodeNode
+  CodeNode,
+  RunAppModule
 ];
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [

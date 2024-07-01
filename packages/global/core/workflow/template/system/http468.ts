@@ -16,7 +16,7 @@ import { getHandleConfig } from '../utils';
 
 export const HttpModule468: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.httpRequest468,
-  templateType: FlowNodeTemplateTypeEnum.externalCall,
+  templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.httpRequest468,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),

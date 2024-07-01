@@ -25,10 +25,6 @@ export const VariableUpdateNode: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.any,
       label: '',
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      editField: {
-        key: true,
-        valueType: true
-      },
       value: [
         {
           variable: ['', ''],

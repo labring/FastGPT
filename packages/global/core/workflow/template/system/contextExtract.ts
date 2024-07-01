@@ -16,7 +16,7 @@ import { getHandleConfig } from '../utils';
 
 export const ContextExtractModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.contentExtract,
-  templateType: FlowNodeTemplateTypeEnum.functionCall,
+  templateType: FlowNodeTemplateTypeEnum.ai,
   flowNodeType: FlowNodeTypeEnum.contentExtract,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),

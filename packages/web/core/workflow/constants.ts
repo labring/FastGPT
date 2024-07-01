@@ -9,28 +9,13 @@ export const workflowNodeTemplateList = (t: TFunction): NodeTemplateListType => 
     list: []
   },
   {
-    type: FlowNodeTemplateTypeEnum.textAnswer,
-    label: t('core.module.template.Response module'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.functionCall,
-    label: t('core.module.template.Function module'),
+    type: FlowNodeTemplateTypeEnum.ai,
+    label: t('core.module.template.AI function'),
     list: []
   },
   {
     type: FlowNodeTemplateTypeEnum.tools,
     label: t('core.module.template.Tool module'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.externalCall,
-    label: t('core.module.template.External module'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.personalPlugin,
-    label: '',
     list: []
   },
   {

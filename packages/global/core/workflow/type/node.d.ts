@@ -69,6 +69,7 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
 
 export type NodeTemplateListItemType = {
   id: string; // 系统节点-系统节点的 id， 系统插件-插件的 id，团队应用的 id
+  flowNodeType: FlowNodeTypeEnum; // render node card
   parentId?: string;
   isFolder?: boolean;
   templateType: FlowNodeTemplateTypeEnum;

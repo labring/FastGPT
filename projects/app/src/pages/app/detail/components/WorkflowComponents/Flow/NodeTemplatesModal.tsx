@@ -1,6 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Flex, IconButton, Input, InputGroup, InputLeftElement, css } from '@chakra-ui/react';
-import type { NodeTemplateListType } from '@fastgpt/global/core/workflow/type/node.d';
+import type {
+  NodeTemplateListItemType,
+  NodeTemplateListType
+} from '@fastgpt/global/core/workflow/type/node.d';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -28,6 +31,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import FolderPath from '@/components/common/folder/Path';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { useWorkflowUtils } from './hooks/useUtils';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -280,7 +284,13 @@ const RenderList = React.memo(function RenderList({
   }, [templates, parentId]);
 
   const onAddNode = useCallback(
-    async ({ template, position }: { template: FlowNodeTemplateType; position: XYPosition }) => {
+    async ({
+      template,
+      position
+    }: {
+      template: NodeTemplateListItemType;
+      position: XYPosition;
+    }) => {
       if (!reactFlowWrapper?.current) return;
 
       const templateNode = await (async () => {
@@ -295,7 +305,11 @@ const RenderList = React.memo(function RenderList({
           }
 
           // base node
-          return { ...template };
+          const baseTemplate = moduleTemplatesFlat.find((item) => item.id === template.id);
+          if (!baseTemplate) {
+            throw new Error('baseTemplate not found');
+          }
+          return { ...baseTemplate };
         } catch (e) {
           toast({
             status: 'error',
@@ -407,7 +421,7 @@ const RenderList = React.memo(function RenderList({
                           });
                         }
                         onAddNode({
-                          template: template,
+                          template,
                           position: { x: e.clientX, y: e.clientY }
                         });
                         onClose();
