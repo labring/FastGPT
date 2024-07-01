@@ -163,9 +163,7 @@ const FolderSlideCard = ({
                   per={defaultPer.value}
                   defaultPer={defaultPer.defaultValue}
                   isInheritPermission={isInheritPermission}
-                  onChange={(v) => {
-                    defaultPer.onChange(v);
-                  }}
+                  onChange={(v) => defaultPer.onChange(v)}
                   hasParent={hasParent}
                 />
               </Box>

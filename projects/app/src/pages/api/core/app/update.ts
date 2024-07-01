@@ -89,7 +89,7 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
     );
   };
 
-  mongoSessionRun(async (session) => {
+  await mongoSessionRun(async (session) => {
     if (isDefaultPermissionChanged) {
       // is inherit permission is disabled. we need to sync the permission
       // 1. update the app's collaborator
