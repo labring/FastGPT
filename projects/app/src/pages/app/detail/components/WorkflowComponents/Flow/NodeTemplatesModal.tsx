@@ -267,7 +267,7 @@ const RenderList = React.memo(function RenderList({
   const reactFlowWrapper = useContextSelector(WorkflowContext, (v) => v.reactFlowWrapper);
   const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
   const { computedNewNodeName } = useWorkflowUtils();
-  console.log(templates, '--');
+
   const formatTemplates = useMemo<NodeTemplateListType>(() => {
     const copy: NodeTemplateListType = cloneDeep(workflowNodeTemplateList(t));
     templates.forEach((item) => {
