@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Grid, Flex, IconButton, HStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { delAppById, putAppById } from '@/web/core/app/api';
+import { delAppById, putAppById, resumeInheritPer } from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
@@ -111,7 +111,7 @@ const ListItem = () => {
 
   const { run: onResumeInheritPermission } = useRequest2(
     () => {
-      return putAppById(editPerApp!._id, { inheritPermission: true });
+      return resumeInheritPer(editPerApp!._id);
     },
     {
       manual: true,

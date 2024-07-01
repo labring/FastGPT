@@ -36,7 +36,7 @@ import DefaultPermissionList from '@/components/support/permission/DefaultPerLis
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { putAppById } from '@/web/core/app/api';
+import { resumeInheritPer } from '@/web/core/app/api';
 import { useI18n } from '@/web/context/I18n';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
@@ -143,7 +143,8 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { ConfirmModal, openConfirm } = useConfirm({});
 
   const { run: resumeInheritPermission } = useRequest2(
-    () => putAppById(appDetail._id, { inheritPermission: true }),
+    () => resumeInheritPer(appDetail._id),
+    // () => putAppById(appDetail._id, { inheritPermission: true }),
     {
       successToast: '恢复成功',
       errorToast: '恢复失败',

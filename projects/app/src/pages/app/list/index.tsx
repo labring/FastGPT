@@ -18,7 +18,7 @@ import AppListContextProvider, { AppListContext } from './components/context';
 import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
-import { delAppById } from '@/web/core/app/api';
+import { delAppById, resumeInheritPer } from '@/web/core/app/api';
 import {
   AppDefaultPermissionVal,
   AppPermissionList
@@ -216,7 +216,7 @@ const MyApps = () => {
             <FolderSlideCard
               refetchResource={loadMyApps}
               resumeInheritPermission={() =>
-                onUpdateApp(folderDetail._id, { inheritPermission: true }).then(() => {
+                resumeInheritPer(folderDetail._id).then(() => {
                   toast({
                     title: commonT('permission.Resume InheritPermission Success'),
                     status: 'success'
