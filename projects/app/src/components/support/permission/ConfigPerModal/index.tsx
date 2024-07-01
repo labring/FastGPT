@@ -56,7 +56,7 @@ const ConfigPerModal = ({
             <Avatar src={avatar} w={'1.75rem'} />
             <Box>{name}</Box>
           </HStack>
-          {!isInheritPermission && hasParent && (
+          {!isInheritPermission && (
             <Flex mt={6} alignItems={'center'} justifyContent={'space-between'}>
               <Box fontSize="sm">{commonT('permission.No InheritPermission')}</Box>
               <Button
@@ -86,6 +86,7 @@ const ConfigPerModal = ({
               onChange={(v) => {
                 defaultPer.onChange(v);
               }}
+              hasParent={hasParent}
             />
           </Box>
           <Box mt={4}>

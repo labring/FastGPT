@@ -71,11 +71,13 @@ const CollaboratorContextProvider = ({
   children,
   refetchResource,
   refreshDeps = [],
-  isInheritPermission
+  isInheritPermission,
+  hasParent
 }: MemberManagerInputPropsType & {
   children: (props: ChildrenProps) => ReactNode;
   refetchResource?: () => void;
   isInheritPermission?: boolean;
+  hasParent?: boolean;
 }) => {
   const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
     await onUpdateCollaborators(props);
@@ -157,7 +159,7 @@ const CollaboratorContextProvider = ({
   };
 
   const onOpenAddMemberModal = () => {
-    if (isInheritPermission) {
+    if (isInheritPermission && !hasParent) {
       openConfirm(
         () => {
           onOpenAddMember();
@@ -170,7 +172,7 @@ const CollaboratorContextProvider = ({
     }
   };
   const onOpenManageModalModal = () => {
-    if (isInheritPermission) {
+    if (isInheritPermission && !hasParent) {
       openConfirm(
         () => {
           onOpenManageModal();

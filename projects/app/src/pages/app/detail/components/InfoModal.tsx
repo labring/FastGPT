@@ -231,6 +231,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                   setValue('defaultPermission', v);
                   handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)();
                 }}
+                hasParent={!!appDetail.parentId}
               />
             </Box>
             <Box mt={6}>
@@ -242,6 +243,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                 onDelOneCollaborator={onDelCollaborator}
                 refreshDeps={[appDetail.inheritPermission]}
                 isInheritPermission={appDetail.inheritPermission}
+                hasParent={!!appDetail.parentId}
               >
                 {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
                   return (

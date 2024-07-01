@@ -62,6 +62,7 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
     session?: ClientSession,
     defaultPermissionFromParent?: PermissionValueType
   ) => {
+    console.log('defaultPermissionFromParent', defaultPermissionFromParent);
     return await MongoApp.findByIdAndUpdate(
       appId,
       {
@@ -71,8 +72,10 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
         ...(avatar && { avatar }),
         ...(intro !== undefined && { intro }),
         ...(defaultPermission !== undefined && { defaultPermission }),
-        ...(isDefaultPermissionChanged && { inheritPermission: false }),
-        ...(defaultPermissionFromParent && { defaultPermission: defaultPermissionFromParent }),
+        ...(isDefaultPermissionChanged && app.parentId && { inheritPermission: false }),
+        ...(defaultPermissionFromParent !== undefined && {
+          defaultPermission: defaultPermissionFromParent
+        }),
         ...(teamTags && { teamTags }),
         ...(formatNodes && {
           modules: formatNodes
@@ -138,11 +141,13 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
               ).app;
             }
           })();
+          console.log('parentFolder', parentFolder);
           // 2. sync it self
           // 2.1 get parent
           const defaultPermission = isMoveToRoot
             ? AppDefaultPermissionVal
             : parentFolder!.defaultPermission;
+          console.log('defaultPermission', defaultPermission);
 
           const collaborators = isMoveToRoot
             ? []

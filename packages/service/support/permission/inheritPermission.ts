@@ -200,7 +200,7 @@ export async function getParentCollaborators({
   resource: ResourceType;
   resourceType: PerResourceTypeEnum;
   session?: ClientSession;
-}): Promise<ResourcePermissionType[]> {
+}) {
   return await MongoResourcePermission.find(
     {
       resourceId: resource.parentId,

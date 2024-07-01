@@ -1,4 +1,4 @@
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
@@ -108,7 +108,7 @@ export const onCreateApp = async ({
       { session }
     );
 
-    if (type !== AppTypeEnum.folder && type !== AppTypeEnum.httpPlugin) {
+    if (!AppFolderTypeList.includes(type!)) {
       await MongoAppVersion.create(
         [
           {

@@ -56,7 +56,7 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
       teamId,
       tmbId,
       type: AppTypeEnum.folder,
-      inheritPermission: !!parentApp ? true : false,
+      // inheritPermission: !!parentApp ? true : false,
       defaultPermission: !!parentApp ? parentApp.defaultPermission : AppDefaultPermissionVal
     });
 

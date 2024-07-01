@@ -20,6 +20,7 @@ type Props = Omit<BoxProps, 'onChange'> & {
   writePer?: PermissionValueType;
   onChange: (v: PermissionValueType) => Promise<any> | any;
   isInheritPermission?: boolean;
+  hasParent?: boolean;
 };
 
 const DefaultPermissionList = ({
@@ -29,6 +30,7 @@ const DefaultPermissionList = ({
   writePer = WritePermissionVal,
   onChange,
   isInheritPermission = false,
+  hasParent,
   ...styles
 }: Props) => {
   const { ConfirmModal, openConfirm } = useConfirm({});
@@ -52,7 +54,7 @@ const DefaultPermissionList = ({
           list={defaultPermissionSelectList}
           value={per}
           onchange={(per) => {
-            if (isInheritPermission) {
+            if (isInheritPermission && hasParent) {
               openConfirm(
                 () => onRequestChange(per),
                 undefined,

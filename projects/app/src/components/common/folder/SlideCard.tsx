@@ -165,6 +165,7 @@ const FolderSlideCard = ({
                   onChange={(v) => {
                     defaultPer.onChange(v);
                   }}
+                  hasParent={hasParent}
                 />
               </Box>
             )}
@@ -174,6 +175,7 @@ const FolderSlideCard = ({
                 refreshDeps={refreshDeps}
                 refetchResource={refetchResource}
                 isInheritPermission={isInheritPermission}
+                hasParent={hasParent}
               >
                 {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
                   return (
