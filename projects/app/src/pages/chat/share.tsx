@@ -56,7 +56,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
     shareId: string;
     chatId: string;
     showHistory: '0' | '1';
-    showHead: '0' | '1',
+    showHead: '0' | '1';
     authToken: string;
     [key: string]: string;
   };
@@ -296,16 +296,14 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
             flexDirection={'column'}
           >
             {/* header */}
-            {showHead === "1" ? (
+            {showHead === '1' ? (
               <ChatHeader
-              appAvatar={chatData.app.avatar}
-              appName={chatData.app.name}
-              history={chatData.history}
-              showHistory={showHistory === '1'}
-            />
-            ) : (
-              null
-            )}
+                appAvatar={chatData.app.avatar}
+                appName={chatData.app.name}
+                history={chatData.history}
+                showHistory={showHistory === '1'}
+              />
+            ) : null}
             {/* chat box */}
             <Box flex={1}>
               <ChatBox
