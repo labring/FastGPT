@@ -55,7 +55,7 @@ const getPluginTemplateById = async (id: string): Promise<PluginTemplateType> =>
       source: PluginSourceEnum.personal,
       nodes: item.modules,
       edges: item.edges,
-      templateType: FlowNodeTemplateTypeEnum.personalPlugin,
+      templateType: FlowNodeTemplateTypeEnum.teamApp,
       isTool: true,
       version: item?.pluginData?.nodeVersion || defaultNodeVersion
     };

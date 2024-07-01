@@ -16,7 +16,7 @@ export const getTeamPlugTemplates = (data?: ListAppBody) =>
       id: app._id,
       pluginId: app._id,
       isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.httpPlugin,
-      templateType: FlowNodeTemplateTypeEnum.personalPlugin,
+      templateType: FlowNodeTemplateTypeEnum.teamApp,
       flowNodeType: FlowNodeTypeEnum.pluginModule,
       avatar: app.avatar,
       name: app.name,

@@ -32,6 +32,7 @@ import FolderPath from '@/components/common/folder/Path';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { useWorkflowUtils } from './hooks/useUtils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { cloneDeep } from 'lodash';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -273,7 +274,7 @@ const RenderList = React.memo(function RenderList({
   const { computedNewNodeName } = useWorkflowUtils();
 
   const formatTemplates = useMemo<NodeTemplateListType>(() => {
-    const copy: NodeTemplateListType = JSON.parse(JSON.stringify(workflowNodeTemplateList(t)));
+    const copy: NodeTemplateListType = cloneDeep(workflowNodeTemplateList(t));
     templates.forEach((item) => {
       const index = copy.findIndex((template) => template.type === item.templateType);
       if (index === -1) return;

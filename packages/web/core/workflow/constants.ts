@@ -22,5 +22,10 @@ export const workflowNodeTemplateList = (t: TFunction): NodeTemplateListType => 
     type: FlowNodeTemplateTypeEnum.other,
     label: t('common.Other'),
     list: []
+  },
+  {
+    type: FlowNodeTemplateTypeEnum.teamApp,
+    label: '',
+    list: []
   }
 ];

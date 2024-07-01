@@ -4,7 +4,8 @@ export enum FlowNodeTemplateTypeEnum {
   function = 'function',
   tools = 'tools',
 
-  other = 'other'
+  other = 'other',
+  teamApp = 'teamApp'
 }
 
 export enum WorkflowIOValueTypeEnum {
