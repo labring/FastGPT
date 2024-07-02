@@ -43,26 +43,30 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
     Promise.reject(CommonErrEnum.missingParams);
   }
 
+  console.log('update auth');
   const { app } = await (async () => {
-    if (defaultPermission) {
+    if (defaultPermission !== undefined) {
       // if defaultPermission or inheritPermission is set, then need manage permission
       return authApp({ req, authToken: true, appId, per: ManagePermissionVal });
     } else {
       return authApp({ req, authToken: true, appId, per: WritePermissionVal });
     }
   })();
+  console.log('update get app auth', app);
 
   // format nodes data
   // 1. dataset search limit, less than model quoteMaxToken
   const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
   const isDefaultPermissionChanged =
     defaultPermission !== undefined && defaultPermission !== app.defaultPermission;
+  // console.log('app', app)
+  // console.log('req', req.query, req.body)
 
   const onUpdate = async (
     session?: ClientSession,
     defaultPermissionFromParent?: PermissionValueType
   ) => {
-    console.log('defaultPermissionFromParent', defaultPermissionFromParent);
+    // console.log('defaultPermissionFromParent', defaultPermissionFromParent);
     return await MongoApp.findByIdAndUpdate(
       appId,
       {
@@ -141,13 +145,13 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
               ).app;
             }
           })();
-          console.log('parentFolder', parentFolder);
+          // console.log('parentFolder', parentFolder);
           // 2. sync it self
           // 2.1 get parent
           const defaultPermission = isMoveToRoot
             ? AppDefaultPermissionVal
             : parentFolder!.defaultPermission;
-          console.log('defaultPermission', defaultPermission);
+          // console.log('defaultPermission', defaultPermission);
 
           const collaborators = isMoveToRoot
             ? []

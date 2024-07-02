@@ -34,7 +34,7 @@ export const authAppByTmbId = async ({
     }
     const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
 
-    const Per = await (async () => {
+    const { Per, defaultPermission } = await (async () => {
       if (
         AppFolderTypeList.includes(app.type) ||
         app.inheritPermission === false ||
@@ -50,7 +50,10 @@ export const authAppByTmbId = async ({
           resourceType: PerResourceTypeEnum.app
         });
         const Per = new AppPermission({ per: rp?.permission ?? app.defaultPermission, isOwner });
-        return Per;
+        return {
+          Per,
+          defaultPermission: app.defaultPermission
+        };
       } else {
         // is not folder and inheritPermission is true and is not root folder.
         const { app: parent } = await authAppByTmbId({
@@ -63,7 +66,10 @@ export const authAppByTmbId = async ({
           per: parent.permission.value,
           isOwner
         });
-        return Per;
+        return {
+          Per,
+          defaultPermission: parent.defaultPermission
+        };
       }
     })();
 
@@ -73,6 +79,7 @@ export const authAppByTmbId = async ({
 
     return {
       ...app,
+      defaultPermission,
       permission: Per
     };
   })();
