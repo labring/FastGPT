@@ -4,7 +4,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SystemPluginResponseType } from './type';
 import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 
-let list = ['getTime', 'fetchUrl'];
+let list = ['getTime', 'fetchUrl', 'mathExprVal'];
 
 export const getCommunityPlugins = () => {
   if (global.communitySystemPlugins) return global.communitySystemPlugins;

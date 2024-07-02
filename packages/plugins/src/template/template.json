@@ -7,7 +7,7 @@
   "showStatus": false,
   "weight": 10,
 
-  "isTool": false,
+  "isTool": true,
   "templateType": "tools",
 
   "workflow": {
