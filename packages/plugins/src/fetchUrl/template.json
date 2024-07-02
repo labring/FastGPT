@@ -3,7 +3,7 @@
   "version": "486",
   "name": "网页内容抓取",
   "avatar": "/imgs/workflow/fetchUrl.svg",
-  "intro": "可抓取一个网页链接内容，并以 Markdown 格式输出",
+  "intro": "可获取一个网页链接内容，并以 Markdown 格式输出，仅支持获取静态网站。",
   "showStatus": true,
   "weight": 10,
 
