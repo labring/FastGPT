@@ -1,4 +1,5 @@
 import { Box, Button, Flex, HStack } from '@chakra-ui/react';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
@@ -47,13 +48,14 @@ const FolderSlideCard = ({
   managePer: MemberManagerInputPropsType;
 
   isInheritPermission?: boolean;
-  resumeInheritPermission?: () => void;
+  resumeInheritPermission?: () => Promise<void>;
   hasParent?: boolean;
-  refetchResource?: () => void;
+  refetchResource?: () => Promise<any>;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { commonT } = useI18n();
+  const { toast } = useToast();
 
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
@@ -139,10 +141,15 @@ const FolderSlideCard = ({
                   variant="whitePrimary"
                   onClick={() => {
                     openCommonConfirm(
-                      () => {
-                        resumeInheritPermission?.();
-                        refetchResource?.();
-                      },
+                      () =>
+                        resumeInheritPermission?.()
+                          .then(refetchResource)
+                          .then(() => {
+                            toast({
+                              title: commonT('permission.Resume InheritPermission Success'),
+                              status: 'success'
+                            });
+                          }),
                       undefined,
                       commonT('permission.Resume InheritPermission Confirm')
                     )();

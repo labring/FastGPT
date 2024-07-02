@@ -90,6 +90,7 @@ const ConfigPerModal = ({
               {...managePer}
               refetchResource={refetchResource}
               isInheritPermission={isInheritPermission}
+              hasParent={hasParent}
             >
               {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
                 return (
