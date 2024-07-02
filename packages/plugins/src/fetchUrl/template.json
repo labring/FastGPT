@@ -1,13 +1,15 @@
 {
-  "author": "FastGPT Team",
-  "version": "481",
-  "templateType": "tools",
-  "name": "获取当前时间",
-  "avatar": "/imgs/workflow/getCurrentTime.svg",
-  "intro": "获取用户当前时区的时间。",
-  "showStatus": false,
-  "isTool": true,
+  "author": "FastGPT",
+  "version": "486",
+  "name": "网页内容抓取",
+  "avatar": "/imgs/workflow/fetchUrl.svg",
+  "intro": "可抓取一个网页链接内容，并以 Markdown 格式输出",
+  "showStatus": true,
   "weight": 10,
+
+  "isTool": true,
+  "templateType": "tools",
+
   "workflow": {
     "nodes": [
       {
@@ -18,12 +20,31 @@
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 616.4226348688949,
-          "y": -165.05298493910115
+          "x": 487.2485939481787,
+          "y": -159.13661665265613
         },
         "version": "481",
-        "inputs": [],
-        "outputs": []
+        "inputs": [
+          {
+            "renderTypeList": ["reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "key": "url",
+            "label": "url",
+            "description": "需要读取的网页链接",
+            "required": true,
+            "toolDescription": "需要读取的网页链接"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "url",
+            "valueType": "string",
+            "key": "url",
+            "label": "url",
+            "type": "hidden"
+          }
+        ]
       },
       {
         "nodeId": "i7uow4wj2wdp",
@@ -39,9 +60,9 @@
         "version": "481",
         "inputs": [
           {
-            "key": "time",
+            "key": "result",
             "valueType": "string",
-            "label": "time",
+            "label": "result",
             "renderTypeList": ["reference"],
             "required": false,
             "description": "",
@@ -113,7 +134,7 @@
             "description": "core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "getTime"
+            "value": "fetchUrl"
           },
           {
             "key": "system_httpHeader",
@@ -137,9 +158,38 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\n  \"time\": \"{{cTime}}\"\n}",
+            "value": "{\n  \"url\": \"{{url}}\"\n}",
             "label": "",
             "required": false
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "url",
+            "label": "url",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["lmpb9v2lo2lk", "url"]
           }
         ],
         "outputs": [
@@ -191,8 +241,8 @@
             "id": "rH4tMV02robs",
             "valueType": "string",
             "type": "dynamic",
-            "key": "time",
-            "label": "time"
+            "key": "result",
+            "label": "result"
           }
         ]
       }

@@ -59,8 +59,12 @@ export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
 ];
 
 /* all module */
-export const moduleTemplatesFlat: FlowNodeTemplateType[] = appSystemModuleTemplates.concat(
-  pluginSystemModuleTemplates.filter(
-    (item) => !appSystemModuleTemplates.find((app) => app.id === item.id)
-  )
-);
+export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
+  ...appSystemModuleTemplates.concat(
+    pluginSystemModuleTemplates.filter(
+      (item) => !appSystemModuleTemplates.find((app) => app.id === item.id)
+    )
+  ),
+  EmptyNode,
+  RunPluginModule
+];

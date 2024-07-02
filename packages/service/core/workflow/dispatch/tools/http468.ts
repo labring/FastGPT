@@ -16,7 +16,7 @@ import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/ty
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { responseWrite } from '../../../../common/response';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import { communityCb } from '@fastgpt/plugins/register';
+import { getCommunityCb } from '@fastgpt/plugins/register';
 
 type PropsArrType = {
   key: string;
@@ -120,9 +120,14 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   })();
 
   try {
-    const { formatResponse, rawResponse } = await (() => {
-      if (communityCb[httpReqUrl]) {
-        return communityCb[httpReqUrl](requestBody);
+    const { formatResponse, rawResponse } = await (async () => {
+      const communityPluginCb = await getCommunityCb();
+      if (communityPluginCb[httpReqUrl]) {
+        const pluginResult = await communityPluginCb[httpReqUrl](requestBody);
+        return {
+          formatResponse: pluginResult,
+          rawResponse: pluginResult
+        };
       }
       return fetchData({
         method: httpMethod,

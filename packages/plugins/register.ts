@@ -1,31 +1,54 @@
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
-import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { SystemPluginResponseType } from './type';
 
-const list = ['getTime'];
+let list = ['getTime', 'fetchUrl'];
 
-// Do not modify the following code
-const plugins = list.map((name) => require(`./src/${name}/template.json`));
-export const communityPlugins = plugins.map<SystemPluginTemplateItemType>((plugin) => ({
-  ...plugin,
-  id: `${PluginSourceEnum.community}-${plugin.id}`
-}));
+export const getCommunityPlugins = () => {
+  if (global.communitySystemPlugins) return global.communitySystemPlugins;
 
-export const communityPluginsTemplateList = communityPlugins.map<NodeTemplateListItemType>(
-  (plugin) => ({
+  global.communitySystemPlugins = list.map((name) => ({
+    ...require(`./src/${name}/template.json`),
+    id: `${PluginSourceEnum.community}-${name}`
+  }));
+
+  return global.communitySystemPlugins;
+};
+
+export const getCommunityPluginsTemplateList = () => {
+  return getCommunityPlugins().map((plugin) => ({
     id: plugin.id,
     templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
     flowNodeType: FlowNodeTypeEnum.pluginModule,
     avatar: plugin.avatar,
     name: plugin.name,
     intro: plugin.intro
-  })
-);
+  }));
+};
 
-export const communityCb: Record<string, (e: any) => SystemPluginResponseType> = {};
-list.forEach((name) => {
-  communityCb[name] = require(`./src/${name}/index`).default;
-});
+export const getCommunityCb = async () => {
+  if (global.communitySystemPluginCb) return communitySystemPluginCb;
+
+  // Do not modify the following code
+  const loadModule = async (name: string) => {
+    const module = await import(`./src/${name}/index`);
+    return module.default;
+  };
+
+  const result = await Promise.all(
+    list.map(async (name) => ({
+      name,
+      cb: await loadModule(name)
+    }))
+  );
+
+  global.communitySystemPluginCb = result.reduce<
+    Record<string, (e: any) => SystemPluginResponseType>
+  >((acc, { name, cb }) => {
+    acc[name] = cb;
+    return acc;
+  }, {});
+
+  return global.communitySystemPluginCb;
+};

@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { NextAPI } from '@/service/middleware/entry';
-import { communityPluginsTemplateList } from '@fastgpt/plugins/register';
+import { getCommunityPluginsTemplateList } from '@fastgpt/plugins/register';
 
 async function handler(
   req: NextApiRequest,
@@ -20,7 +20,7 @@ async function handler(
   //     intro: plugin.intro
   //   })) || [];
 
-  return communityPluginsTemplateList;
+  return getCommunityPluginsTemplateList();
 }
 
 export default NextAPI(handler);

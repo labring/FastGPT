@@ -1,16 +1,13 @@
-import { SystemPluginResponseType } from '../../type.d';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-
 type Props = {
   time: string;
 };
+type Response = Promise<{
+  time: string;
+}>;
 
-const main = async ({ time }: Props): SystemPluginResponseType => {
+const main = async ({ time }: Props): Response => {
   return {
-    formatResponse: {
-      time
-    },
-    rawResponse: time
+    time
   };
 };
 

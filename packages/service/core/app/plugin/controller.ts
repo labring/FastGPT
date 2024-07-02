@@ -9,7 +9,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { cloneDeep } from 'lodash';
 import { MongoApp } from '../schema';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
-import { communityPlugins } from '@fastgpt/plugins/register';
+import { getCommunityPlugins } from '@fastgpt/plugins/register';
 
 /* 
   plugin id rule:
@@ -40,7 +40,7 @@ const getPluginTemplateById = async (
   const { source, pluginId } = await splitCombinePluginId(id);
 
   if (source === PluginSourceEnum.community) {
-    const item = [...global.communityPlugins, ...communityPlugins].find(
+    const item = [...global.communityPlugins, ...getCommunityPlugins()].find(
       (plugin) => plugin.id === pluginId
     );
     if (!item) return Promise.reject('plugin not found');
