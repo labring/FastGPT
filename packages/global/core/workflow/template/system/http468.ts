@@ -14,7 +14,7 @@ import { Input_Template_DynamicInput } from '../input';
 import { Output_Template_AddOutput } from '../output';
 import { getHandleConfig } from '../utils';
 
-export const HttpModule468: FlowNodeTemplateType = {
+export const HttpNode468: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.httpRequest468,
   templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.httpRequest468,

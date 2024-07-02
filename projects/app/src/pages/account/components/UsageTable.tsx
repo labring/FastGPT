@@ -40,19 +40,23 @@ const UsageTable = () => {
     from: addDays(new Date(), -7),
     to: new Date()
   });
-  const [usageSource, setUsageSource] = useState<`${UsageSourceEnum}` | ''>('');
+  const [usageSource, setUsageSource] = useState<UsageSourceEnum | ''>('');
   const { isPc } = useSystemStore();
   const { userInfo } = useUserStore();
   const [usageDetail, setUsageDetail] = useState<UsageItemType>();
 
   const sourceList = useMemo(
-    () => [
-      { label: t('common.All'), value: '' },
-      ...Object.entries(UsageSourceMap).map(([key, value]) => ({
-        label: t(value.label),
-        value: key
-      }))
-    ],
+    () =>
+      [
+        { label: t('common.All'), value: '' },
+        ...Object.entries(UsageSourceMap).map(([key, value]) => ({
+          label: t(value.label),
+          value: key
+        }))
+      ] as {
+        label: never;
+        value: UsageSourceEnum | '';
+      }[],
     [t]
   );
 
@@ -144,7 +148,7 @@ const UsageTable = () => {
               {/* <Th>{t('user.team.Member Name')}</Th> */}
               <Th>{t('user.Time')}</Th>
               <Th>
-                <MySelect
+                <MySelect<UsageSourceEnum | ''>
                   list={sourceList}
                   value={usageSource}
                   size={'sm'}

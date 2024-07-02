@@ -19,7 +19,7 @@ export const pushChatUsage = ({
   pluginId?: string;
   teamId: string;
   tmbId: string;
-  source: `${UsageSourceEnum}`;
+  source: UsageSourceEnum;
   flowUsages: ChatNodeUsageType[];
 }) => {
   const totalPoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
@@ -94,7 +94,7 @@ export const pushGenerateVectorUsage = ({
   tmbId: string;
   tokens: number;
   model: string;
-  source?: `${UsageSourceEnum}`;
+  source?: UsageSourceEnum;
 
   extensionModel?: string;
   extensionTokens?: number;
@@ -210,7 +210,7 @@ export function pushAudioSpeechUsage({
   charsLength: number;
   teamId: string;
   tmbId: string;
-  source: `${UsageSourceEnum}`;
+  source: UsageSourceEnum;
 }) {
   const { totalPoints, modelName } = formatModelChars2Points({
     model,

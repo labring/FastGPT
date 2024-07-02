@@ -76,6 +76,7 @@ export type NodeTemplateListItemType = {
   avatar?: string;
   name: string;
   intro?: string; // template list intro
+  isTool?: boolean;
   author?: string;
   unique?: boolean; // 唯一的
 };

@@ -2,6 +2,7 @@ import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SystemPluginResponseType } from './type';
+import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 
 let list = ['getTime', 'fetchUrl'];
 
@@ -17,13 +18,14 @@ export const getCommunityPlugins = () => {
 };
 
 export const getCommunityPluginsTemplateList = () => {
-  return getCommunityPlugins().map((plugin) => ({
+  return getCommunityPlugins().map<NodeTemplateListItemType>((plugin) => ({
     id: plugin.id,
     templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
     flowNodeType: FlowNodeTypeEnum.pluginModule,
     avatar: plugin.avatar,
     name: plugin.name,
-    intro: plugin.intro
+    intro: plugin.intro,
+    isTool: plugin.isTool
   }));
 };
 

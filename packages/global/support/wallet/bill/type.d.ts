@@ -9,7 +9,7 @@ export type BillSchemaType = {
   createTime: Date;
   orderId: string;
   status: 'SUCCESS' | 'REFUND' | 'NOTPAY' | 'CLOSED';
-  type: `${BillTypeEnum}`;
+  type: BillTypeEnum;
   price: number;
   hasInvoice: boolean;
   metadata: {

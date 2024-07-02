@@ -7,7 +7,7 @@ import { DatasetConcatModule } from './system/datasetConcat';
 import { AssignedAnswerModule } from './system/assignedAnswer';
 import { ClassifyQuestionModule } from './system/classifyQuestion';
 import { ContextExtractModule } from './system/contextExtract';
-import { HttpModule468 } from './system/http468';
+import { HttpNode468 } from './system/http468';
 
 import { ToolModule } from './system/tools';
 import { StopToolNode } from './system/stopTool';
@@ -36,7 +36,7 @@ const systemNodes: FlowNodeTemplateType[] = [
   StopToolNode,
   ClassifyQuestionModule,
   ContextExtractModule,
-  HttpModule468,
+  HttpNode468,
   AiQueryExtension,
   LafModule,
   IfElseNode,

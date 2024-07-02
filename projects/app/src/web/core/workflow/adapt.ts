@@ -394,12 +394,7 @@ export const v1Workflow2V2 = (
           valueType: output.valueType,
           renderTypeList: [FlowNodeInputTypeEnum.reference],
           label: output.key,
-          canEdit: true,
-          editField: {
-            key: true,
-            description: true,
-            valueType: true
-          }
+          canEdit: true
         });
       });
     }

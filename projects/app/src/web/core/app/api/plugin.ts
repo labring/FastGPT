@@ -15,7 +15,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = (data?: ListAppBody) =>
   getMyApps(data).then((res) =>
-    res.map<FlowNodeTemplateType>((app) => ({
+    res.map<NodeTemplateListItemType>((app) => ({
       id: app._id,
       pluginId: app._id,
       isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.httpPlugin,
@@ -26,8 +26,7 @@ export const getTeamPlugTemplates = (data?: ListAppBody) =>
       intro: app.intro,
       showStatus: false,
       version: app.pluginData?.nodeVersion || '481',
-      inputs: [],
-      outputs: []
+      isTool: true
     }))
   );
 
