@@ -661,7 +661,7 @@ const Other = () => {
             h={'48px'}
             fontSize={'sm'}
           >
-            联系我们
+            {t('system.Concat us')}
           </Button>
         )}
       </Grid>

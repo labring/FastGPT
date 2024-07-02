@@ -146,7 +146,6 @@ const ListItem = () => {
                 boxShadow={'2'}
                 bg={'white'}
                 borderRadius={'lg'}
-                userSelect={'none'}
                 position={'relative'}
                 display={'flex'}
                 flexDirection={'column'}
