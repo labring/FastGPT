@@ -1,7 +1,10 @@
 import { DELETE, GET, POST } from '@/web/common/api/request';
 import type { createHttpPluginBody } from '@/pages/api/core/app/httpPlugin/create';
 import type { UpdateHttpPluginBody } from '@/pages/api/core/app/httpPlugin/update';
-import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
+import type {
+  FlowNodeTemplateType,
+  NodeTemplateListItemType
+} from '@fastgpt/global/core/workflow/type/node';
 import { getMyApps } from '../api';
 import type { ListAppBody } from '@/pages/api/core/app/list';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -29,7 +32,7 @@ export const getTeamPlugTemplates = (data?: ListAppBody) =>
   );
 
 export const getSystemPlugTemplates = () =>
-  GET<FlowNodeTemplateType[]>('/core/app/plugin/getSystemPluginTemplates');
+  GET<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates');
 
 export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
   GET<FlowNodeTemplateType>('/core/app/plugin/getPreviewNode', data);

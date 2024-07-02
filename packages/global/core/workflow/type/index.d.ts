@@ -28,9 +28,9 @@ import { FlowNodeTemplateType, StoreNodeItemType } from './node';
 export type WorkflowTemplateBasicType = {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
-  chatConfigs: AppChatConfigType;
+  chatConfigs?: AppChatConfigType;
 };
-export type WorkflowTemplateType = WorkflowTemplateBasicType & {
+export type WorkflowTemplateType = {
   id: string;
   parentId?: string;
   isFolder?: boolean;
@@ -39,19 +39,26 @@ export type WorkflowTemplateType = WorkflowTemplateBasicType & {
   avatar: string;
   intro?: string;
   author?: string;
-  version?: string;
+  version: string;
+
+  showStatus?: boolean;
+  weight?: number;
+
+  workflow: WorkflowTemplateBasicType;
 };
 // template market
-export type TemplateMarketItemType = WorkflowTemplateBasicType & {
+export type TemplateMarketItemType = WorkflowTemplateType & {
   tags?: { id: string; label: string }[];
 };
 // system plugin
-export type SystemPluginTemplateItemType = WorkflowTemplateBasicType & {
+export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   templateType: FlowNodeTemplateTypeEnum;
   isTool?: boolean;
 
   originCost: number; // n points/one time
   currentCost: number;
+
+  workflow: WorkflowTemplateBasicType;
 };
 
 /* --------------- function type -------------------- */

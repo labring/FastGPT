@@ -1,13 +1,14 @@
 {
+  "id": "getTime",
   "author": "FastGPT Team",
-  "version": "486",
-  "templateType": "other",
-  "name": "自定义反馈",
-  "avatar": "/imgs/workflow/customFeedback.svg",
-  "intro": "该模块被触发时，会给当前的对话记录增加一条反馈。可用于自动记录对话效果等。",
+  "version": "481",
+  "templateType": "tools",
+  "name": "获取当前时间",
+  "avatar": "/imgs/workflow/getCurrentTime.svg",
+  "intro": "获取用户当前时区的时间。",
   "showStatus": false,
-  "isTool": false,
-  "weight": 0,
+  "isTool": true,
+  "weight": 10,
   "workflow": {
     "nodes": [
       {
@@ -18,53 +19,12 @@
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 541.7107154264237,
+          "x": 616.4226348688949,
           "y": -165.05298493910115
         },
         "version": "481",
-        "inputs": [
-          {
-            "key": "system_addInputParam",
-            "valueType": "dynamic",
-            "label": "自定义输入变量",
-            "renderTypeList": ["addInputParam"],
-            "required": false,
-            "description": "",
-            "canEdit": true,
-            "value": "",
-            "customInputConfig": {
-              "selectValueTypeList": ["string"],
-              "showDescription": false,
-              "showDefaultValue": false
-            }
-          },
-          {
-            "key": "反馈内容",
-            "valueType": "string",
-            "label": "反馈内容",
-            "renderTypeList": ["textarea", "reference"],
-            "description": "",
-            "canEdit": true,
-            "value": "",
-            "maxLength": ""
-          }
-        ],
-        "outputs": [
-          {
-            "id": "ILc8GS7iU53M",
-            "key": "反馈内容",
-            "valueType": "string",
-            "label": "反馈内容",
-            "type": "static"
-          },
-          {
-            "id": "2LCxDnOSculb",
-            "key": "system_addInputParam",
-            "valueType": "dynamic",
-            "label": "动态外部数据",
-            "type": "static"
-          }
-        ]
+        "inputs": [],
+        "outputs": []
       },
       {
         "nodeId": "i7uow4wj2wdp",
@@ -80,10 +40,11 @@
         "version": "481",
         "inputs": [
           {
-            "key": "text",
+            "key": "time",
             "valueType": "string",
-            "label": "text",
+            "label": "time",
             "renderTypeList": ["reference"],
+            "required": false,
             "description": "",
             "canEdit": true,
             "editField": {
@@ -91,21 +52,21 @@
               "description": true,
               "valueType": true
             },
-            "value": ["CRT7oIEU8v2P", "pYKS0LB9gAr3"]
+            "value": ["ebLCxU43hHuZ", "httpRawResponse"]
           }
         ],
         "outputs": []
       },
       {
-        "nodeId": "CRT7oIEU8v2P",
+        "nodeId": "ebLCxU43hHuZ",
         "name": "HTTP 请求",
         "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
         "avatar": "/imgs/workflow/http.png",
         "flowNodeType": "httpRequest468",
         "showStatus": true,
         "position": {
-          "x": 1070.8458389994719,
-          "y": -415.09022555407836
+          "x": 1050.9890727421412,
+          "y": -415.2085119990912
         },
         "version": "486",
         "inputs": [
@@ -116,11 +77,6 @@
             "label": "",
             "required": false,
             "description": "core.module.input.description.HTTP Dynamic Input",
-            "editField": {
-              "key": true,
-              "valueType": true
-            },
-            "value": ["lmpb9v2lo2lk", "2LCxDnOSculb"],
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -158,7 +114,7 @@
             "description": "core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "/api/plugins/customFeedback/v2"
+            "value": "getTime"
           },
           {
             "key": "system_httpHeader",
@@ -182,51 +138,9 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\r\n  \"customFeedback\":\"{{customFeedback}}\",\r\n  \"customInputs\": {{customInputs}},\r\n  \"appId\": \"{{appId}}\",\r\n  \"chatId\": \"{{chatId}}\",\r\n  \"responseChatItemId\": \"{{responseChatItemId}}\"\r\n}",
+            "value": "{\n  \"time\": \"{{cTime}}\"\n}",
             "label": "",
             "required": false
-          },
-          {
-            "key": "customFeedback",
-            "valueType": "string",
-            "label": "customFeedback",
-            "renderTypeList": ["reference"],
-            "description": "",
-            "canEdit": true,
-            "editField": {
-              "key": true,
-              "valueType": true
-            },
-            "value": ["lmpb9v2lo2lk", "ILc8GS7iU53M"]
-          },
-          {
-            "renderTypeList": ["reference"],
-            "valueType": "dynamic",
-            "canEdit": true,
-            "key": "customInputs",
-            "label": "customInputs",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": ["lmpb9v2lo2lk", "2LCxDnOSculb"]
           }
         ],
         "outputs": [
@@ -273,13 +187,6 @@
             "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
             "valueType": "any",
             "type": "static"
-          },
-          {
-            "id": "pYKS0LB9gAr3",
-            "type": "dynamic",
-            "key": "text",
-            "valueType": "string",
-            "label": "text"
           }
         ]
       }
@@ -287,14 +194,14 @@
     "edges": [
       {
         "source": "lmpb9v2lo2lk",
-        "target": "CRT7oIEU8v2P",
+        "target": "ebLCxU43hHuZ",
         "sourceHandle": "lmpb9v2lo2lk-source-right",
-        "targetHandle": "CRT7oIEU8v2P-target-left"
+        "targetHandle": "ebLCxU43hHuZ-target-left"
       },
       {
-        "source": "CRT7oIEU8v2P",
+        "source": "ebLCxU43hHuZ",
         "target": "i7uow4wj2wdp",
-        "sourceHandle": "CRT7oIEU8v2P-source-right",
+        "sourceHandle": "ebLCxU43hHuZ-source-right",
         "targetHandle": "i7uow4wj2wdp-target-left"
       }
     ]

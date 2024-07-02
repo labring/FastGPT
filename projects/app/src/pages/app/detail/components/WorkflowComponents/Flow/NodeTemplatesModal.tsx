@@ -4,7 +4,6 @@ import type {
   NodeTemplateListItemType,
   NodeTemplateListType
 } from '@fastgpt/global/core/workflow/type/node.d';
-import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
@@ -39,7 +38,7 @@ type ModuleTemplateListProps = {
   onClose: () => void;
 };
 type RenderListProps = {
-  templates: FlowNodeTemplateType[];
+  templates: NodeTemplateListItemType[];
   onClose: () => void;
   parentId: ParentIdType;
   setParentId: React.Dispatch<React.SetStateAction<ParentIdType>>;
@@ -66,27 +65,36 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
 
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
-  const { data: basicNodes, loading } = useRequest2(
+  const { data: basicNodes } = useRequest2(
     async () => {
       if (templateType === TemplateTypeEnum.basic) {
-        return basicNodeTemplates.filter((item) => {
-          // unique node filter
-          if (item.unique) {
-            const nodeExist = nodeList.some((node) => node.flowNodeType === item.flowNodeType);
-            if (nodeExist) {
+        return basicNodeTemplates
+          .filter((item) => {
+            // unique node filter
+            if (item.unique) {
+              const nodeExist = nodeList.some((node) => node.flowNodeType === item.flowNodeType);
+              if (nodeExist) {
+                return false;
+              }
+            }
+            // special node filter
+            if (item.flowNodeType === FlowNodeTypeEnum.lafModule && !feConfigs.lafEnv) {
               return false;
             }
-          }
-          // special node filter
-          if (item.flowNodeType === FlowNodeTypeEnum.lafModule && !feConfigs.lafEnv) {
-            return false;
-          }
-          // tool stop
-          if (!hasToolNode && item.flowNodeType === FlowNodeTypeEnum.stopTool) {
-            return false;
-          }
-          return true;
-        });
+            // tool stop
+            if (!hasToolNode && item.flowNodeType === FlowNodeTypeEnum.stopTool) {
+              return false;
+            }
+            return true;
+          })
+          .map<NodeTemplateListItemType>((item) => ({
+            id: item.id,
+            flowNodeType: item.flowNodeType,
+            templateType: item.templateType,
+            avatar: item.avatar,
+            name: item.name,
+            intro: item.intro
+          }));
       }
     },
     {
@@ -123,7 +131,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     }
   );
 
-  const isLoading = loading || isLoadingTeamApp || isLoadingSystemPlugins;
+  const isLoading = isLoadingTeamApp || isLoadingSystemPlugins;
   const templates = useMemo(
     () => basicNodes || teamApps || systemPlugins || [],
     [basicNodes, systemPlugins, teamApps]

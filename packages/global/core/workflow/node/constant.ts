@@ -115,7 +115,9 @@ export enum FlowNodeTypeEnum {
   lafModule = 'lafModule',
   ifElseNode = 'ifElseNode',
   variableUpdate = 'variableUpdate',
-  code = 'code'
+  code = 'code',
+  textEditor = 'textEditor',
+  customFeedback = 'customFeedback'
 }
 
 // node IO value type

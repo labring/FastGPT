@@ -111,7 +111,7 @@ const NodeCard = (props: Props) => {
   const onClickSyncVersion = useCallback(async () => {
     try {
       if (!node || !template) return;
-      if (node?.flowNodeType === 'pluginModule') {
+      if (node?.flowNodeType === FlowNodeTypeEnum.pluginModule) {
         if (!node.pluginId) return;
         onResetNode({
           id: nodeId,

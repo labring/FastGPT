@@ -30,6 +30,8 @@ const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.emptyNode]: NodeSimple,
   [FlowNodeTypeEnum.globalVariable]: NodeSimple,
+  [FlowNodeTypeEnum.textEditor]: NodeSimple,
+  [FlowNodeTypeEnum.customFeedback]: NodeSimple,
   [FlowNodeTypeEnum.systemConfig]: dynamic(() => import('./nodes/NodeSystemConfig')),
   [FlowNodeTypeEnum.workflowStart]: dynamic(() => import('./nodes/NodeWorkflowStart')),
   [FlowNodeTypeEnum.chatNode]: NodeSimple,

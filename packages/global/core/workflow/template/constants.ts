@@ -23,9 +23,12 @@ import { LafModule } from './system/laf';
 import { IfElseNode } from './system/ifElse/index';
 import { VariableUpdateNode } from './system/variableUpdate';
 import { CodeNode } from './system/sandbox';
+import { TextEditorNode } from './system/textEditor';
+import { CustomFeedbackNode } from './system/customFeedback';
 
 const systemNodes: FlowNodeTemplateType[] = [
   AiChatModule,
+  TextEditorNode,
   AssignedAnswerModule,
   DatasetSearchModule,
   DatasetConcatModule,
@@ -45,7 +48,8 @@ const systemNodes: FlowNodeTemplateType[] = [
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
   SystemConfigNode,
   WorkflowStart,
-  ...systemNodes
+  ...systemNodes,
+  CustomFeedbackNode
 ];
 /* plugin flow module templates */
 export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
@@ -55,12 +59,8 @@ export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
 ];
 
 /* all module */
-export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
-  ...systemNodes,
-  EmptyNode,
-  SystemConfigNode,
-  WorkflowStart,
-  PluginInputModule,
-  PluginOutputModule,
-  RunPluginModule
-];
+export const moduleTemplatesFlat: FlowNodeTemplateType[] = appSystemModuleTemplates.concat(
+  pluginSystemModuleTemplates.filter(
+    (item) => !appSystemModuleTemplates.find((app) => app.id === item.id)
+  )
+);

@@ -1,10 +1,17 @@
 import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
-import { ChatItemValueItemType, ToolRunResponseItemType } from '../../chat/type';
+import { ChatItemType, ChatItemValueItemType, ToolRunResponseItemType } from '../../chat/type';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io.d';
 import { StoreNodeItemType } from '../type/node';
 import { DispatchNodeResponseKeyEnum } from './constants';
 import { StoreEdgeItemType } from '../type/edge';
 import { NodeInputKeyEnum } from '../constants';
+
+export type SystemVariablesType = {
+  appId: string;
+  chatId?: string;
+  responseChatItemId?: string;
+  histories: ChatItemType[];
+};
 
 export type RuntimeNodeItemType = {
   nodeId: StoreNodeItemType['nodeId'];
@@ -19,6 +26,16 @@ export type RuntimeNodeItemType = {
   outputs: FlowNodeOutputItemType[];
 
   pluginId?: string;
+};
+
+export type PluginRuntimeType = {
+  teamId?: string;
+  name: string;
+  avatar: string;
+  showStatus?: boolean;
+  isTool?: boolean;
+  nodes: StoreNodeItemType[];
+  edges: StoreEdgeItemType[];
 };
 
 export type RuntimeEdgeItemType = StoreEdgeItemType & {

@@ -13,6 +13,7 @@ import { exit } from 'process';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 import json5 from 'json5';
+import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await getInitConfig();
@@ -69,10 +70,6 @@ export async function getInitConfig() {
       // abandon
       getSystemPluginV1()
     ]);
-
-    console.log({
-      communityPlugins: global.communityPlugins
-    });
   } catch (error) {
     console.error('Load init config error', error);
     global.systemInitd = false;
@@ -155,16 +152,17 @@ function getSystemPlugin() {
   const filterFiles = files.filter((item) => item.endsWith('.json'));
 
   // read json file
-  const fileTemplates: (PluginTemplateType & { weight: number })[] = filterFiles.map((filename) => {
+  const fileTemplates = filterFiles.map<SystemPluginTemplateItemType>((filename) => {
     const content = readFileSync(`${basePath}/${filename}`, 'utf-8');
     return {
       ...json5.parse(content),
-      id: `${PluginSourceEnum.community}-${filename.replace('.json', '')}`,
-      source: PluginSourceEnum.community
+      originCost: 0,
+      currentCost: 0,
+      id: `${PluginSourceEnum.community}-${filename.replace('.json', '')}`
     };
   });
 
-  fileTemplates.sort((a, b) => b.weight - a.weight);
+  fileTemplates.sort((a, b) => (b.weight || 0) - (a.weight || 0));
 
   global.communityPlugins = fileTemplates;
 }

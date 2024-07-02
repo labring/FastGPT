@@ -16,6 +16,7 @@ import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/ty
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { responseWrite } from '../../../../common/response';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import { communityCb } from '@fastgpt/plugins/register';
 
 type PropsArrType = {
   key: string;
@@ -65,14 +66,17 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     return Promise.reject('Http url is empty');
   }
 
-  const concatVariables = {
-    ...variables,
-    ...body,
-    // ...dynamicInput,
+  const systemVariables = {
     appId,
     chatId,
     responseChatItemId,
     histories: histories?.slice(-10) || []
+  };
+  const concatVariables = {
+    ...variables,
+    ...body,
+    // ...dynamicInput,
+    ...systemVariables
   };
 
   const allVariables = {
@@ -116,13 +120,18 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   })();
 
   try {
-    const { formatResponse, rawResponse } = await fetchData({
-      method: httpMethod,
-      url: httpReqUrl,
-      headers,
-      body: requestBody,
-      params
-    });
+    const { formatResponse, rawResponse } = await (() => {
+      if (communityCb[httpReqUrl]) {
+        return communityCb[httpReqUrl](requestBody);
+      }
+      return fetchData({
+        method: httpMethod,
+        url: httpReqUrl,
+        headers,
+        body: requestBody,
+        params
+      });
+    })();
 
     // format output value type
     const results: Record<string, any> = {};
@@ -183,7 +192,7 @@ async function fetchData({
   headers: Record<string, any>;
   body: Record<string, any>;
   params: Record<string, any>;
-}): Promise<Record<string, any>> {
+}) {
   const { data: response } = await axios({
     method,
     baseURL: `http://${SERVICE_LOCAL_HOST}`,
