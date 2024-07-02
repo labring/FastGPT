@@ -23,12 +23,12 @@ async function handler(
     authToken: true,
     per: ManagePermissionVal
   });
+
   await resumeInheritPermission({
     resource: app,
     folderTypeList: AppFolderTypeList,
     resourceType: PerResourceTypeEnum.app,
-    resourceModel: MongoApp,
-    parentResource: app
+    resourceModel: MongoApp
   });
 }
 export default NextAPI(handler);

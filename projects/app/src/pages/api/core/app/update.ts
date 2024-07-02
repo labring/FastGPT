@@ -12,16 +12,28 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import {
-  getParentCollaborators,
   syncChildrenPermission,
-  updateCollaborators
+  syncCollaborators
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ClientSession } from 'mongoose';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { getResourceAllClbs } from '@fastgpt/service/support/permission/controller';
 import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
+
+/* 
+  修改默认权限
+  1. 继承态目录：关闭继承态，修改权限，同步子目录默认权限
+  2. 继承态资源：关闭继承态，修改权限, 复制父级协作者。
+  3. 非继承目录：修改权限，同步子目录默认权限
+  4. 非继承资源：修改权限
+
+  移动
+  1. 继承态目录：改 parentId, 修改成父的默认权限，同步子目录默认权限和协作者
+  2. 继承态资源：改 parentId
+  3. 非继承：改 parentId
+*/
 
 async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>) {
   const {
@@ -54,15 +66,17 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
 
   // format nodes data
   // 1. dataset search limit, less than model quoteMaxToken
-  const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
   const isDefaultPermissionChanged =
     defaultPermission !== undefined && defaultPermission !== app.defaultPermission;
+  const isFolder = AppFolderTypeList.includes(app.type);
 
   const onUpdate = async (
     session?: ClientSession,
-    defaultPermissionFromParent?: PermissionValueType
+    updatedDefaultPermission?: PermissionValueType
   ) => {
-    return await MongoApp.findByIdAndUpdate(
+    const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
+
+    return MongoApp.findByIdAndUpdate(
       appId,
       {
         ...parseParentIdInMongo(parentId),
@@ -70,11 +84,12 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
         ...(type && { type }),
         ...(avatar && { avatar }),
         ...(intro !== undefined && { intro }),
-        ...(defaultPermission !== undefined && { defaultPermission }),
-        ...(isDefaultPermissionChanged && app.parentId && { inheritPermission: false }),
-        ...(defaultPermissionFromParent !== undefined && {
-          defaultPermission: defaultPermissionFromParent
+        // update default permission(Maybe move update)
+        ...(updatedDefaultPermission !== undefined && {
+          defaultPermission: updatedDefaultPermission
         }),
+        // Not root, update default permission
+        ...(isDefaultPermissionChanged && app.parentId && { inheritPermission: false }),
         ...(teamTags && { teamTags }),
         ...(formatNodes && {
           modules: formatNodes
@@ -88,99 +103,97 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
     );
   };
 
-  await mongoSessionRun(async (session) => {
-    if (isDefaultPermissionChanged) {
-      // is inherit permission is disabled. we need to sync the permission
-      // 1. update the app's collaborator
-      const parentCollaborators = await getParentCollaborators({
-        resource: app,
-        resourceType: PerResourceTypeEnum.app,
-        session
-      });
-      await updateCollaborators({
-        resourceId: app._id,
-        resourceType: PerResourceTypeEnum.app,
-        collaborators: parentCollaborators,
-        session,
-        teamId: app.teamId
-      });
-      // 2. sync the children
-      await syncChildrenPermission({
-        resource: {
-          ...app,
-          defaultPermission
-        },
-        resourceType: PerResourceTypeEnum.app,
-        resourceModel: MongoApp,
-        folderTypeList: AppFolderTypeList,
-        collaborators: parentCollaborators,
-        session
-      });
-    }
-    const defaultPermissionFromParent = await (async () => {
-      const isMove = parentId !== undefined; // if not provided, then not move
-      const isMoveToRoot = isMove && !parentId; // if move and parentId is null, then move to root
-      if (isMove) {
-        if (AppFolderTypeList.includes(app.type) && app.inheritPermission) {
-          // 1. authorization
-          const parentFolder = await (async () => {
-            if (isMoveToRoot) {
-              // if move, auth the parent folder
-              // if move to root, then no need to auth the parent folder. Auth the user instead
-              await authUserPer({ req, authToken: true, per: WritePermissionVal });
-              return;
-            } else {
-              return (
-                await authApp({
-                  req,
-                  authToken: true,
-                  appId: parentId,
-                  per: WritePermissionVal
-                })
-              ).app;
-            }
-          })();
-          // 2. sync it self
-          // 2.1 get parent
-          const defaultPermission = isMoveToRoot
-            ? AppDefaultPermissionVal
-            : parentFolder!.defaultPermission;
-
-          const collaborators = isMoveToRoot
-            ? []
-            : await getParentCollaborators({
-                resource: app,
-                resourceType: PerResourceTypeEnum.app,
-                session
-              });
-          // 2.2 edit it self
-          // HINT: The defaultPermission will be return to the onUpdate function for avoiding the Write Conflict
-          await updateCollaborators({
-            resourceId: app._id,
-            resourceType: PerResourceTypeEnum.app,
-            collaborators,
-            session,
-            teamId: app.teamId
+  // Move
+  if (parentId !== undefined) {
+    await mongoSessionRun(async (session) => {
+      // Auth
+      const parentDefaultPermission = await (async () => {
+        if (parentId) {
+          const { app: parentApp } = await authApp({
+            req,
+            authToken: true,
+            appId: parentId,
+            per: WritePermissionVal
           });
 
-          // 3. sync its children
-          await syncChildrenPermission({
-            resource: {
-              ...app,
-              defaultPermission: defaultPermission ?? AppDefaultPermissionVal
-            },
-            resourceType: PerResourceTypeEnum.app,
-            resourceModel: MongoApp,
-            folderTypeList: AppFolderTypeList,
-            collaborators,
-            session
-          });
-          return defaultPermission;
+          return parentApp.defaultPermission;
         }
+
+        return AppDefaultPermissionVal;
+      })();
+
+      // Inherit folder: Sync children permission and it's clbs
+      if (isFolder && app.inheritPermission) {
+        const parentClbs = await getResourceAllClbs({
+          teamId: app.teamId,
+          resourceId: parentId,
+          resourceType: PerResourceTypeEnum.app,
+          session
+        });
+        // sync self
+        await syncCollaborators({
+          resourceId: app._id,
+          resourceType: PerResourceTypeEnum.app,
+          collaborators: parentClbs,
+          session,
+          teamId: app.teamId
+        });
+        // sync the children
+        await syncChildrenPermission({
+          resource: app,
+          resourceType: PerResourceTypeEnum.app,
+          resourceModel: MongoApp,
+          folderTypeList: AppFolderTypeList,
+          defaultPermission: parentDefaultPermission,
+          collaborators: parentClbs,
+          session
+        });
+
+        return onUpdate(session, parentDefaultPermission);
       }
-    })();
-    await onUpdate(session, defaultPermissionFromParent);
-  });
+
+      return onUpdate(session);
+    });
+  }
+
+  // Update default permission
+  if (isDefaultPermissionChanged) {
+    await mongoSessionRun(async (session) => {
+      if (isFolder) {
+        // Sync children default permission
+        await syncChildrenPermission({
+          resource: {
+            _id: app._id,
+            type: app.type,
+            teamId: app.teamId,
+            parentId: app.parentId
+          },
+          folderTypeList: AppFolderTypeList,
+          resourceModel: MongoApp,
+          resourceType: PerResourceTypeEnum.app,
+          session,
+          defaultPermission
+        });
+      } else if (app.inheritPermission) {
+        // Inherit app
+        const parentClbs = await getResourceAllClbs({
+          teamId: app.teamId,
+          resourceId: app.parentId,
+          resourceType: PerResourceTypeEnum.app,
+          session
+        });
+        await syncCollaborators({
+          resourceId: app._id,
+          resourceType: PerResourceTypeEnum.app,
+          collaborators: parentClbs,
+          session,
+          teamId: app.teamId
+        });
+      }
+
+      return onUpdate(session, defaultPermission);
+    });
+  }
 }
 
 export default NextAPI(handler);

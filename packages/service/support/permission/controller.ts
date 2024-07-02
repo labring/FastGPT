@@ -7,6 +7,9 @@ import { AuthUserTypeEnum, PerResourceTypeEnum } from '@fastgpt/global/support/p
 import { authOpenApiKey } from '../openapi/auth';
 import { FileTokenQuery } from '@fastgpt/global/common/file/type';
 import { MongoResourcePermission } from './schema';
+import { ClientSession } from 'mongoose';
+import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 
 export const getResourcePermission = async ({
   resourceType,
@@ -31,8 +34,44 @@ export const getResourcePermission = async ({
   }
   return per;
 };
+export async function getResourceAllClbs({
+  resourceId,
+  teamId,
+  resourceType,
+  session
+}: {
+  resourceId: ParentIdType;
+  teamId: string;
+  resourceType: PerResourceTypeEnum;
+  session?: ClientSession;
+}): Promise<ResourcePermissionType[]> {
+  if (!resourceId) return [];
+  return MongoResourcePermission.find(
+    {
+      resourceId,
+      resourceType: resourceType,
+      teamId: teamId
+    },
+    null,
+    {
+      session
+    }
+  ).lean();
+}
 export const delResourcePermissionById = (id: string) => {
   return MongoResourcePermission.findByIdAndRemove(id);
+};
+export const delResourcePermission = ({
+  session,
+  ...props
+}: {
+  resourceType: PerResourceTypeEnum;
+  resourceId: string;
+  teamId: string;
+  tmbId: string;
+  session?: ClientSession;
+}) => {
+  return MongoResourcePermission.deleteOne(props, { session });
 };
 
 /* 下面代码等迁移 */

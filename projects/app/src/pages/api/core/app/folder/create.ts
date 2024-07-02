@@ -12,10 +12,10 @@ import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { getParentCollaborators } from '@fastgpt/service/support/permission/inheritPermission';
+import { syncCollaborators } from '@fastgpt/service/support/permission/inheritPermission';
+import { getResourceAllClbs } from '@fastgpt/service/support/permission/controller';
 
 export type CreateAppFolderBody = {
   parentId?: ParentIdType;
@@ -47,7 +47,7 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
   })();
 
   // Create app
-  mongoSessionRun(async (session) => {
+  await mongoSessionRun(async (session) => {
     const app = await MongoApp.create({
       ...parseParentIdInMongo(parentId),
       avatar: FolderImgUrl,
@@ -61,23 +61,20 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
     });
 
     if (parentId) {
-      const rp = await getParentCollaborators({
-        resource: app,
-        resourceType: PerResourceTypeEnum.app
+      const parentClbs = await getResourceAllClbs({
+        teamId,
+        resourceId: parentId,
+        resourceType: PerResourceTypeEnum.app,
+        session
       });
 
-      MongoResourcePermission.insertMany(
-        rp.map((item) => {
-          return {
-            teamId: teamId,
-            resourceId: app._id,
-            resourceType: PerResourceTypeEnum.app,
-            permission: item.permission,
-            tmbId: item.tmbId
-          };
-        }),
-        { session }
-      );
+      await syncCollaborators({
+        resourceType: PerResourceTypeEnum.app,
+        teamId,
+        resourceId: app._id,
+        collaborators: parentClbs,
+        session
+      });
     }
   });
 }
