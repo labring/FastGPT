@@ -38,6 +38,7 @@ import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/col
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { resumeInheritPer } from '@/web/core/app/api';
 import { useI18n } from '@/web/context/I18n';
+import ResumeInherit from '@/components/support/permission/ResumeInheritText';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -140,13 +141,10 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     });
   };
 
-  const { ConfirmModal, openConfirm } = useConfirm({});
-
   const { runAsync: resumeInheritPermission } = useRequest2(
     () => resumeInheritPer(appDetail._id),
     // () => putAppById(appDetail._id, { inheritPermission: true }),
     {
-      successToast: '恢复成功',
       errorToast: '恢复失败',
       onSuccess: () => {
         reloadApp();
@@ -199,25 +197,10 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
         {appDetail.permission.hasManagePer && (
           <>
             {!appDetail.inheritPermission && appDetail.parentId && (
-              <Flex mt={5} alignItems={'center'} justifyContent={'space-between'}>
-                <Box fontSize="sm">{commonT('permission.No InheritPermission')}</Box>
-                <Button
-                  mt={2}
-                  size="sm"
-                  variant="whitePrimary"
-                  onClick={() => {
-                    openConfirm(
-                      () => resumeInheritPermission?.(),
-                      undefined,
-                      commonT('permission.Resume InheritPermission Confirm')
-                    )();
-                  }}
-                >
-                  {commonT('Resume')}
-                </Button>
-              </Flex>
+              <Box mt={3}>
+                <ResumeInherit onResume={resumeInheritPermission} />
+              </Box>
             )}
-
             <Box mt="4">
               <Box fontSize={'sm'}>{t('permission.Default permission')}</Box>
               <DefaultPermissionList
@@ -292,7 +275,6 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
       </ModalFooter>
 
       <File onSelect={onSelectFile} />
-      <ConfirmModal />
     </MyModal>
   );
 };

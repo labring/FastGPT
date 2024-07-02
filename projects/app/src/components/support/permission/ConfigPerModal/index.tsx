@@ -9,6 +9,7 @@ import DefaultPermissionList from '../DefaultPerList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useI18n } from '@/web/context/I18n';
+import ResumeInherit from '../ResumeInheritText';
 
 export type ConfigPerModalProps = {
   avatar?: string;
@@ -40,8 +41,6 @@ const ConfigPerModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
-  const { ConfirmModal, openConfirm } = useConfirm({});
-  const { commonT } = useI18n();
 
   return (
     <>
@@ -57,24 +56,11 @@ const ConfigPerModal = ({
             <Box>{name}</Box>
           </HStack>
           {!isInheritPermission && (
-            <Flex mt={6} alignItems={'center'} justifyContent={'space-between'}>
-              <Box fontSize="sm">{commonT('permission.No InheritPermission')}</Box>
-              <Button
-                size="sm"
-                variant="whitePrimary"
-                onClick={() => {
-                  openConfirm(
-                    async () => resumeInheritPermission?.(),
-                    undefined,
-                    commonT('permission.Resume InheritPermission Confirm')
-                  )();
-                }}
-              >
-                {commonT('Resume')}
-              </Button>
-            </Flex>
+            <Box mt={3}>
+              <ResumeInherit onResume={resumeInheritPermission} />
+            </Box>
           )}
-          <Box mt={6}>
+          <Box mt={5}>
             <Box fontSize={'sm'}>{t('permission.Default permission')}</Box>
             <DefaultPermissionList
               mt="1"
@@ -129,7 +115,6 @@ const ConfigPerModal = ({
           </Box>
         </ModalBody>
       </MyModal>
-      <ConfirmModal />
     </>
   );
 };

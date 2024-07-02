@@ -115,7 +115,6 @@ const ListItem = () => {
     },
     {
       manual: true,
-      successToast: commonT('permission.Resume InheritPermission Success'),
       errorToast: commonT('permission.Resume InheritPermission Failed'),
       onSuccess() {
         loadMyApps();

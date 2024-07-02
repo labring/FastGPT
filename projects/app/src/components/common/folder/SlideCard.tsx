@@ -15,6 +15,7 @@ import CollaboratorContextProvider, {
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useI18n } from '@/web/context/I18n';
+import ResumeInherit from '@/components/support/permission/ResumeInheritText';
 
 const FolderSlideCard = ({
   refreshDeps,
@@ -61,7 +62,6 @@ const FolderSlideCard = ({
     type: 'delete',
     content: deleteTip
   });
-  const { ConfirmModal: CommonConfirmModal, openConfirm: openCommonConfirm } = useConfirm({});
 
   return (
     <Box w={'13rem'}>
@@ -133,31 +133,9 @@ const FolderSlideCard = ({
             <FormLabel>{t('support.permission.Permission')}</FormLabel>
 
             {!isInheritPermission && hasParent && (
-              <Flex mt={5} alignItems={'start'} flexDirection={'column'}>
-                <Box fontSize="sm">{commonT('permission.No InheritPermission')}</Box>
-                <Button
-                  mt={2}
-                  size="sm"
-                  variant="whitePrimary"
-                  onClick={() => {
-                    openCommonConfirm(
-                      () =>
-                        resumeInheritPermission?.()
-                          .then(refetchResource)
-                          .then(() => {
-                            toast({
-                              title: commonT('permission.Resume InheritPermission Success'),
-                              status: 'success'
-                            });
-                          }),
-                      undefined,
-                      commonT('permission.Resume InheritPermission Confirm')
-                    )();
-                  }}
-                >
-                  {commonT('Resume')}
-                </Button>
-              </Flex>
+              <Box mt={2}>
+                <ResumeInherit onResume={() => resumeInheritPermission?.().then(refetchResource)} />
+              </Box>
             )}
 
             {managePer.permission.hasManagePer && (
@@ -230,7 +208,6 @@ const FolderSlideCard = ({
       )}
 
       <ConfirmModal />
-      <CommonConfirmModal />
     </Box>
   );
 };
