@@ -3,11 +3,12 @@ import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constant
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SystemPluginResponseType } from './type';
 import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
+import { isProduction } from '../service/common/system/constants';
 
 let list = ['getTime', 'fetchUrl', 'mathExprVal'];
 
 export const getCommunityPlugins = () => {
-  if (global.communitySystemPlugins) return global.communitySystemPlugins;
+  if (isProduction && global.communitySystemPlugins) return global.communitySystemPlugins;
 
   global.communitySystemPlugins = list.map((name) => ({
     ...require(`./src/${name}/template.json`),
@@ -30,7 +31,7 @@ export const getCommunityPluginsTemplateList = () => {
 };
 
 export const getCommunityCb = async () => {
-  if (global.communitySystemPluginCb) return communitySystemPluginCb;
+  if (isProduction && global.communitySystemPluginCb) return global.communitySystemPluginCb;
 
   // Do not modify the following code
   const loadModule = async (name: string) => {

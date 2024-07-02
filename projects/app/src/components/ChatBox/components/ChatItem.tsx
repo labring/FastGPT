@@ -158,7 +158,7 @@ ${JSON.stringify(questionGuides)}`;
                               bg: 'auto'
                             }}
                           >
-                            <Avatar src={tool.toolAvatar} borderRadius={'md'} w={'1rem'} mr={2} />
+                            <Avatar src={tool.toolAvatar} w={'1rem'} mr={2} />
                             <Box mr={1} fontSize={'sm'}>
                               {tool.toolName}
                             </Box>

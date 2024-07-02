@@ -468,7 +468,7 @@ const EditForm = ({
           onRemoveTool={(e) => {
             setAppForm((state) => ({
               ...state,
-              selectedTools: state.selectedTools.filter((item) => item.id !== e.id)
+              selectedTools: state.selectedTools.filter((item) => item.pluginId !== e.id)
             }));
           }}
           onClose={onCloseToolsSelect}
