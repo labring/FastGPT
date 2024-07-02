@@ -47,9 +47,9 @@ const FolderSlideCard = ({
   managePer: MemberManagerInputPropsType;
 
   isInheritPermission?: boolean;
-  resumeInheritPermission?: () => void;
+  resumeInheritPermission?: () => Promise<void>;
   hasParent?: boolean;
-  refetchResource?: () => void;
+  refetchResource?: () => Promise<void>;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -139,9 +139,10 @@ const FolderSlideCard = ({
                   variant="whitePrimary"
                   onClick={() => {
                     openCommonConfirm(
-                      () => {
-                        resumeInheritPermission?.();
-                        refetchResource?.();
+                      async () => {
+                        resumeInheritPermission?.().then(async () => {
+                          await refetchResource?.();
+                        });
                       },
                       undefined,
                       commonT('permission.Resume InheritPermission Confirm')

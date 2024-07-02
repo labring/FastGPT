@@ -215,9 +215,9 @@ const MyApps = () => {
         {!!folderDetail && isPc && (
           <Box pt={[4, 6]} pr={[4, 6]}>
             <FolderSlideCard
-              refetchResource={() => {
-                refetchFolderDetail();
-                loadMyApps();
+              refetchResource={async () => {
+                await refetchFolderDetail();
+                await loadMyApps();
               }}
               resumeInheritPermission={() =>
                 resumeInheritPer(folderDetail._id).then(() => {
