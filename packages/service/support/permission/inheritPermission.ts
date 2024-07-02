@@ -57,7 +57,7 @@ export async function syncChildrenPermission({
         },
         '_id parentId'
       )
-      .lean()
+      .lean<ResourceType[]>()
       .session(session);
 
     // bfs to get all children

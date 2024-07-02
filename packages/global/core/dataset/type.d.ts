@@ -27,7 +27,7 @@ export type DatasetSchemaType = {
   intro: string;
   type: DatasetTypeEnum;
   status: `${DatasetStatusEnum}`;
-  permission: DatasetPermission;
+  // permission: DatasetPermission;
 
   // metadata
   websiteConfig?: {
@@ -146,6 +146,7 @@ export type DatasetListItemType = {
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel'> & {
   vectorModel: VectorModelItemType;
   agentModel: LLMModelItemType;
+  permission: DatasetPermission;
 };
 
 /* ================= collection ===================== */
