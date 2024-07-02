@@ -118,7 +118,7 @@ brew install orbstack
 
 {{% alert icon="🤖" context="success" %}}
 
-所有 `docker-compose.yml` 配置文件中 `MongoDB` 为 5.x，需要用到AUX指令集，部分 CPU 不支持，需手动更改其镜像版本为 4.4.24**（需要自己在docker hub下载，阿里云镜像没做备份）
+所有 `docker-compose.yml` 配置文件中 `MongoDB` 为 5.x，需要用到AVX指令集，部分 CPU 不支持，需手动更改其镜像版本为 4.4.24**（需要自己在docker hub下载，阿里云镜像没做备份）
 
 {{% /alert %}}
 
