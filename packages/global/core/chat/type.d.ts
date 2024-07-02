@@ -1,4 +1,4 @@
-import { ClassifyQuestionAgentItemType } from '../workflow/type';
+import { ClassifyQuestionAgentItemType } from '../workflow/template/system/classifyQuestion/type';
 import { SearchDataResponseItemType } from '../dataset/type';
 import {
   ChatFileTypeEnum,

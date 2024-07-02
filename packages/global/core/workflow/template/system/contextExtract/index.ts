@@ -2,17 +2,17 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
-} from '../../node/constant';
-import { FlowNodeTemplateType } from '../../type/node';
+} from '../../../node/constant';
+import { FlowNodeTemplateType } from '../../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   FlowNodeTemplateTypeEnum
-} from '../../constants';
-import { Input_Template_SelectAIModel, Input_Template_History } from '../input';
-import { LLMModelTypeEnum } from '../../../ai/constants';
-import { getHandleConfig } from '../utils';
+} from '../../../constants';
+import { Input_Template_SelectAIModel, Input_Template_History } from '../../input';
+import { LLMModelTypeEnum } from '../../../../ai/constants';
+import { getHandleConfig } from '../../utils';
 
 export const ContextExtractModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.contentExtract,

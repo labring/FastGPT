@@ -5,14 +5,14 @@ import { AiChatModule } from './system/aiChat';
 import { DatasetSearchModule } from './system/datasetSearch';
 import { DatasetConcatModule } from './system/datasetConcat';
 import { AssignedAnswerModule } from './system/assignedAnswer';
-import { ClassifyQuestionModule } from './system/classifyQuestion';
-import { ContextExtractModule } from './system/contextExtract';
+import { ClassifyQuestionModule } from './system/classifyQuestion/index';
+import { ContextExtractModule } from './system/contextExtract/index';
 import { HttpNode468 } from './system/http468';
 
 import { ToolModule } from './system/tools';
 import { StopToolNode } from './system/stopTool';
 
-import { RunAppModule } from './system/runApp';
+import { RunAppModule } from './system/runApp/index';
 import { PluginInputModule } from './system/pluginInput';
 import { PluginOutputModule } from './system/pluginOutput';
 import { RunPluginModule } from './system/runPlugin';

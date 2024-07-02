@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { dispatchWorkFlowV1 } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {

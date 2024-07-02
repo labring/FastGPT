@@ -1,10 +1,47 @@
 import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
-import { ChatItemType, ChatItemValueItemType, ToolRunResponseItemType } from '../../chat/type';
+import {
+  ChatItemType,
+  UserChatItemValueItemType,
+  ChatItemValueItemType,
+  ToolRunResponseItemType
+} from '../../chat/type';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io.d';
 import { StoreNodeItemType } from '../type/node';
 import { DispatchNodeResponseKeyEnum } from './constants';
 import { StoreEdgeItemType } from '../type/edge';
 import { NodeInputKeyEnum } from '../constants';
+import { ClassifyQuestionAgentItemType } from '../template/system/classifyQuestion/type';
+import { NextApiResponse } from 'next';
+import { UserModelSchema } from '../../../support/user/type';
+import { AppDetailType, AppSchema } from '../../app/type';
+import { RuntimeNodeItemType } from '../runtime/type';
+import { RuntimeEdgeItemType } from './edge';
+
+/* workflow props */
+export type ChatDispatchProps = {
+  res?: NextApiResponse;
+  mode: 'test' | 'chat' | 'debug';
+  teamId: string;
+  tmbId: string;
+  user: UserModelSchema;
+  app: AppDetailType | AppSchema;
+  chatId?: string;
+  responseChatItemId?: string;
+  histories: ChatItemType[];
+  variables: Record<string, any>; // global variable
+  query: UserChatItemValueItemType[]; // trigger query
+  stream: boolean;
+  detail: boolean; // response detail
+  maxRunTimes: number;
+  isToolCall?: boolean;
+};
+
+export type ModuleDispatchProps<T> = ChatDispatchProps & {
+  node: RuntimeNodeItemType;
+  runtimeNodes: RuntimeNodeItemType[];
+  runtimeEdges: RuntimeEdgeItemType[];
+  params: T;
+};
 
 export type SystemVariablesType = {
   appId: string;
@@ -13,6 +50,7 @@ export type SystemVariablesType = {
   histories: ChatItemType[];
 };
 
+/* node props */
 export type RuntimeNodeItemType = {
   nodeId: StoreNodeItemType['nodeId'];
   name: StoreNodeItemType['name'];

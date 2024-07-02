@@ -6,7 +6,7 @@ import {
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
-import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type';
+import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { removeSystemVariable, valueTypeFormat } from '../utils';
 import { responseWrite } from '../../../../common/response';
 

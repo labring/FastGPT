@@ -18,7 +18,7 @@ import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import { AddIcon } from '@chakra-ui/icons';
 import RenderInput from '../render/RenderInput';
-import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
 import RenderOutput from '../render/RenderOutput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ExtractFieldModal, { defaultField } from './ExtractFieldModal';

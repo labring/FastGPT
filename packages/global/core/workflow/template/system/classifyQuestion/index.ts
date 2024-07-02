@@ -2,22 +2,22 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
-} from '../../node/constant';
-import { FlowNodeTemplateType } from '../../type/node';
+} from '../../../node/constant';
+import { FlowNodeTemplateType } from '../../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   FlowNodeTemplateTypeEnum,
   NodeOutputKeyEnum
-} from '../../constants';
+} from '../../../constants';
 import {
   Input_Template_SelectAIModel,
   Input_Template_History,
   Input_Template_UserChatInput
-} from '../input';
-import { Input_Template_System_Prompt } from '../input';
-import { LLMModelTypeEnum } from '../../../ai/constants';
-import { getHandleConfig } from '../utils';
+} from '../../input';
+import { Input_Template_System_Prompt } from '../../input';
+import { LLMModelTypeEnum } from '../../../../ai/constants';
+import { getHandleConfig } from '../../utils';
 
 export const ClassifyQuestionModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.classifyQuestion,

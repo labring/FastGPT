@@ -1,10 +1,12 @@
 import { NextApiResponse } from 'next';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { ChatDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
+import type {
+  ChatDispatchProps,
+  ModuleDispatchProps
+} from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type.d';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,

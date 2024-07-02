@@ -126,13 +126,11 @@ const ListItem = () => {
     <>
       <Grid
         py={4}
-        gridTemplateColumns={[
-          '1fr',
-          'repeat(2,1fr)',
-          'repeat(3,1fr)',
-          'repeat(3,1fr)',
-          'repeat(4,1fr)'
-        ]}
+        gridTemplateColumns={
+          folderDetail
+            ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+            : ['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+        }
         gridGap={5}
         alignItems={'stretch'}
       >
