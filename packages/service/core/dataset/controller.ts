@@ -37,7 +37,7 @@ export async function findDatasetAndAllChildren({
     return datasets;
   };
   const [dataset, childDatasets] = await Promise.all([
-    MongoDataset.findById(datasetId),
+    MongoDataset.findById(datasetId).lean(),
     find(datasetId)
   ]);
 

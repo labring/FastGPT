@@ -74,11 +74,6 @@ const DatasetSchema = new Schema({
     type: String,
     default: ''
   },
-  permission: {
-    type: String,
-    enum: Object.keys(PermissionTypeMap),
-    default: PermissionTypeEnum.private
-  },
   websiteConfig: {
     type: {
       url: {

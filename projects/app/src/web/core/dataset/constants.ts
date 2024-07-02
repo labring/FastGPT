@@ -45,7 +45,6 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
     name: '',
     intro: '',
     status: 'active',
-    permission: new DatasetPermission(),
     vectorModel: defaultVectorModels[0].model,
     agentModel: defaultQAModels[0].model,
     defaultPermission: DatasetDefaultPermissionVal
