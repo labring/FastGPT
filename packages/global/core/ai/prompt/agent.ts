@@ -20,7 +20,7 @@ A2:
 
 <Context>
 {{text}}
-<Context/>
+</Context>
 `
 };
 
