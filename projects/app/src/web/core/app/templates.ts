@@ -1784,11 +1784,7 @@ export const workflowTemplates: TemplateType = [
             valueType: 'dynamic',
             label: '',
             required: false,
-            description: 'core.module.input.description.HTTP Dynamic Input',
-            editField: {
-              key: true,
-              valueType: true
-            }
+            description: 'core.module.input.description.HTTP Dynamic Input'
           },
           {
             valueType: 'string',
@@ -3034,11 +3030,7 @@ export const pluginTemplates: TemplateType = [
             valueType: 'dynamic',
             label: '',
             required: false,
-            description: 'core.module.input.description.HTTP Dynamic Input',
-            editField: {
-              key: true,
-              valueType: true
-            }
+            description: 'core.module.input.description.HTTP Dynamic Input'
           },
           {
             key: 'text',
