@@ -134,7 +134,8 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
       // update chat window
       setChatData((state) => ({
         ...state,
-        title: newTitle
+        title: newTitle,
+        history: ChatBoxRef.current?.getChatHistories() || state.history
       }));
 
       // hook message

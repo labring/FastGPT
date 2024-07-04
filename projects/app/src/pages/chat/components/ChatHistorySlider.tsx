@@ -172,9 +172,10 @@ const ChatHistorySlider = ({
             onChange={setCurrentTab}
           />
         )}
+
         <Button
           variant={'whitePrimary'}
-          flex={['0 0 auto', 1]}
+          flex={1}
           h={'100%'}
           color={'primary.600'}
           borderRadius={'xl'}

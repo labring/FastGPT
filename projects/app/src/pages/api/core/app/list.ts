@@ -99,27 +99,29 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
 
   const filterApps = myApps
     .map((app) => {
-      let Per: AppPermission;
-      if (app.inheritPermission && app.parentId && !AppFolderTypeList.includes(app.type)) {
-        // get its parent's permission as its permission
-        app.defaultPermission = ParentApp!.defaultPermission;
-        const perVal = rpList.find(
-          (item) => String(item.resourceId) === String(ParentApp!._id)
-        )?.permission;
+      const Per = (() => {
+        // Inherit app
+        if (app.inheritPermission && ParentApp && !AppFolderTypeList.includes(app.type)) {
+          // get its parent's permission as its permission
+          app.defaultPermission = ParentApp.defaultPermission;
+          const perVal = rpList.find(
+            (item) => String(item.resourceId) === String(ParentApp._id)
+          )?.permission;
 
-        Per = new AppPermission({
-          per: perVal ?? app.defaultPermission,
-          isOwner: String(app.tmbId) === String(tmbId) || tmbPer.isOwner
-        });
-      } else {
-        const perVal = rpList.find(
-          (item) => String(item.resourceId) === String(app._id)
-        )?.permission;
-        Per = new AppPermission({
-          per: perVal ?? app.defaultPermission,
-          isOwner: String(app.tmbId) === String(tmbId) || tmbPer.isOwner
-        });
-      }
+          return new AppPermission({
+            per: perVal ?? app.defaultPermission,
+            isOwner: String(app.tmbId) === String(tmbId) || tmbPer.isOwner
+          });
+        } else {
+          const perVal = rpList.find(
+            (item) => String(item.resourceId) === String(app._id)
+          )?.permission;
+          return new AppPermission({
+            per: perVal ?? app.defaultPermission,
+            isOwner: String(app.tmbId) === String(tmbId) || tmbPer.isOwner
+          });
+        }
+      })();
 
       return {
         ...app,

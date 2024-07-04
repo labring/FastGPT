@@ -99,7 +99,8 @@ const Chat = ({
       // update chat window
       setChatData((state) => ({
         ...state,
-        title: newTitle
+        title: newTitle,
+        history: ChatBoxRef.current?.getChatHistories() || state.history
       }));
 
       return { responseText, responseData, isNewChat: forbidLoadChat.current };
