@@ -60,7 +60,6 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
     authToken: string;
     [key: string]: string;
   };
-  const { toast } = useToast();
   const { isPc } = useSystemStore();
   const ChatBoxRef = useRef<ComponentRef>(null);
   const initSign = useRef(false);
@@ -209,10 +208,6 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
       },
       onError(e: any) {
         console.log(e);
-        toast({
-          status: 'error',
-          title: getErrText(e, t('core.shareChat.Init Error'))
-        });
         if (chatId) {
           onChangeChatId('');
         }
