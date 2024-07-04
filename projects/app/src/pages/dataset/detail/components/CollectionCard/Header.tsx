@@ -41,7 +41,7 @@ const Header = ({}: {}) => {
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   const router = useRouter();
-  const { parentId = '' } = router.query as { parentId: string; datasetId: string };
+  const { parentId = '' } = router.query as { parentId: string };
   const { isPc } = useSystemStore();
 
   const lastSearch = useRef('');
