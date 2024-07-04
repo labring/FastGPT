@@ -98,7 +98,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
       session
     });
 
-    return { collectionId, result: insertResult };
+    return { collectionId, results: insertResult };
   });
 }
 export default NextAPI(handler);
