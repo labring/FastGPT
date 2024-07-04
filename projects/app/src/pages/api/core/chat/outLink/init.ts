@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error(ChatErrEnum.unAuthChat);
     }
 
-    const [{ history }, { nodes }] = await Promise.all([
+    const [{ histories }, { nodes }] = await Promise.all([
       getChatItems({
         appId: app._id,
         chatId,
@@ -56,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
 
     // pick share response field
-    history.forEach((item) => {
+    histories.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI) {
         item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
       }
@@ -70,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         //@ts-ignore
         userAvatar: tmb?.userId?.avatar,
         variables: chat?.variables || {},
-        history,
+        history: histories,
         app: {
           chatConfig: getAppChatConfig({
             chatConfig: app.chatConfig,

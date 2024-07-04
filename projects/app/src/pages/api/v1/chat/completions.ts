@@ -26,6 +26,7 @@ import requestIp from 'request-ip';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import {
+  concatHistories,
   filterPublicNodeResponseData,
   removeEmptyUserInput
 } from '@fastgpt/global/core/chat/utils';
@@ -119,6 +120,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     let startTime = Date.now();
 
+    // Web chat params: [Human, AI]
     const chatMessages = GPTMessages2Chats(messages);
     if (chatMessages[chatMessages.length - 1].obj !== ChatRoleEnum.Human) {
       chatMessages.pop();
@@ -170,7 +172,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // 1. get and concat history; 2. get app workflow
     const limit = getMaxHistoryLimitFromNodes(app.modules);
-    const [{ history }, { nodes, edges, chatConfig }] = await Promise.all([
+    const [{ histories }, { nodes, edges, chatConfig }] = await Promise.all([
       getChatItems({
         appId: app._id,
         chatId,
@@ -179,7 +181,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }),
       getAppLatestVersion(app._id, app)
     ]);
-    const concatHistories = history.concat(chatMessages);
+    const newHistories = concatHistories(histories, chatMessages);
     const responseChatItemId: string | undefined = messages[messages.length - 1].dataId;
 
     /* start flow controller */
@@ -198,7 +200,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           runtimeEdges: initWorkflowEdgeStatus(edges),
           variables,
           query: removeEmptyUserInput(question.value),
-          histories: concatHistories,
+          histories: newHistories,
           stream,
           detail,
           maxRunTimes: 200
@@ -217,7 +219,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         modules: setEntryEntries(app.modules),
         variables,
         inputFiles: files,
-        histories: concatHistories,
+        histories: newHistories,
         startParams: {
           userChatInput: text
         },
