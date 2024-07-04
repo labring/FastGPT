@@ -1,5 +1,5 @@
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../../node/constant';
-import { FlowNodeTemplateType } from '../../../type/index.d';
+import { FlowNodeTemplateType } from '../../../type/node.d';
 import {
   FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum,
@@ -25,10 +25,6 @@ export const VariableUpdateNode: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.any,
       label: '',
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      editField: {
-        key: true,
-        valueType: true
-      },
       value: [
         {
           variable: ['', ''],

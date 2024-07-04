@@ -1,13 +1,15 @@
-import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/index.d';
+import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
 import { FlowNodeTypeEnum, defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
 import { pluginData2FlowNodeIO } from '@fastgpt/global/core/workflow/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
-import type { PluginRuntimeType, PluginTemplateType } from '@fastgpt/global/core/plugin/type.d';
+import type { PluginRuntimeType } from '@fastgpt/global/core/workflow/runtime/type';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { cloneDeep } from 'lodash';
 import { MongoApp } from '../schema';
+import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
+import { getCommunityPlugins } from '@fastgpt/plugins/register';
 
 /* 
   plugin id rule:
@@ -32,11 +34,15 @@ export async function splitCombinePluginId(id: string) {
   return { source, pluginId: id };
 }
 
-const getPluginTemplateById = async (id: string): Promise<PluginTemplateType> => {
+const getPluginTemplateById = async (
+  id: string
+): Promise<SystemPluginTemplateItemType & { teamId?: string }> => {
   const { source, pluginId } = await splitCombinePluginId(id);
 
   if (source === PluginSourceEnum.community) {
-    const item = global.communityPlugins?.find((plugin) => plugin.id === pluginId);
+    const item = [...global.communityPlugins, ...getCommunityPlugins()].find(
+      (plugin) => plugin.id === pluginId
+    );
     if (!item) return Promise.reject('plugin not found');
 
     return cloneDeep(item);
@@ -52,12 +58,15 @@ const getPluginTemplateById = async (id: string): Promise<PluginTemplateType> =>
       avatar: item.avatar,
       intro: item.intro,
       showStatus: true,
-      source: PluginSourceEnum.personal,
-      nodes: item.modules,
-      edges: item.edges,
-      templateType: FlowNodeTemplateTypeEnum.personalPlugin,
+      workflow: {
+        nodes: item.modules,
+        edges: item.edges
+      },
+      templateType: FlowNodeTemplateTypeEnum.teamApp,
       isTool: true,
-      version: item?.pluginData?.nodeVersion || defaultNodeVersion
+      version: item?.pluginData?.nodeVersion || defaultNodeVersion,
+      originCost: 0,
+      currentCost: 0
     };
   }
   return Promise.reject('plugin not found');
@@ -80,7 +89,7 @@ export async function getPluginPreviewNode({ id }: { id: string }): Promise<Flow
     version: plugin.version,
     sourceHandle: getHandleConfig(true, true, true, true),
     targetHandle: getHandleConfig(true, true, true, true),
-    ...pluginData2FlowNodeIO(plugin.nodes)
+    ...pluginData2FlowNodeIO(plugin.workflow.nodes)
   };
 }
 
@@ -93,7 +102,7 @@ export async function getPluginRuntimeById(id: string): Promise<PluginRuntimeTyp
     name: plugin.name,
     avatar: plugin.avatar,
     showStatus: plugin.showStatus,
-    nodes: plugin.nodes,
-    edges: plugin.edges
+    nodes: plugin.workflow.nodes,
+    edges: plugin.workflow.edges
   };
 }

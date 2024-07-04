@@ -1,10 +1,10 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Container from '../components/Container';
 import { Box, Button, Center, Flex, useDisclosure } from '@chakra-ui/react';
-import { WorkflowIOValueTypeEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { getLafAppDetail } from '@/web/support/laf/api';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -24,7 +24,7 @@ import RenderToolInput from './render/RenderToolInput';
 import RenderInput from './render/RenderInput';
 import RenderOutput from './render/RenderOutput';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
@@ -34,6 +34,7 @@ import IOTitle from '../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { putUpdateTeam } from '@/web/support/user/team/api';
+import { nodeLafCustomInputConfig } from '@fastgpt/global/core/workflow/template/system/laf';
 
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 
@@ -46,7 +47,9 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
 
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
-  const requestUrl = inputs.find((item) => item.key === NodeInputKeyEnum.httpReqUrl);
+  const requestUrl = inputs.find(
+    (item) => item.key === NodeInputKeyEnum.httpReqUrl
+  ) as FlowNodeInputItemType;
 
   const { userInfo, initUserInfo } = useUserStore();
 
@@ -122,8 +125,8 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
     [lafFunctionSelectList, requestUrl?.value]
   );
 
-  const { mutate: onSyncParams, isLoading: isSyncing } = useRequest({
-    mutationFn: async () => {
+  const { run: onSyncParams, loading: isSyncing } = useRequest2(
+    async () => {
       await refetchFunction();
       const lafFunction = lafData?.lafFunctions.find(
         (item) => item.requestUrl === selectedFunction
@@ -144,10 +147,10 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
       // add input variables
       const bodyParams =
         lafFunction?.request?.content?.['application/json']?.schema?.properties || {};
-
       const requiredParams =
         lafFunction?.request?.content?.['application/json']?.schema?.required || [];
 
+      // add new params
       const allParams = [
         ...Object.keys(bodyParams).map((key) => ({
           name: key,
@@ -166,13 +169,11 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
           renderTypeList: [FlowNodeInputTypeEnum.reference],
           required: param.required,
           description: param.desc || '',
-          toolDescription: param.desc || '未设置参数描述',
-          canEdit: true,
-          editField: {
-            key: true,
-            valueType: true
-          }
+          toolDescription: param.desc || param.name,
+          customInputConfig: nodeLafCustomInputConfig,
+          canEdit: true
         };
+
         onChangeNode({
           nodeId,
           type: 'addInput',
@@ -211,8 +212,10 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
         });
       });
     },
-    successToast: t('common.Sync success')
-  });
+    {
+      successToast: t('common.Sync success')
+    }
+  );
 
   // not config laf
   if (!token || !appid) {
@@ -299,19 +302,18 @@ const ConfigLaf = () => {
   );
 };
 
-const RenderIO = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const RenderIO = ({ data }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
   const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
-  const { commonInputs, toolInputs, isTool } = splitToolInputs(inputs, nodeId);
+  const { commonInputs, isTool } = splitToolInputs(inputs, nodeId);
 
   return (
     <>
       {isTool && (
         <>
           <Container>
-            <IOTitle text={t('core.module.tool.Tool input')} />
-            <RenderToolInput nodeId={nodeId} inputs={toolInputs} canEdit />
+            <RenderToolInput nodeId={nodeId} inputs={inputs} />
           </Container>
         </>
       )}

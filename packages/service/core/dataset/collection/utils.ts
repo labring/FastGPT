@@ -53,29 +53,6 @@ export async function findCollectionAndChild({
   return [collection, ...childCollections];
 }
 
-export async function getDatasetCollectionPaths({
-  parentId = ''
-}: {
-  parentId?: string;
-}): Promise<ParentTreePathItemType[]> {
-  async function find(parentId?: string): Promise<ParentTreePathItemType[]> {
-    if (!parentId) {
-      return [];
-    }
-
-    const parent = await MongoDatasetCollection.findOne({ _id: parentId }, 'name parentId');
-
-    if (!parent) return [];
-
-    const paths = await find(parent.parentId);
-    paths.push({ parentId, parentName: parent.name });
-
-    return paths;
-  }
-
-  return await find(parentId);
-}
-
 export function getCollectionUpdateTime({ name, time }: { time?: Date; name: string }) {
   if (time) return time;
   if (name.startsWith('手动') || ['manual', 'mark'].includes(name)) return new Date('2999/9/9');

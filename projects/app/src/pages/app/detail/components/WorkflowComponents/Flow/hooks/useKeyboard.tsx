@@ -3,7 +3,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
 import { Node } from 'reactflow';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext, getWorkflowStore } from '../../context';
 import { useWorkflowUtils } from './useUtils';

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import RenderOutput from './render/RenderOutput';
@@ -21,17 +21,16 @@ const NodeSimple = ({
   const { t } = useTranslation();
   const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
   const { nodeId, inputs, outputs } = data;
-  const { toolInputs, commonInputs } = splitToolInputs(inputs, nodeId);
+  const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
 
   const filterHiddenInputs = useMemo(() => commonInputs.filter((item) => true), [commonInputs]);
 
   return (
     <NodeCard minW={minW} maxW={maxW} selected={selected} {...data}>
-      {toolInputs.length > 0 && (
+      {isTool && (
         <>
           <Container>
-            <IOTitle text={t('core.module.tool.Tool input')} />
-            <RenderToolInput nodeId={nodeId} inputs={toolInputs} />
+            <RenderToolInput nodeId={nodeId} inputs={inputs} />
           </Container>
         </>
       )}

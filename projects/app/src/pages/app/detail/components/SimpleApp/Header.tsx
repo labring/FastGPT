@@ -89,7 +89,7 @@ const Header = ({
           <RouteTab />
         </Flex>
       )}
-      <Flex pl={2} pt={[2, 3]} alignItems={'flex-start'} position={'relative'}>
+      <Flex pt={[2, 3]} alignItems={'flex-start'} position={'relative'}>
         <Box flex={'1'}>
           <FolderPath paths={paths} hoverStyle={{ color: 'primary.600' }} onClick={onclickRoute} />
         </Box>
@@ -102,20 +102,23 @@ const Header = ({
           <Flex alignItems={'center'}>
             {!historiesDefaultData && (
               <>
-                <MyTag
-                  mr={3}
-                  type={'borderFill'}
-                  showDot
-                  colorSchema={
-                    isPublished
-                      ? publishStatusStyle.published.colorSchema
-                      : publishStatusStyle.unPublish.colorSchema
-                  }
-                >
-                  {isPublished
-                    ? publishStatusStyle.published.text
-                    : publishStatusStyle.unPublish.text}
-                </MyTag>
+                {isPc && (
+                  <MyTag
+                    mr={3}
+                    type={'borderFill'}
+                    showDot
+                    colorSchema={
+                      isPublished
+                        ? publishStatusStyle.published.colorSchema
+                        : publishStatusStyle.unPublish.colorSchema
+                    }
+                  >
+                    {isPublished
+                      ? publishStatusStyle.published.text
+                      : publishStatusStyle.unPublish.text}
+                  </MyTag>
+                )}
+
                 <IconButton
                   mr={[2, 4]}
                   icon={<MyIcon name={'history'} w={'18px'} />}

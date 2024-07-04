@@ -1,13 +1,11 @@
 export enum FlowNodeTemplateTypeEnum {
   systemInput = 'systemInput',
+  ai = 'ai',
+  function = 'function',
   tools = 'tools',
-  textAnswer = 'textAnswer',
-  functionCall = 'functionCall',
-  externalCall = 'externalCall',
 
-  personalPlugin = 'personalPlugin',
-
-  other = 'other'
+  other = 'other',
+  teamApp = 'teamApp'
 }
 
 export enum WorkflowIOValueTypeEnum {
@@ -83,6 +81,9 @@ export enum NodeInputKeyEnum {
   datasetSearchUsingExtensionQuery = 'datasetSearchUsingExtensionQuery',
   datasetSearchExtensionModel = 'datasetSearchExtensionModel',
   datasetSearchExtensionBg = 'datasetSearchExtensionBg',
+
+  // concat dataset
+  datasetQuoteList = 'system_datasetQuoteList',
 
   // context extract
   contextExtractInput = 'content',
@@ -180,8 +181,6 @@ export const variableMap = {
   }
 };
 
-export const DYNAMIC_INPUT_REFERENCE_KEY = 'DYNAMIC_INPUT_REFERENCE_KEY';
-
 /* run time */
 export enum RuntimeEdgeStatusEnum {
   'waiting' = 'waiting',
@@ -190,3 +189,4 @@ export enum RuntimeEdgeStatusEnum {
 }
 
 export const VARIABLE_NODE_ID = 'VARIABLE_NODE_ID';
+export const DYNAMIC_INPUT_REFERENCE_KEY = 'DYNAMIC_INPUT_REFERENCE_KEY';

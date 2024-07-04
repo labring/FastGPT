@@ -5,12 +5,12 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import ToolMenu from './ToolMenu';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
-import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const ChatHeader = ({
   history,
@@ -61,10 +61,14 @@ const ChatHeader = ({
             </Box>
           </MyTag>
           {!!chatModels && chatModels.length > 0 && (
-            <MyTag ml={2} colorSchema={'green'}>
-              <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
-              <Box ml={1}>{chatModels.join(',')}</Box>
-            </MyTag>
+            <MyTooltip label={chatModels.join(',')}>
+              <MyTag ml={2} colorSchema={'green'}>
+                <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
+                <Box ml={1} maxW={'200px'} className="textEllipsis">
+                  {chatModels.join(',')}
+                </Box>
+              </MyTag>
+            </MyTooltip>
           )}
           <Box flex={1} />
         </>

@@ -1,10 +1,12 @@
 {
   "name": "@fastgpt/plugins",
   "version": "1.0.0",
-  "dependencies": {},
+  "dependencies": {
+    "expr-eval": "^2.0.2"
+  },
   "devDependencies": {
-    "@types/node": "^20.14.2",
     "@fastgpt/global": "workspace:*",
-    "@fastgpt/service": "workspace:*"
+    "@fastgpt/service": "workspace:*",
+    "@types/node": "^20.14.2"
   }
 }

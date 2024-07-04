@@ -8,227 +8,295 @@
   "showStatus": false,
   "isTool": false,
   "weight": 0,
-  "nodes": [
-    {
-      "nodeId": "lmpb9v2lo2lk",
-      "name": "自定义插件输入",
-      "intro": "自定义配置外部输入，使用插件时，仅暴露自定义配置的输入",
-      "avatar": "/imgs/workflow/input.png",
-      "flowNodeType": "pluginInput",
-      "showStatus": false,
-      "position": {
-        "x": 616.4226348688949,
-        "y": -165.05298493910115
-      },
-      "inputs": [
-        {
-          "key": "system_addInputParam",
-          "valueType": "dynamic",
-          "label": "动态外部数据",
-          "renderTypeList": ["addInputParam"],
-          "required": false,
-          "description": "",
-          "canEdit": true,
-          "value": "",
-          "editField": {
-            "key": true
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "lmpb9v2lo2lk",
+        "name": "自定义插件输入",
+        "intro": "自定义配置外部输入，使用插件时，仅暴露自定义配置的输入",
+        "avatar": "/imgs/workflow/input.png",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 541.7107154264237,
+          "y": -165.05298493910115
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "valueType": "dynamic",
+            "label": "自定义输入变量",
+            "renderTypeList": ["addInputParam"],
+            "required": false,
+            "description": "",
+            "canEdit": true,
+            "value": "",
+            "customInputConfig": {
+              "selectValueTypeList": ["string"],
+              "showDescription": false,
+              "showDefaultValue": false
+            }
           },
-          "dynamicParamDefaultValue": {
-            "inputType": "reference",
+          {
+            "key": "反馈内容",
             "valueType": "string",
-            "required": true
+            "label": "反馈内容",
+            "renderTypeList": ["textarea", "reference"],
+            "description": "",
+            "canEdit": true,
+            "value": "",
+            "maxLength": ""
           }
-        },
-        {
-          "key": "反馈内容",
-          "valueType": "string",
-          "label": "反馈内容",
-          "renderTypeList": ["textarea"],
-          "description": "",
-          "canEdit": true,
-          "value": "",
-          "editField": {
-            "key": true
-          },
-          "maxLength": "",
-          "dynamicParamDefaultValue": {
-            "inputType": "reference",
+        ],
+        "outputs": [
+          {
+            "id": "ILc8GS7iU53M",
+            "key": "反馈内容",
             "valueType": "string",
+            "label": "反馈内容",
+            "type": "static"
+          },
+          {
+            "id": "2LCxDnOSculb",
+            "key": "system_addInputParam",
+            "valueType": "dynamic",
+            "label": "动态外部数据",
+            "type": "static"
+          }
+        ]
+      },
+      {
+        "nodeId": "i7uow4wj2wdp",
+        "name": "自定义插件输出",
+        "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
+        "avatar": "/imgs/workflow/output.png",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 1607.7142331269126,
+          "y": -151.8669210746189
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "text",
+            "valueType": "string",
+            "label": "text",
+            "renderTypeList": ["reference"],
+            "description": "",
+            "canEdit": true,
+            "editField": {
+              "key": true,
+              "description": true,
+              "valueType": true
+            },
+            "value": ["CRT7oIEU8v2P", "pYKS0LB9gAr3"]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "CRT7oIEU8v2P",
+        "name": "HTTP 请求",
+        "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
+        "avatar": "/imgs/workflow/http.png",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 1070.8458389994719,
+          "y": -415.09022555407836
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "core.module.input.description.HTTP Dynamic Input",
+            "editField": {
+              "key": true,
+              "valueType": true
+            },
+            "value": ["lmpb9v2lo2lk", "2LCxDnOSculb"],
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": ["custom"],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
             "required": true
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "label": "",
+            "description": "core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "/api/plugins/customFeedback/v2"
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": ["custom"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "description": "core.module.input.description.Http Request Header",
+            "placeholder": "core.module.input.description.Http Request Header",
+            "required": false
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": "{\r\n  \"customFeedback\":\"{{customFeedback}}\",\r\n  \"customInputs\": {{customInputs}},\r\n  \"appId\": \"{{appId}}\",\r\n  \"chatId\": \"{{chatId}}\",\r\n  \"responseChatItemId\": \"{{responseChatItemId}}\"\r\n}",
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "customFeedback",
+            "valueType": "string",
+            "label": "customFeedback",
+            "renderTypeList": ["reference"],
+            "description": "",
+            "canEdit": true,
+            "editField": {
+              "key": true,
+              "valueType": true
+            },
+            "value": ["lmpb9v2lo2lk", "ILc8GS7iU53M"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "dynamic",
+            "canEdit": true,
+            "key": "customInputs",
+            "label": "customInputs",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["lmpb9v2lo2lk", "2LCxDnOSculb"]
           }
-        }
-      ],
-      "outputs": [
-        {
-          "id": "ILc8GS7iU53M",
-          "key": "反馈内容",
-          "valueType": "string",
-          "label": "反馈内容",
-          "type": "static"
-        },
-        {
-          "id": "2LCxDnOSculb",
-          "key": "system_addInputParam",
-          "valueType": "dynamic",
-          "label": "动态外部数据",
-          "type": "static"
-        }
-      ]
-    },
-    {
-      "nodeId": "i7uow4wj2wdp",
-      "name": "自定义插件输出",
-      "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
-      "avatar": "/imgs/workflow/output.png",
-      "flowNodeType": "pluginOutput",
-      "showStatus": false,
-      "position": {
-        "x": 1607.7142331269126,
-        "y": -151.8669210746189
-      },
-      "inputs": [
-        {
-          "key": "text",
-          "valueType": "string",
-          "label": "text",
-          "renderTypeList": ["reference"],
-          "description": "",
-          "canEdit": true,
-          "editField": {
-            "key": true,
-            "description": true,
-            "valueType": true
+        ],
+        "outputs": [
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
           },
-          "value": ["CRT7oIEU8v2P", "pYKS0LB9gAr3"]
-        }
-      ],
-      "outputs": []
-    },
-    {
-      "nodeId": "CRT7oIEU8v2P",
-      "name": "HTTP 请求",
-      "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
-      "avatar": "/imgs/workflow/http.png",
-      "flowNodeType": "httpRequest468",
-      "showStatus": true,
-      "position": {
-        "x": 1070.8458389994719,
-        "y": -415.09022555407836
-      },
-      "inputs": [
-        {
-          "key": "system_addInputParam",
-          "renderTypeList": ["addInputParam"],
-          "valueType": "dynamic",
-          "label": "",
-          "required": false,
-          "description": "core.module.input.description.HTTP Dynamic Input",
-          "editField": {
-            "key": true,
-            "valueType": true
+          {
+            "id": "error",
+            "key": "error",
+            "label": "请求错误",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
           },
-          "value": ["lmpb9v2lo2lk", "2LCxDnOSculb"]
-        },
-        {
-          "key": "customFeedback",
-          "valueType": "string",
-          "label": "customFeedback",
-          "renderTypeList": ["reference"],
-          "description": "",
-          "canEdit": true,
-          "editField": {
-            "key": true,
-            "valueType": true
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "label": "原始响应",
+            "required": true,
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
           },
-          "value": ["lmpb9v2lo2lk", "ILc8GS7iU53M"]
-        },
-        {
-          "key": "system_httpMethod",
-          "renderTypeList": ["custom"],
-          "valueType": "string",
-          "label": "",
-          "value": "POST",
-          "required": true
-        },
-        {
-          "key": "system_httpReqUrl",
-          "renderTypeList": ["hidden"],
-          "valueType": "string",
-          "label": "",
-          "description": "core.module.input.description.Http Request Url",
-          "placeholder": "https://api.ai.com/getInventory",
-          "required": false,
-          "value": "/api/plugins/customFeedback/v2"
-        },
-        {
-          "key": "system_httpHeader",
-          "renderTypeList": ["custom"],
-          "valueType": "any",
-          "value": [],
-          "label": "",
-          "description": "core.module.input.description.Http Request Header",
-          "placeholder": "core.module.input.description.Http Request Header",
-          "required": false
-        },
-        {
-          "key": "system_httpParams",
-          "renderTypeList": ["hidden"],
-          "valueType": "any",
-          "value": [],
-          "label": "",
-          "required": false
-        },
-        {
-          "key": "system_httpJsonBody",
-          "renderTypeList": ["hidden"],
-          "valueType": "any",
-          "value": "{\r\n  \"customFeedback\":\"{{customFeedback}}\",\r\n  \"system_addInputParam\": {{system_addInputParam}}\r\n}",
-          "label": "",
-          "required": false
-        }
-      ],
-      "outputs": [
-        {
-          "id": "system_addOutputParam",
-          "key": "system_addOutputParam",
-          "type": "dynamic",
-          "valueType": "dynamic",
-          "label": "",
-          "editField": {
-            "key": true,
-            "valueType": true
+          {
+            "id": "pYKS0LB9gAr3",
+            "type": "dynamic",
+            "key": "text",
+            "valueType": "string",
+            "label": "text"
           }
-        },
-        {
-          "id": "httpRawResponse",
-          "key": "httpRawResponse",
-          "label": "原始响应",
-          "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
-          "valueType": "any",
-          "type": "static"
-        },
-        {
-          "id": "pYKS0LB9gAr3",
-          "type": "dynamic",
-          "key": "text",
-          "valueType": "string",
-          "label": "text"
-        }
-      ]
-    }
-  ],
-  "edges": [
-    {
-      "source": "lmpb9v2lo2lk",
-      "target": "CRT7oIEU8v2P",
-      "sourceHandle": "lmpb9v2lo2lk-source-right",
-      "targetHandle": "CRT7oIEU8v2P-target-left"
-    },
-    {
-      "source": "CRT7oIEU8v2P",
-      "target": "i7uow4wj2wdp",
-      "sourceHandle": "CRT7oIEU8v2P-source-right",
-      "targetHandle": "i7uow4wj2wdp-target-left"
-    }
-  ]
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "lmpb9v2lo2lk",
+        "target": "CRT7oIEU8v2P",
+        "sourceHandle": "lmpb9v2lo2lk-source-right",
+        "targetHandle": "CRT7oIEU8v2P-target-left"
+      },
+      {
+        "source": "CRT7oIEU8v2P",
+        "target": "i7uow4wj2wdp",
+        "sourceHandle": "CRT7oIEU8v2P-source-right",
+        "targetHandle": "i7uow4wj2wdp-target-left"
+      }
+    ]
+  }
 }

@@ -192,7 +192,7 @@ export default async function (ctx: FunctionContext) {
     },
     {
       "nodeId": "NOgbnBzUwDgT",
-      "name": "工具调用（实验）",
+      "name": "工具调用",
       "intro": "通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。",
       "avatar": "/imgs/workflow/tool.svg",
       "flowNodeType": "tools",

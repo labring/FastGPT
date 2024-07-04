@@ -1,4 +1,4 @@
-import { Types, connectionMongo } from '../../mongo';
+import { Types, connectionMongo, ReadPreference } from '../../mongo';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import fsp from 'fs/promises';
 import fs from 'fs';
@@ -17,7 +17,9 @@ export function getGFSCollection(bucket: `${BucketNameEnum}`) {
 }
 export function getGridBucket(bucket: `${BucketNameEnum}`) {
   return new connectionMongo.mongo.GridFSBucket(connectionMongo.connection.db, {
-    bucketName: bucket
+    bucketName: bucket,
+    // @ts-ignore
+    readPreference: ReadPreference.SECONDARY_PREFERRED // Read from secondary node
   });
 }
 

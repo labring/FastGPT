@@ -1,5 +1,5 @@
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchResultConcat } from '@fastgpt/global/core/dataset/search/utils';
 import { filterSearchResultsByMaxChars } from '../../utils';

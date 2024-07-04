@@ -1,4 +1,4 @@
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import axios from 'axios';
@@ -8,7 +8,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 type RunCodeType = ModuleDispatchProps<{
   [NodeInputKeyEnum.codeType]: 'js';
   [NodeInputKeyEnum.code]: string;
-  [key: string]: any;
+  [NodeInputKeyEnum.addInputParam]: Record<string, any>;
 }>;
 type RunCodeResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.error]?: any;
@@ -18,7 +18,7 @@ type RunCodeResponse = DispatchNodeResultType<{
 
 export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeResponse> => {
   const {
-    params: { codeType, code, ...customVariables }
+    params: { codeType, code, [NodeInputKeyEnum.addInputParam]: customVariables }
   } = props;
 
   const sandBoxRequestUrl = `${process.env.SANDBOX_URL}/sandbox/js`;

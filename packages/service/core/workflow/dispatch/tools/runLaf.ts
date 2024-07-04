@@ -1,4 +1,4 @@
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import axios from 'axios';
@@ -39,11 +39,13 @@ export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafRes
   }
 
   const concatVariables = {
+    ...variables,
+    ...body,
+    ...dynamicInput,
     appId,
     chatId,
     responseChatItemId,
-    ...variables,
-    ...body
+    histories: histories?.slice(-10) || []
   };
 
   httpReqUrl = replaceVariable(httpReqUrl, concatVariables);

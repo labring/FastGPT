@@ -10,3 +10,5 @@ export const connectionMongo = (() => {
 
   return global.mongodb;
 })();
+
+export const ReadPreference = mongoose.mongo.ReadPreference;

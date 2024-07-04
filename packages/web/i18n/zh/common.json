@@ -1,6 +1,7 @@
 {
   "Add new": "新增",
   "App": "应用",
+  "Click to resume": "点击恢复",
   "Code editor": "代码编辑",
   "Export": "导出",
   "Field name": "字段名",
@@ -12,6 +13,7 @@
   "New Create": "新建",
   "No data": "暂无数据",
   "Rename": "重命名",
+  "Resume": "恢复",
   "Running": "运行中",
   "UnKnow": "未知",
   "Warning": "提示",
@@ -596,7 +598,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -963,6 +966,7 @@
         }
       },
       "template": {
+        "AI function": "AI能力",
         "AI response switch tip": "如果你希望当前节点不输出内容，可以关闭该开关。AI 输出的内容不会展示给用户，你可以手动的使用“AI 回复内容”进行特殊处理。",
         "AI support tool tip": "支持函数调用的模型，可以更好的使用工具调用。",
         "Ai chat": "AI 对话",
@@ -1202,6 +1206,8 @@
   "error": {
     "Create failed": "创建失败",
     "fileNotFound": "文件找不到了~",
+    "inheritPermissionError": "权限继承错误",
+    "missingParams": "参数缺失",
     "team": {
       "overSize": "团队成员超出上限"
     }
@@ -1235,6 +1241,7 @@
     "Collaborator": "协作者",
     "Default permission": "默认权限",
     "Manage": "管理",
+    "No InheritPermission": "已限制权限，不再继承父级文件夹的权限，",
     "Not collaborator": "暂无协作者",
     "Owner": "创建者",
     "Permission": "权限",
@@ -1243,6 +1250,10 @@
     "Private Tip": "仅自己可用",
     "Public": "团队",
     "Public Tip": "团队所有成员可使用",
+    "Remove InheritPermission Confirm": "此操作会导致权限继承失效，是否进行？",
+    "Resume InheritPermission Confirm": "是否恢复为继承父级文件夹的权限？",
+    "Resume InheritPermission Failed": "恢复失败",
+    "Resume InheritPermission Success": "恢复成功",
     "Set Private": "设为私有",
     "Set Public": "设为团队可用"
   },
@@ -1517,6 +1528,7 @@
     }
   },
   "system": {
+    "Concat us": "联系我们",
     "Help Document": "帮助文档"
   },
   "template": {

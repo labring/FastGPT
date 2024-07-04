@@ -5,14 +5,15 @@ import {
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeOutputKeyEnum,
+  RuntimeEdgeStatusEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import {
-  FlowNodeItemType,
-  FlowNodeTemplateType,
-  StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type';
+import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { FlowNodeChangeProps } from '@fastgpt/global/core/workflow/type/fe';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -48,8 +49,13 @@ import { useDisclosure } from '@chakra-ui/react';
 import { uiWorkflow2StoreWorkflow } from './utils';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { formatTime2HM } from '@fastgpt/global/common/string/time';
+import {
+  formatTime2HM,
+  formatTime2YMDHM,
+  formatTime2YMDHMW
+} from '@fastgpt/global/common/string/time';
 import type { InitProps } from '@/pages/app/detail/components/PublishHistoriesSlider';
+import { cloneDeep } from 'lodash';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -70,6 +76,7 @@ type WorkflowContextType = {
   onUpdateNodeError: (node: string, isError: Boolean) => void;
   onResetNode: (e: { id: string; node: FlowNodeTemplateType }) => void;
   onChangeNode: (e: FlowNodeChangeProps) => void;
+  getNodeDynamicInputs: (nodeId: string) => FlowNodeInputItemType[];
 
   // edges
   edges: Edge<any>[];
@@ -193,6 +200,7 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   onResetNode: function (e: { id: string; node: FlowNodeTemplateType }): void {
     throw new Error('Function not implemented.');
   },
+
   onDelEdge: function (e: {
     nodeId: string;
     sourceHandle?: string | undefined;
@@ -258,6 +266,9 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   saveLabel: '',
   historiesDefaultData: undefined,
   setHistoriesDefaultData: function (value: React.SetStateAction<InitProps | undefined>): void {
+    throw new Error('Function not implemented.');
+  },
+  getNodeDynamicInputs: function (nodeId: string): FlowNodeInputItemType[] {
     throw new Error('Function not implemented.');
   }
 });
@@ -364,10 +375,11 @@ const WorkflowContextProvider = ({
       nodes.map((node) => {
         if (node.id !== nodeId) return node;
 
-        const updateObj: Record<string, any> = {};
+        const updateObj = cloneDeep(node.data);
 
         if (type === 'attr') {
           if (props.key) {
+            // @ts-ignore
             updateObj[props.key] = props.value;
           }
         } else if (type === 'updateInput') {
@@ -375,16 +387,9 @@ const WorkflowContextProvider = ({
             item.key === props.key ? props.value : item
           );
         } else if (type === 'replaceInput') {
-          const oldInputIndex = node.data.inputs.findIndex((item) => item.key === props.key);
-          updateObj.inputs = node.data.inputs.filter((item) => item.key !== props.key);
-          setTimeout(() => {
-            onChangeNode({
-              nodeId,
-              type: 'addInput',
-              index: oldInputIndex,
-              value: props.value
-            });
-          });
+          updateObj.inputs = updateObj.inputs.map((item) =>
+            item.key === props.key ? props.value : item
+          );
         } else if (type === 'addInput') {
           const input = node.data.inputs.find((input) => input.key === props.value.key);
           if (input) {
@@ -392,15 +397,8 @@ const WorkflowContextProvider = ({
               status: 'warning',
               title: 'key 重复'
             });
-            updateObj.inputs = node.data.inputs;
           } else {
-            if (props.index !== undefined) {
-              const inputs = [...node.data.inputs];
-              inputs.splice(props.index, 0, props.value);
-              updateObj.inputs = inputs;
-            } else {
-              updateObj.inputs = node.data.inputs.concat(props.value);
-            }
+            updateObj.inputs.push(props.value);
           }
         } else if (type === 'delInput') {
           updateObj.inputs = node.data.inputs.filter((item) => item.key !== props.key);
@@ -410,17 +408,9 @@ const WorkflowContextProvider = ({
           );
         } else if (type === 'replaceOutput') {
           onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source', props.key) });
-          const oldOutputIndex = node.data.outputs.findIndex((item) => item.key === props.key);
-          updateObj.outputs = node.data.outputs.filter((item) => item.key !== props.key);
-          console.log(props.value);
-          setTimeout(() => {
-            onChangeNode({
-              nodeId,
-              type: 'addOutput',
-              index: oldOutputIndex,
-              value: props.value
-            });
-          });
+          updateObj.outputs = updateObj.outputs.map((item) =>
+            item.key === props.key ? props.value : item
+          );
         } else if (type === 'addOutput') {
           const output = node.data.outputs.find((output) => output.key === props.value.key);
           if (output) {
@@ -445,14 +435,22 @@ const WorkflowContextProvider = ({
 
         return {
           ...node,
-          data: {
-            ...node.data,
-            ...updateObj
-          }
+          data: updateObj
         };
       })
     );
   });
+  const getNodeDynamicInputs = useCallback(
+    (nodeId: string) => {
+      const node = nodeList.find((node) => node.nodeId === nodeId);
+      if (!node) return [];
+
+      const dynamicInputs = node.inputs.filter((input) => input.canEdit);
+
+      return dynamicInputs;
+    },
+    [nodeList]
+  );
 
   /* function */
   const onFixView = useMemoizedFn(() => {
@@ -610,7 +608,10 @@ const WorkflowContextProvider = ({
           await postWorkflowDebug({
             nodes: runtimeNodes,
             edges: debugData.runtimeEdges,
-            variables: {},
+            variables: {
+              appId,
+              cTime: formatTime2YMDHMW()
+            },
             appId
           });
         // console.log({ finishedEdges, finishedNodes, nextStepRunNodes, flowResponses });
@@ -774,6 +775,7 @@ const WorkflowContextProvider = ({
     onUpdateNodeError,
     onResetNode,
     onChangeNode,
+    getNodeDynamicInputs,
 
     // edge
     edges,

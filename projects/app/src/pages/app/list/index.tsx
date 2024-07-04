@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { Box, Flex, Button, useDisclosure } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/utils/i18n';
@@ -18,7 +18,7 @@ import AppListContextProvider, { AppListContext } from './components/context';
 import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
-import { delAppById } from '@/web/core/app/api';
+import { delAppById, resumeInheritPer } from '@/web/core/app/api';
 import {
   AppDefaultPermissionVal,
   AppPermissionList
@@ -54,7 +54,8 @@ const MyApps = () => {
     onUpdateApp,
     setMoveAppId,
     isFetchingApps,
-    folderDetail
+    folderDetail,
+    refetchFolderDetail
   } = useContextSelector(AppListContext, (v) => v);
   const { userInfo } = useUserStore();
 
@@ -110,7 +111,7 @@ const MyApps = () => {
         <Box
           flex={'1 0 0'}
           h={'100%'}
-          pr={folderDetail ? [4, 6] : [4, 10]}
+          pr={folderDetail ? [4, 2] : [4, 10]}
           pl={3}
           overflowY={'auto'}
           overflowX={'hidden'}
@@ -212,7 +213,11 @@ const MyApps = () => {
         {!!folderDetail && isPc && (
           <Box pt={[4, 6]} pr={[4, 6]}>
             <FolderSlideCard
-              refreshDeps={[folderDetail._id]}
+              refetchResource={() => Promise.all([refetchFolderDetail(), loadMyApps()])}
+              resumeInheritPermission={() => resumeInheritPer(folderDetail._id)}
+              isInheritPermission={folderDetail.inheritPermission}
+              hasParent={!!folderDetail.parentId}
+              refreshDeps={[folderDetail._id, folderDetail.inheritPermission]}
               name={folderDetail.name}
               intro={folderDetail.intro}
               onEdit={() => {
@@ -249,6 +254,7 @@ const MyApps = () => {
                     appId: folderDetail._id
                   });
                 },
+                refreshDeps: [folderDetail._id, folderDetail.inheritPermission],
                 onDelOneCollaborator: (tmbId: string) =>
                   deleteAppCollaborators({
                     appId: folderDetail._id,

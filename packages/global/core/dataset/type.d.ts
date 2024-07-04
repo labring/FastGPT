@@ -27,7 +27,7 @@ export type DatasetSchemaType = {
   intro: string;
   type: DatasetTypeEnum;
   status: `${DatasetStatusEnum}`;
-  permission: DatasetPermission;
+  // permission: DatasetPermission;
 
   // metadata
   websiteConfig?: {
@@ -48,6 +48,7 @@ export type DatasetCollectionSchemaType = {
   type: DatasetCollectionTypeEnum;
   createTime: Date;
   updateTime: Date;
+  forbid?: boolean;
 
   trainingType: TrainingModeEnum;
   chunkSize: number;
@@ -89,6 +90,7 @@ export type DatasetDataSchemaType = {
   updateTime: Date;
   q: string; // large chunks or question
   a: string; // answer or custom content
+  forbid?: boolean;
   fullTextToken: string;
   indexes: DatasetDataIndexItemType[];
   rebuilding?: boolean;
@@ -144,6 +146,7 @@ export type DatasetListItemType = {
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel'> & {
   vectorModel: VectorModelItemType;
   agentModel: LLMModelItemType;
+  permission: DatasetPermission;
 };
 
 /* ================= collection ===================== */

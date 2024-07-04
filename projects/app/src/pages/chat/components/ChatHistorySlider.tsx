@@ -156,25 +156,27 @@ const ChatHistorySlider = ({
 
       {/* menu */}
       <Flex w={'100%'} px={[2, 5]} h={'36px'} my={5} alignItems={'center'}>
-        {!isPc && appId && (
-          <LightRowTabs<TabEnum>
-            flex={'1 0 0'}
-            mr={1}
-            inlineStyles={{
-              px: 1
-            }}
-            list={[
-              { label: t('core.chat.Recent use'), value: TabEnum.recently },
-              ...(!isTeamChat ? [{ label: t('App'), value: TabEnum.app }] : []),
-              { label: t('core.chat.History'), value: TabEnum.history }
-            ]}
-            value={currentTab}
-            onChange={setCurrentTab}
-          />
-        )}
+        <Box flex={'1 0 0'}>
+          {!isPc && appId && (
+            <LightRowTabs<TabEnum>
+              mr={1}
+              inlineStyles={{
+                px: 1
+              }}
+              list={[
+                { label: t('core.chat.Recent use'), value: TabEnum.recently },
+                ...(!isTeamChat ? [{ label: t('App'), value: TabEnum.app }] : []),
+                { label: t('core.chat.History'), value: TabEnum.history }
+              ]}
+              value={currentTab}
+              onChange={setCurrentTab}
+            />
+          )}
+        </Box>
+
         <Button
           variant={'whitePrimary'}
-          flex={['0 0 auto', 1]}
+          flex={['auto', 1]}
           h={'100%'}
           color={'primary.600'}
           borderRadius={'xl'}

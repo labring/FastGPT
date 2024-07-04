@@ -10,7 +10,7 @@ import {
   IfElseConditionType,
   IfElseListItemType
 } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type';
+import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';

@@ -1,4 +1,4 @@
-import type { FlowNodeTemplateType, StoreNodeItemType } from '../workflow/type';
+import type { FlowNodeTemplateType, StoreNodeItemType } from '../workflow/type/node';
 import { AppTypeEnum } from './constants';
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import { VariableInputEnum } from '../workflow/constants';
@@ -6,7 +6,7 @@ import { SelectedDatasetType } from '../workflow/api';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/user/team/type.d';
 import { StoreEdgeItemType } from '../workflow/type/edge';
-import { PermissionValueType } from '../../support/permission/type';
+import { PermissionSchemaType, PermissionValueType } from '../../support/permission/type';
 import { AppPermission } from '../../support/permission/app/controller';
 import { ParentIdType } from '../../common/parentFolder/type';
 
@@ -39,8 +39,7 @@ export type AppSchema = {
 
   inited?: boolean;
   teamTags: string[];
-  defaultPermission: PermissionValueType;
-};
+} & PermissionSchemaType;
 
 export type AppListItemType = {
   _id: string;
@@ -50,10 +49,9 @@ export type AppListItemType = {
   intro: string;
   type: AppTypeEnum;
   updateTime: Date;
-  defaultPermission: PermissionValueType;
-  permission: AppPermission;
   pluginData?: AppSchema['pluginData'];
-};
+  permission: AppPermission;
+} & PermissionSchemaType;
 
 export type AppDetailType = AppSchema & {
   permission: AppPermission;

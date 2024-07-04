@@ -1,9 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Flex, IconButton, Input, InputGroup, InputLeftElement, css } from '@chakra-ui/react';
 import type {
-  FlowNodeTemplateType,
-  nodeTemplateListType
-} from '@fastgpt/global/core/workflow/type/index.d';
+  NodeTemplateListItemType,
+  NodeTemplateListType
+} from '@fastgpt/global/core/workflow/type/node.d';
 import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
@@ -30,13 +30,15 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import FolderPath from '@/components/common/folder/Path';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { useWorkflowUtils } from './hooks/useUtils';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { cloneDeep } from 'lodash';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
   onClose: () => void;
 };
 type RenderListProps = {
-  templates: FlowNodeTemplateType[];
+  templates: NodeTemplateListItemType[];
   onClose: () => void;
   parentId: ParentIdType;
   setParentId: React.Dispatch<React.SetStateAction<ParentIdType>>;
@@ -56,79 +58,83 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
   const { feConfigs } = useSystemStore();
-  const { basicNodeTemplates, hasToolNode, nodeList } = useContextSelector(
+  const { basicNodeTemplates, hasToolNode, nodeList, appId } = useContextSelector(
     WorkflowContext,
     (v) => v
   );
-  const [pluginBuffer, setPluginBuffer] = useState<{
-    systemPlugin: FlowNodeTemplateType[];
-    teamPlugin: FlowNodeTemplateType[];
-  }>({
-    [TemplateTypeEnum.systemPlugin]: [],
-    [TemplateTypeEnum.teamPlugin]: []
-  });
 
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
-  const { data: templates = [], loading } = useRequest2(
+  const { data: basicNodes } = useRequest2(
     async () => {
       if (templateType === TemplateTypeEnum.basic) {
-        return basicNodeTemplates.filter((item) => {
-          // unique node filter
-          if (item.unique) {
-            const nodeExist = nodeList.some((node) => node.flowNodeType === item.flowNodeType);
-            if (nodeExist) {
+        return basicNodeTemplates
+          .filter((item) => {
+            // unique node filter
+            if (item.unique) {
+              const nodeExist = nodeList.some((node) => node.flowNodeType === item.flowNodeType);
+              if (nodeExist) {
+                return false;
+              }
+            }
+            // special node filter
+            if (item.flowNodeType === FlowNodeTypeEnum.lafModule && !feConfigs.lafEnv) {
               return false;
             }
-          }
-          // special node filter
-          if (item.flowNodeType === FlowNodeTypeEnum.lafModule && !feConfigs.lafEnv) {
-            return false;
-          }
-          // tool stop
-          if (!hasToolNode && item.flowNodeType === FlowNodeTypeEnum.stopTool) {
-            return false;
-          }
-          return true;
-        });
+            // tool stop
+            if (!hasToolNode && item.flowNodeType === FlowNodeTypeEnum.stopTool) {
+              return false;
+            }
+            return true;
+          })
+          .map<NodeTemplateListItemType>((item) => ({
+            id: item.id,
+            flowNodeType: item.flowNodeType,
+            templateType: item.templateType,
+            avatar: item.avatar,
+            name: item.name,
+            intro: item.intro
+          }));
       }
-      if (templateType === TemplateTypeEnum.systemPlugin) {
-        if (pluginBuffer.systemPlugin.length === 0) {
-          return getSystemPlugTemplates().then((res) => {
-            setPluginBuffer((state) => ({
-              ...state,
-              systemPlugin: res
-            }));
-            return res;
-          });
-        } else {
-          return pluginBuffer.systemPlugin;
-        }
-      }
-      if (templateType === TemplateTypeEnum.teamPlugin) {
-        if (pluginBuffer.teamPlugin.length === 0) {
-          return getTeamPlugTemplates({
-            parentId,
-            searchKey,
-            type: [AppTypeEnum.folder, AppTypeEnum.httpPlugin, AppTypeEnum.plugin]
-          }).then((res) => {
-            setPluginBuffer((state) => ({
-              ...state,
-              teamPlugin: res
-            }));
-            return res;
-          });
-        } else {
-          return pluginBuffer.teamPlugin;
-        }
-      }
-      return [];
     },
     {
       manual: false,
       throttleWait: 300,
       refreshDeps: [basicNodeTemplates, nodeList, hasToolNode, templateType, searchKey, parentId]
     }
+  );
+  const { data: teamApps, loading: isLoadingTeamApp } = useRequest2(
+    async () => {
+      if (templateType === TemplateTypeEnum.teamPlugin) {
+        return getTeamPlugTemplates({
+          parentId,
+          searchKey,
+          type: [AppTypeEnum.folder, AppTypeEnum.httpPlugin, AppTypeEnum.plugin]
+        }).then((res) => res.filter((app) => app.id !== appId));
+      }
+    },
+    {
+      manual: false,
+      throttleWait: 300,
+      refreshDeps: [templateType, searchKey, parentId]
+    }
+  );
+  const { data: systemPlugins, loading: isLoadingSystemPlugins } = useRequest2(
+    async () => {
+      if (templateType === TemplateTypeEnum.systemPlugin) {
+        return getSystemPlugTemplates();
+      }
+    },
+    {
+      manual: false,
+      refreshDeps: [templateType]
+    }
+  );
+
+  const isLoading = isLoadingTeamApp || isLoadingSystemPlugins;
+  const templates = useMemo(
+    () => basicNodes || teamApps || systemPlugins || [],
+    [basicNodes, systemPlugins, teamApps]
   );
 
   const { data: paths = [] } = useRequest2(() => getAppFolderPath(parentId), {
@@ -151,7 +157,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
           fontSize={'sm'}
         />
         <MyBox
-          isLoading={loading}
+          isLoading={isLoading}
           display={'flex'}
           zIndex={3}
           flexDirection={'column'}
@@ -246,7 +252,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         </MyBox>
       </>
     );
-  }, [isOpen, onClose, loading, t, templateType, searchKey, parentId, paths, templates, router]);
+  }, [isOpen, onClose, isLoading, t, templateType, searchKey, parentId, paths, templates, router]);
 
   return Render;
 };
@@ -270,8 +276,8 @@ const RenderList = React.memo(function RenderList({
   const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
   const { computedNewNodeName } = useWorkflowUtils();
 
-  const formatTemplates = useMemo<nodeTemplateListType>(() => {
-    const copy: nodeTemplateListType = JSON.parse(JSON.stringify(workflowNodeTemplateList(t)));
+  const formatTemplates = useMemo<NodeTemplateListType>(() => {
+    const copy: NodeTemplateListType = cloneDeep(workflowNodeTemplateList(t));
     templates.forEach((item) => {
       const index = copy.findIndex((template) => template.type === item.templateType);
       if (index === -1) return;
@@ -282,7 +288,13 @@ const RenderList = React.memo(function RenderList({
   }, [templates, parentId]);
 
   const onAddNode = useCallback(
-    async ({ template, position }: { template: FlowNodeTemplateType; position: XYPosition }) => {
+    async ({
+      template,
+      position
+    }: {
+      template: NodeTemplateListItemType;
+      position: XYPosition;
+    }) => {
       if (!reactFlowWrapper?.current) return;
 
       const templateNode = await (async () => {
@@ -297,7 +309,11 @@ const RenderList = React.memo(function RenderList({
           }
 
           // base node
-          return { ...template };
+          const baseTemplate = moduleTemplatesFlat.find((item) => item.id === template.id);
+          if (!baseTemplate) {
+            throw new Error('baseTemplate not found');
+          }
+          return { ...baseTemplate };
         } catch (e) {
           toast({
             status: 'error',
@@ -390,7 +406,7 @@ const RenderList = React.memo(function RenderList({
                       cursor={'pointer'}
                       _hover={{ bg: 'myWhite.600' }}
                       borderRadius={'sm'}
-                      draggable={template.pluginType !== AppTypeEnum.folder}
+                      draggable={!template.isFolder}
                       onDragEnd={(e) => {
                         if (e.clientX < sliderWidth) return;
                         onAddNode({
@@ -399,10 +415,7 @@ const RenderList = React.memo(function RenderList({
                         });
                       }}
                       onClick={(e) => {
-                        if (
-                          template.pluginType === AppTypeEnum.folder ||
-                          template.pluginType === AppTypeEnum.httpPlugin
-                        ) {
+                        if (template.isFolder) {
                           return setParentId(template.id);
                         }
                         if (isPc) {
@@ -412,7 +425,7 @@ const RenderList = React.memo(function RenderList({
                           });
                         }
                         onAddNode({
-                          template: template,
+                          template,
                           position: { x: e.clientX, y: e.clientY }
                         });
                         onClose();

@@ -54,7 +54,6 @@ const Edit = ({
       flex={'1 0 0'}
       h={0}
       pt={[2, 1.5]}
-      pl={[2, 1]}
       gap={1}
       borderRadius={'lg'}
       overflowY={['auto', 'unset']}

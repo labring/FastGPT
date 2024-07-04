@@ -9,7 +9,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../node/constant';
-import { FlowNodeTemplateType } from '../../../type';
+import { FlowNodeTemplateType } from '../../../type/node';
 import { getHandleConfig } from '../../utils';
 import { Input_Template_DynamicInput } from '../../input';
 import { Output_Template_AddOutput } from '../../output';
@@ -30,9 +30,10 @@ export const CodeNode: FlowNodeTemplateType = {
     {
       ...Input_Template_DynamicInput,
       description: '这些变量会作为代码的运行的输入参数',
-      editField: {
-        key: true,
-        valueType: true
+      customInputConfig: {
+        selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
+        showDescription: false,
+        showDefaultValue: true
       }
     },
     {
