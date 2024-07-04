@@ -10,17 +10,16 @@ type Response = Promise<{
 
 const main = async ({ url }: Props): Response => {
   try {
-    console.log(url, '===');
     const result = await urlsFetch({
       urlList: [url],
       selector: 'body'
     });
 
+    const title = result[0]?.title;
+    const content = result[0]?.content;
+
     return {
-      result: {
-        title: result[0]?.title || 'none',
-        content: result[0]?.content || 'none'
-      }
+      result: `${title ? `# ${title}\n\n` : ''}${content}`
     };
   } catch (error) {
     return {

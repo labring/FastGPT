@@ -18,15 +18,23 @@ const replaceSpecialChar = (expr: string) => {
 
 const main = async ({ expr }: Props): Response => {
   if (typeof expr !== 'string') {
-    return Promise.reject('expr must be a string');
+    return {
+      result: `${expr} is not a string`
+    };
   }
 
-  const parser = new Parser();
-  const exprParser = parser.parse(replaceSpecialChar(expr));
+  try {
+    const parser = new Parser();
+    const exprParser = parser.parse(replaceSpecialChar(expr));
 
-  return {
-    result: exprParser.evaluate()
-  };
+    return {
+      result: exprParser.evaluate()
+    };
+  } catch (error) {
+    return {
+      result: `${expr} is not a valid math expression. Error: ${error}`
+    };
+  }
 };
 
 export default main;
