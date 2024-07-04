@@ -13,6 +13,8 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const getNodeDynamicInputs = useContextSelector(WorkflowContext, (v) => v.getNodeDynamicInputs);
+
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   // get variable
@@ -23,16 +25,14 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
       t
     });
 
-    const moduleVariables = formatEditorVariablePickerIcon(
-      inputs
-        .filter((input) => input.canEdit)
-        .map((item) => ({
-          key: item.key,
-          label: item.label
-        }))
+    const nodeVariables = formatEditorVariablePickerIcon(
+      getNodeDynamicInputs(nodeId).map((item) => ({
+        key: item.key,
+        label: item.label
+      }))
     );
 
-    return [...globalVariables, ...moduleVariables];
+    return [...globalVariables, ...nodeVariables];
   }, [nodeList, inputs, t]);
 
   const onChange = useCallback(
@@ -49,6 +49,7 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
     },
     [item, nodeId, onChangeNode]
   );
+
   const Render = useMemo(() => {
     return (
       <PromptEditor

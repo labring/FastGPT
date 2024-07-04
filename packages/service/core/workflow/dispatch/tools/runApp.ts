@@ -1,6 +1,6 @@
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
-import { SelectAppItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import { SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/runApp/type';
 import { dispatchWorkFlow } from '../index';
 import { responseWrite } from '../../../../common/response';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';

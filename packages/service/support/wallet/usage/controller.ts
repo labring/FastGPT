@@ -14,7 +14,7 @@ export const createTrainingUsage = async ({
   teamId: string;
   tmbId: string;
   appName: string;
-  billSource: `${UsageSourceEnum}`;
+  billSource: UsageSourceEnum;
   vectorModel: string;
   agentModel: string;
   session?: ClientSession;

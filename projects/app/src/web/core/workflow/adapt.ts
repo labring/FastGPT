@@ -10,11 +10,8 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
-import {
-  FlowNodeItemType,
-  FlowNodeTemplateType,
-  StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type';
+import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -321,16 +318,6 @@ export const v1Workflow2V2 = (
           step: input.step,
           max: input.max,
           min: input.min,
-          editField: input.editField,
-          dynamicParamDefaultValue: input.defaultEditField
-            ? {
-                inputType: input.defaultEditField.inputType
-                  ? inputTypeMap[input.defaultEditField.inputType]
-                  : undefined,
-                valueType: input.defaultEditField.valueType,
-                required: input.defaultEditField.required
-              }
-            : undefined,
           llmModelType: input.llmModelType
         };
 
@@ -407,12 +394,7 @@ export const v1Workflow2V2 = (
           valueType: output.valueType,
           renderTypeList: [FlowNodeInputTypeEnum.reference],
           label: output.key,
-          canEdit: true,
-          editField: {
-            key: true,
-            description: true,
-            valueType: true
-          }
+          canEdit: true
         });
       });
     }

@@ -22,14 +22,16 @@ import {
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/index.d';
+import {
+  FlowNodeTemplateType,
+  NodeTemplateListItemType
+} from '@fastgpt/global/core/workflow/type/node.d';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AddIcon } from '@chakra-ui/icons';
 import { getPreviewPluginNode, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import { useForm } from 'react-hook-form';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -43,7 +45,7 @@ import FolderPath from '@/components/common/folder/Path';
 type Props = {
   selectedTools: FlowNodeTemplateType[];
   onAddTool: (tool: FlowNodeTemplateType) => void;
-  onRemoveTool: (tool: FlowNodeTemplateType) => void;
+  onRemoveTool: (tool: NodeTemplateListItemType) => void;
 };
 
 enum TemplateTypeEnum {
@@ -160,7 +162,7 @@ const RenderList = React.memo(function RenderList({
   onRemoveTool,
   setParentId
 }: Props & {
-  templates: FlowNodeTemplateType[];
+  templates: NodeTemplateListItemType[];
   isLoadingData: boolean;
   setParentId: React.Dispatch<React.SetStateAction<ParentIdType>>;
 }) {
@@ -170,28 +172,9 @@ const RenderList = React.memo(function RenderList({
 
   const { register, getValues, setValue, handleSubmit, reset } = useForm<Record<string, any>>({});
 
-  const checkToolInputValid = useCallback((tool: FlowNodeTemplateType) => {
-    for (const input of tool.inputs) {
-      const renderType = input.renderTypeList?.[input.selectedTypeIndex || 0];
-      if (renderType === FlowNodeInputTypeEnum.addInputParam) {
-        return false;
-      }
-    }
-    return true;
-  }, []);
-
-  const filterValidTools = useMemo(
-    () => templates.filter(checkToolInputValid),
-    [checkToolInputValid, templates]
-  );
-
   const { mutate: onClickAdd, isLoading } = useRequest({
     mutationFn: async (template: FlowNodeTemplateType) => {
       const res = await getPreviewPluginNode({ appId: template.id });
-
-      if (!checkToolInputValid(res)) {
-        return Promise.reject(t('core.app.ToolCall.This plugin cannot be called as a tool'));
-      }
 
       // All input is tool params
       if (res.inputs.every((input) => input.toolDescription)) {
@@ -204,12 +187,12 @@ const RenderList = React.memo(function RenderList({
     errorToast: t('core.module.templates.Load plugin error')
   });
 
-  return filterValidTools.length === 0 && !isLoadingData ? (
+  return templates.length === 0 && !isLoadingData ? (
     <EmptyTip text={t('core.app.ToolCall.No plugin')} />
   ) : (
     <MyBox>
-      {filterValidTools.map((item, i) => {
-        const selected = selectedTools.some((tool) => tool.pluginId === item.pluginId);
+      {templates.map((item, i) => {
+        const selected = selectedTools.some((tool) => tool.pluginId === item.id);
 
         return (
           <Flex
@@ -247,8 +230,7 @@ const RenderList = React.memo(function RenderList({
               >
                 {t('common.Remove')}
               </Button>
-            ) : item.pluginType === PluginTypeEnum.folder ||
-              item.pluginType === AppTypeEnum.httpPlugin ? (
+            ) : item.isFolder ? (
               <Button size={'sm'} variant={'whiteBase'} onClick={() => setParentId(item.id)}>
                 {t('common.Open')}
               </Button>

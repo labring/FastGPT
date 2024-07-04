@@ -1,7 +1,7 @@
 import { BillTypeEnum } from './constants';
 
 export type CreateBillProps = {
-  type: `${BillTypeEnum}`;
+  type: BillTypeEnum;
 
   // balance
   balance?: number; // read

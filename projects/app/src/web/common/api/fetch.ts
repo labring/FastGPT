@@ -11,6 +11,7 @@ import {
 } from '@fortaine/fetch-event-source';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '../system/useSystemStore';
+import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 
 type StreamFetchProps = {
   url?: string;
@@ -108,7 +109,7 @@ export const streamFetch = ({
     try {
       // auto complete variables
       const variables = data?.variables || {};
-      variables.cTime = dayjs().format('YYYY-MM-DD HH:mm:ss dddd');
+      variables.cTime = formatTime2YMDHMW();
 
       const requestData = {
         method: 'POST',

@@ -2,15 +2,20 @@ import { NextApiResponse } from 'next';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { ChatDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
+import type {
+  ChatDispatchProps,
+  ModuleDispatchProps
+} from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type.d';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type.d';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { responseWriteNodeStatus } from '../../../common/response';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
@@ -47,6 +52,8 @@ import { dispatchUpdateVariable } from './tools/runUpdateVar';
 import { addLog } from '../../../common/system/log';
 import { surrenderProcess } from '../../../common/system/tools';
 import { dispatchRunCode } from './code/run';
+import { dispatchTextEditor } from './tools/textEditor';
+import { dispatchCustomFeedback } from './tools/customFeedback';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -68,6 +75,8 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.ifElseNode]: dispatchIfElse,
   [FlowNodeTypeEnum.variableUpdate]: dispatchUpdateVariable,
   [FlowNodeTypeEnum.code]: dispatchRunCode,
+  [FlowNodeTypeEnum.textEditor]: dispatchTextEditor,
+  [FlowNodeTypeEnum.customFeedback]: dispatchCustomFeedback,
 
   // none
   [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,
@@ -259,8 +268,26 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   }
   /* Inject data into module input */
   function getNodeRunParams(node: RuntimeNodeItemType) {
-    const params: Record<string, any> = {};
+    if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
+      return node.inputs.reduce<Record<string, any>>((acc, item) => {
+        acc[item.key] = valueTypeFormat(item.value, item.valueType);
+        return acc;
+      }, {});
+    }
+
+    // common nodes
+    const dynamicInput = node.inputs.find(
+      (item) => item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam
+    );
+    const params: Record<string, any> = dynamicInput
+      ? {
+          [dynamicInput.key]: {}
+        }
+      : {};
+
     node.inputs.forEach((input) => {
+      if (input.key === dynamicInput?.key) return;
+
       // replace {{}} variables
       let value = replaceVariable(input.value, variables);
 
@@ -270,7 +297,13 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         nodes: runtimeNodes,
         variables
       });
-      // format valueType
+
+      // concat dynamic inputs
+      if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
+        params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
+      }
+
+      // Not dynamic input
       params[input.key] = valueTypeFormat(value, input.valueType);
     });
 

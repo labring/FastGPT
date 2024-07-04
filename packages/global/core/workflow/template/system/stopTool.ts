@@ -1,11 +1,11 @@
 import { FlowNodeTypeEnum } from '../../node/constant';
-import { FlowNodeTemplateType } from '../../type';
+import { FlowNodeTemplateType } from '../../type/node';
 import { FlowNodeTemplateTypeEnum } from '../../constants';
 import { getHandleConfig } from '../utils';
 
 export const StopToolNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.stopTool,
-  templateType: FlowNodeTemplateTypeEnum.functionCall,
+  templateType: FlowNodeTemplateTypeEnum.ai,
   flowNodeType: FlowNodeTypeEnum.stopTool,
   sourceHandle: getHandleConfig(false, false, false, false),
   targetHandle: getHandleConfig(true, true, true, true),

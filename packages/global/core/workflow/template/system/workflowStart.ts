@@ -1,5 +1,5 @@
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
-import { FlowNodeTemplateType } from '../../type/index.d';
+import { FlowNodeTemplateType } from '../../type/node.d';
 import {
   WorkflowIOValueTypeEnum,
   NodeOutputKeyEnum,
@@ -31,3 +31,6 @@ export const WorkflowStart: FlowNodeTemplateType = {
     }
   ]
 };
+
+export const isWorkflowStartOutput = (key?: string) =>
+  !!WorkflowStart.outputs.find((output) => output.key === key);

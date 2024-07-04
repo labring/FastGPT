@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Skeleton } from '@chakra-ui/react';
 import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
 import { useBoolean } from 'ahooks';
@@ -6,11 +6,13 @@ import { useBoolean } from 'ahooks';
 const MdImage = ({ src }: { src?: string }) => {
   const [isLoaded, { setTrue }] = useBoolean(false);
 
+  const [renderSrc, setRenderSrc] = useState(src);
+
   return (
     <Skeleton isLoaded={isLoaded}>
       <MyPhotoView
         borderRadius={'md'}
-        src={src}
+        src={renderSrc}
         alt={''}
         fallbackSrc={'/imgs/errImg.png'}
         fallbackStrategy={'onError'}
@@ -21,10 +23,12 @@ const MdImage = ({ src }: { src?: string }) => {
         minH={'120px'}
         maxH={'500px'}
         my={1}
+        mx={'auto'}
         onLoad={() => {
           setTrue();
         }}
         onError={() => {
+          setRenderSrc('/imgs/errImg.png');
           setTrue();
         }}
       />

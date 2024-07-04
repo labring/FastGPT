@@ -4,12 +4,12 @@ import yaml from 'js-yaml';
 import { OpenAPIV3 } from 'openapi-types';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from '../../workflow/type/io';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../../workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
+import { WorkflowIOValueTypeEnum } from '../../workflow/constants';
 import { PluginInputModule } from '../../workflow/template/system/pluginInput';
 import { PluginOutputModule } from '../../workflow/template/system/pluginOutput';
-import { HttpModule468 } from '../../workflow/template/system/http468';
+import { HttpNode468 } from '../../workflow/template/system/http468';
 import { HttpParamAndHeaderItemType } from '../../workflow/api';
-import { StoreNodeItemType } from '../../workflow/type';
+import { StoreNodeItemType } from '../../workflow/type/node';
 import { HttpImgUrl } from '../../../common/file/image/constants';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import { getHandleId } from '../../workflow/utils';
@@ -116,16 +116,7 @@ export const httpApiSchema2Plugins = async ({
           required: param.required,
           description: param.description,
           toolDescription: param.description,
-          canEdit: true,
-          editField: {
-            key: true,
-            name: true,
-            description: true,
-            required: true,
-            dataType: true,
-            inputType: true,
-            isToolInput: true
-          }
+          canEdit: true
         };
       }) || []),
       ...(propsKeys?.map((key) => {
@@ -138,16 +129,7 @@ export const httpApiSchema2Plugins = async ({
           required: false,
           description: prop.description,
           toolDescription: prop.description,
-          canEdit: true,
-          editField: {
-            key: true,
-            name: true,
-            description: true,
-            required: true,
-            dataType: true,
-            inputType: true,
-            isToolInput: true
-          }
+          canEdit: true
         };
       }) || [])
     ];
@@ -186,10 +168,6 @@ export const httpApiSchema2Plugins = async ({
           label: param.name,
           renderTypeList: [FlowNodeInputTypeEnum.reference],
           canEdit: true,
-          editField: {
-            key: true,
-            valueType: true
-          },
           value: [pluginInputId, inputIdMap.get(param.name)]
         };
       }) || []),
@@ -200,10 +178,6 @@ export const httpApiSchema2Plugins = async ({
           label: key,
           renderTypeList: [FlowNodeInputTypeEnum.reference],
           canEdit: true,
-          editField: {
-            key: true,
-            valueType: true
-          },
           value: [pluginInputId, inputIdMap.get(key)]
         };
       }) || [])
@@ -271,7 +245,7 @@ export const httpApiSchema2Plugins = async ({
     }
 
     /* Combine complete modules */
-    const modules: StoreNodeItemType[] = [
+    const nodes: StoreNodeItemType[] = [
       {
         nodeId: pluginInputId,
         name: PluginInputModule.name,
@@ -280,8 +254,8 @@ export const httpApiSchema2Plugins = async ({
         flowNodeType: PluginInputModule.flowNodeType,
         showStatus: PluginInputModule.showStatus,
         position: {
-          x: 616.4226348688949,
-          y: -165.05298493910115
+          x: 473.55206291900333,
+          y: -145.65080850146154
         },
         version: PluginInputModule.version,
         inputs: pluginInputs,
@@ -295,8 +269,8 @@ export const httpApiSchema2Plugins = async ({
         flowNodeType: PluginOutputModule.flowNodeType,
         showStatus: PluginOutputModule.showStatus,
         position: {
-          x: 1607.7142331269126,
-          y: -151.8669210746189
+          x: 1847.5956872650024,
+          y: 5.114324648101558
         },
         version: PluginOutputModule.version,
         inputs: [
@@ -308,11 +282,6 @@ export const httpApiSchema2Plugins = async ({
             required: false,
             description: '',
             canEdit: true,
-            editField: {
-              key: true,
-              description: true,
-              valueType: true
-            },
             value: [httpId, 'httpRawResponse']
           }
         ],
@@ -328,29 +297,18 @@ export const httpApiSchema2Plugins = async ({
       },
       {
         nodeId: httpId,
-        name: HttpModule468.name,
-        intro: HttpModule468.intro,
-        avatar: HttpModule468.avatar,
-        flowNodeType: HttpModule468.flowNodeType,
+        name: HttpNode468.name,
+        intro: HttpNode468.intro,
+        avatar: HttpNode468.avatar,
+        flowNodeType: HttpNode468.flowNodeType,
         showStatus: true,
         position: {
-          x: 1042.549746602742,
-          y: -447.77496332641647
+          x: 1188.947986995841,
+          y: -473.52694296182904
         },
-        version: HttpModule468.version,
+        version: HttpNode468.version,
         inputs: [
-          {
-            key: NodeInputKeyEnum.addInputParam,
-            renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
-            valueType: WorkflowIOValueTypeEnum.dynamic,
-            label: '',
-            required: false,
-            description: 'core.module.input.description.HTTP Dynamic Input',
-            editField: {
-              key: true,
-              valueType: true
-            }
-          },
+          HttpNode468.inputs[0],
           ...httpInputs,
           {
             key: 'system_httpMethod',
@@ -397,7 +355,7 @@ export const httpApiSchema2Plugins = async ({
             required: false
           }
         ],
-        outputs: HttpModule468.outputs
+        outputs: HttpNode468.outputs
       }
     ];
 
@@ -422,7 +380,7 @@ export const httpApiSchema2Plugins = async ({
       intro: item.description,
       parentId,
       type: AppTypeEnum.plugin,
-      modules,
+      modules: nodes,
       edges,
       pluginData: {
         pluginUniId: item.name

@@ -7,13 +7,16 @@ import OutputLabel from './Label';
 import { RenderOutputProps } from './type';
 import { useTranslation } from 'next-i18next';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import VariableTable from '../VariableTable';
-import { EditNodeFieldType } from '@fastgpt/global/core/workflow/node/type';
-import { FlowValueTypeMap } from '@/web/core/workflow/constants/dataType';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
+import VariableTable from '../../NodePluginIO/VariableTable';
+import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import dynamic from 'next/dynamic';
+import { defaultOutput } from './FieldEditModal';
+
+const FieldEditModal = dynamic(() => import('./FieldEditModal'));
 
 const RenderList: {
   types: FlowNodeOutputTypeEnum[];
@@ -32,25 +35,40 @@ const RenderOutput = ({
 
   const outputString = useMemo(() => JSON.stringify(flowOutputList), [flowOutputList]);
   const copyOutputs = useMemo(() => {
-    const parseOutputs = JSON.parse(outputString) as FlowNodeOutputItemType[];
-
-    return parseOutputs;
+    return JSON.parse(outputString) as FlowNodeOutputItemType[];
   }, [outputString]);
 
-  const [createField, setCreateField] = useState<EditNodeFieldType>();
-  const [editField, setEditField] = useState<EditNodeFieldType>();
+  const [editField, setEditField] = useState<FlowNodeOutputItemType>();
 
   const RenderDynamicOutputs = useMemo(() => {
     const dynamicOutputs = copyOutputs.filter(
       (item) => item.type === FlowNodeOutputTypeEnum.dynamic
     );
-
     const addOutput = dynamicOutputs.find((item) => item.key === NodeOutputKeyEnum.addOutputParam);
     const filterAddOutput = dynamicOutputs.filter(
       (item) => item.key !== NodeOutputKeyEnum.addOutputParam
     );
 
-    return dynamicOutputs.length === 0 || !addOutput ? null : (
+    const onSubmit = ({ data }: { data: FlowNodeOutputItemType }) => {
+      if (!editField) return;
+
+      if (editField.key) {
+        onChangeNode({
+          nodeId,
+          type: 'replaceOutput',
+          key: editField.key,
+          value: data
+        });
+      } else {
+        onChangeNode({
+          nodeId,
+          type: 'addOutput',
+          value: data
+        });
+      }
+    };
+
+    return !addOutput?.customFieldConfig ? null : (
       <Box mb={5}>
         <Flex
           mb={2}
@@ -62,7 +80,7 @@ const RenderOutput = ({
           <Box position={'relative'} fontWeight={'medium'}>
             {t('core.workflow.Custom outputs')}
           </Box>
-          <QuestionTip ml={1} label={addOutput.description} />
+          {addOutput.description && <QuestionTip ml={1} label={addOutput.description} />}
           <Box flex={'1 0 0'} />
           <Button
             variant={'whitePrimary'}
@@ -70,86 +88,22 @@ const RenderOutput = ({
             iconSpacing={1}
             size={'sm'}
             onClick={() => {
-              setCreateField({});
+              setEditField(defaultOutput);
             }}
           >
             {t('common.Add New')}
           </Button>
         </Flex>
         <VariableTable
-          fieldEditType={addOutput.editField}
-          keys={copyOutputs.map((output) => output.key)}
-          onCloseFieldEdit={() => {
-            setCreateField(undefined);
-            setEditField(undefined);
-          }}
           variables={filterAddOutput.map((output) => ({
             label: output.label || '-',
             type: output.valueType ? t(FlowValueTypeMap[output.valueType]?.label) : '-',
             key: output.key
           }))}
-          createField={createField}
-          onCreate={({ data }) => {
-            if (!data.key) {
-              return;
-            }
-
-            const newOutput: FlowNodeOutputItemType = {
-              id: getNanoid(),
-              type: FlowNodeOutputTypeEnum.dynamic,
-              key: data.key,
-              valueType: data.valueType,
-              label: data.key
-            };
-
-            onChangeNode({
-              nodeId,
-              type: 'addOutput',
-              value: newOutput
-            });
-            setCreateField(undefined);
-          }}
-          editField={editField}
-          onStartEdit={(e) => {
-            const output = copyOutputs.find((output) => output.key === e);
+          onEdit={(key) => {
+            const output = copyOutputs.find((output) => output.key === key);
             if (!output) return;
-            setEditField({
-              valueType: output.valueType,
-              required: output.required,
-              key: output.key,
-              label: output.label,
-              description: output.description
-            });
-          }}
-          onEdit={({ data, changeKey }) => {
-            if (!data.key || !editField?.key) return;
-
-            const output = copyOutputs.find((output) => output.key === editField.key);
-
-            const newOutput: FlowNodeOutputItemType = {
-              ...(output as FlowNodeOutputItemType),
-              valueType: data.valueType,
-              key: data.key,
-              label: data.label,
-              description: data.description
-            };
-
-            if (changeKey) {
-              onChangeNode({
-                nodeId,
-                type: 'replaceOutput',
-                key: editField.key,
-                value: newOutput
-              });
-            } else {
-              onChangeNode({
-                nodeId,
-                type: 'updateOutput',
-                key: newOutput.key,
-                value: newOutput
-              });
-            }
-            setEditField(undefined);
+            setEditField(output);
           }}
           onDelete={(key) => {
             onChangeNode({
@@ -159,9 +113,19 @@ const RenderOutput = ({
             });
           }}
         />
+
+        {!!editField && (
+          <FieldEditModal
+            customFieldConfig={addOutput?.customFieldConfig}
+            defaultValue={editField}
+            keys={copyOutputs.map((output) => output.key)}
+            onClose={() => setEditField(undefined)}
+            onSubmit={onSubmit}
+          />
+        )}
       </Box>
     );
-  }, [copyOutputs, createField, editField, nodeId, onChangeNode, t]);
+  }, [copyOutputs, editField, nodeId, onChangeNode, t]);
 
   const RenderCommonOutputs = useMemo(() => {
     const renderOutputs = copyOutputs.filter(
@@ -172,14 +136,14 @@ const RenderOutput = ({
       <>
         {renderOutputs.map((output) => {
           return output.label ? (
-            <Box key={output.key} _notLast={{ mb: 5 }} position={'relative'}>
-              {output.required && (
-                <Box position={'absolute'} left={'-6px'} top={-1} color={'red.600'}>
-                  *
-                </Box>
-              )}
+            <FormLabel
+              key={output.key}
+              required={output.required}
+              _notLast={{ mb: 5 }}
+              position={'relative'}
+            >
               <OutputLabel nodeId={nodeId} output={output} />
-            </Box>
+            </FormLabel>
           ) : null;
         })}
       </>

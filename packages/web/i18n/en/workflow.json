@@ -1,6 +1,19 @@
 {
+  "Add new input": "Add input",
   "Code": "Code",
+  "Confirm delete field tip": "Confirm to delete the field?",
+  "Custom input": "Custom input",
+  "Edit input": "Edit input",
+  "Field Name already exists": "Field name already exists",
+  "Field description": "Field description",
+  "Field description placeholder": "Describes the functionality of this input field, which affects the quality of model generation if the parameter is called for a tool",
   "Field required": "Required",
+  "Field used as tool input": "As tool input",
+  "Input description": "Input descriotion",
+  "Only the Reference type is supported": "Only the Reference type is supported",
+  "Optional value type": "Optional value type",
+  "Optional value type tip": "One or more data types can be specified, and users can only select the configured type when adding fields in winter",
+  "Tool input": "Tool",
   "code": {
     "Reset template": "Reset template",
     "Reset template confirm": "Are you sure to restore the code template? Be careful to save the current code."

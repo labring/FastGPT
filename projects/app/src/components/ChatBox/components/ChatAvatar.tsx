@@ -15,7 +15,7 @@ const ChatAvatar = ({ src, type }: { src?: string; type: 'Human' | 'AI' }) => {
       boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
       bg={type === 'Human' ? 'white' : 'primary.50'}
     >
-      <Avatar src={src} w={'100%'} h={'100%'} />
+      <Avatar src={src} w={'100%'} h={'100%'} borderRadius={'sm'} />
     </Box>
   );
 };

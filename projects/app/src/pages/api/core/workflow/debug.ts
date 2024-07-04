@@ -27,7 +27,7 @@ async function handler(
   }
 
   /* user auth */
-  const [{ teamId, tmbId }] = await Promise.all([
+  const [{ teamId, tmbId }, { app }] = await Promise.all([
     authCert({
       req,
       authToken: true
@@ -37,12 +37,6 @@ async function handler(
 
   // auth balance
   const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
-
-  const app = {
-    ...defaultApp,
-    teamId,
-    tmbId
-  };
 
   /* start process */
   const { flowUsages, flowResponses, debugResponse } = await dispatchWorkFlow({

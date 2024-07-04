@@ -9,15 +9,15 @@ import {
   Input,
   Textarea
 } from '@chakra-ui/react';
-import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
 import { useForm } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { fnValueTypeSelect } from '@/web/core/workflow/constants/dataType';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 export const defaultField: ContextExtractAgentItemType = {
   valueType: 'string',
@@ -74,11 +74,11 @@ const ExtractFieldModal = ({
         <Flex alignItems={'center'} mt={5}>
           <FormLabel flex={['0 0 80px', '0 0 100px']}>{t('core.module.Data Type')}</FormLabel>
           <Box flex={'1 0 0'}>
-            <MySelect
+            <MySelect<string>
               list={fnValueTypeSelect}
               value={valueType}
-              onchange={(e: any) => {
-                setValue('valueType', e);
+              onchange={(e) => {
+                setValue('valueType', e as any);
               }}
             />
           </Box>

@@ -4,7 +4,7 @@ import {
   AppSchema,
   AppSimpleEditFormType
 } from '@fastgpt/global/core/app/type';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,

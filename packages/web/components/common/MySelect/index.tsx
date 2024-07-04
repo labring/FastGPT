@@ -15,31 +15,28 @@ import { ChevronDownIcon } from '@chakra-ui/icons';
 import { useLoading } from '../../../hooks/useLoading';
 import MyIcon from '../Icon';
 
-export type SelectProps = ButtonProps & {
-  value?: string | number;
+export type SelectProps<T = any> = ButtonProps & {
+  value?: T;
   placeholder?: string;
   list: {
     alias?: string;
     label: string | React.ReactNode;
     description?: string;
-    value: string | number;
+    value: T;
   }[];
   isLoading?: boolean;
-  onchange?: (val: any) => void;
+  onchange?: (val: T) => void;
 };
 
-const MySelect = (
-  {
-    placeholder,
-    value,
-    width = '100%',
-    list = [],
-    onchange,
-    isLoading = false,
-    ...props
-  }: SelectProps,
-  selectRef: any
-) => {
+const MySelect = <T = any,>({
+  placeholder,
+  value,
+  width = '100%',
+  list = [],
+  onchange,
+  isLoading = false,
+  ...props
+}: SelectProps<T>) => {
   const ref = useRef<HTMLButtonElement>(null);
   const { Loading } = useLoading();
   const menuItemStyles: MenuItemProps = {
@@ -120,9 +117,9 @@ const MySelect = (
           maxH={'40vh'}
           overflowY={'auto'}
         >
-          {list.map((item) => (
+          {list.map((item, i) => (
             <MenuItem
-              key={item.value}
+              key={i}
               {...menuItemStyles}
               {...(value === item.value
                 ? {
@@ -155,4 +152,4 @@ const MySelect = (
   );
 };
 
-export default React.memo(forwardRef(MySelect));
+export default MySelect;

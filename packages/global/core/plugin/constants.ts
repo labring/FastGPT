@@ -1,5 +1,3 @@
-import { StoreNodeItemType } from '../workflow/type';
-
 export enum PluginTypeEnum {
   folder = 'folder',
   custom = 'custom',

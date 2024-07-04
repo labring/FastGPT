@@ -13,6 +13,8 @@ const JsonEditor = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const getNodeDynamicInputs = useContextSelector(WorkflowContext, (v) => v.getNodeDynamicInputs);
+
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   // get variable
@@ -23,16 +25,9 @@ const JsonEditor = ({ inputs = [], item, nodeId }: RenderInputProps) => {
       t
     });
 
-    const moduleVariables = formatEditorVariablePickerIcon(
-      inputs
-        .filter((input) => input.canEdit)
-        .map((item) => ({
-          key: item.key,
-          label: item.label
-        }))
-    );
+    const nodeVariables = formatEditorVariablePickerIcon(getNodeDynamicInputs(nodeId));
 
-    return [...globalVariables, ...moduleVariables];
+    return [...globalVariables, ...nodeVariables];
   }, [inputs, nodeList]);
 
   const update = useCallback(

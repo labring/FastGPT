@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Container from '../../components/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
@@ -106,8 +106,12 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
 
   const { isOpen: isOpenCurl, onOpen: onOpenCurl, onClose: onCloseCurl } = useDisclosure();
 
-  const requestMethods = inputs.find((item) => item.key === NodeInputKeyEnum.httpMethod);
-  const requestUrl = inputs.find((item) => item.key === NodeInputKeyEnum.httpReqUrl);
+  const requestMethods = inputs.find(
+    (item) => item.key === NodeInputKeyEnum.httpMethod
+  ) as FlowNodeInputItemType;
+  const requestUrl = inputs.find(
+    (item) => item.key === NodeInputKeyEnum.httpReqUrl
+  ) as FlowNodeInputItemType;
 
   const onChangeUrl = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChangeNode({
@@ -251,6 +255,8 @@ export function RenderHttpProps({
   const { t } = useTranslation();
   const [selectedTab, setSelectedTab] = useState(TabEnum.params);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const getNodeDynamicInputs = useContextSelector(WorkflowContext, (v) => v.getNodeDynamicInputs);
+
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const requestMethods = inputs.find((item) => item.key === NodeInputKeyEnum.httpMethod)?.value;
@@ -269,17 +275,10 @@ export function RenderHttpProps({
       t
     });
 
-    const moduleVariables = formatEditorVariablePickerIcon(
-      inputs
-        .filter((input) => input.canEdit || input.toolDescription)
-        .map((item) => ({
-          key: item.key,
-          label: item.label
-        }))
-    );
+    const nodeVariables = formatEditorVariablePickerIcon(getNodeDynamicInputs(nodeId));
 
-    return [...moduleVariables, ...globalVariables];
-  }, [appDetail.chatConfig, inputs, nodeList, t]);
+    return [...nodeVariables, ...globalVariables];
+  }, [appDetail.chatConfig, getNodeDynamicInputs, nodeId, nodeList, t]);
 
   const variableText = useMemo(() => {
     return variables
@@ -637,7 +636,7 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
   const splitToolInputs = useContextSelector(WorkflowContext, (v) => v.splitToolInputs);
-  const { toolInputs, commonInputs, isTool } = splitToolInputs(inputs, nodeId);
+  const { commonInputs, isTool } = splitToolInputs(inputs, nodeId);
 
   const HttpMethodAndUrl = useMemoizedFn(() => (
     <RenderHttpMethodAndUrl nodeId={nodeId} inputs={inputs} />
@@ -656,8 +655,7 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       {isTool && (
         <>
           <Container>
-            <IOTitle text={t('core.module.tool.Tool input')} />
-            <RenderToolInput nodeId={nodeId} inputs={toolInputs} canEdit />
+            <RenderToolInput nodeId={nodeId} inputs={inputs} />
           </Container>
         </>
       )}
