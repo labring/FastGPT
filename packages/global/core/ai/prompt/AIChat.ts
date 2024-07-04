@@ -100,7 +100,7 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 
 <QA>
 {{quote}}
-</QA>}
+</QA>
 
 思考流程：
 1. 判断问题是否与 <QA></QA> 标记中的内容有关。
