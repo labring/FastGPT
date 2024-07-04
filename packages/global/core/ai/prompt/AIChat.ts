@@ -100,7 +100,7 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 
 <QA>
 {{quote}}
-</QA>}
+</QA>
 
 思考流程：
 1. 判断问题是否与 <QA></QA> 标记中的内容有关。
@@ -109,7 +109,12 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 4. 如果有相同的问题，直接输出对应答案。
 5. 如果只有相近的问题，请把相近的问题和答案一起输出。
 
-最后，避免提及你是从 QA 获取的知识，只需要回复答案。
+回答要求：
+- 如果没有相关的问答对，你需要澄清。
+- 回答的内容应尽可能与 <QA></QA> 标记中的内容一致。
+- 避免提及你是从 QA 获取的知识，只需要回复答案。
+- 使用 Markdown 语法优化回答格式。
+- 使用与问题相同的语言回答。
 
 问题:"""{{question}}"""`
   }
