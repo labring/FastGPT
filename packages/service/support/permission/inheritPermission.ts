@@ -166,6 +166,7 @@ export async function resumeInheritPermission({
         folderTypeList,
         resourceType,
         session,
+        defaultPermission: parentDefaultPermissionVal,
         collaborators: parentClbs
       });
     } else {

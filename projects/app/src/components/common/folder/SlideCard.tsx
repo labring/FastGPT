@@ -132,7 +132,7 @@ const FolderSlideCard = ({
           <Box>
             <FormLabel>{t('support.permission.Permission')}</FormLabel>
 
-            {!isInheritPermission && hasParent && (
+            {!isInheritPermission && (
               <Box mt={2}>
                 <ResumeInherit onResume={() => resumeInheritPermission?.().then(refetchResource)} />
               </Box>

@@ -89,7 +89,7 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
           defaultPermission: updatedDefaultPermission
         }),
         // Not root, update default permission
-        ...(isDefaultPermissionChanged && app.parentId && { inheritPermission: false }),
+        ...(isDefaultPermissionChanged && { inheritPermission: false }),
         ...(teamTags && { teamTags }),
         ...(formatNodes && {
           modules: formatNodes
@@ -174,7 +174,7 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
           session,
           defaultPermission
         });
-      } else if (app.inheritPermission) {
+      } else if (app.inheritPermission && app.parentId) {
         // Inherit app
         const parentClbs = await getResourceAllClbs({
           teamId: app.teamId,

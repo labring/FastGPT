@@ -24,11 +24,22 @@ async function handler(
     per: ManagePermissionVal
   });
 
-  await resumeInheritPermission({
-    resource: app,
-    folderTypeList: AppFolderTypeList,
-    resourceType: PerResourceTypeEnum.app,
-    resourceModel: MongoApp
-  });
+  if (app.parentId) {
+    await resumeInheritPermission({
+      resource: app,
+      folderTypeList: AppFolderTypeList,
+      resourceType: PerResourceTypeEnum.app,
+      resourceModel: MongoApp
+    });
+  } else {
+    await MongoApp.updateOne(
+      {
+        _id: appId
+      },
+      {
+        inheritPermission: true
+      }
+    );
+  }
 }
 export default NextAPI(handler);
