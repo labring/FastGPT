@@ -15,6 +15,8 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -31,6 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       MongoChat.findOne({ appId, chatId, shareId }).lean(),
       MongoApp.findById(appId).lean()
     ]);
+    console.log('app', app);
 
     if (!app) {
       throw new Error(AppErrEnum.unExist);
@@ -56,11 +59,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
 
     // pick share response field
+    app.type !== AppTypeEnum.plugin &&
     histories.forEach((item) => {
-      if (item.obj === ChatRoleEnum.AI) {
-        item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
-      }
-    });
+        if (item.obj === ChatRoleEnum.AI) {
+          item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
+        }
+      });
 
     jsonRes<InitChatResponse>(res, {
       data: {
@@ -82,7 +86,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           chatModels: getChatModelNameListByModules(nodes),
           name: app.name,
           avatar: app.avatar,
-          intro: app.intro
+          intro: app.intro,
+          type: app.type,
+          pluginInputs: app.modules
+            ?.filter((module) => module.nodeId === FlowNodeTypeEnum.pluginInput)
+            .map((module) => module.inputs)[0]
         }
       }
     });

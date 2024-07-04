@@ -49,10 +49,13 @@ import { setEntryEntries } from '@fastgpt/service/core/workflow/dispatchV1/utils
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { updateNodeInputs } from '@fastgpt/global/core/workflow/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
   appId?: string;
+  appType: AppTypeEnum;
 };
 
 export type Props = ChatCompletionCreateParams &
@@ -92,6 +95,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const {
     chatId,
     appId,
+    appType,
     // share chat
     shareId,
     outLinkUid,
@@ -109,7 +113,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await connectToDatabase();
     // body data check
     if (!messages) {
-      throw new Error('Prams Error');
+      throw new Error('Params Error');
     }
     if (!Array.isArray(messages)) {
       throw new Error('messages is not array');
@@ -196,7 +200,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           app,
           chatId,
           responseChatItemId,
-          runtimeNodes: storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
+          runtimeNodes:
+            appType === AppTypeEnum.plugin
+              ? updateNodeInputs(
+                  storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
+                  variables
+                )
+              : storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
           runtimeEdges: initWorkflowEdgeStatus(edges),
           variables,
           query: removeEmptyUserInput(question.value),

@@ -42,7 +42,7 @@ export type ChatWithAppSchema = Omit<ChatSchema, 'appId'> & {
 };
 
 export type UserChatItemValueItemType = {
-  type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.file;
+  type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.file | ChatItemValueTypeEnum.plugin;
   text?: {
     content: string;
   };
@@ -51,6 +51,7 @@ export type UserChatItemValueItemType = {
     name?: string;
     url: string;
   };
+  params?: Record<string, any>;
 };
 export type UserChatItemType = {
   obj: ChatRoleEnum.Human;
@@ -115,6 +116,7 @@ export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatIt
   status: `${ChatStatusEnum}`;
   moduleName?: string;
   ttsBuffer?: Uint8Array;
+  responseData?: ChatHistoryItemResType[];
 } & ChatBoxInputType;
 
 /* --------- team chat --------- */

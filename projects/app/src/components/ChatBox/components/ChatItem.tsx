@@ -1,33 +1,16 @@
-import {
-  Box,
-  BoxProps,
-  Card,
-  Flex,
-  useTheme,
-  Accordion,
-  AccordionItem,
-  AccordionButton,
-  AccordionPanel,
-  AccordionIcon,
-  Image
-} from '@chakra-ui/react';
+import { Box, BoxProps, Card, Flex } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
 import { formatChatValue2InputType } from '../utils';
-import Markdown, { CodeClassName } from '@/components/Markdown';
+import Markdown from '@/components/Markdown';
 import styles from '../index.module.scss';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatStatusEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import FilesBlock from './FilesBox';
 import { ChatBoxContext } from '../Provider';
-import Avatar from '@/components/Avatar';
 import { useContextSelector } from 'use-context-selector';
+import ChatContent from './ChatContent';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -100,108 +83,22 @@ const ChatItem = ({
         {chat.value.map((value, i) => {
           const key = `${chat.dataId}-ai-${i}`;
 
-          if (value.text) {
-            let source = (value.text?.content || '').trim();
-
-            if (!source && chat.value.length > 1) return null;
-
-            if (
-              isLastChild &&
-              !isChatting &&
-              questionGuides.length > 0 &&
-              i === chat.value.length - 1
-            ) {
-              source = `${source}
-\`\`\`${CodeClassName.questionGuide}
-${JSON.stringify(questionGuides)}`;
-            }
-
-            return (
-              <Markdown
-                key={key}
-                source={source}
-                showAnimation={isLastChild && isChatting && i === chat.value.length - 1}
-              />
-            );
-          }
-          if (value.type === ChatItemValueTypeEnum.tool && value.tools) {
-            return (
-              <Box key={key}>
-                {value.tools.map((tool) => {
-                  const toolParams = (() => {
-                    try {
-                      return JSON.stringify(JSON.parse(tool.params), null, 2);
-                    } catch (error) {
-                      return tool.params;
-                    }
-                  })();
-                  const toolResponse = (() => {
-                    try {
-                      return JSON.stringify(JSON.parse(tool.response), null, 2);
-                    } catch (error) {
-                      return tool.response;
-                    }
-                  })();
-
-                  return (
-                    <Box key={tool.id}>
-                      <Accordion allowToggle>
-                        <AccordionItem borderTop={'none'} borderBottom={'none'}>
-                          <AccordionButton
-                            w={'auto'}
-                            bg={'white'}
-                            borderRadius={'md'}
-                            borderWidth={'1px'}
-                            borderColor={'myGray.200'}
-                            boxShadow={'1'}
-                            _hover={{
-                              bg: 'auto'
-                            }}
-                          >
-                            <Avatar src={tool.toolAvatar} w={'1rem'} mr={2} />
-                            <Box mr={1} fontSize={'sm'}>
-                              {tool.toolName}
-                            </Box>
-                            {isChatting && !tool.response && (
-                              <MyIcon name={'common/loading'} w={'14px'} />
-                            )}
-                            <AccordionIcon color={'myGray.600'} ml={5} />
-                          </AccordionButton>
-                          <AccordionPanel
-                            py={0}
-                            px={0}
-                            mt={0}
-                            borderRadius={'md'}
-                            overflow={'hidden'}
-                            maxH={'500px'}
-                            overflowY={'auto'}
-                          >
-                            {toolParams && toolParams !== '{}' && (
-                              <Markdown
-                                source={`~~~json#Input
-${toolParams}`}
-                              />
-                            )}
-                            {toolResponse && (
-                              <Markdown
-                                source={`~~~json#Response
-${toolResponse}`}
-                              />
-                            )}
-                          </AccordionPanel>
-                        </AccordionItem>
-                      </Accordion>
-                    </Box>
-                  );
-                })}
-              </Box>
-            );
-          }
-          return null;
+          return (
+            <ChatContent
+              key={key}
+              contentkey={key}
+              value={value}
+              index={i}
+              chat={chat}
+              isLastChild={isLastChild}
+              isChatting={isChatting}
+              questionGuides={questionGuides}
+            />
+          );
         })}
       </Flex>
     );
-  }, [chat.dataId, chat.value, isChatting, isLastChild, questionGuides, type]);
+  }, [chat, isChatting, isLastChild, questionGuides, type]);
 
   const chatStatusMap = useMemo(() => {
     if (!statusBoxData?.status) return;

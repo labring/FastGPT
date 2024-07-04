@@ -56,12 +56,21 @@ export const chats2GPTMessages = ({
               text: item.text?.content || ''
             };
           }
-          if (item.type === 'file' && item.file?.type === ChatFileTypeEnum.image) {
+          if (
+            item.type === ChatItemValueTypeEnum.file &&
+            item.file?.type === ChatFileTypeEnum.image
+          ) {
             return {
               type: 'image_url',
               image_url: {
                 url: item.file?.url || ''
               }
+            };
+          }
+          if (item.type === ChatItemValueTypeEnum.plugin) {
+            return {
+              type: 'plugin',
+              params: item.params
             };
           }
           return;
@@ -172,6 +181,14 @@ export const GPTMessages2Chats = (
                   name: '',
                   url: item.image_url.url
                 }
+              });
+              //@ts-ignore
+            } else if (item.type === 'plugin') {
+              value.push({
+                //@ts-ignore
+                type: ChatItemValueTypeEnum.plugin,
+                //@ts-ignore
+                params: item.params
               });
             }
           });

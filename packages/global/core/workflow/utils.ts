@@ -22,6 +22,7 @@ import {
   defaultWhisperConfig
 } from '../app/constants';
 import { IfElseResultEnum } from './template/system/ifElse/constant';
+import { RuntimeNodeItemType } from './runtime/type';
 
 export const getHandleId = (nodeId: string, type: 'source' | 'target', key: string) => {
   return `${nodeId}-${type}-${key}`;
@@ -189,4 +190,35 @@ export const isReferenceValue = (value: any): boolean => {
 
 export const getElseIFLabel = (i: number) => {
   return i === 0 ? IfElseResultEnum.IF : `${IfElseResultEnum.ELSE_IF} ${i}`;
+};
+
+export const updateNodeInputs = (nodes: RuntimeNodeItemType[], variables: Record<string, any>) => {
+  return nodes.map((node) =>
+    node.nodeId === nodes[0].nodeId
+      ? {
+          ...node,
+          inputs: node.inputs.map((input) => {
+            let parseValue = (() => {
+              try {
+                if (
+                  input.valueType === WorkflowIOValueTypeEnum.string ||
+                  input.valueType === WorkflowIOValueTypeEnum.number ||
+                  input.valueType === WorkflowIOValueTypeEnum.boolean
+                )
+                  return variables[input.key];
+
+                return JSON.parse(variables[input.key]);
+              } catch (e) {
+                return variables[input.key];
+              }
+            })();
+
+            return {
+              ...input,
+              value: parseValue ?? input.value
+            };
+          })
+        }
+      : node
+  );
 };

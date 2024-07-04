@@ -5,11 +5,7 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import { responseWrite } from '@fastgpt/service/common/response';
 import { pushChatUsage } from '@/service/support/wallet/usage/push';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import type {
-  ChatItemType,
-  ChatItemValueItemType,
-  UserChatItemValueItemType
-} from '@fastgpt/global/core/chat/type';
+import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -49,8 +45,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } = req.body as Props;
   try {
     await connectToDatabase();
-    if (!history || !nodes || !prompt || prompt.length === 0) {
-      throw new Error('Prams Error');
+    if (!history || !nodes || !prompt) {
+      throw new Error('Params Error');
     }
     if (!Array.isArray(nodes)) {
       throw new Error('Nodes is not array');

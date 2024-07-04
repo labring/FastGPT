@@ -17,3 +17,14 @@ export enum FeedbackTypeEnum {
   admin = 'admin',
   hidden = 'hidden'
 }
+
+export enum ChatTypeEnum {
+  chat = 'chat',
+  chatTest = 'chatTest'
+}
+
+export enum PluginChatBoxTypeEnum {
+  input = 'input',
+  output = 'output',
+  fullResult = 'fullResult'
+}
