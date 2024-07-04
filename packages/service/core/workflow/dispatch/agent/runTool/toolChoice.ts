@@ -377,31 +377,41 @@ async function streamResponse({
           if (toolCall.function?.arguments === undefined) {
             toolCall.function.arguments = '';
           }
-          toolCalls.push({
-            ...toolCall,
-            toolName: toolNode.name,
-            toolAvatar: toolNode.avatar
-          });
 
-          if (detail) {
-            responseWrite({
-              write,
-              event: SseResponseEventEnum.toolCall,
-              data: JSON.stringify({
-                tool: {
-                  id: toolCall.id,
-                  toolName: toolNode.name,
-                  toolAvatar: toolNode.avatar,
-                  functionName: toolCall.function.name,
-                  params: toolCall.function.arguments,
-                  response: ''
-                }
-              })
+          // Get last tool call
+          const lastToolCall = toolCalls[toolCalls.length - 1];
+
+          // new tool
+          if (lastToolCall?.id !== toolCall.id) {
+            toolCalls.push({
+              ...toolCall,
+              toolName: toolNode.name,
+              toolAvatar: toolNode.avatar
             });
-          }
-        }
 
-        continue;
+            if (detail) {
+              responseWrite({
+                write,
+                event: SseResponseEventEnum.toolCall,
+                data: JSON.stringify({
+                  tool: {
+                    id: toolCall.id,
+                    toolName: toolNode.name,
+                    toolAvatar: toolNode.avatar,
+                    functionName: toolCall.function.name,
+                    params: toolCall.function.arguments,
+                    response: ''
+                  }
+                })
+              });
+            }
+
+            continue;
+          }
+          // last tool, update params
+        } else {
+          continue;
+        }
       }
 
       /* arg 插入最后一个工具的参数里 */

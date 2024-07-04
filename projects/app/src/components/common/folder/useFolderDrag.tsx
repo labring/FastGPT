@@ -1,5 +1,6 @@
 import React, { useState, DragEvent, useCallback } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
+import { useBoolean } from 'ahooks';
 
 export const useFolderDrag = ({
   onDrop,
@@ -10,11 +11,13 @@ export const useFolderDrag = ({
 }) => {
   const [dragId, setDragId] = useState<string>();
   const [targetId, setTargetId] = useState<string>();
+  const [isDropping, { setTrue, setFalse }] = useBoolean();
 
   const getBoxProps = useCallback(
     ({ dataId, isFolder }: { dataId: string; isFolder: boolean }) => {
       return {
         draggable: true,
+        userSelect: 'none' as any,
         'data-drag-id': isFolder ? dataId : undefined,
         onDragStart: (e: DragEvent<HTMLDivElement>) => {
           setDragId(dataId);
@@ -29,15 +32,19 @@ export const useFolderDrag = ({
           e.preventDefault();
           setTargetId(undefined);
         },
-        onDrop: (e: DragEvent<HTMLDivElement>) => {
+        onDrop: async (e: DragEvent<HTMLDivElement>) => {
           e.preventDefault();
+          setTrue();
 
-          if (targetId && dragId && targetId !== dragId) {
-            onDrop(dragId, targetId);
-          }
+          try {
+            if (targetId && dragId && targetId !== dragId) {
+              await onDrop(dragId, targetId);
+            }
+          } catch (error) {}
 
           setTargetId(undefined);
           setDragId(undefined);
+          setFalse();
         },
         ...(activeStyles &&
           targetId === dataId && {
@@ -45,10 +52,11 @@ export const useFolderDrag = ({
           })
       };
     },
-    [activeStyles, dragId, onDrop, targetId]
+    [activeStyles, dragId, onDrop, setFalse, setTrue, targetId]
   );
 
   return {
-    getBoxProps
+    getBoxProps,
+    isDropping
   };
 };

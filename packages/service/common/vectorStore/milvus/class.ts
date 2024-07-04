@@ -213,14 +213,19 @@ export class MilvusCtrl {
   };
   embRecall = async (props: EmbeddingRecallCtrlProps): Promise<EmbeddingRecallResponse> => {
     const client = await this.getClient();
-    const { teamId, datasetIds, vector, limit, retry = 2 } = props;
+    const { teamId, datasetIds, vector, limit, forbidCollectionIdList, retry = 2 } = props;
+
+    const forbidColQuery =
+      forbidCollectionIdList.length > 0
+        ? `and (collectionId not in [${forbidCollectionIdList.map((id) => `"${String(id)}"`).join(',')}])`
+        : '';
 
     try {
       const { results } = await client.search({
         collection_name: DatasetVectorTableName,
         data: vector,
         limit,
-        filter: `(teamId == "${teamId}") and (datasetId in [${datasetIds.map((id) => `"${String(id)}"`).join(',')}])`,
+        filter: `(teamId == "${teamId}") and (datasetId in [${datasetIds.map((id) => `"${String(id)}"`).join(',')}]) ${forbidColQuery}`,
         output_fields: ['collectionId']
       });
 

@@ -1,0 +1,2732 @@
+{
+    "nodes": [
+        {
+            "nodeId": "userGuide",
+            "name": "系统配置",
+            "intro": "可以配置应用的系统参数",
+            "avatar": "/imgs/workflow/userGuide.png",
+            "flowNodeType": "userGuide",
+            "position": {
+                "x": 496.81658788720824,
+                "y": -879.4392921929009
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "welcomeText",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "valueType": "string",
+                    "label": "core.app.Welcome Text",
+                    "value": ""
+                },
+                {
+                    "key": "variables",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "valueType": "any",
+                    "label": "core.app.Chat Variable",
+                    "value": []
+                },
+                {
+                    "key": "questionGuide",
+                    "valueType": "boolean",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "label": "core.app.Question Guide",
+                    "value": false
+                },
+                {
+                    "key": "tts",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "valueType": "any",
+                    "label": "",
+                    "value": {
+                        "type": "web"
+                    }
+                },
+                {
+                    "key": "whisper",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "valueType": "any",
+                    "label": "",
+                    "value": {
+                        "open": false,
+                        "autoSend": false,
+                        "autoTTSResponse": false
+                    }
+                },
+                {
+                    "key": "scheduleTrigger",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "valueType": "any",
+                    "label": "",
+                    "value": null
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "nodeId": "448745",
+            "name": "流程开始",
+            "intro": "",
+            "avatar": "/imgs/workflow/userChatInput.svg",
+            "flowNodeType": "workflowStart",
+            "position": {
+                "x": -590.7920307914544,
+                "y": 370.1375528414118
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "userChatInput",
+                    "renderTypeList": [
+                        "reference",
+                        "textarea"
+                    ],
+                    "valueType": "string",
+                    "label": "用户问题",
+                    "required": true,
+                    "toolDescription": "用户问题"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "userChatInput",
+                    "key": "userChatInput",
+                    "label": "core.module.input.label.user question",
+                    "valueType": "string",
+                    "type": "static"
+                }
+            ]
+        },
+        {
+            "nodeId": "kp1od69f61Am",
+            "name": "初始化变量",
+            "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+            "avatar": "/imgs/workflow/code.svg",
+            "flowNodeType": "code",
+            "showStatus": true,
+            "position": {
+                "x": 287.78648511394726,
+                "y": 123.76545737498816
+            },
+            "version": "482",
+            "inputs": [
+                {
+                    "key": "system_addInputParam",
+                    "renderTypeList": [
+                        "addInputParam"
+                    ],
+                    "valueType": "dynamic",
+                    "label": "",
+                    "required": false,
+                    "description": "这些变量会作为代码的运行的输入参数",
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    }
+                },
+                {
+                    "key": "codeType",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "label": "",
+                    "value": "js"
+                },
+                {
+                    "key": "code",
+                    "renderTypeList": [
+                        "custom"
+                    ],
+                    "label": "",
+                    "value": "function main() {\n    const toolList = `FINISH(answer: str) -> str - 结束任务，返回最终结果。\nTablesStructure() -> str - 获取MySQL数据库中所有表的架构详情。\nRelatedTableStructure(question:str) -> str - 查询MySQL数据库中与任务关联的表结构详细信息。\nExecuteSQL(sql:str) -> object - 执行MySQL查询并返回JSON格式结果。\nDisplayECharts(options:object) -> str - 根据echarts的JSON配置，展示图表。\n    `\n    const toolNames = \"FINISH,TablesStructure,RelatedTableStructure,ExecuteSQL,DisplayECharts\"\n\n    const backgroundInfo = `\n数据库表来自水泥厂的能源管理项目。\n表计是工厂中的各种仪表，比如电表、水表等。\n1个表计有多个指标（tag），比如电表有电压、电流、功率等指标。\n设备是工厂中的机器或者工序，有水泥磨、风机、回转窑、破碎机、辊压机等，设备表tb_equipment，举例，设备名称：1号水泥磨\n设备可以有多个公式，公式是将指标、常量、运行时间等元素用运算方法串联起来，示例：1#水泥磨产量\n公式的固定时间计算频率在tb_equipment_formula_reat表中，公式的绑定班组计算关联班组信息在tb_work_times_record_detail表中。\n公式按照设定的计算频率计算，将计算值存储到数据库公式历史数据表tb_formula_cal_history_data。\n    `\n\n    return {\n        toolList,\n        toolNames,\n        backgroundInfo\n    }\n}\n\n"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "system_addOutputParam",
+                    "key": "system_addOutputParam",
+                    "type": "dynamic",
+                    "valueType": "dynamic",
+                    "label": "",
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "description": "将代码中 return 的对象作为输出，传递给后续的节点"
+                },
+                {
+                    "id": "system_rawResponse",
+                    "key": "system_rawResponse",
+                    "label": "完整响应数据",
+                    "valueType": "object",
+                    "type": "static"
+                },
+                {
+                    "id": "error",
+                    "key": "error",
+                    "label": "运行错误",
+                    "description": "代码运行错误信息，成功时返回空",
+                    "valueType": "object",
+                    "type": "static"
+                },
+                {
+                    "id": "qLUQfhG0ILRX",
+                    "type": "dynamic",
+                    "key": "toolList",
+                    "valueType": "string",
+                    "label": "toolList"
+                },
+                {
+                    "id": "gR0mkQpJ4Og8",
+                    "type": "dynamic",
+                    "key": "toolNames",
+                    "valueType": "string",
+                    "label": "toolNames"
+                },
+                {
+                    "id": "oI3pTfTibxeL",
+                    "type": "dynamic",
+                    "key": "backgroundInfo",
+                    "valueType": "string",
+                    "label": "backgroundInfo"
+                }
+            ]
+        },
+        {
+            "nodeId": "plSmXvUVduRg",
+            "name": "AI 思考",
+            "intro": "AI 大模型对话",
+            "avatar": "/imgs/workflow/AI.png",
+            "flowNodeType": "chatNode",
+            "showStatus": true,
+            "position": {
+                "x": 2448.8107961091173,
+                "y": -140.91754550380483
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "model",
+                    "renderTypeList": [
+                        "settingLLMModel",
+                        "reference"
+                    ],
+                    "label": "core.module.input.label.aiModel",
+                    "valueType": "string",
+                    "value": "qwen-max"
+                },
+                {
+                    "key": "temperature",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "label": "",
+                    "value": 0,
+                    "valueType": "number",
+                    "min": 0,
+                    "max": 10,
+                    "step": 1
+                },
+                {
+                    "key": "maxToken",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "label": "",
+                    "value": 2000,
+                    "valueType": "number",
+                    "min": 100,
+                    "max": 4000,
+                    "step": 50
+                },
+                {
+                    "key": "isResponseAnswerText",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "label": "",
+                    "value": true,
+                    "valueType": "boolean"
+                },
+                {
+                    "key": "quoteTemplate",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "label": "",
+                    "valueType": "string"
+                },
+                {
+                    "key": "quotePrompt",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "label": "",
+                    "valueType": "string"
+                },
+                {
+                    "key": "systemPrompt",
+                    "renderTypeList": [
+                        "textarea",
+                        "reference"
+                    ],
+                    "max": 3000,
+                    "valueType": "string",
+                    "label": "core.ai.Prompt",
+                    "description": "core.app.tip.chatNodeSystemPromptTip",
+                    "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+                    "selectedTypeIndex": 0,
+                    "value": "- Role: 强大的AI助手\n- Background: 用户需要自动化解决某些问题，可能涉及数据处理、信息检索或其他任务。\n- Profile: 你是一个全能的AI助手，具备使用各种工具和执行指令的能力，以自动化的方式解决问题。\n- Skills: 自动化处理、工具使用、问题解决、信息检索。\n- Goals: 提供一个自动化解决方案，使用户能够通过工具和指令快速解决问题。\n- Constrains: 解决方案需要高效、可靠，并且易于用户理解和操作。\n- OutputFormat: 指令和工具使用的步骤说明。\n"
+                },
+                {
+                    "key": "history",
+                    "renderTypeList": [
+                        "numberInput",
+                        "reference"
+                    ],
+                    "valueType": "chatHistory",
+                    "label": "core.module.input.label.chat history",
+                    "description": "最多携带多少轮对话记录",
+                    "required": true,
+                    "min": 0,
+                    "max": 50,
+                    "value": 6
+                },
+                {
+                    "key": "userChatInput",
+                    "renderTypeList": [
+                        "reference",
+                        "textarea"
+                    ],
+                    "valueType": "string",
+                    "label": "用户问题",
+                    "required": true,
+                    "toolDescription": "用户问题",
+                    "selectedTypeIndex": 1,
+                    "value": "你是强大的AI助手，可以使用工具与指令自动化解决问题。\n\n你的任务是:\n{{userQuestion}}\n如果此任务表达“没有了”、“已完成”或类似意思，你直接执行下述工具中的FINISH动作即可。\n\n\n你可以使用以下工具或指令，它们又称为动作或actions:\n{{toolList}}\n\n\n你必须遵循以下约束来完成任务。\n1. 每次你的决策只使用一种工具，你可以使用任意多次。\n2. 确保你调用的指令或使用的工具在给定的工具列表中, {{toolNames}}。\n3. 确保你的回答不会包含违法或有侵犯性的信息。\n4. 如果你已经完成所有任务，确保执行\"FINISH\"动作结束。\n5. 用中文思考和输出。\n6. 如果执行某个指令或工具失败，尝试改变参数或参数格式再次调用。\n7. 你生成的回复必须遵循上文中给定的事实信息。不可以编造信息。DO NOT MAKE UP INFORMATION.\n8. 如果得到的结果不正确，尝试更换表达方式。\n9. 已经得到的信息，不要反复查询。\n10. 确保你生成的动作是可以精确执行的。动作做中可以包括具体方法和目标输出。\n11. 看到一个概念时尝试获取它的准确定义，并分析从哪些输入可以得到它的具体取值。\n12. 生成一个自然语言查询时，请在查询中包含全部的已知信息。\n13. 在执行分析或计算动作前，确保该分析或计算中涉及的所有子概念都已经得到了定义。\n14. 禁止打印一个文件的全部内容，这样的操作代价太大，且会造成不可预期的后果，是被严格禁止的。\n15. 不要向用户提问。\n\n当前的任务执行记录:\n{{taskRecord}}\n\n\n输出形式：\n（1）首先，根据以下格式说明，输出你的思考过程:\n关键概念: 任务中涉及的组合型概念或实体。已经明确获得取值的关键概念，将其取值完整备注在概念后。\n概念拆解: 将任务中的关键概念拆解为一系列待查询的子要素。每个关键概念一行，后接这个概念的子要素，每个子要素一行，行前以' -'开始。已经明确获得取值的子概念，将其取值完整备注在子概念后。\n反思:\n    自我反思，观察以前的执行记录，思考概念拆解是否完整、准确。\n    一步步思考是否每一个的关键概念或要素的查询都得到了准确的结果。\n    反思你已经得到哪个要素/概念。你的到的要素/概念取值是否正确。从当前的信息中还不能得到哪些要素/概念。\n    每个反思一行，行前以' -'开始。\n思考: 观察执行记录和你的自我反思，并一步步思考\n  A. 分析要素间的依赖关系，例如，如果需要获得要素X和Y的值：\n    i. 是否需要先获得X的值/定义，才能通过X来获得Y？\n    ii. 如果先获得X，是否可以通过X筛选Y，减少穷举每个Y的代价？\n    iii. X和Y是否存在在同一数据源中，能否在获取X的同时获取Y？\n    iv. 是否还有更高效或更聪明的办法来查询一个概念或要素？\n    v. 如果上一次尝试查询一个概念或要素时失败了，是否可以尝试从另一个资源中再次查询？\n    vi. 诸如此类，你可以扩展更多的思考 ...\n  B. 根据以上分析，排列子要素间的查询优先级\n  C. 找出当前需要获得取值的子要素\n  D. 不可以使用“假设”：不要对要素的取值/定义做任何假设，确保你的信息全部来自明确的数据源！\n推理: 根据你的反思与思考，一步步推理被选择的子要素取值的获取方式。如果前一次的计划失败了，请检查输入中是否包含每个概念/要素的明确定义，并尝试细化你的查询描述。\n计划: 严格遵守以下规则，计划你的当前动作。\n  A. 详细列出当前动作的执行计划。只计划一步的动作。PLAN ONE STEP ONLY!\n  B. 一步步分析，包括数据源，对数据源的操作方式，对数据的分析方法。有哪些已知常量可以直接代入此次分析。\n  C. 不要尝试计算文件的每一个元素，这种计算代价太高，是严格禁止的。你可以通过分析找到更有效的方法，比如条件筛选。\n  D. 上述分析是否依赖某个要素的取值/定义，且该要素的取值/定义尚未获得。若果是，重新规划当前动作，确保所有依赖的要素的取值/定义都已经获得。\n  E. 不要对要素的取值/定义做任何假设，确保你的信息来自给定的数据源。不要编造信息。DO NOT MAKE UP ANY INFORMATION!!!\n  F. 确保你执行的动作涉及的所有要素都已获得确切的取值/定义。\n  G. 如果全部子任务已完成，请执行FINISH动作结束任务。\n\n（2）然后，输出你选择执行的动作/工具\n输出应该是一个符合以下JSON模式的实例,必须包含两个属性：name 和 args。必须用Markdown代码块包裹的JSON字符串。\nname 属性：工具/动作名称。\nargs 属性：工具输入参数，包含参数名称和值,任意类型（anyOf），可以是一个对象（object）或者 null。\n动作json示例:\n```json\n{\n  \"name\": \"工具/动作名称\",\n  \"args\": {\n    \"sql\": \"sql语句\"\n  }\n}\n```\n"
+                },
+                {
+                    "key": "quoteQA",
+                    "renderTypeList": [
+                        "settingDatasetQuotePrompt"
+                    ],
+                    "label": "",
+                    "debugLabel": "知识库引用",
+                    "description": "",
+                    "valueType": "datasetQuote"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "history",
+                    "key": "history",
+                    "required": true,
+                    "label": "core.module.output.label.New context",
+                    "description": "core.module.output.description.New context",
+                    "valueType": "chatHistory",
+                    "type": "static"
+                },
+                {
+                    "id": "answerText",
+                    "key": "answerText",
+                    "required": true,
+                    "label": "core.module.output.label.Ai response content",
+                    "description": "core.module.output.description.Ai response content",
+                    "valueType": "string",
+                    "type": "static"
+                }
+            ]
+        },
+        {
+            "nodeId": "ojQ1CcbhnmgX",
+            "name": "变量更新",
+            "intro": "可以更新指定节点的输出值或更新全局变量",
+            "avatar": "/imgs/workflow/variable.png",
+            "flowNodeType": "variableUpdate",
+            "showStatus": false,
+            "position": {
+                "x": 1001.9948668788516,
+                "y": 238.69745176520883
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "updateList",
+                    "valueType": "any",
+                    "label": "",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "value": [
+                        {
+                            "variable": [
+                                "VARIABLE_NODE_ID",
+                                "toolList"
+                            ],
+                            "value": [
+                                "kp1od69f61Am",
+                                "qLUQfhG0ILRX"
+                            ],
+                            "valueType": "any",
+                            "renderType": "reference"
+                        },
+                        {
+                            "variable": [
+                                "VARIABLE_NODE_ID",
+                                "toolNames"
+                            ],
+                            "value": [
+                                "kp1od69f61Am",
+                                "gR0mkQpJ4Og8"
+                            ],
+                            "renderType": "reference",
+                            "valueType": "any"
+                        },
+                        {
+                            "variable": [
+                                "VARIABLE_NODE_ID",
+                                "userQuestion"
+                            ],
+                            "value": [
+                                "r8ipfmNspuBj",
+                                "newQuestion"
+                            ],
+                            "renderType": "reference",
+                            "valueType": "any"
+                        },
+                        {
+                            "variable": [
+                                "VARIABLE_NODE_ID",
+                                "backgroundInfo"
+                            ],
+                            "value": [
+                                "kp1od69f61Am",
+                                "oI3pTfTibxeL"
+                            ],
+                            "renderType": "reference",
+                            "valueType": "any"
+                        }
+                    ]
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "nodeId": "r96dwBiifLKu",
+            "name": "提取工具调用JSON",
+            "intro": "从文本中提取工具调用的json信息。\n例如：{\n  \"name\": \"工具/动作名称\",\n  \"args\": {\n    \"参数名称\": \"参数值\"\n  }\n}",
+            "avatar": "/icon/logo.svg",
+            "flowNodeType": "pluginModule",
+            "showStatus": true,
+            "position": {
+                "x": 3126.9098472584274,
+                "y": 35.21546650032576
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "inputType": "reference",
+                    "valueType": "string",
+                    "key": "textContent",
+                    "label": "textContent",
+                    "description": "文本内容",
+                    "isToolInput": false,
+                    "defaultValue": "",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    },
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "required": true,
+                    "canEdit": false,
+                    "value": [
+                        "plSmXvUVduRg",
+                        "answerText"
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "jsonObj",
+                    "type": "static",
+                    "key": "jsonObj",
+                    "valueType": "object",
+                    "label": "jsonObj",
+                    "description": "从文本中提取的JSON字符串系列化之后的对象"
+                },
+                {
+                    "id": "jsonError",
+                    "type": "static",
+                    "key": "jsonError",
+                    "valueType": "object",
+                    "label": "jsonError",
+                    "description": "解析报错内容，正确时为null"
+                }
+            ],
+            "pluginId": "666d7c232fc2aba7d6b8b764",
+            "nodeVersion": "2J0H96"
+        },
+        {
+            "nodeId": "eo6stQZ7yqJ8",
+            "name": "工具调用JSON",
+            "intro": "从json对象中提取数据。\n入参：path1.path2[2]  出参：数值",
+            "avatar": "/icon/logo.svg",
+            "flowNodeType": "pluginModule",
+            "showStatus": true,
+            "position": {
+                "x": 4357.4203769882015,
+                "y": 511.80524591444464
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "jsonObj",
+                    "valueType": "object",
+                    "label": "jsonObj",
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "required": true,
+                    "description": "json对象",
+                    "canEdit": false,
+                    "value": [
+                        "r96dwBiifLKu",
+                        "jsonObj"
+                    ],
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "key": "path",
+                    "valueType": "string",
+                    "label": "path",
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "description": "json提取路径",
+                    "canEdit": false,
+                    "value": "name",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "result",
+                    "type": "static",
+                    "key": "result",
+                    "valueType": "any",
+                    "label": "result",
+                    "description": "json对象中取出的数据"
+                }
+            ],
+            "pluginId": "666daf172fc2aba7d6b8c491",
+            "nodeVersion": "Tqa0Mc"
+        },
+        {
+            "nodeId": "vFTGzQZre0ga",
+            "name": "判断器",
+            "intro": "根据一定的条件，执行不同的分支。",
+            "avatar": "/imgs/workflow/ifElse.svg",
+            "flowNodeType": "ifElseNode",
+            "showStatus": true,
+            "position": {
+                "x": 4850.368725685675,
+                "y": 301.7135053553143
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "ifElseList",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "valueType": "any",
+                    "label": "",
+                    "value": [
+                        {
+                            "condition": "AND",
+                            "list": [
+                                {
+                                    "variable": [
+                                        "eo6stQZ7yqJ8",
+                                        "result"
+                                    ],
+                                    "condition": "equalTo",
+                                    "value": "TablesStructure"
+                                }
+                            ]
+                        },
+                        {
+                            "condition": "AND",
+                            "list": [
+                                {
+                                    "variable": [
+                                        "eo6stQZ7yqJ8",
+                                        "result"
+                                    ],
+                                    "condition": "equalTo",
+                                    "value": "ExecuteSQL"
+                                }
+                            ]
+                        },
+                        {
+                            "condition": "AND",
+                            "list": [
+                                {
+                                    "variable": [
+                                        "eo6stQZ7yqJ8",
+                                        "result"
+                                    ],
+                                    "condition": "equalTo",
+                                    "value": "FINISH"
+                                }
+                            ]
+                        },
+                        {
+                            "condition": "AND",
+                            "list": [
+                                {
+                                    "variable": [
+                                        "eo6stQZ7yqJ8",
+                                        "result"
+                                    ],
+                                    "condition": "equalTo",
+                                    "value": "DisplayECharts"
+                                }
+                            ]
+                        },
+                        {
+                            "condition": "AND",
+                            "list": [
+                                {
+                                    "variable": [
+                                        "eo6stQZ7yqJ8",
+                                        "result"
+                                    ],
+                                    "condition": "equalTo",
+                                    "value": "RelatedTableStructure"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "ifElseResult",
+                    "key": "ifElseResult",
+                    "label": "判断结果",
+                    "valueType": "string",
+                    "type": "static"
+                }
+            ]
+        },
+        {
+            "nodeId": "y7ygsoHpq4qX",
+            "name": "指定回复",
+            "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+            "avatar": "/imgs/workflow/reply.png",
+            "flowNodeType": "answerNode",
+            "position": {
+                "x": 5007.496141927355,
+                "y": 1367.3065365960495
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "text",
+                    "renderTypeList": [
+                        "textarea",
+                        "reference"
+                    ],
+                    "valueType": "any",
+                    "required": true,
+                    "label": "core.module.input.label.Response content",
+                    "description": "core.module.input.description.Response content",
+                    "placeholder": "core.module.input.description.Response content",
+                    "value": "## 没有可用的工具"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "nodeId": "yiMa1A4dKmRI",
+            "name": "读取JSON数据",
+            "intro": "从json对象中提取数据。\n入参：path1.path2[2]  出参：数值",
+            "avatar": "/icon/logo.svg",
+            "flowNodeType": "pluginModule",
+            "showStatus": true,
+            "position": {
+                "x": 5804.702334819175,
+                "y": 602.0121350448435
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "jsonObj",
+                    "valueType": "object",
+                    "label": "jsonObj",
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "required": true,
+                    "description": "json对象",
+                    "canEdit": false,
+                    "value": [
+                        "r96dwBiifLKu",
+                        "jsonObj"
+                    ],
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "key": "path",
+                    "valueType": "string",
+                    "label": "path",
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "description": "json提取路径",
+                    "canEdit": false,
+                    "value": "args.sql",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "result",
+                    "type": "static",
+                    "key": "result",
+                    "valueType": "any",
+                    "label": "result",
+                    "description": "json对象中取出的数据"
+                }
+            ],
+            "pluginId": "666daf172fc2aba7d6b8c491",
+            "nodeVersion": "Tqa0Mc"
+        },
+        {
+            "nodeId": "aHgd6qMxCtAb",
+            "name": "查询全部表结构",
+            "intro": "查询Mysql数据库全部表结构",
+            "avatar": "/icon/logo.svg",
+            "flowNodeType": "pluginModule",
+            "showStatus": true,
+            "position": {
+                "x": 5793.247667188358,
+                "y": -150.9007375557382
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "host",
+                    "valueType": "string",
+                    "label": "host",
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "description": "数据库地址",
+                    "canEdit": false,
+                    "value": "67b810fc40963693.natapp.cc",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "inputType": "numberInput",
+                    "valueType": "number",
+                    "key": "port",
+                    "label": "port",
+                    "description": "数据库端口",
+                    "isToolInput": false,
+                    "defaultValue": "3306",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    },
+                    "renderTypeList": [
+                        "numberInput"
+                    ],
+                    "required": true,
+                    "canEdit": false,
+                    "value": 9876
+                },
+                {
+                    "inputType": "input",
+                    "valueType": "string",
+                    "key": "dbAccount",
+                    "label": "dbAccount",
+                    "description": "数据库账号",
+                    "isToolInput": false,
+                    "defaultValue": "",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    },
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "canEdit": false,
+                    "value": "root"
+                },
+                {
+                    "key": "password",
+                    "valueType": "string",
+                    "label": "password",
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "description": "数据库密码",
+                    "canEdit": false,
+                    "value": "energy#654321",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "key": "db_name",
+                    "valueType": "string",
+                    "label": "db_name",
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "description": "数据库名称",
+                    "canEdit": false,
+                    "value": "energy",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "tablesStructure",
+                    "type": "static",
+                    "key": "tablesStructure",
+                    "valueType": "string",
+                    "label": "tablesStructure",
+                    "description": "获取数据库表结构信息的结果"
+                }
+            ],
+            "pluginId": "666d4def2fc2aba7d6b8a396",
+            "nodeVersion": "8pp1vR"
+        },
+        {
+            "nodeId": "taG3aAWOZKSh",
+            "name": "判断器",
+            "intro": "根据一定的条件，执行不同的分支。",
+            "avatar": "/imgs/workflow/ifElse.svg",
+            "flowNodeType": "ifElseNode",
+            "showStatus": true,
+            "position": {
+                "x": 3757.142129430286,
+                "y": 83.7664742980001
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "ifElseList",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "valueType": "any",
+                    "label": "",
+                    "value": [
+                        {
+                            "condition": "OR",
+                            "list": [
+                                {
+                                    "variable": [
+                                        "r96dwBiifLKu",
+                                        "jsonObj"
+                                    ],
+                                    "condition": "isEmpty"
+                                },
+                                {
+                                    "variable": [
+                                        "r96dwBiifLKu",
+                                        "jsonError"
+                                    ],
+                                    "condition": "isNotEmpty"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "ifElseResult",
+                    "key": "ifElseResult",
+                    "label": "判断结果",
+                    "valueType": "string",
+                    "type": "static"
+                }
+            ]
+        },
+        {
+            "nodeId": "tLZq0VLAih3o",
+            "name": "执行SQL",
+            "intro": "连接数据库并执行SQL语句，将执行结果以JSON形式返回。",
+            "avatar": "/icon/logo.svg",
+            "flowNodeType": "pluginModule",
+            "showStatus": true,
+            "position": {
+                "x": 6481.937896531293,
+                "y": 375.56953560763816
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "host",
+                    "valueType": "string",
+                    "label": "host",
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "description": "书籍库地址",
+                    "canEdit": false,
+                    "value": "67b810fc40963693.natapp.cc",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "key": "port",
+                    "valueType": "number",
+                    "label": "port",
+                    "renderTypeList": [
+                        "numberInput"
+                    ],
+                    "required": true,
+                    "description": "数据库端口号",
+                    "canEdit": false,
+                    "value": 9876,
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "key": "dbAccount",
+                    "valueType": "string",
+                    "label": "dbAccount",
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "description": "数据库账号",
+                    "canEdit": false,
+                    "value": "root",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "inputType": "input",
+                    "valueType": "string",
+                    "key": "password",
+                    "label": "password",
+                    "description": "数据库密码",
+                    "isToolInput": false,
+                    "defaultValue": "",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    },
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "canEdit": false,
+                    "value": "energy#654321"
+                },
+                {
+                    "key": "dbName",
+                    "valueType": "string",
+                    "label": "dbName",
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "description": "数据库名称",
+                    "canEdit": false,
+                    "value": "energy",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "key": "sql",
+                    "valueType": "string",
+                    "label": "sql",
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "required": true,
+                    "description": "要执行的sql语句",
+                    "canEdit": false,
+                    "value": [
+                        "yiMa1A4dKmRI",
+                        "result"
+                    ],
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "inputType": "switch",
+                    "valueType": "boolean",
+                    "key": "modifyDatabase",
+                    "label": "modifyDatabase",
+                    "description": "能否修改数据库，如果为否则增删改操作不会执行。",
+                    "isToolInput": false,
+                    "defaultValue": "",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    },
+                    "renderTypeList": [
+                        "switch"
+                    ],
+                    "required": true,
+                    "canEdit": false,
+                    "value": ""
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "result",
+                    "type": "static",
+                    "key": "result",
+                    "valueType": "any",
+                    "label": "result",
+                    "description": "sql执行结果"
+                }
+            ],
+            "pluginId": "666de0932fc2aba7d6b8f03e",
+            "nodeVersion": "vu8XnN"
+        },
+        {
+            "nodeId": "q8kDfoLzqvUK",
+            "name": "更新任务记录",
+            "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+            "avatar": "/imgs/workflow/code.svg",
+            "flowNodeType": "code",
+            "showStatus": true,
+            "position": {
+                "x": 7540.55038499402,
+                "y": 52.58723406646976
+            },
+            "version": "482",
+            "inputs": [
+                {
+                    "key": "system_addInputParam",
+                    "renderTypeList": [
+                        "addInputParam"
+                    ],
+                    "valueType": "dynamic",
+                    "label": "",
+                    "required": false,
+                    "description": "这些变量会作为代码的运行的输入参数",
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    }
+                },
+                {
+                    "key": "taskRecord",
+                    "valueType": "string",
+                    "label": "taskRecord",
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "description": "",
+                    "canEdit": true,
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "value": [
+                        "VARIABLE_NODE_ID",
+                        "taskRecord"
+                    ]
+                },
+                {
+                    "key": "toolResult",
+                    "valueType": "any",
+                    "label": "toolResult",
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "description": "",
+                    "canEdit": true,
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "value": [
+                        "VARIABLE_NODE_ID",
+                        "toolResult"
+                    ]
+                },
+                {
+                    "key": "thinkResult",
+                    "valueType": "string",
+                    "label": "thinkResult",
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "description": "",
+                    "canEdit": true,
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "value": [
+                        "plSmXvUVduRg",
+                        "answerText"
+                    ]
+                },
+                {
+                    "key": "codeType",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "label": "",
+                    "value": "js"
+                },
+                {
+                    "key": "code",
+                    "renderTypeList": [
+                        "custom"
+                    ],
+                    "label": "",
+                    "value": "function main({ toolResult, thinkResult, taskRecord }) {\n    if (!taskRecord) taskRecord = \"\"\n    const newRecord = `思考过程：\n${JSON.stringify(thinkResult)} \n\n工具执行结果：\n${JSON.stringify(toolResult)}\n\n`\n    return {\n        result: `${taskRecord}\n\n${newRecord}\n        `\n    }\n\n}\n"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "system_addOutputParam",
+                    "key": "system_addOutputParam",
+                    "type": "dynamic",
+                    "valueType": "dynamic",
+                    "label": "",
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "description": "将代码中 return 的对象作为输出，传递给后续的节点"
+                },
+                {
+                    "id": "system_rawResponse",
+                    "key": "system_rawResponse",
+                    "label": "完整响应数据",
+                    "valueType": "object",
+                    "type": "static"
+                },
+                {
+                    "id": "error",
+                    "key": "error",
+                    "label": "运行错误",
+                    "description": "代码运行错误信息，成功时返回空",
+                    "valueType": "object",
+                    "type": "static"
+                },
+                {
+                    "id": "qLUQfhG0ILRX",
+                    "type": "dynamic",
+                    "key": "result",
+                    "valueType": "string",
+                    "label": "result"
+                }
+            ]
+        },
+        {
+            "nodeId": "btpi5o6zLguL",
+            "name": "变量更新",
+            "intro": "可以更新指定节点的输出值或更新全局变量",
+            "avatar": "/imgs/workflow/variable.png",
+            "flowNodeType": "variableUpdate",
+            "showStatus": false,
+            "position": {
+                "x": 8412.856658779987,
+                "y": -580.1664655912948
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "updateList",
+                    "valueType": "any",
+                    "label": "",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "value": [
+                        {
+                            "variable": [
+                                "VARIABLE_NODE_ID",
+                                "taskRecord"
+                            ],
+                            "value": [
+                                "q8kDfoLzqvUK",
+                                "qLUQfhG0ILRX"
+                            ],
+                            "valueType": "any",
+                            "renderType": "reference"
+                        }
+                    ]
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "nodeId": "kDlWTIoAzUaR",
+            "name": "计算思考次数",
+            "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+            "avatar": "/imgs/workflow/code.svg",
+            "flowNodeType": "code",
+            "showStatus": true,
+            "position": {
+                "x": 1658.6678495491817,
+                "y": -482.39946989275956
+            },
+            "version": "482",
+            "inputs": [
+                {
+                    "key": "system_addInputParam",
+                    "renderTypeList": [
+                        "addInputParam"
+                    ],
+                    "valueType": "dynamic",
+                    "label": "",
+                    "required": false,
+                    "description": "这些变量会作为代码的运行的输入参数",
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    }
+                },
+                {
+                    "key": "thinkCount",
+                    "valueType": "number",
+                    "label": "thinkCount",
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "description": "",
+                    "canEdit": true,
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "value": [
+                        "VARIABLE_NODE_ID",
+                        "thinkCount"
+                    ]
+                },
+                {
+                    "key": "codeType",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "label": "",
+                    "value": "js"
+                },
+                {
+                    "key": "code",
+                    "renderTypeList": [
+                        "custom"
+                    ],
+                    "label": "",
+                    "value": "function main({thinkCount}){\n    if(!thinkCount) thinkCount = 0\n    return {\n        result: thinkCount + 1\n    }\n}"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "system_addOutputParam",
+                    "key": "system_addOutputParam",
+                    "type": "dynamic",
+                    "valueType": "dynamic",
+                    "label": "",
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "description": "将代码中 return 的对象作为输出，传递给后续的节点"
+                },
+                {
+                    "id": "system_rawResponse",
+                    "key": "system_rawResponse",
+                    "label": "完整响应数据",
+                    "valueType": "object",
+                    "type": "static"
+                },
+                {
+                    "id": "error",
+                    "key": "error",
+                    "label": "运行错误",
+                    "description": "代码运行错误信息，成功时返回空",
+                    "valueType": "object",
+                    "type": "static"
+                },
+                {
+                    "id": "qLUQfhG0ILRX",
+                    "type": "dynamic",
+                    "key": "result",
+                    "valueType": "string",
+                    "label": "result"
+                }
+            ]
+        },
+        {
+            "nodeId": "axveSK39E8zx",
+            "name": "变量更新",
+            "intro": "可以更新指定节点的输出值或更新全局变量",
+            "avatar": "/imgs/workflow/variable.png",
+            "flowNodeType": "variableUpdate",
+            "showStatus": false,
+            "position": {
+                "x": 2192.535369646872,
+                "y": -462.0955979476369
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "updateList",
+                    "valueType": "any",
+                    "label": "",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "value": [
+                        {
+                            "variable": [
+                                "VARIABLE_NODE_ID",
+                                "thinkCount"
+                            ],
+                            "value": [
+                                "kDlWTIoAzUaR",
+                                "qLUQfhG0ILRX"
+                            ],
+                            "valueType": "any",
+                            "renderType": "reference"
+                        }
+                    ]
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "nodeId": "bpXVZTWiRIju",
+            "name": "判断器",
+            "intro": "根据一定的条件，执行不同的分支。",
+            "avatar": "/imgs/workflow/ifElse.svg",
+            "flowNodeType": "ifElseNode",
+            "showStatus": true,
+            "position": {
+                "x": 1522.7290551752362,
+                "y": 421.29552626206134
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "ifElseList",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "valueType": "any",
+                    "label": "",
+                    "value": [
+                        {
+                            "condition": "AND",
+                            "list": [
+                                {
+                                    "variable": [
+                                        "kDlWTIoAzUaR",
+                                        "qLUQfhG0ILRX"
+                                    ],
+                                    "condition": "lessThan",
+                                    "value": "8"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "ifElseResult",
+                    "key": "ifElseResult",
+                    "label": "判断结果",
+                    "valueType": "string",
+                    "type": "static"
+                }
+            ]
+        },
+        {
+            "nodeId": "gF5IAtY410Qn",
+            "name": "指定回复",
+            "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+            "avatar": "/imgs/workflow/reply.png",
+            "flowNodeType": "answerNode",
+            "position": {
+                "x": 2443.824623023632,
+                "y": 816.2505278216875
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "text",
+                    "renderTypeList": [
+                        "textarea",
+                        "reference"
+                    ],
+                    "valueType": "any",
+                    "required": true,
+                    "label": "core.module.input.label.Response content",
+                    "description": "core.module.input.description.Response content",
+                    "placeholder": "core.module.input.description.Response content",
+                    "value": "考超过次数限制，抱歉，我没能完成您的任务。"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "nodeId": "gYTGuOId1z5v",
+            "name": "变量更新",
+            "intro": "可以更新指定节点的输出值或更新全局变量",
+            "avatar": "/imgs/workflow/variable.png",
+            "flowNodeType": "variableUpdate",
+            "showStatus": false,
+            "position": {
+                "x": 6472.637702716522,
+                "y": -57.53151404961562
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "updateList",
+                    "valueType": "any",
+                    "label": "",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "value": [
+                        {
+                            "variable": [
+                                "VARIABLE_NODE_ID",
+                                "toolResult"
+                            ],
+                            "value": [
+                                "aHgd6qMxCtAb",
+                                "tablesStructure"
+                            ],
+                            "valueType": "any",
+                            "renderType": "reference"
+                        }
+                    ]
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "nodeId": "riSBXac5NdWn",
+            "name": "变量更新",
+            "intro": "可以更新指定节点的输出值或更新全局变量",
+            "avatar": "/imgs/workflow/variable.png",
+            "flowNodeType": "variableUpdate",
+            "showStatus": false,
+            "position": {
+                "x": 7015.90736726716,
+                "y": 544.2378647244931
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "updateList",
+                    "valueType": "any",
+                    "label": "",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "value": [
+                        {
+                            "variable": [
+                                "VARIABLE_NODE_ID",
+                                "toolResult"
+                            ],
+                            "value": [
+                                "tLZq0VLAih3o",
+                                "result"
+                            ],
+                            "valueType": "any",
+                            "renderType": "reference"
+                        }
+                    ]
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "nodeId": "xb4YBjPQkkmt",
+            "name": "指定回复",
+            "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+            "avatar": "/imgs/workflow/reply.png",
+            "flowNodeType": "answerNode",
+            "position": {
+                "x": 4595.850253574726,
+                "y": -248.1434607825735
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "text",
+                    "renderTypeList": [
+                        "textarea",
+                        "reference"
+                    ],
+                    "valueType": "any",
+                    "required": true,
+                    "label": "core.module.input.label.Response content",
+                    "description": "core.module.input.description.Response content",
+                    "placeholder": "core.module.input.description.Response content",
+                    "value": "####  没有工具信息，执行结束"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "nodeId": "t2xR8xwxw51Q",
+            "name": "指定回复",
+            "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+            "avatar": "/imgs/workflow/reply.png",
+            "flowNodeType": "answerNode",
+            "position": {
+                "x": 6472.878103264434,
+                "y": 1276.7257164702219
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "text",
+                    "renderTypeList": [
+                        "textarea",
+                        "reference"
+                    ],
+                    "valueType": "any",
+                    "required": true,
+                    "label": "core.module.input.label.Response content",
+                    "description": "core.module.input.description.Response content",
+                    "placeholder": "core.module.input.description.Response content",
+                    "selectedTypeIndex": 1,
+                    "value": [
+                        "s3PrfiIx6hnx",
+                        "qLUQfhG0ILRX"
+                    ]
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "nodeId": "s3PrfiIx6hnx",
+            "name": "提取最终答案",
+            "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+            "avatar": "/imgs/workflow/code.svg",
+            "flowNodeType": "code",
+            "showStatus": true,
+            "position": {
+                "x": 5799.9076776466345,
+                "y": 1033.9953893027744
+            },
+            "version": "482",
+            "inputs": [
+                {
+                    "key": "system_addInputParam",
+                    "renderTypeList": [
+                        "addInputParam"
+                    ],
+                    "valueType": "dynamic",
+                    "label": "",
+                    "required": false,
+                    "description": "这些变量会作为代码的运行的输入参数",
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    }
+                },
+                {
+                    "key": "jsonObj",
+                    "valueType": "object",
+                    "label": "jsonObj",
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "description": "",
+                    "canEdit": true,
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "value": [
+                        "r96dwBiifLKu",
+                        "jsonObj"
+                    ]
+                },
+                {
+                    "key": "codeType",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "label": "",
+                    "value": "js"
+                },
+                {
+                    "key": "code",
+                    "renderTypeList": [
+                        "custom"
+                    ],
+                    "label": "",
+                    "value": "function main({jsonObj}){\n    \n    return {\n        result: `\n## 执行结束\n回答：${JSON.stringify(jsonObj.args.answer)}\n\n`\n    }\n}"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "system_addOutputParam",
+                    "key": "system_addOutputParam",
+                    "type": "dynamic",
+                    "valueType": "dynamic",
+                    "label": "",
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "description": "将代码中 return 的对象作为输出，传递给后续的节点"
+                },
+                {
+                    "id": "system_rawResponse",
+                    "key": "system_rawResponse",
+                    "label": "完整响应数据",
+                    "valueType": "object",
+                    "type": "static"
+                },
+                {
+                    "id": "error",
+                    "key": "error",
+                    "label": "运行错误",
+                    "description": "代码运行错误信息，成功时返回空",
+                    "valueType": "object",
+                    "type": "static"
+                },
+                {
+                    "id": "qLUQfhG0ILRX",
+                    "type": "dynamic",
+                    "key": "result",
+                    "valueType": "string",
+                    "label": "result"
+                }
+            ]
+        },
+        {
+            "nodeId": "coCFykxRdNYv",
+            "name": "全局变量重置",
+            "intro": "可以更新指定节点的输出值或更新全局变量",
+            "avatar": "/imgs/workflow/variable.png",
+            "flowNodeType": "variableUpdate",
+            "showStatus": false,
+            "position": {
+                "x": 343.87928278680124,
+                "y": 1107.9665770072877
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "updateList",
+                    "valueType": "any",
+                    "label": "",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "value": [
+                        {
+                            "variable": [
+                                "VARIABLE_NODE_ID",
+                                "thinkCount"
+                            ],
+                            "value": [
+                                "",
+                                "0"
+                            ],
+                            "valueType": "any",
+                            "renderType": "input"
+                        },
+                        {
+                            "variable": [
+                                "VARIABLE_NODE_ID",
+                                "toolResult"
+                            ],
+                            "value": [
+                                "",
+                                ""
+                            ],
+                            "renderType": "input",
+                            "valueType": "any"
+                        },
+                        {
+                            "variable": [
+                                "VARIABLE_NODE_ID",
+                                "taskRecord"
+                            ],
+                            "value": [
+                                "",
+                                ""
+                            ],
+                            "renderType": "input",
+                            "valueType": "any"
+                        }
+                    ]
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "nodeId": "zTcVPqW5hvAO",
+            "name": "显示图表",
+            "intro": "输入ECharts的JSON配置，展示图表",
+            "avatar": "/icon/logo.svg",
+            "flowNodeType": "pluginModule",
+            "showStatus": true,
+            "position": {
+                "x": 6276.501567902876,
+                "y": 1887.2872599953355
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "inputType": "reference",
+                    "valueType": "object",
+                    "key": "options",
+                    "label": "options",
+                    "description": "echarts的JSON配置",
+                    "isToolInput": false,
+                    "defaultValue": "",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    },
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "required": true,
+                    "canEdit": false,
+                    "value": [
+                        "f7EgUoG4BGsD",
+                        "result"
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "echartsStr",
+                    "type": "static",
+                    "key": "echartsStr",
+                    "valueType": "string",
+                    "label": "echartsStr",
+                    "description": "echarts字符串"
+                }
+            ],
+            "pluginId": "666ef17a2fc2aba7d6b9c43a",
+            "nodeVersion": "scynAv"
+        },
+        {
+            "nodeId": "f7EgUoG4BGsD",
+            "name": "读取图表JSON",
+            "intro": "从json对象中提取数据。\n入参：path1.path2[2]  出参：数值",
+            "avatar": "/icon/logo.svg",
+            "flowNodeType": "pluginModule",
+            "showStatus": true,
+            "position": {
+                "x": 5800.4124940621095,
+                "y": 1847.2482739526074
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "jsonObj",
+                    "valueType": "object",
+                    "label": "jsonObj",
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "required": true,
+                    "description": "json对象",
+                    "canEdit": false,
+                    "value": [
+                        "r96dwBiifLKu",
+                        "jsonObj"
+                    ],
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "key": "path",
+                    "valueType": "string",
+                    "label": "path",
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "description": "json提取路径",
+                    "canEdit": false,
+                    "value": "args.options",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "result",
+                    "type": "static",
+                    "key": "result",
+                    "valueType": "any",
+                    "label": "result",
+                    "description": "json对象中取出的数据"
+                }
+            ],
+            "pluginId": "666daf172fc2aba7d6b8c491",
+            "nodeVersion": "Tqa0Mc"
+        },
+        {
+            "nodeId": "gBdAwvoEVNo3",
+            "name": "字符串拼接",
+            "intro": "将多个字符串变量拼接起来",
+            "avatar": "/icon/logo.svg",
+            "flowNodeType": "pluginModule",
+            "showStatus": true,
+            "position": {
+                "x": 7565.575580253917,
+                "y": 1098.1563527597075
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "stringTemplate",
+                    "valueType": "string",
+                    "label": "stringTemplate",
+                    "renderTypeList": [
+                        "textarea"
+                    ],
+                    "required": true,
+                    "description": "JS字符串模板",
+                    "canEdit": false,
+                    "value": "### 工具调用结果\n{{toolResult}}\n\n",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "inputType": "addInputParam",
+                    "valueType": "dynamic",
+                    "key": "system_addInputParam",
+                    "label": "动态外部数据",
+                    "description": "需要填入的变量",
+                    "isToolInput": false,
+                    "defaultValue": "",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "any",
+                        "required": false
+                    },
+                    "renderTypeList": [
+                        "addInputParam"
+                    ],
+                    "required": false,
+                    "canEdit": false,
+                    "value": ""
+                },
+                {
+                    "key": "toolResult",
+                    "valueType": "any",
+                    "label": "toolResult",
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "required": false,
+                    "description": "",
+                    "canEdit": true,
+                    "editField": {
+                        "key": true
+                    },
+                    "value": [
+                        "VARIABLE_NODE_ID",
+                        "toolResult"
+                    ]
+                },
+                {
+                    "inputType": "switch",
+                    "valueType": "boolean",
+                    "key": "reply",
+                    "label": "reply",
+                    "description": "拼接后的字符串是否要直接显示出来。",
+                    "isToolInput": false,
+                    "defaultValue": "",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    },
+                    "renderTypeList": [
+                        "switch"
+                    ],
+                    "required": true,
+                    "canEdit": false,
+                    "value": true
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "result",
+                    "type": "static",
+                    "key": "result",
+                    "valueType": "string",
+                    "label": "result",
+                    "description": "字符串拼接结果"
+                }
+            ],
+            "pluginId": "666e525f2fc2aba7d6b93387",
+            "nodeVersion": "UMb4yt"
+        },
+        {
+            "nodeId": "r8ipfmNspuBj",
+            "name": "问题增强",
+            "intro": "问题增强，根据上下文，专业术语等对问题进行增强",
+            "avatar": "/icon/logo.svg",
+            "flowNodeType": "pluginModule",
+            "showStatus": true,
+            "position": {
+                "x": -219.53605596625619,
+                "y": 362.64553747325033
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "inputType": "reference",
+                    "valueType": "string",
+                    "key": "question",
+                    "label": "question",
+                    "description": "用户问题",
+                    "isToolInput": false,
+                    "defaultValue": "",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    },
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "required": true,
+                    "canEdit": false,
+                    "value": [
+                        "448745",
+                        "userChatInput"
+                    ]
+                },
+                {
+                    "inputType": "reference",
+                    "valueType": "string",
+                    "key": "knowledgeContent",
+                    "label": "knowledgeContent",
+                    "description": "相关知识描述",
+                    "isToolInput": false,
+                    "defaultValue": "",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    },
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "required": false,
+                    "canEdit": false,
+                    "value": ""
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "newQuestion",
+                    "type": "static",
+                    "key": "newQuestion",
+                    "valueType": "string",
+                    "label": "newQuestion",
+                    "description": "新问题"
+                }
+            ],
+            "pluginId": "6670f2ffb437c4b9393a56b8",
+            "nodeVersion": "y7Chxl"
+        },
+        {
+            "nodeId": "kLLEWPuhHq8d",
+            "name": "提取问题相关表结构",
+            "intro": "用户提出问题，从全部表结构中找出跟问题相关的表结构。",
+            "avatar": "/icon/logo.svg",
+            "flowNodeType": "pluginModule",
+            "showStatus": true,
+            "position": {
+                "x": 6283.524853700454,
+                "y": 2202.215704301765
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "host",
+                    "valueType": "string",
+                    "label": "host",
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "description": "数据库地址",
+                    "canEdit": false,
+                    "value": "67b810fc40963693.natapp.cc",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "inputType": "numberInput",
+                    "valueType": "number",
+                    "key": "port",
+                    "label": "port",
+                    "description": "数据库端口",
+                    "isToolInput": false,
+                    "defaultValue": "3306",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    },
+                    "renderTypeList": [
+                        "numberInput"
+                    ],
+                    "required": true,
+                    "canEdit": false,
+                    "value": 9876
+                },
+                {
+                    "inputType": "input",
+                    "valueType": "string",
+                    "key": "dbAccount",
+                    "label": "dbAccount",
+                    "description": "数据库账号",
+                    "isToolInput": false,
+                    "defaultValue": "",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    },
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "canEdit": false,
+                    "value": "root"
+                },
+                {
+                    "key": "password",
+                    "valueType": "string",
+                    "label": "password",
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "description": "数据库密码",
+                    "canEdit": false,
+                    "value": "energy#654321",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "key": "db_name",
+                    "valueType": "string",
+                    "label": "db_name",
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "description": "数据库名称",
+                    "canEdit": false,
+                    "value": "energy",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "key": "question",
+                    "valueType": "string",
+                    "label": "question",
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "required": true,
+                    "description": "用户问题或者任务",
+                    "canEdit": false,
+                    "value": [
+                        "o5RDshVCGRJm",
+                        "result"
+                    ],
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "inputType": "reference",
+                    "valueType": "string",
+                    "key": "backgroundInfo",
+                    "label": "backgroundInfo",
+                    "description": "项目数据背景信息，帮助理解表结构",
+                    "isToolInput": false,
+                    "defaultValue": "",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    },
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "required": false,
+                    "canEdit": false,
+                    "value": [
+                        "VARIABLE_NODE_ID",
+                        "backgroundInfo"
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "tablesStructure",
+                    "type": "static",
+                    "key": "tablesStructure",
+                    "valueType": "string",
+                    "label": "tablesStructure",
+                    "description": "获取数据库表结构信息的结果"
+                }
+            ],
+            "pluginId": "6671308eb437c4b9393a726d",
+            "nodeVersion": "RL60pP"
+        },
+        {
+            "nodeId": "o5RDshVCGRJm",
+            "name": "读取关联表结构JSON",
+            "intro": "从json对象中提取数据。\n入参：path1.path2[2]  出参：数值",
+            "avatar": "/icon/logo.svg",
+            "flowNodeType": "pluginModule",
+            "showStatus": true,
+            "position": {
+                "x": 5808.201999071718,
+                "y": 2380.92421424025
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "jsonObj",
+                    "valueType": "object",
+                    "label": "jsonObj",
+                    "renderTypeList": [
+                        "reference"
+                    ],
+                    "required": true,
+                    "description": "json对象",
+                    "canEdit": false,
+                    "value": [
+                        "r96dwBiifLKu",
+                        "jsonObj"
+                    ],
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                },
+                {
+                    "key": "path",
+                    "valueType": "string",
+                    "label": "path",
+                    "renderTypeList": [
+                        "input"
+                    ],
+                    "required": true,
+                    "description": "json提取路径",
+                    "canEdit": false,
+                    "value": "args.question",
+                    "editField": {
+                        "key": true
+                    },
+                    "dynamicParamDefaultValue": {
+                        "inputType": "reference",
+                        "valueType": "string",
+                        "required": true
+                    }
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "result",
+                    "type": "static",
+                    "key": "result",
+                    "valueType": "any",
+                    "label": "result",
+                    "description": "json对象中取出的数据"
+                }
+            ],
+            "pluginId": "666daf172fc2aba7d6b8c491",
+            "nodeVersion": "Tqa0Mc"
+        },
+        {
+            "nodeId": "ntouyPAluPqu",
+            "name": "变量更新",
+            "intro": "可以更新指定节点的输出值或更新全局变量",
+            "avatar": "/imgs/workflow/variable.png",
+            "flowNodeType": "variableUpdate",
+            "showStatus": false,
+            "position": {
+                "x": 6769.484256549874,
+                "y": 2439.18740793345
+            },
+            "version": "481",
+            "inputs": [
+                {
+                    "key": "updateList",
+                    "valueType": "any",
+                    "label": "",
+                    "renderTypeList": [
+                        "hidden"
+                    ],
+                    "editField": {
+                        "key": true,
+                        "valueType": true
+                    },
+                    "value": [
+                        {
+                            "variable": [
+                                "VARIABLE_NODE_ID",
+                                "toolResult"
+                            ],
+                            "value": [
+                                "kLLEWPuhHq8d",
+                                "tablesStructure"
+                            ],
+                            "valueType": "any",
+                            "renderType": "reference"
+                        }
+                    ]
+                }
+            ],
+            "outputs": []
+        }
+    ],
+    "edges": [
+        {
+            "source": "plSmXvUVduRg",
+            "target": "r96dwBiifLKu",
+            "sourceHandle": "plSmXvUVduRg-source-right",
+            "targetHandle": "r96dwBiifLKu-target-left"
+        },
+        {
+            "source": "vFTGzQZre0ga",
+            "target": "y7ygsoHpq4qX",
+            "sourceHandle": "vFTGzQZre0ga-source-ELSE",
+            "targetHandle": "y7ygsoHpq4qX-target-top"
+        },
+        {
+            "source": "vFTGzQZre0ga",
+            "target": "aHgd6qMxCtAb",
+            "sourceHandle": "vFTGzQZre0ga-source-IF",
+            "targetHandle": "aHgd6qMxCtAb-target-left"
+        },
+        {
+            "source": "r96dwBiifLKu",
+            "target": "taG3aAWOZKSh",
+            "sourceHandle": "r96dwBiifLKu-source-right",
+            "targetHandle": "taG3aAWOZKSh-target-left"
+        },
+        {
+            "source": "taG3aAWOZKSh",
+            "target": "eo6stQZ7yqJ8",
+            "sourceHandle": "taG3aAWOZKSh-source-ELSE",
+            "targetHandle": "eo6stQZ7yqJ8-target-top"
+        },
+        {
+            "source": "vFTGzQZre0ga",
+            "target": "yiMa1A4dKmRI",
+            "sourceHandle": "vFTGzQZre0ga-source-ELSE IF 1",
+            "targetHandle": "yiMa1A4dKmRI-target-left"
+        },
+        {
+            "source": "yiMa1A4dKmRI",
+            "target": "tLZq0VLAih3o",
+            "sourceHandle": "yiMa1A4dKmRI-source-right",
+            "targetHandle": "tLZq0VLAih3o-target-left"
+        },
+        {
+            "source": "q8kDfoLzqvUK",
+            "target": "btpi5o6zLguL",
+            "sourceHandle": "q8kDfoLzqvUK-source-right",
+            "targetHandle": "btpi5o6zLguL-target-left"
+        },
+        {
+            "source": "aHgd6qMxCtAb",
+            "target": "gYTGuOId1z5v",
+            "sourceHandle": "aHgd6qMxCtAb-source-right",
+            "targetHandle": "gYTGuOId1z5v-target-left"
+        },
+        {
+            "source": "tLZq0VLAih3o",
+            "target": "riSBXac5NdWn",
+            "sourceHandle": "tLZq0VLAih3o-source-right",
+            "targetHandle": "riSBXac5NdWn-target-left"
+        },
+        {
+            "source": "gYTGuOId1z5v",
+            "target": "q8kDfoLzqvUK",
+            "sourceHandle": "gYTGuOId1z5v-source-right",
+            "targetHandle": "q8kDfoLzqvUK-target-left"
+        },
+        {
+            "source": "riSBXac5NdWn",
+            "target": "q8kDfoLzqvUK",
+            "sourceHandle": "riSBXac5NdWn-source-right",
+            "targetHandle": "q8kDfoLzqvUK-target-left"
+        },
+        {
+            "source": "taG3aAWOZKSh",
+            "target": "xb4YBjPQkkmt",
+            "sourceHandle": "taG3aAWOZKSh-source-IF",
+            "targetHandle": "xb4YBjPQkkmt-target-left"
+        },
+        {
+            "source": "eo6stQZ7yqJ8",
+            "target": "vFTGzQZre0ga",
+            "sourceHandle": "eo6stQZ7yqJ8-source-right",
+            "targetHandle": "vFTGzQZre0ga-target-left"
+        },
+        {
+            "source": "vFTGzQZre0ga",
+            "target": "s3PrfiIx6hnx",
+            "sourceHandle": "vFTGzQZre0ga-source-ELSE IF 2",
+            "targetHandle": "s3PrfiIx6hnx-target-left"
+        },
+        {
+            "source": "s3PrfiIx6hnx",
+            "target": "t2xR8xwxw51Q",
+            "sourceHandle": "s3PrfiIx6hnx-source-right",
+            "targetHandle": "t2xR8xwxw51Q-target-left"
+        },
+        {
+            "source": "kp1od69f61Am",
+            "target": "ojQ1CcbhnmgX",
+            "sourceHandle": "kp1od69f61Am-source-right",
+            "targetHandle": "ojQ1CcbhnmgX-target-left"
+        },
+        {
+            "source": "ojQ1CcbhnmgX",
+            "target": "kDlWTIoAzUaR",
+            "sourceHandle": "ojQ1CcbhnmgX-source-right",
+            "targetHandle": "kDlWTIoAzUaR-target-left"
+        },
+        {
+            "source": "btpi5o6zLguL",
+            "target": "kDlWTIoAzUaR",
+            "sourceHandle": "btpi5o6zLguL-source-right",
+            "targetHandle": "kDlWTIoAzUaR-target-top"
+        },
+        {
+            "source": "bpXVZTWiRIju",
+            "target": "plSmXvUVduRg",
+            "sourceHandle": "bpXVZTWiRIju-source-IF",
+            "targetHandle": "plSmXvUVduRg-target-left"
+        },
+        {
+            "source": "bpXVZTWiRIju",
+            "target": "gF5IAtY410Qn",
+            "sourceHandle": "bpXVZTWiRIju-source-ELSE",
+            "targetHandle": "gF5IAtY410Qn-target-left"
+        },
+        {
+            "source": "kDlWTIoAzUaR",
+            "target": "axveSK39E8zx",
+            "sourceHandle": "kDlWTIoAzUaR-source-right",
+            "targetHandle": "axveSK39E8zx-target-left"
+        },
+        {
+            "source": "kDlWTIoAzUaR",
+            "target": "bpXVZTWiRIju",
+            "sourceHandle": "kDlWTIoAzUaR-source-bottom",
+            "targetHandle": "bpXVZTWiRIju-target-top"
+        },
+        {
+            "source": "448745",
+            "target": "coCFykxRdNYv",
+            "sourceHandle": "448745-source-right",
+            "targetHandle": "coCFykxRdNYv-target-left"
+        },
+        {
+            "source": "vFTGzQZre0ga",
+            "target": "f7EgUoG4BGsD",
+            "sourceHandle": "vFTGzQZre0ga-source-ELSE IF 3",
+            "targetHandle": "f7EgUoG4BGsD-target-left"
+        },
+        {
+            "source": "f7EgUoG4BGsD",
+            "target": "zTcVPqW5hvAO",
+            "sourceHandle": "f7EgUoG4BGsD-source-right",
+            "targetHandle": "zTcVPqW5hvAO-target-left"
+        },
+        {
+            "source": "q8kDfoLzqvUK",
+            "target": "gBdAwvoEVNo3",
+            "sourceHandle": "q8kDfoLzqvUK-source-bottom",
+            "targetHandle": "gBdAwvoEVNo3-target-top"
+        },
+        {
+            "source": "448745",
+            "target": "r8ipfmNspuBj",
+            "sourceHandle": "448745-source-right",
+            "targetHandle": "r8ipfmNspuBj-target-left"
+        },
+        {
+            "source": "r8ipfmNspuBj",
+            "target": "kp1od69f61Am",
+            "sourceHandle": "r8ipfmNspuBj-source-right",
+            "targetHandle": "kp1od69f61Am-target-left"
+        },
+        {
+            "source": "vFTGzQZre0ga",
+            "target": "o5RDshVCGRJm",
+            "sourceHandle": "vFTGzQZre0ga-source-ELSE IF 4",
+            "targetHandle": "o5RDshVCGRJm-target-left"
+        },
+        {
+            "source": "o5RDshVCGRJm",
+            "target": "kLLEWPuhHq8d",
+            "sourceHandle": "o5RDshVCGRJm-source-right",
+            "targetHandle": "kLLEWPuhHq8d-target-left"
+        },
+        {
+            "source": "kLLEWPuhHq8d",
+            "target": "ntouyPAluPqu",
+            "sourceHandle": "kLLEWPuhHq8d-source-right",
+            "targetHandle": "ntouyPAluPqu-target-left"
+        },
+        {
+            "source": "ntouyPAluPqu",
+            "target": "q8kDfoLzqvUK",
+            "sourceHandle": "ntouyPAluPqu-source-right",
+            "targetHandle": "q8kDfoLzqvUK-target-left"
+        }
+    ],
+    "chatConfig": {
+        "welcomeText": "你好，我是你的智能助手",
+        "variables": [
+            {
+                "id": "b0qmow",
+                "key": "toolList",
+                "label": "工具列表",
+                "type": "custom",
+                "required": true,
+                "maxLen": 50,
+                "enums": [
+                    {
+                        "value": ""
+                    }
+                ],
+                "icon": "core/app/variable/external"
+            },
+            {
+                "id": "a2zclk",
+                "key": "toolNames",
+                "label": "工具名称",
+                "type": "custom",
+                "required": true,
+                "maxLen": 50,
+                "enums": [
+                    {
+                        "value": ""
+                    }
+                ],
+                "icon": "core/app/variable/external"
+            },
+            {
+                "id": "nv8gn7",
+                "key": "userQuestion",
+                "label": "用户问题",
+                "type": "custom",
+                "required": true,
+                "maxLen": 50,
+                "enums": [
+                    {
+                        "value": ""
+                    }
+                ]
+            },
+            {
+                "id": "8ikfq7",
+                "key": "taskRecord",
+                "label": "任务记录",
+                "type": "custom",
+                "required": true,
+                "maxLen": 50,
+                "enums": [
+                    {
+                        "value": ""
+                    }
+                ]
+            },
+            {
+                "id": "25syrz",
+                "key": "thinkCount",
+                "label": "思考次数",
+                "type": "custom",
+                "required": true,
+                "maxLen": 50,
+                "enums": [
+                    {
+                        "value": ""
+                    }
+                ]
+            },
+            {
+                "id": "p3fdy5",
+                "key": "toolResult",
+                "label": "工具输出结果",
+                "type": "custom",
+                "required": true,
+                "maxLen": 50,
+                "enums": [
+                    {
+                        "value": ""
+                    }
+                ],
+                "icon": "core/app/variable/external"
+            },
+            {
+                "id": "2pqt92",
+                "key": "backgroundInfo",
+                "label": "背景信息",
+                "type": "custom",
+                "required": false,
+                "maxLen": 50,
+                "enums": [
+                    {
+                        "value": ""
+                    }
+                ]
+            }
+        ],
+        "scheduledTriggerConfig": {
+            "cronString": "0 0 * * *",
+            "timezone": "Asia/Shanghai",
+            "defaultPrompt": ""
+        },
+        "_id": "666c16832fc2aba7d6b8853e"
+    }
+}

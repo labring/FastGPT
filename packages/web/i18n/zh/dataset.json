@@ -3,6 +3,9 @@
   "Common Dataset": "通用知识库",
   "Common Dataset Desc": "可通过导入文件、网页链接或手动录入形式构建知识库",
   "Confirm to rebuild embedding tip": "确认为知识库切换索引？\n切换索引是一个非常重量的操作，需要对您知识库内所有数据进行重新索引，时间可能较长，请确保账号内剩余积分充足。\n\n此外，你还需要注意修改选择该知识库的应用，避免它们与其他索引模型知识库混用。",
+  "Disabled": "已禁用",
+  "Enable": "启用",
+  "Enabled": "已启用",
   "External File": "外部文件库",
   "External file Dataset Desc": "可以从外部文件库导入文件构建知识库，文件不会进行二次存储",
   "External id": "文件阅读 ID",
@@ -15,5 +18,9 @@
   "The knowledge base has indexes that are being trained or being rebuilt": "知识库有训练中或正在重建的索引",
   "Website Dataset": "Web 站点同步",
   "Website Dataset Desc": "Web 站点同步允许你直接使用一个网页链接构建知识库",
+  "collection": {
+    "Create update time": "创建/更新时间",
+    "Training type": "训练模式"
+  },
   "filename": "文件名"
 }

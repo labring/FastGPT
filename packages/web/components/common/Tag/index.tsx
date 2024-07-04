@@ -66,7 +66,8 @@ const MyTag = ({ children, colorSchema = 'blue', type = 'fill', showDot, ...prop
   }, [colorSchema]);
 
   return (
-    <Flex
+    <Box
+      display={'inline-flex'}
       px={2.5}
       lineHeight={1}
       py={1}
@@ -82,7 +83,7 @@ const MyTag = ({ children, colorSchema = 'blue', type = 'fill', showDot, ...prop
     >
       {showDot && <Box w={1.5} h={1.5} borderRadius={'md'} bg={theme.color} mr={1.5}></Box>}
       {children}
-    </Flex>
+    </Box>
   );
 };
 
