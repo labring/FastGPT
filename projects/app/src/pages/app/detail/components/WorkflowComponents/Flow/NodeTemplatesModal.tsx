@@ -58,7 +58,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
   const { feConfigs } = useSystemStore();
-  const { basicNodeTemplates, hasToolNode, nodeList } = useContextSelector(
+  const { basicNodeTemplates, hasToolNode, nodeList, appId } = useContextSelector(
     WorkflowContext,
     (v) => v
   );
@@ -110,7 +110,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
           parentId,
           searchKey,
           type: [AppTypeEnum.folder, AppTypeEnum.httpPlugin, AppTypeEnum.plugin]
-        });
+        }).then((res) => res.filter((app) => app.id !== appId));
       }
     },
     {

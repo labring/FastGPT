@@ -1287,7 +1287,7 @@ export const workflowTemplates: TemplateType = [
             renderTypeList: ['custom'],
             label: '',
             value:
-              'function main({data1}){\n    const result = data1.split("```").filter(item => !!item.trim())\n\n    if(result[result.length-1]) {\n        return {\n            result: result[result.length-1]\n        }\n    }\n\n    return {\n        result: \'未截取到翻译内容\'\n    }\n}'
+              "function main({data1}) {\n    const codeBlocks = data1.match(/```[\\s\\S]*?```/g);\n\n    if (codeBlocks && codeBlocks.length > 0) {\n        const lastCodeBlock = codeBlocks[codeBlocks.length - 1];\n        const cleanedCodeBlock = lastCodeBlock.replace(/```[a-zA-Z]*|```/g, '').trim();\n        \n        return {\n            result: cleanedCodeBlock\n        };\n    }\n\n    return {\n        result: '未截取到代码块内容'\n    };\n}\n"
           },
           {
             key: 'data1',
@@ -1506,7 +1506,7 @@ export const workflowTemplates: TemplateType = [
             required: true,
             label: '拼接文本',
             placeholder: '可通过 {{字段名}} 来引用变量',
-            value: '------\n\n最终翻译结果如下: \n\n```\n{{result}}\n```'
+            value: '****** \n\n最终翻译结果如下: \n\n```\n{{result}}\n```'
           },
           {
             renderTypeList: ['reference'],
