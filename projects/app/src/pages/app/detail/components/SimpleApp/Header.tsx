@@ -89,7 +89,7 @@ const Header = ({
           <RouteTab />
         </Flex>
       )}
-      <Flex pl={2} pt={[2, 3]} alignItems={'flex-start'} position={'relative'}>
+      <Flex pt={[2, 3]} alignItems={'flex-start'} position={'relative'}>
         <Box flex={'1'}>
           <FolderPath paths={paths} hoverStyle={{ color: 'primary.600' }} onClick={onclickRoute} />
         </Box>
