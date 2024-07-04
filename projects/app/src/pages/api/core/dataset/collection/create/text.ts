@@ -17,8 +17,9 @@ import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { CreateCollectionResponse } from '@/global/core/dataset/api';
 
-async function handler(req: NextApiRequest) {
+async function handler(req: NextApiRequest): CreateCollectionResponse {
   const {
     name,
     text,

@@ -15,8 +15,9 @@ import { reloadCollectionChunks } from '@fastgpt/service/core/dataset/collection
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { CreateCollectionResponse } from '@/global/core/dataset/api';
 
-async function handler(req: NextApiRequest) {
+async function handler(req: NextApiRequest): CreateCollectionResponse {
   const {
     link,
     trainingType = TrainingModeEnum.chunk,
@@ -40,7 +41,7 @@ async function handler(req: NextApiRequest) {
     insertLen: predictDataLimitLength(trainingType, new Array(10))
   });
 
-  await mongoSessionRun(async (session) => {
+  return mongoSessionRun(async (session) => {
     // 2. create collection
     const collection = await createOneCollection({
       ...body,
@@ -70,7 +71,7 @@ async function handler(req: NextApiRequest) {
     });
 
     // load
-    await reloadCollectionChunks({
+    const result = await reloadCollectionChunks({
       collection: {
         ...collection.toObject(),
         datasetId: dataset
@@ -80,7 +81,12 @@ async function handler(req: NextApiRequest) {
       session
     });
 
-    return collection;
+    return {
+      collectionId: collection._id,
+      results: {
+        insertLen: result.insertLen
+      }
+    };
   });
 }
 
