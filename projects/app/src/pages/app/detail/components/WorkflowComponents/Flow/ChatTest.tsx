@@ -1,4 +1,4 @@
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import React, { forwardRef, ForwardedRef } from 'react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
 import { Box, Flex, IconButton } from '@chakra-ui/react';

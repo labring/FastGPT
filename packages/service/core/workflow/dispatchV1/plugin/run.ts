@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { dispatchWorkFlowV1 } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
@@ -42,7 +42,7 @@ const getPluginTemplateById = async (id: string): Promise<PluginTemplateType> =>
       showStatus: true,
       source: PluginSourceEnum.personal,
       modules: item.modules,
-      templateType: FlowNodeTemplateTypeEnum.personalPlugin
+      templateType: FlowNodeTemplateTypeEnum.teamApp
     };
   }
   return Promise.reject('plugin not found');

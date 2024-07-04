@@ -5,7 +5,7 @@ import {
   NodeOutputKeyEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index';
+import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 export const DYNAMIC_INPUT_KEY = 'DYNAMIC_INPUT_KEY';
 
 export const setEntryEntries = (modules: StoreNodeItemType[]) => {

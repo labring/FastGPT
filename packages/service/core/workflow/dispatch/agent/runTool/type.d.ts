@@ -3,7 +3,7 @@ import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workfl
 import type {
   ModuleDispatchProps,
   DispatchNodeResponseType
-} from '@fastgpt/global/core/workflow/type/index.d';
+} from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { DispatchFlowResponse } from '../../type.d';

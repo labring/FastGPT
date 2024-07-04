@@ -11,40 +11,7 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
   const { t } = useTranslation();
   const { onExportChat } = useChatBox();
   const router = useRouter();
-
-  const menuList = useMemo(
-    () => [
-      {
-        icon: 'core/chat/chatLight',
-        label: t('core.chat.New Chat'),
-        onClick: () => {
-          router.replace({
-            query: {
-              ...router.query,
-              chatId: ''
-            }
-          });
-        }
-      },
-      {
-        icon: 'core/app/appApiLight',
-        label: `HTML ${t('Export')}`,
-        onClick: () => onExportChat({ type: 'html', history })
-      },
-      {
-        icon: 'file/markdown',
-        label: `Markdown ${t('Export')}`,
-        onClick: () => onExportChat({ type: 'md', history })
-      },
-      {
-        icon: 'file/pdf',
-        label: `PDF ${t('Export')}`,
-        onClick: () => onExportChat({ type: 'pdf', history })
-      }
-    ],
-    [history, onExportChat, router, t]
-  );
-
+  console.log(history);
   return history.length > 0 ? (
     <MyMenu
       Button={
@@ -55,7 +22,43 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
           variant={'whitePrimary'}
         />
       }
-      menuList={[{ children: menuList }]}
+      menuList={[
+        {
+          children: [
+            {
+              icon: 'core/chat/chatLight',
+              label: t('core.chat.New Chat'),
+              onClick: () => {
+                router.replace({
+                  query: {
+                    ...router.query,
+                    chatId: ''
+                  }
+                });
+              }
+            }
+          ]
+        },
+        {
+          children: [
+            // {
+            //   icon: 'core/app/appApiLight',
+            //   label: `HTML ${t('Export')}`,
+            //   onClick: () => onExportChat({ type: 'html', history })
+            // },
+            {
+              icon: 'file/markdown',
+              label: `Markdown ${t('Export')}`,
+              onClick: () => onExportChat({ type: 'md', history })
+            }
+            // {
+            //   icon: 'core/chat/export/pdf',
+            //   label: `PDF ${t('Export')}`,
+            //   onClick: () => onExportChat({ type: 'pdf', history })
+            // }
+          ]
+        }
+      ]}
     />
   ) : (
     <Box w={'28px'} h={'28px'} />

@@ -100,6 +100,7 @@ export const iconPaths = {
   'core/chat/chatFill': () => import('./icons/core/chat/chatFill.svg'),
   'core/chat/chatLight': () => import('./icons/core/chat/chatLight.svg'),
   'core/chat/chatModelTag': () => import('./icons/core/chat/chatModelTag.svg'),
+  'core/chat/export/pdf': () => import('./icons/core/chat/export/pdf.svg'),
   'core/chat/feedback/badLight': () => import('./icons/core/chat/feedback/badLight.svg'),
   'core/chat/feedback/goodLight': () => import('./icons/core/chat/feedback/goodLight.svg'),
   'core/chat/fileSelect': () => import('./icons/core/chat/fileSelect.svg'),

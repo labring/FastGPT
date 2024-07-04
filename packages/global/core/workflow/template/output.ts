@@ -8,10 +8,5 @@ export const Output_Template_AddOutput: FlowNodeOutputItemType = {
   key: NodeOutputKeyEnum.addOutputParam,
   type: FlowNodeOutputTypeEnum.dynamic,
   valueType: WorkflowIOValueTypeEnum.dynamic,
-  label: '',
-
-  editField: {
-    key: true,
-    valueType: true
-  }
+  label: ''
 };

@@ -4,7 +4,7 @@ import { NodeInputKeyEnum } from './constants';
 export type SelectedDatasetType = { datasetId: string }[];
 
 export type HttpBodyType<T = Record<string, any>> = {
-  [NodeInputKeyEnum.addInputParam]: Record<string, any>;
+  // [NodeInputKeyEnum.addInputParam]: Record<string, any>;
 } & T;
 export type HttpQueryType = {
   appId: string;

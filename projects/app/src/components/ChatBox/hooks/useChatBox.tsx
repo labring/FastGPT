@@ -3,6 +3,7 @@ import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { useCallback } from 'react';
 import { htmlTemplate } from '@/web/core/chat/constants';
 import { fileDownload } from '@/web/common/file/utils';
+import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 export const useChatBox = () => {
   const onExportChat = useCallback(
@@ -40,8 +41,30 @@ export const useChatBox = () => {
 
       const map: Record<ExportChatType, () => void> = {
         md: () => {
+          console.log(history);
           fileDownload({
-            text: history.map((item) => item.value).join('\n\n'),
+            text: history
+              .map((item) => {
+                let result = `Role: ${item.obj}\n`;
+                const content = item.value.map((item) => {
+                  if (item.type === ChatItemValueTypeEnum.text) {
+                    return item.text?.content;
+                  } else if (item.type === ChatItemValueTypeEnum.file) {
+                    return `
+![${item.file?.name}](${item.file?.url})
+`;
+                  } else if (item.type === ChatItemValueTypeEnum.tool) {
+                    return `
+\`\`\`Toll
+${JSON.stringify(item.tools, null, 2)}
+\`\`\`
+`;
+                  }
+                });
+
+                return result + content;
+              })
+              .join('\n\n-------\n\n'),
             type: 'text/markdown',
             filename: 'chat.md'
           });

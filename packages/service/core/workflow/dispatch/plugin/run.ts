@@ -1,7 +1,6 @@
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { dispatchWorkFlow } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getPluginRuntimeById, splitCombinePluginId } from '../../../app/plugin/controller';
 import {
@@ -11,7 +10,6 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { updateToolInputValue } from '../agent/runTool/utils';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
@@ -50,41 +48,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     (item) => item.flowNodeType === FlowNodeTypeEnum.pluginInput
   );
   if (!inputModule) return Promise.reject('Plugin error, It has no set input.');
-  const hasDynamicInput = inputModule.inputs.find(
-    (input) => input.key === NodeInputKeyEnum.addInputParam
-  );
-
-  const startParams: Record<string, any> = (() => {
-    if (!hasDynamicInput) return data;
-
-    const params: Record<string, any> = {
-      [NodeInputKeyEnum.addInputParam]: {}
-    };
-
-    for (const key in data) {
-      if (key === NodeInputKeyEnum.addInputParam) continue;
-
-      const input = inputModule.inputs.find((input) => input.key === key);
-      if (input) {
-        params[key] = data[key];
-      } else {
-        params[NodeInputKeyEnum.addInputParam][key] = data[key];
-      }
-    }
-
-    return params;
-  })();
-
-  // replace input by dynamic variables
-  if (hasDynamicInput) {
-    for (const key in startParams) {
-      if (key === NodeInputKeyEnum.addInputParam) continue;
-      startParams[key] = replaceVariable(
-        startParams[key],
-        startParams[NodeInputKeyEnum.addInputParam]
-      );
-    }
-  }
 
   const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
@@ -96,7 +59,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
             showStatus: false,
             inputs: updateToolInputValue({
               inputs: node.inputs,
-              params: startParams
+              params: data
             })
           };
         }

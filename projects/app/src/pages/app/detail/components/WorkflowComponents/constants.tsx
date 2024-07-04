@@ -1,4 +1,4 @@
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React from 'react';
 import { DefaultEdgeOptions } from 'reactflow';
 

@@ -53,7 +53,7 @@ const RenderList: {
   },
   {
     types: [FlowNodeInputTypeEnum.addInputParam],
-    Component: dynamic(() => import('./templates/AddInputParam'))
+    Component: dynamic(() => import('./templates/DynamicInputs/index'))
   },
   {
     types: [FlowNodeInputTypeEnum.JSONEditor],
@@ -76,10 +76,7 @@ type Props = {
 const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) => {
   const copyInputs = useMemo(() => JSON.stringify(flowInputList), [flowInputList]);
   const filterInputs = useMemo(() => {
-    const parseSortInputs = JSON.parse(copyInputs) as FlowNodeInputItemType[];
-    return parseSortInputs.filter((input) => {
-      return true;
-    });
+    return JSON.parse(copyInputs) as FlowNodeInputItemType[];
   }, [copyInputs]);
 
   const memoCustomComponent = useMemo(() => CustomComponent || {}, [CustomComponent]);
@@ -87,6 +84,8 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
   const Render = useMemo(() => {
     return filterInputs.map((input) => {
       const renderType = input.renderTypeList?.[input.selectedTypeIndex || 0];
+      const isDynamic = !!input.canEdit;
+
       const RenderComponent = (() => {
         if (renderType === FlowNodeInputTypeEnum.custom && memoCustomComponent[input.key]) {
           return <>{memoCustomComponent[input.key]({ ...input })}</>;
@@ -98,7 +97,7 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
         return <Component inputs={filterInputs} item={input} nodeId={nodeId} />;
       })();
 
-      return renderType !== FlowNodeInputTypeEnum.hidden ? (
+      return renderType !== FlowNodeInputTypeEnum.hidden && !isDynamic ? (
         <Box key={input.key} _notLast={{ mb }} position={'relative'}>
           {!!input.label && !hideLabelTypeList.includes(renderType) && (
             <InputLabel nodeId={nodeId} input={input} />

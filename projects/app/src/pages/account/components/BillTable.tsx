@@ -37,17 +37,21 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 const BillTable = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [billType, setBillType] = useState<`${BillTypeEnum}` | ''>('');
+  const [billType, setBillType] = useState<BillTypeEnum | ''>('');
   const [billDetail, setBillDetail] = useState<BillSchemaType>();
 
   const billTypeList = useMemo(
-    () => [
-      { label: t('common.All'), value: '' },
-      ...Object.entries(billTypeMap).map(([key, value]) => ({
-        label: t(value.label),
-        value: key
-      }))
-    ],
+    () =>
+      [
+        { label: t('common.All'), value: '' },
+        ...Object.entries(billTypeMap).map(([key, value]) => ({
+          label: t(value.label),
+          value: key
+        }))
+      ] as {
+        label: string;
+        value: BillTypeEnum | '';
+      }[],
     [t]
   );
 
@@ -106,7 +110,7 @@ const BillTable = () => {
             <Tr>
               <Th>#</Th>
               <Th>
-                <MySelect
+                <MySelect<BillTypeEnum | ''>
                   list={billTypeList}
                   value={billType}
                   size={'sm'}

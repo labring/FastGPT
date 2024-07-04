@@ -6,7 +6,7 @@ import {
   getPluginPreviewNode,
   splitCombinePluginId
 } from '@fastgpt/service/core/app/plugin/controller';
-import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/index.d';
+import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';

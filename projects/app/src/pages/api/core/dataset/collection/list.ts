@@ -10,8 +10,9 @@ import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/sc
 import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { PagingData } from '@/types';
 
-async function handler(req: NextApiRequest) {
+async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectionsListItemType>> {
   let {
     pageNum = 1,
     pageSize = 10,
@@ -45,9 +46,24 @@ async function handler(req: NextApiRequest) {
       : {})
   };
 
+  const selectField = {
+    _id: 1,
+    parentId: 1,
+    tmbId: 1,
+    name: 1,
+    type: 1,
+    forbid: 1,
+    createTime: 1,
+    updateTime: 1,
+    trainingType: 1,
+    fileId: 1,
+    rawLink: 1
+  };
+
   // not count data amount
   if (simple) {
-    const collections = await MongoDatasetCollection.find(match, '_id parentId type name')
+    const collections = await MongoDatasetCollection.find(match)
+      .select(selectField)
       .sort({
         updateTime: -1
       })
@@ -123,15 +139,7 @@ async function handler(req: NextApiRequest) {
       },
       {
         $project: {
-          _id: 1,
-          parentId: 1,
-          tmbId: 1,
-          name: 1,
-          type: 1,
-          status: 1,
-          updateTime: 1,
-          fileId: 1,
-          rawLink: 1,
+          ...selectField,
           dataAmount: {
             $ifNull: [{ $arrayElemAt: ['$dataCount.count', 0] }, 0]
           },

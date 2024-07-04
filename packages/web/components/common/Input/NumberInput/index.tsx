@@ -9,7 +9,7 @@ import {
 import React from 'react';
 
 type Props = Omit<NumberInputProps, 'onChange'> & {
-  onChange: (e: number | '') => any;
+  onChange: (e?: number) => any;
   placeholder?: string;
 };
 
@@ -19,7 +19,7 @@ const MyNumberInput = (props: Props) => {
       {...props}
       onChange={(e) => {
         if (isNaN(Number(e))) {
-          props?.onChange('');
+          props?.onChange();
         } else {
           props?.onChange(Number(e));
         }

@@ -43,6 +43,10 @@ export async function connectMongo({
       maxIdleTimeMS: 300000,
       retryWrites: true,
       retryReads: true
+
+      // readPreference: 'secondaryPreferred',
+      // readConcern: { level: 'local' },
+      // writeConcern: { w: 'majority', j: true }
     });
 
     console.log('mongo connected');

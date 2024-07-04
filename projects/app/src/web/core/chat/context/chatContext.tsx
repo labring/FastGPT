@@ -110,7 +110,8 @@ const ChatContextProvider = ({
   const { runAsync: onUpdateHistory, loading: isUpdatingHistory } = useRequest2(putChatHistory, {
     onSuccess() {
       loadHistories();
-    }
+    },
+    errorToast: undefined
   });
   const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest2(delChatHistoryById, {
     onSuccess() {

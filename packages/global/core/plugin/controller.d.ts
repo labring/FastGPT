@@ -1,5 +1,5 @@
 import { StoreEdgeItemType } from 'core/workflow/type/edge';
-import type { StoreNodeItemType } from '../workflow/type';
+import type { StoreNodeItemType } from '../workflow/type/node';
 import { PluginTypeEnum } from './constants';
 import { HttpAuthMethodType } from '../app/httpPlugin/type';
 

@@ -1,7 +1,7 @@
 import React, { Dispatch, useMemo, useTransition } from 'react';
 import { NodeProps } from 'reactflow';
 import { Box, useTheme } from '@chakra-ui/react';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 
 import QGSwitch from '@/components/core/app/QGSwitch';
 import TTSSelect from '@/components/core/app/TTSSelect';

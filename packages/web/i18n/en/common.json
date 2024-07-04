@@ -1,6 +1,7 @@
 {
   "Add new": "Add new",
   "App": "App",
+  "Click to resume": "Resume",
   "Code editor": "Code edit",
   "Export": "Export",
   "Field name": "Name",
@@ -12,6 +13,7 @@
   "New Create": "Create New",
   "No data": "No data",
   "Rename": "Rename",
+  "Resume": "Resume",
   "Running": "Running",
   "UnKnow": "Unknown",
   "Warning": "Warning",
@@ -955,6 +957,7 @@
         }
       },
       "template": {
+        "AI function": "AI function",
         "AI response switch tip": "If you wish the current node not to output content, you can turn off this switch. AI output content will not be displayed to the user, you can manually use 'AI response content' for special processing.",
         "AI support tool tip": "Supports function calls model, can better use tool invocation.",
         "Ai chat": "AI chat",
@@ -1194,6 +1197,8 @@
   "error": {
     "Create failed": "Create failed",
     "fileNotFound": "File not found~",
+    "inheritPermissionError": "Inherit permission Error",
+    "missingParams": "Insufficient parameters",
     "team": {
       "overSize": "Team members exceed the limit"
     }
@@ -1227,6 +1232,7 @@
     "Collaborator": "",
     "Default permission": "Default permission",
     "Manage": "Manage",
+    "No InheritPermission": "The permission has been restricted, and the parent folder's permission will not be inherited,",
     "Not collaborator": "Not collaborator",
     "Owner": "Owner",
     "Permission": "Permission",
@@ -1235,6 +1241,10 @@
     "Private Tip": "Only available to oneself",
     "Public": "Team",
     "Public Tip": "Available to all team members",
+    "Remove InheritPermission Confirm": "This operation will cause to lose the current permission settings, whether to continue?",
+    "Resume InheritPermission Confirm": "Whether to resume to inherit the parent folder's permission?",
+    "Resume InheritPermission Failed": "Resume Failed",
+    "Resume InheritPermission Success": "Resume Success",
     "Set Private": "Set as private",
     "Set Public": "Set as available to the team"
   },
@@ -1509,6 +1519,7 @@
     }
   },
   "system": {
+    "Concat us": "Concat",
     "Help Document": "Help document"
   },
   "template": {

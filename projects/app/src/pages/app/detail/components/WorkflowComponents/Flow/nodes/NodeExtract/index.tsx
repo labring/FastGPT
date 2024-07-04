@@ -12,13 +12,13 @@ import {
   Flex
 } from '@chakra-ui/react';
 import { NodeProps } from 'reactflow';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { useTranslation } from 'next-i18next';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import { AddIcon } from '@chakra-ui/icons';
 import RenderInput from '../render/RenderInput';
-import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
 import RenderOutput from '../render/RenderOutput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ExtractFieldModal, { defaultField } from './ExtractFieldModal';
@@ -42,7 +42,7 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
-  const { toolInputs, commonInputs } = splitToolInputs(inputs, nodeId);
+  const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
   const [editExtractFiled, setEditExtractField] = useState<ContextExtractAgentItemType>();
 
   const CustomComponent = useMemo(
@@ -144,11 +144,10 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard minW={'400px'} {...data}>
-      {toolInputs.length > 0 && (
+      {isTool && (
         <>
           <Container>
-            <IOTitle text={t('core.module.tool.Tool input')} />
-            <RenderToolInput nodeId={nodeId} inputs={toolInputs} />
+            <RenderToolInput nodeId={nodeId} inputs={inputs} />
           </Container>
         </>
       )}
@@ -174,8 +173,10 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
           defaultField={editExtractFiled}
           onClose={() => setEditExtractField(undefined)}
           onSubmit={(data) => {
-            const extracts: ContextExtractAgentItemType[] =
-              inputs.find((item) => item.key === NodeInputKeyEnum.extractKeys)?.value || [];
+            const input = inputs.find(
+              (input) => input.key === NodeInputKeyEnum.extractKeys
+            ) as FlowNodeInputItemType;
+            const extracts: ContextExtractAgentItemType[] = input.value || [];
 
             const exists = extracts.find((item) => item.key === editExtractFiled.key);
 
@@ -188,7 +189,7 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
               type: 'updateInput',
               key: NodeInputKeyEnum.extractKeys,
               value: {
-                ...inputs.find((input) => input.key === NodeInputKeyEnum.extractKeys),
+                ...input,
                 value: newInputs
               }
             });
@@ -203,7 +204,10 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
 
             if (exists) {
               if (editExtractFiled.key === data.key) {
-                const output = outputs.find((output) => output.key === data.key);
+                const output = outputs.find(
+                  (output) => output.key === data.key
+                ) as FlowNodeOutputItemType;
+
                 // update
                 onChangeNode({
                   nodeId,

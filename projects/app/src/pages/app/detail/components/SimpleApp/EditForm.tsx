@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useTransition } from 'react';
+import React, { useMemo, useTransition } from 'react';
 import {
   Box,
   Flex,
@@ -9,8 +9,7 @@ import {
   Button,
   HStack
 } from '@chakra-ui/react';
-import { AddIcon, SmallAddIcon } from '@chakra-ui/icons';
-import { useFieldArray, UseFormReturn } from 'react-hook-form';
+import { SmallAddIcon } from '@chakra-ui/icons';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
 import { useRouter } from 'next/router';
@@ -468,7 +467,7 @@ const EditForm = ({
           onRemoveTool={(e) => {
             setAppForm((state) => ({
               ...state,
-              selectedTools: state.selectedTools.filter((item) => item.id !== e.id)
+              selectedTools: state.selectedTools.filter((item) => item.pluginId !== e.id)
             }));
           }}
           onClose={onCloseToolsSelect}

@@ -4,7 +4,7 @@ import {
   AppSchema,
   AppSimpleEditFormType
 } from '@fastgpt/global/core/app/type';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
@@ -602,7 +602,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
       nodes: [
         {
           nodeId: toolNodeId,
-          name: '工具调用（实验）',
+          name: '工具调用',
           intro: '通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。',
           avatar: '/imgs/workflow/tool.svg',
           flowNodeType: FlowNodeTypeEnum.tools,

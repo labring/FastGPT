@@ -47,7 +47,7 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
     (tab: TabEnum) => {
       router.replace({
         query: {
-          ...query,
+          datasetId: query.datasetId,
           currentTab: tab
         }
       });

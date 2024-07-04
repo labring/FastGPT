@@ -56,7 +56,7 @@ export async function autChatCrud({
     // auth team space chat
     if (spaceTeamId && teamToken) {
       const { uid } = await authTeamSpaceToken({ teamId: spaceTeamId, teamToken });
-      addLog.debug('Auth team token', { uid, spaceTeamId, teamToken, chatUid: chat.outLinkUid });
+      addLog.debug('Auth team token', { uid, spaceTeamId, teamToken, chatUid: chat?.outLinkUid });
       if (!chat || (String(chat.teamId) === String(spaceTeamId) && chat.outLinkUid === uid)) {
         return { uid };
       }

@@ -5,7 +5,8 @@ const startCode = 507000;
 export enum CommonErrEnum {
   fileNotFound = 'fileNotFound',
   unAuthFile = 'unAuthFile',
-  missingParams = 'missingParams'
+  missingParams = 'missingParams',
+  inheritPermissionError = 'inheritPermissionError'
 }
 const datasetErr = [
   {
@@ -19,6 +20,10 @@ const datasetErr = [
   {
     statusText: CommonErrEnum.missingParams,
     message: 'error.missingParams'
+  },
+  {
+    statusText: CommonErrEnum.inheritPermissionError,
+    message: 'error.inheritPermissionError'
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

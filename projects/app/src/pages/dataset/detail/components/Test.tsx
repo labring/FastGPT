@@ -159,7 +159,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         >
           {/* header */}
           <Flex alignItems={'center'} justifyContent={'space-between'}>
-            <MySelect
+            <MySelect<'text' | 'file'>
               size={'sm'}
               w={'150px'}
               list={[

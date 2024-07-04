@@ -1,131 +1,179 @@
-import { Box, Flex, useDisclosure, useOutsideClick } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  ButtonProps,
+  Flex,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuItemProps,
+  MenuList,
+  useDisclosure,
+  useOutsideClick
+} from '@chakra-ui/react';
 import React, { useRef } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTag from '../Tag/index';
 import MyIcon from '../Icon';
 
-export type SelectProps = {
-  value?: string[];
+export type SelectProps<T = any> = {
+  value: T[];
   placeholder?: string;
   list: {
     icon?: string;
-    alias?: string;
     label: string | React.ReactNode;
-    value: string;
+    value: T;
   }[];
   maxH?: number;
-  onSelect: (val: any[]) => void;
-};
+  onSelect: (val: T[]) => void;
+} & Omit<ButtonProps, 'onSelect'>;
 
-const MultipleSelect = ({
+const MultipleSelect = <T = any,>({
   value = [],
   placeholder,
   list = [],
+  width = '100%',
   maxH = 400,
-  onSelect
-}: SelectProps) => {
+  onSelect,
+  ...props
+}: SelectProps<T>) => {
   const { t } = useTranslation();
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLButtonElement>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const menuItemStyles: MenuItemProps = {
+    borderRadius: 'sm',
+    py: 2,
+    display: 'flex',
+    alignItems: 'center',
+    _hover: {
+      backgroundColor: 'myGray.100'
+    },
+    _notLast: {
+      mb: 2
+    }
+  };
 
-  useOutsideClick({
-    ref: ref,
-    handler: onClose
-  });
+  const onclickItem = (val: T) => {
+    if (value.includes(val)) {
+      onSelect(value.filter((i) => i !== val));
+    } else {
+      onSelect([...value, val]);
+    }
+  };
 
   return (
-    <Box ref={ref} position={'relative'}>
-      <Flex
-        alignItems={'center'}
-        flexWrap={'wrap'}
-        border={'base'}
-        py={2}
-        px={3}
-        borderRadius={'md'}
-        cursor={'pointer'}
-        gap={3}
-        onClick={() => (isOpen ? onClose() : onOpen())}
+    <Box>
+      <Menu
+        autoSelect={false}
+        isOpen={isOpen}
+        onOpen={onOpen}
+        onClose={onClose}
+        strategy={'fixed'}
+        matchWidth
+        closeOnSelect={false}
       >
-        {value.map((item) => {
-          const listItem = list.find((i) => i.value === item);
-          if (!listItem) return null;
-
-          return (
-            <MyTag colorSchema="blue" p={2} cursor={'default'}>
-              {listItem.alias || listItem.label}
-              <MyIcon
-                name={'common/closeLight'}
-                ml={1}
-                w="14px"
-                cursor={'pointer'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(value.filter((i) => i !== item));
-                }}
-              />
-            </MyTag>
-          );
-        })}
-        {value.length === 0 && placeholder && (
-          <Box color={'myGray.500'} fontSize={'sm'}>
-            {placeholder}
-          </Box>
-        )}
-      </Flex>
-      {isOpen && (
-        <Box
+        <MenuButton
+          as={Box}
+          ref={ref}
+          width={width}
           px={3}
           py={2}
-          bg={'white'}
           borderRadius={'md'}
-          whiteSpace={'nowrap'}
-          maxH={`${maxH}px`}
-          overflowY={'auto'}
-          boxShadow={'2'}
-          position={'absolute'}
-          top={'110%'}
           border={'base'}
-          w={'100%'}
-          zIndex={100}
+          userSelect={'none'}
+          minH={'40px'}
+          cursor={'pointer'}
+          _active={{
+            transform: 'none'
+          }}
+          {...props}
+          {...(isOpen
+            ? {
+                boxShadow: '0px 0px 4px #A8DBFF',
+                borderColor: 'primary.500',
+                bg: 'white'
+              }
+            : {})}
         >
-          {list.map((item) => {
-            const selected = value.includes(item.value);
+          {value.length === 0 && placeholder ? (
+            <Box color={'myGray.500'} fontSize={'sm'}>
+              {placeholder}
+            </Box>
+          ) : (
+            <Flex alignItems={'center'} gap={2} flexWrap={'wrap'}>
+              {value.map((item, i) => {
+                const listItem = list.find((i) => i.value === item);
+                if (!listItem) return null;
 
-            return (
-              <Flex
-                alignItems={'center'}
-                _notLast={{ mb: 1 }}
-                py={2}
-                px={3}
-                borderRadius={'md'}
-                cursor={'pointer'}
-                _hover={{
-                  bg: 'primary.50'
-                }}
-                {...(selected
-                  ? {
-                      color: 'primary.600',
-                      onClick: (e) => {
+                return (
+                  <MyTag key={i} colorSchema="blue" type={'borderFill'}>
+                    {listItem.label}
+                    {/* <MyIcon
+                      name={'common/closeLight'}
+                      ml={1}
+                      w="14px"
+                      cursor={'pointer'}
+                      onClickCapture={(e) => {
+                        console.log(111);
                         e.stopPropagation();
-                        onSelect(value.filter((i) => i !== item.value));
-                      }
-                    }
-                  : {
-                      onClick: (e) => {
-                        e.stopPropagation();
-                        onSelect([...value, item.value]);
-                      }
-                    })}
-              >
-                {item.icon && <MyIcon name={item.icon as any} w={'14px'} mr={1} />}
-                <Box>{item.label}</Box>
-              </Flex>
-            );
-          })}
-        </Box>
-      )}
+                        onclickItem(item);
+                      }}
+                    /> */}
+                  </MyTag>
+                );
+              })}
+            </Flex>
+          )}
+        </MenuButton>
+
+        <MenuList
+          className={props.className}
+          minW={(() => {
+            const w = ref.current?.clientWidth;
+            if (w) {
+              return `${w}px !important`;
+            }
+            return Array.isArray(width)
+              ? width.map((item) => `${item} !important`)
+              : `${width} !important`;
+          })()}
+          w={'auto'}
+          px={'6px'}
+          py={'6px'}
+          border={'1px solid #fff'}
+          boxShadow={
+            '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
+          }
+          zIndex={99}
+          maxH={'40vh'}
+          overflowY={'auto'}
+        >
+          {list.map((item, i) => (
+            <MenuItem
+              key={i}
+              {...menuItemStyles}
+              {...(value.includes(item.value)
+                ? {
+                    color: 'primary.600'
+                  }
+                : {
+                    color: 'myGray.900'
+                  })}
+              onClick={() => onclickItem(item.value)}
+              whiteSpace={'pre-wrap'}
+              fontSize={'sm'}
+              gap={2}
+            >
+              <Box w={'0.8rem'} lineHeight={1}>
+                {value.includes(item.value) && <MyIcon name={'price/right'} w={'1rem'} />}
+              </Box>
+              <Box>{item.label}</Box>
+            </MenuItem>
+          ))}
+        </MenuList>
+      </Menu>
     </Box>
   );
 };
 
-export default React.memo(MultipleSelect);
+export default MultipleSelect;

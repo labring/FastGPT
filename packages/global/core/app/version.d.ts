@@ -1,4 +1,3 @@
-import { StoreNodeItemType } from '../workflow/type';
 import { StoreEdgeItemType } from '../workflow/type/edge';
 import { AppChatConfigType, AppSchema } from './type';
 

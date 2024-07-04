@@ -1,6 +1,19 @@
 {
+  "Add new input": "新增输入",
   "Code": "代码",
+  "Confirm delete field tip": "确认删除该字段？",
+  "Custom input": "自定义输入",
+  "Edit input": "编辑输入",
+  "Field Name already exists": "字段名已经存在",
+  "Field description": "字段描述",
+  "Field description placeholder": "描述该输入字段的功能，如果为工具调用参数，则该描述会影响模型生成的质量",
   "Field required": "必填",
+  "Field used as tool input": "作为工具调用参数",
+  "Input description": "字段描述",
+  "Only the Reference type is supported": "仅支持引用类型",
+  "Optional value type": "可选的数据类型",
+  "Optional value type tip": "可以指定 1 个或多个数据类型，用户在冬天添加字段时，仅可选择配置的类型",
+  "Tool input": "工具参数",
   "code": {
     "Reset template": "还原模板",
     "Reset template confirm": "确认还原代码模板？请注意保存当前代码。"

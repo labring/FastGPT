@@ -1,11 +1,11 @@
 import React from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
-import AppContextProvider, { AppContext, TabEnum } from './components/context';
+import AppContextProvider, { AppContext } from './components/context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const SimpleEdit = dynamic(() => import('./components/SimpleApp'), {

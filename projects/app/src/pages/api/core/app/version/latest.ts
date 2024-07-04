@@ -5,7 +5,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 export type getLatestVersionQuery = {
   appId: string;

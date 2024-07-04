@@ -3,7 +3,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowNodeTemplateType } from '../../type/index.d';
+import { FlowNodeTemplateType } from '../../type/node.d';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
@@ -14,9 +14,9 @@ import { Input_Template_DynamicInput } from '../input';
 import { Output_Template_AddOutput } from '../output';
 import { getHandleConfig } from '../utils';
 
-export const HttpModule468: FlowNodeTemplateType = {
+export const HttpNode468: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.httpRequest468,
-  templateType: FlowNodeTemplateTypeEnum.externalCall,
+  templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.httpRequest468,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
@@ -30,9 +30,10 @@ export const HttpModule468: FlowNodeTemplateType = {
     {
       ...Input_Template_DynamicInput,
       description: 'core.module.input.description.HTTP Dynamic Input',
-      editField: {
-        key: true,
-        valueType: true
+      customInputConfig: {
+        selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
+        showDescription: false,
+        showDefaultValue: true
       }
     },
     {
@@ -80,7 +81,14 @@ export const HttpModule468: FlowNodeTemplateType = {
     }
   ],
   outputs: [
-    Output_Template_AddOutput,
+    {
+      ...Output_Template_AddOutput,
+      customFieldConfig: {
+        selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
+        showDescription: false,
+        showDefaultValue: true
+      }
+    },
     {
       id: NodeOutputKeyEnum.error,
       key: NodeOutputKeyEnum.error,

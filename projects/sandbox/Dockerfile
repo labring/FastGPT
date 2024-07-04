@@ -47,4 +47,4 @@ COPY --from=builder /app/projects/sandbox /app/projects/sandbox
 
 ENV NODE_ENV=production
 
-CMD ["node", "projects/sandbox/dist/main.js"]
+CMD ["node", "--no-node-snapshot", "projects/sandbox/dist/main.js"]

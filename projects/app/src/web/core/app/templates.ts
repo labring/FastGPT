@@ -879,7 +879,7 @@ export const simpleBotTemplates: TemplateType = [
       },
       {
         nodeId: 'jrWPV9',
-        name: '工具调用（实验）',
+        name: '工具调用',
         intro: '通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。',
         avatar: '/imgs/workflow/tool.svg',
         flowNodeType: FlowNodeTypeEnum.tools,
@@ -982,7 +982,7 @@ export const simpleBotTemplates: TemplateType = [
             description: ''
           }
         ],
-        pluginId: 'community-getCurrentTime'
+        pluginId: 'community-getTime'
       }
     ],
     edges: [
@@ -1106,8 +1106,8 @@ export const workflowTemplates: TemplateType = [
             id: 'userChatInput',
             key: 'userChatInput',
             label: 'core.module.input.label.user question',
-            valueType: 'string',
-            type: 'static'
+            type: 'static',
+            valueType: 'string'
           }
         ]
       },
@@ -1189,7 +1189,7 @@ export const workflowTemplates: TemplateType = [
             description: '最多携带多少轮对话记录',
             required: true,
             min: 0,
-            max: 30,
+            max: 50,
             value: 6
           },
           {
@@ -1199,7 +1199,7 @@ export const workflowTemplates: TemplateType = [
             label: '用户问题',
             required: true,
             toolDescription: '用户问题',
-            value: ['k2QsBOBmH9Xu', 'text']
+            value: ['gBDvemE4FBhp', 'system_text']
           },
           {
             key: 'quoteQA',
@@ -1214,98 +1214,22 @@ export const workflowTemplates: TemplateType = [
           {
             id: 'history',
             key: 'history',
+            required: true,
             label: 'core.module.output.label.New context',
             description: 'core.module.output.description.New context',
             valueType: 'chatHistory',
-            type: 'static',
-            required: true
+            type: 'static'
           },
           {
             id: 'answerText',
             key: 'answerText',
+            required: true,
             label: 'core.module.output.label.Ai response content',
             description: 'core.module.output.description.Ai response content',
             valueType: 'string',
-            type: 'static',
-            required: true
+            type: 'static'
           }
         ]
-      },
-      {
-        nodeId: 'k2QsBOBmH9Xu',
-        name: '原文声明',
-        intro: '可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。',
-        avatar: '/imgs/workflow/textEditor.svg',
-        flowNodeType: 'pluginModule',
-        showStatus: false,
-        position: {
-          x: 1000.9259923224292,
-          y: 3.3737410194846404
-        },
-        version: '481',
-        inputs: [
-          {
-            key: 'system_addInputParam',
-            valueType: 'dynamic',
-            label: '动态外部数据',
-            renderTypeList: ['addInputParam'],
-            required: false,
-            description: '',
-            canEdit: false,
-            value: '',
-            editField: {
-              key: true
-            },
-            dynamicParamDefaultValue: {
-              inputType: 'reference',
-              valueType: 'string',
-              required: true
-            }
-          },
-          {
-            key: 'q',
-            valueType: 'string',
-            label: 'q',
-            renderTypeList: ['reference'],
-            required: true,
-            description: '',
-            canEdit: true,
-            editField: {
-              key: true
-            },
-            value: ['448745', 'userChatInput']
-          },
-          {
-            key: '文本',
-            valueType: 'string',
-            label: '文本',
-            renderTypeList: ['textarea'],
-            required: true,
-            description: '',
-            canEdit: false,
-            value: '原文:\n"""\n{{q}}\n"""',
-            editField: {
-              key: true
-            },
-            maxLength: '',
-            dynamicParamDefaultValue: {
-              inputType: 'reference',
-              valueType: 'string',
-              required: true
-            }
-          }
-        ],
-        outputs: [
-          {
-            id: 'text',
-            type: 'static',
-            key: 'text',
-            valueType: 'string',
-            label: 'text',
-            description: ''
-          }
-        ],
-        pluginId: 'community-textEditor'
       },
       {
         nodeId: 'w0oBbQ3YJHye',
@@ -1330,7 +1254,40 @@ export const workflowTemplates: TemplateType = [
             editField: {
               key: true,
               valueType: true
+            },
+            customInputConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: true
             }
+          },
+          {
+            key: 'codeType',
+            renderTypeList: ['hidden'],
+            label: '',
+            value: 'js'
+          },
+          {
+            key: 'code',
+            renderTypeList: ['custom'],
+            label: '',
+            value:
+              "function main({data1}) {\n    const codeBlocks = data1.match(/```[\\s\\S]*?```/g);\n\n    if (codeBlocks && codeBlocks.length > 0) {\n        const lastCodeBlock = codeBlocks[codeBlocks.length - 1];\n        const cleanedCodeBlock = lastCodeBlock.replace(/```[a-zA-Z]*|```/g, '').trim();\n        \n        return {\n            result: cleanedCodeBlock\n        };\n    }\n\n    return {\n        result: '未截取到代码块内容'\n    };\n}\n"
           },
           {
             key: 'data1',
@@ -1344,19 +1301,6 @@ export const workflowTemplates: TemplateType = [
               valueType: true
             },
             value: ['loOvhld2ZTKa', 'answerText']
-          },
-          {
-            key: 'codeType',
-            renderTypeList: ['hidden'],
-            label: '',
-            value: 'js'
-          },
-          {
-            key: 'code',
-            renderTypeList: ['custom'],
-            label: '',
-            value:
-              'function main({data1}){\n    const result = data1.split("```").filter(item => !!item.trim())\n\n    if(result[result.length-1]) {\n        return {\n            result: result[result.length-1]\n        }\n    }\n\n    return {\n        result: \'未截取到翻译内容\'\n    }\n}'
           }
         ],
         outputs: [
@@ -1366,10 +1310,6 @@ export const workflowTemplates: TemplateType = [
             type: 'dynamic',
             valueType: 'dynamic',
             label: '',
-            editField: {
-              key: true,
-              valueType: true
-            },
             description: '将代码中 return 的对象作为输出，传递给后续的节点'
           },
           {
@@ -1393,6 +1333,13 @@ export const workflowTemplates: TemplateType = [
             key: 'result',
             valueType: 'string',
             label: 'result'
+          },
+          {
+            id: 'gR0mkQpJ4Og8',
+            type: 'dynamic',
+            key: 'data2',
+            valueType: 'string',
+            label: 'data2'
           }
         ]
       },
@@ -1418,101 +1365,191 @@ export const workflowTemplates: TemplateType = [
             description: 'core.module.input.description.Response content',
             placeholder: 'core.module.input.description.Response content',
             selectedTypeIndex: 1,
-            value: ['v9ijHqeA2NY2', 'text']
+            value: ['bcqtxqxE2R6o', 'system_text']
           }
         ],
         outputs: []
       },
       {
-        nodeId: 'v9ijHqeA2NY2',
-        name: '合并输出结果',
+        nodeId: 'gBDvemE4FBhp',
+        name: '文本拼接',
         intro: '可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。',
         avatar: '/imgs/workflow/textEditor.svg',
-        flowNodeType: 'pluginModule',
-        showStatus: false,
+        flowNodeType: 'textEditor',
         position: {
-          x: 3083.567683275386,
-          y: 60.05513835086097
+          x: 1031.371061396644,
+          y: 38.65839420088383
         },
-        version: '481',
+        version: '486',
         inputs: [
           {
             key: 'system_addInputParam',
-            valueType: 'dynamic',
-            label: '动态外部数据',
             renderTypeList: ['addInputParam'],
+            valueType: 'dynamic',
+            label: '',
             required: false,
-            description: '',
-            canEdit: false,
-            value: '',
-            editField: {
-              key: true
-            },
-            dynamicParamDefaultValue: {
-              inputType: 'reference',
-              valueType: 'string',
-              required: true
+            description: '可以引用其他节点的输出，作为文本拼接的变量，通过 {{字段名}} 来引用变量',
+            customInputConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: false
             }
           },
           {
-            key: 'result',
-            valueType: 'string',
-            label: 'result',
-            renderTypeList: ['reference'],
-            required: true,
-            description: '',
-            canEdit: true,
-            editField: {
-              key: true
-            },
-            value: ['w0oBbQ3YJHye', 'qLUQfhG0ILRX']
-          },
-          {
-            key: '文本',
-            valueType: 'string',
-            label: '文本',
+            key: 'system_textareaInput',
             renderTypeList: ['textarea'],
+            valueType: 'string',
             required: true,
-            description: '',
-            canEdit: false,
-            value: '------\n\n最终翻译结果如下: \n\n```\n{{result}}\n```',
-            editField: {
-              key: true
+            label: '拼接文本',
+            placeholder: '可通过 {{字段名}} 来引用变量',
+            value: '原文:\n"""\n{{q}}\n"""'
+          },
+          {
+            renderTypeList: ['reference'],
+            valueType: 'string',
+            canEdit: true,
+            key: 'q',
+            label: 'q',
+            customInputConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: false
             },
-            maxLength: '',
-            dynamicParamDefaultValue: {
-              inputType: 'reference',
-              valueType: 'string',
-              required: true
-            }
+            required: true,
+            value: ['448745', 'userChatInput']
           }
         ],
         outputs: [
           {
-            id: 'text',
+            id: 'system_text',
+            key: 'system_text',
+            label: '拼接结果',
             type: 'static',
-            key: 'text',
+            valueType: 'string'
+          }
+        ]
+      },
+      {
+        nodeId: 'bcqtxqxE2R6o',
+        name: '合并输出结果',
+        intro: '可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。',
+        avatar: '/imgs/workflow/textEditor.svg',
+        flowNodeType: 'textEditor',
+        position: {
+          x: 3113.6227559936665,
+          y: 12.909197647746709
+        },
+        version: '486',
+        inputs: [
+          {
+            key: 'system_addInputParam',
+            renderTypeList: ['addInputParam'],
+            valueType: 'dynamic',
+            label: '',
+            required: false,
+            description: '可以引用其他节点的输出，作为文本拼接的变量，通过 {{字段名}} 来引用变量',
+            customInputConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: false
+            }
+          },
+          {
+            key: 'system_textareaInput',
+            renderTypeList: ['textarea'],
             valueType: 'string',
-            label: 'text',
-            description: ''
+            required: true,
+            label: '拼接文本',
+            placeholder: '可通过 {{字段名}} 来引用变量',
+            value: '****** \n\n最终翻译结果如下: \n\n```\n{{result}}\n```'
+          },
+          {
+            renderTypeList: ['reference'],
+            valueType: 'string',
+            canEdit: true,
+            key: 'result',
+            label: 'result',
+            customInputConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: false
+            },
+            required: true,
+            value: ['w0oBbQ3YJHye', 'qLUQfhG0ILRX']
           }
         ],
-        pluginId: 'community-textEditor'
+        outputs: [
+          {
+            id: 'system_text',
+            key: 'system_text',
+            label: '拼接结果',
+            type: 'static',
+            valueType: 'string'
+          }
+        ]
       }
     ],
     edges: [
-      {
-        source: '448745',
-        target: 'k2QsBOBmH9Xu',
-        sourceHandle: '448745-source-right',
-        targetHandle: 'k2QsBOBmH9Xu-target-left'
-      },
-      {
-        source: 'k2QsBOBmH9Xu',
-        target: 'loOvhld2ZTKa',
-        sourceHandle: 'k2QsBOBmH9Xu-source-right',
-        targetHandle: 'loOvhld2ZTKa-target-left'
-      },
       {
         source: 'loOvhld2ZTKa',
         target: 'w0oBbQ3YJHye',
@@ -1520,15 +1557,27 @@ export const workflowTemplates: TemplateType = [
         targetHandle: 'w0oBbQ3YJHye-target-left'
       },
       {
-        source: 'w0oBbQ3YJHye',
-        target: 'v9ijHqeA2NY2',
-        sourceHandle: 'w0oBbQ3YJHye-source-right',
-        targetHandle: 'v9ijHqeA2NY2-target-left'
+        source: '448745',
+        target: 'gBDvemE4FBhp',
+        sourceHandle: '448745-source-right',
+        targetHandle: 'gBDvemE4FBhp-target-left'
       },
       {
-        source: 'v9ijHqeA2NY2',
+        source: 'gBDvemE4FBhp',
+        target: 'loOvhld2ZTKa',
+        sourceHandle: 'gBDvemE4FBhp-source-right',
+        targetHandle: 'loOvhld2ZTKa-target-left'
+      },
+      {
+        source: 'w0oBbQ3YJHye',
+        target: 'bcqtxqxE2R6o',
+        sourceHandle: 'w0oBbQ3YJHye-source-right',
+        targetHandle: 'bcqtxqxE2R6o-target-left'
+      },
+      {
+        source: 'bcqtxqxE2R6o',
         target: 'foO69L5FOmDQ',
-        sourceHandle: 'v9ijHqeA2NY2-source-right',
+        sourceHandle: 'bcqtxqxE2R6o-source-right',
         targetHandle: 'foO69L5FOmDQ-target-left'
       }
     ]
@@ -1636,7 +1685,7 @@ export const workflowTemplates: TemplateType = [
       },
       {
         nodeId: 'NOgbnBzUwDgT',
-        name: '工具调用（实验）',
+        name: '工具调用',
         intro: '通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。',
         avatar: '/imgs/workflow/tool.svg',
         flowNodeType: 'tools',
@@ -1735,11 +1784,7 @@ export const workflowTemplates: TemplateType = [
             valueType: 'dynamic',
             label: '',
             required: false,
-            description: 'core.module.input.description.HTTP Dynamic Input',
-            editField: {
-              key: true,
-              valueType: true
-            }
+            description: 'core.module.input.description.HTTP Dynamic Input'
           },
           {
             valueType: 'string',
@@ -1993,6 +2038,7 @@ export const workflowTemplates: TemplateType = [
           x: 531.2422736065552,
           y: -486.7611729549753
         },
+        version: '481',
         inputs: [
           {
             key: 'welcomeText',
@@ -2055,6 +2101,7 @@ export const workflowTemplates: TemplateType = [
           x: 532.1275542407774,
           y: 46.03775600322817
         },
+        version: '481',
         inputs: [
           {
             key: 'userChatInput',
@@ -2070,8 +2117,8 @@ export const workflowTemplates: TemplateType = [
             id: 'userChatInput',
             key: 'userChatInput',
             label: 'core.module.input.label.user question',
-            valueType: 'string',
-            type: 'static'
+            type: 'static',
+            valueType: 'string'
           }
         ]
       },
@@ -2083,9 +2130,10 @@ export const workflowTemplates: TemplateType = [
         flowNodeType: 'httpRequest468',
         showStatus: true,
         position: {
-          x: 921.2377506442713,
-          y: -483.94114977914256
+          x: 931.6784209157559,
+          y: -162.36850541742047
         },
+        version: '486',
         inputs: [
           {
             key: 'system_addInputParam',
@@ -2097,20 +2145,27 @@ export const workflowTemplates: TemplateType = [
             editField: {
               key: true,
               valueType: true
-            }
-          },
-          {
-            key: 'prompt',
-            valueType: 'string',
-            label: 'prompt',
-            renderTypeList: ['reference'],
-            description: '',
-            canEdit: true,
-            editField: {
-              key: true,
-              valueType: true
             },
-            value: ['448745', 'userChatInput']
+            customInputConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: true
+            }
           },
           {
             key: 'system_httpMethod',
@@ -2162,6 +2217,19 @@ export const workflowTemplates: TemplateType = [
               '{\n  "model": "dall-e-3",\n  "prompt": "{{prompt}}",\n  "n": 1,\n  "size": "1024x1024"\n}',
             label: '',
             required: false
+          },
+          {
+            key: 'prompt',
+            valueType: 'string',
+            label: 'prompt',
+            renderTypeList: ['reference'],
+            description: '',
+            canEdit: true,
+            editField: {
+              key: true,
+              valueType: true
+            },
+            value: ['448745', 'userChatInput']
           }
         ],
         outputs: [
@@ -2171,15 +2239,40 @@ export const workflowTemplates: TemplateType = [
             type: 'dynamic',
             valueType: 'dynamic',
             label: '',
-            editField: {
-              key: true,
-              valueType: true
+            customFieldConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: true
             }
+          },
+          {
+            id: 'error',
+            key: 'error',
+            label: '请求错误',
+            description: 'HTTP请求错误信息，成功时返回空',
+            valueType: 'object',
+            type: 'static'
           },
           {
             id: 'httpRawResponse',
             key: 'httpRawResponse',
             label: '原始响应',
+            required: true,
             description: 'HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。',
             valueType: 'any',
             type: 'static'
@@ -2194,81 +2287,6 @@ export const workflowTemplates: TemplateType = [
         ]
       },
       {
-        nodeId: 'CO3POL8svbbi',
-        name: '文本加工',
-        intro: '可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。',
-        avatar: '/imgs/workflow/textEditor.svg',
-        flowNodeType: 'pluginModule',
-        showStatus: false,
-        position: {
-          x: 1417.5940290051137,
-          y: -478.81889618104356
-        },
-        inputs: [
-          {
-            key: 'system_addInputParam',
-            valueType: 'dynamic',
-            label: '动态外部数据',
-            renderTypeList: ['addInputParam'],
-            required: false,
-            description: '',
-            canEdit: false,
-            value: '',
-            editField: {
-              key: true
-            },
-            dynamicParamDefaultValue: {
-              inputType: 'reference',
-              valueType: 'string',
-              required: true
-            }
-          },
-          {
-            key: 'url',
-            valueType: 'string',
-            label: 'url',
-            renderTypeList: ['reference'],
-            required: true,
-            description: '',
-            canEdit: true,
-            editField: {
-              key: true
-            },
-            value: ['tMyUnRL5jIrC', 'DeKGGioBwaMf']
-          },
-          {
-            key: '文本',
-            valueType: 'string',
-            label: '文本',
-            renderTypeList: ['textarea'],
-            required: true,
-            description: '',
-            canEdit: false,
-            value: '![]({{url}})',
-            editField: {
-              key: true
-            },
-            maxLength: '',
-            dynamicParamDefaultValue: {
-              inputType: 'reference',
-              valueType: 'string',
-              required: true
-            }
-          }
-        ],
-        outputs: [
-          {
-            id: 'text',
-            type: 'static',
-            key: 'text',
-            valueType: 'string',
-            label: 'text',
-            description: ''
-          }
-        ],
-        pluginId: 'community-textEditor'
-      },
-      {
         nodeId: '7mapnCgHfKW6',
         name: '指定回复',
         intro:
@@ -2276,22 +2294,113 @@ export const workflowTemplates: TemplateType = [
         avatar: '/imgs/workflow/reply.png',
         flowNodeType: 'answerNode',
         position: {
-          x: 1922.5628399315042,
-          y: -471.67391598231796
+          x: 2204.4609372615846,
+          y: 163.11883652393863
         },
+        version: '481',
         inputs: [
           {
             key: 'text',
             renderTypeList: ['textarea', 'reference'],
-            valueType: 'string',
+            valueType: 'any',
             label: 'core.module.input.label.Response content',
             description: 'core.module.input.description.Response content',
             placeholder: 'core.module.input.description.Response content',
             selectedTypeIndex: 1,
-            value: ['CO3POL8svbbi', 'text']
+            value: ['vEXJF8pQ8eOv', 'system_text'],
+            required: true
           }
         ],
         outputs: []
+      },
+      {
+        nodeId: 'vEXJF8pQ8eOv',
+        name: '文本拼接',
+        intro: '可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。',
+        avatar: '/imgs/workflow/textEditor.svg',
+        flowNodeType: 'textEditor',
+        position: {
+          x: 1544.8821308368042,
+          y: -27.22950739442814
+        },
+        version: '486',
+        inputs: [
+          {
+            key: 'system_addInputParam',
+            renderTypeList: ['addInputParam'],
+            valueType: 'dynamic',
+            label: '',
+            required: false,
+            description: '可以引用其他节点的输出，作为文本拼接的变量，通过 {{字段名}} 来引用变量',
+            customInputConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: false
+            }
+          },
+          {
+            key: 'system_textareaInput',
+            renderTypeList: ['textarea'],
+            valueType: 'string',
+            required: true,
+            label: '拼接文本',
+            placeholder: '可通过 {{字段名}} 来引用变量',
+            value: '![]({{url}})'
+          },
+          {
+            renderTypeList: ['reference'],
+            valueType: 'string',
+            canEdit: true,
+            key: 'url',
+            label: 'url',
+            customInputConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: false
+            },
+            required: true,
+            value: ['tMyUnRL5jIrC', 'DeKGGioBwaMf']
+          }
+        ],
+        outputs: [
+          {
+            id: 'system_text',
+            key: 'system_text',
+            label: '拼接结果',
+            type: 'static',
+            valueType: 'string'
+          }
+        ]
       }
     ],
     edges: [
@@ -2303,14 +2412,14 @@ export const workflowTemplates: TemplateType = [
       },
       {
         source: 'tMyUnRL5jIrC',
-        target: 'CO3POL8svbbi',
+        target: 'vEXJF8pQ8eOv',
         sourceHandle: 'tMyUnRL5jIrC-source-right',
-        targetHandle: 'CO3POL8svbbi-target-left'
+        targetHandle: 'vEXJF8pQ8eOv-target-left'
       },
       {
-        source: 'CO3POL8svbbi',
+        source: 'vEXJF8pQ8eOv',
         target: '7mapnCgHfKW6',
-        sourceHandle: 'CO3POL8svbbi-source-right',
+        sourceHandle: 'vEXJF8pQ8eOv-source-right',
         targetHandle: '7mapnCgHfKW6-target-left'
       }
     ]
@@ -2921,11 +3030,7 @@ export const pluginTemplates: TemplateType = [
             valueType: 'dynamic',
             label: '',
             required: false,
-            description: 'core.module.input.description.HTTP Dynamic Input',
-            editField: {
-              key: true,
-              valueType: true
-            }
+            description: 'core.module.input.description.HTTP Dynamic Input'
           },
           {
             key: 'text',

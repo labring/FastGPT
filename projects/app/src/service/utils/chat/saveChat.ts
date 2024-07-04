@@ -6,7 +6,7 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   getAppChatConfig,
   getGuideModule,

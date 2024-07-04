@@ -24,7 +24,7 @@ const SimpleEdit = () => {
   });
 
   return (
-    <Flex h={'100%'} flexDirection={'column'} pr={3} pb={3}>
+    <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]} pb={3}>
       <Header appForm={appForm} setAppForm={setAppForm} />
       {currentTab === TabEnum.appEdit ? (
         <Edit appForm={appForm} setAppForm={setAppForm} />

@@ -1,21 +1,16 @@
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { nodeTemplateListType } from '@fastgpt/global/core/workflow/type';
+import { NodeTemplateListType } from '@fastgpt/global/core/workflow/type/node';
 import { TFunction } from 'next-i18next';
 
-export const workflowNodeTemplateList = (t: TFunction): nodeTemplateListType => [
+export const workflowNodeTemplateList = (t: TFunction): NodeTemplateListType => [
   {
     type: FlowNodeTemplateTypeEnum.systemInput,
     label: t('core.module.template.System input module'),
     list: []
   },
   {
-    type: FlowNodeTemplateTypeEnum.textAnswer,
-    label: t('core.module.template.Response module'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.functionCall,
-    label: t('core.module.template.Function module'),
+    type: FlowNodeTemplateTypeEnum.ai,
+    label: t('core.module.template.AI function'),
     list: []
   },
   {
@@ -24,18 +19,13 @@ export const workflowNodeTemplateList = (t: TFunction): nodeTemplateListType => 
     list: []
   },
   {
-    type: FlowNodeTemplateTypeEnum.externalCall,
-    label: t('core.module.template.External module'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.personalPlugin,
-    label: '',
-    list: []
-  },
-  {
     type: FlowNodeTemplateTypeEnum.other,
     label: t('common.Other'),
+    list: []
+  },
+  {
+    type: FlowNodeTemplateTypeEnum.teamApp,
+    label: '',
     list: []
   }
 ];

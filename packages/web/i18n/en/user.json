@@ -1,7 +1,8 @@
 {
   "permission": {
     "Set read permission": "Read permission",
-    "Set write permission": "Write permission"
+    "Set write permission": "Write permission",
+    "Write": "Write"
   },
   "team": {
     "Add manager": "Add manager"
