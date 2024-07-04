@@ -29,7 +29,6 @@ import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
 import DeleteIcon, { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import { getSystemVariables } from '@/web/core/app/utils';
-import { useUpdate } from 'ahooks';
 import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pages/app/detail/components/context';
@@ -49,7 +48,7 @@ const ScheduledTriggerConfig = dynamic(
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
 
 const BoxStyles: BoxProps = {
-  px: 5,
+  px: [4, 6],
   py: '16px',
   borderBottomWidth: '1px',
   borderBottomColor: 'borderColor.low'
