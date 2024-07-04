@@ -75,52 +75,7 @@ export async function createOneCollection({
     { session }
   );
 
-  // create default collection
-  if (type === DatasetCollectionTypeEnum.folder) {
-    await createDefaultCollection({
-      datasetId,
-      parentId: collection._id,
-      teamId,
-      tmbId,
-      session
-    });
-  }
-
   return collection;
-}
-
-// create default collection
-export function createDefaultCollection({
-  name = '手动录入',
-  datasetId,
-  parentId,
-  teamId,
-  tmbId,
-  session
-}: {
-  name?: '手动录入' | '手动标注';
-  datasetId: string;
-  parentId?: string;
-  teamId: string;
-  tmbId: string;
-  session?: ClientSession;
-}) {
-  return MongoDatasetCollection.create(
-    [
-      {
-        name,
-        teamId,
-        tmbId,
-        datasetId,
-        parentId,
-        type: DatasetCollectionTypeEnum.virtual,
-        trainingType: TrainingModeEnum.chunk,
-        chunkSize: 0,
-        updateTime: new Date('2099')
-      }
-    ],
-    { session }
-  );
 }
 
 /* delete collection related images/files */
