@@ -441,41 +441,46 @@ export const compareWorkflow = (workflow1: WorkflowType, workflow2: WorkflowType
     return false;
   }
 
-  const node1 = clone1.nodes.filter(Boolean).map((node) => ({
-    flowNodeType: node.flowNodeType,
-    inputs: node.inputs.map((input) => ({
-      ...input,
-      value: input.value ?? undefined
-    })),
-    outputs: node.outputs.map((input) => ({
-      ...input,
-      value: input.value ?? undefined
-    })),
-    name: node.name,
-    intro: node.intro,
-    avatar: node.avatar,
-    version: node.version,
-    position: node.position
-  }));
-  const node2 = clone2.nodes.filter(Boolean).map((node) => ({
-    flowNodeType: node.flowNodeType,
-    inputs: node.inputs.map((input) => ({
-      ...input,
-      value: input.value ?? undefined
-    })),
-    outputs: node.outputs.map((input) => ({
-      ...input,
-      value: input.value ?? undefined
-    })),
-    name: node.name,
-    intro: node.intro,
-    avatar: node.avatar,
-    version: node.version,
-    position: node.position
-  }));
+  const formatNodes = (nodes: StoreNodeItemType[]) => {
+    return nodes
+      .filter((node) => {
+        if (!node) return;
+        if ([FlowNodeTypeEnum.systemConfig].includes(node.flowNodeType)) return;
+
+        return true;
+      })
+      .map((node) => ({
+        flowNodeType: node.flowNodeType,
+        inputs: node.inputs.map((input) => ({
+          key: input.key,
+          selectedTypeIndex: input.selectedTypeIndex ?? 0,
+          renderTypeLis: input.renderTypeList,
+          valueType: input.valueType,
+          value: input.value ?? undefined
+        })),
+        outputs: node.outputs.map((item) => ({
+          key: item.key,
+          type: item.type,
+          value: item.value ?? undefined
+        })),
+        name: node.name,
+        intro: node.intro,
+        avatar: node.avatar,
+        version: node.version,
+        position: node.position
+      }));
+  };
+  const node1 = formatNodes(clone1.nodes);
+  const node2 = formatNodes(clone2.nodes);
 
   // console.log(node1);
   // console.log(node2);
+
+  node1.forEach((node, i) => {
+    if (!isEqual(node, node2[i])) {
+      console.log('node not equal');
+    }
+  });
 
   return isEqual(node1, node2);
 };

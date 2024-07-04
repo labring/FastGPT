@@ -34,7 +34,6 @@ export async function insertData2Dataset({
   session?: ClientSession;
 }) {
   if (!q || !datasetId || !collectionId || !model) {
-    console.log(q, a, datasetId, collectionId, model);
     return Promise.reject('q, datasetId, collectionId, model is required');
   }
   if (String(teamId) === String(tmbId)) {
@@ -140,7 +139,7 @@ export async function updateData2Dataset({
     formatIndexes.unshift(defaultIndex ? defaultIndex : getDefaultIndex({ q, a }));
   }
   formatIndexes = formatIndexes.slice(0, 6);
-  console.log(formatIndexes);
+
   // patch indexes, create, update, delete
   const patchResult: PatchIndexesProps[] = [];
 
