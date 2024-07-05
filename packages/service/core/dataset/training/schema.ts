@@ -1,5 +1,5 @@
 /* 模型的知识库 */
-import { connectionMongo, type Model } from '../../../common/mongo';
+import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import { TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
@@ -103,7 +103,7 @@ try {
   console.log(error);
 }
 
-export const MongoDatasetTraining: Model<DatasetTrainingSchemaType> =
-  models[DatasetTrainingCollectionName] || model(DatasetTrainingCollectionName, TrainingDataSchema);
-
-MongoDatasetTraining.syncIndexes();
+export const MongoDatasetTraining = getMongoModel<DatasetTrainingSchemaType>(
+  DatasetTrainingCollectionName,
+  TrainingDataSchema
+);

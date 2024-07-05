@@ -112,8 +112,8 @@ const AppSchema = new Schema({
   ...getPermissionSchema(AppDefaultPermissionVal)
 });
 
-export const MongoApp = getMongoModel<AppType>(AppCollectionName, AppSchema, () => {
-  AppSchema.index({ updateTime: -1 });
-  AppSchema.index({ teamId: 1, type: 1 });
-  AppSchema.index({ scheduledTriggerConfig: 1, intervalNextTime: -1 });
-});
+AppSchema.index({ updateTime: -1 });
+AppSchema.index({ teamId: 1, type: 1 });
+AppSchema.index({ scheduledTriggerConfig: 1, intervalNextTime: -1 });
+
+export const MongoApp = getMongoModel<AppType>(AppCollectionName, AppSchema);

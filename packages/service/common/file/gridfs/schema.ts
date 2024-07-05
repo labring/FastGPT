@@ -1,4 +1,4 @@
-import { connectionMongo, type Model } from '../../mongo';
+import { connectionMongo, getMongoModel, type Model } from '../../mongo';
 const { Schema, model, models } = connectionMongo;
 
 const FileSchema = new Schema({});
@@ -10,6 +10,4 @@ try {
   console.log(error);
 }
 
-export const MongoFileSchema = models['dataset.files'] || model('dataset.files', FileSchema);
-
-MongoFileSchema.syncIndexes();
+export const MongoFileSchema = getMongoModel('dataset.files', FileSchema);

@@ -58,19 +58,17 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
   return schema;
 };
 
-export const getMongoModel = <T>(name: string, schema: mongoose.Schema, indexCb: () => any) => {
+export const getMongoModel = <T>(name: string, schema: mongoose.Schema) => {
   if (connectionMongo.models[name]) return connectionMongo.models[name] as Model<T>;
   console.log('Load model======', name);
   addCommonMiddleware(schema);
 
+  const model = connectionMongo.model<T>(name, schema);
   try {
-    indexCb();
+    model.syncIndexes();
   } catch (error) {
     addLog.error('Create index error', error);
   }
-
-  const model = connectionMongo.model<T>(name, schema);
-  model.syncIndexes();
 
   return model;
 };

@@ -2,7 +2,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { Model, connectionMongo } from '../../common/mongo';
+import { Model, connectionMongo, getMongoModel } from '../../common/mongo';
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 const { Schema, model, models } = connectionMongo;
@@ -54,8 +54,7 @@ try {
   console.log(error);
 }
 
-export const MongoResourcePermission: Model<ResourcePermissionType> =
-  models[ResourcePermissionCollectionName] ||
-  model(ResourcePermissionCollectionName, ResourcePermissionSchema);
-
-MongoResourcePermission.syncIndexes();
+export const MongoResourcePermission = getMongoModel<ResourcePermissionType>(
+  ResourcePermissionCollectionName,
+  ResourcePermissionSchema
+);

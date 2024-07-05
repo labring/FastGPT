@@ -21,7 +21,7 @@ const SystemLogSchema = new Schema({
   metadata: Object
 });
 
-export const MongoLog = getMongoModel<SystemLogType>(LogCollectionName, SystemLogSchema, () => {
-  SystemLogSchema.index({ time: 1 }, { expires: '15d' });
-  SystemLogSchema.index({ level: 1 });
-});
+SystemLogSchema.index({ time: 1 }, { expires: '15d' });
+SystemLogSchema.index({ level: 1 });
+
+export const MongoLog = getMongoModel<SystemLogType>(LogCollectionName, SystemLogSchema);

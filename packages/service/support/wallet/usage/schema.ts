@@ -1,4 +1,4 @@
-import { connectionMongo, type Model } from '../../../common/mongo';
+import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { UsageSchemaType } from '@fastgpt/global/support/wallet/usage/type';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
@@ -70,6 +70,4 @@ try {
   console.log(error);
 }
 
-export const MongoUsage: Model<UsageSchemaType> =
-  models[UsageCollectionName] || model(UsageCollectionName, UsageSchema);
-MongoUsage.syncIndexes();
+export const MongoUsage = getMongoModel<UsageSchemaType>(UsageCollectionName, UsageSchema);
