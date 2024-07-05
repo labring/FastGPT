@@ -1,8 +1,8 @@
 import dayjs from 'dayjs';
 import chalk from 'chalk';
 import { LogLevelEnum } from './log/constant';
-// import { MongoLog } from './log/schema';
-import connectionMongo from '../mongo/index';
+import { connectionMongo } from '../mongo/index';
+import { getMongoLog } from './log/schema';
 
 const logMap = {
   [LogLevelEnum.debug]: {
@@ -52,14 +52,14 @@ export const addLog = {
     level === LogLevelEnum.error && console.error(obj);
 
     // store
-    // if (level >= STORE_LOG_LEVEL && connectionMongo.connection.readyState === 1) {
-    //   // store log
-    //   MongoLog.create({
-    //     text: msg,
-    //     level,
-    //     metadata: obj
-    //   });
-    // }
+    if (level >= STORE_LOG_LEVEL && connectionMongo.connection.readyState === 1) {
+      // store log
+      getMongoLog().create({
+        text: msg,
+        level,
+        metadata: obj
+      });
+    }
   },
   debug(msg: string, obj?: Record<string, any>) {
     this.log(LogLevelEnum.debug, msg, obj);
