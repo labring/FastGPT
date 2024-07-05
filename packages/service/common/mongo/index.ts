@@ -9,7 +9,7 @@ export const connectionMongo = (() => {
   return global.mongodb;
 })();
 
-export default connectionMongo;
+export default mongoose;
 export * from 'mongoose';
 
 const addCommonMiddleware = (schema: mongoose.Schema) => {
