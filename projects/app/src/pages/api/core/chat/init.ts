@@ -42,7 +42,7 @@ async function handler(
   }
 
   // get app and history
-  const [{ history }, { nodes }] = await Promise.all([
+  const [{ histories }, { nodes }] = await Promise.all([
     getChatItems({
       appId,
       chatId,
@@ -60,7 +60,7 @@ async function handler(
     title: chat?.title || '新对话',
     userAvatar: undefined,
     variables: chat?.variables || {},
-    history,
+    history: histories,
     app: {
       chatConfig: getAppChatConfig({
         chatConfig: app.chatConfig,

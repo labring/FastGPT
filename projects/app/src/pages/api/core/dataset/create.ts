@@ -1,7 +1,6 @@
 import type { NextApiRequest } from 'next';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
-import { createDefaultCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getLLMModel, getVectorModel, getDatasetModel } from '@fastgpt/service/core/ai/model';
@@ -49,14 +48,6 @@ async function handler(req: NextApiRequest) {
     type,
     defaultPermission
   });
-
-  if (type === DatasetTypeEnum.dataset) {
-    await createDefaultCollection({
-      datasetId: _id,
-      teamId,
-      tmbId
-    });
-  }
 
   return _id;
 }

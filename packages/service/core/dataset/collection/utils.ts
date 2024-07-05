@@ -10,6 +10,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { ClientSession } from '../../../common/mongo';
+import { PushDatasetDataResponse } from '@fastgpt/global/core/dataset/api';
 
 /**
  * get all collection by top collectionId
@@ -138,7 +139,7 @@ export const reloadCollectionChunks = async ({
   billId?: string;
   rawText?: string;
   session: ClientSession;
-}) => {
+}): Promise<PushDatasetDataResponse> => {
   const {
     title,
     rawText: newRawText,
@@ -149,7 +150,10 @@ export const reloadCollectionChunks = async ({
     newRawText: rawText
   });
 
-  if (isSameRawText) return;
+  if (isSameRawText)
+    return {
+      insertLen: 0
+    };
 
   // split data
   const { chunks } = splitText2Chunks({
@@ -164,7 +168,7 @@ export const reloadCollectionChunks = async ({
     return Promise.reject('Training model error');
   })();
 
-  await MongoDatasetTraining.insertMany(
+  const result = await MongoDatasetTraining.insertMany(
     chunks.map((item, i) => ({
       teamId: col.teamId,
       tmbId,
@@ -191,4 +195,8 @@ export const reloadCollectionChunks = async ({
     },
     { session }
   );
+
+  return {
+    insertLen: result.length
+  };
 };

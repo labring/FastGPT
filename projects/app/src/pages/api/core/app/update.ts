@@ -154,10 +154,8 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
 
       return onUpdate(session);
     });
-  }
-
-  // Update default permission
-  if (isDefaultPermissionChanged) {
+  } else if (isDefaultPermissionChanged) {
+    // Update default permission
     await mongoSessionRun(async (session) => {
       if (isFolder) {
         // Sync children default permission
@@ -193,6 +191,8 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
 
       return onUpdate(session, defaultPermission);
     });
+  } else {
+    return onUpdate();
   }
 }
 

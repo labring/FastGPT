@@ -3,6 +3,17 @@ import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from './constants';
 import { ChatHistoryItemResType, ChatItemType, UserChatItemValueItemType } from './type.d';
 
+// Concat 2 -> 1, and sort by role
+export const concatHistories = (histories1: ChatItemType[], histories2: ChatItemType[]) => {
+  const newHistories = [...histories1, ...histories2];
+  return newHistories.sort((a, b) => {
+    if (a.obj === ChatRoleEnum.System) {
+      return -1;
+    }
+    return 1;
+  });
+};
+
 export const getChatTitleFromChatMessage = (message?: ChatItemType, defaultValue = '新对话') => {
   // @ts-ignore
   const textMsg = message?.value.find((item) => item.type === ChatItemValueTypeEnum.text);

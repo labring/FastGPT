@@ -41,7 +41,6 @@ export const useChatBox = () => {
 
       const map: Record<ExportChatType, () => void> = {
         md: () => {
-          console.log(history);
           fileDownload({
             text: history
               .map((item) => {

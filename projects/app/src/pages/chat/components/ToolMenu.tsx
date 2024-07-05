@@ -11,7 +11,7 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
   const { t } = useTranslation();
   const { onExportChat } = useChatBox();
   const router = useRouter();
-  console.log(history);
+
   return history.length > 0 ? (
     <MyMenu
       Button={
