@@ -33,7 +33,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       MongoChat.findOne({ appId, chatId, shareId }).lean(),
       MongoApp.findById(appId).lean()
     ]);
-    console.log('app', app);
 
     if (!app) {
       throw new Error(AppErrEnum.unExist);
@@ -50,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         chatId,
         limit: 30,
         field: `dataId obj value userGoodFeedback userBadFeedback ${
-          shareChat.responseDetail
+          shareChat.responseDetail || app.type === AppTypeEnum.plugin
             ? `adminFeedback ${DispatchNodeResponseKeyEnum.nodeResponse}`
             : ''
         } `

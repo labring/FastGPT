@@ -341,7 +341,7 @@ const DetailLogsModal = ({
           <ChatBox
             ref={ChatBoxRef}
             appType={chat?.app.type || AppTypeEnum.simple}
-            chatType={ChatTypeEnum.chatTest}
+            chatType={ChatTypeEnum.log}
             pluginInputs={chat?.app.pluginInputs || []}
             appAvatar={chat?.app.avatar}
             userAvatar={HUMAN_ICON}

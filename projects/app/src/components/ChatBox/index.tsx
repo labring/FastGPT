@@ -184,17 +184,23 @@ const ChatBox = (
   const pluginForm = useForm();
   const { handleSubmit: handlePluginSubmit, control: pluginControl, reset } = pluginForm;
 
+  const currentPluginInputs = useMemo(() => {
+    //@ts-ignore
+    return chatHistories.length > 0 ? chatHistories[0]?.value[0].params.format : pluginInputs;
+  }, [chatHistories, pluginInputs]);
+
   useEffect(() => {
     function convertArrayToJson(arr: FlowNodeInputItemType[]) {
       let result: Record<string, any> = {};
-      arr.forEach((item) => {
+      arr?.forEach((item) => {
         result[item.key] = item.defaultValue || '';
       });
       return result;
     }
-    const pluginVariables = convertArrayToJson(pluginInputs);
+
+    const pluginVariables = convertArrayToJson(currentPluginInputs);
     //@ts-ignore
-    reset({ ...pluginVariables, ...chatHistories[0]?.value[0].params });
+    reset({ ...pluginVariables, ...chatHistories[0]?.value[0].params.value });
   }, [chatHistories]);
 
   /* variable */
@@ -488,7 +494,16 @@ const ChatBox = (
                     value: [
                       {
                         type: ChatItemValueTypeEnum.plugin,
-                        params: pluginVariables
+                        params: {
+                          value: pluginVariables,
+                          format: pluginInputs
+                        }
+                      },
+                      {
+                        type: ChatItemValueTypeEnum.text,
+                        text: {
+                          content: JSON.stringify(pluginVariables)
+                        }
                       }
                     ] as UserChatItemValueItemType[],
                     status: 'finish'
@@ -616,6 +631,7 @@ const ChatBox = (
       isChatting,
       isPc,
       onStartChat,
+      pluginInputs,
       resetInputVal,
       setAudioPlayingChatId,
       setChatHistories,
@@ -1059,7 +1075,7 @@ const ChatBox = (
         {appType === AppTypeEnum.plugin && (
           <PluginBox
             chatType={chatType}
-            pluginInputs={pluginInputs}
+            pluginInputs={currentPluginInputs}
             control={pluginControl}
             handleSubmit={handlePluginSubmit}
             sendPrompt={sendPrompt}

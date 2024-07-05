@@ -14,6 +14,8 @@ import { ChatTypeEnum, PluginChatBoxTypeEnum } from '../constants';
 import RenderPluginInput from './renderPluginInput';
 import { StreamResponseType } from '@/web/common/api/fetch';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useContextSelector } from 'use-context-selector';
+import { ChatContext } from '@/web/core/chat/context/chatContext';
 
 const PluginBox = ({
   chatType,
@@ -56,14 +58,16 @@ const PluginBox = ({
 }) => {
   const { t } = useTranslation();
   const [currentChatBoxType, setCurrentChatBoxType] = useState<PluginChatBoxTypeEnum>(() => {
-    if (chatType === ChatTypeEnum.chatTest) return PluginChatBoxTypeEnum.input;
+    if (chatType !== ChatTypeEnum.chat) return PluginChatBoxTypeEnum.input;
     return PluginChatBoxTypeEnum.output;
   });
+  const { onChangeChatId } = useContextSelector(ChatContext, (v) => v);
+
   const { isPc } = useSystemStore();
 
   return (
     <Box id="chat-container" h={'100%'} mx={'auto'}>
-      {chatType === ChatTypeEnum.chatTest && (
+      {chatType !== ChatTypeEnum.chat && (
         <Flex
           w={'full'}
           bg={chatHistories.length > 0 ? 'myGray.25' : ''}
@@ -117,6 +121,7 @@ const PluginBox = ({
                           onChange={onChange}
                           label={input.label}
                           description={input.description}
+                          disabled={chatHistories.length > 0 && chatType !== ChatTypeEnum.chatTest}
                           valueType={input.valueType}
                           placeholder={input.placeholder}
                           required={input.required}
@@ -133,6 +138,8 @@ const PluginBox = ({
                   <Button
                     isLoading={isChatting}
                     onClick={handleSubmit((variables) => {
+                      if (chatHistories.length > 0 && chatType === ChatTypeEnum.chat)
+                        return onChangeChatId();
                       setCurrentChatBoxType(PluginChatBoxTypeEnum.output);
                       sendPrompt({
                         text: '',
@@ -150,7 +157,7 @@ const PluginBox = ({
               )}
             </Box>
           )}
-          {chatType === 'chat' && (
+          {chatType === ChatTypeEnum.chat && (
             <Divider
               orientation={isPc ? 'vertical' : 'horizontal'}
               mx={isPc ? 6 : 0}
@@ -159,7 +166,7 @@ const PluginBox = ({
           )}
           {currentChatBoxType === PluginChatBoxTypeEnum.output && (
             <Box w={isPc && chatType === ChatTypeEnum.chat ? '50%' : 'full'}>
-              {chatType === 'chat' && (
+              {chatType === ChatTypeEnum.chat && (
                 <Box mt={5}>
                   <LightRowTabs
                     list={[
@@ -203,9 +210,7 @@ const PluginBox = ({
                         );
                       })}
                     </Box>
-                  ) : (
-                    <Center h={'200'}></Center>
-                  )}
+                  ) : null}
                 </Box>
               </Box>
               <Box border={'1px solid #E8EBF0'} mt={4} rounded={'md'} bg={'myGray.25'}>
@@ -215,16 +220,14 @@ const PluginBox = ({
                     <Markdown
                       source={`~~~json\n${JSON.stringify(chatHistories[1].responseData.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput)?.pluginOutput, null, 2)}`}
                     />
-                  ) : (
-                    <Center h={'200'}></Center>
-                  )}
+                  ) : null}
                 </Box>
               </Box>
             </Box>
           )}
           {currentChatBoxType === PluginChatBoxTypeEnum.fullResult && (
-            <Box w={'full'}>
-              {chatType === 'chat' && (
+            <Box w={isPc && chatType === ChatTypeEnum.chat ? '50%' : 'full'}>
+              {chatType === ChatTypeEnum.chat && (
                 <Box mt={5}>
                   <LightRowTabs
                     list={[
@@ -248,13 +251,8 @@ const PluginBox = ({
                 </Box>
               )}
               {chatHistories.length > 0 && chatHistories[1].responseData ? (
-                <ResponseBox
-                  response={chatHistories[1].responseData}
-                  showDetail={!shareId && !teamId}
-                />
-              ) : (
-                <Center h={'400'}></Center>
-              )}
+                <ResponseBox response={chatHistories[1].responseData} showDetail={true} />
+              ) : null}
             </Box>
           )}
         </Flex>

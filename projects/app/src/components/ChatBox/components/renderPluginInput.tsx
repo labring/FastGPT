@@ -21,6 +21,7 @@ const RenderPluginInput = ({
   onChange,
   label,
   description,
+  disabled,
   valueType,
   placeholder,
   required,
@@ -31,6 +32,7 @@ const RenderPluginInput = ({
   onChange: () => void;
   label: string;
   description?: string;
+  disabled?: boolean;
   valueType: WorkflowIOValueTypeEnum | undefined;
   placeholder?: string;
   required?: boolean;
@@ -42,12 +44,18 @@ const RenderPluginInput = ({
   const render = (() => {
     if (valueType === WorkflowIOValueTypeEnum.string) {
       return (
-        <Textarea value={value} onChange={onChange} placeholder={t(placeholder)} bg={'myGray.50'} />
+        <Textarea
+          value={value}
+          onChange={onChange}
+          isDisabled={disabled}
+          placeholder={t(placeholder)}
+          bg={'myGray.50'}
+        />
       );
     }
     if (valueType === WorkflowIOValueTypeEnum.number) {
       return (
-        <NumberInput step={1} min={min} max={max} bg={'myGray.50'}>
+        <NumberInput step={1} min={min} max={max} bg={'myGray.50'} isDisabled={disabled}>
           <NumberInputField value={value} onChange={onChange} />
           <NumberInputStepper>
             <NumberIncrementStepper />
@@ -57,7 +65,7 @@ const RenderPluginInput = ({
       );
     }
     if (valueType === WorkflowIOValueTypeEnum.boolean) {
-      return <Switch isChecked={value} onChange={onChange} />;
+      return <Switch isChecked={value} onChange={onChange} isDisabled={disabled} />;
     }
 
     return (

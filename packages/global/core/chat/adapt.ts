@@ -70,7 +70,10 @@ export const chats2GPTMessages = ({
           if (item.type === ChatItemValueTypeEnum.plugin) {
             return {
               type: 'plugin',
-              params: item.params
+              params: {
+                value: item.params?.value,
+                format: item.params?.format
+              }
             };
           }
           return;

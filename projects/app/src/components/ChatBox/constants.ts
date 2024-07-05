@@ -20,7 +20,8 @@ export enum FeedbackTypeEnum {
 
 export enum ChatTypeEnum {
   chat = 'chat',
-  chatTest = 'chatTest'
+  chatTest = 'chatTest',
+  log = 'log'
 }
 
 export enum PluginChatBoxTypeEnum {

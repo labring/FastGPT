@@ -285,9 +285,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
     /* select fe response field */
-    const feResponseData = canWrite
-      ? flowResponses
-      : filterPublicNodeResponseData({ flowResponses });
+    const feResponseData =
+      canWrite || appType === AppTypeEnum.plugin
+        ? flowResponses
+        : filterPublicNodeResponseData({ flowResponses });
 
     if (stream) {
       responseWrite({
