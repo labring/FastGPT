@@ -185,6 +185,9 @@ const ChatBox = (
   const { handleSubmit: handlePluginSubmit, control: pluginControl, reset } = pluginForm;
 
   const currentPluginInputs = useMemo(() => {
+    if (appType !== AppTypeEnum.plugin) {
+      return [];
+    }
     return chatHistories.length > 0
       ? JSON.parse(chatHistories[0]?.value[0].text?.content || '{}').format
       : pluginInputs;
