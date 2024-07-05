@@ -1,4 +1,4 @@
-import { connectionMongo, type Model } from '../../../common/mongo';
+import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import { chatConfigType } from '../schema';
@@ -34,7 +34,7 @@ try {
   console.log(error);
 }
 
-export const MongoAppVersion: Model<AppVersionSchemaType> =
-  models[AppVersionCollectionName] || model(AppVersionCollectionName, AppVersionSchema);
-
-MongoAppVersion.syncIndexes();
+export const MongoAppVersion = getMongoModel<AppVersionSchemaType>(
+  AppVersionCollectionName,
+  AppVersionSchema
+);

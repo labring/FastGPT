@@ -1,4 +1,4 @@
-import { connectionMongo, type Model } from '../../common/mongo';
+import { connectionMongo, getMongoModel, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { OutLinkSchema as SchemaType } from '@fastgpt/global/support/outLink/type';
 import {
@@ -90,7 +90,4 @@ try {
   console.log(error);
 }
 
-export const MongoOutLink: Model<SchemaType> =
-  models['outlinks'] || model('outlinks', OutLinkSchema);
-
-MongoOutLink.syncIndexes();
+export const MongoOutLink = getMongoModel<SchemaType>('outlinks', OutLinkSchema);

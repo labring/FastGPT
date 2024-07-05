@@ -198,7 +198,7 @@ ${description ? `- ${description}` : ''}
       required: []
     }
   };
-  console.log(properties);
+
   return {
     filterMessages,
     agentFunction

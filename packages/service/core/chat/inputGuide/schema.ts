@@ -1,5 +1,5 @@
 import { AppCollectionName } from '../../app/schema';
-import { connectionMongo, type Model } from '../../../common/mongo';
+import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import type { ChatInputGuideSchemaType } from '@fastgpt/global/core/chat/inputGuide/type.d';
 
@@ -23,7 +23,7 @@ try {
   console.log(error);
 }
 
-export const MongoChatInputGuide: Model<ChatInputGuideSchemaType> =
-  models[ChatInputGuideCollectionName] || model(ChatInputGuideCollectionName, ChatInputGuideSchema);
-
-MongoChatInputGuide.syncIndexes();
+export const MongoChatInputGuide = getMongoModel<ChatInputGuideSchemaType>(
+  ChatInputGuideCollectionName,
+  ChatInputGuideSchema
+);

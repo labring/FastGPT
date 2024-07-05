@@ -1,4 +1,4 @@
-import { connectionMongo, type Model } from '../../mongo';
+import { connectionMongo, getMongoModel, type Model } from '../../mongo';
 const { Schema, model, models } = connectionMongo;
 import { RawTextBufferSchemaType } from './type';
 
@@ -28,6 +28,7 @@ try {
   console.log(error);
 }
 
-export const MongoRawTextBuffer: Model<RawTextBufferSchemaType> =
-  models[collectionName] || model(collectionName, RawTextBufferSchema);
-MongoRawTextBuffer.syncIndexes();
+export const MongoRawTextBuffer = getMongoModel<RawTextBufferSchemaType>(
+  collectionName,
+  RawTextBufferSchema
+);

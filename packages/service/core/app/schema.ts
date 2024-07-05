@@ -1,6 +1,5 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { connectionMongo, type Model } from '../../common/mongo';
-const { Schema, model, models } = connectionMongo;
+import { Schema, getMongoModel } from '../../common/mongo';
 import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
 import {
   TeamCollectionName,
@@ -21,6 +20,7 @@ export const chatConfigType = {
   chatInputGuide: Object
 };
 
+// schema
 const AppSchema = new Schema({
   parentId: {
     type: Schema.Types.ObjectId,
@@ -112,15 +112,8 @@ const AppSchema = new Schema({
   ...getPermissionSchema(AppDefaultPermissionVal)
 });
 
-try {
-  AppSchema.index({ updateTime: -1 });
-  AppSchema.index({ teamId: 1, type: 1 });
-  AppSchema.index({ scheduledTriggerConfig: 1, intervalNextTime: -1 });
-} catch (error) {
-  console.log(error);
-}
+AppSchema.index({ updateTime: -1 });
+AppSchema.index({ teamId: 1, type: 1 });
+AppSchema.index({ scheduledTriggerConfig: 1, intervalNextTime: -1 });
 
-export const MongoApp: Model<AppType> =
-  models[AppCollectionName] || model(AppCollectionName, AppSchema);
-
-MongoApp.syncIndexes();
+export const MongoApp = getMongoModel<AppType>(AppCollectionName, AppSchema);

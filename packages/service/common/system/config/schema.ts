@@ -1,5 +1,5 @@
 import { SystemConfigsType } from '@fastgpt/global/common/system/config/type';
-import { connectionMongo, type Model } from '../../../common/mongo';
+import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
 import { SystemConfigsTypeMap } from '@fastgpt/global/common/system/config/constants';
 
 const { Schema, model, models } = connectionMongo;
@@ -27,6 +27,7 @@ try {
   console.log(error);
 }
 
-export const MongoSystemConfigs: Model<SystemConfigsType> =
-  models[collectionName] || model(collectionName, systemConfigSchema);
-MongoSystemConfigs.syncIndexes();
+export const MongoSystemConfigs = getMongoModel<SystemConfigsType>(
+  collectionName,
+  systemConfigSchema
+);
