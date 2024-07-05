@@ -102,7 +102,7 @@ const PluginBox = ({
           )}
         </Flex>
       )}
-      <Flex flex={1} maxW={['100%', '92%']} mx={'auto'} minH={'full'}>
+      <Flex flex={1} maxW={['100%', '92%']} mx={'auto'}>
         <Flex w={'full'} flexDirection={isPc ? 'row' : 'column'} flex={1}>
           {(currentChatBoxType === PluginChatBoxTypeEnum.input ||
             chatType === ChatTypeEnum.chat) && (
