@@ -198,9 +198,11 @@ const ChatBox = (
       return result;
     }
 
-    const pluginVariables = convertArrayToJson(currentPluginInputs);
-    //@ts-ignore
-    reset({ ...pluginVariables, ...chatHistories[0]?.value[0].params.value });
+    if (appType === AppTypeEnum.plugin) {
+      const pluginVariables = convertArrayToJson(currentPluginInputs);
+      //@ts-ignore
+      reset({ ...pluginVariables, ...chatHistories[0]?.value[0].params.value });
+    }
   }, [chatHistories]);
 
   /* variable */

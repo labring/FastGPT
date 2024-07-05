@@ -102,12 +102,16 @@ const PluginBox = ({
           )}
         </Flex>
       )}
-      <Flex flex={1} maxW={['100%', '92%']} mx={'auto'}>
-        <Flex w={'full'} flexDirection={isPc ? 'row' : 'column'}>
+      <Flex flex={1} maxW={['100%', '92%']} mx={'auto'} minH={'full'}>
+        <Flex w={'full'} flexDirection={isPc ? 'row' : 'column'} flex={1}>
           {(currentChatBoxType === PluginChatBoxTypeEnum.input ||
             chatType === ChatTypeEnum.chat) && (
             <Box w={isPc && chatType === ChatTypeEnum.chat ? '50%' : 'full'}>
-              {chatType === ChatTypeEnum.chat && <Box mt={5}>{t('common.Input')}</Box>}
+              {chatType === ChatTypeEnum.chat && (
+                <Box mt={5} color={'myGray.900'} fontWeight={500}>
+                  {t('common.Input')}
+                </Box>
+              )}
               <Box mt={4}>
                 {pluginInputs?.map((input) => {
                   return (
@@ -167,7 +171,7 @@ const PluginBox = ({
           {currentChatBoxType === PluginChatBoxTypeEnum.output && (
             <Box w={isPc && chatType === ChatTypeEnum.chat ? '50%' : 'full'}>
               {chatType === ChatTypeEnum.chat && (
-                <Box mt={5}>
+                <Box mt={3}>
                   <LightRowTabs
                     list={[
                       { label: t('common.Output'), value: PluginChatBoxTypeEnum.output },
@@ -228,7 +232,7 @@ const PluginBox = ({
           {currentChatBoxType === PluginChatBoxTypeEnum.fullResult && (
             <Box w={isPc && chatType === ChatTypeEnum.chat ? '50%' : 'full'}>
               {chatType === ChatTypeEnum.chat && (
-                <Box mt={5}>
+                <Box mt={3}>
                   <LightRowTabs
                     list={[
                       { label: t('common.Output'), value: PluginChatBoxTypeEnum.output },
