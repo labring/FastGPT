@@ -212,7 +212,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
                   {
                     $match: {
                       $expr: { $eq: ['$_id', '$$collectionId'] },
-                      forbid: { $eq: false } // 直接在lookup阶段过滤
+                      forbid: { $eq: true } // 匹配被禁用的数据
                     }
                   },
                   {
@@ -226,7 +226,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
             },
             {
               $match: {
-                collection: { $ne: [] }
+                collection: { $eq: [] } // 没有 forbid=true 的数据
               }
             },
             {

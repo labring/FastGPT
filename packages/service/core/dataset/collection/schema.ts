@@ -1,4 +1,4 @@
-import { connectionMongo, type Model } from '../../../common/mongo';
+import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import { TrainingTypeMap, DatasetCollectionTypeMap } from '@fastgpt/global/core/dataset/constants';
@@ -94,9 +94,6 @@ const DatasetCollectionSchema = new Schema({
   }
 });
 
-export const MongoDatasetCollection: Model<DatasetCollectionSchemaType> =
-  models[DatasetColCollectionName] || model(DatasetColCollectionName, DatasetCollectionSchema);
-
 try {
   // auth file
   DatasetCollectionSchema.index({ teamId: 1, fileId: 1 });
@@ -111,8 +108,11 @@ try {
 
   // get forbid
   // DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, forbid: 1 });
-
-  MongoDatasetCollection.syncIndexes({ background: true });
 } catch (error) {
   console.log(error);
 }
+
+export const MongoDatasetCollection = getMongoModel<DatasetCollectionSchemaType>(
+  DatasetColCollectionName,
+  DatasetCollectionSchema
+);

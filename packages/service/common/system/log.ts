@@ -1,13 +1,9 @@
 import dayjs from 'dayjs';
 import chalk from 'chalk';
-import { isProduction } from './constants';
+import { LogLevelEnum } from './log/constant';
+// import { MongoLog } from './log/schema';
+import connectionMongo from '../mongo/index';
 
-enum LogLevelEnum {
-  debug = 0,
-  info = 1,
-  warn = 2,
-  error = 3
-}
 const logMap = {
   [LogLevelEnum.debug]: {
     levelLog: chalk.green('[Debug]')
@@ -23,23 +19,26 @@ const logMap = {
   }
 };
 const envLogLevelMap: Record<string, number> = {
-  debug: 0,
-  info: 1,
-  warn: 2,
-  error: 3
+  debug: LogLevelEnum.debug,
+  info: LogLevelEnum.info,
+  warn: LogLevelEnum.warn,
+  error: LogLevelEnum.error
 };
 
-const logLevel = (() => {
-  if (!isProduction) return LogLevelEnum.debug;
-  const envLogLevel = (process.env.LOG_LEVEL || 'info').toLocaleLowerCase();
-  if (!envLogLevel || envLogLevelMap[envLogLevel] === undefined) return LogLevelEnum.info;
-  return envLogLevelMap[envLogLevel];
+const { LOG_LEVEL, STORE_LOG_LEVEL } = (() => {
+  const LOG_LEVEL = (process.env.LOG_LEVEL || 'info').toLocaleLowerCase();
+  const STORE_LOG_LEVEL = (process.env.STORE_LOG_LEVEL || '').toLocaleLowerCase();
+
+  return {
+    LOG_LEVEL: envLogLevelMap[LOG_LEVEL] || LogLevelEnum.info,
+    STORE_LOG_LEVEL: envLogLevelMap[STORE_LOG_LEVEL] ?? 99
+  };
 })();
 
 /* add logger */
 export const addLog = {
   log(level: LogLevelEnum, msg: string, obj: Record<string, any> = {}) {
-    if (level < logLevel) return;
+    if (level < LOG_LEVEL) return;
 
     const stringifyObj = JSON.stringify(obj);
     const isEmpty = Object.keys(obj).length === 0;
@@ -52,35 +51,15 @@ export const addLog = {
 
     level === LogLevelEnum.error && console.error(obj);
 
-    const lokiUrl = process.env.LOKI_LOG_URL as string;
-    if (!lokiUrl) return;
-
-    try {
-      fetch(lokiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-type': 'application/json'
-        },
-        body: JSON.stringify({
-          streams: [
-            {
-              stream: {
-                level
-              },
-              values: [
-                [
-                  `${Date.now() * 1000000}`,
-                  JSON.stringify({
-                    message: msg,
-                    ...obj
-                  })
-                ]
-              ]
-            }
-          ]
-        })
-      });
-    } catch (error) {}
+    // store
+    // if (level >= STORE_LOG_LEVEL && connectionMongo.connection.readyState === 1) {
+    //   // store log
+    //   MongoLog.create({
+    //     text: msg,
+    //     level,
+    //     metadata: obj
+    //   });
+    // }
   },
   debug(msg: string, obj?: Record<string, any>) {
     this.log(LogLevelEnum.debug, msg, obj);

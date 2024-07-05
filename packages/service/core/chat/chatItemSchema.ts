@@ -1,4 +1,4 @@
-import { connectionMongo, type Model } from '../../common/mongo';
+import { connectionMongo, getMongoModel, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { ChatItemSchema as ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleMap } from '@fastgpt/global/core/chat/constants';
@@ -9,7 +9,6 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../app/schema';
 import { userCollectionName } from '../../support/user/schema';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 export const ChatItemCollectionName = 'chatitems';
@@ -99,7 +98,4 @@ try {
   console.log(error);
 }
 
-export const MongoChatItem: Model<ChatItemType> =
-  models[ChatItemCollectionName] || model(ChatItemCollectionName, ChatItemSchema);
-
-MongoChatItem.syncIndexes();
+export const MongoChatItem = getMongoModel<ChatItemType>(ChatItemCollectionName, ChatItemSchema);

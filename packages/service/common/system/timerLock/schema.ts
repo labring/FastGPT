@@ -1,4 +1,4 @@
-import { connectionMongo, type Model } from '../../mongo';
+import { connectionMongo, getMongoModel, type Model } from '../../mongo';
 import { timerIdMap } from './constants';
 const { Schema, model, models } = connectionMongo;
 import { TimerLockSchemaType } from './type.d';
@@ -24,6 +24,4 @@ try {
   console.log(error);
 }
 
-export const MongoTimerLock: Model<TimerLockSchemaType> =
-  models[collectionName] || model(collectionName, TimerLockSchema);
-MongoTimerLock.syncIndexes();
+export const MongoTimerLock = getMongoModel<TimerLockSchemaType>(collectionName, TimerLockSchema);

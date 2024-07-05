@@ -1,4 +1,4 @@
-import { connectionMongo, type Model } from '../../common/mongo';
+import { connectionMongo, getMongoModel, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import {
@@ -11,7 +11,6 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { PermissionTypeEnum, PermissionTypeMap } from '@fastgpt/global/support/permission/constant';
 import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
 
 export const DatasetCollectionName = 'datasets';
@@ -99,6 +98,4 @@ try {
   console.log(error);
 }
 
-export const MongoDataset: Model<DatasetSchemaType> =
-  models[DatasetCollectionName] || model(DatasetCollectionName, DatasetSchema);
-MongoDataset.syncIndexes();
+export const MongoDataset = getMongoModel<DatasetSchemaType>(DatasetCollectionName, DatasetSchema);
