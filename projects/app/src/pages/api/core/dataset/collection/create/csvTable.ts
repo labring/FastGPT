@@ -18,8 +18,9 @@ import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
+import { CreateCollectionResponse } from '@/global/core/dataset/api';
 
-async function handler(req: NextApiRequest) {
+async function handler(req: NextApiRequest): CreateCollectionResponse {
   const { datasetId, parentId, fileId } = req.body as FileIdCreateDatasetCollectionParams;
   const trainingType = TrainingModeEnum.chunk;
   const { teamId, tmbId, dataset } = await authDataset({
@@ -50,7 +51,7 @@ async function handler(req: NextApiRequest) {
     insertLen: predictDataLimitLength(trainingType, chunks)
   });
 
-  await mongoSessionRun(async (session) => {
+  return mongoSessionRun(async (session) => {
     // 4. create collection
     const { _id: collectionId } = await createOneCollection({
       teamId,
@@ -80,7 +81,7 @@ async function handler(req: NextApiRequest) {
     });
 
     // 6. insert to training queue
-    await pushDataListToTrainingQueue({
+    const insertResult = await pushDataListToTrainingQueue({
       teamId,
       tmbId,
       datasetId: dataset._id,
@@ -97,7 +98,7 @@ async function handler(req: NextApiRequest) {
       session
     });
 
-    return collectionId;
+    return { collectionId, results: insertResult };
   });
 }
 export default NextAPI(handler);

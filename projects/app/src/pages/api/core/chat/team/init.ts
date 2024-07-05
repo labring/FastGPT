@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // get app and history
-    const [{ history }, { nodes }] = await Promise.all([
+    const [{ histories }, { nodes }] = await Promise.all([
       getChatItems({
         appId,
         chatId,
@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
 
     // pick share response field
-    history.forEach((item) => {
+    histories.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI) {
         item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
       }
@@ -71,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         title: chat?.title || '新对话',
         userAvatar: team?.avatar,
         variables: chat?.variables || {},
-        history,
+        history: histories,
         app: {
           chatConfig: getAppChatConfig({
             chatConfig: app.chatConfig,

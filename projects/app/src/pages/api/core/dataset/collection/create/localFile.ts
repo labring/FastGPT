@@ -23,8 +23,9 @@ import { MongoImage } from '@fastgpt/service/common/file/image/schema';
 import { readRawTextByLocalFile } from '@fastgpt/service/common/file/read/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { CreateCollectionResponse } from '@/global/core/dataset/api';
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCollectionResponse {
   /**
    * Creates the multer uploader
    */

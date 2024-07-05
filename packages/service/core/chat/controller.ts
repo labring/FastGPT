@@ -13,24 +13,24 @@ export async function getChatItems({
   chatId?: string;
   limit?: number;
   field: string;
-}): Promise<{ history: ChatItemType[] }> {
+}): Promise<{ histories: ChatItemType[] }> {
   if (!chatId) {
-    return { history: [] };
+    return { histories: [] };
   }
 
-  const history = await MongoChatItem.find({ appId, chatId }, field)
+  const histories = await MongoChatItem.find({ appId, chatId }, field)
     .sort({ _id: -1 })
     .limit(limit)
     .lean();
 
-  history.reverse();
+  histories.reverse();
 
-  history.forEach((item) => {
+  histories.forEach((item) => {
     // @ts-ignore
     item.value = adaptStringValue(item.value);
   });
 
-  return { history };
+  return { histories };
 }
 /* 临时适配旧的对话记录 */
 export const adaptStringValue = (value: any): ChatItemValueItemType[] => {
