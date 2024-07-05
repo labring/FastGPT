@@ -244,7 +244,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
         })
       )
     ).flat() as (DatasetDataSchemaType & { score: number })[];
-
+    console.log(searchResults);
     // resort
     searchResults.sort((a, b) => b.score - a.score);
     searchResults.slice(0, limit);
