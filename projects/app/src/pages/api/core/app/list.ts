@@ -14,6 +14,7 @@ import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constan
 import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 export type ListAppBody = {
   parentId?: ParentIdType;

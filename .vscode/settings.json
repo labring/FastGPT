@@ -2,7 +2,7 @@
     "editor.formatOnSave": true,
     "editor.mouseWheelZoom": true,
     "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "prettier.prettierPath": "../node_modules/prettier",
+    "prettier.prettierPath": "node_modules/prettier",
     "typescript.tsdk": "node_modules/typescript/lib",
     "i18n-ally.localesPaths": [
         "packages/web/i18n",
