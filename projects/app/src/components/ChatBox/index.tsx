@@ -185,8 +185,9 @@ const ChatBox = (
   const { handleSubmit: handlePluginSubmit, control: pluginControl, reset } = pluginForm;
 
   const currentPluginInputs = useMemo(() => {
-    //@ts-ignore
-    return chatHistories.length > 0 ? chatHistories[0]?.value[0].params.format : pluginInputs;
+    return chatHistories.length > 0
+      ? JSON.parse(chatHistories[0]?.value[0].text?.content || '{}').format
+      : pluginInputs;
   }, [chatHistories, pluginInputs]);
 
   useEffect(() => {
@@ -200,8 +201,10 @@ const ChatBox = (
 
     if (appType === AppTypeEnum.plugin) {
       const pluginVariables = convertArrayToJson(currentPluginInputs);
-      //@ts-ignore
-      reset({ ...pluginVariables, ...chatHistories[0]?.value[0].params.value });
+      reset({
+        ...pluginVariables,
+        ...JSON.parse(chatHistories[0]?.value[0].text?.content || '{}').value
+      });
     }
   }, [chatHistories]);
 
@@ -495,16 +498,12 @@ const ChatBox = (
                     obj: ChatRoleEnum.Human,
                     value: [
                       {
-                        type: ChatItemValueTypeEnum.plugin,
-                        params: {
-                          value: pluginVariables,
-                          format: pluginInputs
-                        }
-                      },
-                      {
                         type: ChatItemValueTypeEnum.text,
                         text: {
-                          content: JSON.stringify(pluginVariables)
+                          content: JSON.stringify({
+                            value: pluginVariables,
+                            format: pluginInputs
+                          })
                         }
                       }
                     ] as UserChatItemValueItemType[],

@@ -51,10 +51,6 @@ export type UserChatItemValueItemType = {
     name?: string;
     url: string;
   };
-  params?: {
-    value: Record<string, any>;
-    format: FlowNodeInputItemType[];
-  };
 };
 export type UserChatItemType = {
   obj: ChatRoleEnum.Human;

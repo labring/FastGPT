@@ -67,16 +67,6 @@ export const chats2GPTMessages = ({
               }
             };
           }
-          if (item.type === ChatItemValueTypeEnum.plugin) {
-            return {
-              type: 'plugin',
-              params: {
-                value: item.params?.value,
-                format: item.params?.format
-              }
-            };
-          }
-          return;
         })
         .filter(Boolean) as ChatCompletionContentPart[];
 
@@ -178,7 +168,7 @@ export const GPTMessages2Chats = (
             } else if (item.type === 'image_url') {
               value.push({
                 //@ts-ignore
-                type: 'file',
+                type: ChatItemValueTypeEnum.file,
                 file: {
                   type: ChatFileTypeEnum.image,
                   name: '',
@@ -186,13 +176,6 @@ export const GPTMessages2Chats = (
                 }
               });
               //@ts-ignore
-            } else if (item.type === 'plugin') {
-              value.push({
-                //@ts-ignore
-                type: ChatItemValueTypeEnum.plugin,
-                //@ts-ignore
-                params: item.params
-              });
             }
           });
           // @ts-ignore
