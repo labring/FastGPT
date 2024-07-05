@@ -175,10 +175,8 @@ export const GPTMessages2Chats = (
                   url: item.image_url.url
                 }
               });
-              //@ts-ignore
             }
           });
-          // @ts-ignore
         }
       } else if (
         obj === ChatRoleEnum.AI &&
