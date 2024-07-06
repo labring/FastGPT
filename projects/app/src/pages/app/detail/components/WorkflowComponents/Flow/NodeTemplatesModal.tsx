@@ -396,7 +396,9 @@ const RenderList = React.memo(function RenderList({
                             {t(template.name)}
                           </Box>
                         </Flex>
-                        <Box mt={2}>{t(template.intro || 'core.workflow.Not intro')}</Box>
+                        <Box mt={2} color={'myGray.500'}>
+                          {t(template.intro) || t('core.workflow.Not intro')}
+                        </Box>
                       </Box>
                     }
                   >
