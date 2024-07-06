@@ -63,8 +63,8 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const avatar = getValues('avatar');
 
   // submit config
-  const { mutate: saveSubmitSuccess, isLoading: btnLoading } = useRequest({
-    mutationFn: async (data: AppSchema) => {
+  const { runAsync: saveSubmitSuccess, loading: btnLoading } = useRequest2(
+    async (data: AppSchema) => {
       await updateAppDetail({
         name: data.name,
         avatar: data.avatar,
@@ -72,16 +72,17 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
         defaultPermission: data.defaultPermission
       });
     },
-    onSuccess() {
-      onClose();
-      toast({
-        title: t('common.Update Success'),
-        status: 'success'
-      });
-      reloadApp();
-    },
-    errorToast: t('common.Update Failed')
-  });
+    {
+      onSuccess() {
+        toast({
+          title: t('common.Update Success'),
+          status: 'success'
+        });
+        reloadApp();
+      },
+      errorToast: t('common.Update Failed')
+    }
+  );
 
   const saveSubmitError = useCallback(() => {
     // deep search message
@@ -101,8 +102,8 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
   }, [errors, t, toast]);
 
   const saveUpdateModel = useCallback(
-    () => handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)(),
-    [handleSubmit, saveSubmitError, saveSubmitSuccess]
+    () => handleSubmit((data) => saveSubmitSuccess(data).then(onClose), saveSubmitError)(),
+    [handleSubmit, onClose, saveSubmitError, saveSubmitSuccess]
   );
 
   const onSelectFile = useCallback(
@@ -210,7 +211,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                 isInheritPermission={appDetail.inheritPermission}
                 onChange={(v) => {
                   setValue('defaultPermission', v);
-                  handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)();
+                  return handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)();
                 }}
                 hasParent={!!appDetail.parentId}
               />

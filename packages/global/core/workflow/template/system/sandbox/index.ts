@@ -52,7 +52,7 @@ export const CodeNode: FlowNodeTemplateType = {
   outputs: [
     {
       ...Output_Template_AddOutput,
-      description: '将代码中 return 的对象作为输出，传递给后续的节点'
+      description: '将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key'
     },
     {
       id: NodeOutputKeyEnum.rawResponse,
