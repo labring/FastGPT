@@ -37,6 +37,32 @@ export const CodeNode: FlowNodeTemplateType = {
       }
     },
     {
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.string,
+      canEdit: true,
+      key: 'data1',
+      label: 'data1',
+      customInputConfig: {
+        selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
+        showDescription: false,
+        showDefaultValue: true
+      },
+      required: true
+    },
+    {
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.string,
+      canEdit: true,
+      key: 'data2',
+      label: 'data2',
+      customInputConfig: {
+        selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
+        showDescription: false,
+        showDefaultValue: true
+      },
+      required: true
+    },
+    {
       key: NodeInputKeyEnum.codeType,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',

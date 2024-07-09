@@ -16,7 +16,7 @@ import { useDebug } from '../../hooks/useDebug';
 import { ResponseBox } from '@/components/ChatBox/components/WholeResponseModal';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
-import { storeNode2FlowNode, updateFlowNodeVersion } from '@/web/core/workflow/utils';
+import { storeNode2FlowNode, getLatestNodeTemplate } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
@@ -24,8 +24,6 @@ import { useI18n } from '@/web/context/I18n';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useMount } from 'ahooks';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 
@@ -106,11 +104,11 @@ const NodeCard = (props: Props) => {
   );
   const hasNewVersion = newNodeVersion && newNodeVersion !== node?.version;
 
-  const template = moduleTemplatesFlat.find((item) => item.flowNodeType === node?.flowNodeType);
-
-  const onClickSyncVersion = useCallback(async () => {
-    try {
+  const { runAsync: onClickSyncVersion } = useRequest2(
+    async () => {
+      const template = moduleTemplatesFlat.find((item) => item.flowNodeType === node?.flowNodeType);
       if (!node || !template) return;
+
       if (node?.flowNodeType === FlowNodeTypeEnum.pluginModule) {
         if (!node.pluginId) return;
         onResetNode({
@@ -120,14 +118,15 @@ const NodeCard = (props: Props) => {
       } else {
         onResetNode({
           id: nodeId,
-          node: updateFlowNodeVersion(node, template)
+          node: getLatestNodeTemplate(node, template)
         });
       }
       await getNodeVersion();
-    } catch (error) {
-      console.error('Error fetching plugin module:', error);
+    },
+    {
+      refreshDeps: [node, nodeId, onResetNode, getNodeVersion]
     }
-  }, [getNodeVersion, node, nodeId, onResetNode, template]);
+  );
 
   /* Node header */
   const Header = useMemo(() => {
