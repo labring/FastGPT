@@ -54,13 +54,11 @@ const NodeCard = (props: Props) => {
     minW = '300px',
     maxW = '600px',
     nodeId,
-    flowNodeType,
     selected,
     menuForbid,
     isTool = false,
     isError = false,
-    debugResult,
-    pluginId
+    debugResult
   } = props;
 
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
@@ -196,12 +194,7 @@ const NodeCard = (props: Props) => {
               </MyTooltip>
             )}
           </Flex>
-          <MenuRender
-            nodeId={nodeId}
-            pluginId={pluginId}
-            flowNodeType={flowNodeType}
-            menuForbid={menuForbid}
-          />
+          <MenuRender nodeId={nodeId} menuForbid={menuForbid} />
           <NodeIntro nodeId={nodeId} intro={intro} />
         </Box>
         <ConfirmSyncModal />
@@ -218,8 +211,6 @@ const NodeCard = (props: Props) => {
     appT,
     onOpenConfirmSync,
     onClickSyncVersion,
-    pluginId,
-    flowNodeType,
     intro,
     ConfirmSyncModal,
     onOpenCustomTitleModal,
@@ -273,13 +264,9 @@ export default React.memo(NodeCard);
 
 const MenuRender = React.memo(function MenuRender({
   nodeId,
-  pluginId,
-  flowNodeType,
   menuForbid
 }: {
   nodeId: string;
-  pluginId?: string;
-  flowNodeType: Props['flowNodeType'];
   menuForbid?: Props['menuForbid'];
 }) {
   const { t } = useTranslation();
