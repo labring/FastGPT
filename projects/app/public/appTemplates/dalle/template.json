@@ -1,0 +1,409 @@
+{
+  "id": "dalle",
+  "name": "Dalle3绘图",
+  "intro": "通过请求Dalle3接口绘图，需要有 api key",
+  "author": "Fastgpt Team",
+  "avatar": "/appTemplates/dalle/avatar.svg",
+  "authorAvatar": "/icon/logo.svg",
+  "type": "advanced",
+  "tags": [
+    { "id": "recommendation", "label": "推荐" },
+    { "id": "image", "label": "图片生成" }
+  ],
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "userGuide",
+        "name": "系统配置",
+        "intro": "可以配置应用的系统参数",
+        "avatar": "/imgs/workflow/userGuide.png",
+        "flowNodeType": "userGuide",
+        "position": {
+          "x": 531.2422736065552,
+          "y": -486.7611729549753
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "welcomeText",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "label": "core.app.Welcome Text",
+            "value": ""
+          },
+          {
+            "key": "variables",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "core.app.Chat Variable",
+            "value": []
+          },
+          {
+            "key": "questionGuide",
+            "valueType": "boolean",
+            "renderTypeList": ["hidden"],
+            "label": "core.app.Question Guide",
+            "value": false
+          },
+          {
+            "key": "tts",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "type": "web"
+            }
+          },
+          {
+            "key": "whisper",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "open": false,
+              "autoSend": false,
+              "autoTTSResponse": false
+            }
+          },
+          {
+            "key": "scheduleTrigger",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": null
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "448745",
+        "name": "流程开始",
+        "intro": "",
+        "avatar": "/imgs/workflow/userChatInput.svg",
+        "flowNodeType": "workflowStart",
+        "position": {
+          "x": 532.1275542407774,
+          "y": 46.03775600322817
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "userChatInput",
+            "renderTypeList": ["reference", "textarea"],
+            "valueType": "string",
+            "label": "用户问题",
+            "required": true,
+            "toolDescription": "用户问题"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "userChatInput",
+            "key": "userChatInput",
+            "label": "core.module.input.label.user question",
+            "type": "static",
+            "valueType": "string"
+          }
+        ]
+      },
+      {
+        "nodeId": "tMyUnRL5jIrC",
+        "name": "HTTP 请求",
+        "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
+        "avatar": "/imgs/workflow/http.png",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 931.6784209157559,
+          "y": -162.36850541742047
+        },
+        "version": "486",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "core.module.input.description.HTTP Dynamic Input",
+            "editField": {
+              "key": true,
+              "valueType": true
+            },
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": ["custom"],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "label": "",
+            "description": "core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "https://api.openai.com/v1/images/generations"
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": ["custom"],
+            "valueType": "any",
+            "value": [
+              {
+                "key": "Authorization",
+                "type": "string",
+                "value": "Bearer "
+              }
+            ],
+            "label": "",
+            "description": "core.module.input.description.Http Request Header",
+            "placeholder": "core.module.input.description.Http Request Header",
+            "required": false
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": "{\n  \"model\": \"dall-e-3\",\n  \"prompt\": \"{{prompt}}\",\n  \"n\": 1,\n  \"size\": \"1024x1024\"\n}",
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "prompt",
+            "valueType": "string",
+            "label": "prompt",
+            "renderTypeList": ["reference"],
+            "description": "",
+            "canEdit": true,
+            "editField": {
+              "key": true,
+              "valueType": true
+            },
+            "value": ["448745", "userChatInput"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "请求错误",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "label": "原始响应",
+            "required": true,
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
+          {
+            "id": "DeKGGioBwaMf",
+            "type": "dynamic",
+            "key": "data[0].url",
+            "valueType": "string",
+            "label": "data[0].url"
+          }
+        ]
+      },
+      {
+        "nodeId": "7mapnCgHfKW6",
+        "name": "指定回复",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "avatar": "/imgs/workflow/reply.png",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 2204.4609372615846,
+          "y": 163.11883652393863
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": ["textarea", "reference"],
+            "valueType": "any",
+            "label": "core.module.input.label.Response content",
+            "description": "core.module.input.description.Response content",
+            "placeholder": "core.module.input.description.Response content",
+            "selectedTypeIndex": 1,
+            "value": ["vEXJF8pQ8eOv", "system_text"],
+            "required": true
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "vEXJF8pQ8eOv",
+        "name": "文本拼接",
+        "intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。",
+        "avatar": "/imgs/workflow/textEditor.svg",
+        "flowNodeType": "textEditor",
+        "position": {
+          "x": 1544.8821308368042,
+          "y": -27.22950739442814
+        },
+        "version": "486",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "可以引用其他节点的输出，作为文本拼接的变量，通过 {{字段名}} 来引用变量",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            }
+          },
+          {
+            "key": "system_textareaInput",
+            "renderTypeList": ["textarea"],
+            "valueType": "string",
+            "required": true,
+            "label": "拼接文本",
+            "placeholder": "可通过 {{字段名}} 来引用变量",
+            "value": "![]({{url}})"
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "url",
+            "label": "url",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "required": true,
+            "value": ["tMyUnRL5jIrC", "DeKGGioBwaMf"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_text",
+            "key": "system_text",
+            "label": "拼接结果",
+            "type": "static",
+            "valueType": "string"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "448745",
+        "target": "tMyUnRL5jIrC",
+        "sourceHandle": "448745-source-right",
+        "targetHandle": "tMyUnRL5jIrC-target-left"
+      },
+      {
+        "source": "tMyUnRL5jIrC",
+        "target": "vEXJF8pQ8eOv",
+        "sourceHandle": "tMyUnRL5jIrC-source-right",
+        "targetHandle": "vEXJF8pQ8eOv-target-left"
+      },
+      {
+        "source": "vEXJF8pQ8eOv",
+        "target": "7mapnCgHfKW6",
+        "sourceHandle": "vEXJF8pQ8eOv-source-right",
+        "targetHandle": "7mapnCgHfKW6-target-left"
+      }
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactElement } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -22,6 +22,8 @@ export interface MyModalProps extends ModalContentProps {
   isOpen: boolean;
   onClose?: () => void;
   closeOnOverlayClick?: boolean;
+  customModalHeader?: ReactElement;
+  headerColor?: string;
 }
 
 const MyModal = ({
@@ -35,6 +37,8 @@ const MyModal = ({
   w = 'auto',
   maxW = ['90vw', '600px'],
   closeOnOverlayClick = true,
+  customModalHeader,
+  headerColor,
   ...props
 }: MyModalProps) => {
   const isPc = useSystem();
@@ -58,12 +62,13 @@ const MyModal = ({
         boxShadow={'7'}
         {...props}
       >
-        {!title && onClose && <ModalCloseButton zIndex={1} />}
-        {!!title && (
+        {!!customModalHeader && customModalHeader}
+        {!customModalHeader && !title && onClose && <ModalCloseButton zIndex={1} />}
+        {!customModalHeader && !!title && (
           <ModalHeader
             display={'flex'}
             alignItems={'center'}
-            background={'#FBFBFC'}
+            background={headerColor || '#FBFBFC'}
             borderBottom={'1px solid #F4F6F8'}
             roundedTop={'lg'}
             py={'10px'}

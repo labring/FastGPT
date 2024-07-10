@@ -50,6 +50,7 @@ async function handler(
         return item.parentId === formatParentId;
       })
   );
+  // return getCommunityPluginsTemplateList();
 }
 
 export default NextAPI(handler);
