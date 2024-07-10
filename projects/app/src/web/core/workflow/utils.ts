@@ -8,6 +8,7 @@ import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/cons
 import {
   EDGE_TYPE,
   FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum,
   defaultNodeVersion
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -34,6 +35,7 @@ import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/syste
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash';
+import { getInputComponentProps } from '@fastgpt/global/core/workflow/node/io/utils';
 
 export const nodeTemplate2FlowNode = ({
   template,
@@ -70,13 +72,24 @@ export const storeNode2FlowNode = ({
     moduleTemplatesFlat.find((template) => template.flowNodeType === storeNode.flowNodeType) ||
     EmptyNode;
 
+  const templateInputs = template.inputs.filter((input) => !input.canEdit);
+  const templateOutputs = template.outputs.filter(
+    (output) => output.type !== FlowNodeOutputTypeEnum.dynamic
+  );
+  const dynamicInput = template.inputs.find(
+    (input) => input.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam
+  );
+
   // replace item data
   const nodeItem: FlowNodeItemType = {
     ...template,
     ...storeNode,
     version: storeNode.version ?? template.version ?? defaultNodeVersion,
 
-    inputs: template.inputs
+    /* 
+      Inputs and outputs, New fields are added, not reduced
+    */
+    inputs: templateInputs
       .map<FlowNodeInputItemType>((templateInput) => {
         const storeInput =
           storeNode.inputs.find((item) => item.key === templateInput.key) || templateInput;
@@ -91,27 +104,35 @@ export const storeNode2FlowNode = ({
         };
       })
       .concat(
-        /* 
-          1. Plugin input
-          2. Old version adapt: Dynamic input will be added to the node inputs.
-        */
-        storeNode.inputs.filter((item) => !template.inputs.find((input) => input.key === item.key))
+        /* Concat dynamic inputs */
+        storeNode.inputs
+          .filter((item) => !templateInputs.find((input) => input.key === item.key))
+          .map((item) => {
+            if (!dynamicInput) return item;
+
+            return {
+              ...item,
+              ...getInputComponentProps(dynamicInput)
+            };
+          })
       ),
-    outputs: template.outputs
+    outputs: templateOutputs
       .map<FlowNodeOutputItemType>((templateOutput) => {
         const storeOutput =
           template.outputs.find((item) => item.key === templateOutput.key) || templateOutput;
+
         return {
           ...storeOutput,
           ...templateOutput,
 
           id: storeOutput.id ?? templateOutput.id,
+          label: storeOutput.label ?? templateOutput.label,
           value: storeOutput.value ?? templateOutput.value
         };
       })
       .concat(
         storeNode.outputs.filter(
-          (item) => !template.outputs.find((output) => output.key === item.key)
+          (item) => !templateOutputs.find((output) => output.key === item.key)
         )
       )
   };
@@ -365,36 +386,41 @@ export const getWorkflowGlobalVariables = ({
 
 export type CombinedItemType = Partial<FlowNodeInputItemType> & Partial<FlowNodeOutputItemType>;
 
-export const updateFlowNodeVersion = (
+/* Reset node to latest version */
+export const getLatestNodeTemplate = (
   node: FlowNodeItemType,
   template: FlowNodeTemplateType
 ): FlowNodeItemType => {
-  function updateArrayBasedOnTemplate<T extends FlowNodeInputItemType | FlowNodeOutputItemType>(
-    nodeArray: T[],
-    templateArray: T[]
-  ): T[] {
-    return templateArray.map((templateItem) => {
-      const nodeItem = nodeArray.find((item) => item.key === templateItem.key);
-      if (nodeItem) {
-        return { ...templateItem, ...nodeItem } as T;
-      }
-      return { ...templateItem };
-    });
-  }
-
   const updatedNode: FlowNodeItemType = {
     ...node,
     ...template,
+    inputs: template.inputs.map((templateItem) => {
+      const nodeItem = node.inputs.find((item) => item.key === templateItem.key);
+      if (nodeItem) {
+        return {
+          ...templateItem,
+          value: nodeItem.value,
+          selectedTypeIndex: nodeItem.selectedTypeIndex,
+          valueType: nodeItem.valueType
+        };
+      }
+      return { ...templateItem };
+    }),
+    outputs: template.outputs.map((templateItem) => {
+      const nodeItem = node.outputs.find((item) => item.key === templateItem.key);
+      if (nodeItem) {
+        return {
+          ...templateItem,
+          id: nodeItem.id,
+          value: nodeItem.value,
+          valueType: nodeItem.valueType
+        };
+      }
+      return { ...templateItem };
+    }),
     name: node.name,
     intro: node.intro
   };
-
-  if (node.inputs && template.inputs) {
-    updatedNode.inputs = updateArrayBasedOnTemplate(node.inputs, template.inputs);
-  }
-  if (node.outputs && template.outputs) {
-    updatedNode.outputs = updateArrayBasedOnTemplate(node.outputs, template.outputs);
-  }
 
   return updatedNode;
 };

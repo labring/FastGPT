@@ -16,7 +16,7 @@
   "Tool input": "Tool",
   "code": {
     "Reset template": "Reset template",
-    "Reset template confirm": "Are you sure to restore the code template? Be careful to save the current code."
+    "Reset template confirm": "Are you sure to restore the code template? All input and output to template values will be reset, please be careful to save the current code."
   },
   "ifelse": {
     "Input value": "Input",

@@ -1,6 +1,9 @@
 import { addLog } from '../../common/system/log';
 import mongoose, { Model } from 'mongoose';
 
+export default mongoose;
+export * from 'mongoose';
+
 export const connectionMongo = (() => {
   if (!global.mongodb) {
     global.mongodb = mongoose;
@@ -8,9 +11,6 @@ export const connectionMongo = (() => {
 
   return global.mongodb;
 })();
-
-export default mongoose;
-export * from 'mongoose';
 
 const addCommonMiddleware = (schema: mongoose.Schema) => {
   const operations = [

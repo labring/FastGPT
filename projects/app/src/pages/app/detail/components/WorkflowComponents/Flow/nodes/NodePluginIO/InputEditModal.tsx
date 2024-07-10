@@ -37,6 +37,7 @@ export const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference], // Can only choose one here
   selectedTypeIndex: 0,
   valueType: WorkflowIOValueTypeEnum.string,
+  canEdit: true,
   key: '',
   label: ''
 };
