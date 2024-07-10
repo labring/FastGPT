@@ -16,7 +16,8 @@ import CodeEditor from '@fastgpt/web/components/common/Textarea/CodeEditor';
 import { Box, Flex } from '@chakra-ui/react';
 import { useI18n } from '@/web/context/I18n';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { JS_TEMPLATE } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
+import { getLatestNodeTemplate } from '@/web/core/workflow/utils';
+import { CodeNode } from '@fastgpt/global/core/workflow/template/system/sandbox';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -24,6 +25,8 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, outputs } = data;
   const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
+
   const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
   const { ConfirmModal, openConfirm } = useConfirm({
     content: workflowT('code.Reset template confirm')
@@ -41,14 +44,9 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 color={'primary.500'}
                 fontSize={'xs'}
                 onClick={openConfirm(() => {
-                  onChangeNode({
-                    nodeId,
-                    type: 'updateInput',
-                    key: item.key,
-                    value: {
-                      ...item,
-                      value: JS_TEMPLATE
-                    }
+                  onResetNode({
+                    id: nodeId,
+                    node: getLatestNodeTemplate(data, CodeNode)
                   });
                 })}
               >

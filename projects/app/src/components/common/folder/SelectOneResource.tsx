@@ -155,7 +155,7 @@ const SelectOneResource = ({
   return loading ? (
     <Loading fixed={false} />
   ) : (
-    <Box maxH={maxH} overflow={'auto'}>
+    <Box maxH={maxH} h={'100%'} overflow={'auto'}>
       <Render list={concatRoot} />
     </Box>
   );

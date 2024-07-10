@@ -82,12 +82,7 @@ export const HttpNode468: FlowNodeTemplateType = {
   ],
   outputs: [
     {
-      ...Output_Template_AddOutput,
-      customFieldConfig: {
-        selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
-        showDescription: false,
-        showDefaultValue: true
-      }
+      ...Output_Template_AddOutput
     },
     {
       id: NodeOutputKeyEnum.error,

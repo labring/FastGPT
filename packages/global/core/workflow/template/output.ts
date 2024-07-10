@@ -8,5 +8,10 @@ export const Output_Template_AddOutput: FlowNodeOutputItemType = {
   key: NodeOutputKeyEnum.addOutputParam,
   type: FlowNodeOutputTypeEnum.dynamic,
   valueType: WorkflowIOValueTypeEnum.dynamic,
-  label: ''
+  label: '',
+  customFieldConfig: {
+    selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
+    showDescription: false,
+    showDefaultValue: false
+  }
 };
