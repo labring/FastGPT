@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactElement } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -20,6 +20,8 @@ export interface MyModalProps extends ModalContentProps {
   isLoading?: boolean;
   isOpen: boolean;
   onClose?: () => void;
+  customModalHeader?: ReactElement;
+  headerColor?: string;
 }
 
 const MyModal = ({
@@ -32,6 +34,8 @@ const MyModal = ({
   isLoading,
   w = 'auto',
   maxW = ['90vw', '600px'],
+  customModalHeader,
+  headerColor,
   ...props
 }: MyModalProps) => {
   const [isPc] = useMediaQuery('(min-width: 900px)');
@@ -54,12 +58,13 @@ const MyModal = ({
         boxShadow={'7'}
         {...props}
       >
-        {!title && onClose && <ModalCloseButton zIndex={1} />}
-        {!!title && (
+        {!!customModalHeader && customModalHeader}
+        {!customModalHeader && !title && onClose && <ModalCloseButton zIndex={1} />}
+        {!customModalHeader && !!title && (
           <ModalHeader
             display={'flex'}
             alignItems={'center'}
-            background={'#FBFBFC'}
+            background={headerColor||'#FBFBFC'}
             borderBottom={'1px solid #F4F6F8'}
             roundedTop={'lg'}
             py={'10px'}

@@ -33,6 +33,7 @@ import type { CreateAppType } from './components/CreateModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
+import TemplateMarketModal from './components/TemplateMarketModal';
 
 const CreateModal = dynamic(() => import('./components/CreateModal'));
 const EditFolderModal = dynamic(
@@ -64,6 +65,11 @@ const MyApps = () => {
     isOpen: isOpenCreateHttpPlugin,
     onOpen: onOpenCreateHttpPlugin,
     onClose: onCloseCreateHttpPlugin
+  } = useDisclosure();
+  const {
+    isOpen: isOpenTemplateModal,
+    onOpen: onOpenTemplateModal,
+    onClose: onCloseTemplateModal
   } = useDisclosure();
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
 
@@ -191,6 +197,12 @@ const MyApps = () => {
                           label: appT('type.Http plugin'),
                           description: appT('type.Create http plugin tip'),
                           onClick: onOpenCreateHttpPlugin
+                        },
+                        {
+                          icon: 'core/app/type/templateFill',
+                          label: appT('type.Template'),
+                          description: appT('type.Create template tip'),
+                          onClick: onOpenTemplateModal
                         }
                       ]
                     },
@@ -275,9 +287,14 @@ const MyApps = () => {
         />
       )}
       {!!createAppType && (
-        <CreateModal type={createAppType} onClose={() => setCreateAppType(undefined)} />
+        <CreateModal
+          type={createAppType}
+          onClose={() => setCreateAppType(undefined)}
+          onOpenTemplateModal={onOpenTemplateModal}
+        />
       )}
       {isOpenCreateHttpPlugin && <HttpEditModal onClose={onCloseCreateHttpPlugin} />}
+      {isOpenTemplateModal && <TemplateMarketModal onClose={onCloseTemplateModal} />}
     </MyBox>
   );
 };

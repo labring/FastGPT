@@ -45,7 +45,21 @@ export type WorkflowTemplateType = {
 // template market
 export type TemplateMarketItemType = WorkflowTemplateType & {
   tags?: { id: string; label: string }[];
+  type: AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
+  authorAvatar?: string;
 };
+// template market list
+export type TemplateMarketListItemType = {
+  id: string;
+  name: string;
+  intro?: string;
+  author?: string;
+  tags?: { id: string; label: string }[];
+  type: AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
+  avatar: string;
+  authorAvatar?: string;
+};
+export type TemplateMarketListType = Array<TemplateMarketListItemType>;
 // system plugin
 export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   templateType: FlowNodeTemplateTypeEnum;

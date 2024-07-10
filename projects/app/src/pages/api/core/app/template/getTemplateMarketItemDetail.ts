@@ -1,16 +1,21 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { NextAPI } from '@/service/middleware/entry';
-import { getCommunityPluginsTemplateList } from '@fastgpt/plugins/register';
+import { TemplateMarketItemType } from '@fastgpt/global/core/workflow/type';
+import { getTemplateMarketItemDetail } from '@/service/core/app/template';
+
+type Props = {
+  templateId: string;
+};
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<any>
-): Promise<NodeTemplateListItemType[]> {
+): Promise<TemplateMarketItemType | undefined> {
   await authCert({ req, authToken: true });
+  const { templateId } = req.query as Props;
 
-  return getCommunityPluginsTemplateList();
+  return getTemplateMarketItemDetail(templateId);
 }
 
 export default NextAPI(handler);

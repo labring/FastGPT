@@ -67,9 +67,13 @@
   "modules": {
     "Title is required": "Module name cannot be empty"
   },
+  "template": {
+    "Search template": "Search template",
+    "templateMarket": "Template market"
+  },
   "type": {
     "All": "All",
-    "Create http plugin tip": "Create plug-ins in batches using OpenAPI schema, compatible with GPTs format.",
+    "Create http plugin tip": "Create plug-ins in batches using OpenAPI schema, compatible with GPTs format",
     "Create one plugin tip": "The input and output workflows can be customized",
     "Create plugin bot": "Create plugin bot",
     "Create simple bot": "Create simple bot",
@@ -79,6 +83,7 @@
     "Http plugin": "Http plugin",
     "Plugin": "Plugin",
     "Simple bot": "Simple bot",
+    "Template": "Create by template",
     "Workflow bot": "Workflow"
   },
   "version": {

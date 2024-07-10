@@ -89,6 +89,7 @@ export const iconPaths = {
   'core/app/type/plugin': () => import('./icons/core/app/type/plugin.svg'),
   'core/app/type/pluginFill': () => import('./icons/core/app/type/pluginFill.svg'),
   'core/app/type/simple': () => import('./icons/core/app/type/simple.svg'),
+  'core/app/type/templateFill': () => import('./icons/core/app/type/templateFill.svg'),
   'core/app/type/workflow': () => import('./icons/core/app/type/workflow.svg'),
   'core/app/type/workflowFill': () => import('./icons/core/app/type/workflowFill.svg'),
   'core/app/variable/external': () => import('./icons/core/app/variable/external.svg'),
