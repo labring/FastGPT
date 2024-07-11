@@ -32,7 +32,7 @@ export type PluginItemSchema = {
 export type PluginTemplateType = PluginRuntimeType & {
   author?: string;
   id: string;
-  source: `${PluginSourceEnum}`;
+  source: PluginSourceEnum;
   templateType: FlowNodeTemplateType['templateType'];
   intro: string;
   version: string;
