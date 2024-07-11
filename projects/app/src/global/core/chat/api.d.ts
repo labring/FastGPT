@@ -1,6 +1,7 @@
 import type { AppChatConfigType, AppTTSConfigType } from '@fastgpt/global/core/app/type.d';
 import { AdminFbkType, ChatItemType } from '@fastgpt/global/core/chat/type';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat.d';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 export type GetChatSpeechProps = {
   ttsConfig: AppTTSConfigType;
@@ -39,6 +40,8 @@ export type InitChatResponse = {
     avatar: string;
     intro: string;
     canUse?: boolean;
+    type: `${AppTypeEnum}`;
+    pluginInputs: FlowNodeInputItemType[];
   };
 };
 

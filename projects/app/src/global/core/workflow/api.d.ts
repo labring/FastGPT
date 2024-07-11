@@ -1,6 +1,7 @@
 import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
+import { RuntimeEdgeItemType, StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 
 export type PostWorkflowDebugProps = {
   nodes: RuntimeNodeItemType[];
