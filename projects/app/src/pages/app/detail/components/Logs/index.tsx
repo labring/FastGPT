@@ -39,6 +39,8 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { cardStyles } from '../constants';
+import { ChatTypeEnum } from '@/components/ChatBox/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const Logs = () => {
   const { t } = useTranslation();
@@ -335,9 +337,12 @@ const DetailLogsModal = ({
             <MyIcon name={'common/closeLight'} w={'12px'} h={'12px'} color={'myGray.700'} />
           </Flex>
         </Flex>
-        <Box pt={2} flex={'1 0 0'}>
+        <Box pt={chat?.app.type === AppTypeEnum.plugin ? 0 : 2} flex={'1 0 0'}>
           <ChatBox
             ref={ChatBoxRef}
+            appType={chat?.app.type || AppTypeEnum.simple}
+            chatType={ChatTypeEnum.log}
+            pluginInputs={chat?.app.pluginInputs || []}
             appAvatar={chat?.app.avatar}
             userAvatar={HUMAN_ICON}
             feedbackType={'admin'}

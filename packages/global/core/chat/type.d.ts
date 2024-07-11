@@ -115,6 +115,7 @@ export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatIt
   status: `${ChatStatusEnum}`;
   moduleName?: string;
   ttsBuffer?: Uint8Array;
+  responseData?: ChatHistoryItemResType[];
 } & ChatBoxInputType;
 
 /* --------- team chat --------- */

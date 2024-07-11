@@ -32,6 +32,8 @@ import { defaultChatData } from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { ChatTypeEnum } from '@/components/ChatBox/constants';
 
 type Props = { appId: string; chatId: string };
 
@@ -62,51 +64,6 @@ const Chat = ({
 
   const { userInfo } = useUserStore();
   const { isPc } = useSystemStore();
-
-  const startChat = useCallback(
-    async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
-      const prompts = messages.slice(-2);
-      const completionChatId = chatId ? chatId : getNanoid();
-
-      const { responseText, responseData } = await streamFetch({
-        data: {
-          messages: prompts,
-          variables,
-          appId,
-          chatId: completionChatId
-        },
-        onMessage: generatingMessage,
-        abortCtrl: controller
-      });
-
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(prompts)[0]);
-
-      // new chat
-      if (completionChatId !== chatId) {
-        if (controller.signal.reason !== 'leave') {
-          onChangeChatId(completionChatId, true);
-          loadHistories();
-        }
-      } else {
-        // update chat
-        onUpdateHistory({
-          appId,
-          chatId: completionChatId,
-          title: newTitle
-        });
-      }
-
-      // update chat window
-      setChatData((state) => ({
-        ...state,
-        title: newTitle,
-        history: ChatBoxRef.current?.getChatHistories() || state.history
-      }));
-
-      return { responseText, responseData, isNewChat: forbidLoadChat.current };
-    },
-    [appId, chatId, forbidLoadChat, loadHistories, onChangeChatId, onUpdateHistory]
-  );
 
   // get chat app info
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
@@ -155,6 +112,61 @@ const Chat = ({
         forbidLoadChat.current = false;
       }
     }
+  );
+
+  const startChat = useCallback(
+    async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
+      const prompts = messages.slice(-2);
+
+      const completionChatId =
+        chatData.app.type !== AppTypeEnum.plugin && chatId ? chatId : getNanoid();
+
+      const { responseText, responseData } = await streamFetch({
+        data: {
+          messages: prompts,
+          variables,
+          appId,
+          appType: chatData.app.type,
+          chatId: completionChatId
+        },
+        onMessage: generatingMessage,
+        abortCtrl: controller
+      });
+
+      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(prompts)[0]);
+
+      // new chat
+      if (completionChatId !== chatId) {
+        if (controller.signal.reason !== 'leave') {
+          onChangeChatId(completionChatId, true);
+          loadHistories();
+        }
+      } else {
+        // update chat
+        onUpdateHistory({
+          appId,
+          chatId: completionChatId,
+          title: newTitle
+        });
+      }
+
+      // update chat window
+      setChatData((state) => ({
+        ...state,
+        title: newTitle
+      }));
+
+      return { responseText, responseData, isNewChat: forbidLoadChat.current };
+    },
+    [
+      appId,
+      chatData.app.type,
+      chatId,
+      forbidLoadChat,
+      loadHistories,
+      onChangeChatId,
+      onUpdateHistory
+    ]
   );
 
   return (
@@ -231,6 +243,9 @@ const Chat = ({
               <ChatBox
                 ref={ChatBoxRef}
                 showEmptyIntro
+                appType={chatData.app.type}
+                chatType={ChatTypeEnum.chat}
+                pluginInputs={chatData.app.pluginInputs}
                 appAvatar={chatData.app.avatar}
                 userAvatar={userInfo?.avatar}
                 chatConfig={chatData.app?.chatConfig}

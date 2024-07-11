@@ -33,6 +33,8 @@ import { InitChatResponse } from '@/global/core/chat/api';
 import { defaultChatData } from '@/global/core/chat/constants';
 import { useMount } from 'ahooks';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { ChatTypeEnum } from '@/components/ChatBox/constants';
 
 type Props = {
   appName: string;
@@ -85,8 +87,8 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
   const startChat = useCallback(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
       const prompts = messages.slice(-2);
-      const completionChatId = chatId ? chatId : nanoid();
-
+      const completionChatId =
+        chatData.app.type !== AppTypeEnum.plugin && chatId ? chatId : nanoid();
       //post message to report chat start
       window.top?.postMessage(
         {
@@ -107,6 +109,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
           },
           shareId,
           chatId: completionChatId,
+          appType: chatData.app.type,
           outLinkUid
         },
         onMessage: generatingMessage,
@@ -155,6 +158,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
       chatId,
       customVariables,
       shareId,
+      chatData.app.type,
       outLinkUid,
       forbidLoadChat,
       onChangeChatId,
@@ -303,6 +307,9 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
             {/* chat box */}
             <Box flex={1}>
               <ChatBox
+                appType={chatData.app.type}
+                chatType={ChatTypeEnum.chat}
+                pluginInputs={chatData.app.pluginInputs}
                 ref={ChatBoxRef}
                 appAvatar={chatData.app.avatar}
                 userAvatar={chatData.userAvatar}

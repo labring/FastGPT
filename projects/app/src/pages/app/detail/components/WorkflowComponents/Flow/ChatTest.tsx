@@ -10,6 +10,7 @@ import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pages/app/detail/components/context';
 import { useChatTest } from '@/pages/app/detail/components/useChatTest';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;
@@ -31,6 +32,7 @@ const ChatTest = (
 ) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const isPlugin = appDetail.type === AppTypeEnum.plugin;
 
   const { resetChatBox, ChatBox } = useChatTest({
     nodes,
@@ -64,34 +66,45 @@ const ChatTest = (
         overflow={'hidden'}
         transition={'.2s ease'}
       >
-        <Flex py={4} px={5} whiteSpace={'nowrap'}>
-          <Box fontSize={'lg'} fontWeight={'bold'} flex={1}>
-            {t('core.chat.Debug test')}
-          </Box>
-          <MyTooltip label={t('core.chat.Restart')}>
-            <IconButton
-              className="chat"
-              size={'smSquare'}
-              icon={<MyIcon name={'common/clearLight'} w={'14px'} />}
-              variant={'whiteDanger'}
-              borderRadius={'md'}
-              aria-label={'delete'}
-              onClick={(e) => {
-                resetChatBox();
-              }}
-            />
-          </MyTooltip>
-          <MyTooltip label={t('common.Close')}>
-            <IconButton
-              ml={3}
-              icon={<SmallCloseIcon fontSize={'22px'} />}
-              variant={'grayBase'}
-              size={'smSquare'}
-              aria-label={''}
-              onClick={onClose}
-            />
-          </MyTooltip>
-        </Flex>
+        {!isPlugin ? (
+          <Flex
+            py={4}
+            px={5}
+            whiteSpace={'nowrap'}
+            bg={isPlugin ? 'myGray.25' : ''}
+            borderBottom={isPlugin ? '1px solid #F4F4F7' : ''}
+          >
+            <Box fontSize={'lg'} fontWeight={'bold'} flex={1}>
+              {t('core.chat.Debug test')}
+            </Box>
+            <MyTooltip label={t('core.chat.Restart')}>
+              <IconButton
+                className="chat"
+                size={'smSquare'}
+                icon={<MyIcon name={'common/clearLight'} w={'14px'} />}
+                variant={'whiteDanger'}
+                borderRadius={'md'}
+                aria-label={'delete'}
+                onClick={(e) => {
+                  resetChatBox();
+                }}
+              />
+            </MyTooltip>
+          </Flex>
+        ) : null}
+        <MyTooltip label={t('common.Close')}>
+          <IconButton
+            position={'absolute'}
+            right={4}
+            top={4}
+            zIndex={99}
+            icon={<SmallCloseIcon fontSize={'22px'} />}
+            variant={'grayBase'}
+            size={'smSquare'}
+            aria-label={''}
+            onClick={onClose}
+          />
+        </MyTooltip>
         <Box flex={1}>
           <ChatBox />
         </Box>

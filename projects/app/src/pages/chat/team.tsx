@@ -29,6 +29,8 @@ import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { InitChatResponse } from '@/global/core/chat/api';
 import { defaultChatData } from '@/global/core/chat/constants';
+import { ChatTypeEnum } from '@/components/ChatBox/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 type Props = { appId: string; chatId: string; teamId: string; teamToken: string };
 
@@ -60,15 +62,14 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     isOpenSlider,
     onCloseSlider,
     forbidLoadChat,
-    onChangeChatId,
-    onChangeAppId
+    onChangeChatId
   } = useContextSelector(ChatContext, (v) => v);
 
   const startChat = useCallback(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
       const prompts = messages.slice(-2);
-      const completionChatId = chatId ? chatId : nanoid();
-
+      const completionChatId =
+        chatData.app.type !== AppTypeEnum.plugin && chatId ? chatId : nanoid();
       const { responseText, responseData } = await streamFetch({
         data: {
           messages: prompts,
@@ -79,7 +80,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           appId,
           teamId,
           teamToken,
-          chatId: completionChatId
+          chatId: completionChatId,
+          appType: chatData.app.type
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -110,6 +112,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       return { responseText, responseData, isNewChat: forbidLoadChat.current };
     },
     [
+      chatData.app.type,
+      chatData.appId,
       chatId,
       customVariables,
       appId,
@@ -118,8 +122,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       forbidLoadChat,
       onChangeChatId,
       loadHistories,
-      onUpdateHistory,
-      chatData.appId
+      onUpdateHistory
     ]
   );
 
@@ -240,6 +243,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
             <Box flex={1}>
               <ChatBox
                 ref={ChatBoxRef}
+                appType={chatData.app.type}
+                chatType={ChatTypeEnum.chat}
+                pluginInputs={chatData.app.pluginInputs}
                 appAvatar={chatData.app.avatar}
                 userAvatar={chatData.userAvatar}
                 chatConfig={chatData.app?.chatConfig}
