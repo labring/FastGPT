@@ -128,8 +128,12 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/create' \
 {{< markdownify >}}
 
 ```bash
-curl --location --request GET 'http://localhost:3000/api/core/dataset/list?parentId=' \
---header 'Authorization: Bearer {{authorization}}' \
+curl --location --request POST 'http://localhost:3000/api/core/dataset/list?parentId=' \
+--header 'Authorization: Bearer xxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "parentId":""
+}'
 ```
 
 {{< /markdownify >}}
@@ -139,7 +143,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/list?paren
 {{< markdownify >}}
 
 {{% alert icon=" " context="success" %}}
-- parentId - 父级ID，不传或为空，代表获取根目录下的知识库
+- parentId - 父级ID，传空字符串或者null，代表获取根目录下的知识库
 {{% /alert %}}
 
 {{< /markdownify >}}
