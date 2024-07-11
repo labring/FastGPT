@@ -19,7 +19,7 @@ import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ChatTypeEnum } from '@/components/ChatBox/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { updateNodeInputs } from '@fastgpt/global/core/workflow/utils';
+import { updatePluginInputNodeInputs } from '@fastgpt/global/core/workflow/utils';
 
 export const useChatTest = ({
   nodes,
@@ -49,7 +49,7 @@ export const useChatTest = ({
           prompt: appDetail.type === AppTypeEnum.plugin ? [] : chatList[chatList.length - 2].value,
           nodes:
             appDetail.type === AppTypeEnum.plugin
-              ? updateNodeInputs(
+              ? updatePluginInputNodeInputs(
                   storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
                   variables
                 )

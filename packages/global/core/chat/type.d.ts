@@ -42,7 +42,7 @@ export type ChatWithAppSchema = Omit<ChatSchema, 'appId'> & {
 };
 
 export type UserChatItemValueItemType = {
-  type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.file | ChatItemValueTypeEnum.plugin;
+  type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.file;
   text?: {
     content: string;
   };

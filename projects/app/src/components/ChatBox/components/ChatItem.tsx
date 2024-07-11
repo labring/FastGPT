@@ -10,7 +10,7 @@ import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constant
 import FilesBlock from './FilesBox';
 import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
-import ChatContent from './ChatContent';
+import AIResponseBox from './AIResponseBox';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -84,9 +84,8 @@ const ChatItem = ({
           const key = `${chat.dataId}-ai-${i}`;
 
           return (
-            <ChatContent
+            <AIResponseBox
               key={key}
-              contentkey={key}
               value={value}
               index={i}
               chat={chat}

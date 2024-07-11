@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Control, Controller, FieldValues, UseFormHandleSubmit } from 'react-hook-form';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { ChatBoxInputType, StartChatFnProps } from '../type';
-import ChatContent from './ChatContent';
+import AIResponseBox from './AIResponseBox';
 import Markdown from '@/components/Markdown';
 import { ResponseBox } from './WholeResponseModal';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -25,8 +25,6 @@ const PluginBox = ({
   sendPrompt,
   chatHistories,
   isChatting,
-  shareId,
-  teamId,
   onStartChat
 }: {
   chatType: `${ChatTypeEnum}`;
@@ -48,8 +46,6 @@ const PluginBox = ({
   }) => void;
   chatHistories: ChatSiteItemType[];
   isChatting: boolean;
-  shareId: string | undefined;
-  teamId: string | undefined;
   onStartChat?: (e: StartChatFnProps) => Promise<
     StreamResponseType & {
       isNewChat?: boolean;
@@ -201,9 +197,8 @@ const PluginBox = ({
                       {chatHistories[1]?.value.map((value, i) => {
                         const key = `${chatHistories[1].dataId}-ai-${i}`;
                         return (
-                          <ChatContent
+                          <AIResponseBox
                             key={key}
-                            contentkey={key}
                             value={value}
                             index={i}
                             chat={chatHistories[1]}

@@ -1085,8 +1085,6 @@ const ChatBox = (
             sendPrompt={sendPrompt}
             chatHistories={chatHistories}
             isChatting={isChatting}
-            shareId={shareId}
-            teamId={teamId}
             onStartChat={onStartChat}
           />
         )}

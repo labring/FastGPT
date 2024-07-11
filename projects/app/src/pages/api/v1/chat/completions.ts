@@ -50,7 +50,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { updateNodeInputs } from '@fastgpt/global/core/workflow/utils';
+import { updatePluginInputNodeInputs } from '@fastgpt/global/core/workflow/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
@@ -202,7 +202,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           responseChatItemId,
           runtimeNodes:
             appType === AppTypeEnum.plugin
-              ? updateNodeInputs(
+              ? updatePluginInputNodeInputs(
                   storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
                   variables
                 )

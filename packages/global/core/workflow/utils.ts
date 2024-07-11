@@ -192,9 +192,13 @@ export const getElseIFLabel = (i: number) => {
   return i === 0 ? IfElseResultEnum.IF : `${IfElseResultEnum.ELSE_IF} ${i}`;
 };
 
-export const updateNodeInputs = (nodes: RuntimeNodeItemType[], variables: Record<string, any>) => {
+// add value to plugin input node when run plugin
+export const updatePluginInputNodeInputs = (
+  nodes: RuntimeNodeItemType[],
+  variables: Record<string, any>
+) => {
   return nodes.map((node) =>
-    node.nodeId === nodes[0].nodeId
+    node.flowNodeType === FlowNodeTypeEnum.pluginInput
       ? {
           ...node,
           inputs: node.inputs.map((input) => {

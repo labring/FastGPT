@@ -12,26 +12,23 @@ import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   AIChatItemValueItemType,
   ChatSiteItemType,
-  SystemChatItemValueItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 type props = {
-  value: UserChatItemValueItemType | SystemChatItemValueItemType | AIChatItemValueItemType;
+  value: UserChatItemValueItemType | AIChatItemValueItemType;
   index: number;
-  contentkey: string;
   chat: ChatSiteItemType;
   isLastChild: boolean;
   isChatting: boolean;
   questionGuides: string[];
 };
 
-const ChatContent = ({
+const AIResponseBox = ({
   value,
   index,
-  contentkey,
   chat,
   isLastChild,
   isChatting,
@@ -55,7 +52,6 @@ ${JSON.stringify(questionGuides)}`;
 
     return (
       <Markdown
-        key={contentkey}
         source={source}
         showAnimation={isLastChild && isChatting && index === chat.value.length - 1}
       />
@@ -63,7 +59,7 @@ ${JSON.stringify(questionGuides)}`;
   }
   if (value.type === ChatItemValueTypeEnum.tool && value.tools) {
     return (
-      <Box key={contentkey}>
+      <Box>
         {value.tools.map((tool) => {
           const toolParams = (() => {
             try {
@@ -135,4 +131,4 @@ ${toolResponse}`}
   return null;
 };
 
-export default React.memo(ChatContent);
+export default React.memo(AIResponseBox);
