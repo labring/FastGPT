@@ -67,11 +67,12 @@ export type RuntimeNodeItemType = {
 };
 
 export type PluginRuntimeType = {
+  id: string;
   teamId?: string;
   name: string;
   avatar: string;
   showStatus?: boolean;
-  isTool?: boolean;
+  currentCost?: number;
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
 };
