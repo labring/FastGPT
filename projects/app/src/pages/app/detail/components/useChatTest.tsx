@@ -1,7 +1,7 @@
 import { useUserStore } from '@/web/support/user/useUserStore';
 import React, { useCallback, useRef } from 'react';
-import ChatBox from '@/components/ChatBox';
-import type { ComponentRef, StartChatFnProps } from '@/components/ChatBox/type.d';
+import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
+import type { ComponentRef } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
 import {
@@ -17,9 +17,14 @@ import { AppContext } from './context';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { ChatTypeEnum } from '@/components/ChatBox/constants';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { updatePluginInputNodeInputs } from '@fastgpt/global/core/workflow/utils';
+import dynamic from 'next/dynamic';
+import { useChat } from '@/components/core/chat/ChatContainer/useChat';
+import { Box } from '@chakra-ui/react';
+
+const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
+const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
 export const useChatTest = ({
   nodes,
@@ -46,14 +51,8 @@ export const useChatTest = ({
         url: '/api/core/chat/chatTest',
         data: {
           history,
-          prompt: appDetail.type === AppTypeEnum.plugin ? [] : chatList[chatList.length - 2].value,
-          nodes:
-            appDetail.type === AppTypeEnum.plugin
-              ? updatePluginInputNodeInputs(
-                  storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
-                  variables
-                )
-              : storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
+          prompt: chatList[chatList.length - 2]?.value,
+          nodes: storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
           edges: initWorkflowEdgeStatus(edges),
           variables,
           appId: appDetail._id,
@@ -67,34 +66,62 @@ export const useChatTest = ({
     }
   );
 
+  const pluginInputs =
+    nodes.find((node) => node.nodeId === FlowNodeTypeEnum.pluginInput)?.inputs || [];
+  const {
+    chatRecords,
+    setChatRecords,
+    variablesForm,
+    pluginRunTab,
+    setPluginRunTab,
+    clearChatRecords
+  } = useChat();
+
   const resetChatBox = useCallback(() => {
-    ChatBoxRef.current?.resetHistory([]);
-    ChatBoxRef.current?.resetVariables();
-  }, []);
+    clearChatRecords();
+    ChatBoxRef.current?.resetHistory?.([]);
+    ChatBoxRef.current?.resetVariables?.();
+  }, [clearChatRecords]);
 
-  const pluginInputNode = nodes?.filter((node) => node.nodeId === FlowNodeTypeEnum.pluginInput);
-  const pluginInputs = pluginInputNode[0]?.inputs;
-
-  const CustomChatBox = useMemoizedFn(() => (
-    <ChatBox
-      ref={ChatBoxRef}
-      appId={appDetail._id}
-      appType={appDetail.type}
-      chatType={ChatTypeEnum.chatTest}
-      appAvatar={appDetail.avatar}
-      userAvatar={userInfo?.avatar}
-      pluginInputs={pluginInputs}
-      showMarkIcon
-      chatConfig={chatConfig}
-      showFileSelector={checkChatSupportSelectFileByModules(nodes)}
-      onStartChat={startChat}
-      onDelMessage={() => {}}
-    />
-  ));
+  const CustomChatContainer = useMemoizedFn(() =>
+    appDetail.type === AppTypeEnum.plugin ? (
+      <Box h={'100%'} overflowY={'auto'} p={3}>
+        <PluginRunBox
+          pluginInputs={pluginInputs}
+          variablesForm={variablesForm}
+          histories={chatRecords}
+          setHistories={setChatRecords}
+          appId={appDetail._id}
+          tab={pluginRunTab}
+          setTab={setPluginRunTab}
+          onNewChat={resetChatBox}
+          onStartChat={startChat}
+        />
+      </Box>
+    ) : (
+      <ChatBox
+        ref={ChatBoxRef}
+        appId={appDetail._id}
+        appType={appDetail.type}
+        chatType={ChatTypeEnum.chatTest}
+        appAvatar={appDetail.avatar}
+        userAvatar={userInfo?.avatar}
+        pluginInputs={pluginInputs}
+        showMarkIcon
+        chatConfig={chatConfig}
+        showFileSelector={checkChatSupportSelectFileByModules(nodes)}
+        onStartChat={startChat}
+        onDelMessage={() => {}}
+      />
+    )
+  );
 
   return {
     resetChatBox,
-    ChatBox: CustomChatBox
+    ChatContainer: CustomChatContainer,
+    chatRecords,
+    pluginRunTab,
+    setPluginRunTab
   };
 };
 

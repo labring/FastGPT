@@ -35,15 +35,10 @@ import type { AdminMarkType } from './components/SelectMarkCollection';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 import { postQuestionGuide } from '@/web/core/ai/api';
-import type {
-  generatingMessageProps,
-  StartChatFnProps,
-  ComponentRef,
-  ChatBoxInputType,
-  ChatBoxInputFormType
-} from './type.d';
+import type { ComponentRef, ChatBoxInputType, ChatBoxInputFormType } from './type.d';
+import type { StartChatFnProps, generatingMessageProps } from '../type';
 import ChatInput from './Input/ChatInput';
-import ChatBoxDivider from '../core/chat/Divider';
+import ChatBoxDivider from '../../Divider';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -375,7 +370,7 @@ const ChatBox = (
       text = '',
       files = [],
       history = chatHistories,
-      autoTTSResponse = false,
+      autoTTSResponse = false
     }: ChatBoxInputType & {
       autoTTSResponse?: boolean;
       history?: ChatSiteItemType[];

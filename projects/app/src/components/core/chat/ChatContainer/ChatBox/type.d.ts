@@ -7,15 +7,6 @@ import {
 } from '@fastgpt/global/core/chat/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
-export type generatingMessageProps = {
-  event: SseResponseEventEnum;
-  text?: string;
-  name?: string;
-  status?: 'running' | 'finish';
-  tool?: ToolModuleResponseItemType;
-  variables?: Record<string, any>;
-};
-
 export type UserInputFileItemType = {
   id: string;
   rawFile?: File;
@@ -35,14 +26,6 @@ export type ChatBoxInputFormType = {
 export type ChatBoxInputType = {
   text?: string;
   files?: UserInputFileItemType[];
-};
-
-export type StartChatFnProps = {
-  chatList: ChatSiteItemType[];
-  messages: ChatCompletionMessageParam[];
-  controller: AbortController;
-  variables: Record<string, any>;
-  generatingMessage: (e: generatingMessageProps) => void;
 };
 
 export type ComponentRef = {

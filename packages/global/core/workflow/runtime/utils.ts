@@ -123,6 +123,7 @@ export const checkNodeRunStatus = ({
     (item) => item.target === node.nodeId
   );
 
+  // Entry
   if (workflowEdges.length === 0) {
     return 'run';
   }

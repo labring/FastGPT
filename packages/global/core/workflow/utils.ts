@@ -193,7 +193,7 @@ export const getElseIFLabel = (i: number) => {
 };
 
 // add value to plugin input node when run plugin
-export const updatePluginInputNodeInputs = (
+export const updatePluginInputByVariables = (
   nodes: RuntimeNodeItemType[],
   variables: Record<string, any>
 ) => {
@@ -202,7 +202,7 @@ export const updatePluginInputNodeInputs = (
       ? {
           ...node,
           inputs: node.inputs.map((input) => {
-            let parseValue = (() => {
+            const parseValue = (() => {
               try {
                 if (
                   input.valueType === WorkflowIOValueTypeEnum.string ||

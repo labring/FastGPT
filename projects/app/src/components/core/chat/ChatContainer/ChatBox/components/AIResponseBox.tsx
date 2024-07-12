@@ -26,19 +26,13 @@ type props = {
   questionGuides: string[];
 };
 
-const AIResponseBox = ({
-  value,
-  index,
-  chat,
-  isLastChild,
-  isChatting,
-  questionGuides
-}: props) => {
+const AIResponseBox = ({ value, index, chat, isLastChild, isChatting, questionGuides }: props) => {
   if (value.text) {
     let source = (value.text?.content || '').trim();
 
-    if (!source && chat.value.length > 1) return null;
+    // if (!source && chat.value.length > 1) return null;
 
+    // computed question guide
     if (
       isLastChild &&
       !isChatting &&
@@ -77,52 +71,50 @@ ${JSON.stringify(questionGuides)}`;
           })();
 
           return (
-            <Box key={tool.id}>
-              <Accordion allowToggle>
-                <AccordionItem borderTop={'none'} borderBottom={'none'}>
-                  <AccordionButton
-                    w={'auto'}
-                    bg={'white'}
-                    borderRadius={'md'}
-                    borderWidth={'1px'}
-                    borderColor={'myGray.200'}
-                    boxShadow={'1'}
-                    _hover={{
-                      bg: 'auto'
-                    }}
-                  >
-                    <Avatar src={tool.toolAvatar} borderRadius={'md'} w={'1rem'} mr={2} />
-                    <Box mr={1} fontSize={'sm'}>
-                      {tool.toolName}
-                    </Box>
-                    {isChatting && !tool.response && <MyIcon name={'common/loading'} w={'14px'} />}
-                    <AccordionIcon color={'myGray.600'} ml={5} />
-                  </AccordionButton>
-                  <AccordionPanel
-                    py={0}
-                    px={0}
-                    mt={0}
-                    borderRadius={'md'}
-                    overflow={'hidden'}
-                    maxH={'500px'}
-                    overflowY={'auto'}
-                  >
-                    {toolParams && toolParams !== '{}' && (
-                      <Markdown
-                        source={`~~~json#Input
+            <Accordion key={tool.id} allowToggle>
+              <AccordionItem borderTop={'none'} borderBottom={'none'}>
+                <AccordionButton
+                  w={'auto'}
+                  bg={'white'}
+                  borderRadius={'md'}
+                  borderWidth={'1px'}
+                  borderColor={'myGray.200'}
+                  boxShadow={'1'}
+                  _hover={{
+                    bg: 'auto'
+                  }}
+                >
+                  <Avatar src={tool.toolAvatar} borderRadius={'md'} w={'1rem'} mr={2} />
+                  <Box mr={1} fontSize={'sm'}>
+                    {tool.toolName}
+                  </Box>
+                  {isChatting && !tool.response && <MyIcon name={'common/loading'} w={'14px'} />}
+                  <AccordionIcon color={'myGray.600'} ml={5} />
+                </AccordionButton>
+                <AccordionPanel
+                  py={0}
+                  px={0}
+                  mt={0}
+                  borderRadius={'md'}
+                  overflow={'hidden'}
+                  maxH={'500px'}
+                  overflowY={'auto'}
+                >
+                  {toolParams && toolParams !== '{}' && (
+                    <Markdown
+                      source={`~~~json#Input
 ${toolParams}`}
-                      />
-                    )}
-                    {toolResponse && (
-                      <Markdown
-                        source={`~~~json#Response
+                    />
+                  )}
+                  {toolResponse && (
+                    <Markdown
+                      source={`~~~json#Response
 ${toolResponse}`}
-                      />
-                    )}
-                  </AccordionPanel>
-                </AccordionItem>
-              </Accordion>
-            </Box>
+                    />
+                  )}
+                </AccordionPanel>
+              </AccordionItem>
+            </Accordion>
           );
         })}
       </Box>

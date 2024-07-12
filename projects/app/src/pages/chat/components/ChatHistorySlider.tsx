@@ -91,8 +91,6 @@ const ChatHistorySlider = ({
     return !activeChat ? [newChat].concat(formatHistories) : formatHistories;
   }, [activeChatId, histories, t]);
 
-  const showApps = apps?.length > 0;
-
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('core.chat.Custom History Title'),
