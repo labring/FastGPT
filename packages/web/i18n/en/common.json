@@ -1045,9 +1045,11 @@
     "plugin": {
       "Custom headers": "Custom headers",
       "Delete http plugin": "Confirm to delete this group of HTTP plugins? This will delete all plugins in the directory.",
+      "Free": "The plugin requires no points～",
       "Get Plugin Module Detail Failed": "Plugin loading failed",
       "Http plugin intro placeholder": "For display only, no actual effect",
-      "Intro placeholder": "If this plugin is used as a tool, this introduction will be used as a prompt."
+      "Intro placeholder": "If this plugin is used as a tool, this introduction will be used as a prompt.",
+      "cost": "Plugin cost: "
     },
     "shareChat": {
       "Init Error": "Failed to initialize chat dialog",

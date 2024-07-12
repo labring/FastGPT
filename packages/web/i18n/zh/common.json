@@ -1054,9 +1054,11 @@
     "plugin": {
       "Custom headers": "自定义请求头",
       "Delete http plugin": "确认删除该组 HTTP 插件？会删除该目录下所有插件。",
+      "Free": "该插件无需积分消耗～",
       "Get Plugin Module Detail Failed": "加载插件异常",
       "Http plugin intro placeholder": "仅做展示，无实际效果",
-      "Intro placeholder": "如果该插件作为工具被调用，则会使用该介绍作为提示词。"
+      "Intro placeholder": "如果该插件作为工具被调用，则会使用该介绍作为提示词。",
+      "cost": "积分消耗："
     },
     "shareChat": {
       "Init Error": "初始化对话框失败",
