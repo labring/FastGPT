@@ -8,6 +8,7 @@ export function getMongoImgUrl(id: string) {
 }
 
 export const maxImgSize = 1024 * 1024 * 12;
+const base64MimeRegex = /data:image\/([^\)]+);base64/;
 export async function uploadMongoImg({
   type,
   base64Img,
@@ -22,7 +23,8 @@ export async function uploadMongoImg({
     return Promise.reject('Image too large');
   }
 
-  const base64Data = base64Img.split(',')[1];
+  const [base64Mime, base64Data] = base64Img.split(',')
+  const mime = `image/${base64Mime.match(base64MimeRegex)?.[1] ?? 'jpeg'}`
   const binary = Buffer.from(base64Data, 'base64');
 
   const { _id } = await MongoImage.create({
@@ -30,7 +32,7 @@ export async function uploadMongoImg({
     teamId,
     binary,
     expiredTime,
-    metadata,
+    metadata: Object.assign({ mime }, metadata),
     shareId
   });
 
@@ -42,7 +44,7 @@ export async function readMongoImg({ id }: { id: string }) {
   if (!data) {
     return Promise.reject('Image not found');
   }
-  return data?.binary;
+  return data;
 }
 
 export async function delImgByRelatedId({
