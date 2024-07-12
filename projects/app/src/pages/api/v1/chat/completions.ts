@@ -305,6 +305,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         appChatConfig: chatConfig,
         variables: newVariables,
         isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
+        isPlugin,
         shareId,
         outLinkUid: outLinkUserId,
         source,

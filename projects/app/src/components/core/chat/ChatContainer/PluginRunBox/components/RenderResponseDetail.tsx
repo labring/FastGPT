@@ -1,4 +1,4 @@
-import { ResponseBox } from '../../ChatBox/components/WholeResponseModal';
+import { ResponseBox } from '../../../components/WholeResponseModal';
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { PluginRunContext } from '../context';

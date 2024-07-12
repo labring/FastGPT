@@ -30,7 +30,6 @@ import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { InitChatResponse } from '@/global/core/chat/api';
 import { defaultChatData } from '@/global/core/chat/constants';
-import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 type Props = { appId: string; chatId: string; teamId: string; teamToken: string };
@@ -244,9 +243,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
             <Box flex={1}>
               <ChatBox
                 ref={ChatBoxRef}
-                appType={chatData.app.type}
-                chatType={ChatTypeEnum.chat}
-                pluginInputs={chatData.app.pluginInputs}
                 appAvatar={chatData.app.avatar}
                 userAvatar={chatData.userAvatar}
                 chatConfig={chatData.app?.chatConfig}

@@ -43,7 +43,7 @@ import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { formatChatValue2InputType } from './utils';
-import { ChatTypeEnum, textareaMinH } from './constants';
+import { textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext } from './Provider';
 
@@ -54,9 +54,6 @@ import { useCreation } from 'ahooks';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { StreamResponseType } from '@/web/common/api/fetch';
 import { useContextSelector } from 'use-context-selector';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import PluginChatBox from './PluginChatBox';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -77,9 +74,6 @@ type Props = OutLinkChatAuthProps & {
   showMarkIcon?: boolean; // admin mark dataset
   showVoiceIcon?: boolean;
   showEmptyIntro?: boolean;
-  appType: `${AppTypeEnum}`;
-  chatType: `${ChatTypeEnum}`;
-  pluginInputs?: FlowNodeInputItemType[];
   appAvatar?: string;
   userAvatar?: string;
   chatConfig?: AppChatConfigType;
@@ -113,9 +107,6 @@ const ChatBox = (
     showMarkIcon = false,
     showVoiceIcon = true,
     showEmptyIntro = false,
-    appType,
-    chatType,
-    pluginInputs = [],
     appAvatar,
     userAvatar,
     showFileSelector,
@@ -901,231 +892,209 @@ const ChatBox = (
 
   return (
     <Flex flexDirection={'column'} h={'100%'} position={'relative'}>
-      {appType !== AppTypeEnum.plugin ? (
-        <>
-          <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
-          {/* chat box container */}
-          <Box
-            ref={ChatBoxRef}
-            flex={'1 0 0'}
-            h={0}
-            w={'100%'}
-            overflow={'overlay'}
-            px={[4, 0]}
-            pb={3}
-          >
-            <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
-              {showEmpty && <Empty />}
-              {!!welcomeText && <WelcomeBox appAvatar={appAvatar} welcomeText={welcomeText} />}
-              {/* variable input */}
-              {!!filterVariableNodes?.length && (
-                <VariableInput
-                  appAvatar={appAvatar}
-                  variableList={filterVariableNodes}
-                  chatForm={chatForm}
-                  onSubmitVariables={(data) => {
-                    setValue('chatStarted', true);
-                    onUpdateVariable?.(data);
-                  }}
-                />
-              )}
-              {/* chat history */}
-              <Box id={'history'}>
-                {chatHistories.map((item, index) => (
-                  <Box key={item.dataId} py={5}>
-                    {item.obj === ChatRoleEnum.Human && (
-                      <ChatItem
-                        type={item.obj}
-                        avatar={item.obj === ChatRoleEnum.Human ? userAvatar : appAvatar}
-                        chat={item}
-                        onRetry={retryInput(item.dataId)}
-                        onDelete={delOneMessage(item.dataId)}
-                        isLastChild={index === chatHistories.length - 1}
-                      />
-                    )}
-                    {item.obj === ChatRoleEnum.AI && (
-                      <>
-                        <ChatItem
-                          type={item.obj}
-                          avatar={appAvatar}
-                          chat={item}
-                          isLastChild={index === chatHistories.length - 1}
-                          {...(item.obj === ChatRoleEnum.AI && {
-                            showVoiceIcon,
-                            shareId,
-                            outLinkUid,
-                            teamId,
-                            teamToken,
-                            statusBoxData,
-                            questionGuides,
-                            onMark: onMark(
-                              item,
-                              formatChatValue2InputType(chatHistories[index - 1]?.value)?.text
-                            ),
-                            onAddUserLike: onAddUserLike(item),
-                            onCloseUserLike: onCloseUserLike(item),
-                            onAddUserDislike: onAddUserDislike(item),
-                            onReadUserDislike: onReadUserDislike(item)
-                          })}
-                        >
-                          <ResponseTags
-                            flowResponses={item.responseData}
-                            showDetail={!shareId && !teamId}
-                          />
-
-                          {/* custom feedback */}
-                          {item.customFeedbacks && item.customFeedbacks.length > 0 && (
-                            <Box>
-                              <ChatBoxDivider
-                                icon={'core/app/customFeedback'}
-                                text={t('core.app.feedback.Custom feedback')}
-                              />
-                              {item.customFeedbacks.map((text, i) => (
-                                <Box key={`${text}${i}`}>
-                                  <MyTooltip label={t('core.app.feedback.close custom feedback')}>
-                                    <Checkbox onChange={onCloseCustomFeedback(item, i)}>
-                                      {text}
-                                    </Checkbox>
-                                  </MyTooltip>
-                                </Box>
-                              ))}
-                            </Box>
-                          )}
-                          {/* admin mark content */}
-                          {showMarkIcon && item.adminFeedback && (
-                            <Box fontSize={'sm'}>
-                              <ChatBoxDivider
-                                icon="core/app/markLight"
-                                text={t('core.chat.Admin Mark Content')}
-                              />
-                              <Box whiteSpace={'pre-wrap'}>
-                                <Box color={'black'}>{item.adminFeedback.q}</Box>
-                                <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
-                              </Box>
-                            </Box>
-                          )}
-                        </ChatItem>
-                      </>
-                    )}
-                  </Box>
-                ))}
-              </Box>
-            </Box>
-          </Box>
-          {/* message input */}
-          {onStartChat && (chatStarted || filterVariableNodes.length === 0) && active && appId && (
-            <ChatInput
-              onSendMessage={sendPrompt}
-              onStop={() => chatController.current?.abort('stop')}
-              TextareaDom={TextareaDom}
-              resetInputVal={resetInputVal}
-              showFileSelector={showFileSelector}
+      <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
+      {/* chat box container */}
+      <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'} px={[4, 0]} pb={3}>
+        <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
+          {showEmpty && <Empty />}
+          {!!welcomeText && <WelcomeBox appAvatar={appAvatar} welcomeText={welcomeText} />}
+          {/* variable input */}
+          {!!filterVariableNodes?.length && (
+            <VariableInput
+              appAvatar={appAvatar}
+              variableList={filterVariableNodes}
               chatForm={chatForm}
-              appId={appId}
-            />
-          )}
-          {/* user feedback modal */}
-          {!!feedbackId && chatId && appId && (
-            <FeedbackModal
-              appId={appId}
-              teamId={teamId}
-              teamToken={teamToken}
-              chatId={chatId}
-              chatItemId={feedbackId}
-              shareId={shareId}
-              outLinkUid={outLinkUid}
-              onClose={() => setFeedbackId(undefined)}
-              onSuccess={(content: string) => {
-                setChatHistories((state) =>
-                  state.map((item) =>
-                    item.dataId === feedbackId ? { ...item, userBadFeedback: content } : item
-                  )
-                );
-                setFeedbackId(undefined);
+              onSubmitVariables={(data) => {
+                setValue('chatStarted', true);
+                onUpdateVariable?.(data);
               }}
             />
           )}
-          {/* admin read feedback modal */}
-          {!!readFeedbackData && (
-            <ReadFeedbackModal
-              content={readFeedbackData.content}
-              onClose={() => setReadFeedbackData(undefined)}
-              onCloseFeedback={() => {
-                setChatHistories((state) =>
-                  state.map((chatItem) =>
-                    chatItem.dataId === readFeedbackData.chatItemId
-                      ? { ...chatItem, userBadFeedback: undefined }
-                      : chatItem
-                  )
-                );
-                try {
-                  if (!chatId || !appId) return;
-                  updateChatUserFeedback({
-                    appId,
-                    chatId,
-                    chatItemId: readFeedbackData.chatItemId
-                  });
-                } catch (error) {}
-                setReadFeedbackData(undefined);
-              }}
-            />
-          )}
-          {/* admin mark data */}
-          {!!adminMarkData && (
-            <SelectMarkCollection
-              adminMarkData={adminMarkData}
-              setAdminMarkData={(e) =>
-                setAdminMarkData({ ...e, chatItemId: adminMarkData.chatItemId })
-              }
-              onClose={() => setAdminMarkData(undefined)}
-              onSuccess={(adminFeedback) => {
-                if (!appId || !chatId || !adminMarkData.chatItemId) return;
-                updateChatAdminFeedback({
-                  appId,
-                  chatId,
-                  chatItemId: adminMarkData.chatItemId,
-                  ...adminFeedback
-                });
+          {/* chat history */}
+          <Box id={'history'}>
+            {chatHistories.map((item, index) => (
+              <Box key={item.dataId} py={5}>
+                {item.obj === ChatRoleEnum.Human && (
+                  <ChatItem
+                    type={item.obj}
+                    avatar={item.obj === ChatRoleEnum.Human ? userAvatar : appAvatar}
+                    chat={item}
+                    onRetry={retryInput(item.dataId)}
+                    onDelete={delOneMessage(item.dataId)}
+                    isLastChild={index === chatHistories.length - 1}
+                  />
+                )}
+                {item.obj === ChatRoleEnum.AI && (
+                  <>
+                    <ChatItem
+                      type={item.obj}
+                      avatar={appAvatar}
+                      chat={item}
+                      isLastChild={index === chatHistories.length - 1}
+                      {...(item.obj === ChatRoleEnum.AI && {
+                        showVoiceIcon,
+                        shareId,
+                        outLinkUid,
+                        teamId,
+                        teamToken,
+                        statusBoxData,
+                        questionGuides,
+                        onMark: onMark(
+                          item,
+                          formatChatValue2InputType(chatHistories[index - 1]?.value)?.text
+                        ),
+                        onAddUserLike: onAddUserLike(item),
+                        onCloseUserLike: onCloseUserLike(item),
+                        onAddUserDislike: onAddUserDislike(item),
+                        onReadUserDislike: onReadUserDislike(item)
+                      })}
+                    >
+                      <ResponseTags
+                        flowResponses={item.responseData}
+                        showDetail={!shareId && !teamId}
+                      />
 
-                // update dom
-                setChatHistories((state) =>
-                  state.map((chatItem) =>
-                    chatItem.dataId === adminMarkData.chatItemId
-                      ? {
-                          ...chatItem,
-                          adminFeedback
-                        }
-                      : chatItem
-                  )
-                );
+                      {/* custom feedback */}
+                      {item.customFeedbacks && item.customFeedbacks.length > 0 && (
+                        <Box>
+                          <ChatBoxDivider
+                            icon={'core/app/customFeedback'}
+                            text={t('core.app.feedback.Custom feedback')}
+                          />
+                          {item.customFeedbacks.map((text, i) => (
+                            <Box key={`${text}${i}`}>
+                              <MyTooltip label={t('core.app.feedback.close custom feedback')}>
+                                <Checkbox onChange={onCloseCustomFeedback(item, i)}>
+                                  {text}
+                                </Checkbox>
+                              </MyTooltip>
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+                      {/* admin mark content */}
+                      {showMarkIcon && item.adminFeedback && (
+                        <Box fontSize={'sm'}>
+                          <ChatBoxDivider
+                            icon="core/app/markLight"
+                            text={t('core.chat.Admin Mark Content')}
+                          />
+                          <Box whiteSpace={'pre-wrap'}>
+                            <Box color={'black'}>{item.adminFeedback.q}</Box>
+                            <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
+                          </Box>
+                        </Box>
+                      )}
+                    </ChatItem>
+                  </>
+                )}
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      </Box>
+      {/* message input */}
+      {onStartChat && (chatStarted || filterVariableNodes.length === 0) && active && appId && (
+        <ChatInput
+          onSendMessage={sendPrompt}
+          onStop={() => chatController.current?.abort('stop')}
+          TextareaDom={TextareaDom}
+          resetInputVal={resetInputVal}
+          showFileSelector={showFileSelector}
+          chatForm={chatForm}
+          appId={appId}
+        />
+      )}
+      {/* user feedback modal */}
+      {!!feedbackId && chatId && appId && (
+        <FeedbackModal
+          appId={appId}
+          teamId={teamId}
+          teamToken={teamToken}
+          chatId={chatId}
+          chatItemId={feedbackId}
+          shareId={shareId}
+          outLinkUid={outLinkUid}
+          onClose={() => setFeedbackId(undefined)}
+          onSuccess={(content: string) => {
+            setChatHistories((state) =>
+              state.map((item) =>
+                item.dataId === feedbackId ? { ...item, userBadFeedback: content } : item
+              )
+            );
+            setFeedbackId(undefined);
+          }}
+        />
+      )}
+      {/* admin read feedback modal */}
+      {!!readFeedbackData && (
+        <ReadFeedbackModal
+          content={readFeedbackData.content}
+          onClose={() => setReadFeedbackData(undefined)}
+          onCloseFeedback={() => {
+            setChatHistories((state) =>
+              state.map((chatItem) =>
+                chatItem.dataId === readFeedbackData.chatItemId
+                  ? { ...chatItem, userBadFeedback: undefined }
+                  : chatItem
+              )
+            );
+            try {
+              if (!chatId || !appId) return;
+              updateChatUserFeedback({
+                appId,
+                chatId,
+                chatItemId: readFeedbackData.chatItemId
+              });
+            } catch (error) {}
+            setReadFeedbackData(undefined);
+          }}
+        />
+      )}
+      {/* admin mark data */}
+      {!!adminMarkData && (
+        <SelectMarkCollection
+          adminMarkData={adminMarkData}
+          setAdminMarkData={(e) => setAdminMarkData({ ...e, chatItemId: adminMarkData.chatItemId })}
+          onClose={() => setAdminMarkData(undefined)}
+          onSuccess={(adminFeedback) => {
+            if (!appId || !chatId || !adminMarkData.chatItemId) return;
+            updateChatAdminFeedback({
+              appId,
+              chatId,
+              chatItemId: adminMarkData.chatItemId,
+              ...adminFeedback
+            });
 
-                if (readFeedbackData && chatId && appId) {
-                  updateChatUserFeedback({
-                    appId,
-                    chatId,
-                    chatItemId: readFeedbackData.chatItemId,
-                    userBadFeedback: undefined
-                  });
-                  setChatHistories((state) =>
-                    state.map((chatItem) =>
-                      chatItem.dataId === readFeedbackData.chatItemId
-                        ? { ...chatItem, userBadFeedback: undefined }
-                        : chatItem
-                    )
-                  );
-                  setReadFeedbackData(undefined);
-                }
-              }}
-            />
-          )}
-        </>
-      ) : (
-        <PluginChatBox
-          chatType={chatType}
-          pluginInputs={pluginInputs}
-          onStartChat={onStartChat}
-          handleSubmit={handleSubmit}
-          generatingMessage={generatingMessage}
+            // update dom
+            setChatHistories((state) =>
+              state.map((chatItem) =>
+                chatItem.dataId === adminMarkData.chatItemId
+                  ? {
+                      ...chatItem,
+                      adminFeedback
+                    }
+                  : chatItem
+              )
+            );
+
+            if (readFeedbackData && chatId && appId) {
+              updateChatUserFeedback({
+                appId,
+                chatId,
+                chatItemId: readFeedbackData.chatItemId,
+                userBadFeedback: undefined
+              });
+              setChatHistories((state) =>
+                state.map((chatItem) =>
+                  chatItem.dataId === readFeedbackData.chatItemId
+                    ? { ...chatItem, userBadFeedback: undefined }
+                    : chatItem
+                )
+              );
+              setReadFeedbackData(undefined);
+            }
+          }}
         />
       )}
     </Flex>
