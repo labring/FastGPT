@@ -2,7 +2,7 @@
   "author": "FastGPT",
   "version": "486",
   "name": "数学公式执行",
-  "avatar": "/imgs/workflow/mathExprEval.svg",
+  "avatar": "/imgs/workflow/mathExprEval.png",
   "intro": "用于执行数学表达式的工具，通过 js 的 expr-eval 库运行表达式并返回结果。",
   "showStatus": false,
   "weight": 10,

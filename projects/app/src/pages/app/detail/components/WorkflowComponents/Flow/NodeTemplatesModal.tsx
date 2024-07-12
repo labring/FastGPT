@@ -473,6 +473,11 @@ const RenderList = React.memo(function RenderList({
                       <Box color={'black'} fontSize={'sm'} ml={5} flex={'1 0 0'}>
                         {t(template.name)}
                       </Box>
+                      {showCost && (
+                        <Box fontSize={'xs'} mr={3}>
+                          {template.author ? `by ${template.author}` : `by 匿名大佬`}
+                        </Box>
+                      )}
                     </Flex>
                   </MyTooltip>
                 ))}

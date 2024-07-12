@@ -24,7 +24,8 @@ async function handler(
         name: plugin.name,
         intro: plugin.intro,
         isTool: plugin.isTool,
-        currentCost: plugin.currentCost
+        currentCost: plugin.currentCost,
+        author: plugin.author
       }))
   );
 }

@@ -5,6 +5,7 @@ import { useTranslation } from 'next-i18next';
 import {
   Box,
   Button,
+  Divider,
   Flex,
   Input,
   InputGroup,
@@ -41,6 +42,7 @@ import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -145,6 +147,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           templates={templates}
           isLoadingData={isLoading}
           setParentId={setParentId}
+          showCost={templateType === TemplateTypeEnum.systemPlugin}
           {...props}
         />
       </MyBox>
@@ -160,11 +163,13 @@ const RenderList = React.memo(function RenderList({
   isLoadingData,
   onAddTool,
   onRemoveTool,
-  setParentId
+  setParentId,
+  showCost
 }: Props & {
   templates: NodeTemplateListItemType[];
   isLoadingData: boolean;
   setParentId: React.Dispatch<React.SetStateAction<ParentIdType>>;
+  showCost?: boolean;
 }) {
   const { t } = useTranslation();
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
@@ -195,57 +200,93 @@ const RenderList = React.memo(function RenderList({
         const selected = selectedTools.some((tool) => tool.pluginId === item.id);
 
         return (
-          <Flex
+          <MyTooltip
             key={item.id}
-            alignItems={'center'}
-            p={[4, 5]}
-            _notLast={{
-              borderBottomWidth: '1px',
-              borderBottomColor: 'myGray.150'
-            }}
-            _hover={{
-              bg: 'myGray.50'
-            }}
+            placement={'right'}
+            shouldWrapChildren={false}
+            label={
+              <Box>
+                <Flex alignItems={'center'}>
+                  {item.avatar?.startsWith('/') ? (
+                    <Avatar src={item.avatar} w={'24px'} objectFit={'contain'} borderRadius={'0'} />
+                  ) : (
+                    <MyIcon name={item.avatar as any} w={'24px'} />
+                  )}
+                  <Box fontWeight={'bold'} ml={3}>
+                    {t(item.name)}
+                  </Box>
+                </Flex>
+                <Box mt={2} color={'myGray.500'}>
+                  {t(item.intro) || t('core.workflow.Not intro')}
+                </Box>
+                {showCost && (
+                  <>
+                    <Divider mt={4} mb={2} />
+                    <Flex>
+                      <Box>{t('core.plugin.cost')}</Box>
+                      <Box color={'myGray.600'}>{item.currentCost || t('core.plugin.Free')}</Box>
+                    </Flex>
+                  </>
+                )}
+              </Box>
+            }
           >
-            <Avatar
-              src={item.avatar}
-              w={['26px', '32px']}
-              objectFit={'contain'}
-              borderRadius={'0'}
-            />
-            <Box ml={5} flex={'1 0 0'}>
-              <Box color={'black'}>{t(item.name)}</Box>
-              {item.intro && (
-                <Box className="textEllipsis3" color={'myGray.500'} fontSize={'xs'}>
-                  {t(item.intro)}
+            <Flex
+              alignItems={'center'}
+              position={'relative'}
+              p={[4, 5]}
+              _notLast={{
+                borderBottomWidth: '1px',
+                borderBottomColor: 'myGray.150'
+              }}
+              _hover={{
+                bg: 'myGray.50'
+              }}
+            >
+              {item.avatar?.startsWith('/') ? (
+                <Avatar
+                  src={item.avatar}
+                  w={['26px', '36px']}
+                  objectFit={'contain'}
+                  borderRadius={'0'}
+                />
+              ) : (
+                <MyIcon name={item.avatar as any} w={['26px', '36px']} />
+              )}
+              <Box ml={5} flex={'1 0 0'} color={'black'}>
+                {t(item.name)}
+              </Box>
+              {showCost && (
+                <Box fontSize={'xs'} mr={3}>
+                  {item.author ? `by ${item.author}` : `by 匿名大佬`}
                 </Box>
               )}
-            </Box>
-            {selected ? (
-              <Button
-                size={'sm'}
-                variant={'grayDanger'}
-                leftIcon={<MyIcon name={'delete'} w={'14px'} />}
-                onClick={() => onRemoveTool(item)}
-              >
-                {t('common.Remove')}
-              </Button>
-            ) : item.isFolder ? (
-              <Button size={'sm'} variant={'whiteBase'} onClick={() => setParentId(item.id)}>
-                {t('common.Open')}
-              </Button>
-            ) : (
-              <Button
-                size={'sm'}
-                variant={'whiteBase'}
-                leftIcon={<AddIcon fontSize={'10px'} />}
-                isLoading={isLoading}
-                onClick={() => onClickAdd(item)}
-              >
-                {t('common.Add')}
-              </Button>
-            )}
-          </Flex>
+              {selected ? (
+                <Button
+                  size={'sm'}
+                  variant={'grayDanger'}
+                  leftIcon={<MyIcon name={'delete'} w={'14px'} />}
+                  onClick={() => onRemoveTool(item)}
+                >
+                  {t('common.Remove')}
+                </Button>
+              ) : item.isFolder ? (
+                <Button size={'sm'} variant={'whiteBase'} onClick={() => setParentId(item.id)}>
+                  {t('common.Open')}
+                </Button>
+              ) : (
+                <Button
+                  size={'sm'}
+                  variant={'whiteBase'}
+                  leftIcon={<AddIcon fontSize={'10px'} />}
+                  isLoading={isLoading}
+                  onClick={() => onClickAdd(item)}
+                >
+                  {t('common.Add')}
+                </Button>
+              )}
+            </Flex>
+          </MyTooltip>
         );
       })}
       {!!configTool && (
