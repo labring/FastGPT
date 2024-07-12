@@ -129,7 +129,7 @@
             "description": "core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "duckduckSearch"
+            "value": "duckduckgo/search"
           },
           {
             "key": "system_httpHeader",
