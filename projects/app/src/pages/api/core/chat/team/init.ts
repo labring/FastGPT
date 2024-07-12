@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // pick share response field
     app.type !== AppTypeEnum.plugin &&
-    histories.forEach((item) => {
+      histories.forEach((item) => {
         if (item.obj === ChatRoleEnum.AI) {
           item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
         }
