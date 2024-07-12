@@ -27,7 +27,7 @@ const ChatTest = ({ appForm }: { appForm: AppSimpleEditFormType }) => {
     setWorkflowData({ nodes, edges });
   }, [appForm, setWorkflowData]);
 
-  const { resetChatBox, ChatBox } = useChatTest({
+  const { resetChatBox, ChatContainer } = useChatTest({
     ...workflowData,
     chatConfig: appForm.chatConfig
   });
@@ -54,7 +54,7 @@ const ChatTest = ({ appForm }: { appForm: AppSimpleEditFormType }) => {
         </MyTooltip>
       </Flex>
       <Box flex={1}>
-        <ChatBox />
+        <ChatContainer />
       </Box>
     </Flex>
   );

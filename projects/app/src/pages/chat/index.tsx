@@ -33,7 +33,6 @@ import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatCo
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import dynamic from 'next/dynamic';
 import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 
@@ -186,7 +185,7 @@ const Chat = ({
       )}
 
       <PageContainer isLoading={loading} flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
-        <Flex h={'100%'} flexDirection={['column', 'row']} bg={'white'}>
+        <Flex h={'100%'} flexDirection={['column', 'row']}>
           {/* pc always show history. */}
           {((children: React.ReactNode) => {
             return isPc || !appId ? (
@@ -245,7 +244,7 @@ const Chat = ({
             />
 
             {/* chat box */}
-            <Box flex={'1 0 0'}>
+            <Box flex={'1 0 0'} bg={'white'}>
               {chatData.app.type === AppTypeEnum.plugin ? (
                 <CustomPluginRunBox
                   pluginInputs={chatData.app.pluginInputs}
@@ -262,9 +261,6 @@ const Chat = ({
                 <ChatBox
                   ref={ChatBoxRef}
                   showEmptyIntro
-                  appType={chatData.app.type}
-                  chatType={ChatTypeEnum.chat}
-                  pluginInputs={chatData.app.pluginInputs}
                   appAvatar={chatData.app.avatar}
                   userAvatar={userInfo?.avatar}
                   chatConfig={chatData.app?.chatConfig}

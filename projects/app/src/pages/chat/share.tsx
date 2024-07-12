@@ -34,7 +34,9 @@ import { defaultChatData } from '@/global/core/chat/constants';
 import { useMount } from 'ahooks';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
+import CustomPluginRunBox from './components/CustomPluginRunBox';
+import { useChat } from '@/components/core/chat/ChatContainer/useChat';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 type Props = {
   appName: string;
@@ -83,6 +85,8 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
     forbidLoadChat,
     onChangeChatId
   } = useContextSelector(ChatContext, (v) => v);
+
+  const { chatRecords, setChatRecords, variablesForm, pluginRunTab, setPluginRunTab } = useChat();
 
   const startChat = useCallback(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
@@ -237,7 +241,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
           ? { p: '0 !important', insertProps: { borderRadius: '0', boxShadow: 'none' } }
           : { p: [0, 5] })}
       >
-        <Flex h={'100%'} flexDirection={['column', 'row']} bg={'white'}>
+        <Flex h={'100%'} flexDirection={['column', 'row']}>
           {showHistory === '1' &&
             ((children: React.ReactNode) => {
               return isPc ? (
@@ -305,33 +309,44 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
               />
             ) : null}
             {/* chat box */}
-            <Box flex={1}>
-              <ChatBox
-                appType={chatData.app.type}
-                chatType={ChatTypeEnum.chat}
-                pluginInputs={chatData.app.pluginInputs}
-                ref={ChatBoxRef}
-                appAvatar={chatData.app.avatar}
-                userAvatar={chatData.userAvatar}
-                chatConfig={chatData.app?.chatConfig}
-                showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
-                feedbackType={'user'}
-                onUpdateVariable={(e) => {}}
-                onStartChat={startChat}
-                onDelMessage={({ contentId }) =>
-                  delChatRecordById({
-                    contentId,
-                    appId: chatData.appId,
-                    chatId,
-                    shareId,
-                    outLinkUid
-                  })
-                }
-                appId={chatData.appId}
-                chatId={chatId}
-                shareId={shareId}
-                outLinkUid={outLinkUid}
-              />
+            <Box flex={1} bg={'white'}>
+              {chatData.app.type === AppTypeEnum.plugin ? (
+                <CustomPluginRunBox
+                  pluginInputs={chatData.app.pluginInputs}
+                  variablesForm={variablesForm}
+                  histories={chatRecords}
+                  setHistories={setChatRecords}
+                  appId={chatData.appId}
+                  tab={pluginRunTab}
+                  setTab={setPluginRunTab}
+                  onNewChat={() => onChangeChatId(getNanoid())}
+                  onStartChat={startChat}
+                />
+              ) : (
+                <ChatBox
+                  ref={ChatBoxRef}
+                  appAvatar={chatData.app.avatar}
+                  userAvatar={chatData.userAvatar}
+                  chatConfig={chatData.app?.chatConfig}
+                  showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
+                  feedbackType={'user'}
+                  onUpdateVariable={(e) => {}}
+                  onStartChat={startChat}
+                  onDelMessage={({ contentId }) =>
+                    delChatRecordById({
+                      contentId,
+                      appId: chatData.appId,
+                      chatId,
+                      shareId,
+                      outLinkUid
+                    })
+                  }
+                  appId={chatData.appId}
+                  chatId={chatId}
+                  shareId={shareId}
+                  outLinkUid={outLinkUid}
+                />
+              )}
             </Box>
           </Flex>
         </Flex>

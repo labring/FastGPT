@@ -7,7 +7,7 @@ import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/cons
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
-import { QuoteList } from './QuoteModal';
+import { QuoteList } from '../ChatContainer/ChatBox/components/QuoteModal';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { useI18n } from '@/web/context/I18n';

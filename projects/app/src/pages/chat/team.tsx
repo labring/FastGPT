@@ -30,8 +30,10 @@ import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { InitChatResponse } from '@/global/core/chat/api';
 import { defaultChatData } from '@/global/core/chat/constants';
-import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import CustomPluginRunBox from './components/CustomPluginRunBox';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 
 type Props = { appId: string; chatId: string; teamId: string; teamToken: string };
 
@@ -65,6 +67,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     forbidLoadChat,
     onChangeChatId
   } = useContextSelector(ChatContext, (v) => v);
+
+  const { chatRecords, setChatRecords, variablesForm, pluginRunTab, setPluginRunTab } = useChat();
 
   const startChat = useCallback(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
@@ -242,26 +246,43 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
             />
             {/* chat box */}
             <Box flex={1}>
-              <ChatBox
-                ref={ChatBoxRef}
-                appType={chatData.app.type}
-                chatType={ChatTypeEnum.chat}
-                pluginInputs={chatData.app.pluginInputs}
-                appAvatar={chatData.app.avatar}
-                userAvatar={chatData.userAvatar}
-                chatConfig={chatData.app?.chatConfig}
-                showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
-                feedbackType={'user'}
-                onUpdateVariable={(e) => {}}
-                onStartChat={startChat}
-                onDelMessage={({ contentId }) =>
-                  delChatRecordById({ contentId, appId: chatData.appId, chatId, teamId, teamToken })
-                }
-                appId={chatData.appId}
-                chatId={chatId}
-                teamId={teamId}
-                teamToken={teamToken}
-              />
+              {chatData.app.type === AppTypeEnum.plugin ? (
+                <CustomPluginRunBox
+                  pluginInputs={chatData.app.pluginInputs}
+                  variablesForm={variablesForm}
+                  histories={chatRecords}
+                  setHistories={setChatRecords}
+                  appId={chatData.appId}
+                  tab={pluginRunTab}
+                  setTab={setPluginRunTab}
+                  onNewChat={() => onChangeChatId(getNanoid())}
+                  onStartChat={startChat}
+                />
+              ) : (
+                <ChatBox
+                  ref={ChatBoxRef}
+                  appAvatar={chatData.app.avatar}
+                  userAvatar={chatData.userAvatar}
+                  chatConfig={chatData.app?.chatConfig}
+                  showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
+                  feedbackType={'user'}
+                  onUpdateVariable={(e) => {}}
+                  onStartChat={startChat}
+                  onDelMessage={({ contentId }) =>
+                    delChatRecordById({
+                      contentId,
+                      appId: chatData.appId,
+                      chatId,
+                      teamId,
+                      teamToken
+                    })
+                  }
+                  appId={chatData.appId}
+                  chatId={chatId}
+                  teamId={teamId}
+                  teamToken={teamToken}
+                />
+              )}
             </Box>
           </Flex>
         </Flex>

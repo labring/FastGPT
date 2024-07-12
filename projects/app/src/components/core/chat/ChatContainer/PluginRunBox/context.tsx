@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback, useRef } from 'react';
+import React, { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { PluginRunBoxProps } from './type';
 import { AIChatItemValueItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type';
@@ -40,7 +40,7 @@ const PluginRunContextProvider = ({
   children,
   ...props
 }: PluginRunBoxProps & { children: ReactNode }) => {
-  const { pluginInputs, onStartChat, setHistories } = props;
+  const { pluginInputs, onStartChat, setHistories, histories } = props;
 
   const { toast } = useToast();
   const chatController = useRef(new AbortController());
@@ -139,7 +139,12 @@ const PluginRunContextProvider = ({
     [setHistories]
   );
 
-  const { runAsync: onSubmit, loading: isChatting } = useRequest2(async (e: FieldValues) => {
+  const isChatting = useMemo(
+    () => histories[histories.length - 1] && histories[histories.length - 1]?.status !== 'finish',
+    [histories]
+  );
+
+  const { runAsync: onSubmit } = useRequest2(async (e: FieldValues) => {
     if (!onStartChat) return;
     if (isChatting) {
       toast({
