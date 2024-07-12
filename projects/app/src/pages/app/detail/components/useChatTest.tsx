@@ -39,18 +39,16 @@ export const useChatTest = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const startChat = useMemoizedFn(
-    async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
+    async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
       /* get histories */
-      let historyMaxLen = getMaxHistoryLimitFromNodes(nodes);
-
-      const history = chatList.slice(-historyMaxLen - 2, -2);
+      const historyMaxLen = getMaxHistoryLimitFromNodes(nodes);
 
       // 流请求，获取数据
       const { responseText, responseData } = await streamFetch({
         url: '/api/core/chat/chatTest',
         data: {
-          history,
-          prompt: chatList[chatList.length - 2]?.value,
+          // Send histories and user messages
+          messages: messages.slice(-historyMaxLen - 2),
           nodes: storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
           edges: initWorkflowEdgeStatus(edges),
           variables,

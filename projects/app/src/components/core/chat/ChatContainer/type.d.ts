@@ -12,8 +12,8 @@ export type generatingMessageProps = {
 };
 
 export type StartChatFnProps = {
-  chatList: ChatSiteItemType[];
   messages: ChatCompletionMessageParam[];
+  responseChatItemId: string;
   controller: AbortController;
   variables: Record<string, any>;
   generatingMessage: (e: generatingMessageProps) => void;
