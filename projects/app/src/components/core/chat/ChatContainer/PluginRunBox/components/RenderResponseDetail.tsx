@@ -8,7 +8,7 @@ const RenderResponseDetail = () => {
 
   const responseData = histories?.[1]?.responseData || [];
 
-  return isChatting ? '进行中' : <ResponseBox response={responseData} showDetail={true} />;
+  return isChatting ? <>{'进行中'}</> : <ResponseBox response={responseData} showDetail={true} />;
 };
 
 export default RenderResponseDetail;
