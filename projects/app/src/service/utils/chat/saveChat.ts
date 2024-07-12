@@ -7,12 +7,9 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import {
-  getAppChatConfig,
-  getGuideModule,
-  splitGuideModule
-} from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 
 type Props = {
   chatId: string;
@@ -23,6 +20,7 @@ type Props = {
   appChatConfig?: AppChatConfigType;
   variables?: Record<string, any>;
   isUpdateUseTime: boolean;
+  isPlugin?: boolean;
   source: `${ChatSourceEnum}`;
   shareId?: string;
   outLinkUid?: string;
@@ -39,6 +37,7 @@ export async function saveChat({
   appChatConfig,
   variables,
   isUpdateUseTime,
+  isPlugin,
   source,
   shareId,
   outLinkUid,
@@ -58,7 +57,7 @@ export async function saveChat({
       ...chat?.metadata,
       ...metadata
     };
-    const title = getChatTitleFromChatMessage(content[0]);
+    const title = isPlugin ? formatTime2YMDHM(new Date()) : getChatTitleFromChatMessage(content[0]);
 
     await mongoSessionRun(async (session) => {
       await MongoChatItem.insertMany(

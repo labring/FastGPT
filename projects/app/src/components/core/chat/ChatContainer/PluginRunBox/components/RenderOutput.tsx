@@ -2,9 +2,9 @@ import { Box } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { PluginRunContext } from '../context';
-import AIResponseBox from '../../ChatBox/components/AIResponseBox';
 import Markdown from '@/components/Markdown';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import AIResponseBox from '../../../components/AIResponseBox';
 
 const RenderOutput = () => {
   const { histories, isChatting } = useContextSelector(PluginRunContext, (v) => v);

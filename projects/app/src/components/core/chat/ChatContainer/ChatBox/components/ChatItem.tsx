@@ -10,7 +10,7 @@ import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constant
 import FilesBlock from './FilesBox';
 import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
-import AIResponseBox from './AIResponseBox';
+import AIResponseBox from '../../../components/AIResponseBox';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {

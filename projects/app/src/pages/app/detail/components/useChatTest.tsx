@@ -17,7 +17,6 @@ import { AppContext } from './context';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 import { useChat } from '@/components/core/chat/ChatContainer/useChat';
@@ -102,11 +101,8 @@ export const useChatTest = ({
       <ChatBox
         ref={ChatBoxRef}
         appId={appDetail._id}
-        appType={appDetail.type}
-        chatType={ChatTypeEnum.chatTest}
         appAvatar={appDetail.avatar}
         userAvatar={userInfo?.avatar}
-        pluginInputs={pluginInputs}
         showMarkIcon
         chatConfig={chatConfig}
         showFileSelector={checkChatSupportSelectFileByModules(nodes)}

@@ -39,8 +39,9 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { cardStyles } from '../constants';
-import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import CustomPluginRunBox from '@/pages/chat/components/CustomPluginRunBox';
+import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 
 const Logs = () => {
   const { t } = useTranslation();
@@ -241,6 +242,8 @@ const DetailLogsModal = ({
   const { isPc } = useSystemStore();
   const theme = useTheme();
 
+  const { chatRecords, setChatRecords, variablesForm, pluginRunTab, setPluginRunTab } = useChat();
+
   const { data: chat, isFetching } = useQuery(
     ['getChatDetail', chatId],
     () => getInitChatInfo({ appId, chatId, loadCustomFeedbacks: true }),
@@ -338,20 +341,29 @@ const DetailLogsModal = ({
           </Flex>
         </Flex>
         <Box pt={chat?.app.type === AppTypeEnum.plugin ? 0 : 2} flex={'1 0 0'}>
-          <ChatBox
-            ref={ChatBoxRef}
-            appType={chat?.app.type || AppTypeEnum.simple}
-            chatType={ChatTypeEnum.log}
-            pluginInputs={chat?.app.pluginInputs || []}
-            appAvatar={chat?.app.avatar}
-            userAvatar={HUMAN_ICON}
-            feedbackType={'admin'}
-            showMarkIcon
-            showVoiceIcon={false}
-            chatConfig={chat?.app?.chatConfig}
-            appId={appId}
-            chatId={chatId}
-          />
+          {chat?.app.type === AppTypeEnum.plugin ? (
+            <CustomPluginRunBox
+              pluginInputs={chat?.app.pluginInputs}
+              variablesForm={variablesForm}
+              histories={chatRecords}
+              setHistories={setChatRecords}
+              appId={chat.appId}
+              tab={pluginRunTab}
+              setTab={setPluginRunTab}
+            />
+          ) : (
+            <ChatBox
+              ref={ChatBoxRef}
+              appAvatar={chat?.app.avatar}
+              userAvatar={HUMAN_ICON}
+              feedbackType={'admin'}
+              showMarkIcon
+              showVoiceIcon={false}
+              chatConfig={chat?.app?.chatConfig}
+              appId={appId}
+              chatId={chatId}
+            />
+          )}
         </Box>
       </MyBox>
       <Box zIndex={2} position={'fixed'} top={0} left={0} bottom={0} right={0} onClick={onClose} />

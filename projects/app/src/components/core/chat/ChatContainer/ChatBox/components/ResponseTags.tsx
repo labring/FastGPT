@@ -16,7 +16,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'));
 const ContextModal = dynamic(() => import('./ContextModal'));
-const WholeResponseModal = dynamic(() => import('./WholeResponseModal'));
+const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
 
 const isLLMNode = (item: ChatHistoryItemResType) =>
   item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.tools;

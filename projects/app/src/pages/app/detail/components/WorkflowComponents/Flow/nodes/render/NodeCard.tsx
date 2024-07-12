@@ -13,7 +13,6 @@ import { ToolTargetHandle } from './Handle/ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
-import { ResponseBox } from '@/components/core/chat/ChatContainer/ChatBox/components/WholeResponseModal';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import { storeNode2FlowNode, getLatestNodeTemplate } from '@/web/core/workflow/utils';
@@ -26,6 +25,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
+import { ResponseBox } from '@/components/core/chat/components/WholeResponseModal';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
