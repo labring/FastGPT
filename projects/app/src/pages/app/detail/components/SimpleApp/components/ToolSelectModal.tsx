@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -30,12 +30,15 @@ import {
 import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AddIcon } from '@chakra-ui/icons';
-import { getPreviewPluginNode, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
+import {
+  getPreviewPluginNode,
+  getSystemPlugTemplates,
+  getSystemPluginPaths
+} from '@/web/core/app/api/plugin';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useForm } from 'react-hook-form';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { getTeamPlugTemplates } from '@/web/core/app/api/plugin';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
@@ -65,7 +68,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   const { data: templates = [], loading: isLoading } = useRequest2(
     async () => {
       if (templateType === TemplateTypeEnum.systemPlugin) {
-        return (await getSystemPlugTemplates()).filter(
+        return (await getSystemPlugTemplates(parentId)).filter(
           (item) => item.isTool && item.name.toLowerCase().includes(searchKey.toLowerCase())
         );
       } else if (templateType === TemplateTypeEnum.teamPlugin) {
@@ -84,10 +87,20 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     }
   );
 
-  const { data: paths = [] } = useRequest2(() => getAppFolderPath(parentId), {
-    manual: false,
-    refreshDeps: [parentId]
-  });
+  const { data: paths = [] } = useRequest2(
+    () => {
+      if (templateType === TemplateTypeEnum.teamPlugin) return getAppFolderPath(parentId);
+      return getSystemPluginPaths(parentId);
+    },
+    {
+      manual: false,
+      refreshDeps: [parentId]
+    }
+  );
+
+  useEffect(() => {
+    setParentId('');
+  }, [templateType, searchKey]);
 
   return (
     <MyModal
@@ -131,7 +144,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
         </InputGroup>
       </Box>
       {/* route components */}
-      {templateType === TemplateTypeEnum.teamPlugin && !searchKey && parentId && (
+      {!searchKey && parentId && (
         <Flex mt={2} px={[3, 6]}>
           <FolderPath
             paths={paths}

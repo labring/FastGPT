@@ -2,6 +2,7 @@
   "name": "@fastgpt/plugins",
   "version": "1.0.0",
   "dependencies": {
+    "duck-duck-scrape": "^2.2.5",
     "expr-eval": "^2.0.2"
   },
   "devDependencies": {

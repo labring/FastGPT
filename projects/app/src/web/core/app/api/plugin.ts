@@ -11,6 +11,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { GetPreviewNodeQuery } from '@/pages/api/core/app/plugin/getPreviewNode';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { ParentIdType, ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = (data?: ListAppBody) =>
@@ -30,8 +31,12 @@ export const getTeamPlugTemplates = (data?: ListAppBody) =>
     }))
   );
 
-export const getSystemPlugTemplates = () =>
-  GET<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates');
+/* ============ system plugin ============== */
+export const getSystemPlugTemplates = (parentId: ParentIdType) =>
+  GET<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates', { parentId });
+
+export const getSystemPluginPaths = (parentId: ParentIdType) =>
+  GET<ParentTreePathItemType[]>('/core/app/plugin/path', { parentId });
 
 export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
   GET<FlowNodeTemplateType>('/core/app/plugin/getPreviewNode', data);

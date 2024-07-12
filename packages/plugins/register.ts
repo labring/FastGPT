@@ -1,27 +1,36 @@
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
-import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SystemPluginResponseType } from './type';
-import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { FastGPTProUrl, isProduction } from '../service/common/system/constants';
 import { GET, POST } from '@fastgpt/service/common/api/plusRequest';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 
-let list = ['getTime', 'fetchUrl', 'mathExprVal'];
+let list = ['getTime', 'fetchUrl', 'mathExprVal', 'duckduckgo', 'duckduckgo/search'];
 
 /* Get plugins */
 export const getCommunityPlugins = () => {
-  return list.map<SystemPluginTemplateItemType>((name) => ({
-    ...require(`./src/${name}/template.json`),
-    id: `${PluginSourceEnum.community}-${name}`,
-    isActive: true
-  }));
+  return list.map<SystemPluginTemplateItemType>((name) => {
+    const config = require(`./src/${name}/template.json`);
+
+    const isFolder = list.find((item) => item.startsWith(`${name}/`));
+
+    const parentIdList = name.split('/').slice(0, -1);
+    const parentId =
+      parentIdList.length > 0 ? `${PluginSourceEnum.community}-${parentIdList.join('/')}` : null;
+
+    return {
+      ...config,
+      id: `${PluginSourceEnum.community}-${name}`,
+      isFolder,
+      parentId,
+      isActive: true
+    };
+  });
 };
 const getCommercialPlugins = () => {
   return GET<SystemPluginTemplateItemType[]>('/core/app/plugin/getSystemPlugins');
 };
 export const getSystemPluginTemplates = async () => {
-  if (global.systemPlugins) return global.systemPlugins;
+  if (isProduction && global.systemPlugins) return global.systemPlugins;
 
   try {
     global.systemPlugins = [];
