@@ -22,8 +22,8 @@ import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import { AppLogsListItemType } from '@/types/app';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import ChatBox from '@/components/ChatBox';
-import type { ComponentRef } from '@/components/ChatBox/type.d';
+import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
+import type { ComponentRef } from '@/components/core/chat/ChatContainer/ChatBox/type.d';
 import { useQuery } from '@tanstack/react-query';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -32,14 +32,14 @@ import { addDays } from 'date-fns';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import DateRangePicker, { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
-import { formatChatValue2InputType } from '@/components/ChatBox/utils';
+import { formatChatValue2InputType } from '@/components/core/chat/ChatContainer/ChatBox/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useI18n } from '@/web/context/I18n';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { cardStyles } from '../constants';
-import { ChatTypeEnum } from '@/components/ChatBox/constants';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const Logs = () => {

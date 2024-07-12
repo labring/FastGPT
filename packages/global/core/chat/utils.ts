@@ -89,14 +89,16 @@ export const filterPublicNodeResponseData = ({
     });
 };
 
-export const removeEmptyUserInput = (input: UserChatItemValueItemType[]) => {
-  return input.filter((item) => {
-    if (item.type === ChatItemValueTypeEnum.text && !item.text?.content?.trim()) {
-      return false;
-    }
-    if (item.type === ChatItemValueTypeEnum.file && !item.file?.url) {
-      return false;
-    }
-    return true;
-  });
+export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {
+  return (
+    input?.filter((item) => {
+      if (item.type === ChatItemValueTypeEnum.text && !item.text?.content?.trim()) {
+        return false;
+      }
+      if (item.type === ChatItemValueTypeEnum.file && !item.file?.url) {
+        return false;
+      }
+      return true;
+    }) || []
+  );
 };

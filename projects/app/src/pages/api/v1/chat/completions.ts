@@ -3,7 +3,11 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatItemValueTypeEnum,
+  ChatRoleEnum,
+  ChatSourceEnum
+} from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
@@ -50,12 +54,16 @@ import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { updatePluginInputNodeInputs } from '@fastgpt/global/core/workflow/utils';
+import { updatePluginInputByVariables } from '@fastgpt/global/core/workflow/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import {
+  getPluginInputsFromStoreNodes,
+  getPluginRunContent
+} from '@fastgpt/global/core/app/plugin/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
   appId?: string;
-  appType: AppTypeEnum;
 };
 
 export type Props = ChatCompletionCreateParams &
@@ -95,7 +103,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const {
     chatId,
     appId,
-    appType,
     // share chat
     shareId,
     outLinkUid,
@@ -109,34 +116,29 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   } = req.body as Props;
   try {
     const originIp = requestIp.getClientIp(req);
-
     await connectToDatabase();
-    // body data check
-    if (!messages) {
-      throw new Error('Params Error');
-    }
-    if (!Array.isArray(messages)) {
-      throw new Error('messages is not array');
-    }
-    if (messages.length === 0) {
-      throw new Error('messages is empty');
-    }
 
-    let startTime = Date.now();
+    const startTime = Date.now();
+    const responseChatItemId: string | undefined = messages[messages.length - 1]?.dataId;
 
-    // Web chat params: [Human, AI]
+    // Web chat params: [Human, AI], remove the ai response
     const chatMessages = GPTMessages2Chats(messages);
-    if (chatMessages[chatMessages.length - 1].obj !== ChatRoleEnum.Human) {
+    if (
+      chatMessages.length > 0 &&
+      chatMessages[chatMessages.length - 1].obj !== ChatRoleEnum.Human
+    ) {
       chatMessages.pop();
     }
 
-    // user question
-    const question = chatMessages.pop() as UserChatItemType;
-    if (!question) {
-      throw new Error('Question is empty');
-    }
+    // Computed start hook params
+    const startHookText = (() => {
+      // Chat
+      const userQuestion = chatMessages[chatMessages.length - 1] as UserChatItemType | undefined;
+      if (userQuestion) return chatValue2RuntimePrompt(userQuestion.value).text;
 
-    const { text, files } = chatValue2RuntimePrompt(question.value);
+      // plugin
+      return JSON.stringify(variables);
+    })();
 
     /* 
       1. auth app permission
@@ -153,7 +155,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             outLinkUid,
             chatId,
             ip: originIp,
-            question: text
+            question: startHookText
           });
         }
         // team space chat
@@ -173,8 +175,46 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           chatId
         });
       })();
+    const isPlugin = app.type === AppTypeEnum.plugin;
 
-    // 1. get and concat history; 2. get app workflow
+    // Check message type
+    if (!isPlugin) {
+      if (!Array.isArray(messages)) {
+        throw new Error('messages is not array');
+      }
+      if (messages.length === 0) {
+        throw new Error('messages is empty');
+      }
+    }
+
+    // Get obj=Human history
+    const userQuestion: UserChatItemType = (() => {
+      if (isPlugin) {
+        return {
+          dataId: getNanoid(24),
+          obj: ChatRoleEnum.Human,
+          value: [
+            {
+              type: ChatItemValueTypeEnum.text,
+              text: {
+                content: getPluginRunContent({
+                  pluginInputs: getPluginInputsFromStoreNodes(app.modules)
+                })
+              }
+            }
+          ]
+        };
+      }
+
+      const latestHumanChat = chatMessages.pop() as UserChatItemType | undefined;
+      if (!latestHumanChat) {
+        throw new Error('User question is empty');
+      }
+      return latestHumanChat;
+    })();
+    const { text, files } = chatValue2RuntimePrompt(userQuestion.value);
+
+    // Get and concat history;
     const limit = getMaxHistoryLimitFromNodes(app.modules);
     const [{ histories }, { nodes, edges, chatConfig }] = await Promise.all([
       getChatItems({
@@ -186,7 +226,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       getAppLatestVersion(app._id, app)
     ]);
     const newHistories = concatHistories(histories, chatMessages);
-    const responseChatItemId: string | undefined = messages[messages.length - 1].dataId;
+
+    // Get runtimeNodes
+    const runtimeNodes = isPlugin
+      ? updatePluginInputByVariables(
+          storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
+          variables
+        )
+      : storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes));
 
     /* start flow controller */
     const { flowResponses, flowUsages, assistantResponses, newVariables } = await (async () => {
@@ -200,16 +247,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           app,
           chatId,
           responseChatItemId,
-          runtimeNodes:
-            appType === AppTypeEnum.plugin
-              ? updatePluginInputNodeInputs(
-                  storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
-                  variables
-                )
-              : storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
+          runtimeNodes,
           runtimeEdges: initWorkflowEdgeStatus(edges),
           variables,
-          query: removeEmptyUserInput(question.value),
+          query: removeEmptyUserInput(userQuestion.value),
           histories: newHistories,
           stream,
           detail,
@@ -268,7 +309,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         outLinkUid: outLinkUserId,
         source,
         content: [
-          question,
+          userQuestion,
           {
             dataId: responseChatItemId,
             obj: ChatRoleEnum.AI,
@@ -286,9 +327,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     /* select fe response field */
     const feResponseData =
-      canWrite || appType === AppTypeEnum.plugin
-        ? flowResponses
-        : filterPublicNodeResponseData({ flowResponses });
+      canWrite || isPlugin ? flowResponses : filterPublicNodeResponseData({ flowResponses });
 
     if (stream) {
       responseWrite({

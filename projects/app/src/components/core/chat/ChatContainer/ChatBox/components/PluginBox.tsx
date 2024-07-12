@@ -1,10 +1,11 @@
-import { Box, Button, Center, Divider, Flex, Spinner } from '@chakra-ui/react';
+import { Box, Button, Divider, Flex } from '@chakra-ui/react';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useState } from 'react';
 import { Control, Controller, FieldValues, UseFormHandleSubmit } from 'react-hook-form';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
-import { ChatBoxInputType, StartChatFnProps } from '../type';
+import { ChatBoxInputType } from '../type';
+import { StartChatFnProps } from '../../type';
 import AIResponseBox from './AIResponseBox';
 import Markdown from '@/components/Markdown';
 import { ResponseBox } from './WholeResponseModal';

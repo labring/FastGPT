@@ -1,18 +1,18 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useShareChatStore } from '@/web/core/chat/storeShareChat';
 import SideBar from '@/components/SideBar';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
-import ChatBox from '@/components/ChatBox';
-import type { ComponentRef, StartChatFnProps } from '@/components/ChatBox/type.d';
+import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
+import type { ComponentRef } from '@/components/core/chat/ChatContainer/ChatBox/type.d';
+import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
+
 import PageContainer from '@/components/PageContainer';
 import ChatHeader from './components/ChatHeader';
 import ChatHistorySlider from './components/ChatHistorySlider';
@@ -34,7 +34,7 @@ import { defaultChatData } from '@/global/core/chat/constants';
 import { useMount } from 'ahooks';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatTypeEnum } from '@/components/ChatBox/constants';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
 type Props = {
   appName: string;

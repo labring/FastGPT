@@ -14,6 +14,8 @@ import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { updatePluginInputByVariables } from '@fastgpt/global/core/workflow/utils';
 
 export type Props = {
   history: ChatItemType[];
@@ -45,15 +47,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } = req.body as Props;
   try {
     await connectToDatabase();
-    if (!history || !nodes || !prompt) {
-      throw new Error('Params Error');
-    }
-    if (!Array.isArray(nodes)) {
-      throw new Error('Nodes is not array');
-    }
-    if (!Array.isArray(edges)) {
-      throw new Error('Edges is not array');
-    }
 
     /* user auth */
     const [{ app }, { teamId, tmbId }] = await Promise.all([
@@ -63,6 +56,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         authToken: true
       })
     ]);
+    const isPlugin = app.type === AppTypeEnum.plugin;
+
+    if (!Array.isArray(nodes)) {
+      throw new Error('Nodes is not array');
+    }
+    if (!Array.isArray(edges)) {
+      throw new Error('Edges is not array');
+    }
+
+    // Plugin need to replace inputs
+    if (isPlugin) {
+      nodes = updatePluginInputByVariables(nodes, variables);
+    } else {
+      if (!prompt) {
+        throw new Error('Params Error');
+      }
+    }
 
     // auth balance
     const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);

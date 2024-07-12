@@ -1,7 +1,7 @@
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import React, { forwardRef, ForwardedRef } from 'react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
-import { Box, Flex, IconButton } from '@chakra-ui/react';
+import { Box, Flex, HStack, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
@@ -11,6 +11,8 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pages/app/detail/components/context';
 import { useChatTest } from '@/pages/app/detail/components/useChatTest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
+import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;
@@ -34,7 +36,7 @@ const ChatTest = (
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const isPlugin = appDetail.type === AppTypeEnum.plugin;
 
-  const { resetChatBox, ChatBox } = useChatTest({
+  const { resetChatBox, ChatContainer, pluginRunTab, setPluginRunTab, chatRecords } = useChatTest({
     nodes,
     edges,
     chatConfig: appDetail.chatConfig
@@ -66,7 +68,43 @@ const ChatTest = (
         overflow={'hidden'}
         transition={'.2s ease'}
       >
-        {!isPlugin ? (
+        {isPlugin ? (
+          <Flex
+            alignItems={'flex-start'}
+            justifyContent={'space-between'}
+            px={3}
+            pt={2}
+            bg={'myGray.25'}
+            borderBottom={'base'}
+          >
+            <LightRowTabs<PluginRunBoxTabEnum>
+              list={[
+                { label: t('common.Input'), value: PluginRunBoxTabEnum.input },
+                ...(chatRecords.length > 0
+                  ? [
+                      { label: t('common.Output'), value: PluginRunBoxTabEnum.output },
+                      { label: '完整结果', value: PluginRunBoxTabEnum.detail }
+                    ]
+                  : [])
+              ]}
+              value={pluginRunTab}
+              onChange={setPluginRunTab}
+              inlineStyles={{ px: 0.5, pb: 2 }}
+              gap={5}
+              py={0}
+              fontSize={'sm'}
+            />
+
+            <MyIcon
+              mt={1}
+              name={'common/closeLight'}
+              w={'1.4rem'}
+              cursor={'pointer'}
+              _hover={{ color: 'primary.600' }}
+              onClick={onClose}
+            />
+          </Flex>
+        ) : (
           <Flex
             py={4}
             px={5}
@@ -90,23 +128,21 @@ const ChatTest = (
                 }}
               />
             </MyTooltip>
+            <MyTooltip label={t('common.Close')}>
+              <IconButton
+                ml={4}
+                icon={<SmallCloseIcon fontSize={'22px'} />}
+                variant={'grayBase'}
+                size={'smSquare'}
+                aria-label={''}
+                onClick={onClose}
+              />
+            </MyTooltip>
           </Flex>
-        ) : null}
-        <MyTooltip label={t('common.Close')}>
-          <IconButton
-            position={'absolute'}
-            right={4}
-            top={4}
-            zIndex={99}
-            icon={<SmallCloseIcon fontSize={'22px'} />}
-            variant={'grayBase'}
-            size={'smSquare'}
-            aria-label={''}
-            onClick={onClose}
-          />
-        </MyTooltip>
+        )}
+
         <Box flex={1}>
-          <ChatBox />
+          <ChatContainer />
         </Box>
       </Flex>
     </>

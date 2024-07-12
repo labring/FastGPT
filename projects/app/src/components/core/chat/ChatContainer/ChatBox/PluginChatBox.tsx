@@ -6,12 +6,8 @@ import { useForm, UseFormHandleSubmit } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from './Provider';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import {
-  ChatBoxInputFormType,
-  ChatBoxInputType,
-  generatingMessageProps,
-  StartChatFnProps
-} from './type';
+import { ChatBoxInputFormType, ChatBoxInputType } from './type';
+import type { generatingMessageProps, StartChatFnProps } from '../type';
 import { ChatSiteItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
