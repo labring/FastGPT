@@ -467,8 +467,8 @@ const ChatBox = (
               responseText,
               isNewChat = false
             } = await onStartChat({
-              chatList: newChatList,
-              messages,
+              messages: messages.slice(0, -1),
+              responseChatItemId: responseChatId,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
               variables: requestVariables

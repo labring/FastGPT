@@ -62,7 +62,7 @@ import {
 } from '@fastgpt/global/core/app/plugin/utils';
 
 type FastGptWebChatProps = {
-  chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
+  chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
   appId?: string;
 };
 
@@ -70,14 +70,11 @@ export type Props = ChatCompletionCreateParams &
   FastGptWebChatProps &
   OutLinkChatAuthProps & {
     messages: ChatCompletionMessageParam[];
+    responseChatItemId?: string;
     stream?: boolean;
     detail?: boolean;
-    variables: Record<string, any>;
+    variables: Record<string, any>; // Global variables or plugin inputs
   };
-export type ChatResponseType = {
-  newChatId: string;
-  quoteLen?: number;
-};
 
 type AuthResponseType = {
   teamId: string;
@@ -109,26 +106,29 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // team chat
     teamId: spaceTeamId,
     teamToken,
+
     stream = false,
     detail = false,
     messages = [],
-    variables = {}
+    variables = {},
+    responseChatItemId = getNanoid()
   } = req.body as Props;
+
+  const originIp = requestIp.getClientIp(req);
+
+  const startTime = Date.now();
+
   try {
-    const originIp = requestIp.getClientIp(req);
-    await connectToDatabase();
-
-    const startTime = Date.now();
-    const responseChatItemId: string | undefined = messages[messages.length - 1]?.dataId;
-
-    // Web chat params: [Human, AI], remove the ai response
-    const chatMessages = GPTMessages2Chats(messages);
-    if (
-      chatMessages.length > 0 &&
-      chatMessages[chatMessages.length - 1].obj !== ChatRoleEnum.Human
-    ) {
-      chatMessages.pop();
+    if (!Array.isArray(messages)) {
+      throw new Error('messages is not array');
     }
+
+    /* 
+      Web params: chatId + [Human]
+      API params: chatId + [Human]
+      API params: [histories, Human]
+    */
+    const chatMessages = GPTMessages2Chats(messages);
 
     // Computed start hook params
     const startHookText = (() => {
@@ -179,9 +179,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Check message type
     if (!isPlugin) {
-      if (!Array.isArray(messages)) {
-        throw new Error('messages is not array');
-      }
       if (messages.length === 0) {
         throw new Error('messages is empty');
       }

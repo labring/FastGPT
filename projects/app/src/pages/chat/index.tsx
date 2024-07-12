@@ -130,15 +130,22 @@ const Chat = ({
   );
 
   const onStartChat = useCallback(
-    async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
-      const prompts = messages.slice(-2);
-
+    async ({
+      messages,
+      responseChatItemId,
+      controller,
+      generatingMessage,
+      variables
+    }: StartChatFnProps) => {
       const completionChatId = chatId || getNanoid();
+      // Just send a user prompt
+      const histories = messages.slice(-1);
 
       const { responseText, responseData } = await streamFetch({
         data: {
-          messages: prompts,
+          messages: histories,
           variables,
+          responseChatItemId,
           appId,
           chatId: completionChatId
         },
@@ -146,7 +153,7 @@ const Chat = ({
         abortCtrl: controller
       });
 
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(prompts)[0]);
+      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
 
       // new chat
       if (completionChatId !== chatId) {
