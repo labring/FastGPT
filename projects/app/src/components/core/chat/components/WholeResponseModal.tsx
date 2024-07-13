@@ -154,7 +154,12 @@ export const ResponseBox = React.memo(function ResponseBox({
     <Flex h={'100%'} flexDirection={'column'}>
       {!hideTabs && (
         <Box>
-          <LightRowTabs list={list} value={currentTab} onChange={setCurrentTab} />
+          <LightRowTabs
+            list={list}
+            value={currentTab}
+            inlineStyles={{ pt: 0 }}
+            onChange={setCurrentTab}
+          />
         </Box>
       )}
       {activeModule && (

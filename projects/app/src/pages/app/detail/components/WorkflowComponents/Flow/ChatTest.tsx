@@ -13,6 +13,7 @@ import { useChatTest } from '@/pages/app/detail/components/useChatTest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
+import CloseIcon from '@fastgpt/web/components/common/Icon/close';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;
@@ -73,7 +74,7 @@ const ChatTest = (
             alignItems={'flex-start'}
             justifyContent={'space-between'}
             px={3}
-            pt={2}
+            pt={3}
             bg={'myGray.25'}
             borderBottom={'base'}
           >
@@ -95,14 +96,7 @@ const ChatTest = (
               fontSize={'sm'}
             />
 
-            <MyIcon
-              mt={1}
-              name={'common/closeLight'}
-              w={'1.4rem'}
-              cursor={'pointer'}
-              _hover={{ color: 'primary.600' }}
-              onClick={onClose}
-            />
+            <CloseIcon mt={1} onClick={onClose} />
           </Flex>
         ) : (
           <Flex

@@ -2,7 +2,11 @@ import { ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatBoxInputType, UserInputFileItemType } from './type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
-export const formatChatValue2InputType = (value: ChatItemValueItemType[]): ChatBoxInputType => {
+export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): ChatBoxInputType => {
+  if (!value) {
+    return { text: '', files: [] };
+  }
+
   if (!Array.isArray(value)) {
     console.error('value is error', value);
     return { text: '', files: [] };
