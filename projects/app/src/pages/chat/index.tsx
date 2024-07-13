@@ -35,6 +35,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
@@ -73,7 +74,7 @@ const Chat = ({
   } = useChat();
 
   const { userInfo } = useUserStore();
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
 
   // get chat app info
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);

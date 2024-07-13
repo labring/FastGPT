@@ -33,6 +33,7 @@ import type { CreateAppType } from './components/CreateModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const CreateModal = dynamic(() => import('./components/CreateModal'));
 const EditFolderModal = dynamic(
@@ -44,7 +45,7 @@ const MyApps = () => {
   const { t } = useTranslation();
   const { appT } = useI18n();
   const router = useRouter();
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
   const {
     paths,
     parentId,

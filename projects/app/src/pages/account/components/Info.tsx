@@ -44,6 +44,7 @@ import {
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const StandDetailModal = dynamic(() => import('./standardDetailModal'));
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
@@ -54,7 +55,7 @@ const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccoun
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
 const Account = () => {
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
   const { teamPlanStatus } = useUserStore();
   const standardPlan = teamPlanStatus?.standardConstants;
 
@@ -99,7 +100,7 @@ const MyInfo = () => {
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
 
   const { toast } = useToast();
   const {
