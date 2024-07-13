@@ -4,12 +4,10 @@ import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 
 type Props = {
   chatId: string;
@@ -20,7 +18,7 @@ type Props = {
   appChatConfig?: AppChatConfigType;
   variables?: Record<string, any>;
   isUpdateUseTime: boolean;
-  isPlugin?: boolean;
+  newTitle: string;
   source: `${ChatSourceEnum}`;
   shareId?: string;
   outLinkUid?: string;
@@ -37,7 +35,7 @@ export async function saveChat({
   appChatConfig,
   variables,
   isUpdateUseTime,
-  isPlugin,
+  newTitle,
   source,
   shareId,
   outLinkUid,
@@ -57,7 +55,6 @@ export async function saveChat({
       ...chat?.metadata,
       ...metadata
     };
-    const title = isPlugin ? formatTime2YMDHM(new Date()) : getChatTitleFromChatMessage(content[0]);
 
     await mongoSessionRun(async (session) => {
       await MongoChatItem.insertMany(
@@ -72,7 +69,7 @@ export async function saveChat({
       );
 
       if (chat) {
-        chat.title = title;
+        chat.title = newTitle;
         chat.updateTime = new Date();
         chat.metadata = metadataUpdate;
         chat.variables = variables || {};
@@ -94,7 +91,7 @@ export async function saveChat({
               variableList,
               welcomeText,
               variables,
-              title,
+              title: newTitle,
               source,
               shareId,
               outLinkUid,

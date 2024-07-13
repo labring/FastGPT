@@ -1,9 +1,12 @@
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './PluginRunBox/constants';
+import { ComponentRef as ChatComponentRef } from './ChatBox/type';
 
 export const useChat = () => {
+  const ChatBoxRef = useRef<ChatComponentRef>(null);
+
   const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([]);
   const variablesForm = useForm();
   // plugin
@@ -25,9 +28,18 @@ export const useChat = () => {
         ...data,
         ...variables
       });
+
+      setTimeout(
+        () => {
+          ChatBoxRef.current?.scrollToBottom?.();
+          ChatBoxRef.current?.restartChat?.();
+        },
+        ChatBoxRef.current ? 0 : 500
+      );
     },
     [variablesForm, setChatRecords]
   );
+
   const clearChatRecords = useCallback(() => {
     setChatRecords([]);
 
@@ -35,9 +47,12 @@ export const useChat = () => {
     for (const key in data) {
       variablesForm.setValue(key, '');
     }
+    console.log(ChatBoxRef.current);
+    ChatBoxRef.current?.restartChat?.();
   }, [variablesForm]);
 
   return {
+    ChatBoxRef,
     chatRecords,
     setChatRecords,
     variablesForm,

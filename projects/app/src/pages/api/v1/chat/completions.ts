@@ -32,10 +32,10 @@ import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import {
   concatHistories,
   filterPublicNodeResponseData,
+  getChatTitleFromChatMessage,
   removeEmptyUserInput
 } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
-import { connectToDatabase } from '@/service/mongo';
 import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -60,6 +60,7 @@ import {
   getPluginInputsFromStoreNodes,
   getPluginRunContent
 } from '@fastgpt/global/core/app/plugin/utils';
+import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -178,7 +179,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const isPlugin = app.type === AppTypeEnum.plugin;
 
     // Check message type
-    if (!isPlugin) {
+    if (isPlugin) {
+    } else {
       if (messages.length === 0) {
         throw new Error('messages is empty');
       }
@@ -293,6 +295,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return ChatSourceEnum.online;
       })();
 
+      const newTitle = isPlugin
+        ? variables.cTime ?? getSystemTime(user.timezone)
+        : getChatTitleFromChatMessage(userQuestion);
+
       await saveChat({
         chatId,
         appId: app._id,
@@ -302,7 +308,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         appChatConfig: chatConfig,
         variables: newVariables,
         isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
-        isPlugin,
+        newTitle,
         shareId,
         outLinkUid: outLinkUserId,
         source,
@@ -324,8 +330,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
     /* select fe response field */
-    const feResponseData =
-      canWrite || isPlugin ? flowResponses : filterPublicNodeResponseData({ flowResponses });
+    const feResponseData = canWrite
+      ? flowResponses
+      : filterPublicNodeResponseData({ flowResponses });
 
     if (stream) {
       responseWrite({
@@ -343,7 +350,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
 
       if (detail) {
-        if (responseDetail) {
+        if (responseDetail || isPlugin) {
           responseWrite({
             res,
             event: SseResponseEventEnum.flowResponses,

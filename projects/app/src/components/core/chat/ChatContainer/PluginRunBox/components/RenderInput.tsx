@@ -3,17 +3,14 @@ import { Controller } from 'react-hook-form';
 import RenderPluginInput from './renderPluginInput';
 import { Button, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
-import { PluginRunBoxTabEnum } from '../constants';
 import { useContextSelector } from 'use-context-selector';
 import { PluginRunContext } from '../context';
-import { useI18n } from '@/web/context/I18n';
 
 const RenderInput = () => {
   const { pluginInputs, variablesForm, histories, onStartChat, onNewChat, onSubmit, isChatting } =
     useContextSelector(PluginRunContext, (v) => v);
 
   const { t } = useTranslation();
-  const { appT } = useI18n();
   const { control, handleSubmit } = variablesForm;
   const isDisabledInput = histories.length > 0;
 
@@ -56,7 +53,7 @@ const RenderInput = () => {
               handleSubmit(onSubmit)();
             }}
           >
-            {histories.length > 0 ? t('common.Restart') : appT('Run')}
+            {histories.length > 0 ? t('common.Restart') : t('common.Run')}
           </Button>
         </Flex>
       )}

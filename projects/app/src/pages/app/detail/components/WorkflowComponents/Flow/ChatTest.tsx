@@ -15,29 +15,22 @@ import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
 import CloseIcon from '@fastgpt/web/components/common/Icon/close';
 
-export type ChatTestComponentRef = {
-  resetChatTest: () => void;
-};
-
-const ChatTest = (
-  {
-    isOpen,
-    nodes = [],
-    edges = [],
-    onClose
-  }: {
-    isOpen: boolean;
-    nodes?: StoreNodeItemType[];
-    edges?: StoreEdgeItemType[];
-    onClose: () => void;
-  },
-  ref: ForwardedRef<ChatTestComponentRef>
-) => {
+const ChatTest = ({
+  isOpen,
+  nodes = [],
+  edges = [],
+  onClose
+}: {
+  isOpen: boolean;
+  nodes?: StoreNodeItemType[];
+  edges?: StoreEdgeItemType[];
+  onClose: () => void;
+}) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const isPlugin = appDetail.type === AppTypeEnum.plugin;
 
-  const { resetChatBox, ChatContainer, pluginRunTab, setPluginRunTab, chatRecords } = useChatTest({
+  const { restartChat, ChatContainer, pluginRunTab, setPluginRunTab, chatRecords } = useChatTest({
     nodes,
     edges,
     chatConfig: appDetail.chatConfig
@@ -117,9 +110,7 @@ const ChatTest = (
                 variant={'whiteDanger'}
                 borderRadius={'md'}
                 aria-label={'delete'}
-                onClick={(e) => {
-                  resetChatBox();
-                }}
+                onClick={restartChat}
               />
             </MyTooltip>
             <MyTooltip label={t('common.Close')}>
@@ -143,4 +134,4 @@ const ChatTest = (
   );
 };
 
-export default React.memo(forwardRef(ChatTest));
+export default React.memo(ChatTest);

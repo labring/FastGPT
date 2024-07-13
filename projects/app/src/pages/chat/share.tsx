@@ -10,7 +10,6 @@ import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
-import type { ComponentRef } from '@/components/core/chat/ChatContainer/ChatBox/type.d';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 
 import PageContainer from '@/components/PageContainer';
@@ -34,9 +33,11 @@ import { defaultChatData } from '@/global/core/chat/constants';
 import { useMount } from 'ahooks';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import CustomPluginRunBox from './components/CustomPluginRunBox';
 import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+
+import dynamic from 'next/dynamic';
+const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
 type Props = {
   appName: string;
@@ -65,7 +66,6 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
     [key: string]: string;
   };
   const { isPc } = useSystemStore();
-  const ChatBoxRef = useRef<ComponentRef>(null);
   const initSign = useRef(false);
   const [isEmbed, setIdEmbed] = useState(true);
 
@@ -86,19 +86,27 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
     onChangeChatId
   } = useContextSelector(ChatContext, (v) => v);
 
-  const { chatRecords, setChatRecords, variablesForm, pluginRunTab, setPluginRunTab } = useChat();
+  const {
+    ChatBoxRef,
+    chatRecords,
+    setChatRecords,
+    variablesForm,
+    pluginRunTab,
+    setPluginRunTab,
+    resetChatRecords
+  } = useChat();
 
   const startChat = useCallback(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
-      const prompts = messages.slice(-2);
-      const completionChatId =
-        chatData.app.type !== AppTypeEnum.plugin && chatId ? chatId : nanoid();
+      const completionChatId = chatId || getNanoid();
+      const histories = messages.slice(-1);
+
       //post message to report chat start
       window.top?.postMessage(
         {
           type: 'shareChatStart',
           data: {
-            question: prompts[0]?.content
+            question: histories[0]?.content
           }
         },
         '*'
@@ -106,7 +114,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
 
       const { responseText, responseData } = await streamFetch({
         data: {
-          messages: prompts,
+          messages: histories,
           variables: {
             ...variables,
             ...customVariables
@@ -120,28 +128,18 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
         abortCtrl: controller
       });
 
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(prompts)[0]);
+      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
 
       // new chat
       if (completionChatId !== chatId) {
         onChangeChatId(completionChatId, true);
-        loadHistories();
-      } else {
-        // update chat
-        onUpdateHistory({
-          appId,
-          chatId: completionChatId,
-          title: newTitle,
-          shareId,
-          outLinkUid
-        });
       }
+      loadHistories();
 
       // update chat window
       setChatData((state) => ({
         ...state,
-        title: newTitle,
-        history: ChatBoxRef.current?.getChatHistories() || state.history
+        title: newTitle
       }));
 
       // hook message
@@ -149,7 +147,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
         {
           type: 'shareChatFinish',
           data: {
-            question: prompts[0]?.content,
+            question: histories[0]?.content,
             answer: responseText
           }
         },
@@ -166,9 +164,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
       outLinkUid,
       forbidLoadChat,
       onChangeChatId,
-      loadHistories,
-      onUpdateHistory,
-      appId
+      loadHistories
     ]
   );
 
@@ -181,26 +177,18 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
         shareId,
         outLinkUid
       });
+      setChatData(res);
+
       const history = res.history.map((item) => ({
         ...item,
         dataId: item.dataId || nanoid(),
         status: ChatStatusEnum.finish
       }));
-      const result: InitChatResponse = {
-        ...res,
-        history
-      };
 
-      // reset chat box
-      ChatBoxRef.current?.resetHistory(history);
-      ChatBoxRef.current?.resetVariables(res.variables);
-      if (history.length > 0) {
-        setTimeout(() => {
-          ChatBoxRef.current?.scrollToBottom('auto');
-        }, 500);
-      }
-
-      setChatData(result);
+      resetChatRecords({
+        records: history,
+        variables: res.variables
+      });
     },
     {
       manual: false,
@@ -302,8 +290,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
             {/* header */}
             {showHead === '1' ? (
               <ChatHeader
-                appAvatar={chatData.app.avatar}
-                appName={chatData.app.name}
+                chatData={chatData}
                 history={chatData.history}
                 showHistory={showHistory === '1'}
               />
@@ -325,12 +312,14 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
               ) : (
                 <ChatBox
                   ref={ChatBoxRef}
+                  chatHistories={chatRecords}
+                  setChatHistories={setChatRecords}
+                  variablesForm={variablesForm}
                   appAvatar={chatData.app.avatar}
                   userAvatar={chatData.userAvatar}
                   chatConfig={chatData.app?.chatConfig}
                   showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                   feedbackType={'user'}
-                  onUpdateVariable={(e) => {}}
                   onStartChat={startChat}
                   onDelMessage={({ contentId }) =>
                     delChatRecordById({

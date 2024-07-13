@@ -19,7 +19,7 @@ const CustomPluginRunBox = (props: PluginRunBoxProps) => {
   }, [isPc, setTab, tab]);
 
   return isPc ? (
-    <Grid gridTemplateColumns={'1fr 1fr'} h={'100%'}>
+    <Grid gridTemplateColumns={'450px 1fr'} h={'100%'}>
       <Box px={3} py={4} borderRight={'base'} h={'100%'} overflowY={'auto'} w={'100%'}>
         <Box color={'myGray.900'} mb={5}>
           {t('common.Input')}

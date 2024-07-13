@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { delChatRecordById, getChatHistories, getInitChatInfo } from '@/web/core/chat/api';
@@ -9,7 +9,6 @@ import { useChatStore } from '@/web/core/chat/context/storeChat';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 
-import type { ComponentRef } from '@/components/core/chat/ChatContainer/ChatBox/type.d';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import PageContainer from '@/components/PageContainer';
 import SideBar from '@/components/SideBar';
@@ -35,8 +34,8 @@ import { useContextSelector } from 'use-context-selector';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 import { useChat } from '@/components/core/chat/ChatContainer/useChat';
+import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 
-const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
 const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
 type Props = { appId: string; chatId: string };
@@ -52,8 +51,6 @@ const Chat = ({
   const theme = useTheme();
   const { t } = useTranslation();
 
-  const ChatBoxRef = useRef<ComponentRef>(null);
-
   const { setLastChatAppId } = useChatStore();
   const {
     loadHistories,
@@ -66,6 +63,7 @@ const Chat = ({
     onChangeChatId
   } = useContextSelector(ChatContext, (v) => v);
   const {
+    ChatBoxRef,
     chatRecords,
     setChatRecords,
     variablesForm,
@@ -79,6 +77,7 @@ const Chat = ({
 
   // get chat app info
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
+  const isPlugin = chatData.app.type === AppTypeEnum.plugin;
 
   const { loading } = useRequest2(
     async () => {
@@ -98,15 +97,6 @@ const Chat = ({
         records: history,
         variables: res.variables
       });
-
-      // reset chat box
-      // ChatBoxRef.current?.resetHistory(history);
-      // ChatBoxRef.current?.resetVariables(res.variables);
-      // if (history.length > 0) {
-      //   setTimeout(() => {
-      //     ChatBoxRef.current?.scrollToBottom('auto');
-      //   }, 500);
-      // }
 
       setLastChatAppId(appId);
     },
@@ -159,16 +149,9 @@ const Chat = ({
       if (completionChatId !== chatId) {
         if (controller.signal.reason !== 'leave') {
           onChangeChatId(completionChatId, true);
-          loadHistories();
         }
-      } else {
-        // update chat
-        onUpdateHistory({
-          appId,
-          chatId: completionChatId,
-          title: newTitle
-        });
       }
+      loadHistories();
 
       // update chat window
       setChatData((state) => ({
@@ -178,7 +161,7 @@ const Chat = ({
 
       return { responseText, responseData, isNewChat: forbidLoadChat.current };
     },
-    [appId, chatId, forbidLoadChat, loadHistories, onChangeChatId, onUpdateHistory]
+    [appId, chatId, forbidLoadChat, loadHistories, onChangeChatId]
   );
 
   return (
@@ -242,17 +225,15 @@ const Chat = ({
           >
             {/* header */}
             <ChatHeader
-              appAvatar={chatData.app.avatar}
-              appName={chatData.app.name}
-              history={chatData.history}
-              chatModels={chatData.app.chatModels}
+              chatData={chatData}
+              history={chatRecords}
               onRoute2AppDetail={() => router.push(`/app/detail?appId=${appId}`)}
               showHistory
             />
 
             {/* chat box */}
             <Box flex={'1 0 0'} bg={'white'}>
-              {chatData.app.type === AppTypeEnum.plugin ? (
+              {isPlugin ? (
                 <CustomPluginRunBox
                   pluginInputs={chatData.app.pluginInputs}
                   variablesForm={variablesForm}
@@ -267,6 +248,9 @@ const Chat = ({
               ) : (
                 <ChatBox
                   ref={ChatBoxRef}
+                  chatHistories={chatRecords}
+                  setChatHistories={setChatRecords}
+                  variablesForm={variablesForm}
                   showEmptyIntro
                   appAvatar={chatData.app.avatar}
                   userAvatar={userInfo?.avatar}
