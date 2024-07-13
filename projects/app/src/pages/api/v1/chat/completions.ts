@@ -98,7 +98,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.end();
   });
 
-  const {
+  let {
     chatId,
     appId,
     // share chat
@@ -180,6 +180,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Check message type
     if (isPlugin) {
+      detail = true;
     } else {
       if (messages.length === 0) {
         throw new Error('messages is empty');
@@ -367,6 +368,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           return assistantResponses[0].text?.content;
         return assistantResponses;
       })();
+
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
         id: chatId || '',

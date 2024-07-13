@@ -103,3 +103,9 @@ export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {
     }) || []
   );
 };
+
+export const getPluginOutputsFromChatResponses = (responses: ChatHistoryItemResType[]) => {
+  const outputs =
+    responses.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput)?.pluginOutput ?? {};
+  return outputs;
+};
