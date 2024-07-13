@@ -9,7 +9,6 @@ import React, {
   useEffect
 } from 'react';
 import Script from 'next/script';
-import { throttle } from 'lodash';
 import type {
   AIChatItemValueItemType,
   ChatSiteItemType,
@@ -51,8 +50,8 @@ import ChatItem from './components/ChatItem';
 import dynamic from 'next/dynamic';
 import type { StreamResponseType } from '@/web/common/api/fetch';
 import { useContextSelector } from 'use-context-selector';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useThrottleFn } from 'ahooks';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -181,8 +180,8 @@ const ChatBox = (
   }, []);
 
   // 聊天信息生成中……获取当前滚动条位置，判断是否需要滚动到底部
-  const { run: generatingScroll } = useRequest2(
-    async () => {
+  const { run: generatingScroll } = useThrottleFn(
+    () => {
       if (!ChatBoxRef.current) return;
       const isBottom =
         ChatBoxRef.current.scrollTop + ChatBoxRef.current.clientHeight + 150 >=
@@ -191,7 +190,7 @@ const ChatBox = (
       isBottom && scrollToBottom('auto');
     },
     {
-      throttleWait: 100
+      wait: 100
     }
   );
 
@@ -537,7 +536,7 @@ const ChatBox = (
           autoTTSResponse && finishSegmentedAudio();
         },
         (err) => {
-          console.log(err?.variables);
+          console.log(err);
         }
       )();
     },

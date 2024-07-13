@@ -1,5 +1,4 @@
-import { SystemPluginResponseType } from '../../type';
-import { urlsFetch } from '../../../service/common/string/cheerio';
+import { urlsFetch } from '@fastgpt/service/common/string/cheerio';
 
 type Props = {
   url: string;

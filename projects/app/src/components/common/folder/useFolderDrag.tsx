@@ -32,20 +32,22 @@ export const useFolderDrag = ({
           e.preventDefault();
           setTargetId(undefined);
         },
-        onDrop: async (e: DragEvent<HTMLDivElement>) => {
-          e.preventDefault();
-          setTrue();
+        ...(isFolder && {
+          onDrop: async (e: DragEvent<HTMLDivElement>) => {
+            e.preventDefault();
+            setTrue();
 
-          try {
-            if (targetId && dragId && targetId !== dragId) {
-              await onDrop(dragId, targetId);
-            }
-          } catch (error) {}
+            try {
+              if (targetId && dragId && targetId !== dragId) {
+                await onDrop(dragId, targetId);
+              }
+            } catch (error) {}
 
-          setTargetId(undefined);
-          setDragId(undefined);
-          setFalse();
-        },
+            setTargetId(undefined);
+            setDragId(undefined);
+            setFalse();
+          }
+        }),
         ...(activeStyles &&
           targetId === dataId && {
             ...activeStyles
