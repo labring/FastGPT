@@ -3,8 +3,12 @@ import React from 'react';
 import { MessageCardStyle } from '../constants';
 import Markdown from '@/components/Markdown';
 import ChatAvatar from './ChatAvatar';
+import { useContextSelector } from 'use-context-selector';
+import { ChatBoxContext } from '../Provider';
 
-const WelcomeBox = ({ appAvatar, welcomeText }: { appAvatar?: string; welcomeText: string }) => {
+const WelcomeBox = ({ welcomeText }: { welcomeText: string }) => {
+  const appAvatar = useContextSelector(ChatBoxContext, (v) => v.appAvatar);
+
   return (
     <Box py={3}>
       {/* avatar */}

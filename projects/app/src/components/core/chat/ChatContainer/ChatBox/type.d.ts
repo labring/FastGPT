@@ -19,7 +19,6 @@ export type UserInputFileItemType = {
 export type ChatBoxInputFormType = {
   input: string;
   files: UserInputFileItemType[];
-  variables: Record<string, any>;
   chatStarted: boolean;
 };
 
@@ -29,9 +28,7 @@ export type ChatBoxInputType = {
 };
 
 export type ComponentRef = {
-  getChatHistories: () => ChatSiteItemType[];
-  resetVariables: (data?: Record<string, any>) => void;
-  resetHistory: (history: ChatSiteItemType[]) => void;
+  restartChat: () => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto') => void;
   sendPrompt: (question: string) => void;
 };

@@ -315,7 +315,13 @@ const EditForm = ({
           <VariableEdit
             variables={appForm.chatConfig.variables}
             onChange={(e) => {
-              appForm.chatConfig.variables = e;
+              setAppForm((state) => ({
+                ...state,
+                chatConfig: {
+                  ...state.chatConfig,
+                  variables: e
+                }
+              }));
             }}
           />
         </Box>

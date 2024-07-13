@@ -44,7 +44,7 @@ import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { AppContext } from '@/pages/app/detail/components/context';
-import ChatTest, { type ChatTestComponentRef } from './Flow/ChatTest';
+import ChatTest from './Flow/ChatTest';
 import { useDisclosure } from '@chakra-ui/react';
 import { uiWorkflow2StoreWorkflow } from './utils';
 import { useTranslation } from 'next-i18next';
@@ -750,7 +750,6 @@ const WorkflowContextProvider = ({
   }, [edges, nodes]);
 
   /* chat test */
-  const ChatTestRef = useRef<ChatTestComponentRef>(null);
   const { isOpen: isOpenTest, onOpen: onOpenTest, onClose: onCloseTest } = useDisclosure();
   const [workflowTestData, setWorkflowTestData] = useState<{
     nodes: StoreNodeItemType[];
@@ -813,7 +812,7 @@ const WorkflowContextProvider = ({
   return (
     <WorkflowContext.Provider value={value}>
       {children}
-      <ChatTest ref={ChatTestRef} isOpen={isOpenTest} {...workflowTestData} onClose={onCloseTest} />
+      <ChatTest isOpen={isOpenTest} {...workflowTestData} onClose={onCloseTest} />
     </WorkflowContext.Provider>
   );
 };

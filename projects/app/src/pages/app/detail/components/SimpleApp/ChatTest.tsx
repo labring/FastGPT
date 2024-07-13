@@ -27,7 +27,7 @@ const ChatTest = ({ appForm }: { appForm: AppSimpleEditFormType }) => {
     setWorkflowData({ nodes, edges });
   }, [appForm, setWorkflowData]);
 
-  const { resetChatBox, ChatContainer } = useChatTest({
+  const { restartChat, ChatContainer } = useChatTest({
     ...workflowData,
     chatConfig: appForm.chatConfig
   });
@@ -48,7 +48,7 @@ const ChatTest = ({ appForm }: { appForm: AppSimpleEditFormType }) => {
             aria-label={'delete'}
             onClick={(e) => {
               e.stopPropagation();
-              resetChatBox();
+              restartChat();
             }}
           />
         </MyTooltip>

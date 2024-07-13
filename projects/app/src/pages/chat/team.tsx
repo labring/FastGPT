@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { delChatRecordById, getChatHistories, getTeamChatInfo } from '@/web/core/chat/api';
 import { useRouter } from 'next/router';
@@ -16,7 +16,6 @@ import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
-import type { ComponentRef } from '@/components/core/chat/ChatContainer/ChatBox/type.d';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -31,9 +30,11 @@ import { useContextSelector } from 'use-context-selector';
 import { InitChatResponse } from '@/global/core/chat/api';
 import { defaultChatData } from '@/global/core/chat/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import CustomPluginRunBox from './components/CustomPluginRunBox';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useChat } from '@/components/core/chat/ChatContainer/useChat';
+
+import dynamic from 'next/dynamic';
+const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
 type Props = { appId: string; chatId: string; teamId: string; teamToken: string };
 
@@ -53,7 +54,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const { toast } = useToast();
   const theme = useTheme();
   const { isPc } = useSystemStore();
-  const ChatBoxRef = useRef<ComponentRef>(null);
 
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
 
@@ -68,16 +68,25 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     onChangeChatId
   } = useContextSelector(ChatContext, (v) => v);
 
-  const { chatRecords, setChatRecords, variablesForm, pluginRunTab, setPluginRunTab } = useChat();
+  const {
+    ChatBoxRef,
+    chatRecords,
+    setChatRecords,
+    variablesForm,
+    pluginRunTab,
+    setPluginRunTab,
+    resetChatRecords
+  } = useChat();
 
   const startChat = useCallback(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
-      const prompts = messages.slice(-2);
-      const completionChatId =
-        chatData.app.type !== AppTypeEnum.plugin && chatId ? chatId : nanoid();
+      const completionChatId = chatId || getNanoid();
+      // Just send a user prompt
+      const histories = messages.slice(-1);
+
       const { responseText, responseData } = await streamFetch({
         data: {
-          messages: prompts,
+          messages: histories,
           variables: {
             ...variables,
             ...customVariables
@@ -92,33 +101,24 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         abortCtrl: controller
       });
 
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(prompts)[0]);
+      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
 
       // new chat
       if (completionChatId !== chatId) {
         onChangeChatId(completionChatId, true);
-        loadHistories();
-      } else {
-        onUpdateHistory({
-          appId: chatData.appId,
-          chatId: completionChatId,
-          title: newTitle,
-          teamId,
-          teamToken
-        });
       }
+      loadHistories();
+
       // update chat window
       setChatData((state) => ({
         ...state,
-        title: newTitle,
-        history: ChatBoxRef.current?.getChatHistories() || state.history
+        title: newTitle
       }));
 
       return { responseText, responseData, isNewChat: forbidLoadChat.current };
     },
     [
       chatData.app.type,
-      chatData.appId,
       chatId,
       customVariables,
       appId,
@@ -126,8 +126,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       teamToken,
       forbidLoadChat,
       onChangeChatId,
-      loadHistories,
-      onUpdateHistory
+      loadHistories
     ]
   );
 
@@ -137,27 +136,19 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       if (!appId || forbidLoadChat.current) return;
 
       const res = await getTeamChatInfo({ teamId, appId, chatId, teamToken });
+      setChatData(res);
+
       const history = res.history.map((item) => ({
         ...item,
         dataId: item.dataId || nanoid(),
         status: ChatStatusEnum.finish
       }));
 
-      const result: InitChatResponse = {
-        ...res,
-        history
-      };
-
-      // have records.
-      ChatBoxRef.current?.resetHistory(history);
-      ChatBoxRef.current?.resetVariables(res.variables);
-      if (res.history.length > 0) {
-        setTimeout(() => {
-          ChatBoxRef.current?.scrollToBottom('auto');
-        }, 500);
-      }
-
-      setChatData(result);
+      // reset chat records
+      resetChatRecords({
+        records: history,
+        variables: res.variables
+      });
     },
     {
       manual: false,
@@ -238,12 +229,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
             flexDirection={'column'}
           >
             {/* header */}
-            <ChatHeader
-              appAvatar={chatData.app.avatar}
-              appName={chatData.app.name}
-              history={chatData.history}
-              showHistory
-            />
+            <ChatHeader chatData={chatData} history={chatData.history} showHistory />
             {/* chat box */}
             <Box flex={1}>
               {chatData.app.type === AppTypeEnum.plugin ? (
@@ -261,12 +247,14 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
               ) : (
                 <ChatBox
                   ref={ChatBoxRef}
+                  chatHistories={chatRecords}
+                  setChatHistories={setChatRecords}
+                  variablesForm={variablesForm}
                   appAvatar={chatData.app.avatar}
                   userAvatar={chatData.userAvatar}
                   chatConfig={chatData.app?.chatConfig}
                   showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                   feedbackType={'user'}
-                  onUpdateVariable={(e) => {}}
                   onStartChat={startChat}
                   onDelMessage={({ contentId }) =>
                     delChatRecordById({

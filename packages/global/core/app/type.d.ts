@@ -21,6 +21,7 @@ export type AppSchema = {
   name: string;
   avatar: string;
   intro: string;
+
   updateTime: Date;
 
   modules: StoreNodeItemType[];

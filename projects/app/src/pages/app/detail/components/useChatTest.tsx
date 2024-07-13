@@ -1,7 +1,6 @@
 import { useUserStore } from '@/web/support/user/useUserStore';
-import React, { useCallback, useRef } from 'react';
+import React from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
-import type { ComponentRef } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
 import {
@@ -21,8 +20,8 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 import { Box } from '@chakra-ui/react';
+import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 
-const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
 export const useChatTest = ({
@@ -35,7 +34,6 @@ export const useChatTest = ({
   chatConfig: AppChatConfigType;
 }) => {
   const { userInfo } = useUserStore();
-  const ChatBoxRef = useRef<ComponentRef>(null);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const startChat = useMemoizedFn(
@@ -66,6 +64,7 @@ export const useChatTest = ({
   const pluginInputs =
     nodes.find((node) => node.nodeId === FlowNodeTypeEnum.pluginInput)?.inputs || [];
   const {
+    ChatBoxRef,
     chatRecords,
     setChatRecords,
     variablesForm,
@@ -73,12 +72,6 @@ export const useChatTest = ({
     setPluginRunTab,
     clearChatRecords
   } = useChat();
-
-  const resetChatBox = useCallback(() => {
-    clearChatRecords();
-    ChatBoxRef.current?.resetHistory?.([]);
-    ChatBoxRef.current?.resetVariables?.();
-  }, [clearChatRecords]);
 
   const CustomChatContainer = useMemoizedFn(() =>
     appDetail.type === AppTypeEnum.plugin ? (
@@ -91,13 +84,16 @@ export const useChatTest = ({
           appId={appDetail._id}
           tab={pluginRunTab}
           setTab={setPluginRunTab}
-          onNewChat={resetChatBox}
+          onNewChat={clearChatRecords}
           onStartChat={startChat}
         />
       </Box>
     ) : (
       <ChatBox
         ref={ChatBoxRef}
+        chatHistories={chatRecords}
+        setChatHistories={setChatRecords}
+        variablesForm={variablesForm}
         appId={appDetail._id}
         appAvatar={appDetail.avatar}
         userAvatar={userInfo?.avatar}
@@ -111,7 +107,7 @@ export const useChatTest = ({
   );
 
   return {
-    resetChatBox,
+    restartChat: clearChatRecords,
     ChatContainer: CustomChatContainer,
     chatRecords,
     pluginRunTab,

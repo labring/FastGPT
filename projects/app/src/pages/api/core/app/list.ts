@@ -65,7 +65,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       return {
         // get all chat app
         teamId,
-        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple] },
+        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple, AppTypeEnum.plugin] },
         ...searchMatch
       };
     }

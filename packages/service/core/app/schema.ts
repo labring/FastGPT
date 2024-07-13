@@ -58,6 +58,7 @@ const AppSchema = new Schema({
     type: String,
     default: ''
   },
+
   updateTime: {
     type: Date,
     default: () => new Date()
@@ -112,7 +113,7 @@ const AppSchema = new Schema({
   ...getPermissionSchema(AppDefaultPermissionVal)
 });
 
-AppSchema.index({ updateTime: -1 });
+AppSchema.index({ teamId: 1, updateTime: -1 });
 AppSchema.index({ teamId: 1, type: 1 });
 AppSchema.index({ scheduledTriggerConfig: 1, intervalNextTime: -1 });
 
