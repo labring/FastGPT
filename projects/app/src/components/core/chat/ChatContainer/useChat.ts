@@ -15,11 +15,16 @@ export const useChat = () => {
 
       setChatRecords(records);
 
+      // Reset to empty input
       const data = variablesForm.getValues();
       for (const key in data) {
-        const val = variables[key] !== undefined ? variables[key] : '';
-        variablesForm.setValue(key, val);
+        data[key] = '';
       }
+
+      variablesForm.reset({
+        ...data,
+        ...variables
+      });
     },
     [variablesForm, setChatRecords]
   );

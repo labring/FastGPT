@@ -13,7 +13,7 @@ export type generatingMessageProps = {
 
 export type StartChatFnProps = {
   messages: ChatCompletionMessageParam[];
-  responseChatItemId: string;
+  responseChatItemId?: string;
   controller: AbortController;
   variables: Record<string, any>;
   generatingMessage: (e: generatingMessageProps) => void;

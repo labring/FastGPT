@@ -40,7 +40,7 @@ const PluginRunContextProvider = ({
   children,
   ...props
 }: PluginRunBoxProps & { children: ReactNode }) => {
-  const { pluginInputs, onStartChat, setHistories, histories } = props;
+  const { pluginInputs, onStartChat, setHistories, histories, setTab } = props;
 
   const { toast } = useToast();
   const chatController = useRef(new AbortController());
@@ -153,6 +153,7 @@ const PluginRunContextProvider = ({
       });
       return;
     }
+    setTab(PluginRunBoxTabEnum.output);
 
     // reset controller
     abortRequest();
@@ -191,7 +192,6 @@ const PluginRunContextProvider = ({
     ]);
 
     const { responseData } = await onStartChat({
-      chatList: [],
       messages: [],
       controller: chatController.current,
       generatingMessage,

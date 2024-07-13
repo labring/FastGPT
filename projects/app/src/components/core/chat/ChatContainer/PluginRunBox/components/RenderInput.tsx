@@ -9,16 +9,8 @@ import { PluginRunContext } from '../context';
 import { useI18n } from '@/web/context/I18n';
 
 const RenderInput = () => {
-  const {
-    pluginInputs,
-    variablesForm,
-    histories,
-    onStartChat,
-    onNewChat,
-    setTab,
-    onSubmit,
-    isChatting
-  } = useContextSelector(PluginRunContext, (v) => v);
+  const { pluginInputs, variablesForm, histories, onStartChat, onNewChat, onSubmit, isChatting } =
+    useContextSelector(PluginRunContext, (v) => v);
 
   const { t } = useTranslation();
   const { appT } = useI18n();
@@ -34,20 +26,22 @@ const RenderInput = () => {
             control={control}
             name={input.key}
             rules={{ required: input.required }}
-            render={({ field: { onChange, value } }) => (
-              <RenderPluginInput
-                value={value}
-                onChange={onChange}
-                label={input.label}
-                description={input.description}
-                isDisabled={isDisabledInput}
-                valueType={input.valueType}
-                placeholder={input.placeholder}
-                required={input.required}
-                min={input.min}
-                max={input.max}
-              />
-            )}
+            render={({ field: { onChange, value } }) => {
+              return (
+                <RenderPluginInput
+                  value={value}
+                  onChange={onChange}
+                  label={input.label}
+                  description={input.description}
+                  isDisabled={isDisabledInput}
+                  valueType={input.valueType}
+                  placeholder={input.placeholder}
+                  required={input.required}
+                  min={input.min}
+                  max={input.max}
+                />
+              );
+            }}
           />
         );
       })}
@@ -55,13 +49,12 @@ const RenderInput = () => {
         <Flex justifyContent={'end'} mt={8}>
           <Button
             isLoading={isChatting}
-            onClick={handleSubmit((variables) => {
+            onClick={() => {
               if (histories.length > 0) {
                 return onNewChat();
               }
-              setTab(PluginRunBoxTabEnum.output);
               handleSubmit(onSubmit)();
-            })}
+            }}
           >
             {histories.length > 0 ? t('common.Restart') : appT('Run')}
           </Button>
