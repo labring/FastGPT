@@ -88,9 +88,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           avatar: app.avatar,
           intro: app.intro,
           type: app.type,
-          pluginInputs: app.modules
-            ?.filter((module) => module.nodeId === FlowNodeTypeEnum.pluginInput)
-            .map((module) => module.inputs)[0]
+          pluginInputs:
+            app?.modules?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)
+              ?.inputs ?? []
         }
       }
     });

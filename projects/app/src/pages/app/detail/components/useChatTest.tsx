@@ -62,7 +62,7 @@ export const useChatTest = ({
   );
 
   const pluginInputs =
-    nodes.find((node) => node.nodeId === FlowNodeTypeEnum.pluginInput)?.inputs || [];
+    nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs || [];
   const {
     ChatBoxRef,
     chatRecords,

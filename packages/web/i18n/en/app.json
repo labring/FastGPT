@@ -39,6 +39,8 @@
   "My Apps": "My Apps",
   "Output Field Settings": "Output Field Settings",
   "Paste Config": "Paste Config",
+  "Plugin dispatch": "Plugins",
+  "Plugin dispatch tip": "It is up to the model to decide which plug-ins to add additional capabilities to. If the plug-in is selected, the knowledge base call is also treated as a special plug-in.",
   "Publish channel": "Publish channel",
   "Publish success": "Publish success",
   "Run": "Run",

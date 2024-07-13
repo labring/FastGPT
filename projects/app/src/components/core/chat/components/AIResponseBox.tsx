@@ -5,7 +5,6 @@ import {
   AccordionIcon,
   AccordionItem,
   AccordionPanel,
-  Avatar,
   Box
 } from '@chakra-ui/react';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -16,6 +15,7 @@ import {
 } from '@fastgpt/global/core/chat/type';
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import Avatar from '@/components/Avatar';
 
 type props = {
   value: UserChatItemValueItemType | AIChatItemValueItemType;
@@ -84,7 +84,7 @@ ${JSON.stringify(questionGuides)}`;
                     bg: 'auto'
                   }}
                 >
-                  <Avatar src={tool.toolAvatar} borderRadius={'md'} w={'1rem'} h={'1rem'} mr={2} />
+                  <Avatar src={tool.toolAvatar} w={'1rem'} h={'1rem'} mr={2} />
                   <Box mr={1} fontSize={'sm'}>
                     {tool.toolName}
                   </Box>
