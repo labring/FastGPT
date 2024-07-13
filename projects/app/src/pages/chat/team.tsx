@@ -34,6 +34,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 
 import dynamic from 'next/dynamic';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
 type Props = { appId: string; chatId: string; teamId: string; teamToken: string };
@@ -53,7 +54,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
   const { toast } = useToast();
   const theme = useTheme();
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
 
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
 

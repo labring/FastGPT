@@ -10,6 +10,7 @@ import { getUnreadCount } from '@/web/support/user/inform/api';
 import dynamic from 'next/dynamic';
 
 import Auth from './auth';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
 const UpdateInviteModal = dynamic(() => import('@/components/support/user/team/UpdateInviteModal'));
@@ -43,28 +44,14 @@ const phoneUnShowLayoutRoute: Record<string, boolean> = {
 const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { Loading } = useLoading();
-  const { loading, setScreenWidth, isPc, feConfigs, isNotSufficientModal } = useSystemStore();
+  const { loading, feConfigs, isNotSufficientModal } = useSystemStore();
+  const { isPc } = useSystem();
   const { userInfo } = useUserStore();
 
   const isChatPage = useMemo(
     () => router.pathname === '/chat' && Object.values(router.query).join('').length !== 0,
     [router.pathname, router.query]
   );
-
-  // listen screen width
-  useEffect(() => {
-    const resize = throttle(() => {
-      setScreenWidth(document.documentElement.clientWidth);
-    }, 300);
-
-    window.addEventListener('resize', resize);
-
-    resize();
-
-    return () => {
-      window.removeEventListener('resize', resize);
-    };
-  }, [setScreenWidth]);
 
   const { data, refetch: refetchUnRead } = useQuery(['getUnreadCount'], getUnreadCount, {
     enabled: !!userInfo && !!feConfigs.isPlus,

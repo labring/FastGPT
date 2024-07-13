@@ -32,6 +32,7 @@ import { getAppFolderPath } from '@/web/core/app/api/app';
 import { useWorkflowUtils } from './hooks/useUtils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { cloneDeep } from 'lodash';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -268,7 +269,7 @@ const RenderList = React.memo(function RenderList({
   const { t } = useTranslation();
   const { appT } = useI18n();
 
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
   const { x, y, zoom } = useViewport();
   const { setLoading } = useSystemStore();
   const { toast } = useToast();

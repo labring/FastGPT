@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box } from '@chakra-ui/react';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useMount } from 'ahooks';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
@@ -15,6 +14,7 @@ import { useContextSelector } from 'use-context-selector';
 import { cardStyles } from '../constants';
 
 import styles from './styles.module.scss';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const Edit = ({
   appForm,
@@ -23,7 +23,7 @@ const Edit = ({
   appForm: AppSimpleEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppSimpleEditFormType>>;
 }) => {
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
   const { loadAllDatasets } = useDatasetStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 

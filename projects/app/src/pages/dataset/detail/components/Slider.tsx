@@ -12,6 +12,7 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useI18n } from '@/web/context/I18n';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 export enum TabEnum {
   dataCard = 'dataCard',
@@ -27,7 +28,7 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
   const { datasetT } = useI18n();
   const router = useRouter();
   const query = router.query;
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
   const { datasetDetail, vectorTrainingMap, agentTrainingMap, rebuildingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
 

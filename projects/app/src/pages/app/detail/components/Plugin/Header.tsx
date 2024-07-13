@@ -16,12 +16,13 @@ import AppCard from '../WorkflowComponents/AppCard';
 import { uiWorkflow2StoreWorkflow } from '../WorkflowComponents/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import RouteTab from '../RouteTab';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const PublishHistories = dynamic(() => import('../PublishHistoriesSlider'));
 
 const Header = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
 
   const { appDetail, onPublish, currentTab } = useContextSelector(AppContext, (v) => v);
   const isV2Workflow = appDetail?.version === 'v2';

@@ -31,6 +31,7 @@ import Avatar from '@/components/Avatar';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const UsageDetail = dynamic(() => import('./UsageDetail'));
 
 const UsageTable = () => {
@@ -41,7 +42,7 @@ const UsageTable = () => {
     to: new Date()
   });
   const [usageSource, setUsageSource] = useState<UsageSourceEnum | ''>('');
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
   const { userInfo } = useUserStore();
   const [usageDetail, setUsageDetail] = useState<UsageItemType>();
 

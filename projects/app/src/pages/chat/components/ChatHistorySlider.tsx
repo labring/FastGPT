@@ -23,6 +23,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 type HistoryItemType = {
   id: string;
@@ -65,7 +66,7 @@ const ChatHistorySlider = ({
   const { t } = useTranslation();
   const { appT } = useI18n();
 
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
   const { userInfo } = useUserStore();
 
   const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.history);

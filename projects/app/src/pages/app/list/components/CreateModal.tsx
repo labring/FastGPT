@@ -29,6 +29,7 @@ import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useI18n } from '@/web/context/I18n';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 type FormType = {
   avatar: string;
@@ -44,7 +45,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
   const { toast } = useToast();
   const router = useRouter();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
 
   const typeMap = useRef({
     [AppTypeEnum.simple]: {

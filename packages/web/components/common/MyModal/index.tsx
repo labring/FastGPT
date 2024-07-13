@@ -7,11 +7,11 @@ import {
   ModalCloseButton,
   ModalContentProps,
   Box,
-  Image,
-  useMediaQuery
+  Image
 } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 import MyBox from '../MyBox';
+import { useSystem } from '../../../hooks/useSystem';
 
 export interface MyModalProps extends ModalContentProps {
   iconSrc?: string;
@@ -34,7 +34,7 @@ const MyModal = ({
   maxW = ['90vw', '600px'],
   ...props
 }: MyModalProps) => {
-  const [isPc] = useMediaQuery('(min-width: 900px)');
+  const isPc = useSystem();
 
   return (
     <Modal

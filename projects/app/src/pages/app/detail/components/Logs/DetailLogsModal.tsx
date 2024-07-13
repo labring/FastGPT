@@ -3,8 +3,6 @@ import { Flex, Box, useTheme } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useQuery } from '@tanstack/react-query';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -17,6 +15,8 @@ import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
 import CloseIcon from '@fastgpt/web/components/common/Icon/close';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useQuery } from '@tanstack/react-query';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
@@ -30,7 +30,7 @@ const DetailLogsModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
   const theme = useTheme();
 
   const {

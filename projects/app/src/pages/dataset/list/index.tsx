@@ -30,6 +30,7 @@ import {
   deleteDatasetCollaborators,
   getCollaboratorList
 } from '@/web/core/dataset/api/collaborator';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -38,7 +39,7 @@ const EditFolderModal = dynamic(
 const CreateModal = dynamic(() => import('./component/CreateModal'));
 
 const Dataset = () => {
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
   const { t } = useTranslation();
   const router = useRouter();
   const { parentId } = router.query as { parentId: string };

@@ -37,6 +37,7 @@ import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import dynamic from 'next/dynamic';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
 type Props = {
@@ -65,7 +66,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
     authToken: string;
     [key: string]: string;
   };
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
   const initSign = useRef(false);
   const [isEmbed, setIdEmbed] = useState(true);
 

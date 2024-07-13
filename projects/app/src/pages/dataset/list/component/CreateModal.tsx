@@ -21,13 +21,15 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useI18n } from '@/web/context/I18n';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
   const { t } = useTranslation();
   const { datasetT } = useI18n();
   const { toast } = useToast();
   const router = useRouter();
-  const { isPc, feConfigs, vectorModelList, datasetModelList } = useSystemStore();
+  const { feConfigs, vectorModelList, datasetModelList } = useSystemStore();
+  const { isPc } = useSystem();
 
   const filterNotHiddenVectorModelList = vectorModelList.filter((item) => !item.hidden);
 

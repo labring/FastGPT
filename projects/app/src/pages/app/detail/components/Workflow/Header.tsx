@@ -17,11 +17,12 @@ import { useRouter } from 'next/router';
 import AppCard from '../WorkflowComponents/AppCard';
 import { uiWorkflow2StoreWorkflow } from '../WorkflowComponents/utils';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const PublishHistories = dynamic(() => import('../PublishHistoriesSlider'));
 
 const Header = () => {
   const { t } = useTranslation();
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
   const router = useRouter();
 
   const { appDetail, onPublish, currentTab } = useContextSelector(AppContext, (v) => v);

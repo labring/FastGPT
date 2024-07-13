@@ -12,6 +12,7 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { InitChatResponse } from '@/global/core/chat/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const ChatHeader = ({
   chatData,
@@ -26,7 +27,7 @@ const ChatHeader = ({
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
 
   const chatModels = chatData.app.chatModels;
   const isPlugin = chatData.app.type === AppTypeEnum.plugin;

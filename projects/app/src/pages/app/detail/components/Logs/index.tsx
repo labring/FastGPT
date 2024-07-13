@@ -31,12 +31,13 @@ import { AppContext } from '../context';
 import { cardStyles } from '../constants';
 
 import dynamic from 'next/dynamic';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
 const Logs = () => {
   const { t } = useTranslation();
   const { appT } = useI18n();
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
