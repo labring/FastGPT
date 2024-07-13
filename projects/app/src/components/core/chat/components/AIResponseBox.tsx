@@ -30,7 +30,8 @@ const AIResponseBox = ({ value, index, chat, isLastChild, isChatting, questionGu
   if (value.text) {
     let source = (value.text?.content || '').trim();
 
-    // if (!source && chat.value.length > 1) return null;
+    // First empty line
+    if (!source && chat.value.length > 1) return null;
 
     // computed question guide
     if (

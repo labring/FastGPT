@@ -1,14 +1,13 @@
 import React from 'react';
 import { Controller, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Card, Input, Textarea } from '@chakra-ui/react';
+import { Box, Button, Card, FormControl, Input, Textarea } from '@chakra-ui/react';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatBoxInputFormType } from '../type.d';
-import { useRefresh } from '@fastgpt/web/hooks/useRefresh';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 
@@ -20,7 +19,6 @@ const VariableInput = ({
   chatForm: UseFormReturn<ChatBoxInputFormType>;
 }) => {
   const { t } = useTranslation();
-  const { refresh } = useRefresh();
 
   const { appAvatar, variableList, variablesForm } = useContextSelector(ChatBoxContext, (v) => v);
   const { register, getValues, setValue, handleSubmit: handleSubmitChat, control } = variablesForm;
@@ -79,17 +77,21 @@ const VariableInput = ({
                   control={control}
                   name={item.key}
                   rules={{ required: item.required }}
-                  render={({ field: { onChange, value } }) => (
-                    <MySelect
-                      width={'100%'}
-                      list={(item.enums || []).map((item) => ({
-                        label: item.value,
-                        value: item.value
-                      }))}
-                      value={value}
-                      onchange={onChange}
-                    />
-                  )}
+                  render={({ field: { ref, value } }) => {
+                    return (
+                      <MySelect
+                        ref={ref}
+                        width={'100%'}
+                        list={(item.enums || []).map((item) => ({
+                          label: item.value,
+                          value: item.value
+                        }))}
+                        h={'40px'}
+                        value={value}
+                        onchange={(e) => setValue(item.key, e)}
+                      />
+                    );
+                  }}
                 />
               )}
             </Box>
@@ -99,7 +101,7 @@ const VariableInput = ({
               leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
               size={'sm'}
               maxW={'100px'}
-              onClick={handleSubmitChat((data) => {
+              onClick={handleSubmitChat(() => {
                 chatForm.setValue('chatStarted', true);
               })}
             >
