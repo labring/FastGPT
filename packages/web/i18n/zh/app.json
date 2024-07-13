@@ -38,6 +38,8 @@
   "My Apps": "我的应用",
   "Output Field Settings": "输出字段编辑",
   "Paste Config": "粘贴配置",
+  "Plugin dispatch": "插件调用",
+  "Plugin dispatch tip": "给模型附加额外的能力，具体调用哪些插件，将由模型自主决定。\n若选择了插件，知识库调用将自动作为一个特殊的插件。",
   "Publish channel": "发布渠道",
   "Publish success": "发布成功",
   "Run": "运行",

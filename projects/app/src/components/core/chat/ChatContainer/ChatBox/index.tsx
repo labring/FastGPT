@@ -51,6 +51,7 @@ import ChatItem from './components/ChatItem';
 import dynamic from 'next/dynamic';
 import type { StreamResponseType } from '@/web/common/api/fetch';
 import { useContextSelector } from 'use-context-selector';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -162,27 +163,36 @@ const ChatBox = (
   const chatStarted = chatStartedWatch || chatHistories.length > 0 || variableList.length === 0;
 
   // 滚动到底部
-  const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
-    if (!ChatBoxRef.current) return;
-    ChatBoxRef.current.scrollTo({
-      top: ChatBoxRef.current.scrollHeight,
-      behavior
-    });
-  };
+  const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
+    setTimeout(() => {
+      if (!ChatBoxRef.current) {
+        setTimeout(() => {
+          scrollToBottom(behavior);
+        }, 500);
+      } else {
+        ChatBoxRef.current.scrollTo({
+          top: ChatBoxRef.current.scrollHeight,
+          behavior
+        });
+      }
+    }, delay);
+  }, []);
 
   // 聊天信息生成中……获取当前滚动条位置，判断是否需要滚动到底部
-  const generatingScroll = useCallback(
-    throttle(() => {
+  const { run: generatingScroll } = useRequest2(
+    async () => {
       if (!ChatBoxRef.current) return;
       const isBottom =
         ChatBoxRef.current.scrollTop + ChatBoxRef.current.clientHeight + 150 >=
         ChatBoxRef.current.scrollHeight;
 
       isBottom && scrollToBottom('auto');
-    }, 100),
-    []
+    },
+    {
+      throttleWait: 100
+    }
   );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   const generatingMessage = useCallback(
     ({
       event,
@@ -331,7 +341,7 @@ const ChatBox = (
         }
       } catch (error) {}
     },
-    [questionGuide, shareId, outLinkUid, teamId, teamToken]
+    [questionGuide, shareId, outLinkUid, teamId, teamToken, scrollToBottom]
   );
 
   /* Abort chat completions, questionGuide */
@@ -440,9 +450,7 @@ const ChatBox = (
           // 清空输入内容
           resetInputVal({});
           setQuestionGuide([]);
-          setTimeout(() => {
-            scrollToBottom();
-          }, 100);
+          scrollToBottom('smooth', 100);
           try {
             // create abort obj
             const abortSignal = new AbortController();
@@ -542,6 +550,7 @@ const ChatBox = (
       isPc,
       onStartChat,
       resetInputVal,
+      scrollToBottom,
       setAudioPlayingChatId,
       setChatHistories,
       splitText2Audio,
@@ -854,6 +863,7 @@ const ChatBox = (
     restartChat() {
       abortRequest();
       setValue('chatStarted', false);
+      scrollToBottom('smooth', 500);
     },
     scrollToBottom,
     sendPrompt: (question: string) => {

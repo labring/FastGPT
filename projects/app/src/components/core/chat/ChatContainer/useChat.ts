@@ -31,10 +31,9 @@ export const useChat = () => {
 
       setTimeout(
         () => {
-          ChatBoxRef.current?.scrollToBottom?.();
           ChatBoxRef.current?.restartChat?.();
         },
-        ChatBoxRef.current ? 0 : 500
+        ChatBoxRef.current?.restartChat ? 0 : 500
       );
     },
     [variablesForm, setChatRecords]

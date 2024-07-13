@@ -55,6 +55,11 @@ export async function saveChat({
       ...chat?.metadata,
       ...metadata
     };
+    const { welcomeText, variables: variableList } = getAppChatConfig({
+      chatConfig: appChatConfig,
+      systemConfigNode: getGuideModule(nodes),
+      isPublicFetch: false
+    });
 
     await mongoSessionRun(async (session) => {
       await MongoChatItem.insertMany(
@@ -68,39 +73,33 @@ export async function saveChat({
         { session }
       );
 
-      if (chat) {
-        chat.title = newTitle;
-        chat.updateTime = new Date();
-        chat.metadata = metadataUpdate;
-        chat.variables = variables || {};
-        await chat.save({ session });
-      } else {
-        const { welcomeText, variables: variableList } = getAppChatConfig({
-          chatConfig: appChatConfig,
-          systemConfigNode: getGuideModule(nodes),
-          isPublicFetch: false
-        });
-
-        await MongoChat.create(
-          [
-            {
-              chatId,
-              teamId,
-              tmbId,
-              appId,
-              variableList,
-              welcomeText,
-              variables,
-              title: newTitle,
-              source,
-              shareId,
-              outLinkUid,
-              metadata: metadataUpdate
-            }
-          ],
-          { session }
-        );
-      }
+      await MongoChat.updateOne(
+        {
+          appId,
+          chatId
+        },
+        {
+          $set: {
+            teamId,
+            tmbId,
+            appId,
+            chatId,
+            variableList,
+            welcomeText,
+            variables: variables || {},
+            title: newTitle,
+            source,
+            shareId,
+            outLinkUid,
+            metadata: metadataUpdate,
+            updateTime: new Date()
+          }
+        },
+        {
+          session,
+          upsert: true
+        }
+      );
     });
 
     if (isUpdateUseTime) {

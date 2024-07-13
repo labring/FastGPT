@@ -55,7 +55,7 @@ async function handler(
     getAppLatestVersion(app._id, app)
   ]);
   const pluginInputs =
-    app?.modules?.find((module) => module.nodeId === FlowNodeTypeEnum.pluginInput)?.inputs ?? [];
+    app?.modules?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ?? [];
 
   return {
     chatId,
