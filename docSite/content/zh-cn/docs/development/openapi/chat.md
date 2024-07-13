@@ -7,18 +7,22 @@ toc: true
 weight: 852
 ---
 
-## 发起对话
-
 {{% alert icon="🤖 " context="success" %}}
 该接口的 API Key 需使用`应用特定的 key`，否则会报错。  
 
 有些包调用时，`BaseUrl`需要添加`v1`路径，有些不需要，如果出现404情况，可补充`v1`重试。
 {{% /alert %}}
 
+## 发起对话(简易应用和工作流)
 
-**对话接口兼容`GPT`的接口！如果你的项目使用的是标准的`GPT`官方接口，可以直接通过修改`BaseUrl`和 `Authorization`来访问 FastGpt 应用。**
+对话接口兼容`GPT`的接口！如果你的项目使用的是标准的`GPT`官方接口，可以直接通过修改`BaseUrl`和 `Authorization`来访问 FastGpt 应用，不过需要注意下面几个规则：
 
-## 请求
+{{% alert icon="🤖 " context="success" %}}
+* 传入的`model`，`temperature`等参数字段均无效，这些字段由编排决定。
+* 不会返回实际消耗`Token`值，如果需要，可以设置`detail=true`，并手动计算 `responseData` 里的`tokens`值。
+{{% /alert %}}
+
+### 请求
 
 {{< tabs tabTotal="2" >}}
 {{< tab tabName="请求示例" >}}
@@ -67,7 +71,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/v1/chat/completions' 
 {{< /tab >}}
 {{< /tabs >}}
 
-## 响应
+### 响应
 
 {{< tabs tabTotal="5" >}}
 {{< tab tabName="detail=false,stream=false 响应" >}}
@@ -245,7 +249,7 @@ data: [{"moduleName":"知识库搜索","moduleType":"datasetSearchNode","running
 {{< /markdownify >}}
 {{< /tab >}}
 
-{{< tab tabName="detail=true,stream=true 时，event值" >}}
+{{< tab tabName="event值" >}}
 {{< markdownify >}}
 
 event取值：
@@ -264,6 +268,192 @@ event取值：
 {{< /tab >}}
 {{< /tabs >}}
 
+
+
+## 请求插件
+
+插件的接口与对话接口一致，仅请求参数略有区别，有以下规定：
+
+* 调用插件类型的应用时，接口默认为`detail`模式。
+* 无需传入 `chatId`，因为插件只能运行一轮。
+* 无需传入`messages`。
+* 通过传递`variables`来代表插件的输入。
+* 通过获取`pluginData`来获取插件输出。
+
+### 请求示例
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
+--header 'Authorization: Bearer test-xxxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "stream": false,
+    "chatId": "test",
+    "variables": {
+        "query":"你好" # 我的插件输入有一个参数，变量名叫 query
+    }
+}'
+```
+
+### 响应示例
+
+{{< tabs tabTotal="3" >}}
+
+{{< tab tabName="detail=true,stream=false 响应" >}}
+{{< markdownify >}}
+
+* 插件的输出可以通过查找`responseData`中, `moduleType=pluginOutput`的元素，其`pluginOutput`是插件的输出。
+* 流输出，仍可以通过`choices`进行获取。
+
+```json
+{
+    "responseData": [
+        {
+            "nodeId": "fdDgXQ6SYn8v",
+            "moduleName": "AI 对话",
+            "moduleType": "chatNode",
+            "totalPoints": 0.685,
+            "model": "FastAI-3.5",
+            "tokens": 685,
+            "query": "你好",
+            "maxToken": 2000,
+            "historyPreview": [
+                {
+                    "obj": "Human",
+                    "value": "你好"
+                },
+                {
+                    "obj": "AI",
+                    "value": "你好！有什么可以帮助你的吗？欢迎向我提问。"
+                }
+            ],
+            "contextTotalLen": 14,
+            "runningTime": 1.73
+        },
+        {
+            "nodeId": "pluginOutput",
+            "moduleName": "自定义插件输出",
+            "moduleType": "pluginOutput",
+            "totalPoints": 0,
+            "pluginOutput": {
+                "result": "你好！有什么可以帮助你的吗？欢迎向我提问。"
+            },
+            "runningTime": 0
+        }
+    ],
+    "newVariables": {
+        "query": "你好"
+    },
+    "id": "safsafsa",
+    "model": "",
+    "usage": {
+        "prompt_tokens": 1,
+        "completion_tokens": 1,
+        "total_tokens": 1
+    },
+    "choices": [
+        {
+            "message": {
+                "role": "assistant",
+                "content": "你好！有什么可以帮助你的吗？欢迎向我提问。"
+            },
+            "finish_reason": "stop",
+            "index": 0
+        }
+    ]
+}
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+
+{{< tab tabName="detail=true,stream=true 响应" >}}
+{{< markdownify >}}
+
+* 插件的输出可以通过获取`event=flowResponses`中的字符串，并将其反序列化后得到一个数组。同样的，查找 `moduleType=pluginOutput`的元素，其`pluginOutput`是插件的输出。
+* 流输出，仍和对话接口一样获取。
+
+```bash
+event: flowNodeStatus
+data: {"status":"running","name":"AI 对话"}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":""},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"你"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"好"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"！"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"有"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"什"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"么"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"可以"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"帮"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"助"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"你"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"的"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"吗"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"？"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":""},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{},"index":0,"finish_reason":"stop"}]}
+
+event: answer
+data: [DONE]
+
+event: flowResponses
+data: [{"nodeId":"fdDgXQ6SYn8v","moduleName":"AI 对话","moduleType":"chatNode","totalPoints":0.033,"model":"FastAI-3.5","tokens":33,"query":"你好","maxToken":2000,"historyPreview":[{"obj":"Human","value":"你好"},{"obj":"AI","value":"你好！有什么可以帮助你的吗？"}],"contextTotalLen":2,"runningTime":1.42},{"nodeId":"pluginOutput","moduleName":"自定义插件输出","moduleType":"pluginOutput","totalPoints":0,"pluginOutput":{"result":"你好！有什么可以帮助你的吗？"},"runningTime":0}]
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="输出获取" >}}
+{{< markdownify >}}
+
+event取值：
+
+- answer: 返回给客户端的文本（最终会算作回答）
+- fastAnswer: 指定回复返回给客户端的文本（最终会算作回答）
+- toolCall: 执行工具
+- toolParams: 工具参数
+- toolResponse: 工具返回
+- flowNodeStatus: 运行到的节点状态
+- flowResponses: 节点完整响应
+- updateVariables: 更新变量
+- error: 报错
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
 
 ## 使用案例
 
