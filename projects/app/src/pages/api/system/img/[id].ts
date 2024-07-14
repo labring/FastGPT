@@ -10,9 +10,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     const { id } = req.query as { id: string };
 
-    const binary = await readMongoImg({ id });
+    const { binary, metadata } = await readMongoImg({ id });
 
-    res.setHeader('Content-Type', guessBase64ImageType(binary.toString('base64')));
+    res.setHeader('Content-Type', metadata?.mime ?? guessBase64ImageType(binary.toString('base64')));
     res.send(binary);
   } catch (error) {
     jsonRes(res, {
