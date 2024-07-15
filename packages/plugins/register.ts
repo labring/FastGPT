@@ -4,7 +4,16 @@ import { FastGPTProUrl, isProduction } from '../service/common/system/constants'
 import { GET, POST } from '@fastgpt/service/common/api/plusRequest';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 
-let list = ['getTime', 'fetchUrl', 'mathExprVal', 'duckduckgo', 'duckduckgo/search'];
+let list = [
+  'getTime',
+  'fetchUrl',
+  'mathExprVal',
+  'duckduckgo',
+  'duckduckgo/search',
+  'duckduckgo/searchImg',
+  'duckduckgo/searchNews',
+  'duckduckgo/searchVideo'
+];
 
 /* Get plugins */
 export const getCommunityPlugins = () => {
@@ -51,12 +60,21 @@ export const getCommunityCb = async () => {
     return module.default;
   };
 
-  const result = await Promise.all(
-    list.map(async (name) => ({
-      name,
-      cb: await loadModule(name)
-    }))
-  );
+  const result = (
+    await Promise.all(
+      list.map(async (name) => {
+        try {
+          return {
+            name,
+            cb: await loadModule(name)
+          };
+        } catch (error) {}
+      })
+    )
+  ).filter(Boolean) as {
+    name: string;
+    cb: any;
+  }[];
 
   return result.reduce<Record<string, (e: any) => SystemPluginResponseType>>(
     (acc, { name, cb }) => {

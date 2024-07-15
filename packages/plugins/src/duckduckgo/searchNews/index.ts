@@ -1,4 +1,4 @@
-import { search, SafeSearchType } from 'duck-duck-scrape';
+import { searchNews, SafeSearchType } from 'duck-duck-scrape';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
 
@@ -13,17 +13,17 @@ type Response = Promise<{
 
 const main = async (props: Props, retry = 3): Response => {
   const { query } = props;
+
   try {
-    const searchResults = await search(query, {
-      safeSearch: SafeSearchType.STRICT,
-      time: 'y'
+    const searchResults = await searchNews(query, {
+      safeSearch: SafeSearchType.STRICT
     });
 
     const result = searchResults.results
       .map((item) => ({
         title: item.title,
-        link: item.url,
-        snippet: item.description
+        excerpt: item.excerpt,
+        url: item.url
       }))
       .slice(0, 10);
 
