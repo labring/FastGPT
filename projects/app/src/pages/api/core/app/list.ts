@@ -14,6 +14,7 @@ import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constan
 import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 
 export type ListAppBody = {
   parentId?: ParentIdType;
@@ -55,8 +56,8 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     const searchMatch = searchKey
       ? {
           $or: [
-            { name: { $regex: searchKey, $options: 'i' } },
-            { intro: { $regex: searchKey, $options: 'i' } }
+            { name: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } },
+            { intro: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } }
           ]
         }
       : {};
@@ -65,7 +66,14 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       return {
         // get all chat app
         teamId,
-        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple] },
+        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple, AppTypeEnum.plugin] },
+        ...searchMatch
+      };
+    }
+
+    if (searchKey) {
+      return {
+        teamId,
         ...searchMatch
       };
     }
@@ -74,8 +82,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       teamId,
       ...(type && Array.isArray(type) && { type: { $in: type } }),
       ...(type && { type }),
-      ...parseParentIdInMongo(parentId),
-      ...searchMatch
+      ...parseParentIdInMongo(parentId)
     };
   })();
 

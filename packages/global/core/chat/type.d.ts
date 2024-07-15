@@ -13,8 +13,8 @@ import { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
 import { AppChatConfigType, AppSchema, VariableItemType } from '../app/type';
 import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
 import { DatasetSearchModeEnum } from '../dataset/constants';
-import { ChatBoxInputType } from '../../../../projects/app/src/components/ChatBox/type';
 import { DispatchNodeResponseType } from '../workflow/runtime/type.d';
+import { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
 
 export type ChatSchema = {
   _id: string;
@@ -115,6 +115,7 @@ export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatIt
   status: `${ChatStatusEnum}`;
   moduleName?: string;
   ttsBuffer?: Uint8Array;
+  responseData?: ChatHistoryItemResType[];
 } & ChatBoxInputType;
 
 /* --------- team chat --------- */

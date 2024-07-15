@@ -1,15 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { connectToDatabase } from '@/service/mongo';
 import { sseErrRes } from '@fastgpt/service/common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { pushChatUsage } from '@/service/support/wallet/usage/push';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import type {
-  ChatItemType,
-  ChatItemValueItemType,
-  UserChatItemValueItemType
-} from '@fastgpt/global/core/chat/type';
+import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -18,10 +13,14 @@ import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { updatePluginInputByVariables } from '@fastgpt/global/core/workflow/utils';
+import { NextAPI } from '@/service/middleware/entry';
+import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 
 export type Props = {
-  history: ChatItemType[];
-  prompt: UserChatItemValueItemType[];
+  messages: ChatCompletionMessageParam[];
   nodes: RuntimeNodeItemType[];
   edges: RuntimeEdgeItemType[];
   variables: Record<string, any>;
@@ -29,7 +28,7 @@ export type Props = {
   appName: string;
 };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.on('close', () => {
     res.end();
   });
@@ -38,26 +37,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.end();
   });
 
-  let {
-    nodes = [],
-    edges = [],
-    history = [],
-    prompt,
-    variables = {},
-    appName,
-    appId
-  } = req.body as Props;
+  let { nodes = [], edges = [], messages = [], variables = {}, appName, appId } = req.body as Props;
   try {
-    await connectToDatabase();
-    if (!history || !nodes || !prompt || prompt.length === 0) {
-      throw new Error('Prams Error');
-    }
-    if (!Array.isArray(nodes)) {
-      throw new Error('Nodes is not array');
-    }
-    if (!Array.isArray(edges)) {
-      throw new Error('Edges is not array');
-    }
+    // [histories, user]
+    const chatMessages = GPTMessages2Chats(messages);
+    const userInput = chatMessages.pop()?.value as UserChatItemValueItemType[] | undefined;
 
     /* user auth */
     const [{ app }, { teamId, tmbId }] = await Promise.all([
@@ -67,6 +51,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         authToken: true
       })
     ]);
+    const isPlugin = app.type === AppTypeEnum.plugin;
+
+    if (!Array.isArray(nodes)) {
+      throw new Error('Nodes is not array');
+    }
+    if (!Array.isArray(edges)) {
+      throw new Error('Edges is not array');
+    }
+
+    // Plugin need to replace inputs
+    if (isPlugin) {
+      nodes = updatePluginInputByVariables(nodes, variables);
+    } else {
+      if (!userInput) {
+        throw new Error('Params Error');
+      }
+    }
 
     // auth balance
     const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
@@ -82,8 +83,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       runtimeNodes: nodes,
       runtimeEdges: edges,
       variables,
-      query: removeEmptyUserInput(prompt),
-      histories: history,
+      query: removeEmptyUserInput(userInput),
+      histories: chatMessages,
       stream: true,
       detail: true,
       maxRunTimes: 200
@@ -116,6 +117,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.end();
   }
 }
+
+export default NextAPI(handler);
 
 export const config = {
   api: {

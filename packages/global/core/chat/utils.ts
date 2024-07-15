@@ -65,11 +65,12 @@ export const filterPublicNodeResponseData = ({
 }: {
   flowResponses?: ChatHistoryItemResType[];
 }) => {
-  const filedList = ['quoteList', 'moduleType'];
+  const filedList = ['quoteList', 'moduleType', 'pluginOutput'];
   const filterModuleTypeList: any[] = [
     FlowNodeTypeEnum.pluginModule,
     FlowNodeTypeEnum.datasetSearchNode,
-    FlowNodeTypeEnum.tools
+    FlowNodeTypeEnum.tools,
+    FlowNodeTypeEnum.pluginOutput
   ];
 
   return flowResponses
@@ -89,14 +90,22 @@ export const filterPublicNodeResponseData = ({
     });
 };
 
-export const removeEmptyUserInput = (input: UserChatItemValueItemType[]) => {
-  return input.filter((item) => {
-    if (item.type === ChatItemValueTypeEnum.text && !item.text?.content?.trim()) {
-      return false;
-    }
-    if (item.type === ChatItemValueTypeEnum.file && !item.file?.url) {
-      return false;
-    }
-    return true;
-  });
+export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {
+  return (
+    input?.filter((item) => {
+      if (item.type === ChatItemValueTypeEnum.text && !item.text?.content?.trim()) {
+        return false;
+      }
+      if (item.type === ChatItemValueTypeEnum.file && !item.file?.url) {
+        return false;
+      }
+      return true;
+    }) || []
+  );
+};
+
+export const getPluginOutputsFromChatResponses = (responses: ChatHistoryItemResType[]) => {
+  const outputs =
+    responses.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput)?.pluginOutput ?? {};
+  return outputs;
 };

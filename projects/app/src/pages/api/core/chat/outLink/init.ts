@@ -15,6 +15,8 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -47,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         chatId,
         limit: 30,
         field: `dataId obj value userGoodFeedback userBadFeedback ${
-          shareChat.responseDetail
+          shareChat.responseDetail || app.type === AppTypeEnum.plugin
             ? `adminFeedback ${DispatchNodeResponseKeyEnum.nodeResponse}`
             : ''
         } `
@@ -56,11 +58,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
 
     // pick share response field
-    histories.forEach((item) => {
-      if (item.obj === ChatRoleEnum.AI) {
-        item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
-      }
-    });
+    app.type !== AppTypeEnum.plugin &&
+      histories.forEach((item) => {
+        if (item.obj === ChatRoleEnum.AI) {
+          item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
+        }
+      });
 
     jsonRes<InitChatResponse>(res, {
       data: {
@@ -82,7 +85,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           chatModels: getChatModelNameListByModules(nodes),
           name: app.name,
           avatar: app.avatar,
-          intro: app.intro
+          intro: app.intro,
+          type: app.type,
+          pluginInputs:
+            app?.modules?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)
+              ?.inputs ?? []
         }
       }
     });

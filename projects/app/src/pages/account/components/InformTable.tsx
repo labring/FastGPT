@@ -9,12 +9,14 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useTranslation } from 'next-i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const InformTable = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { Loading } = useLoading();
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
+
   const {
     data: informs,
     isLoading,

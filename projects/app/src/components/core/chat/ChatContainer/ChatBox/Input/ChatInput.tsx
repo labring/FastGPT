@@ -18,6 +18,7 @@ import { ChatBoxContext } from '../Provider';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -53,7 +54,9 @@ const ChatInput = ({
 
   const { isChatting, whisperConfig, autoTTSResponse, chatInputGuide, outLinkAuthData } =
     useContextSelector(ChatBoxContext, (v) => v);
-  const { isPc, whisperModel } = useSystemStore();
+  const { whisperModel } = useSystemStore();
+  const { isPc } = useSystem();
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { t } = useTranslation();
 

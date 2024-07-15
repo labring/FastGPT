@@ -1,7 +1,6 @@
 import { useUserStore } from '@/web/support/user/useUserStore';
-import React, { useCallback, useRef } from 'react';
-import ChatBox from '@/components/ChatBox';
-import type { ComponentRef, StartChatFnProps } from '@/components/ChatBox/type.d';
+import React from 'react';
+import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
 import {
@@ -16,6 +15,14 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import dynamic from 'next/dynamic';
+import { useChat } from '@/components/core/chat/ChatContainer/useChat';
+import { Box } from '@chakra-ui/react';
+import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
+
+const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
 export const useChatTest = ({
   nodes,
@@ -27,22 +34,19 @@ export const useChatTest = ({
   chatConfig: AppChatConfigType;
 }) => {
   const { userInfo } = useUserStore();
-  const ChatBoxRef = useRef<ComponentRef>(null);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const startChat = useMemoizedFn(
-    async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
+    async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
       /* get histories */
-      let historyMaxLen = getMaxHistoryLimitFromNodes(nodes);
-
-      const history = chatList.slice(-historyMaxLen - 2, -2);
+      const historyMaxLen = getMaxHistoryLimitFromNodes(nodes);
 
       // 流请求，获取数据
       const { responseText, responseData } = await streamFetch({
         url: '/api/core/chat/chatTest',
         data: {
-          history,
-          prompt: chatList[chatList.length - 2].value,
+          // Send histories and user messages
+          messages: messages.slice(-historyMaxLen - 2),
           nodes: storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
           edges: initWorkflowEdgeStatus(edges),
           variables,
@@ -57,28 +61,57 @@ export const useChatTest = ({
     }
   );
 
-  const resetChatBox = useCallback(() => {
-    ChatBoxRef.current?.resetHistory([]);
-    ChatBoxRef.current?.resetVariables();
-  }, []);
+  const pluginInputs =
+    nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs || [];
+  const {
+    ChatBoxRef,
+    chatRecords,
+    setChatRecords,
+    variablesForm,
+    pluginRunTab,
+    setPluginRunTab,
+    clearChatRecords
+  } = useChat();
 
-  const CustomChatBox = useMemoizedFn(() => (
-    <ChatBox
-      ref={ChatBoxRef}
-      appId={appDetail._id}
-      appAvatar={appDetail.avatar}
-      userAvatar={userInfo?.avatar}
-      showMarkIcon
-      chatConfig={chatConfig}
-      showFileSelector={checkChatSupportSelectFileByModules(nodes)}
-      onStartChat={startChat}
-      onDelMessage={() => {}}
-    />
-  ));
+  const CustomChatContainer = useMemoizedFn(() =>
+    appDetail.type === AppTypeEnum.plugin ? (
+      <Box h={'100%'} p={3}>
+        <PluginRunBox
+          pluginInputs={pluginInputs}
+          variablesForm={variablesForm}
+          histories={chatRecords}
+          setHistories={setChatRecords}
+          appId={appDetail._id}
+          tab={pluginRunTab}
+          setTab={setPluginRunTab}
+          onNewChat={clearChatRecords}
+          onStartChat={startChat}
+        />
+      </Box>
+    ) : (
+      <ChatBox
+        ref={ChatBoxRef}
+        chatHistories={chatRecords}
+        setChatHistories={setChatRecords}
+        variablesForm={variablesForm}
+        appId={appDetail._id}
+        appAvatar={appDetail.avatar}
+        userAvatar={userInfo?.avatar}
+        showMarkIcon
+        chatConfig={chatConfig}
+        showFileSelector={checkChatSupportSelectFileByModules(nodes)}
+        onStartChat={startChat}
+        onDelMessage={() => {}}
+      />
+    )
+  );
 
   return {
-    resetChatBox,
-    ChatBox: CustomChatBox
+    restartChat: clearChatRecords,
+    ChatContainer: CustomChatContainer,
+    chatRecords,
+    pluginRunTab,
+    setPluginRunTab
   };
 };
 

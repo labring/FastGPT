@@ -23,6 +23,8 @@ type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
   variables?: EditorVariablePickerType[];
   defaultHeight?: number;
   placeholder?: string;
+  isDisabled?: boolean;
+  isInvalid?: boolean;
 };
 
 const options = {
@@ -55,6 +57,8 @@ const JSONEditor = ({
   variables = [],
   placeholder,
   defaultHeight = 100,
+  isDisabled = false,
+  isInvalid = false,
   ...props
 }: Props) => {
   const { toast } = useToast();
@@ -209,9 +213,9 @@ const JSONEditor = ({
 
   return (
     <Box
-      borderWidth={'1px'}
+      borderWidth={isInvalid ? '2px' : '1px'}
       borderRadius={'md'}
-      borderColor={'myGray.200'}
+      borderColor={isInvalid ? 'red.500' : 'myGray.200'}
       py={2}
       height={height}
       position={'relative'}

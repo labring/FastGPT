@@ -15,38 +15,53 @@ import {
   defaultWhisperConfig
 } from '@fastgpt/global/core/app/constants';
 import { createContext } from 'use-context-selector';
+import { FieldValues, UseFormReturn } from 'react-hook-form';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 
-type useChatStoreType = OutLinkChatAuthProps & {
-  welcomeText: string;
-  variableList: VariableItemType[];
-  questionGuide: boolean;
-  ttsConfig: AppTTSConfigType;
-  whisperConfig: AppWhisperConfigType;
-  autoTTSResponse: boolean;
-  startSegmentedAudio: () => Promise<any>;
-  splitText2Audio: (text: string, done?: boolean | undefined) => void;
-  finishSegmentedAudio: () => void;
-  audioLoading: boolean;
-  audioPlaying: boolean;
-  hasAudio: boolean;
-  playAudioByText: ({
-    text,
-    buffer
-  }: {
-    text: string;
-    buffer?: Uint8Array | undefined;
-  }) => Promise<{
-    buffer?: Uint8Array | undefined;
-  }>;
-  cancelAudio: () => void;
-  audioPlayingChatId: string | undefined;
-  setAudioPlayingChatId: React.Dispatch<React.SetStateAction<string | undefined>>;
+export type ChatProviderProps = OutLinkChatAuthProps & {
+  appAvatar?: string;
+
+  chatConfig?: AppChatConfigType;
+
   chatHistories: ChatSiteItemType[];
   setChatHistories: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
-  isChatting: boolean;
-  chatInputGuide: ChatInputGuideConfigType;
-  outLinkAuthData: OutLinkChatAuthProps;
+  variablesForm: UseFormReturn<FieldValues, any>;
+
+  // not chat test params
+  chatId?: string;
 };
+
+type useChatStoreType = OutLinkChatAuthProps &
+  ChatProviderProps & {
+    welcomeText: string;
+    variableList: VariableItemType[];
+    questionGuide: boolean;
+    ttsConfig: AppTTSConfigType;
+    whisperConfig: AppWhisperConfigType;
+    autoTTSResponse: boolean;
+    startSegmentedAudio: () => Promise<any>;
+    splitText2Audio: (text: string, done?: boolean | undefined) => void;
+    finishSegmentedAudio: () => void;
+    audioLoading: boolean;
+    audioPlaying: boolean;
+    hasAudio: boolean;
+    playAudioByText: ({
+      text,
+      buffer
+    }: {
+      text: string;
+      buffer?: Uint8Array | undefined;
+    }) => Promise<{
+      buffer?: Uint8Array | undefined;
+    }>;
+    cancelAudio: () => void;
+    audioPlayingChatId: string | undefined;
+    setAudioPlayingChatId: React.Dispatch<React.SetStateAction<string | undefined>>;
+    isChatting: boolean;
+    chatInputGuide: ChatInputGuideConfigType;
+    outLinkAuthData: OutLinkChatAuthProps;
+  };
+
 export const ChatBoxContext = createContext<useChatStoreType>({
   welcomeText: '',
   variableList: [],
@@ -100,27 +115,27 @@ export const ChatBoxContext = createContext<useChatStoreType>({
     open: false,
     customUrl: ''
   },
-  outLinkAuthData: {}
+  outLinkAuthData: {},
+  // @ts-ignore
+  variablesForm: undefined
 });
-
-export type ChatProviderProps = OutLinkChatAuthProps & {
-  chatConfig?: AppChatConfigType;
-
-  // not chat test params
-  chatId?: string;
-  children: React.ReactNode;
-};
 
 const Provider = ({
   shareId,
   outLinkUid,
   teamId,
   teamToken,
-  chatConfig = {},
-  children
-}: ChatProviderProps) => {
-  const [chatHistories, setChatHistories] = useState<ChatSiteItemType[]>([]);
 
+  chatHistories,
+  setChatHistories,
+  variablesForm,
+
+  chatConfig = {},
+  children,
+  ...props
+}: ChatProviderProps & {
+  children: React.ReactNode;
+}) => {
   const {
     welcomeText = '',
     variables = [],
@@ -167,12 +182,13 @@ const Provider = ({
   );
 
   const value: useChatStoreType = {
+    ...props,
     shareId,
     outLinkUid,
     teamId,
     teamToken,
     welcomeText,
-    variableList: variables,
+    variableList: variables.filter((item) => item.type !== VariableInputEnum.custom),
     questionGuide,
     ttsConfig,
     whisperConfig,
@@ -191,7 +207,8 @@ const Provider = ({
     setChatHistories,
     isChatting,
     chatInputGuide,
-    outLinkAuthData
+    outLinkAuthData,
+    variablesForm
   };
 
   return <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>;

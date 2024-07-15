@@ -138,7 +138,7 @@ export const useDebug = () => {
       setRuntimeEdges(undefined);
     };
 
-    const onclickRun = (data: Record<string, any>) => {
+    const onClickRun = (data: Record<string, any>) => {
       onStartNodeDebug({
         entryNodeId: runtimeNode.nodeId,
         runtimeNodes: runtimeNodes.map((node) =>
@@ -261,7 +261,7 @@ export const useDebug = () => {
           })}
         </Box>
         <Flex py={2} justifyContent={'flex-end'} px={6}>
-          <Button onClick={handleSubmit(onclickRun)}>运行</Button>
+          <Button onClick={handleSubmit(onClickRun)}>运行</Button>
         </Flex>
       </MyRightDrawer>
     );

@@ -14,6 +14,7 @@ import { AppUpdateParams } from '@/global/core/app/api';
 import dynamic from 'next/dynamic';
 import { useI18n } from '@/web/context/I18n';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { useThrottleEffect } from 'ahooks';
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 type AppListContextType = {
@@ -27,6 +28,8 @@ type AppListContextType = {
   onUpdateApp: (id: string, data: AppUpdateParams) => Promise<any>;
   setMoveAppId: React.Dispatch<React.SetStateAction<string | undefined>>;
   refetchFolderDetail: () => Promise<AppDetailType | null>;
+  searchKey: string;
+  setSearchKey: React.Dispatch<React.SetStateAction<string>>;
 };
 
 export const AppListContext = createContext<AppListContextType>({
@@ -47,6 +50,10 @@ export const AppListContext = createContext<AppListContextType>({
   appType: 'ALL',
   refetchFolderDetail: async function (): Promise<AppDetailType | null> {
     throw new Error('Function not implemented.');
+  },
+  searchKey: '',
+  setSearchKey: function (value: React.SetStateAction<string>): void {
+    throw new Error('Function not implemented.');
   }
 });
 
@@ -57,6 +64,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     parentId?: string | null;
     type: AppTypeEnum;
   };
+  const [searchKey, setSearchKey] = useState('');
 
   const {
     data = [],
@@ -72,12 +80,20 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
         return [AppTypeEnum.folder, type];
       })();
 
-      return getMyApps({ parentId, type: formatType });
+      return getMyApps({ parentId, type: formatType, searchKey });
     },
     {
-      manual: false,
       refreshOnWindowFocus: true,
       refreshDeps: [parentId, type]
+    }
+  );
+  useThrottleEffect(
+    () => {
+      loadMyApps();
+    },
+    [searchKey],
+    {
+      wait: 500
     }
   );
 
@@ -138,7 +154,9 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     folderDetail,
     paths,
     onUpdateApp,
-    setMoveAppId
+    setMoveAppId,
+    searchKey,
+    setSearchKey
   };
   return (
     <AppListContext.Provider value={contextValue}>

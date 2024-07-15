@@ -53,13 +53,14 @@ import { useContextSelector } from 'use-context-selector';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const DataCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
   const lastSearch = useRef('');
   const router = useRouter();
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
   const { collectionId = '', datasetId } = router.query as {
     collectionId: string;
     datasetId: string;

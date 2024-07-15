@@ -1,7 +1,7 @@
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
-import React, { forwardRef, ForwardedRef } from 'react';
+import React from 'react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
-import { Box, Flex, IconButton } from '@chakra-ui/react';
+import { Box, Flex, HStack, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
@@ -10,29 +10,27 @@ import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pages/app/detail/components/context';
 import { useChatTest } from '@/pages/app/detail/components/useChatTest';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
+import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
+import CloseIcon from '@fastgpt/web/components/common/Icon/close';
 
-export type ChatTestComponentRef = {
-  resetChatTest: () => void;
-};
-
-const ChatTest = (
-  {
-    isOpen,
-    nodes = [],
-    edges = [],
-    onClose
-  }: {
-    isOpen: boolean;
-    nodes?: StoreNodeItemType[];
-    edges?: StoreEdgeItemType[];
-    onClose: () => void;
-  },
-  ref: ForwardedRef<ChatTestComponentRef>
-) => {
+const ChatTest = ({
+  isOpen,
+  nodes = [],
+  edges = [],
+  onClose
+}: {
+  isOpen: boolean;
+  nodes?: StoreNodeItemType[];
+  edges?: StoreEdgeItemType[];
+  onClose: () => void;
+}) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const isPlugin = appDetail.type === AppTypeEnum.plugin;
 
-  const { resetChatBox, ChatBox } = useChatTest({
+  const { restartChat, ChatContainer, pluginRunTab, setPluginRunTab, chatRecords } = useChatTest({
     nodes,
     edges,
     chatConfig: appDetail.chatConfig
@@ -64,40 +62,76 @@ const ChatTest = (
         overflow={'hidden'}
         transition={'.2s ease'}
       >
-        <Flex py={4} px={5} whiteSpace={'nowrap'}>
-          <Box fontSize={'lg'} fontWeight={'bold'} flex={1}>
-            {t('core.chat.Debug test')}
-          </Box>
-          <MyTooltip label={t('core.chat.Restart')}>
-            <IconButton
-              className="chat"
-              size={'smSquare'}
-              icon={<MyIcon name={'common/clearLight'} w={'14px'} />}
-              variant={'whiteDanger'}
-              borderRadius={'md'}
-              aria-label={'delete'}
-              onClick={(e) => {
-                resetChatBox();
-              }}
+        {isPlugin ? (
+          <Flex
+            alignItems={'flex-start'}
+            justifyContent={'space-between'}
+            px={3}
+            pt={3}
+            bg={'myGray.25'}
+            borderBottom={'base'}
+          >
+            <LightRowTabs<PluginRunBoxTabEnum>
+              list={[
+                { label: t('common.Input'), value: PluginRunBoxTabEnum.input },
+                ...(chatRecords.length > 0
+                  ? [
+                      { label: t('common.Output'), value: PluginRunBoxTabEnum.output },
+                      { label: '完整结果', value: PluginRunBoxTabEnum.detail }
+                    ]
+                  : [])
+              ]}
+              value={pluginRunTab}
+              onChange={setPluginRunTab}
+              inlineStyles={{ px: 0.5, pb: 2 }}
+              gap={5}
+              py={0}
+              fontSize={'sm'}
             />
-          </MyTooltip>
-          <MyTooltip label={t('common.Close')}>
-            <IconButton
-              ml={3}
-              icon={<SmallCloseIcon fontSize={'22px'} />}
-              variant={'grayBase'}
-              size={'smSquare'}
-              aria-label={''}
-              onClick={onClose}
-            />
-          </MyTooltip>
-        </Flex>
-        <Box flex={1}>
-          <ChatBox />
+
+            <CloseIcon mt={1} onClick={onClose} />
+          </Flex>
+        ) : (
+          <Flex
+            py={4}
+            px={5}
+            whiteSpace={'nowrap'}
+            bg={isPlugin ? 'myGray.25' : ''}
+            borderBottom={isPlugin ? '1px solid #F4F4F7' : ''}
+          >
+            <Box fontSize={'lg'} fontWeight={'bold'} flex={1}>
+              {t('core.chat.Debug test')}
+            </Box>
+            <MyTooltip label={t('core.chat.Restart')}>
+              <IconButton
+                className="chat"
+                size={'smSquare'}
+                icon={<MyIcon name={'common/clearLight'} w={'14px'} />}
+                variant={'whiteDanger'}
+                borderRadius={'md'}
+                aria-label={'delete'}
+                onClick={restartChat}
+              />
+            </MyTooltip>
+            <MyTooltip label={t('common.Close')}>
+              <IconButton
+                ml={4}
+                icon={<SmallCloseIcon fontSize={'22px'} />}
+                variant={'grayBase'}
+                size={'smSquare'}
+                aria-label={''}
+                onClick={onClose}
+              />
+            </MyTooltip>
+          </Flex>
+        )}
+
+        <Box flex={'1 0 0'} overflow={'auto'}>
+          <ChatContainer />
         </Box>
       </Flex>
     </>
   );
 };
 
-export default React.memo(forwardRef(ChatTest));
+export default React.memo(ChatTest);

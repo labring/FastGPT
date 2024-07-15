@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { delChatRecordById, getChatHistories, getInitChatInfo } from '@/web/core/chat/api';
@@ -9,8 +9,7 @@ import { useChatStore } from '@/web/core/chat/context/storeChat';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 
-import ChatBox from '@/components/ChatBox';
-import type { ComponentRef, StartChatFnProps } from '@/components/ChatBox/type.d';
+import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import PageContainer from '@/components/PageContainer';
 import SideBar from '@/components/SideBar';
 import ChatHistorySlider from './components/ChatHistorySlider';
@@ -32,6 +31,13 @@ import { defaultChatData } from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import dynamic from 'next/dynamic';
+import { useChat } from '@/components/core/chat/ChatContainer/useChat';
+import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+
+const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
 type Props = { appId: string; chatId: string };
 
@@ -46,8 +52,6 @@ const Chat = ({
   const theme = useTheme();
   const { t } = useTranslation();
 
-  const ChatBoxRef = useRef<ComponentRef>(null);
-
   const { setLastChatAppId } = useChatStore();
   const {
     loadHistories,
@@ -59,84 +63,43 @@ const Chat = ({
     forbidLoadChat,
     onChangeChatId
   } = useContextSelector(ChatContext, (v) => v);
+  const {
+    ChatBoxRef,
+    chatRecords,
+    setChatRecords,
+    variablesForm,
+    pluginRunTab,
+    setPluginRunTab,
+    resetChatRecords
+  } = useChat();
 
   const { userInfo } = useUserStore();
-  const { isPc } = useSystemStore();
-
-  const startChat = useCallback(
-    async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
-      const prompts = messages.slice(-2);
-      const completionChatId = chatId ? chatId : getNanoid();
-
-      const { responseText, responseData } = await streamFetch({
-        data: {
-          messages: prompts,
-          variables,
-          appId,
-          chatId: completionChatId
-        },
-        onMessage: generatingMessage,
-        abortCtrl: controller
-      });
-
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(prompts)[0]);
-
-      // new chat
-      if (completionChatId !== chatId) {
-        if (controller.signal.reason !== 'leave') {
-          onChangeChatId(completionChatId, true);
-          loadHistories();
-        }
-      } else {
-        // update chat
-        onUpdateHistory({
-          appId,
-          chatId: completionChatId,
-          title: newTitle
-        });
-      }
-
-      // update chat window
-      setChatData((state) => ({
-        ...state,
-        title: newTitle,
-        history: ChatBoxRef.current?.getChatHistories() || state.history
-      }));
-
-      return { responseText, responseData, isNewChat: forbidLoadChat.current };
-    },
-    [appId, chatId, forbidLoadChat, loadHistories, onChangeChatId, onUpdateHistory]
-  );
+  const { isPc } = useSystem();
 
   // get chat app info
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
+  const isPlugin = chatData.app.type === AppTypeEnum.plugin;
+
   const { loading } = useRequest2(
     async () => {
       if (!appId || forbidLoadChat.current) return;
 
       const res = await getInitChatInfo({ appId, chatId });
+      setChatData(res);
+
       const history = res.history.map((item) => ({
         ...item,
         dataId: item.dataId || getNanoid(),
         status: ChatStatusEnum.finish
       }));
 
-      const result: InitChatResponse = {
-        ...res,
-        history
-      };
-
-      // reset chat box
-      ChatBoxRef.current?.resetHistory(history);
-      ChatBoxRef.current?.resetVariables(res.variables);
-      if (history.length > 0) {
-        setTimeout(() => {
-          ChatBoxRef.current?.scrollToBottom('auto');
-        }, 500);
-      }
+      // reset chat records
+      resetChatRecords({
+        records: history,
+        variables: res.variables
+      });
 
       setLastChatAppId(appId);
-      setChatData(result);
     },
     {
       manual: false,
@@ -157,6 +120,51 @@ const Chat = ({
     }
   );
 
+  const onStartChat = useCallback(
+    async ({
+      messages,
+      responseChatItemId,
+      controller,
+      generatingMessage,
+      variables
+    }: StartChatFnProps) => {
+      const completionChatId = chatId || getNanoid();
+      // Just send a user prompt
+      const histories = messages.slice(-1);
+
+      const { responseText, responseData } = await streamFetch({
+        data: {
+          messages: histories,
+          variables,
+          responseChatItemId,
+          appId,
+          chatId: completionChatId
+        },
+        onMessage: generatingMessage,
+        abortCtrl: controller
+      });
+
+      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
+
+      // new chat
+      if (completionChatId !== chatId) {
+        if (controller.signal.reason !== 'leave') {
+          onChangeChatId(completionChatId, true);
+        }
+      }
+      loadHistories();
+
+      // update chat window
+      setChatData((state) => ({
+        ...state,
+        title: newTitle
+      }));
+
+      return { responseText, responseData, isNewChat: forbidLoadChat.current };
+    },
+    [appId, chatId, forbidLoadChat, loadHistories, onChangeChatId]
+  );
+
   return (
     <Flex h={'100%'}>
       <NextHead title={chatData.app.name} icon={chatData.app.avatar}></NextHead>
@@ -168,7 +176,7 @@ const Chat = ({
       )}
 
       <PageContainer isLoading={loading} flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
-        <Flex h={'100%'} flexDirection={['column', 'row']} bg={'white'}>
+        <Flex h={'100%'} flexDirection={['column', 'row']}>
           {/* pc always show history. */}
           {((children: React.ReactNode) => {
             return isPc || !appId ? (
@@ -218,29 +226,44 @@ const Chat = ({
           >
             {/* header */}
             <ChatHeader
-              appAvatar={chatData.app.avatar}
-              appName={chatData.app.name}
-              history={chatData.history}
-              chatModels={chatData.app.chatModels}
+              chatData={chatData}
+              history={chatRecords}
               onRoute2AppDetail={() => router.push(`/app/detail?appId=${appId}`)}
               showHistory
             />
 
             {/* chat box */}
-            <Box flex={1}>
-              <ChatBox
-                ref={ChatBoxRef}
-                showEmptyIntro
-                appAvatar={chatData.app.avatar}
-                userAvatar={userInfo?.avatar}
-                chatConfig={chatData.app?.chatConfig}
-                showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
-                feedbackType={'user'}
-                onStartChat={startChat}
-                onDelMessage={({ contentId }) => delChatRecordById({ contentId, appId, chatId })}
-                appId={appId}
-                chatId={chatId}
-              />
+            <Box flex={'1 0 0'} bg={'white'}>
+              {isPlugin ? (
+                <CustomPluginRunBox
+                  pluginInputs={chatData.app.pluginInputs}
+                  variablesForm={variablesForm}
+                  histories={chatRecords}
+                  setHistories={setChatRecords}
+                  appId={chatData.appId}
+                  tab={pluginRunTab}
+                  setTab={setPluginRunTab}
+                  onNewChat={() => onChangeChatId(getNanoid())}
+                  onStartChat={onStartChat}
+                />
+              ) : (
+                <ChatBox
+                  ref={ChatBoxRef}
+                  chatHistories={chatRecords}
+                  setChatHistories={setChatRecords}
+                  variablesForm={variablesForm}
+                  showEmptyIntro
+                  appAvatar={chatData.app.avatar}
+                  userAvatar={userInfo?.avatar}
+                  chatConfig={chatData.app?.chatConfig}
+                  showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
+                  feedbackType={'user'}
+                  onStartChat={onStartChat}
+                  onDelMessage={({ contentId }) => delChatRecordById({ contentId, appId, chatId })}
+                  appId={appId}
+                  chatId={chatId}
+                />
+              )}
             </Box>
           </Flex>
         </Flex>

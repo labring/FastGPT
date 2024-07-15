@@ -3,7 +3,6 @@ import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { DispatchNodeResponseType } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { Flex, useDisclosure, useTheme, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import dynamic from 'next/dynamic';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -13,10 +12,11 @@ import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import ChatBoxDivider from '@/components/core/chat/Divider';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'));
 const ContextModal = dynamic(() => import('./ContextModal'));
-const WholeResponseModal = dynamic(() => import('./WholeResponseModal'));
+const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
 
 const isLLMNode = (item: ChatHistoryItemResType) =>
   item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.tools;
@@ -29,7 +29,7 @@ const ResponseTags = ({
   showDetail: boolean;
 }) => {
   const theme = useTheme();
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
   const { t } = useTranslation();
   const [quoteModalData, setQuoteModalData] = useState<{
     rawSearch: SearchDataResponseItemType[];

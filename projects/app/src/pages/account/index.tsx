@@ -12,6 +12,7 @@ import UserInfo from './components/Info';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import Script from 'next/script';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const Promotion = dynamic(() => import('./components/Promotion'));
 const UsageTable = dynamic(() => import('./components/UsageTable'));
@@ -34,7 +35,8 @@ enum TabEnum {
 const Account = ({ currentTab }: { currentTab: TabEnum }) => {
   const { t } = useTranslation();
   const { userInfo, setUserInfo } = useUserStore();
-  const { feConfigs, isPc, systemVersion } = useSystemStore();
+  const { feConfigs, systemVersion } = useSystemStore();
+  const { isPc } = useSystem();
 
   const tabList = [
     {

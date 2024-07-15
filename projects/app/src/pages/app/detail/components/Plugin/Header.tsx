@@ -14,11 +14,15 @@ import { useRouter } from 'next/router';
 
 import AppCard from '../WorkflowComponents/AppCard';
 import { uiWorkflow2StoreWorkflow } from '../WorkflowComponents/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import RouteTab from '../RouteTab';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const PublishHistories = dynamic(() => import('../PublishHistoriesSlider'));
 
 const Header = () => {
   const { t } = useTranslation();
   const router = useRouter();
+  const { isPc } = useSystem();
 
   const { appDetail, onPublish, currentTab } = useContextSelector(AppContext, (v) => v);
   const isV2Workflow = appDetail?.version === 'v2';
@@ -27,6 +31,7 @@ const Header = () => {
     flowData2StoreDataAndCheck,
     onSaveWorkflow,
     setHistoriesDefaultData,
+    setWorkflowTestData,
     historiesDefaultData,
     initData
   } = useContextSelector(WorkflowContext, (v) => v);
@@ -62,11 +67,11 @@ const Header = () => {
   const Render = useMemo(() => {
     return (
       <>
-        {/* {!isPc && (
+        {!isPc && (
           <Flex pt={2} justifyContent={'center'}>
             <RouteTab />
           </Flex>
-        )} */}
+        )}
         <Flex
           mt={[2, 0]}
           py={3}
@@ -101,18 +106,18 @@ const Header = () => {
             />
           </Box>
 
-          {/* {isPc && (
+          {isPc && (
             <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
               <RouteTab />
             </Box>
-          )} */}
+          )}
           <Box flex={1} />
 
           {currentTab === TabEnum.appEdit && (
             <>
               {!historiesDefaultData && (
                 <IconButton
-                  // mr={[2, 4]}
+                  mr={[2, 4]}
                   icon={<MyIcon name={'history'} w={'18px'} />}
                   aria-label={''}
                   size={'sm'}
@@ -129,7 +134,7 @@ const Header = () => {
                   }}
                 />
               )}
-              {/* <Button
+              <Button
                 size={'sm'}
                 leftIcon={<MyIcon name={'core/workflow/debug'} w={['14px', '16px']} />}
                 variant={'whitePrimary'}
@@ -141,7 +146,7 @@ const Header = () => {
                 }}
               >
                 {t('core.workflow.Debug')}
-              </Button> */}
+              </Button>
 
               {!historiesDefaultData && (
                 <PopoverConfirm
@@ -176,12 +181,15 @@ const Header = () => {
   }, [
     appDetail.chatConfig,
     currentTab,
+    flowData2StoreDataAndCheck,
     historiesDefaultData,
     initData,
+    isPc,
     isV2Workflow,
     onclickPublish,
     saveAndBack,
     setHistoriesDefaultData,
+    setWorkflowTestData,
     t
   ]);
 

@@ -8,6 +8,7 @@ import {
   DragStart,
   DropResult
 } from 'react-beautiful-dnd';
+export * from 'react-beautiful-dnd';
 
 type Props<T = any> = {
   onDragEndCb: (result: T[]) => void;
@@ -57,5 +58,3 @@ function DndDrag<T>({ children, renderClone, onDragEndCb, dataList }: Props<T>) 
 }
 
 export default DndDrag;
-
-export * from 'react-beautiful-dnd';
