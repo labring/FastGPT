@@ -11,7 +11,11 @@ const RenderInput = () => {
     useContextSelector(PluginRunContext, (v) => v);
 
   const { t } = useTranslation();
-  const { control, handleSubmit } = variablesForm;
+  const {
+    control,
+    handleSubmit,
+    formState: { errors }
+  } = variablesForm;
   const isDisabledInput = histories.length > 0;
 
   return (
@@ -36,6 +40,7 @@ const RenderInput = () => {
                   required={input.required}
                   min={input.min}
                   max={input.max}
+                  isInvalid={errors && Object.keys(errors).includes(input.key)}
                 />
               );
             }}

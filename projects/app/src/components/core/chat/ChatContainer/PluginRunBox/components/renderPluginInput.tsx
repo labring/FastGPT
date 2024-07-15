@@ -26,7 +26,8 @@ const RenderPluginInput = ({
   placeholder,
   required,
   min,
-  max
+  max,
+  isInvalid
 }: {
   value: any;
   onChange: () => void;
@@ -38,6 +39,7 @@ const RenderPluginInput = ({
   required?: boolean;
   min?: number;
   max?: number;
+  isInvalid: boolean;
 }) => {
   const { t } = useTranslation();
 
@@ -50,12 +52,20 @@ const RenderPluginInput = ({
           isDisabled={isDisabled}
           placeholder={t(placeholder)}
           bg={'myGray.50'}
+          isInvalid={isInvalid}
         />
       );
     }
     if (valueType === WorkflowIOValueTypeEnum.number) {
       return (
-        <NumberInput step={1} min={min} max={max} bg={'myGray.50'} isDisabled={isDisabled}>
+        <NumberInput
+          step={1}
+          min={min}
+          max={max}
+          bg={'myGray.50'}
+          isDisabled={isDisabled}
+          isInvalid={isInvalid}
+        >
           <NumberInputField value={value} onChange={onChange} />
           <NumberInputStepper>
             <NumberIncrementStepper />
@@ -65,7 +75,14 @@ const RenderPluginInput = ({
       );
     }
     if (valueType === WorkflowIOValueTypeEnum.boolean) {
-      return <Switch isChecked={value} onChange={onChange} isDisabled={isDisabled} />;
+      return (
+        <Switch
+          isChecked={value}
+          onChange={onChange}
+          isDisabled={isDisabled}
+          isInvalid={isInvalid}
+        />
+      );
     }
 
     return (
@@ -75,6 +92,7 @@ const RenderPluginInput = ({
         resize
         value={value}
         onChange={onChange}
+        isInvalid={isInvalid}
       />
     );
   })();

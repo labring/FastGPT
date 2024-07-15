@@ -126,7 +126,7 @@ const ChatTest = ({
           </Flex>
         )}
 
-        <Box flex={'1 0 0'}>
+        <Box flex={'1 0 0'} overflow={'auto'}>
           <ChatContainer />
         </Box>
       </Flex>
