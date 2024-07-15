@@ -23,7 +23,9 @@ async function handler(
         avatar: plugin.avatar,
         name: plugin.name,
         intro: plugin.intro,
-        isTool: plugin.isTool
+        isTool: plugin.isTool,
+        currentCost: plugin.currentCost,
+        author: plugin.author
       }))
   );
 }

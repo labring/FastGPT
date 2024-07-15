@@ -79,6 +79,7 @@ export type NodeTemplateListItemType = {
   isTool?: boolean;
   author?: string;
   unique?: boolean; // 唯一的
+  currentCost?: number; // 当前积分消耗
 };
 
 export type NodeTemplateListType = {

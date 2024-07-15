@@ -1,5 +1,14 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Flex, IconButton, Input, InputGroup, InputLeftElement, css } from '@chakra-ui/react';
+import {
+  Box,
+  Divider,
+  Flex,
+  IconButton,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  css
+} from '@chakra-ui/react';
 import type {
   NodeTemplateListItemType,
   NodeTemplateListType
@@ -43,6 +52,7 @@ type RenderListProps = {
   onClose: () => void;
   parentId: ParentIdType;
   setParentId: React.Dispatch<React.SetStateAction<ParentIdType>>;
+  showCost?: boolean;
 };
 
 enum TemplateTypeEnum {
@@ -249,6 +259,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
             onClose={onClose}
             parentId={parentId}
             setParentId={setParentId}
+            showCost={templateType === TemplateTypeEnum.systemPlugin}
           />
         </MyBox>
       </>
@@ -264,7 +275,8 @@ const RenderList = React.memo(function RenderList({
   templates,
   onClose,
   parentId,
-  setParentId
+  setParentId,
+  showCost
 }: RenderListProps) {
   const { t } = useTranslation();
   const { appT } = useI18n();
@@ -387,12 +399,16 @@ const RenderList = React.memo(function RenderList({
                     label={
                       <Box>
                         <Flex alignItems={'center'}>
-                          <Avatar
-                            src={template.avatar}
-                            w={'24px'}
-                            objectFit={'contain'}
-                            borderRadius={'0'}
-                          />
+                          {template.avatar?.startsWith('/') ? (
+                            <Avatar
+                              src={template.avatar}
+                              w={'24px'}
+                              objectFit={'contain'}
+                              borderRadius={'0'}
+                            />
+                          ) : (
+                            <MyIcon name={template.avatar as any} w={'24px'} />
+                          )}
                           <Box fontWeight={'bold'} ml={3}>
                             {t(template.name as any)}
                           </Box>
@@ -400,6 +416,17 @@ const RenderList = React.memo(function RenderList({
                         <Box mt={2} color={'myGray.500'}>
                           {t(template.intro as any) || t('common:core.workflow.Not intro')}
                         </Box>
+                        {showCost && (
+                          <>
+                            <Divider mt={4} mb={2} />
+                            <Flex>
+                              <Box>{t('core.plugin.cost')}</Box>
+                              <Box color={'myGray.600'}>
+                                {template.currentCost || t('core.plugin.Free')}
+                              </Box>
+                            </Flex>
+                          </>
+                        )}
                       </Box>
                     }
                   >
@@ -434,15 +461,24 @@ const RenderList = React.memo(function RenderList({
                         onClose();
                       }}
                     >
-                      <Avatar
-                        src={template.avatar}
-                        w={'1.7rem'}
-                        objectFit={'contain'}
-                        borderRadius={'0'}
-                      />
+                      {template.avatar?.startsWith('/') ? (
+                        <Avatar
+                          src={template.avatar}
+                          w={'1.7rem'}
+                          objectFit={'contain'}
+                          borderRadius={'0'}
+                        />
+                      ) : (
+                        <MyIcon name={template.avatar as any} w={'1.7rem'} />
+                      )}
                       <Box color={'black'} fontSize={'sm'} ml={5} flex={'1 0 0'}>
                         {t(template.name as any)}
                       </Box>
+                      {showCost && (
+                        <Box fontSize={'xs'} mr={3}>
+                          {template.author ? `by ${template.author}` : `by 匿名大佬`}
+                        </Box>
+                      )}
                     </Flex>
                   </MyTooltip>
                 ))}
