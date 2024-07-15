@@ -86,7 +86,6 @@ const VariableInput = ({
                           label: item.value,
                           value: item.value
                         }))}
-                        h={'40px'}
                         value={value}
                         onchange={(e) => setValue(item.key, e)}
                       />
