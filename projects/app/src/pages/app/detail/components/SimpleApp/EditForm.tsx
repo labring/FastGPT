@@ -257,8 +257,8 @@ const EditForm = ({
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'} flex={1}>
               <MyIcon name={'core/app/toolCall'} w={'20px'} />
-              <FormLabel ml={2}>{t('core.app.Tool call')}(实验功能)</FormLabel>
-              <QuestionTip ml={1} label={t('core.app.Tool call tip')} />
+              <FormLabel ml={2}>{appT('Plugin dispatch')}</FormLabel>
+              <QuestionTip ml={1} label={appT('Plugin dispatch tip')} />
             </Flex>
             <Button
               variant={'transparentBase'}
@@ -315,7 +315,13 @@ const EditForm = ({
           <VariableEdit
             variables={appForm.chatConfig.variables}
             onChange={(e) => {
-              appForm.chatConfig.variables = e;
+              setAppForm((state) => ({
+                ...state,
+                chatConfig: {
+                  ...state.chatConfig,
+                  variables: e
+                }
+              }));
             }}
           />
         </Box>

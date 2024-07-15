@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Flex,
   Box,
@@ -9,7 +9,6 @@ import {
   Th,
   Td,
   Tbody,
-  useTheme,
   useDisclosure,
   ModalBody,
   HStack
@@ -19,31 +18,26 @@ import { useTranslation } from 'next-i18next';
 import { getAppChatLogs } from '@/web/core/app/api';
 import dayjs from 'dayjs';
 import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
-import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import { AppLogsListItemType } from '@/types/app';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import ChatBox from '@/components/ChatBox';
-import type { ComponentRef } from '@/components/ChatBox/type.d';
-import { useQuery } from '@tanstack/react-query';
-import { getInitChatInfo } from '@/web/core/chat/api';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { addDays } from 'date-fns';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import DateRangePicker, { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
-import { formatChatValue2InputType } from '@/components/ChatBox/utils';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useI18n } from '@/web/context/I18n';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { cardStyles } from '../constants';
 
+import dynamic from 'next/dynamic';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
+
 const Logs = () => {
   const { t } = useTranslation();
   const { appT } = useI18n();
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
@@ -225,131 +219,3 @@ const Logs = () => {
 };
 
 export default React.memo(Logs);
-
-const DetailLogsModal = ({
-  appId,
-  chatId,
-  onClose
-}: {
-  appId: string;
-  chatId: string;
-  onClose: () => void;
-}) => {
-  const ChatBoxRef = useRef<ComponentRef>(null);
-  const { isPc } = useSystemStore();
-  const theme = useTheme();
-
-  const { data: chat, isFetching } = useQuery(
-    ['getChatDetail', chatId],
-    () => getInitChatInfo({ appId, chatId, loadCustomFeedbacks: true }),
-    {
-      onSuccess(res) {
-        const history = res.history.map((item) => ({
-          ...item,
-          dataId: item.dataId || getNanoid(),
-          status: 'finish' as any
-        }));
-        ChatBoxRef.current?.resetHistory(history);
-        ChatBoxRef.current?.resetVariables(res.variables);
-        if (res.history.length > 0) {
-          setTimeout(() => {
-            ChatBoxRef.current?.scrollToBottom('auto');
-          }, 500);
-        }
-      }
-    }
-  );
-
-  const history = useMemo(() => (chat?.history ? chat.history : []), [chat]);
-
-  const title = useMemo(() => {
-    const { text } = formatChatValue2InputType(history[history.length - 2]?.value);
-    return text?.slice(0, 8);
-  }, [history]);
-  const chatModels = chat?.app?.chatModels;
-
-  return (
-    <>
-      <MyBox
-        isLoading={isFetching}
-        display={'flex'}
-        flexDirection={'column'}
-        zIndex={3}
-        position={['fixed', 'absolute']}
-        top={[0, '2%']}
-        right={0}
-        h={['100%', '96%']}
-        w={'100%'}
-        maxW={['100%', '600px']}
-        bg={'white'}
-        boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
-        borderRadius={'md'}
-        overflow={'hidden'}
-        transition={'.2s ease'}
-      >
-        <Flex
-          alignItems={'center'}
-          px={[3, 5]}
-          h={['46px', '60px']}
-          borderBottom={theme.borders.base}
-          borderBottomColor={'gray.200'}
-          color={'myGray.900'}
-        >
-          {isPc ? (
-            <>
-              <Box mr={3} color={'myGray.1000'}>
-                {title}
-              </Box>
-              <MyTag colorSchema="blue">
-                <MyIcon name={'history'} w={'14px'} />
-                <Box ml={1}>{`${history.length}条记录`}</Box>
-              </MyTag>
-              {!!chatModels && chatModels.length > 0 && (
-                <MyTag ml={2} colorSchema={'green'}>
-                  <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
-                  <Box ml={1}>{chatModels.join(',')}</Box>
-                </MyTag>
-              )}
-              <Box flex={1} />
-            </>
-          ) : (
-            <>
-              <Flex px={3} alignItems={'center'} flex={'1 0 0'} w={0} justifyContent={'center'}>
-                <Box ml={1} className="textEllipsis">
-                  {title}
-                </Box>
-              </Flex>
-            </>
-          )}
-
-          <Flex
-            alignItems={'center'}
-            justifyContent={'center'}
-            w={'20px'}
-            h={'20px'}
-            borderRadius={'50%'}
-            cursor={'pointer'}
-            _hover={{ bg: 'myGray.100' }}
-            onClick={onClose}
-          >
-            <MyIcon name={'common/closeLight'} w={'12px'} h={'12px'} color={'myGray.700'} />
-          </Flex>
-        </Flex>
-        <Box pt={2} flex={'1 0 0'}>
-          <ChatBox
-            ref={ChatBoxRef}
-            appAvatar={chat?.app.avatar}
-            userAvatar={HUMAN_ICON}
-            feedbackType={'admin'}
-            showMarkIcon
-            showVoiceIcon={false}
-            chatConfig={chat?.app?.chatConfig}
-            appId={appId}
-            chatId={chatId}
-          />
-        </Box>
-      </MyBox>
-      <Box zIndex={2} position={'fixed'} top={0} left={0} bottom={0} right={0} onClick={onClose} />
-    </>
-  );
-};

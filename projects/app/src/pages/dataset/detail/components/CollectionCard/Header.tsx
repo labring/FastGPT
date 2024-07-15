@@ -31,6 +31,7 @@ import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useContextSelector } from 'use-context-selector';
 import { CollectionPageContext } from './Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
 
@@ -42,7 +43,7 @@ const Header = ({}: {}) => {
 
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
 
   const lastSearch = useRef('');
   const { searchText, setSearchText, total, getData, pageNum, onOpenWebsiteModal } =

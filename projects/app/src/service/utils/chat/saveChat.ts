@@ -4,14 +4,9 @@ import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import {
-  getAppChatConfig,
-  getGuideModule,
-  splitGuideModule
-} from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 type Props = {
@@ -23,6 +18,7 @@ type Props = {
   appChatConfig?: AppChatConfigType;
   variables?: Record<string, any>;
   isUpdateUseTime: boolean;
+  newTitle: string;
   source: `${ChatSourceEnum}`;
   shareId?: string;
   outLinkUid?: string;
@@ -39,6 +35,7 @@ export async function saveChat({
   appChatConfig,
   variables,
   isUpdateUseTime,
+  newTitle,
   source,
   shareId,
   outLinkUid,
@@ -58,7 +55,11 @@ export async function saveChat({
       ...chat?.metadata,
       ...metadata
     };
-    const title = getChatTitleFromChatMessage(content[0]);
+    const { welcomeText, variables: variableList } = getAppChatConfig({
+      chatConfig: appChatConfig,
+      systemConfigNode: getGuideModule(nodes),
+      isPublicFetch: false
+    });
 
     await mongoSessionRun(async (session) => {
       await MongoChatItem.insertMany(
@@ -72,39 +73,33 @@ export async function saveChat({
         { session }
       );
 
-      if (chat) {
-        chat.title = title;
-        chat.updateTime = new Date();
-        chat.metadata = metadataUpdate;
-        chat.variables = variables || {};
-        await chat.save({ session });
-      } else {
-        const { welcomeText, variables: variableList } = getAppChatConfig({
-          chatConfig: appChatConfig,
-          systemConfigNode: getGuideModule(nodes),
-          isPublicFetch: false
-        });
-
-        await MongoChat.create(
-          [
-            {
-              chatId,
-              teamId,
-              tmbId,
-              appId,
-              variableList,
-              welcomeText,
-              variables,
-              title,
-              source,
-              shareId,
-              outLinkUid,
-              metadata: metadataUpdate
-            }
-          ],
-          { session }
-        );
-      }
+      await MongoChat.updateOne(
+        {
+          appId,
+          chatId
+        },
+        {
+          $set: {
+            teamId,
+            tmbId,
+            appId,
+            chatId,
+            variableList,
+            welcomeText,
+            variables: variables || {},
+            title: newTitle,
+            source,
+            shareId,
+            outLinkUid,
+            metadata: metadataUpdate,
+            updateTime: new Date()
+          }
+        },
+        {
+          session,
+          upsert: true
+        }
+      );
     });
 
     if (isUpdateUseTime) {

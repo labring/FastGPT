@@ -13,7 +13,6 @@ import { ToolTargetHandle } from './Handle/ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
-import { ResponseBox } from '@/components/ChatBox/components/WholeResponseModal';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import { storeNode2FlowNode, getLatestNodeTemplate } from '@/web/core/workflow/utils';
@@ -26,6 +25,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
+import { ResponseBox } from '@/components/core/chat/components/WholeResponseModal';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -566,11 +566,10 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
             w={'420px'}
             maxH={'100%'}
             minH={'300px'}
-            overflowY={'auto'}
             border={'base'}
           >
             {/* Status header */}
-            <Flex px={4} mb={1} py={3} alignItems={'center'} borderBottom={'base'}>
+            <Flex h={'54x'} px={4} mb={1} py={3} alignItems={'center'} borderBottom={'base'}>
               <MyIcon mr={1} name={'core/workflow/debugResult'} w={'20px'} color={'primary.600'} />
               <Box fontWeight={'bold'} flex={'1'}>
                 {t('core.workflow.debug.Run result')}
@@ -606,7 +605,7 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
               )}
             </Flex>
             {/* Show result */}
-            <Box maxH={'100%'} overflow={'auto'}>
+            <Box maxH={'calc(100%-54px)'} overflow={'auto'}>
               {!debugResult.message && !response && (
                 <EmptyTip text={t('core.workflow.debug.Not result')} pt={2} pb={5} />
               )}

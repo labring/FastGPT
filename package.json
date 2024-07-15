@@ -26,7 +26,7 @@
     "./docSite/**/**/*.md": "npm run format-doc"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "pnpm": ">=8.6.0"
+    "node": ">=18.16.0",
+    "pnpm": ">=9.0.0"
   }
 }

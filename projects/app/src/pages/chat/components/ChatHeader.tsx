@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Flex, useTheme, Box } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -6,51 +6,47 @@ import Avatar from '@/components/Avatar';
 import ToolMenu from './ToolMenu';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { useTranslation } from 'next-i18next';
-import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { InitChatResponse } from '@/global/core/chat/api';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const ChatHeader = ({
+  chatData,
   history,
-  appName,
-  appAvatar,
-  chatModels,
   showHistory,
   onRoute2AppDetail
 }: {
+  chatData: InitChatResponse;
   history: ChatItemType[];
-  appName: string;
-  appAvatar: string;
-  chatModels?: string[];
   showHistory?: boolean;
   onRoute2AppDetail?: () => void;
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
-  const { isPc } = useSystemStore();
-  const title = useMemo(
-    () =>
-      getChatTitleFromChatMessage(history[history.length - 2], appName || t('core.chat.New Chat')),
-    [appName, history, t]
-  );
+  const { isPc } = useSystem();
+
+  const chatModels = chatData.app.chatModels;
+  const isPlugin = chatData.app.type === AppTypeEnum.plugin;
 
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
-  return (
+  return isPc && isPlugin ? null : (
     <Flex
       alignItems={'center'}
       px={[3, 5]}
-      h={['46px', '60px']}
+      minH={['46px', '60px']}
       borderBottom={theme.borders.sm}
       color={'myGray.900'}
       fontSize={'sm'}
     >
       {isPc ? (
         <>
-          <Box mr={3} color={'myGray.1000'}>
-            {title}
+          <Box mr={3} maxW={'160px'} className="textEllipsis" color={'myGray.1000'}>
+            {chatData.title}
           </Box>
           <MyTag>
             <MyIcon name={'history'} w={'14px'} />
@@ -85,15 +81,16 @@ const ChatHeader = ({
           )}
 
           <Flex px={3} alignItems={'center'} flex={'1 0 0'} w={0} justifyContent={'center'}>
-            <Avatar src={appAvatar} w={'16px'} />
+            <Avatar src={chatData.app.avatar} w={'16px'} />
             <Box ml={1} className="textEllipsis" onClick={onRoute2AppDetail}>
-              {appName}
+              {chatData.app.name}
             </Box>
           </Flex>
         </>
       )}
+
       {/* control */}
-      <ToolMenu history={history} />
+      {!isPlugin && <ToolMenu history={history} />}
     </Flex>
   );
 };

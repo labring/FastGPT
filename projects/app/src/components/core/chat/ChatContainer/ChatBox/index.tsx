@@ -9,7 +9,6 @@ import React, {
   useEffect
 } from 'react';
 import Script from 'next/script';
-import { throttle } from 'lodash';
 import type {
   AIChatItemValueItemType,
   ChatSiteItemType,
@@ -20,7 +19,6 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { Box, Flex, Checkbox } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -35,30 +33,25 @@ import type { AdminMarkType } from './components/SelectMarkCollection';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 import { postQuestionGuide } from '@/web/core/ai/api';
-import type {
-  generatingMessageProps,
-  StartChatFnProps,
-  ComponentRef,
-  ChatBoxInputType,
-  ChatBoxInputFormType
-} from './type.d';
+import type { ComponentRef, ChatBoxInputType, ChatBoxInputFormType } from './type.d';
+import type { StartChatFnProps, generatingMessageProps } from '../type';
 import ChatInput from './Input/ChatInput';
-import ChatBoxDivider from '../core/chat/Divider';
+import ChatBoxDivider from '../../Divider';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { formatChatValue2InputType } from './utils';
 import { textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import ChatProvider, { ChatBoxContext } from './Provider';
+import ChatProvider, { ChatBoxContext, ChatProviderProps } from './Provider';
 
 import ChatItem from './components/ChatItem';
 
 import dynamic from 'next/dynamic';
-import { useCreation } from 'ahooks';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { StreamResponseType } from '@/web/common/api/fetch';
 import { useContextSelector } from 'use-context-selector';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useThrottleFn } from 'ahooks';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -74,29 +67,26 @@ enum FeedbackTypeEnum {
   hidden = 'hidden'
 }
 
-type Props = OutLinkChatAuthProps & {
-  feedbackType?: `${FeedbackTypeEnum}`;
-  showMarkIcon?: boolean; // admin mark dataset
-  showVoiceIcon?: boolean;
-  showEmptyIntro?: boolean;
-  appAvatar?: string;
-  userAvatar?: string;
-  chatConfig?: AppChatConfigType;
-  showFileSelector?: boolean;
-  active?: boolean; // can use
-  appId: string;
+type Props = OutLinkChatAuthProps &
+  ChatProviderProps & {
+    feedbackType?: `${FeedbackTypeEnum}`;
+    showMarkIcon?: boolean; // admin mark dataset
+    showVoiceIcon?: boolean;
+    showEmptyIntro?: boolean;
+    userAvatar?: string;
+    showFileSelector?: boolean;
+    active?: boolean; // can use
+    appId: string;
 
-  // not chat test params
-  chatId?: string;
+    // not chat test params
 
-  onUpdateVariable?: (e: Record<string, any>) => void;
-  onStartChat?: (e: StartChatFnProps) => Promise<
-    StreamResponseType & {
-      isNewChat?: boolean;
-    }
-  >;
-  onDelMessage?: (e: { contentId: string }) => void;
-};
+    onStartChat?: (e: StartChatFnProps) => Promise<
+      StreamResponseType & {
+        isNewChat?: boolean;
+      }
+    >;
+    onDelMessage?: (e: { contentId: string }) => void;
+  };
 
 /* 
   The input is divided into sections
@@ -122,7 +112,6 @@ const ChatBox = (
     outLinkUid,
     teamId,
     teamToken,
-    onUpdateVariable,
     onStartChat,
     onDelMessage
   }: Props,
@@ -132,10 +121,12 @@ const ChatBox = (
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { isPc, setLoading, feConfigs } = useSystemStore();
+  const { setLoading, feConfigs } = useSystemStore();
+  const { isPc } = useSystem();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
   const questionGuideController = useRef(new AbortController());
+  const pluginController = useRef(new AbortController());
   const isNewChatReplace = useRef(false);
 
   const [feedbackId, setFeedbackId] = useState<string>();
@@ -156,6 +147,7 @@ const ChatBox = (
     splitText2Audio,
     chatHistories,
     setChatHistories,
+    variablesForm,
     isChatting
   } = useContextSelector(ChatBoxContext, (v) => v);
 
@@ -164,41 +156,44 @@ const ChatBox = (
     defaultValues: {
       input: '',
       files: [],
-      variables: {},
       chatStarted: false
     }
   });
-  const { setValue, watch, handleSubmit } = chatForm;
-  const chatStarted = watch('chatStarted');
-
-  /* variable */
-  const filterVariableNodes = useCreation(
-    () => variableList.filter((item) => item.type !== VariableInputEnum.custom),
-    [variableList]
-  );
+  const { setValue, watch } = chatForm;
+  const chatStartedWatch = watch('chatStarted');
+  const chatStarted = chatStartedWatch || chatHistories.length > 0 || variableList.length === 0;
 
   // 滚动到底部
-  const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
-    if (!ChatBoxRef.current) return;
-    ChatBoxRef.current.scrollTo({
-      top: ChatBoxRef.current.scrollHeight,
-      behavior
-    });
-  };
+  const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
+    setTimeout(() => {
+      if (!ChatBoxRef.current) {
+        setTimeout(() => {
+          scrollToBottom(behavior);
+        }, 500);
+      } else {
+        ChatBoxRef.current.scrollTo({
+          top: ChatBoxRef.current.scrollHeight,
+          behavior
+        });
+      }
+    }, delay);
+  }, []);
 
   // 聊天信息生成中……获取当前滚动条位置，判断是否需要滚动到底部
-  const generatingScroll = useCallback(
-    throttle(() => {
+  const { run: generatingScroll } = useThrottleFn(
+    () => {
       if (!ChatBoxRef.current) return;
       const isBottom =
         ChatBoxRef.current.scrollTop + ChatBoxRef.current.clientHeight + 150 >=
         ChatBoxRef.current.scrollHeight;
 
       isBottom && scrollToBottom('auto');
-    }, 100),
-    []
+    },
+    {
+      wait: 100
+    }
   );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   const generatingMessage = useCallback(
     ({
       event,
@@ -291,7 +286,7 @@ const ChatBox = (
               })
             };
           } else if (event === SseResponseEventEnum.updateVariables && variables) {
-            setValue('variables', variables);
+            variablesForm.reset(variables);
           }
 
           return item;
@@ -299,7 +294,7 @@ const ChatBox = (
       );
       generatingScroll();
     },
-    [generatingScroll, setChatHistories, setValue, splitText2Audio]
+    [generatingScroll, setChatHistories, splitText2Audio, variablesForm]
   );
 
   // 重置输入内容
@@ -347,13 +342,14 @@ const ChatBox = (
         }
       } catch (error) {}
     },
-    [questionGuide, shareId, outLinkUid, teamId, teamToken]
+    [questionGuide, shareId, outLinkUid, teamId, teamToken, scrollToBottom]
   );
 
   /* Abort chat completions, questionGuide */
   const abortRequest = useCallback(() => {
     chatController.current?.abort('stop');
     questionGuideController.current?.abort('stop');
+    pluginController.current?.abort('stop');
   }, []);
 
   /**
@@ -369,8 +365,8 @@ const ChatBox = (
       autoTTSResponse?: boolean;
       history?: ChatSiteItemType[];
     }) => {
-      handleSubmit(
-        async ({ variables }) => {
+      variablesForm.handleSubmit(
+        async (variables) => {
           if (!onStartChat) return;
           if (isChatting) {
             toast({
@@ -455,9 +451,7 @@ const ChatBox = (
           // 清空输入内容
           resetInputVal({});
           setQuestionGuide([]);
-          setTimeout(() => {
-            scrollToBottom();
-          }, 100);
+          scrollToBottom('smooth', 100);
           try {
             // create abort obj
             const abortSignal = new AbortController();
@@ -470,8 +464,8 @@ const ChatBox = (
               responseText,
               isNewChat = false
             } = await onStartChat({
-              chatList: newChatList,
-              messages,
+              messages: messages.slice(0, -1),
+              responseChatItemId: responseChatId,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
               variables: requestVariables
@@ -542,7 +536,7 @@ const ChatBox = (
           autoTTSResponse && finishSegmentedAudio();
         },
         (err) => {
-          console.log(err?.variables);
+          console.log(err);
         }
       )();
     },
@@ -553,18 +547,19 @@ const ChatBox = (
       finishSegmentedAudio,
       generatingMessage,
       generatingScroll,
-      handleSubmit,
       isChatting,
       isPc,
       onStartChat,
       resetInputVal,
+      scrollToBottom,
       setAudioPlayingChatId,
       setChatHistories,
       splitText2Audio,
       startSegmentedAudio,
       t,
       toast,
-      variableList
+      variableList,
+      variablesForm
     ]
   );
 
@@ -720,7 +715,7 @@ const ChatBox = (
     },
     [appId, chatId, feedbackType, setChatHistories, teamId, teamToken]
   );
-  const onADdUserDislike = useCallback(
+  const onAddUserDislike = useCallback(
     (chat: ChatSiteItemType) => {
       if (
         feedbackType !== FeedbackTypeEnum.user ||
@@ -797,30 +792,18 @@ const ChatBox = (
     [appId, chatId, setChatHistories]
   );
 
-  const resetVariables = useCallback(
-    (e: Record<string, any> = {}) => {
-      const value: Record<string, any> = { ...e };
-      filterVariableNodes?.forEach((item) => {
-        value[item.key] = e[item.key] || '';
-      });
-
-      setValue('variables', value);
-    },
-    [filterVariableNodes, setValue]
-  );
-
   const showEmpty = useMemo(
     () =>
       feConfigs?.show_emptyChat &&
       showEmptyIntro &&
       chatHistories.length === 0 &&
-      !filterVariableNodes?.length &&
+      !variableList?.length &&
       !welcomeText,
     [
       chatHistories.length,
       feConfigs?.show_emptyChat,
       showEmptyIntro,
-      filterVariableNodes?.length,
+      variableList?.length,
       welcomeText
     ]
   );
@@ -878,12 +861,10 @@ const ChatBox = (
 
   // output data
   useImperativeHandle(ref, () => ({
-    getChatHistories: () => chatHistories,
-    resetVariables,
-    resetHistory(e) {
+    restartChat() {
       abortRequest();
-      setValue('chatStarted', e.length > 0);
-      setChatHistories(e);
+      setValue('chatStarted', false);
+      scrollToBottom('smooth', 500);
     },
     scrollToBottom,
     sendPrompt: (question: string) => {
@@ -900,41 +881,33 @@ const ChatBox = (
       <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'} px={[4, 0]} pb={3}>
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {showEmpty && <Empty />}
-          {!!welcomeText && <WelcomeBox appAvatar={appAvatar} welcomeText={welcomeText} />}
+          {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
           {/* variable input */}
-          {!!filterVariableNodes?.length && (
-            <VariableInput
-              appAvatar={appAvatar}
-              variableList={filterVariableNodes}
-              chatForm={chatForm}
-              onSubmitVariables={(data) => {
-                setValue('chatStarted', true);
-                onUpdateVariable?.(data);
-              }}
-            />
+          {!!variableList?.length && (
+            <VariableInput chatStarted={chatStarted} chatForm={chatForm} />
           )}
           {/* chat history */}
           <Box id={'history'}>
             {chatHistories.map((item, index) => (
               <Box key={item.dataId} py={5}>
-                {item.obj === 'Human' && (
+                {item.obj === ChatRoleEnum.Human && (
                   <ChatItem
                     type={item.obj}
-                    avatar={item.obj === 'Human' ? userAvatar : appAvatar}
+                    avatar={userAvatar}
                     chat={item}
                     onRetry={retryInput(item.dataId)}
                     onDelete={delOneMessage(item.dataId)}
                     isLastChild={index === chatHistories.length - 1}
                   />
                 )}
-                {item.obj === 'AI' && (
+                {item.obj === ChatRoleEnum.AI && (
                   <>
                     <ChatItem
                       type={item.obj}
                       avatar={appAvatar}
                       chat={item}
                       isLastChild={index === chatHistories.length - 1}
-                      {...(item.obj === 'AI' && {
+                      {...(item.obj === ChatRoleEnum.AI && {
                         showVoiceIcon,
                         shareId,
                         outLinkUid,
@@ -948,7 +921,7 @@ const ChatBox = (
                         ),
                         onAddUserLike: onAddUserLike(item),
                         onCloseUserLike: onCloseUserLike(item),
-                        onAddUserDislike: onADdUserDislike(item),
+                        onAddUserDislike: onAddUserDislike(item),
                         onReadUserDislike: onReadUserDislike(item)
                       })}
                     >
@@ -997,7 +970,7 @@ const ChatBox = (
         </Box>
       </Box>
       {/* message input */}
-      {onStartChat && (chatStarted || filterVariableNodes.length === 0) && active && appId && (
+      {onStartChat && chatStarted && active && appId && (
         <ChatInput
           onSendMessage={sendPrompt}
           onStop={() => chatController.current?.abort('stop')}

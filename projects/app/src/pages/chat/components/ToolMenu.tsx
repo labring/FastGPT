@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useChatBox } from '@/components/ChatBox/hooks/useChatBox';
+import { useChatBox } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatBox';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { Box, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';

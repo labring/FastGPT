@@ -1,32 +1,27 @@
-import { VariableItemType } from '@fastgpt/global/core/app/type.d';
 import React from 'react';
-import { UseFormReturn } from 'react-hook-form';
+import { Controller, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Card, Input, Textarea } from '@chakra-ui/react';
+import { Box, Button, Card, FormControl, Input, Textarea } from '@chakra-ui/react';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatBoxInputFormType } from '../type.d';
-import { useRefresh } from '@fastgpt/web/hooks/useRefresh';
+import { useContextSelector } from 'use-context-selector';
+import { ChatBoxContext } from '../Provider';
 
 const VariableInput = ({
-  appAvatar,
-  variableList,
   chatForm,
-  onSubmitVariables
+  chatStarted
 }: {
-  appAvatar?: string;
-  variableList: VariableItemType[];
-  onSubmitVariables: (e: Record<string, any>) => void;
+  chatStarted: boolean;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
 }) => {
   const { t } = useTranslation();
-  const { register, setValue, handleSubmit: handleSubmitChat, watch } = chatForm;
-  const variables = watch('variables');
-  const chatStarted = watch('chatStarted');
-  const { refresh } = useRefresh();
+
+  const { appAvatar, variableList, variablesForm } = useContextSelector(ChatBoxContext, (v) => v);
+  const { register, getValues, setValue, handleSubmit: handleSubmitChat, control } = variablesForm;
 
   return (
     <Box py={3}>
@@ -61,7 +56,7 @@ const VariableInput = ({
               {item.type === VariableInputEnum.input && (
                 <Input
                   bg={'myWhite.400'}
-                  {...register(`variables.${item.key}`, {
+                  {...register(item.key, {
                     required: item.required
                   })}
                 />
@@ -69,7 +64,7 @@ const VariableInput = ({
               {item.type === VariableInputEnum.textarea && (
                 <Textarea
                   bg={'myWhite.400'}
-                  {...register(`variables.${item.key}`, {
+                  {...register(item.key, {
                     required: item.required
                   })}
                   rows={5}
@@ -77,19 +72,24 @@ const VariableInput = ({
                 />
               )}
               {item.type === VariableInputEnum.select && (
-                <MySelect
-                  width={'100%'}
-                  list={(item.enums || []).map((item) => ({
-                    label: item.value,
-                    value: item.value
-                  }))}
-                  {...register(`variables.${item.key}`, {
-                    required: item.required
-                  })}
-                  value={variables[item.key]}
-                  onchange={(e) => {
-                    refresh();
-                    setValue(`variables.${item.key}`, e);
+                <Controller
+                  key={item.key}
+                  control={control}
+                  name={item.key}
+                  rules={{ required: item.required }}
+                  render={({ field: { ref, value } }) => {
+                    return (
+                      <MySelect
+                        ref={ref}
+                        width={'100%'}
+                        list={(item.enums || []).map((item) => ({
+                          label: item.value,
+                          value: item.value
+                        }))}
+                        value={value}
+                        onchange={(e) => setValue(item.key, e)}
+                      />
+                    );
                   }}
                 />
               )}
@@ -100,8 +100,8 @@ const VariableInput = ({
               leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
               size={'sm'}
               maxW={'100px'}
-              onClick={handleSubmitChat((data) => {
-                onSubmitVariables(data);
+              onClick={handleSubmitChat(() => {
+                chatForm.setValue('chatStarted', true);
               })}
             >
               {t('core.chat.Start Chat')}

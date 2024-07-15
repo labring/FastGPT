@@ -7,6 +7,7 @@ import { ChatHistoryItemType } from '@fastgpt/global/core/chat/type';
 import { ClearHistoriesProps, DelHistoryProps, UpdateHistoryProps } from '@/global/core/chat/api';
 import { useDisclosure } from '@chakra-ui/react';
 import { useChatStore } from './storeChat';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 type ChatContextValueType = {
   histories: ChatHistoryItemType[];
@@ -66,7 +67,6 @@ const ChatContextProvider = ({
 }: ChatContextValueType & { children: ReactNode }) => {
   const router = useRouter();
   const { chatId = '' } = router.query as { chatId: string };
-  const isSystemChat = router.pathname === '/chat';
 
   const forbidLoadChat = useRef(false);
 
@@ -74,7 +74,7 @@ const ChatContextProvider = ({
 
   const { setLastChatId } = useChatStore();
   const onChangeChatId = useCallback(
-    (changeChatId = '', forbid = false) => {
+    (changeChatId = getNanoid(), forbid = false) => {
       if (chatId !== changeChatId) {
         forbidLoadChat.current = forbid;
         setLastChatId(changeChatId);
