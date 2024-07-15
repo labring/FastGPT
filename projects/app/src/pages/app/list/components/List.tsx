@@ -271,6 +271,21 @@ const ListItem = () => {
                                   }
                                 ]
                               : []),
+                            ...([AppTypeEnum.plugin].includes(app.type)
+                              ? [
+                                  {
+                                    children: [
+                                      {
+                                        icon: 'core/chat/chatLight',
+                                        label: appT('Go to run'),
+                                        onClick: () => {
+                                          router.push(`/chat?appId=${app._id}`);
+                                        }
+                                      }
+                                    ]
+                                  }
+                                ]
+                              : []),
                             {
                               children: [
                                 {

@@ -112,6 +112,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
               {({ onClose }) => (
                 <Box minH={'200px'}>
                   <SelectOneResource
+                    maxH={'60vh'}
                     value={activeAppId}
                     onSelect={(id) => {
                       if (!id) return;
