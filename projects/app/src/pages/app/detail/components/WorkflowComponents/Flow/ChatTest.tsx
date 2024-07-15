@@ -1,5 +1,5 @@
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
-import React, { forwardRef, ForwardedRef } from 'react';
+import React from 'react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
 import { Box, Flex, HStack, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -126,7 +126,7 @@ const ChatTest = ({
           </Flex>
         )}
 
-        <Box flex={1}>
+        <Box flex={'1 0 0'}>
           <ChatContainer />
         </Box>
       </Flex>
