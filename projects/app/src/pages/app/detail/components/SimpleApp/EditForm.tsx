@@ -292,7 +292,7 @@ const EditForm = ({
                     borderColor: 'primary.300'
                   }}
                 >
-                  <Avatar src={item.avatar} w={'1rem'} mr={1} />
+                  <Avatar src={item.avatar} w={'1.5rem'} mr={1} />
                   <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
                     {item.name}
                   </Box>

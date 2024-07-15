@@ -46,6 +46,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useI18n } from '@/web/context/I18n';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -185,6 +186,7 @@ const RenderList = React.memo(function RenderList({
   showCost?: boolean;
 }) {
   const { t } = useTranslation();
+  const { appT } = useI18n();
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
 
@@ -215,7 +217,7 @@ const RenderList = React.memo(function RenderList({
         return (
           <MyTooltip
             key={item.id}
-            placement={'right'}
+            placement={'bottom'}
             shouldWrapChildren={false}
             label={
               <Box>
@@ -237,7 +239,11 @@ const RenderList = React.memo(function RenderList({
                     <Divider mt={4} mb={2} />
                     <Flex>
                       <Box>{t('core.plugin.cost')}</Box>
-                      <Box color={'myGray.600'}>{item.currentCost || t('core.plugin.Free')}</Box>
+                      <Box color={'myGray.600'}>
+                        {item.currentCost && item.currentCost > 0
+                          ? appT('Plugin cost per times', { cost: item.currentCost })
+                          : t('core.plugin.Free')}
+                      </Box>
                     </Flex>
                   </>
                 )}
