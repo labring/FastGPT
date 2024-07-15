@@ -81,7 +81,7 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
           <Box fontSize={'md'}>{t('core.dataset.import.Data process params')}</Box>
         </Flex>
 
-        <Flex mt={4} alignItems={'center'}>
+        <Box display={['block', 'flex']} mt={4} alignItems={'center'}>
           <FormLabel flex={'0 0 100px'}>{t('core.dataset.import.Training mode')}</FormLabel>
           <LeftRadio
             list={trainingModeList.map(([key, value]) => ({
@@ -98,8 +98,8 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
             display={'flex'}
             flexWrap={'wrap'}
           />
-        </Flex>
-        <Flex mt={5}>
+        </Box>
+        <Box display={['block', 'flex']} mt={5}>
           <FormLabel flex={'0 0 100px'}>{t('core.dataset.import.Process way')}</FormLabel>
           <LeftRadio
             list={[
@@ -118,10 +118,7 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
                       <Box>
                         <Flex alignItems={'center'}>
                           <Box>{t('core.dataset.import.Ideal chunk length')}</Box>
-                          <MyTooltip
-                            label={t('core.dataset.import.Ideal chunk length Tips')}
-                            forceShow
-                          >
+                          <MyTooltip label={t('core.dataset.import.Ideal chunk length Tips')}>
                             <MyIcon
                               name={'common/questionLight'}
                               ml={1}
@@ -175,10 +172,7 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
                     <Box mt={3}>
                       <Box>
                         {t('core.dataset.import.Custom split char')}
-                        <MyTooltip
-                          label={t('core.dataset.import.Custom split char Tips')}
-                          forceShow
-                        >
+                        <MyTooltip label={t('core.dataset.import.Custom split char Tips')}>
                           <MyIcon
                             name={'common/questionLight'}
                             ml={1}
@@ -263,16 +257,16 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
               setValue('way', e);
             }}
           ></LeftRadio>
-        </Flex>
-        <Flex mt={5} alignItems={'center'} pl={'100px'} gap={3}>
+        </Box>
+        <Box mt={5} pl={[0, '100px']} gap={3}>
           {feConfigs?.show_pay && (
             <MyTooltip label={priceTip}>
-              <MyTag colorSchema={'gray'} py={'6px'} borderRadius={'md'} px={3}>
+              <MyTag colorSchema={'gray'} py={'6px'} borderRadius={'md'} px={3} whiteSpace={'wrap'}>
                 {priceTip}
               </MyTag>
             </MyTooltip>
           )}
-        </Flex>
+        </Box>
         <Flex mt={5} gap={3} justifyContent={'flex-end'}>
           <Button
             onClick={() => {
@@ -283,7 +277,7 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
           </Button>
         </Flex>
       </Box>
-      <Box flex={'1 0 0'} w={'0'}>
+      <Box flex={'1 0 0'} w={['auto', '0']}>
         <Preview showPreviewChunks={showPreviewChunks} />
       </Box>
 
