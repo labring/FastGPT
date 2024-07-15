@@ -3,7 +3,7 @@
   "version": "481",
   "templateType": "tools",
   "name": "获取当前时间",
-  "avatar": "/imgs/workflow/getCurrentTime.png",
+  "avatar": "/imgs/workflow/getCurrentTime.svg",
   "intro": "获取用户当前时区的时间。",
   "showStatus": false,
   "isTool": true,

@@ -35,8 +35,10 @@ export const getTeamPlugTemplates = (data?: ListAppBody) =>
 export const getSystemPlugTemplates = (parentId: ParentIdType) =>
   GET<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates', { parentId });
 
-export const getSystemPluginPaths = (parentId: ParentIdType) =>
-  GET<ParentTreePathItemType[]>('/core/app/plugin/path', { parentId });
+export const getSystemPluginPaths = (parentId: ParentIdType) => {
+  if (!parentId) return Promise.resolve<ParentTreePathItemType[]>([]);
+  return GET<ParentTreePathItemType[]>('/core/app/plugin/path', { parentId });
+};
 
 export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
   GET<FlowNodeTemplateType>('/core/app/plugin/getPreviewNode', data);
