@@ -191,23 +191,36 @@ const PluginRunContextProvider = ({
       }
     ]);
 
-    const { responseData } = await onStartChat({
-      messages: [],
-      controller: chatController.current,
-      generatingMessage,
-      variables: e
-    });
+    try {
+      const { responseData } = await onStartChat({
+        messages: [],
+        controller: chatController.current,
+        generatingMessage,
+        variables: e
+      });
 
-    setHistories((state) =>
-      state.map((item, index) => {
-        if (index !== state.length - 1) return item;
-        return {
-          ...item,
-          status: 'finish',
-          responseData
-        };
-      })
-    );
+      setHistories((state) =>
+        state.map((item, index) => {
+          if (index !== state.length - 1) return item;
+          return {
+            ...item,
+            status: 'finish',
+            responseData
+          };
+        })
+      );
+    } catch (err: any) {
+      toast({ title: err.message, status: 'error' });
+      setHistories((state) =>
+        state.map((item, index) => {
+          if (index !== state.length - 1) return item;
+          return {
+            ...item,
+            status: 'finish'
+          };
+        })
+      );
+    }
   });
 
   const contextValue: PluginRunContextType = {
