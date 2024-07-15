@@ -314,7 +314,7 @@ const Input: ComponentStyleConfig = {
     }),
     md: defineStyle({
       field: {
-        h: '40px',
+        h: '34px',
         borderRadius: 'md'
       }
     })

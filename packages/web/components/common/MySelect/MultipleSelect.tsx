@@ -81,7 +81,6 @@ const MultipleSelect = <T = any,>({
           borderRadius={'md'}
           border={'base'}
           userSelect={'none'}
-          minH={'40px'}
           cursor={'pointer'}
           _active={{
             transform: 'none'

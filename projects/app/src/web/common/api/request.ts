@@ -14,7 +14,7 @@ interface ConfigType {
   timeout?: number;
   onUploadProgress?: (progressEvent: AxiosProgressEvent) => void;
   cancelToken?: AbortController;
-  maxQuantity?: number;
+  maxQuantity?: number; // The maximum number of simultaneous requests, usually used to cancel old requests
   withCredentials?: boolean;
 }
 interface ResponseDataType {
@@ -31,20 +31,28 @@ const maxQuantityMap: Record<
   }
 > = {};
 
-function requestStart({ url, maxQuantity }: { url: string; maxQuantity?: number }) {
-  if (!maxQuantity) return;
-  const item = maxQuantityMap[url];
+function checkMaxQuantity({ url, maxQuantity }: { url: string; maxQuantity?: number }) {
+  if (maxQuantity) {
+    const item = maxQuantityMap[url];
+    const controller = new AbortController();
 
-  if (item) {
-    if (item.amount >= maxQuantity && item.sign) {
-      item.sign.abort();
-      delete maxQuantityMap[url];
+    if (item) {
+      if (item.amount >= maxQuantity) {
+        item.sign?.abort?.();
+        maxQuantityMap[url] = {
+          amount: 1,
+          sign: controller
+        };
+      } else {
+        item.amount++;
+      }
+    } else {
+      maxQuantityMap[url] = {
+        amount: 1,
+        sign: controller
+      };
     }
-  } else {
-    maxQuantityMap[url] = {
-      amount: 1,
-      sign: new AbortController()
-    };
+    return controller;
   }
 }
 function requestFinish({ url }: { url: string }) {
@@ -148,7 +156,7 @@ function request(
     }
   }
 
-  requestStart({ url, maxQuantity });
+  const controller = checkMaxQuantity({ url, maxQuantity });
 
   return instance
     .request({
@@ -157,7 +165,7 @@ function request(
       method,
       data: ['POST', 'PUT'].includes(method) ? data : null,
       params: !['POST', 'PUT'].includes(method) ? data : null,
-      signal: cancelToken?.signal,
+      signal: cancelToken?.signal ?? controller?.signal,
       withCredentials,
       ...config // 用户自定义配置，可以覆盖前面的配置
     })
