@@ -101,9 +101,7 @@ const WholeResponseModal = ({
         </Flex>
       }
     >
-      <Flex h={'100%'} flexDirection={'column'}>
-        <ResponseBox response={response} showDetail={showDetail} />
-      </Flex>
+      <ResponseBox response={response} showDetail={showDetail} />
     </MyModal>
   );
 };
@@ -151,7 +149,10 @@ export const ResponseBox = React.memo(function ResponseBox({
   const activeModule = useMemo(() => response[Number(currentTab)], [currentTab, response]);
 
   return (
-    <Flex h={'100%'} flexDirection={'column'}>
+    <Box
+      {...(hideTabs ? { overflow: 'auto' } : { display: 'flex', flexDirection: 'column' })}
+      h={'100%'}
+    >
       {!hideTabs && (
         <Box>
           <LightRowTabs
@@ -163,7 +164,16 @@ export const ResponseBox = React.memo(function ResponseBox({
         </Box>
       )}
       {activeModule && (
-        <Box py={2} px={4} flex={'1 0 0'} overflow={'auto'}>
+        <Box
+          py={2}
+          px={4}
+          {...(hideTabs
+            ? {}
+            : {
+                flex: '1 0 0',
+                overflow: 'auto'
+              })}
+        >
           <>
             <Row label={t('core.chat.response.module name')} value={t(activeModule.moduleName)} />
             {activeModule?.totalPoints !== undefined && (
@@ -332,6 +342,6 @@ export const ResponseBox = React.memo(function ResponseBox({
           <Row label={workflowT('response.Code log')} value={activeModule?.codeLog} />
         </Box>
       )}
-    </Flex>
+    </Box>
   );
 });

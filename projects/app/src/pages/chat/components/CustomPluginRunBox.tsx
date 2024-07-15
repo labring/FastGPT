@@ -41,7 +41,7 @@ const CustomPluginRunBox = (props: PluginRunBoxProps) => {
             fontSize={'sm'}
           />
         </Box>
-        <Box flex={'1 0 0'} w={'100%'}>
+        <Box flex={'1 0 0'} overflow={'auto'} w={'100%'}>
           <PluginRunBox {...props} />
         </Box>
       </Stack>
