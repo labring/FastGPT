@@ -12,6 +12,7 @@ import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   GPTMessages2Chats,
+  chatValue2RuntimePrompt,
   chats2GPTMessages,
   getSystemPrompt,
   runtimePrompt2ChatsValue
@@ -29,10 +30,11 @@ type Response = DispatchNodeResultType<{
 
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
-    node: { nodeId, name, outputs },
+    node: { nodeId, name },
     runtimeNodes,
     runtimeEdges,
     histories,
+    query,
     params: { model, systemPrompt, userChatInput, history = 6 }
   } = props;
 
@@ -65,7 +67,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       obj: ChatRoleEnum.Human,
       value: runtimePrompt2ChatsValue({
         text: userChatInput,
-        files: []
+        files: chatValue2RuntimePrompt(query).files
       })
     }
   ];

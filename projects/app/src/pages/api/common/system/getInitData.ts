@@ -15,6 +15,8 @@ import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type
 import { connectToDatabase } from '@/service/mongo';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
+  await getInitConfig();
+
   jsonRes<InitDateResponse>(res, {
     data: {
       feConfigs: global.feConfigs,
@@ -54,6 +56,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
 };
 
 export async function getInitConfig() {
+  // First request
   if (!global.systemInited) {
     await connectToDatabase();
   }

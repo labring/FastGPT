@@ -86,7 +86,7 @@ const ChatInput = ({
           });
           updateFile(fileIndex, {
             ...file,
-            url: `${location.origin}${url}`
+            url
           });
         } catch (error) {
           removeFile(fileIndex);

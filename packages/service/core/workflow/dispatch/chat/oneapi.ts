@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 import {
   filterGPTMessageByMaxTokens,
   formatGPTMessagesInRequestBefore,
-  loadChatImgToBase64
+  loadRequestMessages
 } from '../../../chat/utils';
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -151,22 +151,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     ...formatGPTMessagesInRequestBefore(filterMessages)
   ] as ChatCompletionMessageParam[];
 
-  if (concatMessages.length === 0) {
-    return Promise.reject('core.chat.error.Messages empty');
-  }
-
-  const loadMessages = await Promise.all(
-    concatMessages.map(async (item) => {
-      if (item.role === ChatCompletionRequestMessageRoleEnum.User) {
-        return {
-          ...item,
-          content: await loadChatImgToBase64(item.content)
-        };
-      } else {
-        return item;
-      }
-    })
-  );
+  const requestMessages = await loadRequestMessages(concatMessages);
 
   const requestBody = {
     ...modelConstantsData?.defaultConfig,
@@ -174,7 +159,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     temperature,
     max_tokens,
     stream,
-    messages: loadMessages
+    messages: requestMessages
   };
   const response = await ai.chat.completions.create(requestBody, {
     headers: {

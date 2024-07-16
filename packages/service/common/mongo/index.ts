@@ -64,6 +64,7 @@ export const getMongoModel = <T>(name: string, schema: mongoose.Schema) => {
   addCommonMiddleware(schema);
 
   const model = connectionMongo.model<T>(name, schema);
+
   try {
     // model.createIndexes({ background: true });
     model.syncIndexes({ background: true });
