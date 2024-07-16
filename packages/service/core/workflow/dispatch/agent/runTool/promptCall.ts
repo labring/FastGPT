@@ -1,6 +1,6 @@
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getAIApi } from '../../../../ai/config';
-import { filterGPTMessageByMaxTokens } from '../../../../chat/utils';
+import { filterGPTMessageByMaxTokens, loadRequestMessages } from '../../../../chat/utils';
 import {
   ChatCompletion,
   StreamChatType,
@@ -87,6 +87,8 @@ export const runToolWithPromptCall = async (
     messages,
     maxTokens: toolModel.maxContext - 500 // filter token. not response maxToken
   });
+  const requestMessages = await loadRequestMessages(filterMessages);
+
   // console.log(JSON.stringify(filterMessages, null, 2));
   /* Run llm */
   const ai = getAIApi({
@@ -98,7 +100,7 @@ export const runToolWithPromptCall = async (
       model: toolModel.model,
       temperature: 0,
       stream,
-      messages: filterMessages
+      messages: requestMessages
     },
     {
       headers: {

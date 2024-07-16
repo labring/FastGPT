@@ -20,8 +20,6 @@ export type PagingData<T> = {
 export type RequestPaging = { pageNum: number; pageSize: number; [key]: any };
 
 declare global {
-  var systemInitd: boolean;
-
   var qaQueueLen: number;
   var vectorQueueLen: number;
 

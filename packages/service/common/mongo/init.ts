@@ -1,3 +1,4 @@
+import { exit } from 'process';
 import { addLog } from '../system/log';
 import { connectionMongo } from './index';
 import type { Mongoose } from 'mongoose';
@@ -56,9 +57,13 @@ export async function connectMongo({
   }
 
   try {
-    afterHook && (await afterHook());
+    if (!global.systemInited) {
+      global.systemInited = true;
+      afterHook && (await afterHook());
+    }
   } catch (error) {
-    addLog.error('mongo connect after hook error', error);
+    addLog.error('Mongo connect after hook error', error);
+    exit(1);
   }
 
   return connectionMongo;

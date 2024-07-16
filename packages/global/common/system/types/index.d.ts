@@ -70,9 +70,3 @@ export type SystemEnvType = {
   oneapiUrl?: string;
   chatApiKey?: string;
 };
-
-// declare global {
-//   var feConfigs: FastGPTFeConfigsType;
-//   var systemEnv: SystemEnvType;
-//   var systemInitd: boolean;
-// }

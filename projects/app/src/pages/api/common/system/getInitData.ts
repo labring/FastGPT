@@ -6,16 +6,15 @@ import type { InitDateResponse } from '@/global/common/api/systemRes';
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index.d';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
-import { connectToDatabase } from '@/service/mongo';
 import { PluginTemplateType } from '@fastgpt/global/core/plugin/type';
 import { readConfigData } from '@/service/common/system';
-import { exit } from 'process';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 import json5 from 'json5';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
+import { connectToDatabase } from '@/service/mongo';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   await getInitConfig();
 
   jsonRes<InitDateResponse>(res, {
@@ -37,6 +36,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 }
 
+export default handler;
+
 const defaultFeConfigs: FastGPTFeConfigsType = {
   show_emptyChat: true,
   show_git: true,
@@ -55,29 +56,18 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
 };
 
 export async function getInitConfig() {
-  if (global.systemInitd) return;
-  global.systemInitd = true;
-
-  try {
+  // First request
+  if (!global.systemInited) {
     await connectToDatabase();
-
-    await Promise.all([
-      initSystemConfig(),
-      // getSimpleModeTemplates(),
-      getSystemVersion(),
-      getSystemPlugin(),
-
-      // abandon
-      getSystemPluginV1()
-    ]);
-  } catch (error) {
-    console.error('Load init config error', error);
-    global.systemInitd = false;
-
-    if (!global.feConfigs) {
-      exit(1);
-    }
   }
+  return Promise.all([
+    initSystemConfig(),
+    getSystemVersion(),
+    getSystemPlugin(),
+
+    // abandon
+    getSystemPluginV1()
+  ]);
 }
 
 export async function initSystemConfig() {
