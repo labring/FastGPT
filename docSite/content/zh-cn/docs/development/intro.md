@@ -7,8 +7,7 @@ toc: true
 weight: 705
 ---
 
-本文档介绍了如何设置开发环境以构建和测试 [FastGPT](https://fastgpt.in)。
-
+本文档介绍了如何设置开发环境以构建和测试 [FastGPT](https://fastgpt.in)，。
 
 ## 前置依赖项
 
@@ -16,13 +15,14 @@ weight: 705
 
 - [Git](http://git-scm.com/)
 - [Docker](https://www.docker.com/)（构建镜像）
-- [Node.js v18.17 / v20.x](http://nodejs.org)
+- [Node.js v18.17 / v20.x](http://nodejs.org)（版本尽量一样，可以使用nvm管理node版本）
 - [pnpm](https://pnpm.io/) 版本 8.6.0 (目前官方的开发环境)
 - make命令: 根据不同平台，百度安装 (官方是GNU Make 4.3)
 
 ## 开始本地开发
 
 {{% alert context="success" %}}
+
 1. 用户默认的时区为 `Asia/Shanghai`,非 linux 环境时候，获取系统时间会异常，本地开发时候，可以将用户的时区调整成 UTC（+0）。
 2. 建议先服务器装好**数据库**，再进行本地开发。
 {{% /alert %}}
@@ -47,9 +47,10 @@ git clone git@github.com:<github_username>/FastGPT.git
 
 ### 3. 安装数据库
 
-第一次开发，需要先部署数据库，建议本地开发可以随便找一台 2C2G 的轻量小数据库实践。数据库部署教程：[Docker 快速部署](/docs/development/docker/)。部署完了，可以本地访问其数据库。
-
+第一次开发，需要先部署数据库，建议本地开发可以随便找一台 2C2G 的轻量小数据库实践，或者新建文件夹并配置相关文件用以运行docker。数据库部署教程：[Docker 快速部署](/docs/development/docker/)。部署完了，可以本地访问其数据库。
+{{% alert context="warning" %}}
 Mongo 数据库需要注意，需要注意在连接地址中增加 `directConnection=true` 参数，才能连接上副本集的数据库。
+{{% /alert %}}
 
 ### 4. 初始配置
 
@@ -57,7 +58,7 @@ Mongo 数据库需要注意，需要注意在连接地址中增加 `directConnec
 
 **1. 环境变量**
 
-复制`.env.template`文件，在同级目录下生成一个`.env.local` 文件，修改`.env.local` 里内容才是有效的变量。变量说明见 .env.template
+复制`.env.template`文件，在同级目录下生成一个`.env.local` 文件，修改`.env.local` 里内容才是有效的变量。变量说明见 .env.template，主要需要修改`API_KEY`和数据库的地址与端口以及数据库账号的用户名和密码，具体配置需要和docker配置文件相同，其中用户名和密码如需修改需要修改docker配置文件、数据库和`.env.local`文件，不能只改一处。
 
 **2. config 配置文件**
 
@@ -73,7 +74,7 @@ Mongo 数据库需要注意，需要注意在连接地址中增加 `directConnec
 
 ### 5. 运行
 
-可参考项目根目录下的 `dev.md`
+可参考项目根目录下的 `dev.md`，第一次编译运行可能会有点慢，需要点耐心哦
 
 ```bash
 # 给自动化脚本代码执行权限(非 linux 系统, 可以手动执行里面的 postinstall.sh 文件内容)
@@ -114,7 +115,6 @@ make build name=app image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8
 
 如果遇到问题，比如合并冲突或不知道如何打开拉取请求，请查看 GitHub 的[拉取请求教程](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests)，了解如何解决合并冲突和其他问题。一旦您的 PR 被合并，您将自豪地被列为[贡献者表](https://github.com/labring/FastGPT/graphs/contributors)中的一员。
 
-
 ## QA
 
 ### 本地数据库无法连接
@@ -130,6 +130,7 @@ make build name=app image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8
 FastGPT 在`pnpm i`后会执行`postinstall`脚本，用于自动生成`ChakraUI`的`Type`。如果没有权限，可以先执行`chmod -R +x ./scripts/`，再执行`pnpm i`。
 
 仍不可行的话，可以手动执行`./scripts/postinstall.sh`里的内容。
+*如果是Windows下的话，可以使用git bash给`postinstall`脚本添加执行权限并执行sh脚本*
 
 ### TypeError: Cannot read properties of null (reading 'useMemo' )
 
@@ -141,6 +142,9 @@ FastGPT 在`pnpm i`后会执行`postinstall`脚本，用于自动生成`ChakraUI
 4. `cd projects/app`
 5. `pnpm dev`
 
+### Error response from daemon: error while creating mount source path 'XXX': mkdir XXX: file exists
+
+这个错误可能是之前停止容器时有文件残留导致的，首先需要确认相关镜像都全部关闭，然后手动删除相关文件或者重启docker即可
 
 ## 加入社区
 
@@ -155,6 +159,7 @@ FastGPT 在`pnpm i`后会执行`postinstall`脚本，用于自动生成`ChakraUI
 FastGPT 使用了 nextjs 的 page route 作为框架。为了区分好前后端代码，在目录分配上会分成 global, service, web 3个自目录，分别对应着 `前后端共用`、`后端专用`、`前端专用`的代码。
 
 ### monorepo
+
 FastGPT 采用 pnpm workspace 方式构建 monorepo 项目，主要分为两个部分：
 
 - projects/app - FastGPT 主项目  
@@ -173,6 +178,7 @@ support - 支撑功能（用户体系，计费，鉴权等）
 common - 基础功能（日志管理，文件读写等）
 
 {{% details title="代码结构说明" closed="true" %}}
+
 ```
 .
 ├── .github                      // github 相关配置
@@ -200,4 +206,5 @@ common - 基础功能（日志管理，文件读写等）
 ├── README_ja.md
 ├── dev.md
 ```
+
 {{% /details %}}
