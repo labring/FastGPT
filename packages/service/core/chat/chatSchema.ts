@@ -85,10 +85,7 @@ try {
   // get user history
   ChatSchema.index({ tmbId: 1, appId: 1, top: -1, updateTime: -1 }, { background: true });
   // delete by appid; clear history; init chat; update chat; auth chat; get chat;
-  ChatSchema.index(
-    { appId: 1, chatId: 1 },
-    { background: true, unique: true, name: 'appid_1_chatid_1_unique' }
-  );
+  ChatSchema.index({ appId: 1, chatId: 1 }, { background: true });
 
   // get chat logs;
   ChatSchema.index({ teamId: 1, appId: 1, updateTime: -1 }, { background: true });
