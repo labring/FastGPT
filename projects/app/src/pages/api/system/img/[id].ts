@@ -12,7 +12,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { binary, metadata } = await readMongoImg({ id });
 
-    res.setHeader('Content-Type', metadata?.mime ?? guessBase64ImageType(binary.toString('base64')));
+    res.setHeader(
+      'Content-Type',
+      metadata?.mime ?? guessBase64ImageType(binary.toString('base64'))
+    );
     res.send(binary);
   } catch (error) {
     jsonRes(res, {
