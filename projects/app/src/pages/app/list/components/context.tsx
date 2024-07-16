@@ -79,21 +79,13 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
 
         return [AppTypeEnum.folder, type];
       })();
-
       return getMyApps({ parentId, type: formatType, searchKey });
     },
     {
-      refreshOnWindowFocus: true,
-      refreshDeps: [parentId, type]
-    }
-  );
-  useThrottleEffect(
-    () => {
-      loadMyApps();
-    },
-    [searchKey],
-    {
-      wait: 500
+      manual: false,
+      refreshDeps: [searchKey, parentId, type],
+      throttleWait: 500,
+      refreshOnWindowFocus: true
     }
   );
 

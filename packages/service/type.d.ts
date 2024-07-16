@@ -25,4 +25,6 @@ declare global {
     worker: Worker;
     callbackMap: Record<string, (e: number) => void>;
   }[];
+
+  var systemInited: boolean;
 }

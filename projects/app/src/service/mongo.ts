@@ -22,6 +22,10 @@ export function connectToDatabase() {
       initGlobal();
     },
     afterHook: async () => {
+      if (global.systemInitd) return;
+
+      global.systemInitd = true;
+
       systemStartCb();
 
       //init system config；init vector database；init root user
