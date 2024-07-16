@@ -34,8 +34,8 @@ const WebsiteConfigModal = ({
   });
   const isEdit = !!defaultValue.url;
   const confirmTip = isEdit
-    ? t('core.dataset.website.Confirm Update Tips')
-    : t('core.dataset.website.Confirm Create Tips');
+    ? t('common:core.dataset.website.Confirm Update Tips')
+    : t('common:core.dataset.website.Confirm Create Tips');
 
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'common'
@@ -45,13 +45,13 @@ const WebsiteConfigModal = ({
     <MyModal
       isOpen
       iconSrc="core/dataset/websiteDataset"
-      title={t('core.dataset.website.Config')}
+      title={t('common:core.dataset.website.Config')}
       onClose={onClose}
       maxW={'500px'}
     >
       <ModalBody>
         <Box fontSize={'sm'} color={'myGray.600'}>
-          {t('core.dataset.website.Config Description')}
+          {t('common:core.dataset.website.Config Description')}
           {feConfigs?.docUrl && (
             <Link
               href={getDocPath('/docs/course/websync')}
@@ -59,14 +59,14 @@ const WebsiteConfigModal = ({
               textDecoration={'underline'}
               fontWeight={'bold'}
             >
-              {t('common.course.Read Course')}
+              {t('common:common.course.Read Course')}
             </Link>
           )}
         </Box>
         <Box mt={2}>
-          <Box>{t('core.dataset.website.Base Url')}</Box>
+          <Box>{t('common:core.dataset.website.Base Url')}</Box>
           <Input
-            placeholder={t('core.dataset.collection.Website Link')}
+            placeholder={t('common:core.dataset.collection.Website Link')}
             {...register('url', {
               required: true
             })}
@@ -74,14 +74,14 @@ const WebsiteConfigModal = ({
         </Box>
         <Box mt={3}>
           <Box>
-            {t('core.dataset.website.Selector')}({t('common.choosable')})
+            {t('common:core.dataset.website.Selector')}({t('common:common.choosable')})
           </Box>
           <Input {...register('selector')} placeholder="body .content #document" />
         </Box>
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common.Close')}
+          {t('common:common.Close')}
         </Button>
         <Button
           ml={2}
@@ -91,7 +91,7 @@ const WebsiteConfigModal = ({
             if (!strIsLink(data.url)) {
               return toast({
                 status: 'warning',
-                title: t('common.link.UnValid')
+                title: t('common:common.link.UnValid')
               });
             }
             openConfirm(
@@ -103,7 +103,7 @@ const WebsiteConfigModal = ({
             )();
           })}
         >
-          {t('core.dataset.website.Start Sync')}
+          {t('common:core.dataset.website.Start Sync')}
         </Button>
       </ModalFooter>
       <ConfirmModal />

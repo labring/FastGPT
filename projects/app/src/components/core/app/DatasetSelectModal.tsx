@@ -61,7 +61,7 @@ export const DatasetSelectModal = ({
       isOpen={isOpen}
       paths={paths}
       setParentId={setParentId}
-      tips={t('dataset.Select Dataset Tips')}
+      tips={t('common:dataset.Select Dataset Tips')}
       onClose={onClose}
     >
       <Flex h={'100%'} flexDirection={'column'} flex={'1 0 0'}>
@@ -124,8 +124,8 @@ export const DatasetSelectModal = ({
                     key={item._id}
                     label={
                       item.type === DatasetTypeEnum.folder
-                        ? t('dataset.Select Folder')
-                        : t('dataset.Select Dataset')
+                        ? t('common:dataset.Select Folder')
+                        : t('common:dataset.Select Dataset')
                     }
                   >
                     <Card
@@ -148,7 +148,7 @@ export const DatasetSelectModal = ({
                           if (vectorModel && vectorModel !== item.vectorModel.model) {
                             return toast({
                               status: 'warning',
-                              title: t('dataset.Select Dataset Tips')
+                              title: t('common:dataset.Select Dataset Tips')
                             });
                           }
                           setSelectedDatasets((state) => [...state, { datasetId: item._id }]);
@@ -170,7 +170,7 @@ export const DatasetSelectModal = ({
                       </Flex>
                       <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
                         {item.type === DatasetTypeEnum.folder ? (
-                          <Box color={'myGray.500'}>{t('Folder')}</Box>
+                          <Box color={'myGray.500'}>{t('common:Folder')}</Box>
                         ) : (
                           <>
                             <MyIcon mr={1} name="kbTest" w={'12px'} />
@@ -184,7 +184,9 @@ export const DatasetSelectModal = ({
               })()
             )}
           </Grid>
-          {filterDatasets.unSelected.length === 0 && <EmptyTip text={t('common.folder.empty')} />}
+          {filterDatasets.unSelected.length === 0 && (
+            <EmptyTip text={t('common:common.folder.empty')} />
+          )}
         </ModalBody>
 
         <ModalFooter>
@@ -199,7 +201,7 @@ export const DatasetSelectModal = ({
               onChange(filterDatasets);
             }}
           >
-            {t('common.Done')}
+            {t('common:common.Done')}
           </Button>
         </ModalFooter>
 

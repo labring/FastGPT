@@ -102,10 +102,10 @@ const ResponseTags = ({
     <>
       {sourceList.length > 0 && (
         <>
-          <ChatBoxDivider icon="core/chat/quoteFill" text={t('core.chat.Quote')} />
+          <ChatBoxDivider icon="core/chat/quoteFill" text={t('common:core.chat.Quote')} />
           <Flex alignItems={'center'} flexWrap={'wrap'} gap={2}>
             {sourceList.map((item) => (
-              <MyTooltip key={item.collectionId} label={t('core.chat.quote.Read Quote')}>
+              <MyTooltip key={item.collectionId} label={t('common:core.chat.quote.Read Quote')}>
                 <Flex
                   alignItems={'center'}
                   fontSize={'xs'}
@@ -186,14 +186,14 @@ const ResponseTags = ({
               </MyTag>
             </MyTooltip>
           )}
-          <MyTooltip label={t('core.chat.response.Read complete response tips')}>
+          <MyTooltip label={t('common:core.chat.response.Read complete response tips')}>
             <MyTag
               colorSchema="gray"
               type="borderSolid"
               cursor={'pointer'}
               onClick={onOpenWholeModal}
             >
-              {t('core.chat.response.Read complete response')}
+              {t('common:core.chat.response.Read complete response')}
             </MyTag>
           </MyTooltip>
         </Flex>

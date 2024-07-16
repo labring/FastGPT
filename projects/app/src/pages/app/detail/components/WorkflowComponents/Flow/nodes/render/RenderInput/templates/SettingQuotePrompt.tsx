@@ -78,17 +78,17 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
       },
       {
         key: 'source',
-        label: t('core.dataset.search.Source name'),
+        label: t('common:core.dataset.search.Source name'),
         icon: 'core/app/simpleMode/variable'
       },
       {
         key: 'sourceId',
-        label: t('core.dataset.search.Source id'),
+        label: t('common:core.dataset.search.Source id'),
         icon: 'core/app/simpleMode/variable'
       },
       {
         key: 'index',
-        label: t('core.dataset.search.Quote index'),
+        label: t('common:core.dataset.search.Quote index'),
         icon: 'core/app/simpleMode/variable'
       },
       ...variables
@@ -99,12 +99,12 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
     () => [
       {
         key: 'quote',
-        label: t('core.app.Quote templates'),
+        label: t('common:core.app.Quote templates'),
         icon: 'core/app/simpleMode/variable'
       },
       {
         key: 'question',
-        label: t('core.module.input.label.user question'),
+        label: t('common:core.module.input.label.user question'),
         icon: 'core/app/simpleMode/variable'
       },
       ...variables
@@ -152,11 +152,11 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
       <>
         <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
           <Box position={'relative'} color={'myGray.600'} fontWeight={'medium'}>
-            {t('core.module.Dataset quote.label')}
+            {t('common:core.module.Dataset quote.label')}
           </Box>
           <ValueTypeLabel valueType={WorkflowIOValueTypeEnum.datasetQuote} />
 
-          <MyTooltip label={t('core.module.Setting quote prompt')}>
+          <MyTooltip label={t('common:core.module.Setting quote prompt')}>
             <MyIcon
               ml={1}
               name={'common/settingLight'}
@@ -173,13 +173,13 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
         <MyModal
           isOpen={isOpen}
           iconSrc={'modal/edit'}
-          title={t('core.module.Quote prompt setting')}
+          title={t('common:core.module.Quote prompt setting')}
           w={'600px'}
         >
           <ModalBody>
             <Box>
               <Flex {...LabelStyles} mb={1}>
-                <FormLabel>{t('core.app.Quote templates')}</FormLabel>
+                <FormLabel>{t('common:core.app.Quote templates')}</FormLabel>
                 <QuestionTip
                   ml={1}
                   label={t('template.Quote Content Tip', {
@@ -192,19 +192,19 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
                   fontSize={'sm'}
                   onClick={() =>
                     setSelectTemplateData({
-                      title: t('core.app.Select quote template'),
+                      title: t('common:core.app.Select quote template'),
                       templates: Prompt_QuoteTemplateList
                     })
                   }
                 >
-                  {t('common.Select template')}
+                  {t('common:common.Select template')}
                 </Box>
               </Flex>
 
               <PromptEditor
                 variables={quoteTemplateVariables}
                 h={160}
-                title={t('core.app.Quote templates')}
+                title={t('common:core.app.Quote templates')}
                 placeholder={t('template.Quote Content Tip', {
                   default: Prompt_QuoteTemplateList[0].value
                 })}
@@ -216,7 +216,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
             </Box>
             <Box mt={4}>
               <Flex {...LabelStyles} mb={1}>
-                <FormLabel>{t('core.app.Quote prompt')}</FormLabel>
+                <FormLabel>{t('common:core.app.Quote prompt')}</FormLabel>
                 <QuestionTip
                   ml={1}
                   label={t('template.Quote Prompt Tip', {
@@ -226,7 +226,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
               </Flex>
               <PromptEditor
                 variables={quotePromptVariables}
-                title={t('core.app.Quote prompt')}
+                title={t('common:core.app.Quote prompt')}
                 h={280}
                 placeholder={t('template.Quote Prompt Tip', {
                   default: Prompt_QuotePromptList[0].value
@@ -240,9 +240,9 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
           </ModalBody>
           <ModalFooter>
             <Button variant={'whiteBase'} mr={2} onClick={onClose}>
-              {t('common.Close')}
+              {t('common:common.Close')}
             </Button>
-            <Button onClick={handleSubmit(onSubmit)}>{t('common.Confirm')}</Button>
+            <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>
           </ModalFooter>
         </MyModal>
         {!!selectTemplateData && (

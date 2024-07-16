@@ -62,15 +62,15 @@ const CollectionCard = () => {
   const { datasetDetail, loadDatasetDetail } = useContextSelector(DatasetPageContext, (v) => v);
 
   const { openConfirm: openDeleteConfirm, ConfirmModal: ConfirmDeleteModal } = useConfirm({
-    content: t('dataset.Confirm to delete the file'),
+    content: t('common:dataset.Confirm to delete the file'),
     type: 'delete'
   });
   const { openConfirm: openSyncConfirm, ConfirmModal: ConfirmSyncModal } = useConfirm({
-    content: t('core.dataset.collection.Start Sync Tip')
+    content: t('common:core.dataset.collection.Start Sync Tip')
   });
 
   const { onOpenModal: onOpenEditTitleModal, EditModal: EditTitleModal } = useEditTitle({
-    title: t('Rename')
+    title: t('common:Rename')
   });
 
   const [moveCollectionData, setMoveCollectionData] = useState<{ collectionId: string }>();
@@ -93,7 +93,7 @@ const CollectionCard = () => {
             };
           }
           return {
-            statusText: t('core.dataset.collection.status.active'),
+            statusText: t('common:core.dataset.collection.status.active'),
             colorSchema: 'green'
           };
         })();
@@ -113,7 +113,7 @@ const CollectionCard = () => {
       onSuccess() {
         getData(pageNum);
       },
-      successToast: t('common.Update Success')
+      successToast: t('common:common.Update Success')
     }
   );
   const { mutate: onDelCollection, isLoading: isDeleting } = useRequest({
@@ -125,8 +125,8 @@ const CollectionCard = () => {
     onSuccess() {
       getData(pageNum);
     },
-    successToast: t('common.Delete Success'),
-    errorToast: t('common.Delete Failed')
+    successToast: t('common:common.Delete Success'),
+    errorToast: t('common:common.Delete Failed')
   });
 
   const { mutate: onclickStartSync, isLoading: isSyncing } = useRequest({
@@ -140,7 +140,7 @@ const CollectionCard = () => {
         title: t(DatasetCollectionSyncResultMap[res]?.label)
       });
     },
-    errorToast: t('core.dataset.error.Start Sync Failed')
+    errorToast: t('common:core.dataset.error.Start Sync Failed')
   });
 
   const hasTrainingData = useMemo(
@@ -192,11 +192,11 @@ const CollectionCard = () => {
           <Table variant={'simple'} draggable={false}>
             <Thead draggable={false}>
               <Tr>
-                <Th py={4}>{t('common.Name')}</Th>
+                <Th py={4}>{t('common:common.Name')}</Th>
                 <Th py={4}>{datasetT('collection.Training type')}</Th>
-                <Th py={4}>{t('dataset.collections.Data Amount')}</Th>
+                <Th py={4}>{t('common:dataset.collections.Data Amount')}</Th>
                 <Th py={4}>{datasetT('collection.Create update time')}</Th>
-                <Th py={4}>{t('common.Status')}</Th>
+                <Th py={4}>{t('common:common.Status')}</Th>
                 <Th py={4}>{datasetT('Enable')}</Th>
                 <Th py={4} />
               </Tr>
@@ -235,7 +235,10 @@ const CollectionCard = () => {
                   <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
                     <Flex alignItems={'center'}>
                       <MyIcon name={collection.icon as any} w={'16px'} mr={2} />
-                      <MyTooltip label={t('common.folder.Drag Tip')} shouldWrapChildren={false}>
+                      <MyTooltip
+                        label={t('common:common.folder.Drag Tip')}
+                        shouldWrapChildren={false}
+                      >
                         <Box color={'myGray.900'} className="textEllipsis">
                           {collection.name}
                         </Box>
@@ -309,7 +312,7 @@ const CollectionCard = () => {
                                       label: (
                                         <Flex alignItems={'center'}>
                                           <MyIcon name={'common/refreshLight'} w={'14px'} mr={2} />
-                                          {t('core.dataset.collection.Sync')}
+                                          {t('common:core.dataset.collection.Sync')}
                                         </Flex>
                                       ),
                                       onClick: () =>
@@ -323,7 +326,7 @@ const CollectionCard = () => {
                                 label: (
                                   <Flex alignItems={'center'}>
                                     <MyIcon name={'common/file/move'} w={'14px'} mr={2} />
-                                    {t('Move')}
+                                    {t('common:Move')}
                                   </Flex>
                                 ),
                                 onClick: () =>
@@ -333,7 +336,7 @@ const CollectionCard = () => {
                                 label: (
                                   <Flex alignItems={'center'}>
                                     <MyIcon name={'edit'} w={'14px'} mr={2} />
-                                    {t('Rename')}
+                                    {t('common:Rename')}
                                   </Flex>
                                 ),
                                 onClick: () =>
@@ -359,7 +362,7 @@ const CollectionCard = () => {
                                       w={'14px'}
                                       _hover={{ color: 'red.600' }}
                                     />
-                                    <Box>{t('common.Delete')}</Box>
+                                    <Box>{t('common:common.Delete')}</Box>
                                   </Flex>
                                 ),
                                 type: 'danger',
@@ -370,8 +373,8 @@ const CollectionCard = () => {
                                     },
                                     undefined,
                                     collection.type === DatasetCollectionTypeEnum.folder
-                                      ? t('dataset.collections.Confirm to delete the folder')
-                                      : t('dataset.Confirm to delete the file')
+                                      ? t('common:dataset.collections.Confirm to delete the folder')
+                                      : t('common:dataset.Confirm to delete the file')
                                   )()
                               }
                             ]
@@ -411,7 +414,7 @@ const CollectionCard = () => {
               setMoveCollectionData(undefined);
               toast({
                 status: 'success',
-                title: t('common.folder.Move Success')
+                title: t('common:common.folder.Move Success')
               });
             }}
           />

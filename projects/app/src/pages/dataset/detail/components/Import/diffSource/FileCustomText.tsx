@@ -69,7 +69,7 @@ const CustomTextInput = () => {
     <Box maxW={['100%', '800px']}>
       <Box display={['block', 'flex']} alignItems={'center'}>
         <Box flex={'0 0 120px'} fontSize={'sm'}>
-          {t('core.dataset.collection.Collection name')}
+          {t('common:core.dataset.collection.Collection name')}
         </Box>
         <Input
           flex={'1 0 0'}
@@ -77,19 +77,19 @@ const CustomTextInput = () => {
           {...register('name', {
             required: true
           })}
-          placeholder={t('core.dataset.collection.Collection name')}
+          placeholder={t('common:core.dataset.collection.Collection name')}
           bg={'myGray.50'}
         />
       </Box>
       <Box display={['block', 'flex']} alignItems={'flex-start'} mt={5}>
         <Box flex={'0 0 120px'} fontSize={'sm'}>
-          {t('core.dataset.collection.Collection raw text')}
+          {t('common:core.dataset.collection.Collection raw text')}
         </Box>
         <Textarea
           flex={'1 0 0'}
           w={'100%'}
           rows={15}
-          placeholder={t('core.dataset.collection.Collection raw text')}
+          placeholder={t('common:core.dataset.collection.Collection raw text')}
           {...register('value', {
             required: true
           })}
@@ -97,7 +97,9 @@ const CustomTextInput = () => {
         />
       </Box>
       <Flex mt={5} justifyContent={'flex-end'}>
-        <Button onClick={handleSubmit((data) => onSubmit(data))}>{t('common.Next Step')}</Button>
+        <Button onClick={handleSubmit((data) => onSubmit(data))}>
+          {t('common:common.Next Step')}
+        </Button>
       </Flex>
     </Box>
   );

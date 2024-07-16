@@ -10,7 +10,11 @@ export const useCopyData = () => {
   const { toast } = useToast();
 
   const copyData = useCallback(
-    async (data: string, title: string | null = t('common.Copy Successful'), duration = 1000) => {
+    async (
+      data: string,
+      title: string | null = t('common:common.Copy Successful'),
+      duration = 1000
+    ) => {
       try {
         if (navigator.clipboard) {
           await navigator.clipboard.writeText(data);

@@ -89,7 +89,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           <>
             <HStack className="nodrag" cursor={'default'} position={'relative'}>
               <HStack spacing={1} position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
-                <Box>{t('core.workflow.Dataset quote')}</Box>
+                <Box>{t('common:core.workflow.Dataset quote')}</Box>
               </HStack>
               <Box flex={'1 0 0'} />
               <Button
@@ -105,7 +105,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   });
                 }}
               >
-                {t('common.Add New')}
+                {t('common:common.Add New')}
               </Button>
             </HStack>
             <Box mt={2}>
@@ -128,7 +128,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         {/* {RenderQuoteList} */}
       </Container>
       <Container>
-        <IOTitle text={t('common.Output')} />
+        <IOTitle text={t('common:common.Output')} />
         <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
       </Container>
     </NodeCard>

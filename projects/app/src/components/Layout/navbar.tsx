@@ -27,28 +27,28 @@ const Navbar = ({ unread }: { unread: number }) => {
   const navbarList = useMemo(
     () => [
       {
-        label: t('navbar.Chat'),
+        label: t('common:navbar.Chat'),
         icon: 'core/chat/chatLight',
         activeIcon: 'core/chat/chatFill',
         link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
         activeLink: ['/chat']
       },
       {
-        label: t('navbar.Studio'),
+        label: t('common:navbar.Studio'),
         icon: 'core/app/aiLight',
         activeIcon: 'core/app/aiFill',
         link: `/app/list`,
         activeLink: ['/app/list', '/app/detail']
       },
       {
-        label: t('navbar.Datasets'),
+        label: t('common:navbar.Datasets'),
         icon: 'core/dataset/datasetLight',
         activeIcon: 'core/dataset/datasetFill',
         link: `/dataset/list`,
         activeLink: ['/dataset/list', '/dataset/detail']
       },
       {
-        label: t('navbar.Account'),
+        label: t('common:navbar.Account'),
         icon: 'support/user/userLight',
         activeIcon: 'support/user/userFill',
         link: '/account',
@@ -163,7 +163,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         </Box>
       )}
       {(feConfigs?.docUrl || feConfigs?.chatbotUrl) && (
-        <MyTooltip label={t('common.system.Use Helper')} placement={'right-end'}>
+        <MyTooltip label={t('common:common.system.Use Helper')} placement={'right-end'}>
           <Link
             {...itemStyles}
             {...hoverStyle}

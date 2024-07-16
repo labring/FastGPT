@@ -49,7 +49,7 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose }: Props)
     setFolderList([
       {
         id: rootId,
-        name: t('common.folder.Root Path'),
+        name: t('common:common.folder.Root Path'),
         open: true,
         children: data.map((item) => ({
           id: item.id,
@@ -156,7 +156,7 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose }: Props)
       onSuccess: () => {
         onClose();
       },
-      successToast: t('common.folder.Move Success')
+      successToast: t('common:common.folder.Move Success')
     }
   );
 
@@ -174,7 +174,7 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose }: Props)
       </ModalBody>
       <ModalFooter>
         <Button isLoading={confirming} isDisabled={!selectedId} onClick={onConfirmSelect}>
-          {t('common.Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

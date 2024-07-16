@@ -48,31 +48,38 @@ const ExtractFieldModal = ({
     <MyModal
       isOpen={true}
       iconSrc="/imgs/workflow/extract.png"
-      title={t('core.module.extract.Field Setting Title')}
+      title={t('common:core.module.extract.Field Setting Title')}
       onClose={onClose}
       w={['90vw', '500px']}
     >
       <ModalBody>
         <Flex mt={2} alignItems={'center'}>
           <Flex alignItems={'center'} flex={['1 0 80px', '1 0 100px']}>
-            <FormLabel>{t('core.module.extract.Required')}</FormLabel>
-            <QuestionTip ml={1} label={t('core.module.extract.Required Description')}></QuestionTip>
+            <FormLabel>{t('common:core.module.extract.Required')}</FormLabel>
+            <QuestionTip
+              ml={1}
+              label={t('common:core.module.extract.Required Description')}
+            ></QuestionTip>
           </Flex>
           <Switch {...register('required')} />
         </Flex>
         {required && (
           <Flex mt={5} alignItems={'center'}>
-            <FormLabel flex={['0 0 80px', '0 0 100px']}>{t('core.module.Default value')}</FormLabel>
+            <FormLabel flex={['0 0 80px', '0 0 100px']}>
+              {t('common:core.module.Default value')}
+            </FormLabel>
             <Input
               bg={'myGray.50'}
-              placeholder={t('core.module.Default value placeholder')}
+              placeholder={t('common:core.module.Default value placeholder')}
               {...register('defaultValue')}
             />
           </Flex>
         )}
 
         <Flex alignItems={'center'} mt={5}>
-          <FormLabel flex={['0 0 80px', '0 0 100px']}>{t('core.module.Data Type')}</FormLabel>
+          <FormLabel flex={['0 0 80px', '0 0 100px']}>
+            {t('common:core.module.Data Type')}
+          </FormLabel>
           <Box flex={'1 0 0'}>
             <MySelect<string>
               list={fnValueTypeSelect}
@@ -85,7 +92,7 @@ const ExtractFieldModal = ({
         </Flex>
 
         <Flex mt={5} alignItems={'center'}>
-          <FormLabel flex={['0 0 80px', '0 0 100px']}>{t('Field name')}</FormLabel>
+          <FormLabel flex={['0 0 80px', '0 0 100px']}>{t('common:Field name')}</FormLabel>
           <Input
             bg={'myGray.50'}
             placeholder="name/age/sql"
@@ -94,11 +101,11 @@ const ExtractFieldModal = ({
         </Flex>
         <Flex mt={5} alignItems={'center'}>
           <FormLabel flex={['0 0 80px', '0 0 100px']}>
-            {t('core.module.Field Description')}
+            {t('common:core.module.Field Description')}
           </FormLabel>
           <Input
             bg={'myGray.50'}
-            placeholder={t('core.module.extract.Field Description Placeholder')}
+            placeholder={t('common:core.module.extract.Field Description Placeholder')}
             {...register('desc', { required: true })}
           />
         </Flex>
@@ -106,9 +113,12 @@ const ExtractFieldModal = ({
           <Box mt={5}>
             <Flex alignItems={'center'}>
               <FormLabel>
-                {t('core.module.extract.Enum Value')}({t('common.choosable')})
+                {t('common:core.module.extract.Enum Value')}({t('common:common.choosable')})
               </FormLabel>
-              <QuestionTip ml={1} label={t('core.module.extract.Enum Description')}></QuestionTip>
+              <QuestionTip
+                ml={1}
+                label={t('common:core.module.extract.Enum Description')}
+              ></QuestionTip>
             </Flex>
 
             <Textarea
@@ -122,7 +132,7 @@ const ExtractFieldModal = ({
       </ModalBody>
 
       <ModalFooter>
-        <Button onClick={handleSubmit(onSubmit)}>{t('common.Confirm')}</Button>
+        <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>
       </ModalFooter>
     </MyModal>
   );

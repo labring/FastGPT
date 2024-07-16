@@ -16,7 +16,7 @@ const Points = () => {
       position={'relative'}
     >
       <Box id="point-card" fontWeight={'bold'} fontSize={['24px', '36px']}>
-        {t('support.wallet.subscription.Ai points')}
+        {t('common:support.wallet.subscription.Ai points')}
       </Box>
       <Link href="https://tiktokenizer.vercel.app/" target="_blank">
         点击查看在线 Tokens 计算器

@@ -156,7 +156,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       refreshDeps: [teamId, teamToken, appId, chatId],
       onError(e: any) {
         toast({
-          title: getErrText(e, t('core.chat.Failed to initialize chat')),
+          title: getErrText(e, t('common:core.chat.Failed to initialize chat')),
           status: 'error'
         });
         if (chatId) {
@@ -202,7 +202,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
               apps={myApps}
               appName={chatData.app.name}
               appAvatar={chatData.app.avatar}
-              confirmClearText={t('core.chat.Confirm to clear history')}
+              confirmClearText={t('common:core.chat.Confirm to clear history')}
               onDelHistory={(e) => onDelHistory({ ...e, appId, teamId, teamToken })}
               onClearHistory={() => {
                 onClearHistories({ appId, teamId, teamToken });

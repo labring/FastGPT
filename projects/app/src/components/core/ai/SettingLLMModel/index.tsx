@@ -55,7 +55,7 @@ const SettingLLMModel = ({ llmModelType = LLMModelTypeEnum.all, defaultData, onC
       })}
       position={'relative'}
     >
-      <MyTooltip label={t('core.app.Setting ai property')}>
+      <MyTooltip label={t('common:core.app.Setting ai property')}>
         <Button
           w={'100%'}
           justifyContent={'flex-start'}

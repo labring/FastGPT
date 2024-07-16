@@ -37,7 +37,7 @@ const NodeSimple = ({
       {filterHiddenInputs.length > 0 && (
         <>
           <Container>
-            <IOTitle text={t('common.Input')} />
+            <IOTitle text={t('common:common.Input')} />
             <RenderInput nodeId={nodeId} flowInputList={commonInputs} />
           </Container>
         </>
@@ -45,7 +45,7 @@ const NodeSimple = ({
       {outputs.filter((output) => output.type !== FlowNodeOutputTypeEnum.hidden).length > 0 && (
         <>
           <Container>
-            <IOTitle text={t('common.Output')} />
+            <IOTitle text={t('common:common.Output')} />
             <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
           </Container>
         </>

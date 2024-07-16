@@ -98,7 +98,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
         setValue('avatar', src);
       } catch (err: any) {
         toast({
-          title: getErrText(err, t('common.error.Select avatar failed')),
+          title: getErrText(err, t('common:common.error.Select avatar failed')),
           status: 'warning'
         });
       }
@@ -110,7 +110,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
     mutationFn: async (data: FormType) => {
       const template = typeData.templates.find((item) => item.id === data.templateId);
       if (!template) {
-        return Promise.reject(t('core.dataset.error.Template does not exist'));
+        return Promise.reject(t('common:core.dataset.error.Template does not exist'));
       }
       return postCreateApp({
         parentId,
@@ -126,8 +126,8 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
       loadMyApps();
       onClose();
     },
-    successToast: t('common.Create Success'),
-    errorToast: t('common.Create Failed')
+    successToast: t('common:common.Create Success'),
+    errorToast: t('common:common.Create Failed')
   });
 
   return (
@@ -140,10 +140,10 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
     >
       <ModalBody>
         <Box color={'myGray.800'} fontWeight={'bold'}>
-          {t('common.Set Name')}
+          {t('common:common.Set Name')}
         </Box>
         <Flex mt={2} alignItems={'center'}>
-          <MyTooltip label={t('common.Set Avatar')}>
+          <MyTooltip label={t('common:common.Set Avatar')}>
             <Avatar
               flexShrink={0}
               src={avatar}
@@ -160,12 +160,12 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
             autoFocus
             bg={'myWhite.600'}
             {...register('name', {
-              required: t('core.app.error.App name can not be empty')
+              required: t('common:core.app.error.App name can not be empty')
             })}
           />
         </Flex>
         <Box mt={[4, 7]} mb={[0, 3]} color={'myGray.800'} fontWeight={'bold'}>
-          {t('core.app.Select app from template')}
+          {t('common:core.app.Select app from template')}
         </Box>
         <Grid
           userSelect={'none'}
@@ -210,10 +210,10 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
 
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common.Close')}
+          {t('common:common.Close')}
         </Button>
         <Button px={6} isLoading={creating} onClick={handleSubmit((data) => onclickCreate(data))}>
-          {t('common.Confirm Create')}
+          {t('common:common.Confirm Create')}
         </Button>
       </ModalFooter>
 

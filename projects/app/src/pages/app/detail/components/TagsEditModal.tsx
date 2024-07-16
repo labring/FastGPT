@@ -41,11 +41,11 @@ const TagsEditModal = ({ onClose }: { onClose: () => void }) => {
     onSuccess() {
       onClose();
       toast({
-        title: t('common.Update Success'),
+        title: t('common:common.Update Success'),
         status: 'success'
       });
     },
-    errorToast: t('common.Update Failed')
+    errorToast: t('common:common.Update Failed')
   });
 
   const { data: teamTags = [] } = useQuery(['getTeamsTags'], getTeamsTags);
@@ -60,11 +60,11 @@ const TagsEditModal = ({ onClose }: { onClose: () => void }) => {
       isOpen
       onClose={onClose}
       iconSrc="/imgs/workflow/ai.svg"
-      title={t('core.app.Team tags')}
+      title={t('common:core.app.Team tags')}
     >
       <ModalBody>
         <Box mb={3} fontWeight="semibold">
-          {t('团队标签')}
+          {t('common:团队标签')}
         </Box>
         <Menu closeOnSelect={false}>
           <MenuButton className="menu-btn" maxHeight={'250'} w={'100%'}>
@@ -96,7 +96,7 @@ const TagsEditModal = ({ onClose }: { onClose: () => void }) => {
             <Box px={2}>
               <Input
                 m={'auto'}
-                placeholder={t('core.app.Search team tags')}
+                placeholder={t('common:core.app.Search team tags')}
                 value={searchKey}
                 onChange={(e) => {
                   setSearchKey(e.target.value);
@@ -131,10 +131,10 @@ const TagsEditModal = ({ onClose }: { onClose: () => void }) => {
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common.Close')}
+          {t('common:common.Close')}
         </Button>
         <Button isLoading={btnLoading} onClick={(e) => saveSubmitSuccess(e)}>
-          {t('common.Save')}
+          {t('common:common.Save')}
         </Button>
       </ModalFooter>
     </MyModal>

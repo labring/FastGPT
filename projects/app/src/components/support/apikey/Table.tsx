@@ -96,7 +96,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
         <Box flex={1}>
           <Flex alignItems={'flex-end'}>
             <Box color={'myGray.900'} fontSize={'lg'}>
-              {t('support.openapi.Api manager')}
+              {t('common:support.openapi.Api manager')}
             </Box>
             {feConfigs?.docUrl && (
               <Link
@@ -106,7 +106,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                 color={'primary.500'}
                 fontSize={'sm'}
               >
-                {t('common.Read document')}
+                {t('common:common.Read document')}
               </Link>
             )}
           </Flex>
@@ -122,10 +122,10 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           borderRadius={'md'}
           cursor={'pointer'}
           userSelect={'none'}
-          onClick={() => copyData(baseUrl, t('support.openapi.Copy success'))}
+          onClick={() => copyData(baseUrl, t('common:support.openapi.Copy success'))}
         >
           <Box border={theme.borders.md} px={2} borderRadius={'md'} fontSize={'xs'}>
-            {t('support.openapi.Api baseurl')}
+            {t('common:support.openapi.Api baseurl')}
           </Box>
           <Box ml={2} fontSize={'sm'}>
             {baseUrl}
@@ -143,7 +143,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
               })
             }
           >
-            {t('New Create')}
+            {t('common:New Create')}
           </Button>
         </Box>
       </Box>
@@ -151,17 +151,17 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
         <Table>
           <Thead>
             <Tr>
-              <Th>{t('Name')}</Th>
+              <Th>{t('common:Name')}</Th>
               <Th>Api Key</Th>
-              <Th>{t('support.outlink.Usage points')}</Th>
+              <Th>{t('common:support.outlink.Usage points')}</Th>
               {feConfigs?.isPlus && (
                 <>
-                  <Th>{t('common.Expired Time')}</Th>
+                  <Th>{t('common:common.Expired Time')}</Th>
                 </>
               )}
 
-              <Th>{t('common.Create Time')}</Th>
-              <Th>{t('common.Last use time')}</Th>
+              <Th>{t('common:common.Create Time')}</Th>
+              <Th>{t('common:common.Last use time')}</Th>
               <Th />
             </Tr>
           </Thead>
@@ -174,7 +174,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                   {Math.round(usagePoints)}/
                   {feConfigs?.isPlus && limit?.maxUsagePoints && limit?.maxUsagePoints > -1
                     ? `${limit?.maxUsagePoints}`
-                    : t('common.Unlimited')}
+                    : t('common:common.Unlimited')}
                 </Td>
                 {feConfigs?.isPlus && (
                   <>
@@ -189,7 +189,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                 <Td whiteSpace={'pre-wrap'}>
                   {lastUsedTime
                     ? dayjs(lastUsedTime).format('YYYY/MM/DD\nHH:mm:ss')
-                    : t('common.Un used')}
+                    : t('common:common.Un used')}
                 </Td>
                 <Td>
                   <MyMenu
@@ -207,7 +207,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                       {
                         children: [
                           {
-                            label: t('common.Edit'),
+                            label: t('common:common.Edit'),
                             icon: 'edit',
                             onClick: () =>
                               setEditData({
@@ -218,7 +218,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                               })
                           },
                           {
-                            label: t('common.Delete'),
+                            label: t('common:common.Delete'),
                             icon: 'delete',
                             type: 'danger',
                             onClick: () => openConfirm(() => onclickRemove(_id))()
@@ -256,9 +256,9 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
         iconSrc="/imgs/modal/key.svg"
         title={
           <Box>
-            <Box fontWeight={'bold'}>{t('support.openapi.New api key')}</Box>
+            <Box fontWeight={'bold'}>{t('common:support.openapi.New api key')}</Box>
             <Box fontSize={'xs'} color={'myGray.600'}>
-              {t('support.openapi.New api key tip')}
+              {t('common:support.openapi.New api key tip')}
             </Box>
           </Box>
         }
@@ -281,7 +281,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
         </ModalBody>
         <ModalFooter>
           <Button variant="whiteBase" onClick={() => setApiKey('')}>
-            {t('common.OK')}
+            {t('common:common.OK')}
           </Button>
         </ModalFooter>
       </MyModal>
@@ -338,12 +338,12 @@ function EditKeyModal({
     >
       <ModalBody>
         <Flex alignItems={'center'}>
-          <FormLabel flex={'0 0 90px'}>{t('Name')}</FormLabel>
+          <FormLabel flex={'0 0 90px'}>{t('common:Name')}</FormLabel>
           <Input
             placeholder={publishT('key alias') || 'key alias'}
             maxLength={20}
             {...register('name', {
-              required: t('common.Name is empty') || 'Name is empty'
+              required: t('common:common.Name is empty') || 'Name is empty'
             })}
           />
         </Flex>
@@ -351,8 +351,11 @@ function EditKeyModal({
           <>
             <Flex alignItems={'center'} mt={4}>
               <FormLabel display={'flex'} flex={'0 0 90px'} alignItems={'center'}>
-                {t('support.outlink.Max usage points')}
-                <QuestionTip ml={1} label={t('support.outlink.Max usage points tip')}></QuestionTip>
+                {t('common:support.outlink.Max usage points')}
+                <QuestionTip
+                  ml={1}
+                  label={t('common:support.outlink.Max usage points tip')}
+                ></QuestionTip>
               </FormLabel>
               <Input
                 {...register('limit.maxUsagePoints', {
@@ -364,7 +367,7 @@ function EditKeyModal({
               />
             </Flex>
             <Flex alignItems={'center'} mt={4}>
-              <FormLabel flex={'0 0 90px'}>{t('common.Expired Time')}</FormLabel>
+              <FormLabel flex={'0 0 90px'}>{t('common:common.Expired Time')}</FormLabel>
               <Input
                 type="datetime-local"
                 defaultValue={
@@ -383,14 +386,14 @@ function EditKeyModal({
 
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common.Close')}
+          {t('common:common.Close')}
         </Button>
 
         <Button
           isLoading={creating || updating}
           onClick={submitShareChat((data) => (isEdit ? onclickUpdate(data) : onclickCreate(data)))}
         >
-          {t('common.Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

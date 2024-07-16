@@ -25,15 +25,15 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
   const { mutate: onSubmit, isLoading } = useRequest({
     mutationFn: (data: FormType) => {
       if (data.newPsw !== data.confirmPsw) {
-        return Promise.reject(t('common.Password inconsistency'));
+        return Promise.reject(t('common:common.Password inconsistency'));
       }
       return updatePasswordByOld(data);
     },
     onSuccess() {
       onClose();
     },
-    successToast: t('user.Update password successful'),
-    errorToast: t('user.Update password failed')
+    successToast: t('common:user.Update password successful'),
+    errorToast: t('common:user.Update password failed')
   });
 
   return (
@@ -41,7 +41,7 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
       isOpen
       onClose={onClose}
       iconSrc="/imgs/modal/password.svg"
-      title={t('user.Update Password')}
+      title={t('common:user.Update Password')}
     >
       <ModalBody>
         <Flex alignItems={'center'}>

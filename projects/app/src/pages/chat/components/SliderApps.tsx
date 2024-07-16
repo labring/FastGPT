@@ -71,7 +71,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
               borderRadius={'50%'}
               aria-label={''}
             />
-            {t('core.chat.Exit Chat')}
+            {t('common:core.chat.Exit Chat')}
           </Flex>
         )}
       </Box>
@@ -86,7 +86,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
             fontSize={'sm'}
             justifyContent={'space-between'}
           >
-            <Box>{t('core.chat.Recent use')}</Box>
+            <Box>{t('common:core.chat.Recent use')}</Box>
             <MyPopover
               placement="bottom-end"
               offset={[20, 10]}
@@ -104,7 +104,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                     bg: 'myGray.200'
                   }}
                 >
-                  <Box>{t('common.More')}</Box>
+                  <Box>{t('common:common.More')}</Box>
                   <MyIcon name={'common/select'} w={'1rem'} />
                 </HStack>
               }

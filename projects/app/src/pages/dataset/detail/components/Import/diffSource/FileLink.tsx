@@ -60,13 +60,13 @@ const CustomLinkImport = () => {
     <Box maxW={['100%', '800px']}>
       <Box display={['block', 'flex']} alignItems={'flex-start'} mt={1}>
         <Box flex={'0 0 100px'} fontSize={'sm'}>
-          {t('core.dataset.import.Link name')}
+          {t('common:core.dataset.import.Link name')}
         </Box>
         <Textarea
           flex={'1 0 0'}
           w={'100%'}
           rows={10}
-          placeholder={t('core.dataset.import.Link name placeholder')}
+          placeholder={t('common:core.dataset.import.Link name placeholder')}
           bg={'myGray.50'}
           overflowX={'auto'}
           whiteSpace={'nowrap'}
@@ -77,11 +77,11 @@ const CustomLinkImport = () => {
       </Box>
       <Box display={['block', 'flex']} alignItems={'center'} mt={4}>
         <Box flex={'0 0 100px'} fontSize={'sm'}>
-          {t('core.dataset.website.Selector')}
+          {t('common:core.dataset.website.Selector')}
           <Box color={'myGray.500'} fontSize={'sm'}>
             {feConfigs?.docUrl && (
               <Link href={getDocPath('/docs/course/websync/#选择器如何使用')} target="_blank">
-                {t('core.dataset.website.Selector Course')}
+                {t('common:core.dataset.website.Selector Course')}
               </Link>
             )}
           </Box>
@@ -142,7 +142,7 @@ const CustomLinkImport = () => {
             goToNext();
           })}
         >
-          {t('common.Next Step')}
+          {t('common:common.Next Step')}
         </Button>
       </Flex>
     </Box>

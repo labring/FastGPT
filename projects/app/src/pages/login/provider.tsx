@@ -82,7 +82,7 @@ const provider = ({ code, state, error }: { code: string; state: string; error?:
     if (error) {
       toast({
         status: 'warning',
-        title: t('support.user.login.Provider error')
+        title: t('common:support.user.login.Provider error')
       });
       router.replace('/login');
       return;

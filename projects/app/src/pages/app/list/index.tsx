@@ -186,7 +186,7 @@ const MyApps = () => {
                   iconSize="1.5rem"
                   Button={
                     <Button variant={'primary'} leftIcon={<AddIcon />}>
-                      <Box>{t('common.Create New')}</Box>
+                      <Box>{t('common:common.Create New')}</Box>
                     </Button>
                   }
                   menuList={[
@@ -222,7 +222,7 @@ const MyApps = () => {
                       children: [
                         {
                           icon: FolderIcon,
-                          label: t('Folder'),
+                          label: t('common:Folder'),
                           onClick: () => setEditFolder({})
                         }
                       ]

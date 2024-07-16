@@ -71,7 +71,7 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
         permission: selectedPermission
       });
     },
-    successToast: t('common.Add Success'),
+    successToast: t('common:common.Add Success'),
     errorToast: 'Error',
     onSuccess() {
       onClose();

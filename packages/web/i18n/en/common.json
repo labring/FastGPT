@@ -597,8 +597,7 @@
             "success": "Start syncing"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",
@@ -1373,7 +1372,7 @@
         "Terms": "Terms of service",
         "Username": "Username",
         "Wechat": "Login with Wechat",
-        "Wx qr login": "Wechat QR code login"
+        "wx_qr_login": "Wechat QR code login"
       },
       "team": {
         "Dataset usage": "Knowledge base capacity",

@@ -19,11 +19,11 @@ const NodeTools = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
       <Container>
-        <IOTitle text={t('common.Input')} />
+        <IOTitle text={t('common:common.Input')} />
         <RenderInput nodeId={nodeId} flowInputList={inputs} />
       </Container>
       <Container>
-        <IOTitle text={t('common.Output')} />
+        <IOTitle text={t('common:common.Output')} />
         <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
       </Container>
       <Box position={'relative'}>
@@ -31,7 +31,7 @@ const NodeTools = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           <Divider
             showBorderBottom={false}
             icon={<MyIcon name="phoneTabbar/tool" w={'16px'} h={'16px'} />}
-            text={t('core.workflow.tool.Select Tool')}
+            text={t('common:core.workflow.tool.Select Tool')}
           />
         </Box>
 

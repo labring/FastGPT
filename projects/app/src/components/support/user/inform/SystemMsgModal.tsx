@@ -30,12 +30,16 @@ const SystemMsgModal = ({}: {}) => {
   }, [data, onClose, setSysMsgReadId]);
 
   return (
-    <MyModal isOpen={isOpen} iconSrc={LOGO_ICON} title={t('support.user.inform.System message')}>
+    <MyModal
+      isOpen={isOpen}
+      iconSrc={LOGO_ICON}
+      title={t('common:support.user.inform.System message')}
+    >
       <ModalBody overflow={'auto'}>
         <Markdown source={data?.content} />
       </ModalBody>
       <ModalFooter>
-        <Button onClick={onclickRead}>{t('support.inform.Read')}</Button>
+        <Button onClick={onclickRead}>{t('common:support.inform.Read')}</Button>
       </ModalFooter>
     </MyModal>
   );

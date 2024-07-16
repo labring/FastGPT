@@ -62,7 +62,7 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
         const data = await response.json();
         toast({
           status: 'error',
-          title: getErrText(data, t('core.chat.Audio Speech Error'))
+          title: getErrText(data, t('common:core.chat.Audio Speech Error'))
         });
         return Promise.reject(data);
       }
@@ -119,7 +119,7 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
         if (!MediaSource) {
           toast({
             status: 'error',
-            title: t('core.chat.Audio Not Support')
+            title: t('common:core.chat.Audio Not Support')
           });
           return;
         }
@@ -194,7 +194,7 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
         } catch (error) {
           toast({
             status: 'error',
-            title: getErrText(error, t('core.chat.Audio Speech Error'))
+            title: getErrText(error, t('common:core.chat.Audio Speech Error'))
           });
           reject(error);
         }
@@ -215,7 +215,7 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
     if (!MediaSource) {
       return toast({
         status: 'error',
-        title: t('core.chat.Audio Not Support')
+        title: t('common:core.chat.Audio Not Support')
       });
     }
     cancelAudio();

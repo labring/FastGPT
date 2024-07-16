@@ -69,8 +69,8 @@ const Standard = ({
       refetchTeamSubPlan();
       router.reload();
     },
-    successToast: t('support.wallet.subscription.Standard update success'),
-    errorToast: t('support.wallet.subscription.Standard update fail')
+    successToast: t('common:support.wallet.subscription.Standard update success'),
+    errorToast: t('common:support.wallet.subscription.Standard update fail')
   });
 
   const { mutate: onclickPreCheckStandPlan, isLoading: isCheckingStandardPlan } = useRequest({
@@ -98,7 +98,7 @@ const Standard = ({
   return (
     <Flex flexDirection={'column'} alignItems={'center'} position={'relative'}>
       <Box fontWeight={'bold'} fontSize={['24px', '36px']}>
-        {t('support.wallet.subscription.Sub plan')}
+        {t('common:support.wallet.subscription.Sub plan')}
       </Box>
       <Box mt={8} mb={10} color={'myGray.500'} fontSize={'md'}>
         {t('support.wallet.subscription.Sub plan tip', {
@@ -108,13 +108,13 @@ const Standard = ({
       <Box>
         <RowTabs
           list={[
-            { label: t('support.wallet.subscription.mode.Month'), value: SubModeEnum.month },
+            { label: t('common:support.wallet.subscription.mode.Month'), value: SubModeEnum.month },
             {
               label: (
                 <Flex>
-                  {t('support.wallet.subscription.mode.Year')}
+                  {t('common:support.wallet.subscription.mode.Year')}
                   <Box color={selectSubMode === SubModeEnum.month ? 'red.600' : 'auto'}>
-                    ({t('support.wallet.subscription.mode.Year sale')})
+                    ({t('common:support.wallet.subscription.mode.Year sale')})
                   </Box>
                 </Flex>
               ),
@@ -172,7 +172,7 @@ const Standard = ({
                 ) {
                   return (
                     <Button isDisabled mt={4} mb={6} w={'100%'} variant={'solid'}>
-                      {t('support.wallet.subscription.Nonsupport')}
+                      {t('common:support.wallet.subscription.Nonsupport')}
                     </Button>
                   );
                 }
@@ -182,7 +182,7 @@ const Standard = ({
                 ) {
                   return (
                     <Button mt={4} mb={6} w={'100%'} variant={'whiteBase'} isDisabled>
-                      {t('support.wallet.subscription.Next plan')}
+                      {t('common:support.wallet.subscription.Next plan')}
                     </Button>
                   );
                 }
@@ -204,7 +204,7 @@ const Standard = ({
                         })
                       }
                     >
-                      {t('support.wallet.subscription.Current plan')}
+                      {t('common:support.wallet.subscription.Current plan')}
                     </Button>
                   );
                 }
@@ -223,7 +223,7 @@ const Standard = ({
                       })
                     }
                   >
-                    {t('support.wallet.subscription.Buy now')}
+                    {t('common:support.wallet.subscription.Buy now')}
                   </Button>
                 );
               })()}
@@ -335,7 +335,7 @@ const ConfirmPayModal = ({
     <MyModal
       isOpen
       iconSrc="modal/confirmPay"
-      title={t('support.wallet.Confirm pay')}
+      title={t('common:support.wallet.Confirm pay')}
       onClose={onClose}
     >
       <ModalBody py={5} px={9}>

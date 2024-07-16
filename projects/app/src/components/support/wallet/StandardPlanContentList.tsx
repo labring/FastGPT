@@ -94,7 +94,7 @@ const StandardPlanContentList = ({
           </Box>
           <QuestionTip
             ml={1}
-            label={t('support.wallet.subscription.AI points click to read tip')}
+            label={t('common:support.wallet.subscription.AI points click to read tip')}
             onClick={() => {
               router.push(AI_POINT_USAGE_CARD_ROUTE);
             }}

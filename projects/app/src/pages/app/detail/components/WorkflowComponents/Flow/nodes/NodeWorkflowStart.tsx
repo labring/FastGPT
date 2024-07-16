@@ -50,11 +50,11 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       {...data}
     >
       <Container>
-        <IOTitle text={t('common.Output')} />
+        <IOTitle text={t('common:common.Output')} />
         <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
       </Container>
       <Container>
-        <IOTitle text={t('core.module.Variable')} />
+        <IOTitle text={t('common:core.module.Variable')} />
         <RenderOutput nodeId={nodeId} flowOutputList={variablesOutputs} />
       </Container>
     </NodeCard>

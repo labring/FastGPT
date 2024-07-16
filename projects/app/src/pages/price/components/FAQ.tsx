@@ -48,7 +48,7 @@ const FAQ = () => {
       position={'relative'}
     >
       <Box fontWeight={'bold'} fontSize={['24px', '36px']}>
-        {t('support.wallet.subscription.FAQ')}
+        {t('common:support.wallet.subscription.FAQ')}
       </Box>
       <Grid mt={4} gridTemplateColumns={['1fr', '1fr 1fr']} gap={4} w={'100%'}>
         {faqs.map((item, i) => (

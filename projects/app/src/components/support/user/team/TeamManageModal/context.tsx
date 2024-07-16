@@ -102,7 +102,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
       await putSwitchTeam(teamId);
       return initUserInfo();
     },
-    errorToast: t('user.team.Switch Team Failed')
+    errorToast: t('common:user.team.Switch Team Failed')
   });
 
   const isLoading = isLoadingTeams || isSwitchingTeam || loadingMembers || isUpdatingPer;

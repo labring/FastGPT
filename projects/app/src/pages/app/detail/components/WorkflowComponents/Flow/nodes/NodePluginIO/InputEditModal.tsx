@@ -62,47 +62,47 @@ const FieldEditModal = ({
   const inputTypeList = useMemo(
     () => [
       {
-        label: t('core.workflow.inputType.Reference'),
+        label: t('common:core.workflow.inputType.Reference'),
         value: FlowNodeInputTypeEnum.reference,
         defaultValueType: WorkflowIOValueTypeEnum.string
       },
       {
-        label: t('core.workflow.inputType.input'),
+        label: t('common:core.workflow.inputType.input'),
         value: FlowNodeInputTypeEnum.input,
         defaultValueType: WorkflowIOValueTypeEnum.string
       },
       {
-        label: t('core.workflow.inputType.textarea'),
+        label: t('common:core.workflow.inputType.textarea'),
         value: FlowNodeInputTypeEnum.textarea,
         defaultValueType: WorkflowIOValueTypeEnum.string
       },
       {
-        label: t('core.workflow.inputType.JSON Editor'),
+        label: t('common:core.workflow.inputType.JSON Editor'),
         value: FlowNodeInputTypeEnum.JSONEditor,
         defaultValueType: WorkflowIOValueTypeEnum.string
       },
       {
-        label: t('core.workflow.inputType.number input'),
+        label: t('common:core.workflow.inputType.number input'),
         value: FlowNodeInputTypeEnum.numberInput,
         defaultValueType: WorkflowIOValueTypeEnum.number
       },
       {
-        label: t('core.workflow.inputType.switch'),
+        label: t('common:core.workflow.inputType.switch'),
         value: FlowNodeInputTypeEnum.switch,
         defaultValueType: WorkflowIOValueTypeEnum.boolean
       },
       {
-        label: t('core.workflow.inputType.selectApp'),
+        label: t('common:core.workflow.inputType.selectApp'),
         value: FlowNodeInputTypeEnum.selectApp,
         defaultValueType: WorkflowIOValueTypeEnum.selectApp
       },
       {
-        label: t('core.workflow.inputType.selectLLMModel'),
+        label: t('common:core.workflow.inputType.selectLLMModel'),
         value: FlowNodeInputTypeEnum.selectLLMModel,
         defaultValueType: WorkflowIOValueTypeEnum.string
       },
       {
-        label: t('core.workflow.inputType.selectDataset'),
+        label: t('common:core.workflow.inputType.selectDataset'),
         value: FlowNodeInputTypeEnum.selectDataset,
         defaultValueType: WorkflowIOValueTypeEnum.selectDataset
       },
@@ -110,7 +110,7 @@ const FieldEditModal = ({
         ? []
         : [
             {
-              label: t('core.workflow.inputType.dynamicTargetInput'),
+              label: t('common:core.workflow.inputType.dynamicTargetInput'),
               value: FlowNodeInputTypeEnum.addInputParam,
               defaultValueType: WorkflowIOValueTypeEnum.dynamic
             }
@@ -177,7 +177,7 @@ const FieldEditModal = ({
       if (!data.key) {
         return toast({
           status: 'warning',
-          title: t('core.module.edit.Field Name Cannot Be Empty')
+          title: t('common:core.module.edit.Field Name Cannot Be Empty')
         });
       }
 
@@ -248,7 +248,7 @@ const FieldEditModal = ({
       <ModalBody display={'flex'} gap={8} flexDirection={['column', 'row']}>
         <Stack flex={1} gap={5}>
           <Flex alignItems={'center'}>
-            <FormLabel flex={'0 0 70px'}>{t('core.module.Input Type')}</FormLabel>
+            <FormLabel flex={'0 0 70px'}>{t('common:core.module.Input Type')}</FormLabel>
             <Box flex={1}>
               <MySelect<FlowNodeInputTypeEnum>
                 list={inputTypeList}
@@ -260,7 +260,7 @@ const FieldEditModal = ({
             </Box>
           </Flex>
           <Flex alignItems={'center'}>
-            <FormLabel flex={'0 0 70px'}>{t('core.module.Field Name')}</FormLabel>
+            <FormLabel flex={'0 0 70px'}>{t('common:core.module.Field Name')}</FormLabel>
             <Input
               bg={'myGray.50'}
               placeholder="appointment/sql"
@@ -285,7 +285,7 @@ const FieldEditModal = ({
         <Stack flex={1} gap={5}>
           {/* value type */}
           <Flex alignItems={'center'}>
-            <FormLabel flex={'0 0 70px'}>{t('core.module.Data Type')}</FormLabel>
+            <FormLabel flex={'0 0 70px'}>{t('common:core.module.Data Type')}</FormLabel>
             {showValueTypeSelect ? (
               <Box flex={1}>
                 <MySelect<WorkflowIOValueTypeEnum>
@@ -325,11 +325,11 @@ const FieldEditModal = ({
 
           {showMaxLenInput && (
             <Flex alignItems={'center'}>
-              <FormLabel flex={'0 0 70px'}>{t('core.module.Max Length')}</FormLabel>
+              <FormLabel flex={'0 0 70px'}>{t('common:core.module.Max Length')}</FormLabel>
               <MyNumberInput
                 flex={'1 0 0'}
                 bg={'myGray.50'}
-                placeholder={t('core.module.Max Length placeholder')}
+                placeholder={t('common:core.module.Max Length placeholder')}
                 value={maxLength}
                 onChange={(e) => {
                   // @ts-ignore
@@ -342,7 +342,7 @@ const FieldEditModal = ({
           {showMinMaxInput && (
             <>
               <Flex alignItems={'center'}>
-                <FormLabel flex={'0 0 70px'}>{t('core.module.Max Value')}</FormLabel>
+                <FormLabel flex={'0 0 70px'}>{t('common:core.module.Max Value')}</FormLabel>
                 <MyNumberInput
                   flex={'1 0 0'}
                   bg={'myGray.50'}
@@ -354,7 +354,7 @@ const FieldEditModal = ({
                 />
               </Flex>
               <Flex alignItems={'center'}>
-                <FormLabel flex={'0 0 70px'}>{t('core.module.Min Value')}</FormLabel>
+                <FormLabel flex={'0 0 70px'}>{t('common:core.module.Min Value')}</FormLabel>
                 <MyNumberInput
                   flex={'1 0 0'}
                   bg={'myGray.50'}
@@ -371,7 +371,7 @@ const FieldEditModal = ({
           {showDefaultValue && (
             <Flex alignItems={'center'} minH={'40px'}>
               <FormLabel flex={inputType === FlowNodeInputTypeEnum.switch ? 1 : '0 0 70px'}>
-                {t('core.module.Default Value')}
+                {t('common:core.module.Default Value')}
               </FormLabel>
               {inputType === FlowNodeInputTypeEnum.numberInput && (
                 <Input
@@ -408,7 +408,7 @@ const FieldEditModal = ({
           {inputType === FlowNodeInputTypeEnum.addInputParam && (
             <>
               <Flex alignItems={'center'}>
-                <FormLabel flex={'0 0 70px'}>{t('core.module.Input Type')}</FormLabel>
+                <FormLabel flex={'0 0 70px'}>{t('common:core.module.Input Type')}</FormLabel>
                 <Box flex={1} fontWeight={'bold'}>
                   {workflowT('Only the Reference type is supported')}
                 </Box>
@@ -434,10 +434,10 @@ const FieldEditModal = ({
 
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common.Close')}
+          {t('common:common.Close')}
         </Button>
         <Button onClick={handleSubmit(onSubmitSuccess, onSubmitError)}>
-          {t('common.Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

@@ -22,7 +22,7 @@ const CustomPluginRunBox = (props: PluginRunBoxProps) => {
     <Grid gridTemplateColumns={'450px 1fr'} h={'100%'}>
       <Box px={3} py={4} borderRight={'base'} h={'100%'} overflowY={'auto'} w={'100%'}>
         <Box color={'myGray.900'} mb={5}>
-          {t('common.Input')}
+          {t('common:common.Input')}
         </Box>
         <PluginRunBox {...props} tab={PluginRunBoxTabEnum.input} />
       </Box>
@@ -30,7 +30,7 @@ const CustomPluginRunBox = (props: PluginRunBoxProps) => {
         <Box display={'inline-block'} mb={5}>
           <LightRowTabs<PluginRunBoxTabEnum>
             list={[
-              { label: t('common.Output'), value: PluginRunBoxTabEnum.output },
+              { label: t('common:common.Output'), value: PluginRunBoxTabEnum.output },
               { label: '完整结果', value: PluginRunBoxTabEnum.detail }
             ]}
             value={tab}
@@ -50,8 +50,8 @@ const CustomPluginRunBox = (props: PluginRunBoxProps) => {
     <Stack py={2} px={4} h={'100%'}>
       <LightRowTabs<PluginRunBoxTabEnum>
         list={[
-          { label: t('common.Input'), value: PluginRunBoxTabEnum.input },
-          { label: t('common.Output'), value: PluginRunBoxTabEnum.output },
+          { label: t('common:common.Input'), value: PluginRunBoxTabEnum.input },
+          { label: t('common:common.Output'), value: PluginRunBoxTabEnum.output },
           { label: '完整结果', value: PluginRunBoxTabEnum.detail }
         ]}
         value={tab}

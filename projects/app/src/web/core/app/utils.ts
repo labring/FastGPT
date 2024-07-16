@@ -712,29 +712,29 @@ export const getSystemVariables = (t: TFunction): EditorVariablePickerType[] => 
   return [
     {
       key: 'appId',
-      label: t('core.module.http.AppId'),
+      label: t('common:core.module.http.AppId'),
       required: true,
       valueType: WorkflowIOValueTypeEnum.string
     },
     {
       key: 'chatId',
-      label: t('core.module.http.ChatId'),
+      label: t('common:core.module.http.ChatId'),
       valueType: WorkflowIOValueTypeEnum.string
     },
     {
       key: 'responseChatItemId',
-      label: t('core.module.http.ResponseChatItemId'),
+      label: t('common:core.module.http.ResponseChatItemId'),
       valueType: WorkflowIOValueTypeEnum.string
     },
     {
       key: 'histories',
-      label: t('core.module.http.Histories'),
+      label: t('common:core.module.http.Histories'),
       required: true,
       valueType: WorkflowIOValueTypeEnum.chatHistory
     },
     {
       key: 'cTime',
-      label: t('core.module.http.Current time'),
+      label: t('common:core.module.http.Current time'),
       required: true,
       valueType: WorkflowIOValueTypeEnum.string
     }

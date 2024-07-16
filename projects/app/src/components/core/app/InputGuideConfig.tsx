@@ -77,9 +77,9 @@ const InputGuideConfig = ({
 
   const formLabel = useMemo(() => {
     if (!isOpenQuestionGuide) {
-      return t('core.app.whisper.Close');
+      return t('common:core.app.whisper.Close');
     }
-    return t('core.app.whisper.Open');
+    return t('common:core.app.whisper.Open');
   }, [t, isOpenQuestionGuide]);
 
   return (
@@ -110,7 +110,7 @@ const InputGuideConfig = ({
       >
         <ModalBody px={[5, 16]} py={[4, 8]}>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
-            <FormLabel>{t('Is open')}</FormLabel>
+            <FormLabel>{t('common:Is open')}</FormLabel>
             <Switch
               isChecked={isOpenQuestionGuide}
               onChange={(e) => {
@@ -231,7 +231,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
         } else {
           toast({
             status: 'success',
-            title: t('common.Add Success')
+            title: t('common:common.Add Success')
           });
         }
         fetchData(1);
@@ -241,7 +241,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
       onSuccess() {
         setNewData(undefined);
       },
-      errorToast: t('error.Create failed')
+      errorToast: t('common:error.Create failed')
     }
   );
 

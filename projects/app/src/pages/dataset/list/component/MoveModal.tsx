@@ -45,7 +45,7 @@ const MoveModal = ({
     () => [
       {
         parentId: '',
-        parentName: t('core.dataset.My Dataset')
+        parentName: t('common:core.dataset.My Dataset')
       },
       ...(data?.[1] || [])
     ],
@@ -59,7 +59,7 @@ const MoveModal = ({
   const { mutate, isLoading } = useRequest({
     mutationFn: () => putDatasetById({ id: moveDataId, parentId }),
     onSuccess,
-    errorToast: t('dataset.Move Failed')
+    errorToast: t('common:dataset.Move Failed')
   });
 
   return (
@@ -99,7 +99,7 @@ const MoveModal = ({
               ))}
             </Flex>
           ) : (
-            <Box>{t('core.dataset.My Dataset')}</Box>
+            <Box>{t('common:core.dataset.My Dataset')}</Box>
           )}
         </>
       }
@@ -124,8 +124,8 @@ const MoveModal = ({
                     key={item._id}
                     label={
                       item.type === DatasetTypeEnum.dataset
-                        ? t('dataset.Select Dataset')
-                        : t('dataset.Select Folder')
+                        ? t('common:dataset.Select Dataset')
+                        : t('common:dataset.Select Folder')
                     }
                   >
                     <Card
@@ -154,7 +154,7 @@ const MoveModal = ({
                       </Flex>
                       <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
                         {item.type === DatasetTypeEnum.folder ? (
-                          <Box color={'myGray.500'}>{t('Folder')}</Box>
+                          <Box color={'myGray.500'}>{t('common:Folder')}</Box>
                         ) : (
                           <>
                             <MyIcon mr={1} name="kbTest" w={'12px'} />
@@ -168,12 +168,14 @@ const MoveModal = ({
               })()
             )}
           </Grid>
-          {folderList.length === 0 && <EmptyTip text={t('common.folder.No Folder')}></EmptyTip>}
+          {folderList.length === 0 && (
+            <EmptyTip text={t('common:common.folder.No Folder')}></EmptyTip>
+          )}
         </ModalBody>
 
         <ModalFooter>
           <Button isLoading={isLoading} onClick={mutate}>
-            {t('dataset.Confirm move the folder')}
+            {t('common:dataset.Confirm move the folder')}
           </Button>
         </ModalFooter>
       </Flex>

@@ -213,7 +213,7 @@ const ScheduledTriggerConfig = ({
   // cron config to show label
   const formatLabel = useMemo(() => {
     if (!isOpenSchedule) {
-      return t('common.Not open');
+      return t('common:common.Not open');
     }
 
     if (cronField[0] === 'month') {
@@ -239,7 +239,7 @@ const ScheduledTriggerConfig = ({
       });
     }
 
-    return t('common.Not open');
+    return t('common:common.Not open');
   }, [cronField, isOpenSchedule, t]);
 
   useEffect(() => {
@@ -254,10 +254,10 @@ const ScheduledTriggerConfig = ({
         <Flex alignItems={'center'}>
           <MyIcon name={'core/app/schedulePlan'} w={'20px'} />
           <HStack ml={2} flex={1} spacing={1}>
-            <FormLabel>{t('core.app.Interval timer run')}</FormLabel>
-            <QuestionTip label={t('core.app.Interval timer tip')} />
+            <FormLabel>{t('common:core.app.Interval timer run')}</FormLabel>
+            <QuestionTip label={t('common:core.app.Interval timer tip')} />
           </HStack>
-          <MyTooltip label={t('core.app.Config schedule plan')}>
+          <MyTooltip label={t('common:core.app.Config schedule plan')}>
             <Button
               variant={'transparentBase'}
               iconSpacing={1}
@@ -274,12 +274,15 @@ const ScheduledTriggerConfig = ({
           isOpen={isOpen}
           onClose={onClose}
           iconSrc={'core/app/schedulePlan'}
-          title={t('core.app.Interval timer config')}
+          title={t('common:core.app.Interval timer config')}
           overflow={'unset'}
         >
           <ModalBody>
             <Flex justifyContent={'space-between'} alignItems={'center'}>
-              <FormLabel flex={'0 0 80px'}> {t('core.app.schedule.Open schedule')}</FormLabel>
+              <FormLabel flex={'0 0 80px'}>
+                {' '}
+                {t('common:core.app.schedule.Open schedule')}
+              </FormLabel>
               <Switch
                 isChecked={isOpenSchedule}
                 onChange={(e) => {
@@ -318,12 +321,12 @@ const ScheduledTriggerConfig = ({
                   </Box>
                 </Flex>
                 <Box mt={5}>
-                  <FormLabel mb={1}>{t('core.app.schedule.Default prompt')}</FormLabel>
+                  <FormLabel mb={1}>{t('common:core.app.schedule.Default prompt')}</FormLabel>
                   <Textarea
                     value={defaultPrompt}
                     rows={8}
                     bg={'myGray.50'}
-                    placeholder={t('core.app.schedule.Default prompt placeholder')}
+                    placeholder={t('common:core.app.schedule.Default prompt placeholder')}
                     onChange={(e) => {
                       onUpdate({ defaultPrompt: e.target.value });
                     }}

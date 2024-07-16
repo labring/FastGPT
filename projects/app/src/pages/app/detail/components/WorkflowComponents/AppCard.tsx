@@ -85,7 +85,7 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
                 },
                 {
                   icon: 'support/team/key',
-                  label: t('common.Role'),
+                  label: t('common:common.Role'),
                   onClick: onOpenInfoEdit
                 }
               ]
@@ -114,7 +114,7 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
                     children: [
                       {
                         icon: 'support/team/memberLight',
-                        label: t('common.Team Tags Set'),
+                        label: t('common:common.Team Tags Set'),
                         onClick: onOpenTeamTagModal
                       }
                     ]
@@ -128,7 +128,7 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
                       {
                         type: 'danger' as 'danger',
                         icon: 'delete',
-                        label: t('common.Delete'),
+                        label: t('common:common.Delete'),
                         onClick: onDelApp
                       }
                     ]
@@ -169,7 +169,7 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
             </HStack>
           </InfoMenu>
           {showSaveStatus && (
-            <MyTooltip label={t('core.app.Onclick to save')}>
+            <MyTooltip label={t('common:core.app.Onclick to save')}>
               <Flex
                 alignItems={'center'}
                 h={'20px'}

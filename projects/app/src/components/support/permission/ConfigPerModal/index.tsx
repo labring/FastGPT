@@ -48,7 +48,7 @@ const ConfigPerModal = ({
         isOpen
         iconSrc="/imgs/modal/key.svg"
         onClose={onClose}
-        title={t('permission.Permission config')}
+        title={t('common:permission.Permission config')}
       >
         <ModalBody>
           <HStack>
@@ -61,7 +61,7 @@ const ConfigPerModal = ({
             </Box>
           )}
           <Box mt={5}>
-            <Box fontSize={'sm'}>{t('permission.Default permission')}</Box>
+            <Box fontSize={'sm'}>{t('common:permission.Default permission')}</Box>
             <DefaultPermissionList
               mt="1"
               per={defaultPer.value}
@@ -87,7 +87,7 @@ const ConfigPerModal = ({
                       justifyContent="space-between"
                       w="full"
                     >
-                      <Box fontSize={'sm'}>{t('permission.Collaborator')}</Box>
+                      <Box fontSize={'sm'}>{t('common:permission.Collaborator')}</Box>
                       <Flex flexDirection="row" gap="2">
                         <Button
                           size="sm"
@@ -95,7 +95,7 @@ const ConfigPerModal = ({
                           leftIcon={<MyIcon w="4" name="common/settingLight" />}
                           onClick={onOpenManageModal}
                         >
-                          {t('permission.Manage')}
+                          {t('common:permission.Manage')}
                         </Button>
                         <Button
                           size="sm"
@@ -103,7 +103,7 @@ const ConfigPerModal = ({
                           leftIcon={<MyIcon w="4" name="support/permission/collaborator" />}
                           onClick={onOpenAddMember}
                         >
-                          {t('common.Add')}
+                          {t('common:common.Add')}
                         </Button>
                       </Flex>
                     </Flex>

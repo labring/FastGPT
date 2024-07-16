@@ -21,10 +21,21 @@ export interface I18nNamespaces {
 
 export type I18nNsType = (keyof I18nNamespaces)[];
 
+const defaultNS: I18nNsType = [
+  'common',
+  'dataset',
+  'app',
+  'file',
+  'publish',
+  'workflow',
+  'user',
+  'chat'
+];
+
 declare module 'i18next' {
   interface CustomTypeOptions {
     returnNull: false;
-    defaultNs: 'common';
+    defaultNS: defaultNS;
     resources: I18nNamespaces;
   }
 }

@@ -49,7 +49,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
     <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
       <Flex justifyContent={'space-between'}>
         <Box fontWeight={'bold'} fontSize={['md', 'lg']}>
-          {t('core.app.publish.Fei shu bot publish')}
+          {t('common:core.app.publish.Fei shu bot publish')}
         </Box>
         <Button
           variant={'whitePrimary'}
@@ -58,27 +58,27 @@ const FeiShu = ({ appId }: { appId: string }) => {
           {...(shareChatList.length >= 10
             ? {
                 isDisabled: true,
-                title: t('core.app.share.Amount limit tip')
+                title: t('common:core.app.share.Amount limit tip')
               }
             : {})}
           onClick={() => setEditFeiShuLinkData(defaultFeishuOutLinkForm)}
         >
-          {t('core.app.share.Create link')}
+          {t('common:core.app.share.Create link')}
         </Button>
       </Flex>
       <TableContainer mt={3}>
         <Table variant={'simple'} w={'100%'} overflowX={'auto'} fontSize={'sm'}>
           <Thead>
             <Tr>
-              <Th>{t('common.Name')}</Th>
-              <Th>{t('support.outlink.Usage points')}</Th>
+              <Th>{t('common:common.Name')}</Th>
+              <Th>{t('common:support.outlink.Usage points')}</Th>
               {feConfigs?.isPlus && (
                 <>
-                  <Th>{t('core.app.share.Ip limit title')}</Th>
-                  <Th>{t('common.Expired Time')}</Th>
+                  <Th>{t('common:core.app.share.Ip limit title')}</Th>
+                  <Th>{t('common:common.Expired Time')}</Th>
                 </>
               )}
-              <Th>{t('common.Last use time')}</Th>
+              <Th>{t('common:common.Last use time')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -92,7 +92,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
                     ? `${
                         item.limit?.maxUsagePoints && item.limit.maxUsagePoints > -1
                           ? ` / ${item.limit.maxUsagePoints}`
-                          : ` / ${t('common.Unlimited')}`
+                          : ` / ${t('common:common.Unlimited')}`
                       }`
                     : ''}
                 </Td>
@@ -107,7 +107,9 @@ const FeiShu = ({ appId }: { appId: string }) => {
                   </>
                 )}
                 <Td>
-                  {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common.Un used')}
+                  {item.lastTime
+                    ? t(formatTimeToChatTime(item.lastTime))
+                    : t('common:common.Un used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <MyMenu
@@ -125,7 +127,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
                       {
                         children: [
                           {
-                            label: t('common.Edit'),
+                            label: t('common:common.Edit'),
                             icon: 'edit',
                             onClick: () =>
                               setEditFeiShuLinkData({
@@ -139,7 +141,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
                               })
                           },
                           {
-                            label: t('common.Delete'),
+                            label: t('common:common.Delete'),
                             icon: 'delete',
                             onClick: async () => {
                               setIsLoading(true);
@@ -174,7 +176,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
           onEdit={() => {
             toast({
               status: 'success',
-              title: t('common.Update Successful')
+              title: t('common:common.Update Successful')
             });
             refetchShareChatList();
             setEditFeiShuLinkData(undefined);
@@ -183,7 +185,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
         />
       )}
       {shareChatList.length === 0 && !isFetching && (
-        <EmptyTip text={t('core.app.share.Not share link')}></EmptyTip>
+        <EmptyTip text={t('common:core.app.share.Not share link')}></EmptyTip>
       )}
       <Loading loading={isFetching} fixed={false} />
     </Box>

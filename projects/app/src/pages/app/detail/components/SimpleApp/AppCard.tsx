@@ -62,7 +62,7 @@ const AppCard = () => {
           }));
         }
       },
-      successToast: t('common.Success')
+      successToast: t('common:common.Success')
     }
   );
 
@@ -86,7 +86,7 @@ const AppCard = () => {
           fontSize={'xs'}
           minH={'46px'}
         >
-          {appDetail.intro || t('core.app.tip.Add a intro to app')}
+          {appDetail.intro || t('common:core.app.tip.Add a intro to app')}
         </Box>
         <HStack alignItems={'flex-end'}>
           <Button
@@ -95,7 +95,7 @@ const AppCard = () => {
             leftIcon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
             onClick={() => router.push(`/chat?appId=${appId}`)}
           >
-            {t('core.Chat')}
+            {t('common:core.Chat')}
           </Button>
           {appDetail.permission.hasManagePer && (
             <Button
@@ -104,7 +104,7 @@ const AppCard = () => {
               leftIcon={<MyIcon name={'common/settingLight'} w={'16px'} />}
               onClick={onOpenInfoEdit}
             >
-              {t('common.Setting')}
+              {t('common:common.Setting')}
             </Button>
           )}
           {appDetail.permission.isOwner && (
@@ -129,7 +129,7 @@ const AppCard = () => {
                       ? [
                           {
                             icon: 'core/chat/fileSelect',
-                            label: t('common.Team Tags Set'),
+                            label: t('common:common.Team Tags Set'),
                             onClick: () => setTeamTagsSet(appDetail)
                           }
                         ]
@@ -141,7 +141,7 @@ const AppCard = () => {
                     {
                       icon: 'delete',
                       type: 'danger',
-                      label: t('common.Delete'),
+                      label: t('common:common.Delete'),
                       onClick: onDelApp
                     }
                   ]
@@ -173,10 +173,10 @@ const AppCard = () => {
           </ModalBody>
           <ModalFooter>
             <Button variant={'whiteBase'} onClick={() => setTransitionCreateNew(undefined)} mr={3}>
-              {t('common.Close')}
+              {t('common:common.Close')}
             </Button>
             <Button variant={'dangerFill'} isLoading={transiting} onClick={() => onTransition()}>
-              {t('common.Confirm')}
+              {t('common:common.Confirm')}
             </Button>
           </ModalFooter>
         </MyModal>

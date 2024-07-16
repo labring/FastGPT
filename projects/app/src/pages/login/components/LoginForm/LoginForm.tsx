@@ -60,13 +60,13 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const isCommunityVersion = feConfigs?.show_register === false && !feConfigs?.isPlus;
 
   const loginOptions = [
-    feConfigs?.show_phoneLogin ? t('support.user.login.Phone number') : '',
-    feConfigs?.show_emailLogin ? t('support.user.login.Email') : '',
-    t('support.user.login.Username')
+    feConfigs?.show_phoneLogin ? t('common:support.user.login.Phone number') : '',
+    feConfigs?.show_emailLogin ? t('common:support.user.login.Email') : '',
+    t('common:support.user.login.Username')
   ].filter(Boolean);
 
   const placeholder = isCommunityVersion
-    ? t('support.user.login.Root login')
+    ? t('common:support.user.login.Root login')
     : loginOptions.join('/');
 
   return (
@@ -94,8 +94,8 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             type={'password'}
             placeholder={
               isCommunityVersion
-                ? t('support.user.login.Root password placeholder')
-                : t('support.user.login.Password')
+                ? t('common:support.user.login.Root password placeholder')
+                : t('common:support.user.login.Password')
             }
             {...register('password', {
               required: true,
@@ -108,22 +108,22 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         </FormControl>
         {feConfigs?.docUrl && (
           <Flex alignItems={'center'} mt={7} fontSize={'sm'}>
-            {t('support.user.login.Policy tip')}
+            {t('common:support.user.login.Policy tip')}
             <Link
               ml={1}
               href={getDocPath('/docs/agreement/terms/')}
               target={'_blank'}
               color={'primary.500'}
             >
-              {t('support.user.login.Terms')}
+              {t('common:support.user.login.Terms')}
             </Link>
-            <Box mx={1}>{t('support.user.login.And')}</Box>
+            <Box mx={1}>{t('common:support.user.login.And')}</Box>
             <Link
               href={getDocPath('/docs/agreement/privacy/')}
               target={'_blank'}
               color={'primary.500'}
             >
-              {t('support.user.login.Privacy')}
+              {t('common:support.user.login.Privacy')}
             </Link>
           </Flex>
         )}
@@ -137,7 +137,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           isLoading={requesting}
           onClick={handleSubmit(onclickLogin)}
         >
-          {t('Login')}
+          {t('common:Login')}
         </Button>
 
         {feConfigs?.show_register && (
@@ -149,7 +149,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
                 onClick={() => setPageType('forgetPassword')}
                 fontSize="sm"
               >
-                {t('support.user.login.Forget Password')}
+                {t('common:support.user.login.Forget Password')}
               </Box>
               <Box mx={3} h={'16px'} w={'1.5px'} bg={'myGray.250'}></Box>
               <Box
@@ -158,7 +158,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
                 onClick={() => setPageType('register')}
                 fontSize="sm"
               >
-                {t('support.user.login.Register')}
+                {t('common:support.user.login.Register')}
               </Box>
             </Flex>
           </>

@@ -94,7 +94,7 @@ export default function InputGuideBox({
           <Box fontSize={'sm'} flex={'1 0 0'}>
             <HighlightText rawText={item} matchText={text} />
           </Box>
-          <MyTooltip label={t('core.chat.markdown.Send Question')}>
+          <MyTooltip label={t('common:core.chat.markdown.Send Question')}>
             <MyIcon
               className="send-icon"
               display={'none'}

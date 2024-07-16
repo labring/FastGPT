@@ -11,7 +11,7 @@ const QGSwitch = (props: SwitchProps) => {
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/chat/QGFill'} mr={2} w={'20px'} />
-      <FormLabel>{t('core.app.Question Guide')}</FormLabel>
+      <FormLabel>{t('common:core.app.Question Guide')}</FormLabel>
       <ChatFunctionTip type={'nextQuestion'} />
       <Box flex={1} />
       <Switch {...props} />

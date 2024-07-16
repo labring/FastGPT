@@ -13,11 +13,11 @@ const NotSufficientModal = () => {
   const onClose = () => setIsNotSufficientModal(false);
 
   return (
-    <MyModal isOpen iconSrc="common/confirm/deleteTip" title={t('common.Warning')}>
-      <ModalBody>{t('support.wallet.Not sufficient')}</ModalBody>
+    <MyModal isOpen iconSrc="common/confirm/deleteTip" title={t('common:common.Warning')}>
+      <ModalBody>{t('common:support.wallet.Not sufficient')}</ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={2} onClick={onClose}>
-          {t('common.Close')}
+          {t('common:common.Close')}
         </Button>
         <Button
           onClick={() => {
@@ -25,7 +25,7 @@ const NotSufficientModal = () => {
             onClose();
           }}
         >
-          {t('support.wallet.To read plan')}
+          {t('common:support.wallet.To read plan')}
         </Button>
       </ModalFooter>
     </MyModal>

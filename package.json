@@ -14,11 +14,11 @@
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",
     "husky": "^8.0.3",
-    "i18next": "23.10.0",
     "lint-staged": "^13.3.0",
-    "next-i18next": "15.2.0",
+    "i18next": "23.11.5",
+    "next-i18next": "15.3.0",
+    "react-i18next": "14.1.2",
     "prettier": "3.2.4",
-    "react-i18next": "13.5.0",
     "zhlint": "^0.7.4"
   },
   "lint-staged": {

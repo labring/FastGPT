@@ -29,7 +29,7 @@ function TeamList() {
         borderBottom={'1.5px solid rgba(0, 0, 0, 0.05)'}
       >
         <Box flex={['0 0 auto', 1]} fontSize={['sm', 'md']}>
-          {t('common.Team')}
+          {t('common:common.Team')}
         </Box>
         {/* if there is no team */}
         {myTeams.length < 1 && (
@@ -90,7 +90,7 @@ function TeamList() {
                 variant={'whitePrimary'}
                 onClick={() => onSwitchTeam(team.teamId)}
               >
-                {t('user.team.Check Team')}
+                {t('common:user.team.Check Team')}
               </Button>
             )}
           </Flex>

@@ -13,7 +13,7 @@ const ParentPaths = (props: {
   const { t } = useTranslation();
   const {
     paths = [],
-    rootName = t('common.folder.Root Path'),
+    rootName = t('common:common.folder.Root Path'),
     FirstPathDom,
     onClick,
     fontSize

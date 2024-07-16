@@ -69,7 +69,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
         setValue('avatar', src);
       } catch (err: any) {
         toast({
-          title: getErrText(err, t('common.avatar.Select Failed')),
+          title: getErrText(err, t('common:common.avatar.Select Failed')),
           status: 'warning'
         });
       }
@@ -83,8 +83,8 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       const id = await postCreateDataset(data);
       return id;
     },
-    successToast: t('common.Create Success'),
-    errorToast: t('common.Create Failed'),
+    successToast: t('common:common.Create Success'),
+    errorToast: t('common:common.Create Failed'),
     onSuccess(id) {
       router.push(`/dataset/detail?datasetId=${id}`);
     }
@@ -98,7 +98,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       ) {
         return toast({
           status: 'warning',
-          title: t('common.system.Commercial version function')
+          title: t('common:common.system.Commercial version function')
         });
       }
       setValue('type', e);
@@ -109,7 +109,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
   return (
     <MyModal
       iconSrc="/imgs/workflow/db.png"
-      title={t('core.dataset.Create dataset')}
+      title={t('common:core.dataset.Create dataset')}
       isOpen
       onClose={onClose}
       isCentered={!isPc}
@@ -118,7 +118,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       <ModalBody py={2}>
         <>
           <Box mb={1} color={'myGray.900'}>
-            {t('core.dataset.Dataset Type')}
+            {t('common:core.dataset.Dataset Type')}
           </Box>
           <MyRadio
             gridGap={2}
@@ -148,9 +148,9 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
           />
         </>
         <Box mt={5}>
-          <Box color={'myGray.900'}>{t('common.Set Name')}</Box>
+          <Box color={'myGray.900'}>{t('common:common.Set Name')}</Box>
           <Flex mt={1} alignItems={'center'}>
-            <MyTooltip label={t('common.avatar.Select Avatar')}>
+            <MyTooltip label={t('common:common.avatar.Select Avatar')}>
               <Avatar
                 flexShrink={0}
                 src={avatar}
@@ -166,7 +166,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
               flex={1}
               autoFocus
               bg={'myWhite.600'}
-              placeholder={t('common.Name')}
+              placeholder={t('common:common.Name')}
               maxLength={30}
               {...register('name', {
                 required: true
@@ -177,8 +177,8 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
         {filterNotHiddenVectorModelList.length > 1 && (
           <Flex mt={6} alignItems={'center'}>
             <Flex alignItems={'center'} flex={'0 0 100px'} fontSize={'sm'}>
-              {t('core.ai.model.Vector Model')}
-              <QuestionTip label={t('core.dataset.embedding model tip')} />
+              {t('common:core.ai.model.Vector Model')}
+              <QuestionTip label={t('common:core.dataset.embedding model tip')} />
             </Flex>
             <Box flex={1}>
               <AIModelSelector
@@ -198,7 +198,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
         {datasetModelList.length > 1 && (
           <Flex mt={6} alignItems={'center'}>
             <Box flex={'0 0 100px'} fontSize={'sm'}>
-              {t('core.ai.model.Dataset Agent Model')}
+              {t('common:core.ai.model.Dataset Agent Model')}
             </Box>
             <Box flex={1}>
               <AIModelSelector
@@ -219,10 +219,10 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
 
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common.Close')}
+          {t('common:common.Close')}
         </Button>
         <Button isLoading={creating} onClick={handleSubmit((data) => onclickCreate(data))}>
-          {t('common.Confirm Create')}
+          {t('common:common.Confirm Create')}
         </Button>
       </ModalFooter>
 

@@ -93,7 +93,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
       if (!res || res.list.length === 0) {
         return toast({
           status: 'warning',
-          title: t('dataset.test.noResult')
+          title: t('common:dataset.test.noResult')
         });
       }
 
@@ -168,7 +168,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                     <Flex alignItems={'center'}>
                       <MyIcon mr={2} name={'text'} w={'14px'} color={'primary.600'} />
                       <Box fontSize={'sm'} fontWeight={'bold'} flex={1}>
-                        {t('core.dataset.test.Test Text')}
+                        {t('common:core.dataset.test.Test Text')}
                       </Box>
                     </Flex>
                   ),
@@ -179,7 +179,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                 //     <Flex alignItems={'center'}>
                 //       <MyIcon mr={2} name={'file/csv'} w={'14px'} color={'primary.600'} />
                 //       <Box fontSize={'sm'} fontWeight={'bold'} flex={1}>
-                //         {t('core.dataset.test.Batch test')}
+                //         {t('common:core.dataset.test.Batch test')}
                 //       </Box>
                 //     </Flex>
                 //   ),
@@ -207,7 +207,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                 resize={'none'}
                 variant={'unstyled'}
                 maxLength={datasetDetail.vectorModel?.maxToken}
-                placeholder={t('core.dataset.test.Test Text Placeholder')}
+                placeholder={t('common:core.dataset.test.Test Text Placeholder')}
                 onFocus={() => setIsFocus(true)}
                 {...register('inputText', {
                   required: true,
@@ -237,7 +237,9 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                 >
                   <MyIcon mr={2} name={'file/csv'} w={'24px'} />
                   <Box>
-                    {selectFile ? selectFile.name : t('core.dataset.test.Batch test Placeholder')}
+                    {selectFile
+                      ? selectFile.name
+                      : t('common:core.dataset.test.Batch test Placeholder')}
                   </Box>
                 </Flex>
                 <Box mt={3} fontSize={'sm'}>
@@ -274,7 +276,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                 }
               }}
             >
-              {t('core.dataset.test.Test')}
+              {t('common:core.dataset.test.Test')}
             </Button>
           </Flex>
         </Box>
@@ -332,7 +334,7 @@ const TestHistories = React.memo(function TestHistories({
     <>
       <Flex alignItems={'center'} color={'myGray.900'}>
         <MyIcon mr={2} name={'history'} w={'18px'} h={'18px'} color={'myGray.900'} />
-        <Box fontSize={'md'}>{t('core.dataset.test.test history')}</Box>
+        <Box fontSize={'md'}>{t('common:core.dataset.test.test history')}</Box>
       </Flex>
       <Box mt={2}>
         {testHistories.map((item) => (
@@ -383,7 +385,7 @@ const TestHistories = React.memo(function TestHistories({
                 ? t(formatTimeToChatTime(item.time))
                 : formatTimeToChatTime(item.time)}
             </Box>
-            <MyTooltip label={t('core.dataset.test.delete test history')}>
+            <MyTooltip label={t('common:core.dataset.test.delete test history')}>
               <Box w={'14px'} h={'14px'}>
                 <MyIcon
                   className="delete"
@@ -417,12 +419,12 @@ const TestResults = React.memo(function TestResults({
   return (
     <>
       {!datasetTestItem?.results || datasetTestItem.results.length === 0 ? (
-        <EmptyTip text={t('core.dataset.test.test result placeholder')} mt={[10, '20vh']} />
+        <EmptyTip text={t('common:core.dataset.test.test result placeholder')} mt={[10, '20vh']} />
       ) : (
         <>
           <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'}>
             <MyIcon name={'common/paramsLight'} w={'18px'} mr={2} />
-            {t('core.dataset.test.Test params')}
+            {t('common:core.dataset.test.Test params')}
           </Flex>
           <Box mt={3}>
             <SearchParamsTip
@@ -437,9 +439,9 @@ const TestResults = React.memo(function TestResults({
           <Flex mt={5} mb={3} alignItems={'center'}>
             <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'}>
               <MyIcon name={'common/resultLight'} w={'18px'} mr={2} />
-              {t('core.dataset.test.Test Result')}
+              {t('common:core.dataset.test.Test Result')}
             </Flex>
-            <QuestionTip ml={1} label={t('core.dataset.test.test result tip')} />
+            <QuestionTip ml={1} label={t('common:core.dataset.test.test result tip')} />
             <Box ml={2}>({datasetTestItem.duration})</Box>
           </Flex>
           <Box mt={1} gap={4}>

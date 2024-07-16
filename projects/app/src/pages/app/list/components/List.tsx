@@ -89,8 +89,8 @@ const ListItem = () => {
       onSuccess() {
         loadMyApps();
       },
-      successToast: t('common.Delete Success'),
-      errorToast: t('common.Delete Failed')
+      successToast: t('common:common.Delete Success'),
+      errorToast: t('common:common.Delete Failed')
     }
   );
 
@@ -142,7 +142,7 @@ const ListItem = () => {
               h="100%"
               label={
                 app.type === AppTypeEnum.folder
-                  ? t('common.folder.Open folder')
+                  ? t('common:common.folder.Open folder')
                   : app.permission.hasWritePer
                     ? appT('Edit app')
                     : appT('Go to chat')
@@ -315,7 +315,7 @@ const ListItem = () => {
                                   : [
                                       {
                                         icon: 'common/file/move',
-                                        label: t('common.folder.Move to'),
+                                        label: t('common:common.folder.Move to'),
                                         onClick: () => setMoveAppId(app._id)
                                       }
                                     ]),
@@ -323,7 +323,7 @@ const ListItem = () => {
                                   ? [
                                       {
                                         icon: 'support/team/key',
-                                        label: t('permission.Permission'),
+                                        label: t('common:permission.Permission'),
                                         onClick: () => setEditPerAppIndex(index)
                                       }
                                     ]
@@ -352,7 +352,7 @@ const ListItem = () => {
                                       {
                                         type: 'danger' as 'danger',
                                         icon: 'delete',
-                                        label: t('common.Delete'),
+                                        label: t('common:common.Delete'),
                                         onClick: () =>
                                           openConfirmDel(
                                             () => onclickDelApp(app._id),
