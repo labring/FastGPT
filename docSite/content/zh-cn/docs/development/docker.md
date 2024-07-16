@@ -11,7 +11,6 @@ weight: 707
 
 ![](/imgs/sealos-fastgpt.webp)
 
-
 {{% alert icon="🤖" context="success" %}}
 
 - MongoDB：用于存储除了向量外的各类数据
@@ -105,13 +104,11 @@ brew install orbstack
 {{< /tab >}}
 {{< /tabs >}}
 
-
 ## 开始部署
 
 ### 1. 下载 docker-compose.yml
 
-
-非 Linux 环境或无法访问外网环境，可手动创建一个目录，并下载配置文件和对应版本的`docker-compose.yml`
+非 Linux 环境或无法访问外网环境，可手动创建一个目录，并下载配置文件和对应版本的`docker-compose.yml`，在这个文件夹中依据下载的配置文件运行docker，若作为本地开发使用推荐`docker-compose-pgvector`版本，并且自行拉取并运行`sandbox`和`fastgpt`，并在docker配置文件中注释掉`sandbox`和`fastgpt`的部分
 
 - [config.json](https://github.com/labring/FastGPT/blob/main/projects/app/data/config.json)
 - [docker-compose.yml](https://github.com/labring/FastGPT/blob/main/files/docker) (注意，不同向量库版本的文件不一样)
@@ -271,7 +268,6 @@ rs.status()
 
 默认是写了OneAPi的连接地址和密钥，可以通过修改`docker-compose.yml`中，fastgpt容器的环境变量实现。
 
-
 `OPENAI_BASE_URL`（API 接口的地址，需要加/v1）
 `CHAT_API_KEY`（API 接口的凭证）。
 
@@ -315,8 +311,7 @@ docker-compose up -d
 1. `docker exec -it fastgpt sh` 进入 FastGPT 容器。
 2. 直接输入`env`命令查看所有环境变量。
 
-
-### 为什么无法连接`本地模型`镜像。
+### 为什么无法连接`本地模型`镜像
 
 `docker-compose.yml`中使用了桥接的模式建立了`fastgpt`网络，如想通过0.0.0.0或镜像名访问其它镜像，需将其它镜像也加入到网络中。
 
@@ -368,8 +363,8 @@ mongo连接失败，查看mongo的运行状态**对应日志**。
 
 由于服务初始化错误，系统重启导致。
 
-* 90%是由于配置文件写不对，导致 JSON 解析报错
-* 剩下的基本是因为向量数据库连不上
+- 90%是由于配置文件写不对，导致 JSON 解析报错
+- 剩下的基本是因为向量数据库连不上
 
 ### 如何修改密码
 
