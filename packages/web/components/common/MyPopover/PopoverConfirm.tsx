@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import MyPopover from './index';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../Icon';
 import { useRequest2 } from '../../../hooks/useRequest';

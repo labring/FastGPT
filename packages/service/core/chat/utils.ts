@@ -240,7 +240,10 @@ export const loadChatImgToBase64 = async (content: string | ChatCompletionConten
   return Promise.all(
     content.map(async (item) => {
       if (item.type === 'text') return item;
-      // load image
+      /* 
+        1. From db: Get it from db
+        2. From web: Not update
+      */
       const response = await axios.get(item.image_url.url, {
         responseType: 'arraybuffer'
       });

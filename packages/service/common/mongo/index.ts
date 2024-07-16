@@ -65,7 +65,8 @@ export const getMongoModel = <T>(name: string, schema: mongoose.Schema) => {
 
   const model = connectionMongo.model<T>(name, schema);
   try {
-    model.syncIndexes();
+    // model.createIndexes({ background: true });
+    model.syncIndexes({ background: true });
   } catch (error) {
     addLog.error('Create index error', error);
   }
