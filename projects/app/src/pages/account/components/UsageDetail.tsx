@@ -63,44 +63,44 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
       isOpen={true}
       onClose={onClose}
       iconSrc="/imgs/modal/bill.svg"
-      title={t('support.wallet.usage.Usage Detail')}
+      title={t('common:support.wallet.usage.Usage Detail')}
       maxW={['90vw', '700px']}
     >
       <ModalBody>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 80px'}>{t('support.wallet.bill.Number')}:</FormLabel>
+          <FormLabel flex={'0 0 80px'}>{t('common:support.wallet.bill.Number')}:</FormLabel>
           <Box>{usage.id}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 80px'}>{t('support.wallet.usage.Time')}:</FormLabel>
+          <FormLabel flex={'0 0 80px'}>{t('common:support.wallet.usage.Time')}:</FormLabel>
           <Box>{dayjs(usage.time).format('YYYY/MM/DD HH:mm:ss')}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 80px'}>{t('support.wallet.usage.App name')}:</FormLabel>
+          <FormLabel flex={'0 0 80px'}>{t('common:support.wallet.usage.App name')}:</FormLabel>
           <Box>{t(usage.appName) || '-'}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 80px'}>{t('support.wallet.usage.Source')}:</FormLabel>
+          <FormLabel flex={'0 0 80px'}>{t('common:support.wallet.usage.Source')}:</FormLabel>
           <Box>{t(UsageSourceMap[usage.source]?.label)}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 80px'}>{t('support.wallet.usage.Total points')}:</FormLabel>
+          <FormLabel flex={'0 0 80px'}>{t('common:support.wallet.usage.Total points')}:</FormLabel>
           <Box fontWeight={'bold'}>{formatNumber(usage.totalPoints)}</Box>
         </Flex>
         <Box pb={4}>
           <FormLabel flex={'0 0 80px'} mb={1}>
-            {t('support.wallet.usage.Bill Module')}
+            {t('common:support.wallet.usage.Bill Module')}
           </FormLabel>
           <TableContainer fontSize={'sm'}>
             <Table>
               <Thead>
                 <Tr>
-                  <Th>{t('support.wallet.usage.Module name')}</Th>
-                  {hasModel && <Th>{t('support.wallet.usage.Ai model')}</Th>}
-                  {hasToken && <Th>{t('support.wallet.usage.Token Length')}</Th>}
-                  {hasCharsLen && <Th>{t('support.wallet.usage.Text Length')}</Th>}
-                  {hasDuration && <Th>{t('support.wallet.usage.Duration')}</Th>}
-                  <Th>{t('support.wallet.usage.Total points')}</Th>
+                  <Th>{t('common:support.wallet.usage.Module name')}</Th>
+                  {hasModel && <Th>{t('common:support.wallet.usage.Ai model')}</Th>}
+                  {hasToken && <Th>{t('common:support.wallet.usage.Token Length')}</Th>}
+                  {hasCharsLen && <Th>{t('common:support.wallet.usage.Text Length')}</Th>}
+                  {hasDuration && <Th>{t('common:support.wallet.usage.Duration')}</Th>}
+                  <Th>{t('common:support.wallet.usage.Total points')}</Th>
                 </Tr>
               </Thead>
               <Tbody>

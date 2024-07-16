@@ -20,7 +20,7 @@ const SimpleEdit = () => {
   const [appForm, setAppForm] = useState(getDefaultAppForm());
 
   useBeforeunload({
-    tip: t('core.common.tip.leave page')
+    tip: t('common:core.common.tip.leave page')
   });
 
   return (

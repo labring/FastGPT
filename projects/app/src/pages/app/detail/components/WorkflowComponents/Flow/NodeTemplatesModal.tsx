@@ -182,17 +182,17 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                 list={[
                   {
                     icon: 'core/modules/basicNode',
-                    label: t('core.module.template.Basic Node'),
+                    label: t('common:core.module.template.Basic Node'),
                     value: TemplateTypeEnum.basic
                   },
                   {
                     icon: 'core/modules/systemPlugin',
-                    label: t('core.module.template.System Plugin'),
+                    label: t('common:core.module.template.System Plugin'),
                     value: TemplateTypeEnum.systemPlugin
                   },
                   {
                     icon: 'core/modules/teamPlugin',
-                    label: t('core.module.template.Team Plugin'),
+                    label: t('common:core.module.template.Team Plugin'),
                     value: TemplateTypeEnum.teamPlugin
                   }
                 ]}
@@ -219,7 +219,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                   <Input
                     h={'full'}
                     bg={'myGray.50'}
-                    placeholder={t('plugin.Search plugin')}
+                    placeholder={t('common:plugin.Search plugin')}
                     onChange={(e) => setSearchKey(e.target.value)}
                   />
                 </InputGroup>
@@ -318,7 +318,7 @@ const RenderList = React.memo(function RenderList({
         } catch (e) {
           toast({
             status: 'error',
-            title: getErrText(e, t('core.plugin.Get Plugin Module Detail Failed'))
+            title: getErrText(e, t('common:core.plugin.Get Plugin Module Detail Failed'))
           });
           setLoading(false);
           return Promise.reject(e);
@@ -398,7 +398,7 @@ const RenderList = React.memo(function RenderList({
                           </Box>
                         </Flex>
                         <Box mt={2} color={'myGray.500'}>
-                          {t(template.intro) || t('core.workflow.Not intro')}
+                          {t(template.intro) || t('common:core.workflow.Not intro')}
                         </Box>
                       </Box>
                     }

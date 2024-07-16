@@ -213,7 +213,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
       });
     },
     {
-      successToast: t('common.Sync success')
+      successToast: t('common:common.Sync success')
     }
   );
 
@@ -232,7 +232,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
           <MySelect
             isLoading={isLoadingFunctions}
             list={lafFunctionSelectList}
-            placeholder={t('core.module.laf.Select laf function')}
+            placeholder={t('common:core.module.laf.Select laf function')}
             onchange={(e) => {
               onChangeNode({
                 nodeId,
@@ -250,7 +250,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
           {!!selectedFunction && (
             <Flex justifyContent={'flex-end'} mt={2} gap={2}>
               <Button isLoading={isSyncing} variant={'grayBase'} size={'sm'} onClick={onSyncParams}>
-                {t('core.module.Laf sync params')}
+                {t('common:core.module.Laf sync params')}
               </Button>
               <Button
                 variant={'grayBase'}
@@ -265,7 +265,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
                   window.open(url, '_blank');
                 }}
               >
-                {t('plugin.go to laf')}
+                {t('common:plugin.go to laf')}
               </Button>
             </Flex>
           )}
@@ -290,7 +290,7 @@ const ConfigLaf = () => {
   return !!feConfigs?.lafEnv ? (
     <Center minH={150}>
       <Button onClick={onOpenLafConfig} variant={'whitePrimary'}>
-        {t('plugin.Please bind laf accout first')} <ChevronRightIcon />
+        {t('common:plugin.Please bind laf accout first')} <ChevronRightIcon />
       </Button>
 
       {isOpenLafConfig && feConfigs?.lafEnv && (
@@ -319,13 +319,13 @@ const RenderIO = ({ data }: NodeProps<FlowNodeItemType>) => {
       )}
       <>
         <Container>
-          <IOTitle text={t('common.Input')} />
+          <IOTitle text={t('common:common.Input')} />
           <RenderInput nodeId={nodeId} flowInputList={commonInputs} />
         </Container>
       </>
       <>
         <Container>
-          <IOTitle text={t('common.Output')} />
+          <IOTitle text={t('common:common.Output')} />
           <RenderOutput flowOutputList={outputs} nodeId={nodeId} />
         </Container>
       </>

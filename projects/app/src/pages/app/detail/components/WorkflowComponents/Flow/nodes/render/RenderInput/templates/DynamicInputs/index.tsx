@@ -74,7 +74,7 @@ const DynamicInputs = (props: RenderInputProps) => {
               })
             }
           >
-            {t('common.Add New')}
+            {t('common:common.Add New')}
           </Button>
         </HStack>
         {/* field render */}

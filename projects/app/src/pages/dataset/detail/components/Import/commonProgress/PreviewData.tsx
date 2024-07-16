@@ -15,7 +15,7 @@ const PreviewData = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
         <Preview showPreviewChunks={showPreviewChunks} />
       </Box>
       <Flex mt={2} justifyContent={'flex-end'}>
-        <Button onClick={goToNext}>{t('common.Next Step')}</Button>
+        <Button onClick={goToNext}>{t('common:common.Next Step')}</Button>
       </Flex>
     </Flex>
   );

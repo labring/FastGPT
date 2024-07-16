@@ -25,26 +25,26 @@ const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
     },
     [FnTypeEnum.nextQuestion]: {
       icon: '/imgs/app/nextQuestion-icon.svg',
-      title: t('core.app.Question Guide'),
-      desc: t('core.app.Question Guide Tip'),
+      title: t('common:core.app.Question Guide'),
+      desc: t('common:core.app.Question Guide Tip'),
       imgUrl: '/imgs/app/nextQuestion.svg'
     },
     [FnTypeEnum.tts]: {
       icon: '/imgs/app/tts-icon.svg',
-      title: t('core.app.TTS'),
-      desc: t('core.app.TTS Tip'),
+      title: t('common:core.app.TTS'),
+      desc: t('common:core.app.TTS Tip'),
       imgUrl: '/imgs/app/tts.svg'
     },
     [FnTypeEnum.variable]: {
       icon: '/imgs/app/variable-icon.svg',
-      title: t('core.module.Variable'),
-      desc: t('core.app.tip.variableTip'),
+      title: t('common:core.module.Variable'),
+      desc: t('common:core.app.tip.variableTip'),
       imgUrl: '/imgs/app/variable.svg'
     },
     [FnTypeEnum.welcome]: {
       icon: '/imgs/app/welcome-icon.svg',
-      title: t('core.app.Welcome Text'),
-      desc: t('core.app.tip.welcomeTextTip'),
+      title: t('common:core.app.Welcome Text'),
+      desc: t('common:core.app.tip.welcomeTextTip'),
       imgUrl: '/imgs/app/welcome.svg'
     }
   });

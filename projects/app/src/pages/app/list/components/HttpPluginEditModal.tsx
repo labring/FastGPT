@@ -101,8 +101,8 @@ const HttpPluginEditModal = ({
       loadMyApps();
       onClose();
     },
-    successToast: t('common.Create Success'),
-    errorToast: t('common.Create Failed')
+    successToast: t('common:common.Create Success'),
+    errorToast: t('common:common.Create Failed')
   });
 
   const { mutate: updatePlugins, isLoading: isUpdating } = useRequest({
@@ -121,8 +121,8 @@ const HttpPluginEditModal = ({
       loadMyApps();
       onClose();
     },
-    successToast: t('common.Update Success'),
-    errorToast: t('common.Update Failed')
+    successToast: t('common:common.Update Success'),
+    errorToast: t('common:common.Update Failed')
   });
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
@@ -144,7 +144,7 @@ const HttpPluginEditModal = ({
         setValue('avatar', src);
       } catch (err: any) {
         toast({
-          title: getErrText(err, t('common.Select File Failed')),
+          title: getErrText(err, t('common:common.Select File Failed')),
           status: 'warning'
         });
       }
@@ -157,7 +157,7 @@ const HttpPluginEditModal = ({
     mutationFn: async () => {
       if (!schemaUrl || !schemaUrl.startsWith('https://')) {
         return toast({
-          title: t('plugin.Invalid URL'),
+          title: t('common:plugin.Invalid URL'),
           status: 'warning'
         });
       }
@@ -165,7 +165,7 @@ const HttpPluginEditModal = ({
       const schema = await getApiSchemaByUrl(schemaUrl);
       setValue('pluginData.apiSchemaStr', JSON.stringify(schema, null, 2));
     },
-    errorToast: t('plugin.Invalid Schema')
+    errorToast: t('common:plugin.Invalid Schema')
   });
 
   const leftVariables = useMemo(
@@ -187,7 +187,7 @@ const HttpPluginEditModal = ({
       } catch (err) {
         toast({
           status: 'warning',
-          title: t('plugin.Invalid Schema')
+          title: t('common:plugin.Invalid Schema')
         });
         setApiData({ pathData: [], serverPath: '' });
       }
@@ -200,7 +200,7 @@ const HttpPluginEditModal = ({
         isOpen
         onClose={onClose}
         iconSrc="core/app/type/httpPluginFill"
-        title={isEdit ? t('plugin.Edit Http Plugin') : t('plugin.Import Plugin')}
+        title={isEdit ? t('common:plugin.Edit Http Plugin') : t('common:plugin.Import Plugin')}
         w={['90vw', '600px']}
         h={['90vh', '80vh']}
         position={'relative'}
@@ -208,10 +208,10 @@ const HttpPluginEditModal = ({
         <ModalBody flex={'1 0 0'} overflow={'auto'}>
           <>
             <Box color={'myGray.800'} fontWeight={'bold'}>
-              {t('plugin.Set Name')}
+              {t('common:plugin.Set Name')}
             </Box>
             <Flex mt={3} alignItems={'center'}>
-              <MyTooltip label={t('common.Set Avatar')}>
+              <MyTooltip label={t('common:common.Set Avatar')}>
                 <Avatar
                   flexShrink={0}
                   src={avatar}
@@ -233,14 +233,14 @@ const HttpPluginEditModal = ({
             </Flex>
             <>
               <Box color={'myGray.800'} fontWeight={'bold'} mt={3}>
-                {t('plugin.Intro')}
+                {t('common:plugin.Intro')}
               </Box>
               <Textarea
                 {...register('intro')}
                 bg={'myWhite.600'}
                 rows={3}
                 mt={3}
-                placeholder={t('core.plugin.Http plugin intro placeholder')}
+                placeholder={t('common:core.plugin.Http plugin intro placeholder')}
               />
             </>
           </>
@@ -258,7 +258,7 @@ const HttpPluginEditModal = ({
                 <Flex alignItems={'center'}>
                   <Input
                     mr={2}
-                    placeholder={t('plugin.Import from URL')}
+                    placeholder={t('common:plugin.Import from URL')}
                     h={'30px'}
                     w={['150px', '250px']}
                     fontSize={'sm'}
@@ -270,7 +270,7 @@ const HttpPluginEditModal = ({
                     isLoading={isLoadingUrlApi}
                     onClick={onClickUrlLoadApi}
                   >
-                    {t('common.Import')}
+                    {t('common:common.Import')}
                   </Button>
                 </Flex>
               </Box>
@@ -289,7 +289,7 @@ const HttpPluginEditModal = ({
           </Box>
           <>
             <Box color={'myGray.800'} fontWeight={'bold'} mt={3}>
-              {t('core.plugin.Custom headers')}
+              {t('common:core.plugin.Custom headers')}
             </Box>
             <Box
               mt={1}
@@ -303,10 +303,10 @@ const HttpPluginEditModal = ({
                   <Thead>
                     <Tr>
                       <Th px={2} borderRadius="none !important">
-                        {t('core.module.http.Props name')}
+                        {t('common:core.module.http.Props name')}
                       </Th>
                       <Th px={2} borderRadius="none !important">
-                        {t('core.module.http.Props value')}
+                        {t('common:core.module.http.Props value')}
                       </Th>
                     </Tr>
                   </Thead>
@@ -334,7 +334,7 @@ const HttpPluginEditModal = ({
                               });
                               setUpdateTrigger((prev) => !prev);
                             }}
-                            placeholder={t('core.module.http.Props name')}
+                            placeholder={t('common:core.module.http.Props name')}
                             value={item.key}
                             variables={leftVariables}
                             onBlur={(val) => {
@@ -359,7 +359,7 @@ const HttpPluginEditModal = ({
                         <Td p={0}>
                           <Box display={'flex'} alignItems={'center'}>
                             <HttpInput
-                              placeholder={t('core.module.http.Props value')}
+                              placeholder={t('common:core.module.http.Props value')}
                               hasVariablePlugin={false}
                               value={item.value}
                               onBlur={(val) =>
@@ -423,7 +423,7 @@ const HttpPluginEditModal = ({
                             });
                             setUpdateTrigger((prev) => !prev);
                           }}
-                          placeholder={t('core.module.http.Add props')}
+                          placeholder={t('common:core.module.http.Add props')}
                           value={''}
                           variables={leftVariables}
                           updateTrigger={updateTrigger}
@@ -458,7 +458,7 @@ const HttpPluginEditModal = ({
           </>
           <>
             <Box color={'myGray.800'} fontWeight={'bold'} mt={3}>
-              {t('plugin.Plugin List')}
+              {t('common:plugin.Plugin List')}
             </Box>
             <Box
               mt={3}
@@ -470,10 +470,10 @@ const HttpPluginEditModal = ({
               <TableContainer maxH={400} overflowY={'auto'}>
                 <Table bg={'white'}>
                   <Thead bg={'myGray.50'}>
-                    <Th>{t('Name')}</Th>
-                    <Th>{t('plugin.Description')}</Th>
-                    <Th>{t('plugin.Method')}</Th>
-                    <Th>{t('plugin.Path')}</Th>
+                    <Th>{t('common:Name')}</Th>
+                    <Th>{t('common:plugin.Description')}</Th>
+                    <Th>{t('common:plugin.Method')}</Th>
+                    <Th>{t('common:plugin.Path')}</Th>
                   </Thead>
                   <Tbody>
                     {apiData.pathData?.map((item, index) => (
@@ -501,7 +501,7 @@ const HttpPluginEditModal = ({
 
         <ModalFooter>
           <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-            {t('common.Close')}
+            {t('common:common.Close')}
           </Button>
           {!isEdit ? (
             <Button
@@ -509,7 +509,7 @@ const HttpPluginEditModal = ({
               onClick={handleSubmit((data) => onCreate(data))}
               isLoading={isCreating}
             >
-              {t('common.Confirm Create')}
+              {t('common:common.Confirm Create')}
             </Button>
           ) : (
             <Button
@@ -517,7 +517,7 @@ const HttpPluginEditModal = ({
               isLoading={isUpdating}
               onClick={handleSubmit((data) => updatePlugins(data))}
             >
-              {t('common.Confirm Update')}
+              {t('common:common.Confirm Update')}
             </Button>
           )}
         </ModalFooter>

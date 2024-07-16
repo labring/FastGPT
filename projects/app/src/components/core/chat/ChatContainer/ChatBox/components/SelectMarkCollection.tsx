@@ -45,7 +45,7 @@ const SelectMarkCollection = ({
           onClose={onClose}
           setParentId={setParentId}
           isLoading={isFetching}
-          tips={t('core.chat.Select dataset Desc')}
+          tips={t('common:core.chat.Select dataset Desc')}
         >
           <ModalBody flex={'1 0 0'} overflowY={'auto'}>
             <Grid
@@ -100,7 +100,7 @@ const SelectMarkCollection = ({
         <SelectCollections
           datasetId={adminMarkData.datasetId}
           type={'collection'}
-          title={t('dataset.collections.Select One Collection To Store')}
+          title={t('common:dataset.collections.Select One Collection To Store')}
           onClose={onClose}
           onChange={({ collectionIds }) => {
             setAdminMarkData({
@@ -120,7 +120,7 @@ const SelectMarkCollection = ({
                   });
                 }}
               >
-                {t('common.Last Step')}
+                {t('common:common.Last Step')}
               </Button>
             </ModalFooter>
           }

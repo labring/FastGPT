@@ -15,7 +15,7 @@ export const useSendCode = () => {
   const [codeSending, setCodeSending] = useState(false);
   const [codeCountDown, setCodeCountDown] = useState(0);
   const sendCodeText = useMemo(() => {
-    if (codeSending) return t('support.user.auth.Sending Code');
+    if (codeSending) return t('common:support.user.auth.Sending Code');
     if (codeCountDown >= 10) {
       return `${codeCountDown}s后重新获取`;
     }

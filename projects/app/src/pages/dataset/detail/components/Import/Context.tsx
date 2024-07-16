@@ -87,57 +87,57 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
   const modeSteps: Record<ImportDataSourceEnum, { title: string }[]> = {
     [ImportDataSourceEnum.fileLocal]: [
       {
-        title: t('core.dataset.import.Select file')
+        title: t('common:core.dataset.import.Select file')
       },
       {
-        title: t('core.dataset.import.Data Preprocessing')
+        title: t('common:core.dataset.import.Data Preprocessing')
       },
       {
-        title: t('core.dataset.import.Upload data')
+        title: t('common:core.dataset.import.Upload data')
       }
     ],
     [ImportDataSourceEnum.fileLink]: [
       {
-        title: t('core.dataset.import.Select file')
+        title: t('common:core.dataset.import.Select file')
       },
       {
-        title: t('core.dataset.import.Data Preprocessing')
+        title: t('common:core.dataset.import.Data Preprocessing')
       },
       {
-        title: t('core.dataset.import.Upload data')
+        title: t('common:core.dataset.import.Upload data')
       }
     ],
     [ImportDataSourceEnum.fileCustom]: [
       {
-        title: t('core.dataset.import.Select file')
+        title: t('common:core.dataset.import.Select file')
       },
       {
-        title: t('core.dataset.import.Data Preprocessing')
+        title: t('common:core.dataset.import.Data Preprocessing')
       },
       {
-        title: t('core.dataset.import.Upload data')
+        title: t('common:core.dataset.import.Upload data')
       }
     ],
     [ImportDataSourceEnum.csvTable]: [
       {
-        title: t('core.dataset.import.Select file')
+        title: t('common:core.dataset.import.Select file')
       },
       {
-        title: t('core.dataset.import.Data Preprocessing')
+        title: t('common:core.dataset.import.Data Preprocessing')
       },
       {
-        title: t('core.dataset.import.Upload data')
+        title: t('common:core.dataset.import.Upload data')
       }
     ],
     [ImportDataSourceEnum.externalFile]: [
       {
-        title: t('core.dataset.import.Select file')
+        title: t('common:core.dataset.import.Select file')
       },
       {
-        title: t('core.dataset.import.Data Preprocessing')
+        title: t('common:core.dataset.import.Data Preprocessing')
       },
       {
-        title: t('core.dataset.import.Upload data')
+        title: t('common:core.dataset.import.Upload data')
       }
     ]
   };
@@ -266,7 +266,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
                 })
               }
             />
-            {t('common.Exit')}
+            {t('common:common.Exit')}
           </Flex>
         ) : (
           <Button
@@ -274,7 +274,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
             leftIcon={<MyIcon name={'common/backFill'} w={'14px'} />}
             onClick={goToPrevious}
           >
-            {t('common.Last Step')}
+            {t('common:common.Last Step')}
           </Button>
         )}
         <Box flex={1} />

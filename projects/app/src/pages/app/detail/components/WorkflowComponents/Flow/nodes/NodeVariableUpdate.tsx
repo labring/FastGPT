@@ -72,12 +72,12 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
       {
         renderType: FlowNodeInputTypeEnum.input,
         icon: FlowNodeInputMap[FlowNodeInputTypeEnum.input].icon,
-        label: t('core.workflow.inputType.Manual input')
+        label: t('common:core.workflow.inputType.Manual input')
       },
       {
         renderType: FlowNodeInputTypeEnum.reference,
         icon: FlowNodeInputMap[FlowNodeInputTypeEnum.reference].icon,
-        label: t('core.workflow.inputType.Reference')
+        label: t('common:core.workflow.inputType.Reference')
       }
     ];
 
@@ -111,7 +111,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           return (
             <Container key={index} mt={4} w={'full'} mx={0}>
               <Flex alignItems={'center'}>
-                <Flex w={'60px'}>{t('core.workflow.variable')}</Flex>
+                <Flex w={'60px'}>{t('common:core.workflow.variable')}</Flex>
                 <Reference
                   nodeId={nodeId}
                   variable={updateItem.variable}
@@ -151,7 +151,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               </Flex>
               <Flex mt={2} w={'full'} alignItems={'center'} className="nodrag">
                 <Flex w={'60px'}>
-                  <Box>{t('core.workflow.value')}</Box>
+                  <Box>{t('common:core.workflow.value')}</Box>
                   <MyTooltip
                     label={
                       menuList.find((item) => item.renderType === updateItem.renderType)?.label
@@ -272,7 +272,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               ]);
             }}
           >
-            {t('common.Add New')}
+            {t('common:common.Add New')}
           </Button>
         </Flex>
       </Box>
@@ -302,7 +302,7 @@ const Reference = ({
 
   return (
     <ReferSelector
-      placeholder={t('选择引用变量')}
+      placeholder={t('common:选择引用变量')}
       list={referenceList}
       value={formatValue}
       onSelect={onSelect}

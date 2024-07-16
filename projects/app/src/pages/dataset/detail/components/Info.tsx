@@ -61,11 +61,11 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const router = useRouter();
 
   const { openConfirm: onOpenConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
-    content: t('core.dataset.Delete Confirm'),
+    content: t('common:core.dataset.Delete Confirm'),
     type: 'delete'
   });
   const { openConfirm: onOpenConfirmRebuild, ConfirmModal: ConfirmRebuildModal } = useConfirm({
-    title: t('common.confirm.Common Tip'),
+    title: t('common:common.confirm.Common Tip'),
     content: datasetT('Confirm to rebuild embedding tip'),
     type: 'delete'
   });
@@ -83,8 +83,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     onSuccess() {
       router.replace(`/dataset/list`);
     },
-    successToast: t('common.Delete Success'),
-    errorToast: t('common.Delete Failed')
+    successToast: t('common:common.Delete Success'),
+    errorToast: t('common:common.Delete Failed')
   });
 
   const { mutate: onclickSave, isLoading: isSaving } = useRequest({
@@ -94,8 +94,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         ...data
       });
     },
-    successToast: t('common.Update Success'),
-    errorToast: t('common.Update Failed')
+    successToast: t('common:common.Update Success'),
+    errorToast: t('common:common.Update Failed')
   });
 
   const { mutate: onSelectFile, isLoading: isSelecting } = useRequest({
@@ -114,7 +114,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         setValue('avatar', src);
       }
     },
-    errorToast: t('common.avatar.Select Failed')
+    errorToast: t('common:common.avatar.Select Failed')
   });
 
   const { mutate: onRebuilding, isLoading: isRebuilding } = useRequest({
@@ -129,7 +129,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       loadDatasetDetail(datasetId);
     },
     successToast: datasetT('Rebuild embedding start tip'),
-    errorToast: t('common.Update Failed')
+    errorToast: t('common:common.Update Failed')
   });
 
   const btnLoading = isSelecting || isDeleting || isSaving || isRebuilding;
@@ -138,13 +138,13 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     <Box py={5} px={[5, 10]}>
       <Flex mt={5} w={'100%'} alignItems={'center'}>
         <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}>
-          {t('core.dataset.Dataset ID')}
+          {t('common:core.dataset.Dataset ID')}
         </FormLabel>
         <Box flex={1}>{datasetDetail._id}</Box>
       </Flex>
       <Flex mt={8} w={'100%'} alignItems={'center'} flexWrap={'wrap'}>
         <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}>
-          {t('core.ai.model.Vector Model')}
+          {t('common:core.ai.model.Vector Model')}
         </FormLabel>
         <Box flex={[1, '0 0 320px']}>
           <AIModelSelector
@@ -172,13 +172,13 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       </Flex>
       <Flex mt={8} w={'100%'} alignItems={'center'}>
         <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}>
-          {t('core.Max Token')}
+          {t('common:core.Max Token')}
         </FormLabel>
         <Box flex={[1, '0 0 320px']}>{vectorModel.maxToken}</Box>
       </Flex>
       <Flex mt={6} alignItems={'center'} flexWrap={'wrap'}>
         <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}>
-          {t('core.ai.model.Dataset Agent Model')}
+          {t('common:core.ai.model.Dataset Agent Model')}
         </FormLabel>
         <Box flex={[1, '0 0 320px']}>
           <AIModelSelector
@@ -224,10 +224,10 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
       <Flex mt={5} w={'100%'} alignItems={'center'}>
         <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}>
-          {t('core.dataset.Avatar')}
+          {t('common:core.dataset.Avatar')}
         </FormLabel>
         <Box flex={[1, '0 0 320px']}>
-          <MyTooltip label={t('common.avatar.Select Avatar')}>
+          <MyTooltip label={t('common:common.avatar.Select Avatar')}>
             <Avatar
               m={'auto'}
               src={avatar}
@@ -241,13 +241,17 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       </Flex>
       <Flex mt={8} w={'100%'} alignItems={'center'}>
         <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}>
-          {t('core.dataset.Name')}
+          {t('common:core.dataset.Name')}
         </FormLabel>
         <Input flex={[1, '0 0 320px']} maxLength={30} {...register('name')} />
       </Flex>
       <Flex mt={8} alignItems={'center'} w={'100%'}>
-        <FormLabel flex={['0 0 90px', '0 0 160px']}>{t('common.Intro')}</FormLabel>
-        <Textarea flex={[1, '0 0 320px']} {...register('intro')} placeholder={t('common.Intro')} />
+        <FormLabel flex={['0 0 90px', '0 0 160px']}>{t('common:common.Intro')}</FormLabel>
+        <Textarea
+          flex={[1, '0 0 320px']}
+          {...register('intro')}
+          placeholder={t('common:common.Intro')}
+        />
       </Flex>
 
       {datasetDetail.permission.hasManagePer && (
@@ -301,7 +305,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           w={'100px'}
           onClick={handleSubmit((data) => onclickSave(data))}
         >
-          {t('common.Save')}
+          {t('common:common.Save')}
         </Button>
         {datasetDetail.permission.isOwner && (
           <IconButton

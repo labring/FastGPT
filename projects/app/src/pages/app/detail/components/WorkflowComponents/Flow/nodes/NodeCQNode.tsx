@@ -35,7 +35,7 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             {agents.map((item, i) => (
               <Box key={item.key} mb={4}>
                 <Flex alignItems={'center'}>
-                  <MyTooltip label={t('common.Delete')}>
+                  <MyTooltip label={t('common:common.Delete')}>
                     <MyIcon
                       mt={1}
                       mr={2}
@@ -121,7 +121,7 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 });
               }}
             >
-              {t('core.module.Add question type')}
+              {t('common:core.module.Add question type')}
             </Button>
           </Box>
         );

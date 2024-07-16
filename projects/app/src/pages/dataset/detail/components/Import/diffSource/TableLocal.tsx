@@ -76,7 +76,7 @@ const SelectFile = React.memo(function SelectFile() {
           })
         }
       >
-        {t('core.dataset.import.Down load csv template')}
+        {t('common:core.dataset.import.Down load csv template')}
       </Box>
 
       {/* render files */}
@@ -93,7 +93,7 @@ const SelectFile = React.memo(function SelectFile() {
           {selectFiles.length > 0
             ? `${t('core.dataset.import.Total files', { total: selectFiles.length })} | `
             : ''}
-          {t('common.Next Step')}
+          {t('common:common.Next Step')}
         </Button>
       </Box>
     </Box>

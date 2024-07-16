@@ -56,7 +56,7 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
         <Box>
           <Flex alignItems={'center'}>
             <Box flex={'1 0 0'} fontWeight={'medium'} color={'myGray.600'}>
-              {t('core.module.extract.Target field')}
+              {t('common:core.module.extract.Target field')}
             </Box>
             <Button
               size={'sm'}
@@ -64,7 +64,7 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
               leftIcon={<AddIcon fontSize={'10px'} />}
               onClick={() => setEditExtractField(defaultField)}
             >
-              {t('core.module.extract.Add field')}
+              {t('common:core.module.extract.Add field')}
             </Button>
           </Flex>
           <Box
@@ -153,7 +153,7 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
       )}
       <>
         <Container>
-          <IOTitle text={t('common.Input')} />
+          <IOTitle text={t('common:common.Input')} />
           <RenderInput
             nodeId={nodeId}
             flowInputList={commonInputs}
@@ -163,7 +163,7 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
       </>
       <>
         <Container>
-          <IOTitle text={t('common.Output')} />
+          <IOTitle text={t('common:common.Output')} />
           <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
         </Container>
       </>

@@ -51,7 +51,7 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
         <Box onClick={onOpenSelectApp}>
           {!value ? (
             <Button variant={'whiteFlow'} w={'100%'}>
-              {t('core.module.Select app')}
+              {t('common:core.module.Select app')}
             </Button>
           ) : (
             <Button

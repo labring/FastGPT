@@ -16,31 +16,31 @@ const EmptyCollectionTip = () => {
     <>
       {(datasetDetail.type === DatasetTypeEnum.dataset ||
         datasetDetail.type === DatasetTypeEnum.externalFile) && (
-        <EmptyTip text={t('core.dataset.collection.Empty Tip')} />
+        <EmptyTip text={t('common:core.dataset.collection.Empty Tip')} />
       )}
       {datasetDetail.type === DatasetTypeEnum.websiteDataset && (
         <EmptyTip
           text={
             <Flex>
               {datasetDetail.status === DatasetStatusEnum.syncing && (
-                <>{t('core.dataset.status.syncing')}</>
+                <>{t('common:core.dataset.status.syncing')}</>
               )}
               {datasetDetail.status === DatasetStatusEnum.active && (
                 <>
                   {!datasetDetail?.websiteConfig?.url ? (
                     <>
-                      {t('core.dataset.collection.Website Empty Tip')}
+                      {t('common:core.dataset.collection.Website Empty Tip')}
                       {', '}
                       <Box
                         textDecoration={'underline'}
                         cursor={'pointer'}
                         onClick={onOpenWebsiteModal}
                       >
-                        {t('core.dataset.collection.Click top config website')}
+                        {t('common:core.dataset.collection.Click top config website')}
                       </Box>
                     </>
                   ) : (
-                    <>{t('core.dataset.website.UnValid Website Tip')}</>
+                    <>{t('common:core.dataset.website.UnValid Website Tip')}</>
                   )}
                 </>
               )}

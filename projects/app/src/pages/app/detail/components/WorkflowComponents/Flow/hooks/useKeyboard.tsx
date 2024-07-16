@@ -37,7 +37,7 @@ export const useKeyboard = () => {
       (node) => node.selected && !node.data?.isError && node.data?.unique !== true
     );
     if (selectedNodes.length === 0) return;
-    copyData(JSON.stringify(selectedNodes), t('core.workflow.Copy node'));
+    copyData(JSON.stringify(selectedNodes), t('common:core.workflow.Copy node'));
   }, [copyData, hasInputtingElement, t]);
 
   const onParse = useCallback(async () => {

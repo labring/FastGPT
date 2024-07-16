@@ -87,7 +87,7 @@ const Logs = () => {
                 cursor={'pointer'}
                 onClick={onOpenMarkDesc}
               >
-                {t('core.chat.Read Mark Description')}
+                {t('common:core.chat.Read Mark Description')}
               </Box>
             </Box>
           </>
@@ -108,11 +108,11 @@ const Logs = () => {
           <Table variant={'simple'} fontSize={'sm'}>
             <Thead>
               <Tr>
-                <Th>{t('core.app.logs.Source And Time')}</Th>
+                <Th>{t('common:core.app.logs.Source And Time')}</Th>
                 <Th>{appT('Logs Title')}</Th>
                 <Th>{appT('Logs Message Total')}</Th>
                 <Th>{appT('Feedback Count')}</Th>
-                <Th>{t('core.app.feedback.Custom feedback')}</Th>
+                <Th>{t('common:core.app.feedback.Custom feedback')}</Th>
                 <Th>{appT('Mark Count')}</Th>
               </Tr>
             </Thead>
@@ -210,9 +210,9 @@ const Logs = () => {
       <MyModal
         isOpen={isOpenMarkDesc}
         onClose={onCloseMarkDesc}
-        title={t('core.chat.Mark Description Title')}
+        title={t('common:core.chat.Mark Description Title')}
       >
-        <ModalBody whiteSpace={'pre-wrap'}>{t('core.chat.Mark Description')}</ModalBody>
+        <ModalBody whiteSpace={'pre-wrap'}>{t('common:core.chat.Mark Description')}</ModalBody>
       </MyModal>
     </>
   );

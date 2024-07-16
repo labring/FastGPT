@@ -78,7 +78,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       manual: false,
       throttleWait: 300,
       refreshDeps: [templateType, searchKey, parentId],
-      errorToast: t('core.module.templates.Load plugin error')
+      errorToast: t('common:core.module.templates.Load plugin error')
     }
   );
 
@@ -90,7 +90,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   return (
     <MyModal
       isOpen
-      title={t('core.app.Tool call')}
+      title={t('common:core.app.Tool call')}
       iconSrc="core/app/toolCall"
       onClose={onClose}
       maxW={['90vw', '700px']}
@@ -103,12 +103,12 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           list={[
             {
               icon: 'core/modules/teamPlugin',
-              label: t('core.app.ToolCall.Team'),
+              label: t('common:core.app.ToolCall.Team'),
               value: TemplateTypeEnum.teamPlugin
             },
             {
               icon: 'core/modules/systemPlugin',
-              label: t('core.app.ToolCall.System'),
+              label: t('common:core.app.ToolCall.System'),
               value: TemplateTypeEnum.systemPlugin
             }
           ]}
@@ -123,7 +123,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           </InputLeftElement>
           <Input
             bg={'myGray.50'}
-            placeholder={t('plugin.Search plugin')}
+            placeholder={t('common:plugin.Search plugin')}
             onChange={(e) => setSearchKey(e.target.value)}
           />
         </InputGroup>
@@ -184,11 +184,11 @@ const RenderList = React.memo(function RenderList({
         setConfigTool(res);
       }
     },
-    errorToast: t('core.module.templates.Load plugin error')
+    errorToast: t('common:core.module.templates.Load plugin error')
   });
 
   return templates.length === 0 && !isLoadingData ? (
-    <EmptyTip text={t('core.app.ToolCall.No plugin')} />
+    <EmptyTip text={t('common:core.app.ToolCall.No plugin')} />
   ) : (
     <MyBox>
       {templates.map((item, i) => {
@@ -228,11 +228,11 @@ const RenderList = React.memo(function RenderList({
                 leftIcon={<MyIcon name={'delete'} w={'14px'} />}
                 onClick={() => onRemoveTool(item)}
               >
-                {t('common.Remove')}
+                {t('common:common.Remove')}
               </Button>
             ) : item.isFolder ? (
               <Button size={'sm'} variant={'whiteBase'} onClick={() => setParentId(item.id)}>
-                {t('common.Open')}
+                {t('common:common.Open')}
               </Button>
             ) : (
               <Button
@@ -242,7 +242,7 @@ const RenderList = React.memo(function RenderList({
                 isLoading={isLoading}
                 onClick={() => onClickAdd(item)}
               >
-                {t('common.Add')}
+                {t('common:common.Add')}
               </Button>
             )}
           </Flex>
@@ -251,7 +251,7 @@ const RenderList = React.memo(function RenderList({
       {!!configTool && (
         <MyModal
           isOpen
-          title={t('core.app.ToolCall.Parameter setting')}
+          title={t('common:core.app.ToolCall.Parameter setting')}
           iconSrc="core/app/toolCall"
           overflow={'auto'}
         >
@@ -323,7 +323,7 @@ const RenderList = React.memo(function RenderList({
           </ModalBody>
           <ModalFooter gap={6}>
             <Button onClick={onCloseConfigTool} variant={'whiteBase'}>
-              {t('common.Cancel')}
+              {t('common:common.Cancel')}
             </Button>
             <Button
               variant={'primary'}
@@ -338,7 +338,7 @@ const RenderList = React.memo(function RenderList({
                 onCloseConfigTool();
               })}
             >
-              {t('common.Confirm')}
+              {t('common:common.Confirm')}
             </Button>
           </ModalFooter>
         </MyModal>

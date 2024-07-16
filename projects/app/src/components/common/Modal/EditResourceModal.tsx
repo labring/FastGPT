@@ -64,7 +64,7 @@ const EditResourceModal = ({
         setValue('avatar', src);
       } catch (err: any) {
         toast({
-          title: getErrText(err, t('common.error.Select avatar failed')),
+          title: getErrText(err, t('common:common.error.Select avatar failed')),
           status: 'warning'
         });
       }
@@ -76,9 +76,9 @@ const EditResourceModal = ({
     <MyModal isOpen onClose={onClose} iconSrc={avatar} title={title}>
       <ModalBody>
         <Box>
-          <FormLabel mb={1}>{t('core.app.Name and avatar')}</FormLabel>
+          <FormLabel mb={1}>{t('common:core.app.Name and avatar')}</FormLabel>
           <HStack spacing={4}>
-            <MyTooltip label={t('common.Set Avatar')}>
+            <MyTooltip label={t('common:common.Set Avatar')}>
               <Avatar
                 flexShrink={0}
                 src={avatar}
@@ -98,13 +98,13 @@ const EditResourceModal = ({
           </HStack>
         </Box>
         <Box mt={4}>
-          <FormLabel mb={1}>{t('common.Intro')}</FormLabel>
+          <FormLabel mb={1}>{t('common:common.Intro')}</FormLabel>
           <Textarea {...register('intro')} bg={'myGray.50'} maxLength={200} />
         </Box>
       </ModalBody>
       <ModalFooter>
         <Button isLoading={loading} onClick={handleSubmit(onSave)} px={6}>
-          {t('common.Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
 

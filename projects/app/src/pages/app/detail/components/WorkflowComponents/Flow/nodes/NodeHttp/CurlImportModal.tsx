@@ -119,12 +119,12 @@ const CurlImportModal = ({
       onClose();
 
       toast({
-        title: t('common.Import success'),
+        title: t('common:common.Import success'),
         status: 'success'
       });
     } catch (error: any) {
       toast({
-        title: t('common.Import failed'),
+        title: t('common:common.Import failed'),
         description: error.message,
         status: 'error'
       });
@@ -137,7 +137,7 @@ const CurlImportModal = ({
       isOpen
       onClose={onClose}
       iconSrc="modal/edit"
-      title={t('core.module.http.curl import')}
+      title={t('common:core.module.http.curl import')}
       w={600}
     >
       <ModalBody>
@@ -145,12 +145,12 @@ const CurlImportModal = ({
           rows={20}
           mt={2}
           {...register('curlContent')}
-          placeholder={t('core.module.http.curl import placeholder')}
+          placeholder={t('common:core.module.http.curl import placeholder')}
         />
       </ModalBody>
       <ModalFooter>
         <Button onClick={handleSubmit((data) => handleFileProcessing(data.curlContent))}>
-          {t('common.Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

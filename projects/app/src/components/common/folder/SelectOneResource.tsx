@@ -40,7 +40,7 @@ const SelectOneResource = ({
       id: rootId,
       open: true,
       avatar: FolderImgUrl,
-      name: t('common.folder.Root Path'),
+      name: t('common:common.folder.Root Path'),
       isFolder: true,
       children: dataList
     };

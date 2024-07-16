@@ -97,10 +97,10 @@ const DetailLogsModal = ({
           >
             <LightRowTabs<PluginRunBoxTabEnum>
               list={[
-                { label: t('common.Input'), value: PluginRunBoxTabEnum.input },
+                { label: t('common:common.Input'), value: PluginRunBoxTabEnum.input },
                 ...(chatRecords.length > 0
                   ? [
-                      { label: t('common.Output'), value: PluginRunBoxTabEnum.output },
+                      { label: t('common:common.Output'), value: PluginRunBoxTabEnum.output },
                       { label: '完整结果', value: PluginRunBoxTabEnum.detail }
                     ]
                   : [])

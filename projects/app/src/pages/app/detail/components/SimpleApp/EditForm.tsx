@@ -129,7 +129,7 @@ const EditForm = ({
             </FormLabel>
           </Flex>
           <Flex alignItems={'center'} mt={5}>
-            <Box {...LabelStyles}>{t('core.ai.Model')}</Box>
+            <Box {...LabelStyles}>{t('common:core.ai.Model')}</Box>
             <Box flex={'1 0 0'}>
               <SettingLLMModel
                 llmModelType={'all'}
@@ -157,8 +157,8 @@ const EditForm = ({
 
           <Box mt={3}>
             <HStack {...LabelStyles}>
-              <Box>{t('core.ai.Prompt')}</Box>
-              <QuestionTip label={t('core.app.tip.chatNodeSystemPromptTip')} />
+              <Box>{t('common:core.ai.Prompt')}</Box>
+              <QuestionTip label={t('common:core.app.tip.chatNodeSystemPromptTip')} />
             </HStack>
             <Box mt={1}>
               <PromptEditor
@@ -175,8 +175,8 @@ const EditForm = ({
                   });
                 }}
                 variables={formatVariables}
-                placeholder={t('core.app.tip.chatNodeSystemPromptTip')}
-                title={t('core.ai.Prompt')}
+                placeholder={t('common:core.app.tip.chatNodeSystemPromptTip')}
+                title={t('common:core.ai.Prompt')}
               />
             </Box>
           </Box>
@@ -187,7 +187,7 @@ const EditForm = ({
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'} flex={1}>
               <MyIcon name={'core/app/simpleMode/dataset'} w={'20px'} />
-              <FormLabel ml={2}>{t('core.dataset.Choose Dataset')}</FormLabel>
+              <FormLabel ml={2}>{t('common:core.dataset.Choose Dataset')}</FormLabel>
             </Flex>
             <Button
               variant={'transparentBase'}
@@ -197,7 +197,7 @@ const EditForm = ({
               fontSize={'sm'}
               onClick={onOpenKbSelect}
             >
-              {t('common.Choose')}
+              {t('common:common.Choose')}
             </Button>
             <Button
               variant={'transparentBase'}
@@ -207,7 +207,7 @@ const EditForm = ({
               fontSize={'sm'}
               onClick={onOpenDatasetParams}
             >
-              {t('common.Params')}
+              {t('common:common.Params')}
             </Button>
           </Flex>
           {appForm.dataset.datasets?.length > 0 && (
@@ -223,7 +223,7 @@ const EditForm = ({
           )}
           <Grid gridTemplateColumns={'repeat(2, minmax(0, 1fr))'} gridGap={[2, 4]}>
             {selectDatasets.map((item) => (
-              <MyTooltip key={item._id} label={t('core.dataset.Read Dataset')}>
+              <MyTooltip key={item._id} label={t('common:core.dataset.Read Dataset')}>
                 <Flex
                   overflow={'hidden'}
                   alignItems={'center'}
@@ -269,7 +269,7 @@ const EditForm = ({
               fontSize={'sm'}
               onClick={onOpenToolsSelect}
             >
-              {t('common.Choose')}
+              {t('common:common.Choose')}
             </Button>
           </Flex>
           <Grid

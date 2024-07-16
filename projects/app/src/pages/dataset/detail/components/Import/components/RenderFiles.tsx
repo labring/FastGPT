@@ -43,13 +43,13 @@ export const RenderUploadFiles = ({
                 {fileT('File Name')}
               </Th>
               <Th borderBottom={'none'} py={4}>
-                {t('core.dataset.import.Upload file progress')}
+                {t('common:core.dataset.import.Upload file progress')}
               </Th>
               <Th borderBottom={'none'} py={4}>
                 {fileT('File Size')}
               </Th>
               <Th borderRightRadius={'md'} borderBottom={'none'} py={4}>
-                {t('common.Action')}
+                {t('common:common.Action')}
               </Th>
             </Tr>
           </Thead>
@@ -85,7 +85,7 @@ export const RenderUploadFiles = ({
                   {!item.isUploading && (
                     <Flex alignItems={'center'} gap={4}>
                       {showPreviewContent && (
-                        <MyTooltip label={t('core.dataset.import.Preview raw text')}>
+                        <MyTooltip label={t('common:core.dataset.import.Preview raw text')}>
                           <IconButton
                             variant={'whitePrimary'}
                             size={'sm'}

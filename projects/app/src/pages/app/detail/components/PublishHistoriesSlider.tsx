@@ -109,7 +109,7 @@ const PublishHistoriesSlider = ({
           })
         }
         iconSrc="core/workflow/versionHistories"
-        title={t('core.workflow.publish.histories')}
+        title={t('common:core.workflow.publish.histories')}
         maxW={'300px'}
         px={0}
         showMask={false}
@@ -178,11 +178,11 @@ const PublishHistoriesSlider = ({
                 {item._id === selectedHistoryId && (
                   <PopoverConfirm
                     showCancel
-                    content={t('core.workflow.publish.OnRevert version confirm')}
+                    content={t('common:core.workflow.publish.OnRevert version confirm')}
                     onConfirm={() => onRevert(item)}
                     Trigger={
                       <Box>
-                        <MyTooltip label={t('core.workflow.publish.OnRevert version')}>
+                        <MyTooltip label={t('common:core.workflow.publish.OnRevert version')}>
                           <MyIcon
                             name={'core/workflow/revertVersion'}
                             w={'20px'}

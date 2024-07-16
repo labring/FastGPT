@@ -25,7 +25,7 @@ export function getCollectionSourceAndOpen(collectionId: string) {
       }
     } catch (error) {
       toast({
-        title: getErrText(error, t('error.fileNotFound')),
+        title: getErrText(error, t('common:error.fileNotFound')),
         status: 'error'
       });
     }

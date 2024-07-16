@@ -75,7 +75,7 @@ const AIChatSettingsModal = ({
       onClose={onClose}
       title={
         <>
-          {t('core.ai.AI settings')}
+          {t('common:core.ai.AI settings')}
           {feConfigs?.docUrl && (
             <Link
               href={getDocPath('/docs/course/ai_settings/')}
@@ -85,7 +85,7 @@ const AIChatSettingsModal = ({
               fontWeight={'normal'}
               fontSize={'md'}
             >
-              {t('common.Read intro')}
+              {t('common:common.Read intro')}
             </Link>
           )}
         </>
@@ -95,7 +95,7 @@ const AIChatSettingsModal = ({
       <ModalBody overflowY={'auto'}>
         <Flex alignItems={'center'}>
           <Box {...LabelStyles} mr={2}>
-            {t('core.ai.Model')}
+            {t('common:core.ai.Model')}
           </Box>
           <Box flex={'1 0 0'}>
             <AIModelSelector
@@ -112,7 +112,7 @@ const AIChatSettingsModal = ({
         {feConfigs && (
           <Flex mt={8}>
             <Box {...LabelStyles} mr={2}>
-              {t('core.ai.Ai point price')}
+              {t('common:core.ai.Ai point price')}
             </Box>
             <Box flex={1} ml={'10px'}>
               {t('support.wallet.Ai point every thousand tokens', {
@@ -123,7 +123,7 @@ const AIChatSettingsModal = ({
         )}
         <Flex mt={8}>
           <Box {...LabelStyles} mr={2}>
-            {t('core.ai.Max context')}
+            {t('common:core.ai.Max context')}
           </Box>
           <Box flex={1} ml={'10px'}>
             {selectedModel?.maxContext || 4096}Tokens
@@ -131,8 +131,8 @@ const AIChatSettingsModal = ({
         </Flex>
         <Flex mt={8}>
           <Box {...LabelStyles} mr={2}>
-            {t('core.ai.Support tool')}
-            <QuestionTip ml={1} label={t('core.module.template.AI support tool tip')} />
+            {t('common:core.ai.Support tool')}
+            <QuestionTip ml={1} label={t('common:core.module.template.AI support tool tip')} />
           </Box>
           <Box flex={1} ml={'10px'}>
             {selectedModel?.toolChoice || selectedModel?.functionCall ? '支持' : '不支持'}
@@ -140,13 +140,13 @@ const AIChatSettingsModal = ({
         </Flex>
         <Flex mt={8}>
           <Box {...LabelStyles} mr={2}>
-            {t('core.app.Temperature')}
+            {t('common:core.app.Temperature')}
           </Box>
           <Box flex={1} ml={'10px'}>
             <MySlider
               markList={[
-                { label: t('core.app.deterministic'), value: 0 },
-                { label: t('core.app.Random'), value: 10 }
+                { label: t('common:core.app.deterministic'), value: 0 },
+                { label: t('common:core.app.Random'), value: 10 }
               ]}
               width={'95%'}
               min={0}
@@ -161,7 +161,7 @@ const AIChatSettingsModal = ({
         </Flex>
         <Flex mt={8}>
           <Box {...LabelStyles} mr={2}>
-            {t('core.app.Max tokens')}
+            {t('common:core.app.Max tokens')}
           </Box>
           <Box flex={1} ml={'10px'}>
             <MySlider
@@ -184,7 +184,7 @@ const AIChatSettingsModal = ({
         {showMaxHistoriesSlider && (
           <Flex mt={8}>
             <Box {...LabelStyles} mr={2}>
-              {t('core.app.Max histories')}
+              {t('common:core.app.Max histories')}
             </Box>
             <Box flex={1} ml={'10px'}>
               <MySlider
@@ -207,10 +207,10 @@ const AIChatSettingsModal = ({
         {showResponseAnswerText && (
           <Flex mt={8} alignItems={'center'}>
             <Box {...LabelStyles}>
-              {t('core.app.Ai response')}
+              {t('common:core.app.Ai response')}
               <QuestionTip
                 ml={1}
-                label={t('core.module.template.AI response switch tip')}
+                label={t('common:core.module.template.AI response switch tip')}
               ></QuestionTip>
             </Box>
             <Box flex={1} ml={'10px'}>
@@ -228,10 +228,10 @@ const AIChatSettingsModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common.Close')}
+          {t('common:common.Close')}
         </Button>
         <Button ml={4} onClick={handleSubmit(onSuccess)}>
-          {t('common.Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

@@ -86,7 +86,7 @@ const ChatHistorySlider = ({
       customTitle: item.customTitle,
       top: item.top
     }));
-    const newChat: HistoryItemType = { id: activeChatId, title: t('core.chat.New Chat') };
+    const newChat: HistoryItemType = { id: activeChatId, title: t('common:core.chat.New Chat') };
     const activeChat = histories.find((item) => item.chatId === activeChatId);
 
     return !activeChat ? [newChat].concat(formatHistories) : formatHistories;
@@ -94,8 +94,8 @@ const ChatHistorySlider = ({
 
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
-    title: t('core.chat.Custom History Title'),
-    placeholder: t('core.chat.Custom History Title Description')
+    title: t('common:core.chat.Custom History Title'),
+    placeholder: t('common:core.chat.Custom History Title Description')
   });
   const { openConfirm, ConfirmModal } = useConfirm({
     content: confirmClearText
@@ -164,12 +164,12 @@ const ChatHistorySlider = ({
             }}
             list={[
               ...(isTeamChat
-                ? [{ label: t('App'), value: TabEnum.recently }]
+                ? [{ label: t('common:App'), value: TabEnum.recently }]
                 : [
-                    { label: t('core.chat.Recent use'), value: TabEnum.recently },
-                    { label: t('App'), value: TabEnum.app }
+                    { label: t('common:core.chat.Recent use'), value: TabEnum.recently },
+                    { label: t('common:App'), value: TabEnum.app }
                   ]),
-              { label: t('core.chat.History'), value: TabEnum.history }
+              { label: t('common:core.chat.History'), value: TabEnum.history }
             ]}
             value={currentTab}
             onChange={setCurrentTab}
@@ -186,7 +186,7 @@ const ChatHistorySlider = ({
           overflow={'hidden'}
           onClick={() => onChangeChatId()}
         >
-          {t('core.chat.New Chat')}
+          {t('common:core.chat.New Chat')}
         </Button>
         {/* Clear */}
         {isPc && (
@@ -266,7 +266,9 @@ const ChatHistorySlider = ({
                             ...(onSetHistoryTop
                               ? [
                                   {
-                                    label: item.top ? t('core.chat.Unpin') : t('core.chat.Pin'),
+                                    label: item.top
+                                      ? t('common:core.chat.Unpin')
+                                      : t('common:core.chat.Pin'),
                                     icon: 'core/chat/setTopLight',
                                     onClick: () => {
                                       onSetHistoryTop({ chatId: item.id, top: !item.top });
@@ -277,7 +279,7 @@ const ChatHistorySlider = ({
                             ...(onSetCustomTitle
                               ? [
                                   {
-                                    label: t('common.Custom Title'),
+                                    label: t('common:common.Custom Title'),
                                     icon: 'common/customTitleLight',
                                     onClick: () => {
                                       onOpenModal({
@@ -293,7 +295,7 @@ const ChatHistorySlider = ({
                                 ]
                               : []),
                             {
-                              label: t('common.Delete'),
+                              label: t('common:common.Delete'),
                               icon: 'delete',
                               onClick: () => {
                                 onDelHistory({ chatId: item.id });
@@ -374,7 +376,7 @@ const ChatHistorySlider = ({
             borderRadius={'50%'}
             aria-label={''}
           />
-          {t('core.chat.Exit Chat')}
+          {t('common:core.chat.Exit Chat')}
         </Flex>
       )}
       <EditTitleModal />

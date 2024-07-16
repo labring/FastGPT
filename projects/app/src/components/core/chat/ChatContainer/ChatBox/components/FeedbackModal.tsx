@@ -31,7 +31,7 @@ const FeedbackModal = ({
 
   const { mutate, isLoading } = useRequest({
     mutationFn: async () => {
-      const val = ref.current?.value || t('core.chat.feedback.No Content');
+      const val = ref.current?.value || t('common:core.chat.feedback.No Content');
       return updateChatUserFeedback({
         appId,
         chatId,
@@ -44,10 +44,10 @@ const FeedbackModal = ({
       });
     },
     onSuccess() {
-      onSuccess(ref.current?.value || t('core.chat.feedback.No Content'));
+      onSuccess(ref.current?.value || t('common:core.chat.feedback.No Content'));
     },
-    successToast: t('core.chat.Feedback Success'),
-    errorToast: t('core.chat.Feedback Failed')
+    successToast: t('common:core.chat.Feedback Success'),
+    errorToast: t('common:core.chat.Feedback Failed')
   });
 
   return (
@@ -55,17 +55,17 @@ const FeedbackModal = ({
       isOpen={true}
       onClose={onClose}
       iconSrc="/imgs/modal/badAnswer.svg"
-      title={t('core.chat.Feedback Modal')}
+      title={t('common:core.chat.Feedback Modal')}
     >
       <ModalBody>
-        <Textarea ref={ref} rows={10} placeholder={t('core.chat.Feedback Modal Tip')} />
+        <Textarea ref={ref} rows={10} placeholder={t('common:core.chat.Feedback Modal Tip')} />
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={2} onClick={onClose}>
-          {t('common.Close')}
+          {t('common:common.Close')}
         </Button>
         <Button isLoading={isLoading} onClick={mutate}>
-          {t('core.chat.Feedback Submit')}
+          {t('common:core.chat.Feedback Submit')}
         </Button>
       </ModalFooter>
     </MyModal>

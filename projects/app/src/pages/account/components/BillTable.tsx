@@ -43,7 +43,7 @@ const BillTable = () => {
   const billTypeList = useMemo(
     () =>
       [
-        { label: t('common.All'), value: '' },
+        { label: t('common:common.All'), value: '' },
         ...Object.entries(billTypeMap).map(([key, value]) => ({
           label: t(value.label),
           value: key
@@ -120,9 +120,9 @@ const BillTable = () => {
                   w={'130px'}
                 ></MySelect>
               </Th>
-              <Th>{t('user.Time')}</Th>
-              <Th>{t('support.wallet.Amount')}</Th>
-              <Th>{t('support.wallet.bill.Status')}</Th>
+              <Th>{t('common:user.Time')}</Th>
+              <Th>{t('common:support.wallet.Amount')}</Th>
+              <Th>{t('common:support.wallet.bill.Status')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -139,11 +139,11 @@ const BillTable = () => {
                 <Td>
                   {item.status === 'NOTPAY' && (
                     <Button mr={4} onClick={() => handleRefreshPayOrder(item._id)} size={'sm'}>
-                      {t('common.Update')}
+                      {t('common:common.Update')}
                     </Button>
                   )}
                   <Button variant={'whiteBase'} size={'sm'} onClick={() => setBillDetail(item)}>
-                    {t('common.Detail')}
+                    {t('common:common.Detail')}
                   </Button>
                 </Td>
               </Tr>
@@ -164,7 +164,7 @@ const BillTable = () => {
           >
             <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
-              {t('support.wallet.noBill')}
+              {t('common:support.wallet.noBill')}
             </Box>
           </Flex>
         )}
@@ -187,40 +187,40 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
       isOpen={true}
       onClose={onClose}
       iconSrc="/imgs/modal/bill.svg"
-      title={t('support.wallet.usage.Usage Detail')}
+      title={t('common:support.wallet.usage.Usage Detail')}
       maxW={['90vw', '700px']}
     >
       <ModalBody>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('support.wallet.bill.Number')}:</FormLabel>
+          <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.Number')}:</FormLabel>
           <Box>{bill.orderId}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('support.wallet.usage.Time')}:</FormLabel>
+          <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.usage.Time')}:</FormLabel>
           <Box>{dayjs(bill.createTime).format('YYYY/MM/DD HH:mm:ss')}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('support.wallet.bill.Status')}:</FormLabel>
+          <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.Status')}:</FormLabel>
           <Box>{t(billStatusMap[bill.status]?.label)}</Box>
         </Flex>
         {!!bill.metadata?.payWay && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('support.wallet.bill.payWay.Way')}:</FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.payWay.Way')}:</FormLabel>
             <Box>{t(billPayWayMap[bill.metadata.payWay]?.label)}</Box>
           </Flex>
         )}
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('support.wallet.Amount')}:</FormLabel>
+          <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.Amount')}:</FormLabel>
           <Box>{formatStorePrice2Read(bill.price)}元</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('support.wallet.bill.Type')}:</FormLabel>
+          <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.Type')}:</FormLabel>
           <Box>{t(billTypeMap[bill.type]?.label)}</Box>
         </Flex>
         {!!bill.metadata?.subMode && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>
-              {t('support.wallet.subscription.mode.Period')}:
+              {t('common:support.wallet.subscription.mode.Period')}:
             </FormLabel>
             <Box>{t(subModeMap[bill.metadata.subMode]?.label)}</Box>
           </Flex>
@@ -228,7 +228,7 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
         {!!bill.metadata?.standSubLevel && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>
-              {t('support.wallet.subscription.Stand plan level')}:
+              {t('common:support.wallet.subscription.Stand plan level')}:
             </FormLabel>
             <Box>{t(standardSubLevelMap[bill.metadata.standSubLevel]?.label)}</Box>
           </Flex>
@@ -236,7 +236,7 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
         {bill.metadata?.month !== undefined && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>
-              {t('support.wallet.subscription.Month amount')}:
+              {t('common:support.wallet.subscription.Month amount')}:
             </FormLabel>
             <Box>{bill.metadata?.month}</Box>
           </Flex>
@@ -244,7 +244,7 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
         {bill.metadata?.datasetSize !== undefined && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>
-              {t('support.wallet.subscription.Extra dataset size')}:
+              {t('common:support.wallet.subscription.Extra dataset size')}:
             </FormLabel>
             <Box>{bill.metadata?.datasetSize}</Box>
           </Flex>
@@ -252,7 +252,7 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
         {bill.metadata?.extraPoints !== undefined && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>
-              {t('support.wallet.subscription.Extra ai points')}:
+              {t('common:support.wallet.subscription.Extra ai points')}:
             </FormLabel>
             <Box>{bill.metadata.extraPoints}</Box>
           </Flex>

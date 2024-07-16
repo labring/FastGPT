@@ -502,13 +502,13 @@ const WorkflowContextProvider = ({
       checkResults.forEach((nodeId) => onUpdateNodeError(nodeId, true));
       toast({
         status: 'warning',
-        title: t('core.workflow.Check Failed')
+        title: t('common:core.workflow.Check Failed')
       });
     }
   });
 
   /* save workflow */
-  const [saveLabel, setSaveLabel] = useState(t('core.app.Onclick to save'));
+  const [saveLabel, setSaveLabel] = useState(t('common:core.app.Onclick to save'));
   const { runAsync: onSaveWorkflow, loading: isSaving } = useRequest2(async () => {
     const { nodes } = await getWorkflowStore();
 

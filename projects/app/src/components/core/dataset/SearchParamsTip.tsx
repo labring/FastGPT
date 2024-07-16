@@ -49,13 +49,13 @@ const SearchParamsTip = ({
       <Table fontSize={'xs'} overflow={'overlay'}>
         <Thead>
           <Tr bg={'transparent !important'}>
-            <Th fontSize={'mini'}>{t('core.dataset.search.search mode')}</Th>
-            <Th fontSize={'mini'}>{t('core.dataset.search.Max Tokens')}</Th>
-            <Th fontSize={'mini'}>{t('core.dataset.search.Min Similarity')}</Th>
-            {hasReRankModel && <Th fontSize={'mini'}>{t('core.dataset.search.ReRank')}</Th>}
-            <Th fontSize={'mini'}>{t('core.module.template.Query extension')}</Th>
+            <Th fontSize={'mini'}>{t('common:core.dataset.search.search mode')}</Th>
+            <Th fontSize={'mini'}>{t('common:core.dataset.search.Max Tokens')}</Th>
+            <Th fontSize={'mini'}>{t('common:core.dataset.search.Min Similarity')}</Th>
+            {hasReRankModel && <Th fontSize={'mini'}>{t('common:core.dataset.search.ReRank')}</Th>}
+            <Th fontSize={'mini'}>{t('common:core.module.template.Query extension')}</Th>
             {hasEmptyResponseMode && (
-              <Th fontSize={'mini'}>{t('core.dataset.search.Empty result response')}</Th>
+              <Th fontSize={'mini'}>{t('common:core.dataset.search.Empty result response')}</Th>
             )}
           </Tr>
         </Thead>
@@ -75,7 +75,7 @@ const SearchParamsTip = ({
               {limit}
             </Td>
             <Td pt={0} pb={2}>
-              {hasSimilarityMode ? similarity : t('core.dataset.search.Nonsupport')}
+              {hasSimilarityMode ? similarity : t('common:core.dataset.search.Nonsupport')}
             </Td>
             {hasReRankModel && (
               <Td pt={0} pb={2}>

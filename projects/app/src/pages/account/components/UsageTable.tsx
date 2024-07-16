@@ -49,7 +49,7 @@ const UsageTable = () => {
   const sourceList = useMemo(
     () =>
       [
-        { label: t('common.All'), value: '' },
+        { label: t('common:common.All'), value: '' },
         ...Object.entries(UsageSourceMap).map(([key, value]) => ({
           label: t(value.label),
           value: key
@@ -113,7 +113,7 @@ const UsageTable = () => {
         {tmbList.length > 1 && userInfo?.team?.permission.hasWritePer && (
           <Flex alignItems={'center'}>
             <Box mr={2} flexShrink={0}>
-              {t('support.user.team.member')}
+              {t('common:support.user.team.member')}
             </Box>
             <MySelect
               size={'sm'}
@@ -146,8 +146,8 @@ const UsageTable = () => {
         <Table>
           <Thead>
             <Tr>
-              {/* <Th>{t('user.team.Member Name')}</Th> */}
-              <Th>{t('user.Time')}</Th>
+              {/* <Th>{t('common:user.team.Member Name')}</Th> */}
+              <Th>{t('common:user.Time')}</Th>
               <Th>
                 <MySelect<UsageSourceEnum | ''>
                   list={sourceList}
@@ -159,8 +159,8 @@ const UsageTable = () => {
                   w={'130px'}
                 ></MySelect>
               </Th>
-              <Th>{t('user.Application Name')}</Th>
-              <Th>{t('support.wallet.usage.Total points')}</Th>
+              <Th>{t('common:user.Application Name')}</Th>
+              <Th>{t('common:support.wallet.usage.Total points')}</Th>
               <Th></Th>
             </Tr>
           </Thead>

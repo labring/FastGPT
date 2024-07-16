@@ -128,7 +128,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             ]);
           }}
         >
-          {t('core.module.input.Add Branch')}
+          {t('common:core.module.input.Add Branch')}
         </Button>
       </Box>
     </NodeCard>

@@ -25,7 +25,7 @@ const OpenAIAccountModal = ({
     onSuccess(res) {
       onClose();
     },
-    errorToast: t('user.Set OpenAI Account Failed')
+    errorToast: t('common:user.Set OpenAI Account Failed')
   });
 
   return (
@@ -33,7 +33,7 @@ const OpenAIAccountModal = ({
       isOpen
       onClose={onClose}
       iconSrc="common/openai"
-      title={t('user.OpenAI Account Setting')}
+      title={t('common:user.OpenAI Account Setting')}
     >
       <ModalBody>
         <Box fontSize={'sm'} color={'myGray.500'}>

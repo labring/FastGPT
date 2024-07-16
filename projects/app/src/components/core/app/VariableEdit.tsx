@@ -97,7 +97,7 @@ const VariableEdit = ({
       <Flex alignItems={'center'}>
         <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />
         <FormLabel ml={2} fontWeight={'medium'}>
-          {t('core.module.Variable')}
+          {t('common:core.module.Variable')}
         </FormLabel>
         <ChatFunctionTip type={'variable'} />
         <Box flex={1} />
@@ -112,7 +112,7 @@ const VariableEdit = ({
             onOpenEdit();
           }}
         >
-          {t('common.Add New')}
+          {t('common:common.Add New')}
         </Button>
       </Flex>
       {formatVariables.length > 0 && (
@@ -127,9 +127,9 @@ const VariableEdit = ({
                     w={'18px !important'}
                     p={0}
                   />
-                  <Th fontSize={'mini'}>{t('core.module.variable.variable name')}</Th>
-                  <Th fontSize={'mini'}>{t('core.module.variable.key')}</Th>
-                  <Th fontSize={'mini'}>{t('common.Require Input')}</Th>
+                  <Th fontSize={'mini'}>{t('common:core.module.variable.variable name')}</Th>
+                  <Th fontSize={'mini'}>{t('common:core.module.variable.key')}</Th>
+                  <Th fontSize={'mini'}>{t('common:common.Require Input')}</Th>
                   <Th fontSize={'mini'} borderRadius={'none !important'}></Th>
                 </Tr>
               </Thead>
@@ -171,7 +171,7 @@ const VariableEdit = ({
       )}
       <MyModal
         iconSrc="core/app/simpleMode/variable"
-        title={t('core.module.Variable Setting')}
+        title={t('common:core.module.Variable Setting')}
         isOpen={isOpenEdit}
         onClose={onCloseEdit}
         maxW={['90vw', '500px']}
@@ -179,29 +179,29 @@ const VariableEdit = ({
         <ModalBody>
           {variableType !== VariableInputEnum.custom && (
             <Flex alignItems={'center'}>
-              <FormLabel w={'70px'}>{t('common.Require Input')}</FormLabel>
+              <FormLabel w={'70px'}>{t('common:common.Require Input')}</FormLabel>
               <Switch {...registerEdit('variable.required')} />
             </Flex>
           )}
           <Flex mt={5} alignItems={'center'}>
-            <FormLabel w={'80px'}>{t('core.module.variable.variable name')}</FormLabel>
+            <FormLabel w={'80px'}>{t('common:core.module.variable.variable name')}</FormLabel>
             <Input
               {...registerEdit('variable.label', {
-                required: t('core.module.variable.variable name is required')
+                required: t('common:core.module.variable.variable name is required')
               })}
             />
           </Flex>
           <Flex mt={5} alignItems={'center'}>
-            <FormLabel w={'80px'}>{t('core.module.variable.key')}</FormLabel>
+            <FormLabel w={'80px'}>{t('common:core.module.variable.key')}</FormLabel>
             <Input
               {...registerEdit('variable.key', {
-                required: t('core.module.variable.key is required')
+                required: t('common:core.module.variable.key is required')
               })}
             />
           </Flex>
 
           <FormLabel mt={5} mb={2}>
-            {t('core.workflow.Variable.Variable type')}
+            {t('common:core.workflow.Variable.Variable type')}
           </FormLabel>
           <MyRadio
             gridGap={4}
@@ -226,7 +226,7 @@ const VariableEdit = ({
           {variableType === VariableInputEnum.input && (
             <>
               <FormLabel mt={5} mb={2}>
-                {t('core.module.variable.text max length')}
+                {t('common:core.module.variable.text max length')}
               </FormLabel>
               <Box>
                 <NumberInput max={500} min={1} step={1} position={'relative'}>
@@ -250,7 +250,7 @@ const VariableEdit = ({
           {variableType === VariableInputEnum.select && (
             <>
               <Box mt={5} mb={2}>
-                {t('core.module.variable.variable options')}
+                {t('common:core.module.variable.variable options')}
               </Box>
               <Box>
                 {selectEnums.map((item, i) => (
@@ -258,7 +258,9 @@ const VariableEdit = ({
                     <FormControl>
                       <Input
                         {...registerEdit(`variable.enums.${i}.value`, {
-                          required: t('core.module.variable.variable option is value is required')
+                          required: t(
+                            'common:core.module.variable.variable option is value is required'
+                          )
                         })}
                       />
                     </FormControl>
@@ -285,7 +287,7 @@ const VariableEdit = ({
                 bg={'myGray.100 !important'}
                 onClick={() => appendEnums({ value: '' })}
               >
-                {t('core.module.variable add option')}
+                {t('common:core.module.variable add option')}
               </Button>
             </>
           )}
@@ -293,7 +295,7 @@ const VariableEdit = ({
 
         <ModalFooter>
           <Button variant={'whiteBase'} mr={3} onClick={onCloseEdit}>
-            {t('common.Close')}
+            {t('common:common.Close')}
           </Button>
           <Button
             onClick={handleSubmitEdit(({ variable }) => {
@@ -303,7 +305,7 @@ const VariableEdit = ({
                 if (enums.length === 0) {
                   toast({
                     status: 'warning',
-                    title: t('core.module.variable.variable option is required')
+                    title: t('common:core.module.variable.variable option is required')
                   });
                   return;
                 }
@@ -323,7 +325,9 @@ const VariableEdit = ({
               onCloseEdit();
             })}
           >
-            {getValuesEdit('variable.id') ? t('common.Confirm Update') : t('common.Add New')}
+            {getValuesEdit('variable.id')
+              ? t('common:common.Confirm Update')
+              : t('common:common.Add New')}
           </Button>
         </ModalFooter>
       </MyModal>

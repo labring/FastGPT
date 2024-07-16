@@ -52,7 +52,7 @@ const ChatHeader = ({
             <MyIcon name={'history'} w={'14px'} />
             <Box ml={1}>
               {history.length === 0
-                ? t('core.chat.New Chat')
+                ? t('common:core.chat.New Chat')
                 : t('core.chat.History Amount', { amount: history.length })}
             </Box>
           </MyTag>

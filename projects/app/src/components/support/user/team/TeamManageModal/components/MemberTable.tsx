@@ -44,10 +44,10 @@ function MemberTable() {
         <Table overflow={'unset'}>
           <Thead bg={'myWhite.400'}>
             <Tr>
-              <Th borderRadius={'none !important'}>{t('common.Username')}</Th>
-              <Th>{t('common.Permission')}</Th>
-              <Th>{t('common.Status')}</Th>
-              <Th borderRadius={'none !important'}>{t('common.Action')}</Th>
+              <Th borderRadius={'none !important'}>{t('common:common.Username')}</Th>
+              <Th>{t('common:common.Permission')}</Th>
+              <Th>{t('common:common.Status')}</Th>
+              <Th borderRadius={'none !important'}>{t('common:common.Action')}</Th>
             </Tr>
           </Thead>
           <Tbody>

@@ -79,7 +79,7 @@ const ChatController = ({
         }
       })}
     >
-      <MyTooltip label={t('common.Copy')}>
+      <MyTooltip label={t('common:common.Copy')}>
         <MyIcon
           {...controlIconStyle}
           name={'copy'}
@@ -90,7 +90,7 @@ const ChatController = ({
       {!!onDelete && !isChatting && (
         <>
           {onRetry && (
-            <MyTooltip label={t('core.chat.retry')}>
+            <MyTooltip label={t('common:core.chat.retry')}>
               <MyIcon
                 {...controlIconStyle}
                 name={'common/retryLight'}
@@ -99,7 +99,7 @@ const ChatController = ({
               />
             </MyTooltip>
           )}
-          <MyTooltip label={t('common.Delete')}>
+          <MyTooltip label={t('common:common.Delete')}>
             <MyIcon
               {...controlIconStyle}
               name={'delete'}
@@ -116,7 +116,7 @@ const ChatController = ({
           if (isPlayingChat && audioPlaying) {
             return (
               <Flex alignItems={'center'}>
-                <MyTooltip label={t('core.chat.tts.Stop Speech')}>
+                <MyTooltip label={t('common:core.chat.tts.Stop Speech')}>
                   <MyIcon
                     {...controlIconStyle}
                     borderRight={'none'}
@@ -136,13 +136,13 @@ const ChatController = ({
           }
           if (isPlayingChat && audioLoading) {
             return (
-              <MyTooltip label={t('common.Loading')}>
+              <MyTooltip label={t('common:common.Loading')}>
                 <MyIcon {...controlIconStyle} name={'common/loading'} />
               </MyTooltip>
             );
           }
           return (
-            <MyTooltip label={t('core.app.TTS start')}>
+            <MyTooltip label={t('common:core.app.TTS start')}>
               <MyIcon
                 {...controlIconStyle}
                 name={'common/voiceLight'}
@@ -171,7 +171,7 @@ const ChatController = ({
           );
         })()}
       {!!onMark && (
-        <MyTooltip label={t('core.chat.Mark')}>
+        <MyTooltip label={t('common:core.chat.Mark')}>
           <MyIcon
             {...controlIconStyle}
             name={'core/app/markLight'}
@@ -183,7 +183,7 @@ const ChatController = ({
       {chat.obj === ChatRoleEnum.AI && (
         <>
           {!!onCloseUserLike && chat.userGoodFeedback && (
-            <MyTooltip label={t('core.chat.feedback.Close User Like')}>
+            <MyTooltip label={t('common:core.chat.feedback.Close User Like')}>
               <MyIcon
                 {...controlIconStyle}
                 color={'white'}
@@ -195,7 +195,7 @@ const ChatController = ({
             </MyTooltip>
           )}
           {!!onReadUserDislike && chat.userBadFeedback && (
-            <MyTooltip label={t('core.chat.feedback.Read User dislike')}>
+            <MyTooltip label={t('common:core.chat.feedback.Read User dislike')}>
               <MyIcon
                 {...controlIconStyle}
                 color={'white'}

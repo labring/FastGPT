@@ -45,14 +45,14 @@ const FeiShuEditModal = ({
         type: PublishChannelEnum.feishu
       });
     },
-    errorToast: t('common.Create Failed'),
+    errorToast: t('common:common.Create Failed'),
     onSuccess: onCreate
   });
   const { mutate: onclickUpdate, isLoading: updating } = useRequest({
     mutationFn: (e: OutLinkEditType<FeishuType>) => {
       return updateShareChat(e);
     },
-    errorToast: t('common.Update Failed'),
+    errorToast: t('common:common.Update Failed'),
     onSuccess: onEdit
   });
 
@@ -64,12 +64,12 @@ const FeiShuEditModal = ({
     >
       <ModalBody>
         <Flex alignItems={'center'}>
-          <Box flex={'0 0 90px'}>{t('Name')}</Box>
+          <Box flex={'0 0 90px'}>{t('common:Name')}</Box>
           <Input
             placeholder={publishT('Feishu name') || 'Link Name'} // TODO: i18n
             maxLength={20}
             {...register('name', {
-              required: t('common.Name is empty') || 'Name is empty'
+              required: t('common:common.Name is empty') || 'Name is empty'
             })}
           />
         </Flex>
@@ -90,8 +90,11 @@ const FeiShuEditModal = ({
         </Flex>
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('support.outlink.Max usage points')}
-            <QuestionTip ml={1} label={t('support.outlink.Max usage points tip')}></QuestionTip>
+            {t('common:support.outlink.Max usage points')}
+            <QuestionTip
+              ml={1}
+              label={t('common:support.outlink.Max usage points tip')}
+            ></QuestionTip>
           </Flex>
           <Input
             {...register('limit.maxUsagePoints', {
@@ -104,7 +107,7 @@ const FeiShuEditModal = ({
         </Flex>
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('common.Expired Time')}
+            {t('common:common.Expired Time')}
           </Flex>
           <Input
             type="datetime-local"
@@ -145,9 +148,9 @@ const FeiShuEditModal = ({
           />
         </Flex>
         <Flex alignItems={'center'} mt={4}>
-          <Box flex={'0 0 90px'}>{t('core.module.http.AppId')}</Box>
+          <Box flex={'0 0 90px'}>{t('common:core.module.http.AppId')}</Box>
           <Input
-            placeholder={t('core.module.http.appId') || 'Link Name'}
+            placeholder={t('common:core.module.http.appId') || 'Link Name'}
             // maxLength={20}
             {...register('app.appId', {
               required: true
@@ -155,12 +158,12 @@ const FeiShuEditModal = ({
           />
         </Flex>
         <Flex alignItems={'center'} mt={4}>
-          <Box flex={'0 0 90px'}>{t('core.module.http.AppSecret')}</Box>
+          <Box flex={'0 0 90px'}>{t('common:core.module.http.AppSecret')}</Box>
           <Input
             placeholder={'App Secret'}
             // maxLength={20}
             {...register('app.appSecret', {
-              required: t('common.Name is empty') || 'Name is empty'
+              required: t('common:common.Name is empty') || 'Name is empty'
             })}
           />
         </Flex>
@@ -170,7 +173,7 @@ const FeiShuEditModal = ({
             placeholder="Encrypt Key"
             // maxLength={20}
             {...register('app.encryptKey', {
-              required: t('common.Name is empty') || 'Name is empty'
+              required: t('common:common.Name is empty') || 'Name is empty'
             })}
           />
         </Flex>
@@ -180,7 +183,7 @@ const FeiShuEditModal = ({
             placeholder="Verification Token"
             // maxLength={20}
             {...register('app.verificationToken', {
-              required: t('common.Name is empty') || 'Name is empty'
+              required: t('common:common.Name is empty') || 'Name is empty'
             })}
           />
         </Flex>
@@ -193,13 +196,13 @@ const FeiShuEditModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common.Close')}
+          {t('common:common.Close')}
         </Button>
         <Button
           isLoading={creating || updating}
           onClick={submitShareChat((data) => (isEdit ? onclickUpdate(data) : onclickCreate(data)))}
         >
-          {t('common.Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

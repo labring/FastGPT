@@ -96,7 +96,7 @@ const WholeResponseModal = ({
       iconSrc="/imgs/modal/wholeRecord.svg"
       title={
         <Flex alignItems={'center'}>
-          {t('core.chat.response.Complete Response')}
+          {t('common:core.chat.response.Complete Response')}
           <QuestionTip ml={2} label={'从左往右，为各个模块的响应顺序'}></QuestionTip>
         </Flex>
       }
@@ -175,27 +175,33 @@ export const ResponseBox = React.memo(function ResponseBox({
               })}
         >
           <>
-            <Row label={t('core.chat.response.module name')} value={t(activeModule.moduleName)} />
+            <Row
+              label={t('common:core.chat.response.module name')}
+              value={t(activeModule.moduleName)}
+            />
             {activeModule?.totalPoints !== undefined && (
               <Row
-                label={t('support.wallet.usage.Total points')}
+                label={t('common:support.wallet.usage.Total points')}
                 value={formatNumber(activeModule.totalPoints)}
               />
             )}
             <Row
-              label={t('core.chat.response.module time')}
+              label={t('common:core.chat.response.module time')}
               value={`${activeModule?.runningTime || 0}s`}
             />
-            <Row label={t('core.chat.response.module model')} value={activeModule?.model} />
-            <Row label={t('core.chat.response.module tokens')} value={`${activeModule?.tokens}`} />
+            <Row label={t('common:core.chat.response.module model')} value={activeModule?.model} />
             <Row
-              label={t('core.chat.response.Tool call tokens')}
+              label={t('common:core.chat.response.module tokens')}
+              value={`${activeModule?.tokens}`}
+            />
+            <Row
+              label={t('common:core.chat.response.Tool call tokens')}
               value={`${activeModule?.toolCallTokens}`}
             />
 
-            <Row label={t('core.chat.response.module query')} value={activeModule?.query} />
+            <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
             <Row
-              label={t('core.chat.response.context total length')}
+              label={t('common:core.chat.response.context total length')}
               value={activeModule?.contextTotalLen}
             />
             <Row label={workflowT('response.Error')} value={activeModule?.error} />
@@ -204,12 +210,15 @@ export const ResponseBox = React.memo(function ResponseBox({
           {/* ai chat */}
           <>
             <Row
-              label={t('core.chat.response.module temperature')}
+              label={t('common:core.chat.response.module temperature')}
               value={activeModule?.temperature}
             />
-            <Row label={t('core.chat.response.module maxToken')} value={activeModule?.maxToken} />
             <Row
-              label={t('core.chat.response.module historyPreview')}
+              label={t('common:core.chat.response.module maxToken')}
+              value={activeModule?.maxToken}
+            />
+            <Row
+              label={t('common:core.chat.response.module historyPreview')}
               rawDom={
                 activeModule.historyPreview ? (
                   <Box px={3} py={2} border={theme.borders.base} borderRadius={'md'}>
@@ -239,31 +248,31 @@ export const ResponseBox = React.memo(function ResponseBox({
           <>
             {activeModule?.searchMode && (
               <Row
-                label={t('core.dataset.search.search mode')}
+                label={t('common:core.dataset.search.search mode')}
                 // @ts-ignore
                 value={t(DatasetSearchModeMap[activeModule.searchMode]?.title)}
               />
             )}
             <Row
-              label={t('core.chat.response.module similarity')}
+              label={t('common:core.chat.response.module similarity')}
               value={activeModule?.similarity}
             />
-            <Row label={t('core.chat.response.module limit')} value={activeModule?.limit} />
+            <Row label={t('common:core.chat.response.module limit')} value={activeModule?.limit} />
             <Row
-              label={t('core.chat.response.search using reRank')}
+              label={t('common:core.chat.response.search using reRank')}
               value={`${activeModule?.searchUsingReRank}`}
             />
             <Row
-              label={t('core.chat.response.Extension model')}
+              label={t('common:core.chat.response.Extension model')}
               value={activeModule?.extensionModel}
             />
             <Row
-              label={t('support.wallet.usage.Extension result')}
+              label={t('common:support.wallet.usage.Extension result')}
               value={`${activeModule?.extensionResult}`}
             />
             {activeModule.quoteList && activeModule.quoteList.length > 0 && (
               <Row
-                label={t('core.chat.response.module quoteList')}
+                label={t('common:core.chat.response.module quoteList')}
                 rawDom={<QuoteList showDetail={showDetail} rawSearch={activeModule.quoteList} />}
               />
             )}
@@ -271,9 +280,12 @@ export const ResponseBox = React.memo(function ResponseBox({
 
           {/* classify question */}
           <>
-            <Row label={t('core.chat.response.module cq result')} value={activeModule?.cqResult} />
             <Row
-              label={t('core.chat.response.module cq')}
+              label={t('common:core.chat.response.module cq result')}
+              value={activeModule?.cqResult}
+            />
+            <Row
+              label={t('common:core.chat.response.module cq')}
               value={(() => {
                 if (!activeModule?.cqList) return '';
                 return activeModule.cqList.map((item) => `* ${item.value}`).join('\n');
@@ -284,7 +296,7 @@ export const ResponseBox = React.memo(function ResponseBox({
           {/* if-else */}
           <>
             <Row
-              label={t('core.chat.response.module if else Result')}
+              label={t('common:core.chat.response.module if else Result')}
               value={activeModule?.ifElseResult}
             />
           </>
@@ -292,11 +304,11 @@ export const ResponseBox = React.memo(function ResponseBox({
           {/* extract */}
           <>
             <Row
-              label={t('core.chat.response.module extract description')}
+              label={t('common:core.chat.response.module extract description')}
               value={activeModule?.extractDescription}
             />
             <Row
-              label={t('core.chat.response.module extract result')}
+              label={t('common:core.chat.response.module extract result')}
               value={activeModule?.extractResult}
             />
           </>
@@ -307,17 +319,20 @@ export const ResponseBox = React.memo(function ResponseBox({
             <Row label={'Params'} value={activeModule?.params} />
             <Row label={'Body'} value={activeModule?.body} />
             <Row
-              label={t('core.chat.response.module http result')}
+              label={t('common:core.chat.response.module http result')}
               value={activeModule?.httpResult}
             />
           </>
 
           {/* plugin */}
           <>
-            <Row label={t('core.chat.response.plugin output')} value={activeModule?.pluginOutput} />
+            <Row
+              label={t('common:core.chat.response.plugin output')}
+              value={activeModule?.pluginOutput}
+            />
             {activeModule?.pluginDetail && activeModule?.pluginDetail.length > 0 && (
               <Row
-                label={t('core.chat.response.Plugin response detail')}
+                label={t('common:core.chat.response.Plugin response detail')}
                 rawDom={
                   <ResponseBox response={activeModule.pluginDetail} showDetail={showDetail} />
                 }
@@ -326,12 +341,15 @@ export const ResponseBox = React.memo(function ResponseBox({
           </>
 
           {/* text output */}
-          <Row label={t('core.chat.response.text output')} value={activeModule?.textOutput} />
+          <Row
+            label={t('common:core.chat.response.text output')}
+            value={activeModule?.textOutput}
+          />
 
           {/* tool call */}
           {activeModule?.toolDetail && activeModule?.toolDetail.length > 0 && (
             <Row
-              label={t('core.chat.response.Tool call response detail')}
+              label={t('common:core.chat.response.Tool call response detail')}
               rawDom={<ResponseBox response={activeModule.toolDetail} showDetail={showDetail} />}
             />
           )}

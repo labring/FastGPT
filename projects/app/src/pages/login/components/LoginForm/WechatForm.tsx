@@ -41,7 +41,7 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
     <FormLayout setPageType={setPageType} pageType={LoginPageTypeEnum.wechat}>
       <Box>
         <Box w={'full'} textAlign={'center'} pt={5}>
-          {t('support.user.login.Wx qr login')}
+          {t('common:support.user.login.Wx qr login')}
         </Box>
         <Box p={5} display={'flex'} w={'full'} justifyContent={'center'}>
           {wechatInfo?.codeUrl ? (

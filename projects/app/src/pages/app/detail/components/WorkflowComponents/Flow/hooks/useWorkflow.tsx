@@ -13,7 +13,7 @@ export const useWorkflow = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { openConfirm: onOpenConfirmDeleteNode, ConfirmModal: ConfirmDeleteModal } = useConfirm({
-    content: t('core.module.Confirm Delete Node'),
+    content: t('common:core.module.Confirm Delete Node'),
     type: 'delete'
   });
 
@@ -30,7 +30,7 @@ export const useWorkflow = () => {
           if (node && node.data.forbidDelete) {
             return toast({
               status: 'warning',
-              title: t('core.workflow.Can not delete node')
+              title: t('common:core.workflow.Can not delete node')
             });
           } else {
             return onOpenConfirmDeleteNode(() => {
@@ -88,7 +88,7 @@ export const useWorkflow = () => {
       if (connect.source === connect.target) {
         return toast({
           status: 'warning',
-          title: t('core.module.Can not connect self')
+          title: t('common:core.module.Can not connect self')
         });
       }
       onConnect({

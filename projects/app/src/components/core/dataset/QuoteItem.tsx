@@ -209,7 +209,7 @@ const QuoteItem = ({
             color={'myGray.500'}
             fontSize={'xs'}
           >
-            <MyTooltip label={t('core.dataset.Quote Length')}>
+            <MyTooltip label={t('common:core.dataset.Quote Length')}>
               <Flex alignItems={'center'}>
                 <MyIcon name="common/text/t" w={'14px'} mr={1} color={'myGray.500'} />
                 {quoteItem.q.length + (quoteItem.a?.length || 0)}
@@ -225,7 +225,7 @@ const QuoteItem = ({
             />
             <Box flex={1} />
             {quoteItem.id && (
-              <MyTooltip label={t('core.dataset.data.Edit')}>
+              <MyTooltip label={t('common:core.dataset.data.Edit')}>
                 <Box
                   className="hover-data"
                   visibility={'hidden'}
@@ -261,7 +261,7 @@ const QuoteItem = ({
                 color={'primary.500'}
                 href={`/dataset/detail?datasetId=${quoteItem.datasetId}&currentTab=dataCard&collectionId=${quoteItem.collectionId}`}
               >
-                {t('core.dataset.Go Dataset')}
+                {t('common:core.dataset.Go Dataset')}
                 <MyIcon name={'common/rightArrowLight'} w={'10px'} />
               </Link>
             )}

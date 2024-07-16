@@ -78,7 +78,7 @@ const RenderOutput = ({
           position={'relative'}
         >
           <Box position={'relative'} fontWeight={'medium'}>
-            {t('core.workflow.Custom outputs')}
+            {t('common:core.workflow.Custom outputs')}
           </Box>
           {addOutput.description && <QuestionTip ml={1} label={addOutput.description} />}
           <Box flex={'1 0 0'} />
@@ -91,7 +91,7 @@ const RenderOutput = ({
               setEditField(defaultOutput);
             }}
           >
-            {t('common.Add New')}
+            {t('common:common.Add New')}
           </Button>
         </Flex>
         <VariableTable

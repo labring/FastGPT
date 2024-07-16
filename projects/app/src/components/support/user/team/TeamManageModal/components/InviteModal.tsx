@@ -28,7 +28,7 @@ const InviteModal = ({
   const { t } = useTranslation();
   const { userT } = useI18n();
   const { ConfirmModal, openConfirm } = useConfirm({
-    title: t('user.team.Invite Member Result Tip'),
+    title: t('common:user.team.Invite Member Result Tip'),
     showCancel: false
   });
   const { userInfo } = useUserStore();
@@ -82,7 +82,7 @@ const InviteModal = ({
         </Box>
       )();
     },
-    errorToast: t('user.team.Invite Member Failed Tip')
+    errorToast: t('common:user.team.Invite Member Failed Tip')
   });
 
   return (
@@ -91,9 +91,9 @@ const InviteModal = ({
       iconSrc="/imgs/modal/team.svg"
       title={
         <Box>
-          <Box>{t('user.team.Invite Member')}</Box>
+          <Box>{t('common:user.team.Invite Member')}</Box>
           <Box color={'myGray.500'} fontSize={'xs'} fontWeight={'normal'}>
-            {t('user.team.Invite Member Tips')}
+            {t('common:user.team.Invite Member Tips')}
           </Box>
         </Box>
       }
@@ -102,7 +102,7 @@ const InviteModal = ({
     >
       <ModalCloseButton onClick={onClose} />
       <ModalBody>
-        <Box mb={2}>{t('user.Account')}</Box>
+        <Box mb={2}>{t('common:user.Account')}</Box>
         <TagTextarea defaultValues={inviteUsernames} onUpdate={setInviteUsernames} />
         <Box mt={4}>
           <MySelect list={inviteTypes} value={selectedInviteType} onchange={setSelectInviteType} />
@@ -116,7 +116,7 @@ const InviteModal = ({
           isLoading={isLoading}
           onClick={onInvite}
         >
-          {t('user.team.Confirm Invite')}
+          {t('common:user.team.Confirm Invite')}
         </Button>
       </ModalFooter>
       <ConfirmModal />

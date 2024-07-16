@@ -63,14 +63,14 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
       initUserInfo();
       onClose();
     },
-    errorToast: t('common.Create Failed')
+    errorToast: t('common:common.Create Failed')
   });
   const { mutate: onclickTagAsync, isLoading: isSyncing } = useRequest({
     mutationFn: (data: FormType) => loadTeamTagsByDomain(data.teamDomain),
     onSuccess(res) {
       replaceTeamTags(res);
     },
-    successToast: t('support.user.team.Team Tags Async Success')
+    successToast: t('common:support.user.team.Team Tags Async Success')
   });
 
   useQuery(['getTeamsTags'], getTeamsTags, {
@@ -103,7 +103,7 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
         <ModalBody style={{ padding: '10rpx' }}>
           <Flex mt={3} alignItems={'center'}>
             <Box mb={2} fontWeight="semibold">
-              {t('同步链接')}
+              {t('common:同步链接')}
             </Box>
             <Input
               flex={1}
@@ -118,7 +118,7 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
           </Flex>
           <Flex mt={3} alignItems={'center'}>
             <Box mb={2} fontWeight="semibold">
-              {t('分享链接')}
+              {t('common:分享链接')}
             </Box>
             {/* code */}
             <Box ml={4} borderRadius={'md'} overflow={'hidden'}>
@@ -143,7 +143,7 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
           </Flex>
           <Flex mt={3} alignItems={'center'}>
             <Box mb={2} fontWeight="semibold">
-              {t('标签列表')}
+              {t('common:标签列表')}
             </Box>
             <HStack
               ml={4}
@@ -187,10 +187,10 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
         </ModalBody>
         <ModalFooter mb={2}>
           <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-            {t('common.Close')}
+            {t('common:common.Close')}
           </Button>
           <Button isLoading={isUpdating} onClick={handleSubmit((data) => onclickUpdate(data))}>
-            {t('user.team.Tags Async')}
+            {t('common:user.team.Tags Async')}
           </Button>
         </ModalFooter>
       </MyModal>

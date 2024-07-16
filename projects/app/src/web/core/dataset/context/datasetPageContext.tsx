@@ -102,32 +102,32 @@ export const DatasetPageContextProvider = ({
       if (vectorTrainingCount < 1000)
         return {
           colorSchema: 'green',
-          tip: t('core.dataset.training.Leisure')
+          tip: t('common:core.dataset.training.Leisure')
         };
       if (vectorTrainingCount < 10000)
         return {
           colorSchema: 'yellow',
-          tip: t('core.dataset.training.Waiting')
+          tip: t('common:core.dataset.training.Waiting')
         };
       return {
         colorSchema: 'red',
-        tip: t('core.dataset.training.Full')
+        tip: t('common:core.dataset.training.Full')
       };
     })();
     const agentTrainingMap = (() => {
       if (agentTrainingCount < 100)
         return {
           colorSchema: 'green',
-          tip: t('core.dataset.training.Leisure')
+          tip: t('common:core.dataset.training.Leisure')
         };
       if (agentTrainingCount < 1000)
         return {
           colorSchema: 'yellow',
-          tip: t('core.dataset.training.Waiting')
+          tip: t('common:core.dataset.training.Waiting')
         };
       return {
         colorSchema: 'red',
-        tip: t('core.dataset.training.Full')
+        tip: t('common:core.dataset.training.Full')
       };
     })();
     return {
