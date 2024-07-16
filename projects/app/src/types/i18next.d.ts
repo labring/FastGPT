@@ -24,7 +24,7 @@ export type I18nNsType = (keyof I18nNamespaces)[];
 declare module 'i18next' {
   interface CustomTypeOptions {
     returnNull: false;
-    defaultNs: 'common';
+    defaultNS: 'common';
     resources: I18nNamespaces;
   }
 }

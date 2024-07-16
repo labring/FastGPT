@@ -5,7 +5,7 @@
     "prettier.prettierPath": "node_modules/prettier",
     "typescript.tsdk": "node_modules/typescript/lib",
     "i18n-ally.localesPaths": [
-        "packages/web/i18n",
+        "../../packages/web/i18n",
     ],
     "i18n-ally.enabledParsers": [
         "json",
