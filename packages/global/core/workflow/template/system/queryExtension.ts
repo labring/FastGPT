@@ -19,7 +19,7 @@ import { LLMModelTypeEnum } from '../../../ai/constants';
 import { getHandleConfig } from '../utils';
 
 export const AiQueryExtension: FlowNodeTemplateType = {
-  id: FlowNodeTypeEnum.chatNode,
+  id: FlowNodeTypeEnum.queryExtension,
   templateType: FlowNodeTemplateTypeEnum.other,
   flowNodeType: FlowNodeTypeEnum.queryExtension,
   sourceHandle: getHandleConfig(true, true, true, true),
