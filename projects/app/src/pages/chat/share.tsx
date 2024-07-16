@@ -253,7 +253,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
               <ChatHistorySlider
                 appName={chatData.app.name}
                 appAvatar={chatData.app.avatar}
-                confirmClearText={t('core.chat.Confirm to clear share chat history')}
+                confirmClearText={t('common:core.chat.Confirm to clear share chat history')}
                 onDelHistory={({ chatId }) =>
                   onDelHistory({ appId: chatData.appId, chatId, shareId, outLinkUid })
                 }

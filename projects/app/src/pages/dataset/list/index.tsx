@@ -80,7 +80,7 @@ const Dataset = () => {
                 <Flex flex={1} alignItems={'center'}>
                   <Image src={'/imgs/workflow/db.png'} alt={''} mr={2} h={'24px'} />
                   <Box className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
-                    {t('core.dataset.My Dataset')}
+                    {t('common:core.dataset.My Dataset')}
                   </Box>
                 </Flex>
               }
@@ -100,7 +100,7 @@ const Dataset = () => {
                   <Button variant={'primary'} px="0">
                     <Flex alignItems={'center'} px={'20px'}>
                       <AddIcon mr={2} />
-                      <Box>{t('common.Create New')}</Box>
+                      <Box>{t('common:common.Create New')}</Box>
                     </Flex>
                   </Button>
                 }
@@ -111,7 +111,7 @@ const Dataset = () => {
                         label: (
                           <Flex>
                             <MyIcon name={FolderIcon} w={'20px'} mr={1} />
-                            {t('Folder')}
+                            {t('common:Folder')}
                           </Flex>
                         ),
                         onClick: () => setEditFolderData({})
@@ -120,7 +120,7 @@ const Dataset = () => {
                         label: (
                           <Flex>
                             <Image src={'/imgs/workflow/db.png'} alt={''} w={'20px'} mr={1} />
-                            {t('core.dataset.Dataset')}
+                            {t('common:core.dataset.Dataset')}
                           </Flex>
                         ),
                         onClick: onOpenCreateModal
@@ -150,7 +150,7 @@ const Dataset = () => {
                 });
               }}
               onMove={() => setMoveDatasetId(folderDetail._id)}
-              deleteTip={t('dataset.deleteFolderTips')}
+              deleteTip={t('common:dataset.deleteFolderTips')}
               onDelete={() =>
                 onDelDataset(folderDetail._id).then(() => {
                   router.replace({

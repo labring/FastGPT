@@ -138,11 +138,11 @@ const Header = ({
                 />
                 <PopoverConfirm
                   showCancel
-                  content={t('core.app.Publish Confirm')}
+                  content={t('common:core.app.Publish Confirm')}
                   Trigger={
                     <Box>
-                      <MyTooltip label={t('core.app.Publish app tip')}>
-                        <Button isDisabled={isPublished}>{t('core.app.Publish')}</Button>
+                      <MyTooltip label={t('common:core.app.Publish app tip')}>
+                        <Button isDisabled={isPublished}>{t('common:core.app.Publish')}</Button>
                       </MyTooltip>
                     </Box>
                   }

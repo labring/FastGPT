@@ -34,13 +34,13 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
 
   const tabList = [
     {
-      label: t('core.dataset.Collection'),
+      label: t('common:core.dataset.Collection'),
       value: TabEnum.collectionCard,
       icon: 'common/overviewLight'
     },
-    { label: t('core.dataset.test.Search Test'), value: TabEnum.test, icon: 'kbTest' },
+    { label: t('common:core.dataset.test.Search Test'), value: TabEnum.test, icon: 'kbTest' },
     ...(datasetDetail.permission.hasManagePer
-      ? [{ label: t('common.Config'), value: TabEnum.info, icon: 'common/settingLight' }]
+      ? [{ label: t('common:common.Config'), value: TabEnum.info, icon: 'common/settingLight' }]
       : [])
   ];
 
@@ -98,7 +98,7 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
             )}
             <Box mb={3}>
               <Box fontSize={'sm'}>
-                {t('core.dataset.training.Agent queue')}({agentTrainingMap.tip})
+                {t('common:core.dataset.training.Agent queue')}({agentTrainingMap.tip})
               </Box>
               <Progress
                 value={100}
@@ -111,7 +111,7 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
             </Box>
             <Box mb={3}>
               <Box fontSize={'sm'}>
-                {t('core.dataset.training.Vector queue')}({vectorTrainingMap.tip})
+                {t('common:core.dataset.training.Vector queue')}({vectorTrainingMap.tip})
               </Box>
               <Progress
                 value={100}
@@ -143,7 +143,7 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
               borderRadius={'50%'}
               aria-label={''}
             />
-            {t('core.dataset.All Dataset')}
+            {t('common:core.dataset.All Dataset')}
           </Flex>
         </Flex>
       ) : (

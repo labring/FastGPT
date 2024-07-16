@@ -19,7 +19,7 @@ const PermissionTag = ({
     const Per = new Permission({ per: permission.value });
 
     const commonLabel = (() => {
-      if (permission.isOwner) return t('permission.Owner');
+      if (permission.isOwner) return t('common:permission.Owner');
       if (permission.hasManagePer) return PermissionList['manage'].name;
       if (permission.hasWritePer) return PermissionList['write'].name;
       if (permission.hasReadPer) return PermissionList['read'].name;

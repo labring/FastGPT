@@ -24,20 +24,20 @@ const OutLink = () => {
   const publishList = useRef([
     {
       icon: '/imgs/modal/shareFill.svg',
-      title: t('core.app.Share link'),
-      desc: t('core.app.Share link desc'),
+      title: t('common:core.app.Share link'),
+      desc: t('common:core.app.Share link desc'),
       value: PublishChannelEnum.share
     },
     {
       icon: 'support/outlink/apikeyFill',
-      title: t('core.app.Api request'),
-      desc: t('core.app.Api request desc'),
+      title: t('common:core.app.Api request'),
+      desc: t('common:core.app.Api request desc'),
       value: PublishChannelEnum.apikey
     }
     // {
     //   icon: 'core/app/publish/lark',
-    //   title: t('core.app.publish.Fei shu bot'),
-    //   desc: t('core.app.publish.Fei Shu Bot Desc'),
+    //   title: t('common:core.app.publish.Fei shu bot'),
+    //   desc: t('common:core.app.publish.Fei Shu Bot Desc'),
     //   value: PublishChannelEnum.feishu
     // }
   ]);

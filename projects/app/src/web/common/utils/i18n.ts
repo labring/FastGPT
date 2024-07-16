@@ -1,4 +1,4 @@
-import { I18nNsType } from '@/types/i18n';
+import { I18nNsType } from '@/types/i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 
 export const LANG_KEY = 'NEXT_LOCALE_LANG';

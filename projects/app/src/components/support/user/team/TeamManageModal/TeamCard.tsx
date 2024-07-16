@@ -35,7 +35,7 @@ function TeamCard() {
   const { feConfigs } = useSystemStore();
 
   const { ConfirmModal: ConfirmLeaveTeamModal, openConfirm: openLeaveConfirm } = useConfirm({
-    content: t('user.team.member.Confirm Leave')
+    content: t('common:user.team.member.Confirm Leave')
   });
   const { mutate: onLeaveTeam, isLoading: isLoadingLeaveTeam } = useRequest({
     mutationFn: async (teamId?: string) => {
@@ -49,7 +49,7 @@ function TeamCard() {
     onSuccess() {
       refetchTeams();
     },
-    errorToast: t('user.team.Leave Team Failed')
+    errorToast: t('common:user.team.Leave Team Failed')
   });
 
   const {
@@ -65,7 +65,7 @@ function TeamCard() {
         icon: 'support/team/memberLight',
         label: (
           <Flex alignItems={'center'}>
-            <Box ml={1}>{t('user.team.Member')}</Box>
+            <Box ml={1}>{t('common:user.team.Member')}</Box>
             <Box ml={2} bg={'myGray.100'} borderRadius={'20px'} px={3} fontSize={'xs'}>
               {members.length}
             </Box>
@@ -75,7 +75,7 @@ function TeamCard() {
       },
       {
         icon: 'support/team/key',
-        label: t('common.Role'),
+        label: t('common:common.Role'),
         value: TabListEnum.permission
       }
     ],
@@ -155,7 +155,7 @@ function TeamCard() {
                 }
               }}
             >
-              {t('user.team.Invite Member')}
+              {t('common:user.team.Invite Member')}
             </Button>
           )}
           {userInfo?.team.permission.hasManagePer && feConfigs?.show_team_chat && (
@@ -169,7 +169,7 @@ function TeamCard() {
                 onOpenTeamTagsAsync();
               }}
             >
-              {t('user.team.Team Tags Async')}
+              {t('common:user.team.Team Tags Async')}
             </Button>
           )}
           {!userInfo?.team.permission.isOwner && (
@@ -184,7 +184,7 @@ function TeamCard() {
                 openLeaveConfirm(() => onLeaveTeam(userInfo?.team?.teamId))();
               }}
             >
-              {t('user.team.Leave Team')}
+              {t('common:user.team.Leave Team')}
             </Button>
           )}
         </Flex>

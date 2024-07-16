@@ -47,7 +47,7 @@ const AIModelSelector = ({ list, onchange, disableTip, ...props }: Props) => {
           label: (
             <Flex alignItems={'center'}>
               <Avatar borderRadius={'0'} mr={2} src={LOGO_ICON} w={'18px'} />
-              <Box>{t('support.user.Price')}</Box>
+              <Box>{t('common:support.user.Price')}</Box>
             </Flex>
           ),
           value: 'price'

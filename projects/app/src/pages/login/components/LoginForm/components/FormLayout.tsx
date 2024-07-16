@@ -29,7 +29,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     ...(feConfigs?.oauth?.wechat && pageType !== LoginPageTypeEnum.wechat
       ? [
           {
-            label: t('support.user.login.Wechat'),
+            label: t('common:support.user.login.Wechat'),
             provider: OAuthEnum.wechat,
             icon: 'common/wechatFill',
             pageType: LoginPageTypeEnum.wechat
@@ -39,7 +39,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     ...(feConfigs?.oauth?.google
       ? [
           {
-            label: t('support.user.login.Google'),
+            label: t('common:support.user.login.Google'),
             provider: OAuthEnum.google,
             icon: 'common/googleFill',
             redirectUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${feConfigs?.oauth?.google}&redirect_uri=${redirectUri}&state=${state.current}&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20openid&include_granted_scopes=true`
@@ -49,7 +49,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     ...(feConfigs?.oauth?.github
       ? [
           {
-            label: t('support.user.login.Github'),
+            label: t('common:support.user.login.Github'),
             provider: OAuthEnum.github,
             icon: 'common/gitFill',
             redirectUrl: `https://github.com/login/oauth/authorize?client_id=${feConfigs?.oauth?.github}&redirect_uri=${redirectUri}&state=${state.current}&scope=user:email%20read:user`
@@ -59,7 +59,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     ...(pageType !== LoginPageTypeEnum.passwordLogin
       ? [
           {
-            label: t('support.user.login.Password login'),
+            label: t('common:support.user.login.Password login'),
             provider: LoginPageTypeEnum.passwordLogin,
             icon: 'support/account/passwordLogin',
             pageType: LoginPageTypeEnum.passwordLogin

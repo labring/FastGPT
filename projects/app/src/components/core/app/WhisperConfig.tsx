@@ -26,17 +26,17 @@ const WhisperConfig = ({
 
   const formLabel = useMemo(() => {
     if (!isOpenWhisper) {
-      return t('core.app.whisper.Close');
+      return t('common:core.app.whisper.Close');
     }
-    return t('core.app.whisper.Open');
+    return t('common:core.app.whisper.Open');
   }, [t, isOpenWhisper]);
 
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/whisper'} mr={2} w={'20px'} />
-      <FormLabel>{t('core.app.Whisper')}</FormLabel>
+      <FormLabel>{t('common:core.app.Whisper')}</FormLabel>
       <Box flex={1} />
-      <MyTooltip label={t('core.app.Config whisper')}>
+      <MyTooltip label={t('common:core.app.Config whisper')}>
         <Button
           variant={'transparentBase'}
           iconSpacing={1}
@@ -48,14 +48,14 @@ const WhisperConfig = ({
         </Button>
       </MyTooltip>
       <MyModal
-        title={t('core.app.Whisper config')}
+        title={t('common:core.app.Whisper config')}
         iconSrc="core/app/simpleMode/whisper"
         isOpen={isOpen}
         onClose={onClose}
       >
         <ModalBody px={[5, 16]} py={[4, 8]}>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
-            <FormLabel>{t('core.app.whisper.Switch')}</FormLabel>
+            <FormLabel>{t('common:core.app.whisper.Switch')}</FormLabel>
             <Switch
               isChecked={isOpenWhisper}
               onChange={(e) => {
@@ -68,8 +68,8 @@ const WhisperConfig = ({
           </Flex>
           {isOpenWhisper && (
             <Flex mt={8} alignItems={'center'}>
-              <FormLabel>{t('core.app.whisper.Auto send')}</FormLabel>
-              <QuestionTip label={t('core.app.whisper.Auto send tip')} />
+              <FormLabel>{t('common:core.app.whisper.Auto send')}</FormLabel>
+              <QuestionTip label={t('common:core.app.whisper.Auto send tip')} />
               <Box flex={'1 0 0'} />
               <Switch
                 isChecked={value.autoSend}
@@ -85,8 +85,8 @@ const WhisperConfig = ({
           {isOpenWhisper && isAutoSend && (
             <>
               <Flex mt={8} alignItems={'center'}>
-                <FormLabel>{t('core.app.whisper.Auto tts response')}</FormLabel>
-                <QuestionTip label={t('core.app.whisper.Auto tts response tip')} />
+                <FormLabel>{t('common:core.app.whisper.Auto tts response')}</FormLabel>
+                <QuestionTip label={t('common:core.app.whisper.Auto tts response tip')} />
                 <Box flex={'1 0 0'} />
                 <Switch
                   isChecked={value.autoTTSResponse}
@@ -100,7 +100,7 @@ const WhisperConfig = ({
               </Flex>
               {!isOpenAudio && (
                 <Box mt={1} color={'myGray.600'} fontSize={'sm'}>
-                  {t('core.app.whisper.Not tts tip')}
+                  {t('common:core.app.whisper.Not tts tip')}
                 </Box>
               )}
             </>

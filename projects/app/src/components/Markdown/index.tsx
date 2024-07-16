@@ -117,7 +117,7 @@ const A = React.memo(function A({ children, ...props }: any) {
     const text = useMemo(() => String(children), [children]);
 
     return (
-      <MyTooltip label={t('core.chat.markdown.Quick Question')}>
+      <MyTooltip label={t('common:core.chat.markdown.Quick Question')}>
         <Button
           variant={'whitePrimary'}
           size={'xs'}

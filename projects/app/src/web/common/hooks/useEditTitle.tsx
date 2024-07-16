@@ -78,7 +78,7 @@ export const useEditTitle = ({
     ({
       maxLength = 30,
       iconSrc = 'modal/edit',
-      closeBtnText = t('common.Close')
+      closeBtnText = t('common:common.Close')
     }: {
       maxLength?: number;
       iconSrc?: string;
@@ -110,7 +110,7 @@ export const useEditTitle = ({
               </Button>
             )}
             <Button onClick={runAsync} isLoading={loading}>
-              {t('common.Confirm')}
+              {t('common:common.Confirm')}
             </Button>
           </ModalFooter>
         </MyModal>

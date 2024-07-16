@@ -58,7 +58,12 @@ const PayModal = ({
   }, [subPlans?.standard]);
 
   return (
-    <MyModal isOpen={true} onClose={onClose} title={t('user.Pay')} iconSrc="/imgs/modal/pay.svg">
+    <MyModal
+      isOpen={true}
+      onClose={onClose}
+      title={t('common:user.Pay')}
+      iconSrc="/imgs/modal/pay.svg"
+    >
       <ModalBody px={0} display={'flex'} flexDirection={'column'}>
         <Box px={6} fontSize={'sm'} mb={2} py={2} maxW={'400px'}>
           该余额仅用于自动续费标准套餐。如需购买额外套餐，可
@@ -93,7 +98,7 @@ const PayModal = ({
 
       <ModalFooter>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common.Close')}
+          {t('common:common.Close')}
         </Button>
         <Button
           ml={3}

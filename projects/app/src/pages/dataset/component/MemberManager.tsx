@@ -22,7 +22,7 @@ function MemberManager({ managePer }: { managePer: MemberManagerInputPropsType }
                     leftIcon={<MyIcon w="4" name="common/settingLight" />}
                     onClick={onOpenManageModal}
                   >
-                    {t('permission.Manage')}
+                    {t('common:permission.Manage')}
                   </Button>
                   <Button
                     size="sm"
@@ -30,7 +30,7 @@ function MemberManager({ managePer }: { managePer: MemberManagerInputPropsType }
                     leftIcon={<MyIcon w="4" name="support/permission/collaborator" />}
                     onClick={onOpenAddMember}
                   >
-                    {t('common.Add')}
+                    {t('common:common.Add')}
                   </Button>
                 </Flex>
               </Flex>

@@ -75,19 +75,19 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     {
       onSuccess() {
         toast({
-          title: t('common.Update Success'),
+          title: t('common:common.Update Success'),
           status: 'success'
         });
         reloadApp();
       },
-      errorToast: t('common.Update Failed')
+      errorToast: t('common:common.Update Failed')
     }
   );
 
   const saveSubmitError = useCallback(() => {
     // deep search message
     const deepSearch = (obj: any): string => {
-      if (!obj) return t('common.Submit failed');
+      if (!obj) return t('common:common.Submit failed');
       if (!!obj.message) {
         return obj.message;
       }
@@ -120,7 +120,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
         setValue('avatar', src);
       } catch (err: any) {
         toast({
-          title: getErrText(err, t('common.error.Select avatar failed')),
+          title: getErrText(err, t('common:common.error.Select avatar failed')),
           status: 'warning'
         });
       }
@@ -158,10 +158,10 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
       isOpen={true}
       onClose={onClose}
       iconSrc="/imgs/workflow/ai.svg"
-      title={t('core.app.setting')}
+      title={t('common:core.app.setting')}
     >
       <ModalBody>
-        <Box fontSize={'sm'}>{t('core.app.Name and avatar')}</Box>
+        <Box fontSize={'sm'}>{t('common:core.app.Name and avatar')}</Box>
         <Flex mt={2} alignItems={'center'}>
           <Avatar
             src={avatar}
@@ -170,13 +170,13 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
             cursor={'pointer'}
             borderRadius={'md'}
             mr={4}
-            title={t('common.Set Avatar')}
+            title={t('common:common.Set Avatar')}
             onClick={() => onOpenSelectFile()}
           />
           <FormControl>
             <Input
               bg={'myWhite.600'}
-              placeholder={t('core.app.Set a name for your app')}
+              placeholder={t('common:core.app.Set a name for your app')}
               {...register('name', {
                 required: true
               })}
@@ -184,12 +184,12 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
           </FormControl>
         </Flex>
         <Box mt={4} mb={1} fontSize={'sm'}>
-          {t('core.app.App intro')}
+          {t('common:core.app.App intro')}
         </Box>
         <Textarea
           rows={4}
           maxLength={500}
-          placeholder={t('core.app.Make a brief introduction of your app')}
+          placeholder={t('common:core.app.Make a brief introduction of your app')}
           bg={'myWhite.600'}
           {...register('intro')}
         />
@@ -203,7 +203,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
               </Box>
             )}
             <Box mt="4">
-              <Box fontSize={'sm'}>{t('permission.Default permission')}</Box>
+              <Box fontSize={'sm'}>{t('common:permission.Default permission')}</Box>
               <DefaultPermissionList
                 mt="2"
                 per={appDetail.defaultPermission}
@@ -244,7 +244,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                             leftIcon={<MyIcon w="4" name="common/settingLight" />}
                             onClick={onOpenManageModal}
                           >
-                            {t('permission.Manage')}
+                            {t('common:permission.Manage')}
                           </Button>
                           <Button
                             size="sm"
@@ -252,7 +252,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                             leftIcon={<MyIcon w="4" name="support/permission/collaborator" />}
                             onClick={onOpenAddMember}
                           >
-                            {t('common.Add')}
+                            {t('common:common.Add')}
                           </Button>
                         </Flex>
                       </Flex>
@@ -268,10 +268,10 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
 
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common.Close')}
+          {t('common:common.Close')}
         </Button>
         <Button isLoading={btnLoading} onClick={saveUpdateModel}>
-          {t('common.Save')}
+          {t('common:common.Save')}
         </Button>
       </ModalFooter>
 

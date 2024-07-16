@@ -93,22 +93,22 @@ function List() {
     onSuccess() {
       toast({
         status: 'success',
-        title: t('core.dataset.Start export')
+        title: t('common:core.dataset.Start export')
       });
     },
     onSettled() {
       setLoading(false);
     },
-    errorToast: t('dataset.Export Dataset Limit Error')
+    errorToast: t('common:dataset.Export Dataset Limit Error')
   });
 
   const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
   const DeleteTipsMap = useRef({
-    [DatasetTypeEnum.folder]: t('dataset.deleteFolderTips'),
-    [DatasetTypeEnum.dataset]: t('core.dataset.Delete Confirm'),
-    [DatasetTypeEnum.websiteDataset]: t('core.dataset.Delete Confirm'),
-    [DatasetTypeEnum.externalFile]: t('core.dataset.Delete Confirm')
+    [DatasetTypeEnum.folder]: t('common:dataset.deleteFolderTips'),
+    [DatasetTypeEnum.dataset]: t('common:core.dataset.Delete Confirm'),
+    [DatasetTypeEnum.websiteDataset]: t('common:core.dataset.Delete Confirm'),
+    [DatasetTypeEnum.externalFile]: t('common:core.dataset.Delete Confirm')
   });
 
   const formatDatasets = useMemo(
@@ -253,14 +253,14 @@ function List() {
                             },
                             {
                               icon: 'common/file/move',
-                              label: t('Move'),
+                              label: t('common:Move'),
                               onClick: () => setMoveDatasetId(dataset._id)
                             },
                             ...(dataset.permission.hasManagePer
                               ? [
                                   {
                                     icon: 'support/team/key',
-                                    label: t('permission.Permission'),
+                                    label: t('common:permission.Permission'),
                                     onClick: () => setEditPerDatasetIndex(index)
                                   }
                                 ]
@@ -273,7 +273,7 @@ function List() {
                                 children: [
                                   {
                                     icon: 'export',
-                                    label: t('Export'),
+                                    label: t('common:Export'),
                                     onClick: () => {
                                       exportDataset(dataset);
                                     }
@@ -288,7 +288,7 @@ function List() {
                                 children: [
                                   {
                                     icon: 'delete',
-                                    label: t('common.Delete'),
+                                    label: t('common:common.Delete'),
                                     type: 'danger' as 'danger',
                                     onClick: () => onClickDeleteDataset(dataset._id)
                                   }
@@ -317,8 +317,8 @@ function List() {
                 >
                   {dataset.intro ||
                     (dataset.type === DatasetTypeEnum.folder
-                      ? t('core.dataset.Folder placeholder')
-                      : t('core.dataset.Intro Placeholder'))}
+                      ? t('common:core.dataset.Folder placeholder')
+                      : t('common:core.dataset.Intro Placeholder'))}
                 </Box>
                 <Flex alignItems={'center'} fontSize={'sm'}>
                   <Box flex={1}>
@@ -337,7 +337,11 @@ function List() {
         </Grid>
       )}
       {myDatasets.length === 0 && (
-        <EmptyTip pt={'35vh'} text={t('core.dataset.Empty Dataset Tips')} flexGrow="1"></EmptyTip>
+        <EmptyTip
+          pt={'35vh'}
+          text={t('common:core.dataset.Empty Dataset Tips')}
+          flexGrow="1"
+        ></EmptyTip>
       )}
 
       {editedDataset && (

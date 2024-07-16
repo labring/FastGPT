@@ -814,7 +814,7 @@ const ChatBox = (
 
     return {
       status: chatContent.status || 'loading',
-      name: t(chatContent.moduleName || '') || t('common.Loading')
+      name: t(chatContent.moduleName || '') || t('common:common.Loading')
     };
   }, [chatHistories, isChatting, t]);
 
@@ -935,11 +935,13 @@ const ChatBox = (
                         <Box>
                           <ChatBoxDivider
                             icon={'core/app/customFeedback'}
-                            text={t('core.app.feedback.Custom feedback')}
+                            text={t('common:core.app.feedback.Custom feedback')}
                           />
                           {item.customFeedbacks.map((text, i) => (
                             <Box key={`${text}${i}`}>
-                              <MyTooltip label={t('core.app.feedback.close custom feedback')}>
+                              <MyTooltip
+                                label={t('common:core.app.feedback.close custom feedback')}
+                              >
                                 <Checkbox onChange={onCloseCustomFeedback(item, i)}>
                                   {text}
                                 </Checkbox>
@@ -953,7 +955,7 @@ const ChatBox = (
                         <Box fontSize={'sm'}>
                           <ChatBoxDivider
                             icon="core/app/markLight"
-                            text={t('core.chat.Admin Mark Content')}
+                            text={t('common:core.chat.Admin Mark Content')}
                           />
                           <Box whiteSpace={'pre-wrap'}>
                             <Box color={'black'}>{item.adminFeedback.q}</Box>

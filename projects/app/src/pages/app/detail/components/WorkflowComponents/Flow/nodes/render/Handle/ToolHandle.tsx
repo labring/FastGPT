@@ -29,7 +29,7 @@ export const ToolTargetHandle = ({ nodeId }: ToolHandleProps) => {
 
   const Render = useMemo(() => {
     return hidden ? null : (
-      <MyTooltip label={t('core.workflow.tool.Handle')} shouldWrapChildren={false}>
+      <MyTooltip label={t('common:core.workflow.tool.Handle')} shouldWrapChildren={false}>
         <Handle
           style={{
             borderRadius: '0',
@@ -79,7 +79,7 @@ export const ToolSourceHandle = ({ nodeId }: ToolHandleProps) => {
 
   const Render = useMemo(() => {
     return (
-      <MyTooltip label={t('core.workflow.tool.Handle')} shouldWrapChildren={false}>
+      <MyTooltip label={t('common:core.workflow.tool.Handle')} shouldWrapChildren={false}>
         <Handle
           style={{
             borderRadius: '0',

@@ -73,10 +73,10 @@ const ChatTest = ({
           >
             <LightRowTabs<PluginRunBoxTabEnum>
               list={[
-                { label: t('common.Input'), value: PluginRunBoxTabEnum.input },
+                { label: t('common:common.Input'), value: PluginRunBoxTabEnum.input },
                 ...(chatRecords.length > 0
                   ? [
-                      { label: t('common.Output'), value: PluginRunBoxTabEnum.output },
+                      { label: t('common:common.Output'), value: PluginRunBoxTabEnum.output },
                       { label: '完整结果', value: PluginRunBoxTabEnum.detail }
                     ]
                   : [])
@@ -100,9 +100,9 @@ const ChatTest = ({
             borderBottom={isPlugin ? '1px solid #F4F4F7' : ''}
           >
             <Box fontSize={'lg'} fontWeight={'bold'} flex={1}>
-              {t('core.chat.Debug test')}
+              {t('common:core.chat.Debug test')}
             </Box>
-            <MyTooltip label={t('core.chat.Restart')}>
+            <MyTooltip label={t('common:core.chat.Restart')}>
               <IconButton
                 className="chat"
                 size={'smSquare'}
@@ -113,7 +113,7 @@ const ChatTest = ({
                 onClick={restartChat}
               />
             </MyTooltip>
-            <MyTooltip label={t('common.Close')}>
+            <MyTooltip label={t('common:common.Close')}>
               <IconButton
                 ml={4}
                 icon={<SmallCloseIcon fontSize={'22px'} />}

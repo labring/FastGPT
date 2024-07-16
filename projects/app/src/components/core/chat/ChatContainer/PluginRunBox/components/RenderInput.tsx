@@ -58,7 +58,7 @@ const RenderInput = () => {
               handleSubmit(onSubmit)();
             }}
           >
-            {histories.length > 0 ? t('common.Restart') : t('common.Run')}
+            {histories.length > 0 ? t('common:common.Restart') : t('common:common.Run')}
           </Button>
         </Flex>
       )}

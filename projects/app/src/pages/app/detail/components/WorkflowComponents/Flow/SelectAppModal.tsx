@@ -62,7 +62,7 @@ const SelectAppModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common.Cancel')}
+          {t('common:common.Cancel')}
         </Button>
         <Button
           ml={2}
@@ -73,7 +73,7 @@ const SelectAppModal = ({
             onClose();
           }}
         >
-          {t('common.Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

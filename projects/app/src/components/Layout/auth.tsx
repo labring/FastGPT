@@ -39,7 +39,7 @@ const Auth = ({ children }: { children: JSX.Element }) => {
         );
         toast({
           status: 'warning',
-          title: t('support.user.Need to login')
+          title: t('common:support.user.Need to login')
         });
       }
     }

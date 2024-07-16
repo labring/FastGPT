@@ -149,7 +149,7 @@ const FieldModal = ({
           {/* key */}
           <Flex mt={3} alignItems={'center'}>
             <FormLabel flex={'0 0 70px'} required>
-              {t('core.module.Field Name')}
+              {t('common:core.module.Field Name')}
             </FormLabel>
             <Input
               bg={'myGray.50'}

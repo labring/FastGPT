@@ -154,7 +154,7 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       </ModalBody>
       <ModalFooter alignItems="flex-end">
         <Button h={'30px'} isLoading={isLoading} onClick={submit}>
-          {t('common.Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

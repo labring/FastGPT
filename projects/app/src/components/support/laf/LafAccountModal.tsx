@@ -55,7 +55,7 @@ const LafAccountModal = ({
       const token = await postLafPat2Token(pat);
       setValue('token', token);
     },
-    errorToast: t('plugin.Invalid Env')
+    errorToast: t('common:plugin.Invalid Env')
   });
 
   const { data: appListData = [] } = useQuery(
@@ -91,18 +91,18 @@ const LafAccountModal = ({
       initUserInfo();
       onClose();
     },
-    successToast: t('common.Update Success'),
-    errorToast: t('common.Update Failed')
+    successToast: t('common:common.Update Success'),
+    errorToast: t('common:common.Update Failed')
   });
 
   return (
-    <MyModal isOpen iconSrc="/imgs/workflow/laf.png" title={t('user.Laf Account Setting')}>
+    <MyModal isOpen iconSrc="/imgs/workflow/laf.png" title={t('common:user.Laf Account Setting')}>
       <ModalBody>
         <Box fontSize={'sm'} color={'myGray.500'}>
-          <Box>{t('support.user.Laf account intro')}</Box>
+          <Box>{t('common:support.user.Laf account intro')}</Box>
           <Box textDecoration={'underline'}>
             <Link href={getDocPath('/docs/workflow/modules/laf/')} isExternal>
-              {t('support.user.Laf account course')}
+              {t('common:support.user.Laf account course')}
             </Link>
           </Box>
           <Box>
@@ -121,7 +121,7 @@ const LafAccountModal = ({
                 flex={'1 0 0'}
                 size={'sm'}
                 {...register('pat')}
-                placeholder={t('plugin.Enter PAT')}
+                placeholder={t('common:plugin.Enter PAT')}
               />
               <Button
                 ml={2}
@@ -151,7 +151,7 @@ const LafAccountModal = ({
         </Flex>
         {!!lafToken && (
           <Flex alignItems={'center'} mt={5}>
-            <Box flex={'0 0 70px'}>{t('plugin.Currentapp')}</Box>
+            <Box flex={'0 0 70px'}>{t('common:plugin.Currentapp')}</Box>
             <MySelect
               minW={'200px'}
               list={
@@ -162,7 +162,7 @@ const LafAccountModal = ({
                     value: app.appid
                   })) || []
               }
-              placeholder={t('plugin.App')}
+              placeholder={t('common:plugin.App')}
               value={watch('appid')}
               onchange={(e) => {
                 setValue('appid', e);
@@ -180,11 +180,11 @@ const LafAccountModal = ({
             onClose();
           }}
         >
-          {t('common.Close')}
+          {t('common:common.Close')}
         </Button>
         {appid && (
           <Button ml={3} isLoading={isUpdating} onClick={handleSubmit((data) => onSubmit(data))}>
-            {t('common.Update')}
+            {t('common:common.Update')}
           </Button>
         )}
       </ModalFooter>

@@ -97,7 +97,7 @@ const SelectCollections = ({
 
       return null;
     },
-    errorToast: t('common.Request Error')
+    errorToast: t('common:common.Request Error')
   });
 
   return (
@@ -122,8 +122,8 @@ const SelectCollections = ({
                   {title
                     ? title
                     : type === 'folder'
-                      ? t('common.Root folder')
-                      : t('dataset.collections.Select Collection')}
+                      ? t('common:common.Root folder')
+                      : t('common:dataset.collections.Select Collection')}
                 </Box>
                 {!!tip && (
                   <Box fontSize={'sm'} color={'myGray.500'}>
@@ -194,7 +194,7 @@ const SelectCollections = ({
           )}
         </Grid>
         {collections.length === 0 && (
-          <EmptyTip pt={'20vh'} text={t('common.folder.No Folder')}></EmptyTip>
+          <EmptyTip pt={'20vh'} text={t('common:common.folder.No Folder')}></EmptyTip>
         )}
         <Loading loading={isLoading} fixed={false} />
       </ModalBody>
@@ -207,7 +207,7 @@ const SelectCollections = ({
             isDisabled={type === 'collection' && selectedDatasetCollectionIds.length === 0}
             onClick={mutate}
           >
-            {type === 'folder' ? t('common.Confirm Move') : t('common.Confirm')}
+            {type === 'folder' ? t('common:common.Confirm Move') : t('common:common.Confirm')}
           </Button>
         </ModalFooter>
       )}

@@ -60,7 +60,7 @@ export const useDebug = () => {
 
       toast({
         status: 'warning',
-        title: t('core.workflow.Check Failed')
+        title: t('common:core.workflow.Check Failed')
       });
       return Promise.reject();
     }
@@ -178,7 +178,7 @@ export const useDebug = () => {
       <MyRightDrawer
         onClose={onClose}
         iconSrc="core/workflow/debugBlue"
-        title={t('core.workflow.Debug Node')}
+        title={t('common:core.workflow.Debug Node')}
         maxW={['90vw', '35vw']}
         px={0}
       >

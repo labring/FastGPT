@@ -126,7 +126,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     {
       manual: false,
       refreshDeps: [appId],
-      errorToast: t('core.app.error.Get app failed'),
+      errorToast: t('common:core.app.error.Get app failed'),
       onError(err: any) {
         router.replace('/app/list');
       },
@@ -180,8 +180,8 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       onSuccess() {
         router.replace(`/app/list`);
       },
-      successToast: t('common.Delete Success'),
-      errorToast: t('common.Delete Failed')
+      successToast: t('common:common.Delete Success'),
+      errorToast: t('common:common.Delete Failed')
     }
   );
   const onDelApp = useCallback(() => openConfirmDel(deleteApp)(), [deleteApp, openConfirmDel]);

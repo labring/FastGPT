@@ -54,7 +54,7 @@ const RawSourceBox = ({
           className={props.className ?? 'textEllipsis'}
           wordBreak={'break-all'}
         >
-          {sourceName || t('common.UnKnow Source')}
+          {sourceName || t('common:common.UnKnow Source')}
         </Box>
       </Box>
     </MyTooltip>

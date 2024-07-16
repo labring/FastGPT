@@ -117,8 +117,8 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
 
   const { runAsync: onDelDataset } = useRequest2(delDatasetById, {
-    successToast: t('common.Delete Success'),
-    errorToast: t('dataset.Delete Dataset Error')
+    successToast: t('common:common.Delete Success'),
+    errorToast: t('common:dataset.Delete Dataset Error')
   });
 
   const contextValue = {

@@ -59,7 +59,7 @@ function EditModal({
         setValue('avatar', src);
       } catch (err: any) {
         toast({
-          title: getErrText(err, t('common.Select File Failed')),
+          title: getErrText(err, t('common:common.Select File Failed')),
           status: 'warning'
         });
       }
@@ -75,8 +75,8 @@ function EditModal({
       onSuccess();
       onClose();
     },
-    successToast: t('common.Create Success'),
-    errorToast: t('common.Create Failed')
+    successToast: t('common:common.Create Success'),
+    errorToast: t('common:common.Create Failed')
   });
   const { mutate: onclickUpdate, isLoading: updating } = useRequest({
     mutationFn: async (data: EditTeamFormDataType) => {
@@ -90,8 +90,8 @@ function EditModal({
       onSuccess();
       onClose();
     },
-    successToast: t('common.Update Success'),
-    errorToast: t('common.Update Failed')
+    successToast: t('common:common.Update Success'),
+    errorToast: t('common:common.Update Failed')
   });
 
   return (
@@ -99,14 +99,14 @@ function EditModal({
       isOpen
       onClose={onClose}
       iconSrc="/imgs/modal/team.svg"
-      title={defaultData.id ? t('user.team.Update Team') : t('user.team.Create Team')}
+      title={defaultData.id ? t('common:user.team.Update Team') : t('common:user.team.Create Team')}
     >
       <ModalBody>
         <Box color={'myGray.800'} fontWeight={'bold'}>
-          {t('user.team.Set Name')}
+          {t('common:user.team.Set Name')}
         </Box>
         <Flex mt={3} alignItems={'center'}>
-          <MyTooltip label={t('common.Set Avatar')}>
+          <MyTooltip label={t('common:common.Set Avatar')}>
             <Avatar
               flexShrink={0}
               src={avatar}
@@ -123,9 +123,9 @@ function EditModal({
             autoFocus
             bg={'myWhite.600'}
             maxLength={20}
-            placeholder={t('user.team.Team Name')}
+            placeholder={t('common:user.team.Team Name')}
             {...register('name', {
-              required: t('common.Please Input Name')
+              required: t('common:common.Please Input Name')
             })}
           />
         </Flex>
@@ -136,10 +136,10 @@ function EditModal({
           <>
             <Box flex={1} />
             <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-              {t('common.Close')}
+              {t('common:common.Close')}
             </Button>
             <Button isLoading={updating} onClick={handleSubmit((data) => onclickUpdate(data))}>
-              {t('common.Confirm Update')}
+              {t('common:common.Confirm Update')}
             </Button>
           </>
         ) : (
@@ -148,7 +148,7 @@ function EditModal({
             isLoading={creating}
             onClick={handleSubmit((data) => onclickCreate(data))}
           >
-            {t('common.Confirm Create')}
+            {t('common:common.Confirm Create')}
           </Button>
         )}
       </ModalFooter>

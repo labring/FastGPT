@@ -21,7 +21,7 @@ const MemberListCard = ({ tagStyle, ...props }: MemberListCardProps) => {
     <MyBox isLoading={isFetchingCollaborator} userSelect={'none'} {...props}>
       {collaboratorList?.length === 0 ? (
         <Box p={3} color="myGray.600" fontSize={'xs'} textAlign={'center'}>
-          {t('permission.Not collaborator')}
+          {t('common:permission.Not collaborator')}
         </Box>
       ) : (
         <Flex gap="2" flexWrap={'wrap'}>

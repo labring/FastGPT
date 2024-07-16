@@ -38,7 +38,7 @@ const ChatTest = ({ appForm }: { appForm: AppSimpleEditFormType }) => {
         <Box fontSize={['md', 'lg']} fontWeight={'bold'} flex={1} color={'myGray.900'}>
           {appT('Chat Debug')}
         </Box>
-        <MyTooltip label={t('core.chat.Restart')}>
+        <MyTooltip label={t('common:core.chat.Restart')}>
           <IconButton
             className="chat"
             size={'smSquare'}

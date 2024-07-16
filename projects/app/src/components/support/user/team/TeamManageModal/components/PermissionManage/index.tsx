@@ -49,7 +49,7 @@ function PermissionManage() {
       >
         <Flex>
           <Box fontSize={['sm', 'md']} fontWeight={'bold'} alignItems={'center'}>
-            {t('user.team.role.Admin')}
+            {t('common:user.team.role.Admin')}
           </Box>
           <Box
             fontSize={['xs']}

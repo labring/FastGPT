@@ -59,7 +59,7 @@ const InformTable = () => {
                     }
                   }}
                 >
-                  {t('support.inform.Read')}
+                  {t('common:support.inform.Read')}
                 </Button>
               )}
             </Flex>

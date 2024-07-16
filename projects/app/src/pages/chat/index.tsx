@@ -196,7 +196,7 @@ const Chat = ({
           })(
             <ChatHistorySlider
               apps={myApps}
-              confirmClearText={t('core.chat.Confirm to clear history')}
+              confirmClearText={t('common:core.chat.Confirm to clear history')}
               appId={appId}
               appName={chatData.app.name}
               appAvatar={chatData.app.avatar}
@@ -313,7 +313,7 @@ const Render = (props: Props) => {
       if (apps.length === 0) {
         toast({
           status: 'error',
-          title: t('core.chat.You need to a chat app')
+          title: t('common:core.chat.You need to a chat app')
         });
         router.replace('/app/list');
       } else {

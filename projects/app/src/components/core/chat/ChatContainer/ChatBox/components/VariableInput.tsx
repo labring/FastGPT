@@ -104,7 +104,7 @@ const VariableInput = ({
                 chatForm.setValue('chatStarted', true);
               })}
             >
-              {t('core.chat.Start Chat')}
+              {t('common:core.chat.Start Chat')}
             </Button>
           )}
         </Card>

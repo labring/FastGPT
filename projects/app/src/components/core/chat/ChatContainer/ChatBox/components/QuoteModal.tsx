@@ -51,7 +51,7 @@ const QuoteModal = ({
               <>{t('core.chat.Quote Amount', { amount: rawSearch.length })}</>
             )}
             <Box fontSize={'xs'} color={'myGray.500'} fontWeight={'normal'}>
-              {t('core.chat.quote.Quote Tip')}
+              {t('common:core.chat.quote.Quote Tip')}
             </Box>
           </Box>
         }

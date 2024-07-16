@@ -95,7 +95,7 @@ const ChatInput = ({
         }
       }
     },
-    errorToast: t('common.Upload File Failed')
+    errorToast: t('common:common.Upload File Failed')
   });
   const onSelectFile = useCallback(
     async (files: File[]) => {
@@ -257,7 +257,7 @@ const ChatInput = ({
           visibility={isSpeaking && isTransCription ? 'visible' : 'hidden'}
         >
           <Spinner size={'sm'} mr={4} />
-          {t('core.chat.Converting to text')}
+          {t('common:core.chat.Converting to text')}
         </Flex>
 
         {/* file preview */}
@@ -336,7 +336,7 @@ const ChatInput = ({
                 onOpenSelectFile();
               }}
             >
-              <MyTooltip label={t('core.chat.Select Image')}>
+              <MyTooltip label={t('common:core.chat.Select Image')}>
                 <MyIcon name={'core/chat/fileSelect'} w={'18px'} color={'myGray.600'} />
               </MyTooltip>
               <File onSelect={onSelectFile} />
@@ -353,7 +353,9 @@ const ChatInput = ({
             _focusVisible={{
               border: 'none'
             }}
-            placeholder={isSpeaking ? t('core.chat.Speaking') : t('core.chat.Type a message')}
+            placeholder={
+              isSpeaking ? t('common:core.chat.Speaking') : t('common:core.chat.Type a message')
+            }
             resize={'none'}
             rows={1}
             height={'22px'}
@@ -430,7 +432,7 @@ const ChatInput = ({
                   }}
                 />
                 {isSpeaking && (
-                  <MyTooltip label={t('core.chat.Cancel Speak')}>
+                  <MyTooltip label={t('common:core.chat.Cancel Speak')}>
                     <Flex
                       mr={2}
                       alignItems={'center'}
@@ -451,7 +453,11 @@ const ChatInput = ({
                     </Flex>
                   </MyTooltip>
                 )}
-                <MyTooltip label={isSpeaking ? t('core.chat.Finish Speak') : t('core.chat.Record')}>
+                <MyTooltip
+                  label={
+                    isSpeaking ? t('common:core.chat.Finish Speak') : t('common:core.chat.Record')
+                  }
+                >
                   <Flex
                     mr={2}
                     alignItems={'center'}
@@ -513,7 +519,7 @@ const ChatInput = ({
                     color={'gray.500'}
                   />
                 ) : (
-                  <MyTooltip label={t('core.chat.Send Message')}>
+                  <MyTooltip label={t('common:core.chat.Send Message')}>
                     <MyIcon
                       name={'core/chat/sendFill'}
                       width={['18px', '20px']}

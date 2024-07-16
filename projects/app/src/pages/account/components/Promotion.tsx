@@ -69,24 +69,24 @@ const Promotion = () => {
     <Flex flexDirection={'column'} py={[0, 5]} px={5} h={'100%'} position={'relative'}>
       <Grid gridTemplateColumns={['1fr 1fr', 'repeat(2,1fr)', 'repeat(4,1fr)']} gridGap={5}>
         <Box {...statisticsStyles}>
-          <Box>{t('user.Amount of inviter')}</Box>
+          <Box>{t('common:user.Amount of inviter')}</Box>
           <Box {...titleStyles}>{invitedAmount}</Box>
         </Box>
         <Box {...statisticsStyles}>
-          <Box>{t('user.Amount of earnings')}</Box>
+          <Box>{t('common:user.Amount of earnings')}</Box>
           <Box {...titleStyles}>{earningsAmount}</Box>
         </Box>
         <Box {...statisticsStyles}>
           <Flex alignItems={'center'} justifyContent={'center'}>
-            <Box>{t('user.Promotion Rate')}</Box>
-            <QuestionTip ml={1} label={t('user.Promotion rate tip')}></QuestionTip>
+            <Box>{t('common:user.Promotion Rate')}</Box>
+            <QuestionTip ml={1} label={t('common:user.Promotion rate tip')}></QuestionTip>
           </Flex>
           <Box {...titleStyles}>{userInfo?.promotionRate || 15}%</Box>
         </Box>
         <Box {...statisticsStyles}>
           <Flex alignItems={'center'} justifyContent={'center'}>
-            <Box>{t('user.Invite Url')}</Box>
-            <QuestionTip ml={1} label={t('user.Invite url tip')}></QuestionTip>
+            <Box>{t('common:user.Invite Url')}</Box>
+            <QuestionTip ml={1} label={t('common:user.Invite url tip')}></QuestionTip>
           </Flex>
           <Button
             mt={4}
@@ -96,7 +96,7 @@ const Promotion = () => {
               copyData(`${location.origin}/?hiId=${userInfo?._id}`);
             }}
           >
-            {t('user.Copy invite url')}
+            {t('common:user.Copy invite url')}
           </Button>
         </Box>
       </Grid>

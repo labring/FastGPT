@@ -31,7 +31,7 @@ const TagTextarea = ({ defaultValues, onUpdate, ...props }: Props) => {
       if (tags.includes(value)) {
         return toast({
           status: 'warning',
-          title: t('common.input.Repeat Value')
+          title: t('common:common.input.Repeat Value')
         });
       }
       setTags([...tags, value]);

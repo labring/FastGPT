@@ -258,7 +258,7 @@ const ListItem = ({
             my={3}
             color={'primary.600'}
           >
-            {t('core.module.input.add')}
+            {t('common:core.module.input.add')}
           </Button>
         </Container>
         {!snapshot.isDragging && (
@@ -321,7 +321,7 @@ const Reference = ({
 
   return (
     <ReferSelector
-      placeholder={t('选择引用变量')}
+      placeholder={t('common:选择引用变量')}
       list={referenceList}
       value={formatValue}
       onSelect={onSelect}

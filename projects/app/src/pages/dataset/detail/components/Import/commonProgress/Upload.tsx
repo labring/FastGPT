@@ -118,7 +118,7 @@ const Upload = () => {
     },
     onSuccess() {
       toast({
-        title: t('core.dataset.import.Import success'),
+        title: t('common:core.dataset.import.Import success'),
         status: 'success'
       });
 
@@ -152,10 +152,10 @@ const Upload = () => {
           <Thead draggable={false}>
             <Tr bg={'myGray.100'} mb={2}>
               <Th borderLeftRadius={'md'} overflow={'hidden'} borderBottom={'none'} py={4}>
-                {t('core.dataset.import.Source name')}
+                {t('common:core.dataset.import.Source name')}
               </Th>
               <Th borderBottom={'none'} py={4}>
-                {t('core.dataset.import.Upload status')}
+                {t('common:core.dataset.import.Upload status')}
               </Th>
             </Tr>
           </Thead>
@@ -173,13 +173,13 @@ const Upload = () => {
                 <Td>
                   <Box display={'inline-block'}>
                     {item.createStatus === 'waiting' && (
-                      <MyTag colorSchema={'gray'}>{t('common.Waiting')}</MyTag>
+                      <MyTag colorSchema={'gray'}>{t('common:common.Waiting')}</MyTag>
                     )}
                     {item.createStatus === 'creating' && (
-                      <MyTag colorSchema={'blue'}>{t('common.Creating')}</MyTag>
+                      <MyTag colorSchema={'blue'}>{t('common:common.Creating')}</MyTag>
                     )}
                     {item.createStatus === 'finish' && (
-                      <MyTag colorSchema={'green'}>{t('common.Finish')}</MyTag>
+                      <MyTag colorSchema={'green'}>{t('common:common.Finish')}</MyTag>
                     )}
                   </Box>
                 </Td>
@@ -194,7 +194,7 @@ const Upload = () => {
           {sources.length > 0
             ? `${t('core.dataset.import.Total files', { total: sources.length })} | `
             : ''}
-          {t('core.dataset.import.Start upload')}
+          {t('common:core.dataset.import.Start upload')}
         </Button>
       </Flex>
     </Box>

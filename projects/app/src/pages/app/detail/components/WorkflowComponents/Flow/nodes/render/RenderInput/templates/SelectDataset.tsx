@@ -73,7 +73,7 @@ const SelectDatasetRender = ({ inputs = [], item, nodeId }: RenderInputProps) =>
             leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
             onClick={onOpenDatasetSelect}
           >
-            {t('common.Choose')}
+            {t('common:common.Choose')}
           </Button>
           {selectedDatasets.map((item) => (
             <Flex
