@@ -600,8 +600,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1382,7 +1381,7 @@
         "Terms": "服务协议",
         "Username": "用户名",
         "Wechat": "微信登录",
-        "Wx qr login": "微信扫码登录"
+        "wx_qr_login": "微信扫码登录"
       },
       "team": {
         "Dataset usage": "知识库容量",
