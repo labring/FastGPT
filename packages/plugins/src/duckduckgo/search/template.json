@@ -1,14 +1,14 @@
 {
   "author": "FastGPT",
   "version": "486",
-  "name": "DuckDuckGo 搜索",
+  "name": "DuckDuckGo 网络搜索",
   "avatar": "/imgs/workflow/textEditor.svg",
   "intro": "使用 DuckDuckGo 进行网络搜索",
   "showStatus": true,
   "weight": 10,
 
   "isTool": true,
-  "templateType": "tools",
+  "templateType": "search",
 
   "workflow": {
     "nodes": [

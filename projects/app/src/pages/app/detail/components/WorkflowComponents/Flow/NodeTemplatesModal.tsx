@@ -403,7 +403,7 @@ const RenderList = React.memo(function RenderList({
                 }
               })}
             >
-              {item.label && (
+              {item.label && formatTemplates.length > 1 && (
                 <Flex>
                   <Box fontSize={'sm'} fontWeight={'bold'} flex={1}>
                     {t(item.label as any)}

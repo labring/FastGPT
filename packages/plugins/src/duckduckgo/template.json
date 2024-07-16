@@ -8,7 +8,7 @@
   "weight": 10,
 
   "isTool": true,
-  "templateType": "tools",
+  "templateType": "search",
 
   "workflow": {
     "nodes": [],

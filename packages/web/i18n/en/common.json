@@ -1119,6 +1119,10 @@
         "OnRevert version confirm": "Confirm to revert to this version? It will save the configuration of the version being edited and create a new published version for the reverted version.",
         "histories": "Publishing records"
       },
+      "template": {
+        "Multimodal": "Multimodal",
+        "Search": "Search"
+      },
       "tool": {
         "Handle": "Tool connector",
         "Select Tool": "Select tool"
