@@ -89,7 +89,7 @@ try {
      get chat logs; 
      close custom feedback; 
   */
-  ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 }, { background: true, unique: true });
+  ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 }, { background: true });
   // admin charts
   ChatItemSchema.index({ time: -1, obj: 1 }, { background: true });
   // timer, clear history
