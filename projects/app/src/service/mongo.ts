@@ -5,23 +5,29 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller';
 import { exit } from 'process';
 import { initVectorStore } from '@fastgpt/service/common/vectorStore/controller';
-import { getInitConfig } from '@/pages/api/common/system/getInitData';
 import { startCron } from './common/system/cron';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { initGlobal } from './common/system';
+import { initGlobal, getInitConfig } from './common/system';
 import { startMongoWatch } from './common/system/volumnMongoWatch';
 import { startTrainingQueue } from './core/dataset/training/utils';
 import { systemStartCb } from '@fastgpt/service/common/system/tools';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 /**
+ * This function is equivalent to the entry to the service
  * connect MongoDB and init data
  */
 export function connectToDatabase() {
-  return connectMongo({
-    beforeHook: () => {
-      initGlobal();
-    },
-    afterHook: async () => {
+  if (!global.systemLoadedGlobalVariables) {
+    global.systemLoadedGlobalVariables = true;
+    initGlobal();
+  }
+
+  return connectMongo().then(async () => {
+    if (global.systemLoadedGlobalConfig) return;
+    global.systemLoadedGlobalConfig = true;
+
+    try {
       systemStartCb();
 
       //init system config；init vector database；init root user
@@ -33,6 +39,9 @@ export function connectToDatabase() {
 
       // start queue
       startTrainingQueue(true);
+    } catch (error) {
+      addLog.error('init error', error);
+      exit(1);
     }
   });
 }

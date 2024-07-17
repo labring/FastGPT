@@ -26,5 +26,6 @@ declare global {
     callbackMap: Record<string, (e: number) => void>;
   }[];
 
-  var systemInited: boolean;
+  var systemLoadedGlobalVariables: boolean;
+  var systemLoadedGlobalConfig: boolean;
 }
