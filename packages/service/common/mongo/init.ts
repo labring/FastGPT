@@ -1,4 +1,3 @@
-import { exit } from 'process';
 import { addLog } from '../system/log';
 import { connectionMongo } from './index';
 import type { Mongoose } from 'mongoose';
@@ -8,18 +7,11 @@ const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
 /**
  * connect MongoDB and init data
  */
-export async function connectMongo({
-  beforeHook,
-  afterHook
-}: {
-  beforeHook?: () => any;
-  afterHook?: () => Promise<any>;
-}): Promise<Mongoose> {
+export async function connectMongo(): Promise<Mongoose> {
+  /* Connecting, connected will return */
   if (connectionMongo.connection.readyState !== 0) {
     return connectionMongo;
   }
-
-  beforeHook && beforeHook();
 
   console.log('mongo start connect');
   try {
@@ -54,16 +46,6 @@ export async function connectMongo({
   } catch (error) {
     connectionMongo.disconnect();
     addLog.error('mongo connect error', error);
-  }
-
-  try {
-    if (!global.systemInited) {
-      global.systemInited = true;
-      afterHook && (await afterHook());
-    }
-  } catch (error) {
-    addLog.error('Mongo connect after hook error', error);
-    exit(1);
   }
 
   return connectionMongo;

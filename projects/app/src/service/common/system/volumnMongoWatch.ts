@@ -1,4 +1,4 @@
-import { initSystemConfig } from '@/pages/api/common/system/getInitData';
+import { initSystemConfig } from '.';
 import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training/utils';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 
