@@ -13,12 +13,13 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
 import { useMount } from 'ahooks';
 
-const provider = ({ code, state, error }: { code: string; state: string; error?: string }) => {
+const provider = () => {
   const { t } = useTranslation();
   const { loginStore } = useSystemStore();
   const { setLastChatId, setLastChatAppId } = useChatStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();
+  const { code, state, error } = router.query as { code: string; state: string; error?: string };
   const { toast } = useToast();
 
   const loginSuccess = useCallback(
@@ -76,9 +77,7 @@ const provider = ({ code, state, error }: { code: string; state: string; error?:
     [loginStore, loginSuccess, router, toast]
   );
 
-  useMount(() => {
-    clearToken();
-    router.prefetch('/app/list');
+  useEffect(() => {
     if (error) {
       toast({
         status: 'warning',
@@ -87,7 +86,11 @@ const provider = ({ code, state, error }: { code: string; state: string; error?:
       router.replace('/login');
       return;
     }
-    if (!code) return;
+
+    if (!code || !loginStore || !state) return;
+
+    clearToken();
+    router.prefetch('/app/list');
 
     if (state !== loginStore?.state) {
       toast({
@@ -98,22 +101,12 @@ const provider = ({ code, state, error }: { code: string; state: string; error?:
         router.replace('/login');
       }, 1000);
       return;
+    } else {
+      authCode(code);
     }
-    authCode(code);
-  });
+  }, [code, error, loginStore, state]);
 
   return <Loading />;
 };
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      code: content?.query?.code || '',
-      state: content?.query?.state || '',
-      error: content?.query?.error || '',
-      ...(await serviceSideProps(content))
-    }
-  };
-}
 
 export default provider;
