@@ -343,7 +343,7 @@ function EditKeyModal({
             placeholder={publishT('key alias') || 'key alias'}
             maxLength={20}
             {...register('name', {
-              required: t('common:common.Name is empty') || 'Name is empty'
+              required: t('common:common.name_is_empty') || 'name_is_empty'
             })}
           />
         </Flex>

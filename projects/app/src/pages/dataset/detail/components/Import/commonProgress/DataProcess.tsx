@@ -85,9 +85,9 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
           <FormLabel flex={'0 0 100px'}>{t('common:core.dataset.import.Training mode')}</FormLabel>
           <LeftRadio
             list={trainingModeList.map(([key, value]) => ({
-              title: t(value.label),
+              title: t(value.label as any),
               value: key,
-              tooltip: t(value.tooltip)
+              tooltip: t(value.tooltip as any)
             }))}
             px={3}
             py={2}

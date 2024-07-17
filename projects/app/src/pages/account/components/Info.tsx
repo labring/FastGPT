@@ -404,7 +404,7 @@ const PlanUsage = () => {
               {t('common:support.wallet.subscription.Current plan')}
             </Box>
             <Box fontWeight={'bold'} fontSize="lg">
-              {t(planName)}
+              {t(planName as any)}
             </Box>
 
             {isFreeTeam ? (

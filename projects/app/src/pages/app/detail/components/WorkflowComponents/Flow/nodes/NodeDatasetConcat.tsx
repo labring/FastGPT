@@ -203,7 +203,7 @@ function Reference({
         />
       </Flex>
       <ReferSelector
-        placeholder={t(inputChildren.referencePlaceholder || '选择知识库引用')}
+        placeholder={t((inputChildren.referencePlaceholder as any) || '选择知识库引用')}
         list={referenceList}
         value={formatValue}
         onSelect={onSelect}

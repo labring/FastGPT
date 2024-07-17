@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 export const useBeforeunload = (props?: { callback?: () => any; tip?: string }) => {
   const { t } = useTranslation();
 
-  const { tip = t('common.Confirm to leave the page'), callback } = props || {};
+  const { tip = t('common:common.Confirm to leave the page'), callback } = props || {};
 
   useEffect(() => {
     const listen =

@@ -77,11 +77,11 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <FormLabel flex={'0 0 80px'}>{t('common:support.wallet.usage.App name')}:</FormLabel>
-          <Box>{t(usage.appName) || '-'}</Box>
+          <Box>{t(usage.appName as any) || '-'}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <FormLabel flex={'0 0 80px'}>{t('common:support.wallet.usage.Source')}:</FormLabel>
-          <Box>{t(UsageSourceMap[usage.source]?.label)}</Box>
+          <Box>{t(UsageSourceMap[usage.source]?.label as any)}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <FormLabel flex={'0 0 80px'}>{t('common:support.wallet.usage.Total points')}:</FormLabel>
@@ -106,7 +106,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
               <Tbody>
                 {filterBillList.map((item, i) => (
                   <Tr key={i}>
-                    <Td>{t(item.moduleName)}</Td>
+                    <Td>{t(item.moduleName as any)}</Td>
                     {hasModel && <Td>{item.model ?? '-'}</Td>}
                     {hasToken && <Td>{item.tokens ?? '-'}</Td>}
                     {hasCharsLen && <Td>{item.charsLength ?? '-'}</Td>}

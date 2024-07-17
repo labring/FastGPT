@@ -51,7 +51,7 @@ const UsageTable = () => {
       [
         { label: t('common:common.All'), value: '' },
         ...Object.entries(UsageSourceMap).map(([key, value]) => ({
-          label: t(value.label),
+          label: t(value.label as any),
           value: key
         }))
       ] as {
@@ -169,8 +169,8 @@ const UsageTable = () => {
               <Tr key={item.id}>
                 {/* <Td>{item.memberName}</Td> */}
                 <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
-                <Td>{t(UsageSourceMap[item.source]?.label) || '-'}</Td>
-                <Td>{t(item.appName) || '-'}</Td>
+                <Td>{t(UsageSourceMap[item.source]?.label as any) || '-'}</Td>
+                <Td>{t(item.appName as any) || '-'}</Td>
                 <Td>{formatNumber(item.totalPoints) || 0}</Td>
                 <Td>
                   <Button size={'sm'} variant={'whitePrimary'} onClick={() => setUsageDetail(item)}>

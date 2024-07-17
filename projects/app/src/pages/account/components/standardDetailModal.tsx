@@ -73,8 +73,9 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
                           w={'20px'}
                           color={'myGray.800'}
                         />
-                        {t(subTypeMap[type]?.label)}
-                        {currentSubLevel && `(${t(standardSubLevelMap[currentSubLevel]?.label)})`}
+                        {t(subTypeMap[type]?.label as any)}
+                        {currentSubLevel &&
+                          `(${t(standardSubLevelMap[currentSubLevel]?.label as any)})`}
                       </Td>
                       <Td>{datasetSize ? `${datasetSize}组` : '-'}</Td>
                       <Td>

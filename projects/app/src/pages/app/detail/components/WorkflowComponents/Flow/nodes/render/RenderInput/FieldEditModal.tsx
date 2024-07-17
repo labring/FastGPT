@@ -62,7 +62,7 @@ const FieldModal = ({
     if (!customInputConfig.selectValueTypeList) return [];
 
     const dataTypeSelectList = Object.values(FlowValueTypeMap).map((item) => ({
-      label: t(item.label),
+      label: t(item.label as any),
       value: item.value
     }));
 

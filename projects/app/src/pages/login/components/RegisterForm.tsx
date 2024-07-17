@@ -71,7 +71,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           defaultAppTemplates.forEach((template) => {
             postCreateApp({
               avatar: template.avatar,
-              name: t(template.name),
+              name: t(template.name as any),
               modules: template.modules,
               edges: template.edges,
               type: template.type

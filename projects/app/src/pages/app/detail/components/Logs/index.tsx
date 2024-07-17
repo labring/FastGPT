@@ -126,7 +126,7 @@ const Logs = () => {
                   onClick={() => setDetailLogsId(item.id)}
                 >
                   <Td>
-                    <Box>{t(ChatSourceMap[item.source]?.name || 'UnKnow')}</Box>
+                    <Box>{t(ChatSourceMap[item.source]?.name || ('UnKnow' as any))}</Box>
                     <Box color={'myGray.500'}>{dayjs(item.time).format('YYYY/MM/DD HH:mm')}</Box>
                   </Td>
                   <Td className="textEllipsis" maxW={'250px'}>

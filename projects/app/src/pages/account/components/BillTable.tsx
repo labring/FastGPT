@@ -45,7 +45,7 @@ const BillTable = () => {
       [
         { label: t('common:common.All'), value: '' },
         ...Object.entries(billTypeMap).map(([key, value]) => ({
-          label: t(value.label),
+          label: t(value.label as any),
           value: key
         }))
       ] as {
@@ -130,12 +130,12 @@ const BillTable = () => {
             {bills.map((item, i) => (
               <Tr key={item._id}>
                 <Td>{i + 1}</Td>
-                <Td>{t(billTypeMap[item.type]?.label)}</Td>
+                <Td>{t(billTypeMap[item.type]?.label as any)}</Td>
                 <Td>
                   {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                 </Td>
                 <Td>{formatStorePrice2Read(item.price)}元</Td>
-                <Td>{t(billStatusMap[item.status]?.label)}</Td>
+                <Td>{t(billStatusMap[item.status]?.label as any)}</Td>
                 <Td>
                   {item.status === 'NOTPAY' && (
                     <Button mr={4} onClick={() => handleRefreshPayOrder(item._id)} size={'sm'}>
@@ -201,12 +201,12 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.Status')}:</FormLabel>
-          <Box>{t(billStatusMap[bill.status]?.label)}</Box>
+          <Box>{t(billStatusMap[bill.status]?.label as any)}</Box>
         </Flex>
         {!!bill.metadata?.payWay && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.payWay.Way')}:</FormLabel>
-            <Box>{t(billPayWayMap[bill.metadata.payWay]?.label)}</Box>
+            <Box>{t(billPayWayMap[bill.metadata.payWay]?.label as any)}</Box>
           </Flex>
         )}
         <Flex alignItems={'center'} pb={4}>
@@ -215,14 +215,14 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.Type')}:</FormLabel>
-          <Box>{t(billTypeMap[bill.type]?.label)}</Box>
+          <Box>{t(billTypeMap[bill.type]?.label as any)}</Box>
         </Flex>
         {!!bill.metadata?.subMode && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>
               {t('common:support.wallet.subscription.mode.Period')}:
             </FormLabel>
-            <Box>{t(subModeMap[bill.metadata.subMode]?.label)}</Box>
+            <Box>{t(subModeMap[bill.metadata.subMode]?.label as any)}</Box>
           </Flex>
         )}
         {!!bill.metadata?.standSubLevel && (
@@ -230,7 +230,7 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
             <FormLabel flex={'0 0 120px'}>
               {t('common:support.wallet.subscription.Stand plan level')}:
             </FormLabel>
-            <Box>{t(standardSubLevelMap[bill.metadata.standSubLevel]?.label)}</Box>
+            <Box>{t(standardSubLevelMap[bill.metadata.standSubLevel]?.label as any)}</Box>
           </Flex>
         )}
         {bill.metadata?.month !== undefined && (

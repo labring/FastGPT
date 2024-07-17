@@ -79,7 +79,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
 
   return (
     <ReferSelector
-      placeholder={t(item.referencePlaceholder || '选择引用变量')}
+      placeholder={t((item.referencePlaceholder as any) || 'select_reference_variable')}
       list={referenceList}
       value={formatValue}
       onSelect={onSelect}
@@ -121,7 +121,7 @@ export const useReference = ({
           label: (
             <Flex alignItems={'center'}>
               <Avatar mr={1} src={node.avatar} w={'14px'} borderRadius={'ms'} />
-              <Box>{t(node.name)}</Box>
+              <Box>{t(node.name as any)}</Box>
             </Flex>
           ),
           value: node.nodeId,
@@ -135,7 +135,7 @@ export const useReference = ({
             .filter((output) => output.id !== NodeOutputKeyEnum.addOutputParam)
             .map((output) => {
               return {
-                label: t(output.label || ''),
+                label: t((output.label as any) || ''),
                 value: output.id
               };
             })

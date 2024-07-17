@@ -302,7 +302,7 @@ const Reference = ({
 
   return (
     <ReferSelector
-      placeholder={t('common:选择引用变量')}
+      placeholder={t('common:select_reference_variable')}
       list={referenceList}
       value={formatValue}
       onSelect={onSelect}

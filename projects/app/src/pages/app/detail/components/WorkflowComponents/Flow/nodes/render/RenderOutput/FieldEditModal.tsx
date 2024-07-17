@@ -65,7 +65,7 @@ const FieldModal = ({
     const dataTypeSelectList = Object.values(FlowValueTypeMap)
       .slice(0, -1)
       .map((item) => ({
-        label: t(item.label),
+        label: t(item.label as any),
         value: item.value
       }));
 

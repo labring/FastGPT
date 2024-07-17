@@ -81,7 +81,7 @@ const InputDataModal = ({
       icon: 'common/overviewLight'
     },
     {
-      label: t('dataset.data.edit.Index', { amount: indexes.length }),
+      label: t('common:dataset.data.edit.Index', { amount: indexes.length }),
       value: TabEnum.index,
       icon: 'kbTest'
     },
@@ -126,7 +126,7 @@ const InputDataModal = ({
       onError(err) {
         toast({
           status: 'error',
-          title: t(getErrText(err))
+          title: t(getErrText(err) as any)
         });
         onClose();
       }

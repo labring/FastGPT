@@ -54,10 +54,10 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
     return (
       <PromptEditor
         variables={variables}
-        title={t(item.label)}
+        title={t(item.label as any)}
         maxLength={item.maxLength}
         h={150}
-        placeholder={t(item.placeholder || '')}
+        placeholder={t((item.placeholder as any) || '')}
         value={item.value}
         onChange={onChange}
         isFlow={true}

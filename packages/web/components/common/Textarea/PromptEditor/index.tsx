@@ -79,7 +79,7 @@ const PromptEditor = ({
         </ModalBody>
         <ModalFooter>
           <Button mr={2} onClick={onClose} px={6}>
-            {t('common.Confirm')}
+            {t('common:common.Confirm')}
           </Button>
         </ModalFooter>
       </MyModal>

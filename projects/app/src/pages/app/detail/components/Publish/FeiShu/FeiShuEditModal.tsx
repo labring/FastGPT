@@ -69,7 +69,7 @@ const FeiShuEditModal = ({
             placeholder={publishT('Feishu name') || 'Link Name'} // TODO: i18n
             maxLength={20}
             {...register('name', {
-              required: t('common:common.Name is empty') || 'Name is empty'
+              required: t('common:common.name_is_empty') || 'name_is_empty'
             })}
           />
         </Flex>
@@ -150,7 +150,7 @@ const FeiShuEditModal = ({
         <Flex alignItems={'center'} mt={4}>
           <Box flex={'0 0 90px'}>{t('common:core.module.http.AppId')}</Box>
           <Input
-            placeholder={t('common:core.module.http.appId') || 'Link Name'}
+            placeholder={t('common:core.module.http.AppId') || 'Link Name'}
             // maxLength={20}
             {...register('app.appId', {
               required: true
@@ -158,12 +158,12 @@ const FeiShuEditModal = ({
           />
         </Flex>
         <Flex alignItems={'center'} mt={4}>
-          <Box flex={'0 0 90px'}>{t('common:core.module.http.AppSecret')}</Box>
+          <Box flex={'0 0 90px'}>{t('common:core.module.http.AppSecret' as any)}</Box>
           <Input
             placeholder={'App Secret'}
             // maxLength={20}
             {...register('app.appSecret', {
-              required: t('common:common.Name is empty') || 'Name is empty'
+              required: t('common:common.name_is_empty') || 'name_is_empty'
             })}
           />
         </Flex>
@@ -173,7 +173,7 @@ const FeiShuEditModal = ({
             placeholder="Encrypt Key"
             // maxLength={20}
             {...register('app.encryptKey', {
-              required: t('common:common.Name is empty') || 'Name is empty'
+              required: t('common:common.name_is_empty') || 'name_is_empty'
             })}
           />
         </Flex>
@@ -183,7 +183,7 @@ const FeiShuEditModal = ({
             placeholder="Verification Token"
             // maxLength={20}
             {...register('app.verificationToken', {
-              required: t('common:common.Name is empty') || 'Name is empty'
+              required: t('common:common.name_is_empty') || 'name_is_empty'
             })}
           />
         </Flex>
