@@ -52,8 +52,8 @@ const InputLabel = ({ nodeId, input }: Props) => {
           fontWeight={'medium'}
           color={'myGray.600'}
         >
-          <FormLabel required={required}>{t(label)}</FormLabel>
-          {description && <QuestionTip ml={1} label={t(description)}></QuestionTip>}
+          <FormLabel required={required}>{t(label as any)}</FormLabel>
+          {description && <QuestionTip ml={1} label={t(description as any)}></QuestionTip>}
         </Flex>
         {/* value type */}
         {renderType === FlowNodeInputTypeEnum.reference && <ValueTypeLabel valueType={valueType} />}

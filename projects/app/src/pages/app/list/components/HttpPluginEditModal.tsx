@@ -227,7 +227,7 @@ const HttpPluginEditModal = ({
                 ml={4}
                 bg={'myWhite.600'}
                 {...register('name', {
-                  required: t("common.Name Can't Be Empty")
+                  required: t('common:common.name_is_empty')
                 })}
               />
             </Flex>

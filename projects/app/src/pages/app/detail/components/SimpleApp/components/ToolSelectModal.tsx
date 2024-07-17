@@ -214,10 +214,10 @@ const RenderList = React.memo(function RenderList({
               borderRadius={'0'}
             />
             <Box ml={5} flex={'1 0 0'}>
-              <Box color={'black'}>{t(item.name)}</Box>
+              <Box color={'black'}>{t(item.name as any)}</Box>
               {item.intro && (
                 <Box className="textEllipsis3" color={'myGray.500'} fontSize={'xs'}>
-                  {t(item.intro)}
+                  {t(item.intro as any)}
                 </Box>
               )}
             </Box>
@@ -264,7 +264,7 @@ const RenderList = React.memo(function RenderList({
                 return (
                   <Box key={input.key} _notLast={{ mb: 4 }} px={1}>
                     <Flex position={'relative'} mb={1} alignItems={'center'}>
-                      {t(input.debugLabel || input.label)}
+                      {t(input.debugLabel || (input.label as any))}
                       {input.description && <QuestionTip label={input.description} ml={1} />}
                     </Flex>
                     {(() => {
@@ -274,7 +274,7 @@ const RenderList = React.memo(function RenderList({
                             {...register(input.key, {
                               required
                             })}
-                            placeholder={t(input.placeholder || '')}
+                            placeholder={t(input.placeholder || ('' as any))}
                             bg={'myGray.50'}
                           />
                         );
@@ -308,7 +308,7 @@ const RenderList = React.memo(function RenderList({
                       return (
                         <JsonEditor
                           bg={'myGray.50'}
-                          placeholder={t(input.placeholder || '')}
+                          placeholder={t(input.placeholder || ('' as any))}
                           resize
                           value={getValues(input.key)}
                           onChange={(e) => {

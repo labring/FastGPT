@@ -33,9 +33,9 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
             mr={1}
             ml={output.type === FlowNodeOutputTypeEnum.source ? 1 : 0}
           >
-            {t(label)}
+            {t(label as any)}
           </Box>
-          {description && <QuestionTip label={t(description)} />}
+          {description && <QuestionTip label={t(description as any)} />}
           <ValueTypeLabel valueType={valueType} />
         </Flex>
         {output.type === FlowNodeOutputTypeEnum.source && (

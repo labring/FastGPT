@@ -59,7 +59,7 @@ const DynamicInputs = (props: RenderInputProps) => {
         <HStack className="nodrag" cursor={'default'} position={'relative'}>
           <HStack spacing={1} position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
             <Box>{item.label || workflowT('Custom input')}</Box>
-            {item.description && <QuestionTip label={t(item.description)} />}
+            {item.description && <QuestionTip label={t(item.description as any)} />}
           </HStack>
           <Box flex={'1 0 0'} />
           <Button
@@ -208,7 +208,7 @@ function Reference({
         />
       </Flex>
       <ReferSelector
-        placeholder={t(inputChildren.referencePlaceholder || '选择引用变量')}
+        placeholder={t((inputChildren.referencePlaceholder as any) || 'select_reference_variable')}
         list={referenceList}
         value={formatValue}
         onSelect={onSelect}

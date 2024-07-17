@@ -103,7 +103,7 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
         <ModalBody style={{ padding: '10rpx' }}>
           <Flex mt={3} alignItems={'center'}>
             <Box mb={2} fontWeight="semibold">
-              {t('common:同步链接')}
+              {t('common:sync_link')}
             </Box>
             <Input
               flex={1}
@@ -118,7 +118,7 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
           </Flex>
           <Flex mt={3} alignItems={'center'}>
             <Box mb={2} fontWeight="semibold">
-              {t('common:分享链接')}
+              {t('common:share_link')}
             </Box>
             {/* code */}
             <Box ml={4} borderRadius={'md'} overflow={'hidden'}>
@@ -143,7 +143,7 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
           </Flex>
           <Flex mt={3} alignItems={'center'}>
             <Box mb={2} fontWeight="semibold">
-              {t('common:标签列表')}
+              {t('common:tag_list')}
             </Box>
             <HStack
               ml={4}

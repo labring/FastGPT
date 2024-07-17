@@ -136,7 +136,7 @@ export const ResponseBox = React.memo(function ResponseBox({
               alt={''}
               w={['14px', '16px']}
             />
-            {t(item.moduleName)}
+            {t(item.moduleName as any)}
           </Flex>
         ),
         value: `${i}`
@@ -177,7 +177,7 @@ export const ResponseBox = React.memo(function ResponseBox({
           <>
             <Row
               label={t('common:core.chat.response.module name')}
-              value={t(activeModule.moduleName)}
+              value={t(activeModule.moduleName as any)}
             />
             {activeModule?.totalPoints !== undefined && (
               <Row

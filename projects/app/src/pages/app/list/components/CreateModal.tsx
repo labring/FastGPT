@@ -197,11 +197,11 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
               <Flex alignItems={'center'}>
                 <Avatar src={item.avatar} borderRadius={'md'} w={'20px'} />
                 <Box ml={3} color={'myGray.900'}>
-                  {t(item.name)}
+                  {t(item.name as any)}
                 </Box>
               </Flex>
               <Box fontSize={'xs'} mt={2} color={'myGray.600'}>
-                {t(item.intro)}
+                {t(item.intro as any)}
               </Box>
             </Card>
           ))}

@@ -83,11 +83,11 @@ const MyRadio = ({
           )}
           <Box pr={hiddenCircle ? 0 : 2} flex={'1 0 0'}>
             <Box fontSize={'sm'} color={'myGray.800'}>
-              {typeof item.title === 'string' ? t(item.title) : item.title}
+              {typeof item.title === 'string' ? t(item.title as any) : item.title}
             </Box>
             {!!item.desc && (
               <Box fontSize={'mini'} color={'myGray.500'} lineHeight={1.2}>
-                {t(item.desc)}
+                {t(item.desc as any)}
               </Box>
             )}
           </Box>

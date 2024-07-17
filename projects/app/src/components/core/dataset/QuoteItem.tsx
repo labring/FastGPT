@@ -112,7 +112,7 @@ const QuoteItem = ({
           {score?.primaryScore && (
             <>
               {canViewSource ? (
-                <MyTooltip label={t(SearchScoreTypeMap[score.primaryScore.type]?.desc)}>
+                <MyTooltip label={t(SearchScoreTypeMap[score.primaryScore.type]?.desc as any)}>
                   <Flex
                     px={'12px'}
                     py={'5px'}
@@ -132,7 +132,7 @@ const QuoteItem = ({
                       mx={2}
                     />
                     <Box>
-                      {t(SearchScoreTypeMap[score.primaryScore.type]?.label)}
+                      {t(SearchScoreTypeMap[score.primaryScore.type]?.label as any)}
                       {SearchScoreTypeMap[score.primaryScore.type]?.showScore
                         ? ` ${score.primaryScore.value.toFixed(4)}`
                         : ''}
@@ -159,7 +159,7 @@ const QuoteItem = ({
           )}
           {canViewSource &&
             score.secondaryScore.map((item, i) => (
-              <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc)}>
+              <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc as any)}>
                 <Box fontSize={'xs'}>
                   <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
                     <Box
@@ -172,7 +172,7 @@ const QuoteItem = ({
                       <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
                     </Box>
                     <Box transform={'scale(0.9)'}>
-                      {t(SearchScoreTypeMap[item.type]?.label)}: {item.value.toFixed(4)}
+                      {t(SearchScoreTypeMap[item.type]?.label as any)}: {item.value.toFixed(4)}
                     </Box>
                   </Flex>
                   <Box h={'4px'}>

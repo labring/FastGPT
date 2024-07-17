@@ -52,7 +52,7 @@ const VariableEdit = ({
   const VariableTypeList = useMemo(
     () =>
       Object.entries(variableMap).map(([key, value]) => ({
-        title: t(value.title),
+        title: t(value.title as any),
         icon: value.icon,
         value: key
       })),
@@ -219,7 +219,7 @@ const VariableEdit = ({
           {/* desc */}
           {variableMap[variableType]?.desc && (
             <Box mt={2} fontSize={'sm'} color={'myGray.500'} whiteSpace={'pre-wrap'}>
-              {t(variableMap[variableType].desc)}
+              {t(variableMap[variableType].desc as any)}
             </Box>
           )}
 

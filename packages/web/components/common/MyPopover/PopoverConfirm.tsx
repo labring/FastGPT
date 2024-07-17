@@ -82,11 +82,11 @@ const PopoverConfirm = ({
         <HStack mt={1} justifyContent={'flex-end'}>
           {showCancel && (
             <Button variant={'whiteBase'} size="sm" onClick={onClose}>
-              {t('common.Cancel')}
+              {t('common:common.Cancel')}
             </Button>
           )}
           <Button isLoading={loading} variant={map.variant} size="sm" onClick={onclickConfirm}>
-            {t('common.Confirm')}
+            {t('common:common.Confirm')}
           </Button>
         </HStack>
       </PopoverContent>

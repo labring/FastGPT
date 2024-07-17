@@ -163,7 +163,7 @@ const FieldEditModal = ({
   }, [inputType]);
 
   const valueTypeSelectList = Object.values(FlowValueTypeMap).map((item) => ({
-    label: t(item.label),
+    label: t(item.label as any),
     value: item.value
   }));
   const defaultValueType =

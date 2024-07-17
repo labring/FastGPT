@@ -50,7 +50,7 @@ const RenderPluginInput = ({
           value={value}
           onChange={onChange}
           isDisabled={isDisabled}
-          placeholder={t(placeholder)}
+          placeholder={t(placeholder as any)}
           bg={'myGray.50'}
           isInvalid={isInvalid}
         />
@@ -88,7 +88,7 @@ const RenderPluginInput = ({
     return (
       <JsonEditor
         bg={'myGray.50'}
-        placeholder={t(placeholder || '')}
+        placeholder={t(placeholder || ('' as any))}
         resize
         value={value}
         onChange={onChange}

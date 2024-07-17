@@ -189,7 +189,7 @@ function PermissionSelect({
                 <Box ml={4}>
                   <Box>{item.name}</Box>
                   <Box color={'myGray.500'} fontSize={'mini'}>
-                    {t(item.description)}
+                    {t(item.description as any)}
                   </Box>
                 </Box>
               </Flex>

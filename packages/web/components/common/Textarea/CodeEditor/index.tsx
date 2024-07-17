@@ -17,7 +17,7 @@ const CodeEditor = (props: Props) => {
         isOpen={isOpen}
         onClose={onClose}
         iconSrc="modal/edit"
-        title={t('Code editor')}
+        title={t('common:Code editor')}
         w={'full'}
       >
         <ModalBody>
@@ -25,7 +25,7 @@ const CodeEditor = (props: Props) => {
         </ModalBody>
         <ModalFooter>
           <Button mr={2} onClick={onClose} px={6}>
-            {t('common.Confirm')}
+            {t('common:common.Confirm')}
           </Button>
         </ModalFooter>
       </MyModal>

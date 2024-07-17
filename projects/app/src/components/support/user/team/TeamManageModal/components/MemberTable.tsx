@@ -68,7 +68,7 @@ function MemberTable() {
                   />
                 </Td>
                 <Td color={TeamMemberStatusMap[item.status].color}>
-                  {t(TeamMemberStatusMap[item.status]?.label || '')}
+                  {t(TeamMemberStatusMap[item.status]?.label || ('' as any))}
                 </Td>
                 <Td>
                   {userInfo?.team.permission.hasManagePer &&

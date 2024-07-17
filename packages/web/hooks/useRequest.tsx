@@ -27,7 +27,7 @@ export const useRequest = ({ successToast, errorToast, onSuccess, onError, ...pr
       onError?.(err, variables, context);
 
       if (errorToast !== undefined) {
-        const errText = t(getErrText(err, errorToast || ''));
+        const errText = t(getErrText(err, errorToast || '') as any);
         if (errText) {
           toast({
             title: errText,
@@ -64,7 +64,7 @@ export const useRequest2 = <TData, TParams extends any[]>(
       onError: (err, params) => {
         rest?.onError?.(err, params);
         if (errorToast !== undefined) {
-          const errText = t(getErrText(err, errorToast || ''));
+          const errText = t(getErrText(err, errorToast || '') as any);
           if (errText) {
             toast({
               title: errText,

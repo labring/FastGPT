@@ -196,7 +196,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
               size={'sm'}
               onClick={onOpenSelectMode}
             >
-              {t(searchModeData.title)}
+              {t(searchModeData.title as any)}
             </Button>
           </Flex>
 
@@ -371,7 +371,7 @@ const TestHistories = React.memo(function TestHistories({
                     w={'12px'}
                     mr={'1px'}
                   />
-                  {t(DatasetSearchModeMap[item.searchMode].title)}
+                  {t(DatasetSearchModeMap[item.searchMode].title as any)}
                 </Flex>
               ) : (
                 '-'
@@ -382,7 +382,7 @@ const TestHistories = React.memo(function TestHistories({
             </Box>
             <Box flex={'0 0 70px'}>
               {formatTimeToChatTime(item.time).includes('.')
-                ? t(formatTimeToChatTime(item.time))
+                ? t(formatTimeToChatTime(item.time) as any)
                 : formatTimeToChatTime(item.time)}
             </Box>
             <MyTooltip label={t('common:core.dataset.test.delete test history')}>

@@ -510,7 +510,7 @@ const ChatBox = (
             autoTTSResponse && splitText2Audio(responseText, true);
           } catch (err: any) {
             toast({
-              title: t(getErrText(err, 'core.chat.error.Chat error')),
+              title: t(getErrText(err, 'core.chat.error.Chat error') as any),
               status: 'error',
               duration: 5000,
               isClosable: true
@@ -814,7 +814,7 @@ const ChatBox = (
 
     return {
       status: chatContent.status || 'loading',
-      name: t(chatContent.moduleName || '') || t('common:common.Loading')
+      name: t(chatContent.moduleName || ('' as any)) || t('common:common.Loading')
     };
   }, [chatHistories, isChatting, t]);
 

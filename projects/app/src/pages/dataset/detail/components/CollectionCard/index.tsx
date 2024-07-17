@@ -137,7 +137,7 @@ const CollectionCard = () => {
       getData(pageNum);
       toast({
         status: 'success',
-        title: t(DatasetCollectionSyncResultMap[res]?.label)
+        title: t(DatasetCollectionSyncResultMap[res]?.label as any)
       });
     },
     errorToast: t('common:core.dataset.error.Start Sync Failed')
@@ -247,7 +247,7 @@ const CollectionCard = () => {
                   </Td>
                   <Td py={2}>
                     {!checkCollectionIsFolder(collection.type) ? (
-                      <>{t(getTrainingTypeLabel(collection.trainingType) || '-')}</>
+                      <>{t((getTrainingTypeLabel(collection.trainingType) || '-') as any)}</>
                     ) : (
                       '-'
                     )}
@@ -259,7 +259,7 @@ const CollectionCard = () => {
                   </Td>
                   <Td py={2}>
                     <MyTag showDot colorSchema={collection.colorSchema as any} type={'borderFill'}>
-                      {t(collection.statusText)}
+                      {t(collection.statusText as any)}
                     </MyTag>
                   </Td>
                   <Td py={2} onClick={(e) => e.stopPropagation()}>
