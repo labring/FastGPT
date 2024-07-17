@@ -88,7 +88,7 @@ const LightRowTabs = <ValueType = string,>({
               )}
             </>
           )}
-          {typeof item.label === 'string' ? t(item.label) : item.label}
+          {typeof item.label === 'string' ? t(item.label as any) : item.label}
         </Flex>
       ))}
     </Grid>

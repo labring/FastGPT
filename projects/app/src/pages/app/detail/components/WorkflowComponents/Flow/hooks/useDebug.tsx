@@ -193,7 +193,7 @@ export const useDebug = () => {
                     {...register(input.key, {
                       required
                     })}
-                    placeholder={t(input.placeholder || '')}
+                    placeholder={t(input.placeholder || ('' as any))}
                     bg={'myGray.50'}
                   />
                 );
@@ -232,7 +232,7 @@ export const useDebug = () => {
               return (
                 <JsonEditor
                   bg={'myGray.50'}
-                  placeholder={t(input.placeholder || '')}
+                  placeholder={t(input.placeholder || ('' as any))}
                   resize
                   value={value}
                   onChange={(e) => {
@@ -251,7 +251,7 @@ export const useDebug = () => {
                         *
                       </Box>
                     )}
-                    {t(input.debugLabel || input.label)}
+                    {t(input.debugLabel || (input.label as any))}
                   </Box>
                   {input.description && <QuestionTip ml={2} label={input.description} />}
                 </Flex>

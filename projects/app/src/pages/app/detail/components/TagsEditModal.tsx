@@ -64,7 +64,7 @@ const TagsEditModal = ({ onClose }: { onClose: () => void }) => {
     >
       <ModalBody>
         <Box mb={3} fontWeight="semibold">
-          {t('common:团队标签')}
+          {t('common:team_tag')}
         </Box>
         <Menu closeOnSelect={false}>
           <MenuButton className="menu-btn" maxHeight={'250'} w={'100%'}>

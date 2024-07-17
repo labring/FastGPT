@@ -68,7 +68,7 @@ const SearchParamsTip = ({
                   w={'12px'}
                   mr={'1px'}
                 />
-                {t(DatasetSearchModeMap[searchMode]?.title)}
+                {t(DatasetSearchModeMap[searchMode]?.title as any)}
               </Flex>
             </Td>
             <Td pt={0} pb={2}>

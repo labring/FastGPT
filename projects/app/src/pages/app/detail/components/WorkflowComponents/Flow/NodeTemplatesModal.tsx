@@ -333,11 +333,11 @@ const RenderList = React.memo(function RenderList({
         template: {
           ...templateNode,
           name: computedNewNodeName({
-            templateName: t(templateNode.name),
+            templateName: t(templateNode.name as any),
             flowNodeType: templateNode.flowNodeType,
             pluginId: templateNode.pluginId
           }),
-          intro: t(templateNode.intro || '')
+          intro: t(templateNode.intro || ('' as any))
         },
         position: { x: mouseX, y: mouseY - 20 },
         selected: true
@@ -374,7 +374,7 @@ const RenderList = React.memo(function RenderList({
               {item.label && (
                 <Flex>
                   <Box fontSize={'sm'} fontWeight={'bold'} flex={1}>
-                    {t(item.label)}
+                    {t(item.label as any)}
                   </Box>
                 </Flex>
               )}
@@ -394,11 +394,11 @@ const RenderList = React.memo(function RenderList({
                             borderRadius={'0'}
                           />
                           <Box fontWeight={'bold'} ml={3}>
-                            {t(template.name)}
+                            {t(template.name as any)}
                           </Box>
                         </Flex>
                         <Box mt={2} color={'myGray.500'}>
-                          {t(template.intro) || t('common:core.workflow.Not intro')}
+                          {t(template.intro as any) || t('common:core.workflow.Not intro')}
                         </Box>
                       </Box>
                     }
@@ -441,7 +441,7 @@ const RenderList = React.memo(function RenderList({
                         borderRadius={'0'}
                       />
                       <Box color={'black'} fontSize={'sm'} ml={5} flex={'1 0 0'}>
-                        {t(template.name)}
+                        {t(template.name as any)}
                       </Box>
                     </Flex>
                   </MyTooltip>

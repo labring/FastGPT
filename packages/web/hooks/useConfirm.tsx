@@ -16,12 +16,12 @@ export const useConfirm = (props?: {
   const map = useMemo(() => {
     const map = {
       common: {
-        title: t('common.confirm.Common Tip'),
+        title: t('common:common.confirm.Common Tip'),
         variant: 'primary',
         iconSrc: 'common/confirm/commonTip'
       },
       delete: {
-        title: t('common.Delete Warning'),
+        title: t('common:common.Delete Warning'),
         variant: 'dangerFill',
         iconSrc: 'common/confirm/deleteTip'
       }
@@ -31,7 +31,7 @@ export const useConfirm = (props?: {
   }, [props?.type, t]);
 
   const {
-    title = map?.title || t('Warning'),
+    title = map?.title || t('common:Warning'),
     iconSrc = map?.iconSrc,
     content,
     showCancel = true,
@@ -58,8 +58,8 @@ export const useConfirm = (props?: {
 
   const ConfirmModal = useCallback(
     ({
-      closeText = t('common.Cancel'),
-      confirmText = t('common.Confirm'),
+      closeText = t('common:common.Cancel'),
+      confirmText = t('common:common.Confirm'),
       isLoading,
       bg,
       countDown = 0

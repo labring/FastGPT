@@ -82,8 +82,7 @@
       "No data": "没有可选值"
     },
     "Name": "名称",
-    "Name Can": "名称不能为空",
-    "Name is empty": "名称不能为空",
+    "name_is_empty": "名称不能为空",
     "Next Step": "下一步",
     "No more data": "没有更多了~",
     "Not open": "未开启",
@@ -873,6 +872,7 @@
       "http": {
         "Add props": "添加参数",
         "AppId": "应用 ID",
+        "AppSecret": "AppSecret",
         "ChatId": "当前对话 ID",
         "Current time": "当前时间",
         "Histories": "最近 10 条聊天记录",
@@ -1303,6 +1303,8 @@
     "path": "",
     "update params": "更新参数"
   },
+  "select_reference_variable": "选择引用变量",
+  "share_link": "分享链接",
   "support": {
     "account": {
       "Individuation": "个性化"
@@ -1528,10 +1530,13 @@
       }
     }
   },
+  "sync_link": "同步链接",
   "system": {
     "Concat us": "联系我们",
     "Help Document": "帮助文档"
   },
+  "tag_list": "标签列表",
+  "team_tag": "团队标签",
   "template": {
     "Quote Content Tip": "可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置：\n{{q}} - 检索内容，{{a}} - 预期内容，{{source}} - 来源，{{sourceId}} - 来源文件名，{{index}} - 第 n 个引用，他们都是可选的，下面是默认值：\n{{default}}",
     "Quote Prompt Tip": "可以用 {{quote}} 来插入引用内容模板，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"

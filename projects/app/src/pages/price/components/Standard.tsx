@@ -157,13 +157,13 @@ const Standard = ({
                   })}
             >
               <Box fontSize={'md'} fontWeight={'500'}>
-                {t(item.label)}
+                {t(item.label as any)}
               </Box>
               <Box fontSize={['32px', '42px']} fontWeight={'bold'}>
                 ￥{item.price}
               </Box>
               <Box color={'myGray.500'} h={'40px'} fontSize={'xs'}>
-                {t(item.desc, { title: feConfigs?.systemTitle })}
+                {t(item.desc as any, { title: feConfigs?.systemTitle })}
               </Box>
               {(() => {
                 if (

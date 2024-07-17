@@ -308,7 +308,7 @@ function EditLinkModal({
             placeholder={publishT('Link Name')}
             maxLength={20}
             {...register('name', {
-              required: t('common:common.Name is empty') || 'Name is empty'
+              required: t('common:common.name_is_empty') || 'name_is_empty'
             })}
           />
         </Flex>

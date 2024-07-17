@@ -200,7 +200,7 @@ function Reference({
         />
       </Flex>
       <ReferSelector
-        placeholder={t(input.referencePlaceholder || '选择引用变量')}
+        placeholder={t((input.referencePlaceholder as any) || 'select_reference_variable')}
         list={referenceList}
         value={formatValue}
         onSelect={onSelect}

@@ -142,7 +142,7 @@ const DataCard = () => {
     return [
       {
         label: t('common:core.dataset.collection.metadata.source'),
-        value: t(DatasetCollectionTypeMap[collection.type]?.name)
+        value: t(DatasetCollectionTypeMap[collection.type]?.name as any)
       },
       {
         label: t('common:core.dataset.collection.metadata.source name'),
@@ -166,7 +166,7 @@ const DataCard = () => {
       },
       {
         label: t('common:core.dataset.collection.metadata.Training Type'),
-        value: t(TrainingTypeMap[collection.trainingType]?.label)
+        value: t(TrainingTypeMap[collection.trainingType]?.label as any)
       },
       {
         label: t('common:core.dataset.collection.metadata.Chunk Size'),

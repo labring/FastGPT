@@ -80,7 +80,11 @@ const MultipleRowSelect = ({
               </Flex>
             ))}
             {list.length === 0 && (
-              <EmptyTip text={emptyTip ?? t('common.MultipleRowSelect.No data')} pt={1} pb={3} />
+              <EmptyTip
+                text={emptyTip ?? t('common:common.MultipleRowSelect.No data')}
+                pt={1}
+                pb={3}
+              />
             )}
           </Box>
           {children.length > 0 && <RenderList list={children} index={index + 1} />}

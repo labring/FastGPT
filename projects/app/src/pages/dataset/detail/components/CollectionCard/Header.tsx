@@ -121,7 +121,7 @@ const Header = ({}: {}) => {
           FirstPathDom={
             <>
               <Box fontWeight={'bold'} fontSize={['sm', 'md']}>
-                {t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel)}({total})
+                {t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel as any)}({total})
               </Box>
               {datasetDetail?.websiteConfig?.url && (
                 <Flex fontSize={'sm'}>

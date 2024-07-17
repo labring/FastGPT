@@ -139,7 +139,7 @@ const NodeCard = (props: Props) => {
           <Flex alignItems={'center'}>
             <Avatar src={avatar} borderRadius={'0'} objectFit={'contain'} w={'30px'} h={'30px'} />
             <Box ml={3} fontSize={'md'} fontWeight={'medium'}>
-              {t(name)}
+              {t(name as any)}
             </Box>
             {!menuForbid?.rename && (
               <MyIcon
@@ -443,7 +443,7 @@ const NodeIntro = React.memo(function NodeIntro({
       <>
         <Flex alignItems={'flex-end'} py={1}>
           <Box fontSize={'xs'} color={'myGray.600'} flex={'1 0 0'}>
-            {t(intro)}
+            {t(intro as any)}
           </Box>
           {NodeIsTool && (
             <Button

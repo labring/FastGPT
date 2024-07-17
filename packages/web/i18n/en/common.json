@@ -82,8 +82,7 @@
       "No data": "No data available"
     },
     "Name": "Name",
-    "Name Can": "Name cannot be empty",
-    "Name is empty": "Name cannot be empty",
+    "name_is_empty": "Name cannot be empty",
     "Next Step": "Next Step",
     "No more data": "No more data~",
     "Not open": "Not open",
@@ -864,6 +863,7 @@
       "http": {
         "Add props": "Add parameters",
         "AppId": "Application ID",
+        "AppSecret": "AppSecret",
         "ChatId": "Current chat ID",
         "Current time": "Current time",
         "Histories": "Last 10 chat records",
@@ -1294,6 +1294,8 @@
     "path": "Path",
     "update params": "Update parameters"
   },
+  "select_reference_variable": "Select Reference Variable",
+  "share_link": "Share Link",
   "support": {
     "account": {
       "Individuation": "Personalization"
@@ -1519,10 +1521,13 @@
       }
     }
   },
+  "sync_link": "Sync Link",
   "system": {
     "Concat us": "Concat",
     "Help Document": "Help document"
   },
+  "tag_list": "Tag List",
+  "team_tag": "Team Tag",
   "template": {
     "Quote Content Tip": "You can customize the structure of the quote content to better adapt to different scenarios. You can use some variables for template configuration:\n{{q}} - search content, {{a}} - expected content, {{source}} - source, {{sourceId}} - source file name, {{index}} - the nth quote, they are all optional, here are the default values:\n{{default}}",
     "Quote Prompt Tip": "You can use {{quote}} to insert the quote content template, and use {{question}} to insert the question. Here are the default values:\n{{default}}"

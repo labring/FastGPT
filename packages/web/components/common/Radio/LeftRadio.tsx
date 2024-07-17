@@ -96,13 +96,13 @@ const LeftRadio = ({
                 whiteSpace={'nowrap'}
                 fontSize={'sm'}
               >
-                {typeof item.title === 'string' ? t(item.title) : item.title}
+                {typeof item.title === 'string' ? t(item.title as any) : item.title}
               </Box>
-              {!!item.tooltip && <QuestionTip label={item.tooltip} ml={1} color={'myGray.600'} />}
             </Flex>
+            {!!item.tooltip && <QuestionTip label={item.tooltip} ml={1} color={'myGray.600'} />}
             {!!item.desc && (
               <Box fontSize={'xs'} color={'myGray.500'} lineHeight={1.2}>
-                {t(item.desc)}
+                {t(item.desc as any)}
               </Box>
             )}
             {item?.children}

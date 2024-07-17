@@ -116,8 +116,8 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               const inputType = input.renderTypeList[0];
               return {
                 icon: FlowNodeInputMap[inputType]?.icon as string,
-                label: t(input.label),
-                type: input.valueType ? t(FlowValueTypeMap[input.valueType]?.label) : '-',
+                label: t(input.label as any),
+                type: input.valueType ? t(FlowValueTypeMap[input.valueType]?.label as any) : '-',
                 isTool: !!input.toolDescription,
                 key: input.key
               };

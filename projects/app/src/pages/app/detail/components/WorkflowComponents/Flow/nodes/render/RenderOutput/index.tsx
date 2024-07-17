@@ -97,7 +97,7 @@ const RenderOutput = ({
         <VariableTable
           variables={filterAddOutput.map((output) => ({
             label: output.label || '-',
-            type: output.valueType ? t(FlowValueTypeMap[output.valueType]?.label) : '-',
+            type: output.valueType ? t(FlowValueTypeMap[output.valueType]?.label as any) : '-',
             key: output.key
           }))}
           onEdit={(key) => {
