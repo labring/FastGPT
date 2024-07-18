@@ -23,7 +23,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
-  avatar: '/imgs/workflow/db.png',
+  avatar: 'core/workflow/template/datasetSearch',
   name: '知识库搜索',
   intro: Dataset_SEARCH_DESC,
   showStatus: true,

@@ -222,27 +222,28 @@ const RenderList = React.memo(function RenderList({
             label={
               <Box>
                 <Flex alignItems={'center'}>
-                  {item.avatar?.startsWith('/') ? (
-                    <Avatar src={item.avatar} w={'24px'} objectFit={'contain'} borderRadius={'0'} />
-                  ) : (
-                    <MyIcon name={item.avatar as any} w={'24px'} />
-                  )}
-                  <Box fontWeight={'bold'} ml={3}>
+                  <Avatar
+                    src={item.avatar}
+                    w={'1.75rem'}
+                    objectFit={'contain'}
+                    borderRadius={'sm'}
+                  />
+                  <Box fontWeight={'bold'} ml={2} color={'myGray.900'}>
                     {t(item.name as any)}
                   </Box>
                 </Flex>
                 <Box mt={2} color={'myGray.500'}>
-                  {t(item.intro as any) || t('core.workflow.Not intro')}
+                  {t(item.intro as any) || t('common:core.workflow.Not intro')}
                 </Box>
                 {showCost && (
                   <>
                     <Divider mt={4} mb={2} />
                     <Flex>
-                      <Box>{t('core.plugin.cost')}</Box>
+                      <Box>{t('common:core.plugin.cost')}</Box>
                       <Box color={'myGray.600'}>
                         {item.currentCost && item.currentCost > 0
-                          ? appT('Plugin cost per times', { cost: item.currentCost })
-                          : t('core.plugin.Free')}
+                          ? t('app:Plugin cost per times', { cost: item.currentCost })
+                          : t('common:core.plugin.Free')}
                       </Box>
                     </Flex>
                   </>
@@ -262,17 +263,9 @@ const RenderList = React.memo(function RenderList({
                 bg: 'myGray.50'
               }}
             >
-              {item.avatar?.startsWith('/') ? (
-                <Avatar
-                  src={item.avatar}
-                  w={['26px', '36px']}
-                  objectFit={'contain'}
-                  borderRadius={'0'}
-                />
-              ) : (
-                <MyIcon name={item.avatar as any} w={['26px', '36px']} />
-              )}
-              <Box ml={5} flex={'1 0 0'} color={'black'}>
+              <Avatar src={item.avatar} w={'2rem'} objectFit={'contain'} borderRadius={'md'} />
+
+              <Box ml={3} flex={'1 0 0'} color={'myGray.900'}>
                 {t(item.name as any)}
               </Box>
               {showCost && (
@@ -287,11 +280,11 @@ const RenderList = React.memo(function RenderList({
                   leftIcon={<MyIcon name={'delete'} w={'14px'} />}
                   onClick={() => onRemoveTool(item)}
                 >
-                  {t('common.Remove')}
+                  {t('common:common.Remove')}
                 </Button>
               ) : item.isFolder ? (
                 <Button size={'sm'} variant={'whiteBase'} onClick={() => setParentId(item.id)}>
-                  {t('common.Open')}
+                  {t('common:common.Open')}
                 </Button>
               ) : (
                 <Button
@@ -301,7 +294,7 @@ const RenderList = React.memo(function RenderList({
                   isLoading={isLoading}
                   onClick={() => onClickAdd(item)}
                 >
-                  {t('common.Add')}
+                  {t('common:common.Add')}
                 </Button>
               )}
             </Flex>

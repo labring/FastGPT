@@ -242,8 +242,15 @@ const EditForm = ({
                     })
                   }
                 >
-                  <Avatar src={item.avatar} w={'18px'} mr={1} />
-                  <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
+                  <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'sm'} />
+                  <Box
+                    ml={2}
+                    flex={'1 0 0'}
+                    w={0}
+                    className={'textEllipsis'}
+                    fontSize={'sm'}
+                    color={'myGray.900'}
+                  >
                     {item.name}
                   </Box>
                 </Flex>
@@ -292,8 +299,15 @@ const EditForm = ({
                     borderColor: 'primary.300'
                   }}
                 >
-                  <Avatar src={item.avatar} w={'1.5rem'} mr={1} />
-                  <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
+                  <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'sm'} />
+                  <Box
+                    ml={2}
+                    flex={'1 0 0'}
+                    w={0}
+                    className={'textEllipsis'}
+                    fontSize={'sm'}
+                    color={'myGray.900'}
+                  >
                     {item.name}
                   </Box>
                   <DeleteIcon

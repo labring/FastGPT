@@ -10,7 +10,7 @@ const Avatar = ({ w = '30px', src, ...props }: ImageProps) => {
   const isIcon = !!iconPaths[src as any];
 
   return isIcon ? (
-    <MyIcon name={src as any} w={w} />
+    <MyIcon name={src as any} w={w} borderRadius={props.borderRadius} />
   ) : (
     <Image
       fallbackSrc={LOGO_ICON}

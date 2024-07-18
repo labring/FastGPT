@@ -21,7 +21,7 @@ export const CodeNode: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.code,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
-  avatar: '/imgs/workflow/code.svg',
+  avatar: 'core/workflow/template/codeRun',
   name: '代码运行',
   intro: '执行一段简单的脚本代码，通常用于进行复杂的数据处理。',
   showStatus: true,

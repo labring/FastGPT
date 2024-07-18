@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Box, Flex, Grid, Image } from '@chakra-ui/react';
 import type { FlexProps, GridProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import MyIcon from '../Icon';
+import Avatar from '../Avatar';
 
 type Props<ValueType = string> = Omit<GridProps, 'onChange'> & {
   list: { icon?: string; label: string | React.ReactNode; value: ValueType }[];
@@ -81,14 +81,10 @@ const LightRowTabs = <ValueType = string,>({
         >
           {item.icon && (
             <>
-              {item.icon.startsWith('/') ? (
-                <Image mr={1} src={item.icon} alt={''} w={'16px'} />
-              ) : (
-                <MyIcon mr={1} name={item.icon as any} w={'16px'} />
-              )}
+              <Avatar src={item.icon} alt={''} w={'1.25rem'} borderRadius={'sm'} />
             </>
           )}
-          {typeof item.label === 'string' ? t(item.label as any) : item.label}
+          <Box ml={1}>{typeof item.label === 'string' ? t(item.label as any) : item.label}</Box>
         </Flex>
       ))}
     </Grid>

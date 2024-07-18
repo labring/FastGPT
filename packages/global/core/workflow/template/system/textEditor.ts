@@ -19,7 +19,7 @@ export const TextEditorNode: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.textEditor,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
-  avatar: '/imgs/workflow/textEditor.svg',
+  avatar: 'core/workflow/template/textConcat',
   name: '文本拼接',
   intro: '可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。',
   version: '486',

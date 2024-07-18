@@ -300,7 +300,6 @@ const RenderList = React.memo(function RenderList({
 
   const { isPc } = useSystem();
   const isSystemPlugin = type === TemplateTypeEnum.systemPlugin;
-  const avatarSize = type === TemplateTypeEnum.teamPlugin ? '1.75rem' : '2.25rem';
 
   const { x, y, zoom } = useViewport();
   const { setLoading } = useSystemStore();
@@ -405,7 +404,7 @@ const RenderList = React.memo(function RenderList({
             >
               {item.label && formatTemplates.length > 1 && (
                 <Flex>
-                  <Box fontSize={'sm'} fontWeight={'bold'} flex={1}>
+                  <Box fontSize={'sm'} fontWeight={'500'} flex={1} color={'myGray.900'}>
                     {t(item.label as any)}
                   </Box>
                 </Flex>
@@ -419,17 +418,13 @@ const RenderList = React.memo(function RenderList({
                     label={
                       <Box py={2}>
                         <Flex alignItems={'center'}>
-                          {template.avatar?.startsWith('/') ? (
-                            <Avatar
-                              src={template.avatar}
-                              w={'24px'}
-                              objectFit={'contain'}
-                              borderRadius={'0'}
-                            />
-                          ) : (
-                            <MyIcon name={template.avatar as any} w={'24px'} />
-                          )}
-                          <Box fontWeight={'bold'} ml={3}>
+                          <Avatar
+                            src={template.avatar}
+                            w={'1.75rem'}
+                            objectFit={'contain'}
+                            borderRadius={'sm'}
+                          />
+                          <Box fontWeight={'bold'} ml={3} color={'myGray.900'}>
                             {t(template.name as any)}
                           </Box>
                         </Flex>
@@ -440,11 +435,13 @@ const RenderList = React.memo(function RenderList({
                           <>
                             <Divider mt={4} mb={2} />
                             <Flex>
-                              <Box>{t('core.plugin.cost')}</Box>
+                              <Box>{t('common:core.plugin.cost')}</Box>
                               <Box color={'myGray.600'}>
                                 {template.currentCost && template.currentCost > 0
-                                  ? appT('Plugin cost per times', { cost: template.currentCost })
-                                  : t('core.plugin.Free')}
+                                  ? t('app:Plugin cost per times', {
+                                      cost: template.currentCost
+                                    })
+                                  : t('common:core.plugin.Free')}
                               </Box>
                             </Flex>
                           </>
@@ -484,17 +481,19 @@ const RenderList = React.memo(function RenderList({
                         onClose();
                       }}
                     >
-                      {template.avatar?.startsWith('/') ? (
-                        <Avatar
-                          src={template.avatar}
-                          w={avatarSize}
-                          objectFit={'contain'}
-                          borderRadius={'0'}
-                        />
-                      ) : (
-                        <MyIcon name={template.avatar as any} w={avatarSize} />
-                      )}
-                      <Box color={'myGray.900'} fontSize={'sm'} ml={3} flex={'1 0 0'}>
+                      <Avatar
+                        src={template.avatar}
+                        w={'2rem'}
+                        objectFit={'contain'}
+                        borderRadius={'md'}
+                      />
+                      <Box
+                        color={'myGray.900'}
+                        fontWeight={'500'}
+                        fontSize={'sm'}
+                        ml={3}
+                        flex={'1 0 0'}
+                      >
                         {t(template.name as any)}
                       </Box>
                       {template.author && (
@@ -513,7 +512,6 @@ const RenderList = React.memo(function RenderList({
     );
   }, [
     appT,
-    avatarSize,
     formatTemplates,
     isPc,
     isSystemPlugin,

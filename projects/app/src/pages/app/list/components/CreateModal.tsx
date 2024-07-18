@@ -195,7 +195,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
               }}
             >
               <Flex alignItems={'center'}>
-                <Avatar src={item.avatar} borderRadius={'md'} w={'20px'} />
+                <Avatar src={item.avatar} borderRadius={'sm'} w={'1.5rem'} />
                 <Box ml={3} color={'myGray.900'}>
                   {t(item.name as any)}
                 </Box>

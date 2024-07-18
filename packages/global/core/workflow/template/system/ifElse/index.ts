@@ -18,7 +18,7 @@ export const IfElseNode: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.ifElseNode,
   sourceHandle: getHandleConfig(false, false, false, false),
   targetHandle: getHandleConfig(true, false, true, true),
-  avatar: '/imgs/workflow/ifElse.svg',
+  avatar: 'core/workflow/template/ifelse',
   name: '判断器',
   intro: '根据一定的条件，执行不同的分支。',
   showStatus: true,

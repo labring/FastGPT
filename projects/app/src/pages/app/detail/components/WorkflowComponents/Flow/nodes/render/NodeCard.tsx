@@ -137,7 +137,7 @@ const NodeCard = (props: Props) => {
 
           {/* avatar and name */}
           <Flex alignItems={'center'}>
-            <Avatar src={avatar} borderRadius={'0'} objectFit={'contain'} w={'30px'} h={'30px'} />
+            <Avatar src={avatar} borderRadius={'sm'} objectFit={'contain'} w={'30px'} h={'30px'} />
             <Box ml={3} fontSize={'md'} fontWeight={'medium'}>
               {t(name as any)}
             </Box>

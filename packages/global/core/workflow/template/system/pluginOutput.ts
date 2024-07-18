@@ -11,7 +11,7 @@ export const PluginOutputModule: FlowNodeTemplateType = {
   targetHandle: getHandleConfig(false, false, false, true),
   unique: true,
   forbidDelete: true,
-  avatar: '/imgs/workflow/output.png',
+  avatar: 'core/workflow/template/pluginOutput',
   name: '自定义插件输出',
   intro: '自定义配置外部输出，使用插件时，仅暴露自定义配置的输出',
   showStatus: false,
