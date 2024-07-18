@@ -1,0 +1,552 @@
+{
+    "nodes": [
+      {
+        "nodeId": "userGuide",
+        "name": "系统配置",
+        "intro": "可以配置应用的系统参数",
+        "avatar": "/imgs/workflow/userGuide.png",
+        "flowNodeType": "userGuide",
+        "position": {
+          "x": 531.2422736065552,
+          "y": -536.2161469063296
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "welcomeText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "label": "core.app.Welcome Text",
+            "value": ""
+          },
+          {
+            "key": "variables",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "core.app.Chat Variable",
+            "value": []
+          },
+          {
+            "key": "questionGuide",
+            "valueType": "boolean",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "core.app.Question Guide",
+            "value": false
+          },
+          {
+            "key": "tts",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "type": "web"
+            }
+          },
+          {
+            "key": "whisper",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "open": false,
+              "autoSend": false,
+              "autoTTSResponse": false
+            }
+          },
+          {
+            "key": "scheduleTrigger",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": null
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "448745",
+        "name": "流程开始",
+        "intro": "",
+        "avatar": "/imgs/workflow/userChatInput.svg",
+        "flowNodeType": "workflowStart",
+        "position": {
+          "x": 558.4082376415505,
+          "y": 123.72387429194112
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "required": true,
+            "toolDescription": "用户问题"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "userChatInput",
+            "key": "userChatInput",
+            "label": "core.module.input.label.user question",
+            "valueType": "string",
+            "type": "static"
+          }
+        ]
+      },
+      {
+        "nodeId": "zLafT0PiV19R",
+        "name": "问题分类",
+        "intro": "根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：\n类型1: 打招呼\n类型2: 关于商品“使用”问题\n类型3: 关于商品“购买”问题\n类型4: 其他问题",
+        "avatar": "/imgs/workflow/cq.png",
+        "flowNodeType": "classifyQuestion",
+        "showStatus": true,
+        "position": {
+          "x": 907.5332554632652,
+          "y": -148.3609027835083
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": [
+              "selectLLMModel",
+              "reference"
+            ],
+            "label": "core.module.input.label.aiModel",
+            "required": true,
+            "valueType": "string",
+            "llmModelType": "classify",
+            "value": "moonshot-v1-8k"
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "max": 3000,
+            "valueType": "string",
+            "label": "core.module.input.label.Background",
+            "description": "core.module.input.description.Background",
+            "placeholder": "core.module.input.placeholder.Classify background",
+            "value": ""
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "core.module.input.label.chat history",
+            "description": "最多携带多少轮对话记录",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 6
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "required": true,
+            "value": [
+              "448745",
+              "userChatInput"
+            ]
+          },
+          {
+            "key": "agents",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": [
+              {
+                "value": "提出知识性问题",
+                "key": "wqre"
+              },
+              {
+                "value": "询问数据相关的问题",
+                "key": "sdfa"
+              },
+              {
+                "value": "其他问题",
+                "key": "agex"
+              }
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "cqResult",
+            "key": "cqResult",
+            "required": true,
+            "label": "分类结果",
+            "valueType": "string",
+            "type": "static"
+          }
+        ]
+      },
+      {
+        "nodeId": "igGJY06I9WKh",
+        "name": "应用调用",
+        "intro": "可以选择一个其他应用进行调用",
+        "avatar": "/imgs/workflow/app.png",
+        "flowNodeType": "app",
+        "showStatus": true,
+        "position": {
+          "x": 1736.9762897589221,
+          "y": -407.2813731412407
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "app",
+            "renderTypeList": [
+              "selectApp",
+              "reference"
+            ],
+            "valueType": "selectApp",
+            "label": "选择一个应用",
+            "description": "选择一个其他应用进行调用",
+            "required": true,
+            "selectedTypeIndex": 0,
+            "value": {
+              "id": "666f9d0eb437c4b9393a07b6",
+              "name": "新都问答",
+              "logo": "/imgs/workflow/AI.png"
+            }
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "core.module.input.label.chat history",
+            "description": "最多携带多少轮对话记录",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 6
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "required": true,
+            "value": [
+              "448745",
+              "userChatInput"
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "label": "新的上下文",
+            "description": "将该应用回复内容拼接到历史记录中，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "required": true,
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "label": "回复的文本",
+            "description": "将在应用完全结束后触发",
+            "valueType": "string",
+            "type": "static"
+          }
+        ]
+      },
+      {
+        "nodeId": "mXZAjfiq3796",
+        "name": "AI 对话",
+        "intro": "AI 大模型对话",
+        "avatar": "/imgs/workflow/AI.png",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": 1899.561055273848,
+          "y": 662.4396152129732
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": [
+              "settingLLMModel",
+              "reference"
+            ],
+            "label": "core.module.input.label.aiModel",
+            "valueType": "string",
+            "value": "moonshot-v1-8k"
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": 0,
+            "valueType": "number",
+            "min": 0,
+            "max": 10,
+            "step": 1
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": 2000,
+            "valueType": "number",
+            "min": 100,
+            "max": 4000,
+            "step": 50
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": true,
+            "valueType": "boolean"
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string"
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string"
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "max": 3000,
+            "valueType": "string",
+            "label": "core.ai.Prompt",
+            "description": "core.app.tip.chatNodeSystemPromptTip",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip"
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "core.module.input.label.chat history",
+            "description": "最多携带多少轮对话记录",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 6
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "required": true,
+            "toolDescription": "用户问题",
+            "value": [
+              "448745",
+              "userChatInput"
+            ]
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": [
+              "settingDatasetQuotePrompt"
+            ],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "core.module.output.label.New context",
+            "description": "core.module.output.description.New context",
+            "valueType": "chatHistory",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "core.module.output.label.Ai response content",
+            "description": "core.module.output.description.Ai response content",
+            "valueType": "string",
+            "type": "static"
+          }
+        ]
+      },
+      {
+        "nodeId": "hIM8ba78c1JW",
+        "name": "应用调用",
+        "intro": "可以选择一个其他应用进行调用",
+        "avatar": "/imgs/workflow/app.png",
+        "flowNodeType": "app",
+        "showStatus": true,
+        "position": {
+          "x": 1869.511150930724,
+          "y": 110.826859035717
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "app",
+            "renderTypeList": [
+              "selectApp",
+              "reference"
+            ],
+            "valueType": "selectApp",
+            "label": "选择一个应用",
+            "description": "选择一个其他应用进行调用",
+            "required": true,
+            "value": {
+              "id": "667cda90b437c4b9393fe9f7",
+              "name": "新都数据查询1.1",
+              "logo": "/imgs/workflow/AI.png"
+            }
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "core.module.input.label.chat history",
+            "description": "最多携带多少轮对话记录",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 6
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "required": true,
+            "value": [
+              "448745",
+              "userChatInput"
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "label": "新的上下文",
+            "description": "将该应用回复内容拼接到历史记录中，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "required": true,
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "label": "回复的文本",
+            "description": "将在应用完全结束后触发",
+            "valueType": "string",
+            "type": "static"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "448745",
+        "target": "zLafT0PiV19R",
+        "sourceHandle": "448745-source-right",
+        "targetHandle": "zLafT0PiV19R-target-left"
+      },
+      {
+        "source": "zLafT0PiV19R",
+        "target": "igGJY06I9WKh",
+        "sourceHandle": "zLafT0PiV19R-source-wqre",
+        "targetHandle": "igGJY06I9WKh-target-left"
+      },
+      {
+        "source": "zLafT0PiV19R",
+        "target": "mXZAjfiq3796",
+        "sourceHandle": "zLafT0PiV19R-source-agex",
+        "targetHandle": "mXZAjfiq3796-target-left"
+      },
+      {
+        "source": "zLafT0PiV19R",
+        "target": "hIM8ba78c1JW",
+        "sourceHandle": "zLafT0PiV19R-source-sdfa",
+        "targetHandle": "hIM8ba78c1JW-target-left"
+      }
+    ],
+    "chatConfig": {
+      "welcomeText": "你好我是你的私人助理AI豆豆，有什么可以帮您？",
+      "variables": [],
+      "questionGuide": false,
+      "scheduledTriggerConfig": {
+        "cronString": "0 0 * * *",
+        "timezone": "Asia/Shanghai",
+        "defaultPrompt": ""
+      },
+      "_id": "666f9d78b437c4b9393a091c"
+    }
+  }
