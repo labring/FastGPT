@@ -18,6 +18,8 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import FocusPlugin from './plugins/FocusPlugin';
 import { textToEditorState } from './utils';
 import { MaxLengthPlugin } from './plugins/MaxLengthPlugin';
+import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
+import VariableLabelPlugin from './plugins/VariableLabelPlugin';
 
 export default function Editor({
   h = 200,
@@ -51,7 +53,7 @@ export default function Editor({
 
   const initialConfig = {
     namespace: 'promptEditor',
-    nodes: [VariableNode],
+    nodes: [VariableNode, VariableLabelNode],
     editorState: textToEditorState(value),
     onError: (error: Error) => {
       throw error;
@@ -129,6 +131,7 @@ export default function Editor({
         />
         <VariablePickerPlugin variables={variables} />
         <VariablePlugin variables={variables} />
+        <VariableLabelPlugin variables={variables} />
         <OnBlurPlugin onBlur={onBlur} />
       </LexicalComposer>
       {showResize && (

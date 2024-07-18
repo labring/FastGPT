@@ -6,9 +6,25 @@ import { useCallback, useState } from 'react';
 import * as ReactDOM from 'react-dom';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../../../Icon';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, Image } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import { EditorVariablePickerType } from '../../type.d';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+
+type EditorVariablePickerType1 = {
+  key: string;
+  label: string;
+  required?: boolean;
+  icon?: string;
+  valueType?: WorkflowIOValueTypeEnum;
+  index: number;
+};
+interface TransformedParent {
+  id: string;
+  label: string;
+  avatar: string;
+  children: EditorVariablePickerType1[];
+}
 
 export default function VariablePickerPlugin({
   variables
@@ -17,9 +33,8 @@ export default function VariablePickerPlugin({
 }) {
   const [editor] = useLexicalComposerContext();
   const [queryString, setQueryString] = useState<string | null>(null);
-  const { t } = useTranslation();
 
-  const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('{', {
+  const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
     minLength: 0
   });
 
@@ -33,7 +48,9 @@ export default function VariablePickerPlugin({
         if (nodeToRemove) {
           nodeToRemove.remove();
         }
-        selection.insertNodes([$createTextNode(`{{${selectedOption.key}}}`)]);
+        selection.insertNodes([
+          $createTextNode(`{{$${selectedOption.parent?.id}.${selectedOption.key}$}}`)
+        ]);
         closeMenu();
       });
     },
@@ -67,44 +84,67 @@ export default function VariablePickerPlugin({
                 overflow={'hidden'}
                 zIndex={99999}
               >
-                {variables.map((item, index) => (
-                  <Flex
-                    alignItems={'center'}
-                    as={'li'}
-                    key={item.key}
-                    px={4}
-                    py={2}
-                    borderRadius={'sm'}
-                    cursor={'pointer'}
-                    maxH={'300px'}
-                    overflow={'auto'}
-                    _notLast={{
-                      mb: 2
-                    }}
-                    {...(selectedIndex === index
-                      ? {
-                          bg: 'primary.50',
-                          color: 'primary.600'
-                        }
-                      : {
-                          bg: 'white',
-                          color: 'myGray.600'
-                        })}
-                    onClick={() => {
-                      setHighlightedIndex(index);
-                      selectOptionAndCleanUp(item);
-                    }}
-                    onMouseEnter={() => {
-                      setHighlightedIndex(index);
-                    }}
-                  >
-                    <MyIcon name={(item.icon as any) || 'core/modules/variable'} w={'14px'} />
-                    <Box ml={2} fontSize={'sm'} whiteSpace={'nowrap'}>
-                      {item.key}
-                      {item.key !== item.label && `(${item.label})`}
-                    </Box>
-                  </Flex>
-                ))}
+                {transformData(variables).map((item, index) => {
+                  return (
+                    <Flex key={item.id}>
+                      <Flex
+                        flexDirection={'column'}
+                        px={item.id && 4}
+                        py={item.id && 2}
+                        borderRadius={'sm'}
+                      >
+                        {item.id && (
+                          <Flex alignItems={'center'}>
+                            <Image src={item.avatar} w={'16px'} />
+                            <Box mx={2} fontSize={'sm'} whiteSpace={'nowrap'}>
+                              {item.label}
+                            </Box>
+                          </Flex>
+                        )}
+                        {item.children?.map((child, index) => (
+                          <Flex
+                            alignItems={'center'}
+                            as={'li'}
+                            key={child.key}
+                            px={4}
+                            py={2}
+                            cursor={'pointer'}
+                            maxH={'300px'}
+                            overflow={'auto'}
+                            _notLast={{
+                              mb: 2
+                            }}
+                            {...(selectedIndex === child.index
+                              ? {
+                                  bg: 'primary.50',
+                                  color: 'primary.600'
+                                }
+                              : {
+                                  bg: 'white',
+                                  color: 'myGray.600'
+                                })}
+                            onClick={() => {
+                              setHighlightedIndex(child.index);
+                              selectOptionAndCleanUp(child);
+                            }}
+                            onMouseEnter={() => {
+                              setHighlightedIndex(child.index);
+                            }}
+                          >
+                            <MyIcon
+                              name={(child.icon as any) || 'core/modules/variable'}
+                              w={'14px'}
+                            />
+                            <Box ml={2} fontSize={'sm'} whiteSpace={'nowrap'}>
+                              {child.key}
+                              {child.key !== child.label && `(${child.label})`}
+                            </Box>
+                          </Flex>
+                        ))}
+                      </Flex>
+                    </Flex>
+                  );
+                })}
               </Box>,
               anchorElementRef.current
             )
@@ -112,4 +152,36 @@ export default function VariablePickerPlugin({
       }}
     />
   );
+}
+
+function transformData(data: EditorVariablePickerType[]): TransformedParent[] {
+  const transformedData: TransformedParent[] = [];
+  const parentMap: { [key: string]: TransformedParent } = {};
+
+  data.forEach((item, index) => {
+    const parentId = item.parent ? item.parent.id : '';
+    const parentLabel = item.parent ? item.parent.label : '';
+    const parentAvatar = item.parent ? item.parent.avatar : '';
+
+    if (!parentMap[parentId]) {
+      parentMap[parentId] = {
+        id: parentId,
+        label: parentLabel,
+        avatar: parentAvatar || '',
+        children: []
+      };
+    }
+    parentMap[parentId].children.push({
+      label: item.label,
+      key: item.key,
+      icon: item.icon,
+      index
+    });
+  });
+
+  for (const key in parentMap) {
+    transformedData.push(parentMap[key]);
+  }
+
+  return transformedData;
 }

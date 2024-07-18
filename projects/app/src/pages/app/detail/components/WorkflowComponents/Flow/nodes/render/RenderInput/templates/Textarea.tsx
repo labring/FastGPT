@@ -5,13 +5,14 @@ import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
-import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
+import { computedNodeInputReference, getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useCreation } from 'ahooks';
 import { AppContext } from '@/pages/app/detail/components/context';
 
 const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const getNodeDynamicInputs = useContextSelector(WorkflowContext, (v) => v.getNodeDynamicInputs);
 
@@ -32,7 +33,34 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
       }))
     );
 
-    return [...globalVariables, ...nodeVariables];
+    const sourceNodes = computedNodeInputReference({
+      nodeId,
+      nodes: nodeList,
+      edges: edges,
+      chatConfig: appDetail.chatConfig,
+      t
+    });
+
+    const sourceNodeVariables = !sourceNodes
+      ? []
+      : sourceNodes
+          .map((node) => {
+            return node.outputs.map((output) => {
+              return {
+                label: t((output.label as any) || ''),
+                key: output.id,
+                parent: {
+                  id: node.nodeId,
+                  label: node.name,
+                  avatar: node.avatar
+                }
+              };
+            });
+          })
+          .flat();
+
+    const formatSourceNodeVariables = formatEditorVariablePickerIcon(sourceNodeVariables);
+    return [...formatSourceNodeVariables, ...nodeVariables];
   }, [nodeList, inputs, t]);
 
   const onChange = useCallback(

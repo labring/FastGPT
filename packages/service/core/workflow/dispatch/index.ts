@@ -16,7 +16,7 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
+import { replaceVariable, replaceVariableLabel } from '@fastgpt/global/common/string/tools';
 import { responseWriteNodeStatus } from '../../../common/response';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 
@@ -290,6 +290,9 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
       // replace {{}} variables
       let value = replaceVariable(input.value, variables);
+
+      // replace {{$$}} variables
+      value = replaceVariableLabel(input.value, runtimeNodes, variables);
 
       // replace reference variables
       value = getReferenceVariableValue({
