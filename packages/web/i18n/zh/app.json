@@ -75,6 +75,9 @@
   "modules": {
     "Title is required": "模块名不能为空"
   },
+  "template": {
+    "simple_robot": "简易机器人"
+  },
   "type": {
     "All": "全部",
     "Create http plugin tip": "通过 OpenAPI Schema 批量创建插件，兼容 GPTs 格式。",

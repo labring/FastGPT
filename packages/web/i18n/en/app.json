@@ -76,6 +76,9 @@
   "modules": {
     "Title is required": "Module name cannot be empty"
   },
+  "template": {
+    "simple_robot": "Simple Robot"
+  },
   "type": {
     "All": "All",
     "Create http plugin tip": "Create plug-ins in batches using OpenAPI schema, compatible with GPTs format.",
