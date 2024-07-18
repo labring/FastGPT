@@ -260,7 +260,6 @@ export const checkWorkflowNodeAndConnection = ({
     if (
       data.flowNodeType === FlowNodeTypeEnum.systemConfig ||
       data.flowNodeType === FlowNodeTypeEnum.pluginInput ||
-      data.flowNodeType === FlowNodeTypeEnum.pluginOutput ||
       data.flowNodeType === FlowNodeTypeEnum.workflowStart
     ) {
       continue;
