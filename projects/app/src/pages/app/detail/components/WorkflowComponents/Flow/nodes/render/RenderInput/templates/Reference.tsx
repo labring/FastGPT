@@ -19,7 +19,7 @@ import { AppContext } from '@/pages/app/detail/components/context';
 const MultipleRowSelect = dynamic(
   () => import('@fastgpt/web/components/common/MySelect/MultipleRowSelect')
 );
-const Avatar = dynamic(() => import('@/components/Avatar'));
+const Avatar = dynamic(() => import('@fastgpt/web/components/common/Avatar'));
 
 type SelectProps = {
   value?: ReferenceValueProps;

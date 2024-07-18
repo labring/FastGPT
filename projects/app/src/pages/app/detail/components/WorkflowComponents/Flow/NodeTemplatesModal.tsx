@@ -15,7 +15,7 @@ import type {
 } from '@fastgpt/global/core/workflow/type/node.d';
 import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -369,7 +369,7 @@ const RenderList = React.memo(function RenderList({
             flowNodeType: templateNode.flowNodeType,
             pluginId: templateNode.pluginId
           }),
-          intro: t(templateNode.intro || ('' as any))
+          intro: t(templateNode.intro as any)
         },
         position: { x: mouseX, y: mouseY - 20 },
         selected: true
@@ -495,7 +495,7 @@ const RenderList = React.memo(function RenderList({
                         <MyIcon name={template.avatar as any} w={avatarSize} />
                       )}
                       <Box color={'myGray.900'} fontSize={'sm'} ml={3} flex={'1 0 0'}>
-                        {t(template.name)}
+                        {t(template.name as any)}
                       </Box>
                       {template.author && (
                         <Box fontSize={'xs'} color={'myGray.500'}>

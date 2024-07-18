@@ -27,7 +27,7 @@ import {
   FlowNodeTemplateType,
   NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node.d';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AddIcon } from '@chakra-ui/icons';
 import {
@@ -228,11 +228,11 @@ const RenderList = React.memo(function RenderList({
                     <MyIcon name={item.avatar as any} w={'24px'} />
                   )}
                   <Box fontWeight={'bold'} ml={3}>
-                    {t(item.name)}
+                    {t(item.name as any)}
                   </Box>
                 </Flex>
                 <Box mt={2} color={'myGray.500'}>
-                  {t(item.intro) || t('core.workflow.Not intro')}
+                  {t(item.intro as any) || t('core.workflow.Not intro')}
                 </Box>
                 {showCost && (
                   <>
@@ -273,7 +273,7 @@ const RenderList = React.memo(function RenderList({
                 <MyIcon name={item.avatar as any} w={['26px', '36px']} />
               )}
               <Box ml={5} flex={'1 0 0'} color={'black'}>
-                {t(item.name)}
+                {t(item.name as any)}
               </Box>
               {showCost && (
                 <Box fontSize={'xs'} mr={3}>

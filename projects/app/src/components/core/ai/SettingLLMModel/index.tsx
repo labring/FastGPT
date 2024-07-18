@@ -4,7 +4,7 @@ import { LLMModelTypeEnum, llmModelTypeFilterMap } from '@fastgpt/global/core/ai
 import { Box, Button, Flex, css, useDisclosure } from '@chakra-ui/react';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
 import AISettingModal from '@/components/core/ai/AISettingModal';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';

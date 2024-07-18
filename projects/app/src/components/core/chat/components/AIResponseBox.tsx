@@ -15,7 +15,7 @@ import {
 } from '@fastgpt/global/core/chat/type';
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 
 type props = {
   value: UserChatItemValueItemType | AIChatItemValueItemType;

@@ -18,7 +18,7 @@ import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
 import dynamic from 'next/dynamic';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';

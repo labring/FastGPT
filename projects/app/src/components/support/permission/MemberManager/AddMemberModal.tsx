@@ -14,7 +14,7 @@ import {
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import MyAvatar from '@/components/Avatar';
+import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import { useMemo, useState } from 'react';
 import PermissionSelect from './PermissionSelect';
 import PermissionTags from './PermissionTags';
@@ -23,7 +23,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { ChevronDownIcon } from '@chakra-ui/icons';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 
