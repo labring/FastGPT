@@ -12,6 +12,7 @@ import {
   Image
 } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
+import { useCopyData } from '@/web/common/hooks/useCopyData';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
@@ -19,6 +20,7 @@ import { formatChatValue2InputType } from '../utils';
 import Markdown, { CodeClassName } from '@/components/Markdown';
 import styles from '../index.module.scss';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
   ChatItemValueTypeEnum,
   ChatRoleEnum,
@@ -28,6 +30,7 @@ import FilesBlock from './FilesBox';
 import { ChatBoxContext } from '../Provider';
 import Avatar from '@/components/Avatar';
 import { useContextSelector } from 'use-context-selector';
+import { useTranslation } from 'next-i18next';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -81,7 +84,10 @@ const ChatItem = ({
 
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const { chat } = chatControllerProps;
-
+  const theme = useTheme();
+  const { t } = useTranslation();
+  const { copyData } = useCopyData();
+  const chatText = useMemo(() => formatChatValue2InputType(chat.value).text || '', [chat.value]);
   const ContentCard = useMemo(() => {
     if (type === 'Human') {
       const { text, files = [] } = formatChatValue2InputType(chat.value);
@@ -243,7 +249,7 @@ ${toolResponse}`}
         )}
       </Flex>
       {/* content */}
-      <Box mt={['6px', 2]} textAlign={styleMap.textAlign}>
+      <Box position={'relative'} mt={['6px', 2]} textAlign={styleMap.textAlign}>
         <Card
           className="markdown"
           {...MessageCardStyle}
@@ -254,6 +260,22 @@ ${toolResponse}`}
           {ContentCard}
           {children}
         </Card>
+        {/* 对话框底部的复制按钮 */}
+        {type == ChatRoleEnum.AI && (!isChatting || (isChatting && !isLastChild)) && (
+          <Box position={'absolute'} bottom={0} right={[0, 3]} color={'myGray.400'}>
+            <MyTooltip label={t('common.Copy')}>
+              <MyIcon
+                w={'14px'}
+                cursor="pointer"
+                p="5px"
+                bg="white"
+                name={'copy'}
+                _hover={{ color: 'primary.600' }}
+                onClick={() => copyData(chatText)}
+              />
+            </MyTooltip>
+          </Box>
+        )}
       </Box>
     </>
   );
