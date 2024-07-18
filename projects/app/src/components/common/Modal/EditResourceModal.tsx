@@ -10,7 +10,7 @@ import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants'
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 export type EditResourceInfoFormType = {

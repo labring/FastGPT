@@ -11,7 +11,7 @@ export const PluginInputModule: FlowNodeTemplateType = {
   targetHandle: getHandleConfig(false, false, false, false),
   unique: true,
   forbidDelete: true,
-  avatar: '/imgs/workflow/input.png',
+  avatar: 'core/workflow/template/workflowStart',
   name: '插件输入',
   intro: '可以配置插件需要哪些输入，利用这些输入来运行插件',
   showStatus: false,

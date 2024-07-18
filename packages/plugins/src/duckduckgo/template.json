@@ -1,0 +1,17 @@
+{
+  "author": "FastGPT",
+  "version": "486",
+  "name": "DuckDuckGo服务",
+  "avatar": "core/workflow/template/duckduckgo",
+  "intro": "DuckDuckGo 服务",
+  "showStatus": false,
+  "weight": 10,
+
+  "isTool": true,
+  "templateType": "tools",
+
+  "workflow": {
+    "nodes": [],
+    "edges": []
+  }
+}

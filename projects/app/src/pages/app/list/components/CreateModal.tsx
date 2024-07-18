@@ -20,7 +20,7 @@ import { useRouter } from 'next/router';
 import { simpleBotTemplates, workflowTemplates, pluginTemplates } from '@/web/core/app/templates';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -195,7 +195,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
               }}
             >
               <Flex alignItems={'center'}>
-                <Avatar src={item.avatar} borderRadius={'md'} w={'20px'} />
+                <Avatar src={item.avatar} borderRadius={'sm'} w={'1.5rem'} />
                 <Box ml={3} color={'myGray.900'}>
                   {t(item.name as any)}
                 </Box>

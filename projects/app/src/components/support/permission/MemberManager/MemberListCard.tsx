@@ -4,7 +4,7 @@ import React from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
 import Tag, { TagProps } from '@fastgpt/web/components/common/Tag';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 
 export type MemberListCardProps = BoxProps & { tagStyle?: Omit<TagProps, 'children'> };

@@ -10,7 +10,7 @@ import {
   Grid,
   Divider
 } from '@chakra-ui/react';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/api.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';

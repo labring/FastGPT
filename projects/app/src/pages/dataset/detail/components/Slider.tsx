@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex, IconButton, useTheme, Progress } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import MyIcon from '@fastgpt/web/components/common/Icon';

@@ -18,7 +18,7 @@ import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
 import dynamic from 'next/dynamic';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
@@ -242,8 +242,15 @@ const EditForm = ({
                     })
                   }
                 >
-                  <Avatar src={item.avatar} w={'18px'} mr={1} />
-                  <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
+                  <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'sm'} />
+                  <Box
+                    ml={2}
+                    flex={'1 0 0'}
+                    w={0}
+                    className={'textEllipsis'}
+                    fontSize={'sm'}
+                    color={'myGray.900'}
+                  >
                     {item.name}
                   </Box>
                 </Flex>
@@ -292,8 +299,15 @@ const EditForm = ({
                     borderColor: 'primary.300'
                   }}
                 >
-                  <Avatar src={item.avatar} w={'1rem'} mr={1} />
-                  <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
+                  <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'sm'} />
+                  <Box
+                    ml={2}
+                    flex={'1 0 0'}
+                    w={0}
+                    className={'textEllipsis'}
+                    fontSize={'sm'}
+                    color={'myGray.900'}
+                  >
                     {item.name}
                   </Box>
                   <DeleteIcon

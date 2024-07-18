@@ -163,6 +163,45 @@ export const iconPaths = {
   'core/workflow/runSkip': () => import('./icons/core/workflow/runSkip.svg'),
   'core/workflow/runSuccess': () => import('./icons/core/workflow/runSuccess.svg'),
   'core/workflow/running': () => import('./icons/core/workflow/running.svg'),
+  'core/workflow/template/FileRead': () => import('./icons/core/workflow/template/FileRead.svg'),
+  'core/workflow/template/aiChat': () => import('./icons/core/workflow/template/aiChat.svg'),
+  'core/workflow/template/codeRun': () => import('./icons/core/workflow/template/codeRun.svg'),
+  'core/workflow/template/customFeedback': () =>
+    import('./icons/core/workflow/template/customFeedback.svg'),
+  'core/workflow/template/datasetConcat': () =>
+    import('./icons/core/workflow/template/datasetConcat.svg'),
+  'core/workflow/template/datasetSearch': () =>
+    import('./icons/core/workflow/template/datasetSearch.svg'),
+  'core/workflow/template/duckduckgo': () =>
+    import('./icons/core/workflow/template/duckduckgo.svg'),
+  'core/workflow/template/extractJson': () =>
+    import('./icons/core/workflow/template/extractJson.svg'),
+  'core/workflow/template/fetchUrl': () => import('./icons/core/workflow/template/fetchUrl.svg'),
+  'core/workflow/template/getTime': () => import('./icons/core/workflow/template/getTime.svg'),
+  'core/workflow/template/httpRequest': () =>
+    import('./icons/core/workflow/template/httpRequest.svg'),
+  'core/workflow/template/ifelse': () => import('./icons/core/workflow/template/ifelse.svg'),
+  'core/workflow/template/lafDispatch': () =>
+    import('./icons/core/workflow/template/lafDispatch.svg'),
+  'core/workflow/template/mathCall': () => import('./icons/core/workflow/template/mathCall.svg'),
+  'core/workflow/template/pluginOutput': () =>
+    import('./icons/core/workflow/template/pluginOutput.svg'),
+  'core/workflow/template/queryExtension': () =>
+    import('./icons/core/workflow/template/queryExtension.svg'),
+  'core/workflow/template/questionClassify': () =>
+    import('./icons/core/workflow/template/questionClassify.svg'),
+  'core/workflow/template/reply': () => import('./icons/core/workflow/template/reply.svg'),
+  'core/workflow/template/runApp': () => import('./icons/core/workflow/template/runApp.svg'),
+  'core/workflow/template/stopTool': () => import('./icons/core/workflow/template/stopTool.svg'),
+  'core/workflow/template/systemConfig': () =>
+    import('./icons/core/workflow/template/systemConfig.svg'),
+  'core/workflow/template/textConcat': () =>
+    import('./icons/core/workflow/template/textConcat.svg'),
+  'core/workflow/template/toolCall': () => import('./icons/core/workflow/template/toolCall.svg'),
+  'core/workflow/template/variableUpdate': () =>
+    import('./icons/core/workflow/template/variableUpdate.svg'),
+  'core/workflow/template/workflowStart': () =>
+    import('./icons/core/workflow/template/workflowStart.svg'),
   'core/workflow/versionHistories': () => import('./icons/core/workflow/versionHistories.svg'),
   date: () => import('./icons/date.svg'),
   delete: () => import('./icons/delete.svg'),
@@ -206,6 +245,7 @@ export const iconPaths = {
   'phoneTabbar/me': () => import('./icons/phoneTabbar/me.svg'),
   'phoneTabbar/tool': () => import('./icons/phoneTabbar/tool.svg'),
   'phoneTabbar/toolFill': () => import('./icons/phoneTabbar/toolFill.svg'),
+  'plugins/textEditor': () => import('./icons/plugins/textEditor.svg'),
   'price/bg': () => import('./icons/price/bg.svg'),
   'price/right': () => import('./icons/price/right.svg'),
   save: () => import('./icons/save.svg'),
