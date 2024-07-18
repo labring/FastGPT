@@ -9,7 +9,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { cloneDeep } from 'lodash';
 import { MongoApp } from '../schema';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
-import { getSystemPluginTemplates } from '@fastgpt/plugins/register';
+import { getSystemPluginTemplates } from '../../../../plugins/register';
 
 /* 
   plugin id rule:

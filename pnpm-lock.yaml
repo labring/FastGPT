@@ -103,9 +103,6 @@ importers:
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global
-      '@fastgpt/plugins':
-        specifier: workspace:*
-        version: link:../plugins
       '@node-rs/jieba':
         specifier: 1.10.0
         version: 1.10.0
@@ -1874,7 +1871,7 @@ packages:
     resolution: {integrity: sha512-5mlW1DquU5HaxjLkfkGN1GA/fvVGdyHURRiX/0FHl2cfIfRxSOfmxEH5YS43edp0OldZrZ+dkBKbngxcNCdZvA==}
     peerDependencies:
       '@types/react': '*'
-      react: 18.3.1
+      react: '>=16.8.0'
     peerDependenciesMeta:
       '@types/react':
         optional: true
