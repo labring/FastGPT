@@ -73,7 +73,7 @@ const MyModal = ({
                   objectFit={'contain'}
                   alt=""
                   src={iconSrc}
-                  w={'1.75rem'}
+                  w={'1.5rem'}
                   borderRadius={'md'}
                 />
               </>

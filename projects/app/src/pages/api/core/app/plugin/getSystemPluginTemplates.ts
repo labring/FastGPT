@@ -7,18 +7,20 @@ import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constant
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 
-export type GetSystemPluginTemplatesQuery = {
+export type GetSystemPluginTemplatesBody = {
+  searchKey?: string;
   parentId: ParentIdType;
 };
 
 async function handler(
-  req: ApiRequestProps<{}, GetSystemPluginTemplatesQuery>,
+  req: ApiRequestProps<GetSystemPluginTemplatesBody>,
   res: NextApiResponse<any>
 ): Promise<NodeTemplateListItemType[]> {
   await authCert({ req, authToken: true });
 
-  const { parentId } = req.query;
+  const { searchKey, parentId } = req.body;
 
   const formatParentId = parentId || null;
 
@@ -39,7 +41,14 @@ async function handler(
         currentCost: plugin.currentCost,
         author: plugin.author
       }))
-      .filter((item) => item.parentId === formatParentId)
+      .filter((item) => {
+        if (searchKey) {
+          if (item.isFolder) return false;
+          const regx = new RegExp(`${replaceRegChars(searchKey)}`, 'i');
+          return regx.test(item.name) || regx.test(item.intro || '');
+        }
+        return item.parentId === formatParentId;
+      })
   );
 }
 

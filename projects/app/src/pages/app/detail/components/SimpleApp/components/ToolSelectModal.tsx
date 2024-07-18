@@ -69,9 +69,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   const { data: templates = [], loading: isLoading } = useRequest2(
     async () => {
       if (templateType === TemplateTypeEnum.systemPlugin) {
-        return (await getSystemPlugTemplates(parentId)).filter(
-          (item) => item.isTool && item.name.toLowerCase().includes(searchKey.toLowerCase())
-        );
+        return getSystemPlugTemplates({ parentId, searchKey });
       } else if (templateType === TemplateTypeEnum.teamPlugin) {
         return getTeamPlugTemplates({
           parentId,

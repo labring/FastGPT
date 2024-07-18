@@ -32,9 +32,12 @@ export type FastGPTFeConfigsType = {
   show_promotion?: boolean;
   show_team_chat?: boolean;
   concatMd?: string;
+
   docUrl?: string;
   chatbotUrl?: string;
   openAPIDocUrl?: string;
+  systemPluginCourseUrl?: string;
+
   systemTitle?: string;
   systemDescription?: string;
   googleClientVerKey?: string;

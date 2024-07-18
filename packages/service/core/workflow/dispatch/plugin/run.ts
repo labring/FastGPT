@@ -76,7 +76,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     output.moduleLogo = plugin.avatar;
   }
 
-  const usagePoints = await computedPluginUsage(plugin, flowUsages);
+  const isError = !!output?.pluginOutput?.error;
+  const usagePoints = isError ? 0 : await computedPluginUsage(plugin, flowUsages);
 
   return {
     assistantResponses,

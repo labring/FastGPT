@@ -128,7 +128,10 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         }).then((res) => res.filter((app) => app.id !== appId));
       }
       if (templateType === TemplateTypeEnum.systemPlugin) {
-        return getSystemPlugTemplates(parentId);
+        return getSystemPlugTemplates({
+          searchKey,
+          parentId
+        });
       }
     },
     {
@@ -233,7 +236,8 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
               />
             </Flex>
             {/* Search */}
-            {templateType === TemplateTypeEnum.teamPlugin && (
+            {(templateType === TemplateTypeEnum.teamPlugin ||
+              templateType === TemplateTypeEnum.systemPlugin) && (
               <Flex mt={2} alignItems={'center'} h={10}>
                 <InputGroup mr={4} h={'full'}>
                   <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
@@ -247,18 +251,37 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                   />
                 </InputGroup>
                 <Box flex={1} />
-                <Flex
-                  alignItems={'center'}
-                  cursor={'pointer'}
-                  _hover={{
-                    color: 'primary.600'
-                  }}
-                  fontSize={'sm'}
-                  onClick={() => router.push('/app/list')}
-                >
-                  <Box>去创建</Box>
-                  <MyIcon name={'common/rightArrowLight'} w={'14px'} />
-                </Flex>
+                {templateType === TemplateTypeEnum.teamPlugin && (
+                  <Flex
+                    alignItems={'center'}
+                    cursor={'pointer'}
+                    _hover={{
+                      color: 'primary.600'
+                    }}
+                    fontSize={'sm'}
+                    onClick={() => router.push('/app/list')}
+                    gap={1}
+                  >
+                    <Box>去创建</Box>
+                    <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
+                  </Flex>
+                )}
+                {templateType === TemplateTypeEnum.systemPlugin &&
+                  feConfigs.systemPluginCourseUrl && (
+                    <Flex
+                      alignItems={'center'}
+                      cursor={'pointer'}
+                      _hover={{
+                        color: 'primary.600'
+                      }}
+                      fontSize={'sm'}
+                      onClick={() => window.open(feConfigs.systemPluginCourseUrl)}
+                      gap={1}
+                    >
+                      <Box>贡献插件</Box>
+                      <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
+                    </Flex>
+                  )}
               </Flex>
             )}
             {/* paths */}
