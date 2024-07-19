@@ -46,6 +46,7 @@ import { useWorkflowUtils } from './hooks/useUtils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { cloneDeep } from 'lodash';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import CoseTooltip from '@/components/core/app/plugin/CoseTooltip';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -454,21 +455,7 @@ const RenderList = React.memo(function RenderList({
                         <Box mt={2} color={'myGray.500'}>
                           {t(template.intro as any) || t('common:core.workflow.Not intro')}
                         </Box>
-                        {isSystemPlugin && (
-                          <>
-                            <Divider mt={4} mb={2} />
-                            <Flex>
-                              <Box>{t('common:core.plugin.cost')}</Box>
-                              <Box color={'myGray.600'}>
-                                {template.currentCost && template.currentCost > 0
-                                  ? t('app:Plugin cost per times', {
-                                      cost: template.currentCost
-                                    })
-                                  : t('common:core.plugin.Free')}
-                              </Box>
-                            </Flex>
-                          </>
-                        )}
+                        {isSystemPlugin && <CoseTooltip cost={template.currentCost} />}
                       </Box>
                     }
                   >

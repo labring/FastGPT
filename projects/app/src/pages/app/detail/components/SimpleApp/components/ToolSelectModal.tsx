@@ -47,6 +47,7 @@ import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useI18n } from '@/web/context/I18n';
+import CoseTooltip from '@/components/core/app/plugin/CoseTooltip';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -233,19 +234,7 @@ const RenderList = React.memo(function RenderList({
                 <Box mt={2} color={'myGray.500'}>
                   {t(item.intro as any) || t('common:core.workflow.Not intro')}
                 </Box>
-                {showCost && (
-                  <>
-                    <Divider mt={4} mb={2} />
-                    <Flex>
-                      <Box>{t('common:core.plugin.cost')}</Box>
-                      <Box color={'myGray.600'}>
-                        {item.currentCost && item.currentCost > 0
-                          ? t('app:Plugin cost per times', { cost: item.currentCost })
-                          : t('common:core.plugin.Free')}
-                      </Box>
-                    </Flex>
-                  </>
-                )}
+                {showCost && <CoseTooltip cost={item.currentCost} />}
               </Box>
             }
           >
