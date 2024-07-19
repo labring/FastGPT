@@ -13,7 +13,7 @@ import {
 import { useRouter } from 'next/router';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { useTranslation } from 'next-i18next';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import TagsEditModal from '../TagsEditModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';

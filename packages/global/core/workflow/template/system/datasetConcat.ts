@@ -37,7 +37,7 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
   templateType: FlowNodeTemplateTypeEnum.other,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
-  avatar: '/imgs/workflow/concat.svg',
+  avatar: 'core/workflow/template/datasetConcat',
   name: '知识库搜索引用合并',
   intro: '可以将多个知识库搜索结果进行合并输出。使用 RRF 的合并方式进行最终排序输出。',
   showStatus: false,

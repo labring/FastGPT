@@ -4,6 +4,9 @@ export enum FlowNodeTemplateTypeEnum {
   function = 'function',
   tools = 'tools',
 
+  search = 'search',
+  multimodal = 'multimodal',
+
   other = 'other',
   teamApp = 'teamApp'
 }

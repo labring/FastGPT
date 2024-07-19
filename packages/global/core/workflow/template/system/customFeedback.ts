@@ -13,7 +13,7 @@ export const CustomFeedbackNode: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.customFeedback,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
-  avatar: '/imgs/workflow/customFeedback.svg',
+  avatar: 'core/workflow/template/customFeedback',
   name: '自定义反馈',
   intro: '该模块被触发时，会给当前的对话记录增加一条反馈。可用于自动记录对话效果等。',
   version: '486',

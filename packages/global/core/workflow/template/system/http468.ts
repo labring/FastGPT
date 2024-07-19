@@ -20,7 +20,7 @@ export const HttpNode468: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.httpRequest468,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
-  avatar: '/imgs/workflow/http.png',
+  avatar: 'core/workflow/template/httpRequest',
   name: 'HTTP 请求',
   intro: '可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
   showStatus: true,

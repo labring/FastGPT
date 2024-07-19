@@ -19,7 +19,7 @@ import { AppContext } from '@/pages/app/detail/components/context';
 const MultipleRowSelect = dynamic(
   () => import('@fastgpt/web/components/common/MySelect/MultipleRowSelect')
 );
-const Avatar = dynamic(() => import('@/components/Avatar'));
+const Avatar = dynamic(() => import('@fastgpt/web/components/common/Avatar'));
 
 type SelectProps = {
   value?: ReferenceValueProps;
@@ -120,8 +120,8 @@ export const useReference = ({
         return {
           label: (
             <Flex alignItems={'center'}>
-              <Avatar mr={1} src={node.avatar} w={'14px'} borderRadius={'ms'} />
-              <Box>{t(node.name as any)}</Box>
+              <Avatar src={node.avatar} w={'1.25rem'} borderRadius={'xs'} />
+              <Box ml={1}>{t(node.name as any)}</Box>
             </Flex>
           ),
           value: node.nodeId,

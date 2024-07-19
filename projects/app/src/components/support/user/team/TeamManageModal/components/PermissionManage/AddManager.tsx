@@ -12,7 +12,7 @@ import {
   InputGroup,
   InputLeftElement
 } from '@chakra-ui/react';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';

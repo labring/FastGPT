@@ -46,7 +46,7 @@ export const useChat = () => {
     for (const key in data) {
       variablesForm.setValue(key, '');
     }
-    console.log(ChatBoxRef.current);
+
     ChatBoxRef.current?.restartChat?.();
   }, [variablesForm]);
 

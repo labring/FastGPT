@@ -1046,9 +1046,11 @@
     "plugin": {
       "Custom headers": "Custom headers",
       "Delete http plugin": "Confirm to delete this group of HTTP plugins? This will delete all plugins in the directory.",
+      "Free": "The plugin requires no points～",
       "Get Plugin Module Detail Failed": "Plugin loading failed",
       "Http plugin intro placeholder": "For display only, no actual effect",
-      "Intro placeholder": "If this plugin is used as a tool, this introduction will be used as a prompt."
+      "Intro placeholder": "If this plugin is used as a tool, this introduction will be used as a prompt.",
+      "cost": "Plugin cost: "
     },
     "shareChat": {
       "Init Error": "Failed to initialize chat dialog",
@@ -1116,6 +1118,10 @@
         "OnRevert version": "Click to revert to this version",
         "OnRevert version confirm": "Confirm to revert to this version? It will save the configuration of the version being edited and create a new published version for the reverted version.",
         "histories": "Publishing records"
+      },
+      "template": {
+        "Multimodal": "Multimodal",
+        "Search": "Search"
       },
       "tool": {
         "Handle": "Tool connector",

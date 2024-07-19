@@ -4,7 +4,7 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useI18n } from '@/web/context/I18n';
@@ -159,7 +159,7 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
     return (
       <HStack>
         <InfoMenu>
-          <Avatar src={appDetail.avatar} w={'1.75rem'} />
+          <Avatar src={appDetail.avatar} w={'1.75rem'} borderRadius={'md'} />
         </InfoMenu>
         <Box>
           <InfoMenu>

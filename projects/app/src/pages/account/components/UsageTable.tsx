@@ -27,7 +27,7 @@ import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getTeamMembers } from '@/web/support/user/team/api';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';

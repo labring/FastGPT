@@ -40,6 +40,7 @@
   "My Apps": "My Apps",
   "Output Field Settings": "Output Field Settings",
   "Paste Config": "Paste Config",
+  "plugin_cost_per_times": "{{cost}}/per time",
   "Plugin dispatch": "Plugins",
   "Plugin dispatch tip": "It is up to the model to decide which plug-ins to add additional capabilities to. If the plug-in is selected, the knowledge base call is also treated as a special plug-in.",
   "Publish channel": "Publish channel",
@@ -59,6 +60,9 @@
       "click to update": "click to update",
       "has new version": "has new version"
     }
+  },
+  "common": {
+    "plugin_cost_per_times": "{{cost}} points/times"
   },
   "module": {
     "Combine Modules": "Combine Modules",

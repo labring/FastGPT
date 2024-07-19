@@ -3,7 +3,7 @@ import { Flex, Box, IconButton, HStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import MyPopover from '@fastgpt/web/components/common/MyPopover/index';
@@ -152,7 +152,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                   onClick: () => onChangeApp(item._id)
                 })}
           >
-            <Avatar src={item.avatar} w={'24px'} />
+            <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'md'} />
             <Box ml={2} className={'textEllipsis'}>
               {item.name}
             </Box>
