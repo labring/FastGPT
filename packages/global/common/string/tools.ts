@@ -1,7 +1,7 @@
-import { RuntimeNodeItemType } from 'core/workflow/runtime/type';
 import crypto from 'crypto';
 import { customAlphabet } from 'nanoid';
 import { DEFAULT_PARENT_ID } from './constant';
+import { RuntimeNodeItemType } from '../../core/workflow/runtime/type';
 
 /* check string is a web link */
 export function strIsLink(str?: string) {
