@@ -132,7 +132,7 @@ const FileSelector = ({
         files = files.slice(0, maxCount - selectFiles.length);
         toast({
           status: 'warning',
-          title: fileT('Some file count exceeds limit', { maxCount })
+          title: fileT('some_file_count_exceeds_limit', { maxCount })
         });
       }
       // size check
@@ -144,7 +144,7 @@ const FileSelector = ({
       if (filterFiles.length < files.length) {
         toast({
           status: 'warning',
-          title: fileT('Some file size exceeds limit', { maxSize: formatFileSize(maxSize) })
+          title: fileT('some_file_size_exceeds_limit', { maxSize: formatFileSize(maxSize) })
         });
       }
 
@@ -229,7 +229,7 @@ const FileSelector = ({
       let isErr = files.some((item) => item.type === '');
       if (isErr) {
         return toast({
-          title: fileT('upload error description'),
+          title: fileT('upload_error_description'),
           status: 'error'
         });
       }
@@ -245,7 +245,7 @@ const FileSelector = ({
       );
     } else {
       return toast({
-        title: fileT('upload error description'),
+        title: fileT('upload_error_description'),
         status: 'error'
       });
     }
@@ -293,18 +293,18 @@ const FileSelector = ({
         <>
           <Box fontWeight={'bold'}>
             {isDragging
-              ? fileT('Release the mouse to upload the file')
-              : fileT('Select and drag file tip')}
+              ? fileT('release_the_mouse_to_upload_the_file')
+              : fileT('select_and_drag_file_tip')}
           </Box>
           {/* file type */}
           <Box color={'myGray.500'} fontSize={'xs'}>
-            {fileT('Support file type', { fileType })}
+            {fileT('support_file_type', { fileType })}
           </Box>
           <Box color={'myGray.500'} fontSize={'xs'}>
             {/* max count */}
-            {maxCount && fileT('Support max count', { maxCount })}
+            {maxCount && fileT('support_max_count', { maxCount })}
             {/* max size */}
-            {maxSize && fileT('Support max size', { maxSize: formatFileSize(maxSize) })}
+            {maxSize && fileT('support_max_size', { maxSize: formatFileSize(maxSize) })}
           </Box>
 
           <File

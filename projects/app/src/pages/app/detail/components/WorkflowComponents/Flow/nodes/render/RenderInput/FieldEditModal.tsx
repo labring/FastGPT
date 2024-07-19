@@ -90,7 +90,7 @@ const FieldModal = ({
         if (!isEdit || isChangeKey) {
           toast({
             status: 'warning',
-            title: workflowT('Field Name already exists')
+            title: workflowT('field_name_already_exists')
           });
           return;
         }
@@ -126,7 +126,7 @@ const FieldModal = ({
     <MyModal
       isOpen={true}
       iconSrc="/imgs/workflow/extract.png"
-      title={isEdit ? workflowT('Edit input') : workflowT('Add new input')}
+      title={isEdit ? workflowT('edit_input') : workflowT('add_new_input')}
       overflow={'unset'}
     >
       <ModalBody w={'100%'} overflow={'auto'} display={'flex'} flexDirection={['column', 'row']}>
@@ -161,7 +161,7 @@ const FieldModal = ({
           </Flex>
           {customInputConfig.showDescription && (
             <Flex mt={3} alignItems={'center'}>
-              <FormLabel flex={'0 0 70px'}>{workflowT('Input description')}</FormLabel>
+              <FormLabel flex={'0 0 70px'}>{workflowT('input_description')}</FormLabel>
               <Textarea bg={'myGray.50'} {...register('description', {})} />
             </Flex>
           )}

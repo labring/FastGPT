@@ -191,7 +191,7 @@ const FieldEditModal = ({
         if (!isEdit || isChangeKey) {
           toast({
             status: 'warning',
-            title: workflowT('Field Name already exists')
+            title: workflowT('field_name_already_exists')
           });
           return;
         }
@@ -241,7 +241,7 @@ const FieldEditModal = ({
     <MyModal
       isOpen={true}
       iconSrc="/imgs/workflow/extract.png"
-      title={isEdit ? workflowT('Edit input') : workflowT('Add new input')}
+      title={isEdit ? workflowT('edit_input') : workflowT('add_new_input')}
       maxW={['90vw', '800px']}
       w={'100%'}
     >
@@ -271,11 +271,11 @@ const FieldEditModal = ({
           </Flex>
           <Box alignItems={'flex-start'}>
             <FormLabel flex={'0 0 70px'} mb={'1px'}>
-              {workflowT('Field description')}
+              {workflowT('field_description')}
             </FormLabel>
             <Textarea
               bg={'myGray.50'}
-              placeholder={workflowT('Field description placeholder')}
+              placeholder={workflowT('field_description_placeholder')}
               rows={4}
               {...register('description', { required: isToolInput ? true : false })}
             />
@@ -303,7 +303,7 @@ const FieldEditModal = ({
 
           {showRequired && (
             <Flex alignItems={'center'} minH={'40px'}>
-              <FormLabel flex={'1'}>{workflowT('Field required')}</FormLabel>
+              <FormLabel flex={'1'}>{workflowT('field_required')}</FormLabel>
               <Switch {...register('required')} />
             </Flex>
           )}
@@ -312,7 +312,7 @@ const FieldEditModal = ({
           {inputType === FlowNodeInputTypeEnum.reference && (
             <>
               <Flex alignItems={'center'} minH={'40px'}>
-                <FormLabel flex={'1'}>{workflowT('Field used as tool input')}</FormLabel>
+                <FormLabel flex={'1'}>{workflowT('field_used_as_tool_input')}</FormLabel>
                 <Switch
                   isChecked={isToolInput}
                   onChange={(e) => {
@@ -410,13 +410,13 @@ const FieldEditModal = ({
               <Flex alignItems={'center'}>
                 <FormLabel flex={'0 0 70px'}>{t('common:core.module.Input Type')}</FormLabel>
                 <Box flex={1} fontWeight={'bold'}>
-                  {workflowT('Only the Reference type is supported')}
+                  {workflowT('only_the_reference_type_is_supported')}
                 </Box>
               </Flex>
               <Box>
                 <HStack mb={1}>
-                  <FormLabel>{workflowT('Optional value type')}</FormLabel>
-                  <QuestionTip label={workflowT('Optional value type tip')} />
+                  <FormLabel>{workflowT('optional_value_type')}</FormLabel>
+                  <QuestionTip label={workflowT('optional_value_type_tip')} />
                 </HStack>
                 <MultipleSelect<WorkflowIOValueTypeEnum>
                   list={valueTypeSelectList}

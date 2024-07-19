@@ -129,7 +129,7 @@ const ChatHistorySlider = ({
       whiteSpace={'nowrap'}
     >
       {isPc && (
-        <MyTooltip label={canRouteToDetail ? appT('App Detail') : ''} offset={[0, 0]}>
+        <MyTooltip label={canRouteToDetail ? appT('app_detail') : ''} offset={[0, 0]}>
           <Flex
             pt={5}
             pb={2}

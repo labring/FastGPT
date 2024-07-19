@@ -65,7 +65,7 @@ export default function InputGuideBox({
     >
       <Flex alignItems={'center'} fontSize={'sm'} color={'myGray.600'} gap={2} mb={2} px={2}>
         <MyIcon name={'union'} />
-        <Box>{chatT('Input guide')}</Box>
+        <Box>{chatT('input_guide')}</Box>
       </Flex>
       {data.map((item, index) => (
         <Flex

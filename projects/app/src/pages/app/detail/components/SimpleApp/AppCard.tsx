@@ -122,7 +122,7 @@ const AppCard = () => {
                   children: [
                     {
                       icon: 'core/app/type/workflow',
-                      label: appT('Transition to workflow'),
+                      label: appT('transition_to_workflow'),
                       onClick: () => setTransitionCreateNew(true)
                     },
                     ...(appDetail.permission.hasWritePer && feConfigs?.show_team_chat
@@ -163,12 +163,12 @@ const AppCard = () => {
       </Box>
       {TeamTagsSet && <TagsEditModal onClose={() => setTeamTagsSet(undefined)} />}
       {transitionCreateNew !== undefined && (
-        <MyModal isOpen title={appT('Transition to workflow')} iconSrc="core/app/type/workflow">
+        <MyModal isOpen title={appT('transition_to_workflow')} iconSrc="core/app/type/workflow">
           <ModalBody>
-            <Box mb={3}>{appT('Transition to workflow create new tip')}</Box>
+            <Box mb={3}>{appT('transition_to_workflow_create_new_tip')}</Box>
             <HStack cursor={'pointer'} onClick={() => setTransitionCreateNew((state) => !state)}>
               <Checkbox isChecked={transitionCreateNew} />
-              <Box>{appT('Transition to workflow create new placeholder')}</Box>
+              <Box>{appT('transition_to_workflow_create_new_placeholder')}</Box>
             </HStack>
           </ModalBody>
           <ModalFooter>

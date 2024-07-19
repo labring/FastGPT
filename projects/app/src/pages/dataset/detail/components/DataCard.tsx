@@ -184,7 +184,7 @@ const DataCard = () => {
         ...(collection.tags
           ? [
               {
-                label: datasetT('Collection tags'),
+                label: datasetT('collection_tags'),
                 value: collection.tags?.join(', ') || '-'
               }
             ]

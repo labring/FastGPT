@@ -142,7 +142,7 @@ const Upload = () => {
         )
       );
     },
-    errorToast: fileT('Upload failed')
+    errorToast: fileT('upload_failed')
   });
 
   return (

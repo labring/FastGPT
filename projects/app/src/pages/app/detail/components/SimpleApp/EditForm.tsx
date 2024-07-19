@@ -125,7 +125,7 @@ const EditForm = ({
           <Flex alignItems={'center'}>
             <MyIcon name={'core/app/simpleMode/ai'} w={'20px'} />
             <FormLabel ml={2} flex={1}>
-              {appT('AI Settings')}
+              {appT('ai_settings')}
             </FormLabel>
           </Flex>
           <Flex alignItems={'center'} mt={5}>
@@ -264,8 +264,8 @@ const EditForm = ({
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'} flex={1}>
               <MyIcon name={'core/app/toolCall'} w={'20px'} />
-              <FormLabel ml={2}>{appT('Plugin dispatch')}</FormLabel>
-              <QuestionTip ml={1} label={appT('Plugin dispatch tip')} />
+              <FormLabel ml={2}>{appT('plugin_dispatch')}</FormLabel>
+              <QuestionTip ml={1} label={appT('plugin_dispatch_tip')} />
             </Flex>
             <Button
               variant={'transparentBase'}

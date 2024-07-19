@@ -2,7 +2,7 @@ import { Box, Flex, Divider } from '@chakra-ui/react';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
 
-const CoseTooltip = ({ cost }: { cost?: number }) => {
+const CostTooltip = ({ cost }: { cost?: number }) => {
   const { t } = useTranslation();
   return (
     <>
@@ -21,4 +21,4 @@ const CoseTooltip = ({ cost }: { cost?: number }) => {
   );
 };
 
-export default CoseTooltip;
+export default CostTooltip;
