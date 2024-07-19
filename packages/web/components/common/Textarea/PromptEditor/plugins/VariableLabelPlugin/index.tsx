@@ -7,6 +7,7 @@ import { getHashtagRegexString } from './utils';
 import { mergeRegister } from '@lexical/utils';
 import { registerLexicalTextEntity } from '../../utils';
 import { DEFAULT_PARENT_ID } from '@fastgpt/global/common/string/constant';
+import { IconNameType } from 'components/common/Icon/type';
 
 const REGEX = new RegExp(getHashtagRegexString(), 'i');
 
@@ -30,7 +31,11 @@ export default function VariableLabelPlugin({
     );
     const variableLabel = `${currentVariable && (currentVariable.parent?.label || DEFAULT_PARENT_ID)}.${currentVariable?.label}`;
     const nodeAvatar = currentVariable?.parent?.avatar || '';
-    return $createVariableLabelNode(textNode.getTextContent(), variableLabel, nodeAvatar);
+    return $createVariableLabelNode(
+      textNode.getTextContent(),
+      variableLabel,
+      nodeAvatar as IconNameType
+    );
   }, []);
 
   const getVariableMatch = useCallback((text: string) => {

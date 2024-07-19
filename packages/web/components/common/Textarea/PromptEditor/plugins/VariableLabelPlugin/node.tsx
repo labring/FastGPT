@@ -11,12 +11,13 @@ import {
   TextFormatType
 } from 'lexical';
 import VariableLabel from './components/VariableLabel';
+import { IconNameType } from 'components/common/Icon/type';
 
 export type SerializedVariableLabelNode = Spread<
   {
     variableKey: string;
     variableLabel: string;
-    nodeAvatar: string;
+    nodeAvatar: IconNameType;
     format: number | TextFormatType;
   },
   SerializedLexicalNode
@@ -26,7 +27,7 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
   __format: number | TextFormatType;
   __variableKey: string;
   __variableLabel: string;
-  __nodeAvatar: string;
+  __nodeAvatar: IconNameType;
   static getType(): string {
     return 'variableLabel';
   }
@@ -42,7 +43,7 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
   constructor(
     variableKey: string,
     variableLabel: string,
-    nodeAvatar: string,
+    nodeAvatar: IconNameType,
     format?: number | TextFormatType,
     key?: NodeKey
   ) {
@@ -118,7 +119,7 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
 export function $createVariableLabelNode(
   variableKey: string,
   variableLabel: string,
-  nodeAvatar: string
+  nodeAvatar: IconNameType
 ): VariableLabelNode {
   return new VariableLabelNode(variableKey, variableLabel, nodeAvatar);
 }

@@ -10,6 +10,7 @@ import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import { EditorVariablePickerType } from '../../type.d';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { DEFAULT_PARENT_ID } from '@fastgpt/global/common/string/constant';
+import { IconNameType } from 'components/common/Icon/type';
 
 type EditorVariablePickerType1 = {
   key: string;
@@ -85,11 +86,16 @@ export default function VariablePickerPlugin({
                 borderRadius={'md'}
                 position={'absolute'}
                 w={'auto'}
-                maxH={'400px'}
-                minW={'200px'}
+                maxH={'300px'}
+                minW={'240px'}
                 overflow={'auto'}
                 zIndex={99999}
               >
+                {variableFilter(variables, queryString || '').length === variables.length && (
+                  <Box fontSize={'xs'} ml={4}>
+                    {'tips: 可输入变量名进行搜索'}
+                  </Box>
+                )}
                 {variableFilter(variables, queryString || '').length > 0 ? (
                   transformData(variableFilter(variables, queryString || '')).map((item) => {
                     const isDefault = item?.id === DEFAULT_PARENT_ID;
@@ -106,7 +112,7 @@ export default function VariablePickerPlugin({
                       >
                         {!isDefault && (
                           <Flex alignItems={'center'} mb={1.5}>
-                            <Image src={item.avatar} w={'16px'} />
+                            <MyIcon name={item.avatar as IconNameType} w={'16px'} rounded={'xs'} />
                             <Box
                               mx={2}
                               fontSize={'sm'}
@@ -127,7 +133,6 @@ export default function VariablePickerPlugin({
                             py={1.5}
                             rounded={'md'}
                             cursor={'pointer'}
-                            maxH={'300px'}
                             overflow={'auto'}
                             _notLast={{
                               mb: 1
@@ -156,8 +161,7 @@ export default function VariablePickerPlugin({
                               />
                             )}
                             <Box ml={2} fontSize={'sm'} whiteSpace={'nowrap'}>
-                              {child.key}
-                              {child.key !== child.label && `(${child.label})`}
+                              {child.label}
                             </Box>
                           </Flex>
                         ))}
@@ -230,8 +234,7 @@ function variableFilter(
     const labelMatch = itemWithParent.label.toLowerCase().includes(lowerCaseQuery);
     const keyMatch = itemWithParent.key.toLowerCase().includes(lowerCaseQuery);
     const parentLabelMatch = itemWithParent.parent!.label.toLowerCase().includes(lowerCaseQuery);
-    const parentIdMatch = itemWithParent.parent!.id.toLowerCase().includes(lowerCaseQuery);
 
-    return labelMatch || keyMatch || parentLabelMatch || parentIdMatch;
+    return labelMatch || keyMatch || parentLabelMatch;
   });
 }

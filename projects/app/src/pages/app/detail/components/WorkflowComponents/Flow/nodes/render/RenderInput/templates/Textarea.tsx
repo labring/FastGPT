@@ -46,7 +46,9 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
                 parent: {
                   id: node.nodeId,
                   label: node.name,
-                  avatar: node.avatar
+                  avatar: node.avatar?.startsWith('/')
+                    ? 'core/workflow/template/variable'
+                    : node.avatar
                 }
               };
             });

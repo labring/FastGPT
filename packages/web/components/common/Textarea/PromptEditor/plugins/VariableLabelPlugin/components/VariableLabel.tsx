@@ -1,5 +1,8 @@
 import { ChevronRightIcon } from '@chakra-ui/icons';
+import { Box, Flex } from '@chakra-ui/react';
 import { DEFAULT_PARENT_ID } from '@fastgpt/global/common/string/constant';
+import MyIcon from '../../../../../../../components/common/Icon';
+import { IconNameType } from 'components/common/Icon/type';
 
 export default function VariableLabel({
   variableKey,
@@ -8,52 +11,39 @@ export default function VariableLabel({
 }: {
   variableKey: string;
   variableLabel: string;
-  nodeAvatar: string;
+  nodeAvatar: IconNameType;
 }) {
   const [parentLabel, childLabel] = variableLabel.split('.');
   return (
     <>
-      <span
-        style={{
-          display: 'inline-flex',
-          margin: '2px 2px',
-          borderRadius: '4px',
-          backgroundColor: '#F4F4F7',
-          padding: '3px 4px',
-          color: '#111824',
-          alignItems: 'center'
-        }}
-        hidden={parentLabel === 'undefined'}
+      <Box
+        display="inline-flex"
+        alignItems="center"
+        m={'2px'}
+        rounded={'4px'}
+        px={1.5}
+        py={'1px'}
+        bg={parentLabel !== 'undefined' ? 'primary.50' : 'red.50'}
+        color={parentLabel !== 'undefined' ? 'myGray.900' : 'red.600'}
+        cursor={'pointer'}
       >
-        <span hidden={parentLabel === DEFAULT_PARENT_ID}>
-          <img
-            src={nodeAvatar}
-            style={{
-              width: '12px',
-              display: 'inline-block',
-              margin: '0 4px 0 0'
-            }}
-          />
-          <span>{parentLabel}</span>
-          <span>
-            <ChevronRightIcon />
-          </span>
-        </span>
-        <span>{childLabel}</span>
-      </span>
-      <span
-        style={{
-          display: 'inline-block',
-          margin: '2px 2px',
-          borderRadius: '4px',
-          backgroundColor: '#FEF3F2',
-          padding: '3px 4px',
-          color: '#D92D20'
-        }}
-        hidden={parentLabel !== 'undefined'}
-      >
-        <span>无效变量</span>
-      </span>
+        {parentLabel !== 'undefined' ? (
+          <>
+            <Flex hidden={parentLabel === DEFAULT_PARENT_ID} alignItems={'center'}>
+              <Box mr={1}>
+                <MyIcon name={nodeAvatar} w={'16px'} rounded={'2.8px'} mt={'2.5px'} />
+              </Box>
+              {parentLabel}
+              <ChevronRightIcon />
+            </Flex>
+            <Box>{childLabel}</Box>
+          </>
+        ) : (
+          <>
+            <Box>{'无效变量'}</Box>
+          </>
+        )}
+      </Box>
     </>
   );
 }
