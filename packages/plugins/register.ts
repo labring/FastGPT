@@ -15,7 +15,7 @@ let list = [
   'duckduckgo/searchNews',
   'duckduckgo/searchVideo',
   'Doc2X',
-  // 'Doc2X/URLPDF2text',
+  'Doc2X/URLPDF2text',
   'Doc2X/URLImg2text'
 ];
 

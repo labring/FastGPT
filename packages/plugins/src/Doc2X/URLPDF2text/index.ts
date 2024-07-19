@@ -4,8 +4,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 type Props = {
   apikey: string;
   url: string;
-  img_correction: boolean;
-  formula: boolean;
+  ocr: boolean;
 };
 
 // Response type same as HTTP outputs
@@ -14,7 +13,7 @@ type Response = Promise<{
   success: boolean;
 }>;
 
-const main = async ({ apikey, url, img_correction, formula }: Props): Response => {
+const main = async ({ apikey, url, ocr }: Props): Response => {
   // Check the apikey
   if (!apikey) {
     return {
@@ -41,41 +40,13 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
   }
 
   //Get the image binary from the URL
-  const extension = url.split('.').pop()?.toLowerCase();
-  const name = url.split('/').pop()?.split('.').shift();
-  let mini = '';
-  switch (extension) {
-    case 'jpg':
-    case 'jpeg':
-      mini = 'image/jpeg';
-      break;
-    case 'png':
-      mini = 'image/png';
-      break;
-  }
-  if (mini === '') {
-    return {
-      result: `Not supported image format, only support jpg/jpeg/png`,
-      success: false
-    };
-  }
-  const response = await fetch(url);
-  if (!response.ok) {
-    return {
-      result: `Failed to fetch image from URL: ${url}`,
-      success: false
-    };
-  }
-  const blob = await response.blob();
   const formData = new FormData();
-  // formData.append('file', blob, 'image.' + extension);
-  formData.append('file', new Blob([blob], { type: mini }), name + '.' + extension);
-  formData.append('img_correction', img_correction ? '1' : '0');
-  formData.append('equation', formula ? '1' : '0');
+  formData.append('pdf_url', url);
+  formData.append('ocr', ocr ? '1' : '0');
 
-  let upload_url = 'https://api.doc2x.noedgeai.com/api/platform/async/img';
+  let upload_url = 'https://api.doc2x.noedgeai.com/api/platform/async/pdf';
   if (real_api_key.startsWith('sk-')) {
-    upload_url = 'https://api.doc2x.noedgeai.com/api/v1/async/img';
+    upload_url = 'https://api.doc2x.noedgeai.com/api/v1/async/pdf';
   }
   let uuid;
   for (let i = 0; i < 3; i++) {
@@ -88,7 +59,7 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
     });
     if (!upload_response.ok) {
       return {
-        result: `Failed to upload image: ${await upload_response.text()}`,
+        result: `Failed to upload file: ${await upload_response.text()}`,
         success: false
       };
     }
@@ -110,7 +81,7 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
 
   let result_response;
   let result_data;
-  let result;
+  let result = '';
   // Wait for the result, at most 100s
   for (let i = 0; i < 100; i++) {
     result_response = await fetch(result_url, {
@@ -133,7 +104,11 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
         success: false
       };
     } else if (result_data.data.status === 'success') {
-      result = result_data.data.result.pages[0].md;
+      const data = result_data.data.result.pages;
+      for (const page of data) {
+        result += page.md;
+        result += '\n';
+      }
       break;
     } else {
       return {
