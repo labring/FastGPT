@@ -700,9 +700,16 @@
       "variable add option": "Add option"
     },
     "plugin": {
+      "Free": "The plugin requires no points～",
+      "Intro placeholder": "If this plugin is used as a tool, this introduction will be used as a prompt.",
+      "cost": "Plugin cost: ",
       "Custom headers": "Custom headers",
       "Get Plugin Module Detail Failed": "Plugin loading failed",
       "Http plugin intro placeholder": "For display only, no actual effect"
+    },
+    "template": {
+      "Multimodal": "Multimodal",
+      "Search": "Search"
     },
     "workflow": {
       "Can not delete node": "This node cannot be deleted",

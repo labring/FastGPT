@@ -45,7 +45,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import CoseTooltip from '@/components/core/app/plugin/CoseTooltip';
+import CostTooltip from '@/components/core/app/plugin/CostTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type Props = {
@@ -233,7 +233,7 @@ const RenderList = React.memo(function RenderList({
                 <Box mt={2} color={'myGray.500'}>
                   {t(item.intro as any) || t('common:core.workflow.Not intro')}
                 </Box>
-                {showCost && <CoseTooltip cost={item.currentCost} />}
+                {showCost && <CostTooltip cost={item.currentCost} />}
               </Box>
             }
           >

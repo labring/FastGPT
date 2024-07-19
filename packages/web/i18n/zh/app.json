@@ -1,4 +1,5 @@
 {
+  "plugin_cost_per_times": "{{cost}}/次",
   "ai_settings": "AI 配置",
   "app_detail": "应用详情",
   "chat_debug": "调试预览",

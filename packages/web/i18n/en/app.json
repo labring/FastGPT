@@ -1,4 +1,5 @@
 {
+  "plugin_cost_per_times": "{{cost}}/per time",
   "ai_settings": "AI Settings",
   "app_detail": "App Details",
   "chat_debug": "Chat Debug",
