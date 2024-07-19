@@ -1,6 +1,7 @@
 import { RuntimeNodeItemType } from 'core/workflow/runtime/type';
 import crypto from 'crypto';
 import { customAlphabet } from 'nanoid';
+import { DEFAULT_PARENT_ID } from './constant';
 
 /* check string is a web link */
 export function strIsLink(str?: string) {
@@ -37,6 +38,10 @@ export function replaceVariable(text: any, obj: Record<string, string | number>)
     if (!['string', 'number'].includes(typeof val)) continue;
 
     text = text.replace(new RegExp(`{{(${key})}}`, 'g'), String(val));
+    text = text.replace(
+      new RegExp(`\\{\\{\\$(${DEFAULT_PARENT_ID}\\.${key})\\$\\}\\}`, 'g'),
+      String(val)
+    );
   }
   return text || '';
 }

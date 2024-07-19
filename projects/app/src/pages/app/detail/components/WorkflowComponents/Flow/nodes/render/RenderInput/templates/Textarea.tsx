@@ -20,12 +20,6 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
 
   // get variable
   const variables = useCreation(() => {
-    const globalVariables = getWorkflowGlobalVariables({
-      nodes: nodeList,
-      chatConfig: appDetail.chatConfig,
-      t
-    });
-
     const nodeVariables = formatEditorVariablePickerIcon(
       getNodeDynamicInputs(nodeId).map((item) => ({
         key: item.key,

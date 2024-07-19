@@ -4,12 +4,12 @@ import { $createTextNode, $getSelection, $isRangeSelection, TextNode } from 'lex
 import * as React from 'react';
 import { useCallback, useState } from 'react';
 import * as ReactDOM from 'react-dom';
-import { useTranslation } from 'next-i18next';
 import MyIcon from '../../../../Icon';
 import { Box, Flex, Image } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import { EditorVariablePickerType } from '../../type.d';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { DEFAULT_PARENT_ID } from '@fastgpt/global/common/string/constant';
 
 type EditorVariablePickerType1 = {
   key: string;
@@ -62,7 +62,11 @@ export default function VariablePickerPlugin({
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
-      options={variables as any[]}
+      options={variables.map((item) =>
+        item.parent
+          ? item
+          : { ...item, parent: { id: DEFAULT_PARENT_ID, label: DEFAULT_PARENT_ID, avatar: '' } }
+      )}
       menuRenderFn={(
         anchorElementRef,
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }
@@ -81,22 +85,35 @@ export default function VariablePickerPlugin({
                 borderRadius={'md'}
                 position={'absolute'}
                 w={'auto'}
-                overflow={'hidden'}
+                maxH={'400px'}
+                minW={'200px'}
+                overflow={'auto'}
                 zIndex={99999}
               >
-                {transformData(variables).map((item, index) => {
-                  return (
-                    <Flex key={item.id}>
+                {variableFilter(variables, queryString || '').length > 0 ? (
+                  transformData(variableFilter(variables, queryString || '')).map((item) => {
+                    const isDefault = item?.id === DEFAULT_PARENT_ID;
+                    return (
                       <Flex
+                        key={item.id}
                         flexDirection={'column'}
-                        px={item.id && 4}
-                        py={item.id && 2}
-                        borderRadius={'sm'}
+                        px={!isDefault ? 4 : 0}
+                        py={!isDefault ? 2 : 0}
+                        _notLast={{
+                          borderBottom: '1px solid',
+                          borderColor: 'myGray.200'
+                        }}
                       >
-                        {item.id && (
-                          <Flex alignItems={'center'}>
+                        {!isDefault && (
+                          <Flex alignItems={'center'} mb={1.5}>
                             <Image src={item.avatar} w={'16px'} />
-                            <Box mx={2} fontSize={'sm'} whiteSpace={'nowrap'}>
+                            <Box
+                              mx={2}
+                              fontSize={'sm'}
+                              whiteSpace={'nowrap'}
+                              color={'myGray.600'}
+                              fontWeight={'semibold'}
+                            >
                               {item.label}
                             </Box>
                           </Flex>
@@ -107,17 +124,18 @@ export default function VariablePickerPlugin({
                             as={'li'}
                             key={child.key}
                             px={4}
-                            py={2}
+                            py={1.5}
+                            rounded={'md'}
                             cursor={'pointer'}
                             maxH={'300px'}
                             overflow={'auto'}
                             _notLast={{
-                              mb: 2
+                              mb: 1
                             }}
                             {...(selectedIndex === child.index
                               ? {
-                                  bg: 'primary.50',
-                                  color: 'primary.600'
+                                  bg: '#1118240D',
+                                  color: 'primary.700'
                                 }
                               : {
                                   bg: 'white',
@@ -125,16 +143,18 @@ export default function VariablePickerPlugin({
                                 })}
                             onClick={() => {
                               setHighlightedIndex(child.index);
-                              selectOptionAndCleanUp(child);
+                              selectOptionAndCleanUp({ ...child, parent: item });
                             }}
                             onMouseEnter={() => {
                               setHighlightedIndex(child.index);
                             }}
                           >
-                            <MyIcon
-                              name={(child.icon as any) || 'core/modules/variable'}
-                              w={'14px'}
-                            />
+                            {isDefault && (
+                              <MyIcon
+                                name={(child.icon as any) || 'core/modules/variable'}
+                                w={'14px'}
+                              />
+                            )}
                             <Box ml={2} fontSize={'sm'} whiteSpace={'nowrap'}>
                               {child.key}
                               {child.key !== child.label && `(${child.label})`}
@@ -142,9 +162,13 @@ export default function VariablePickerPlugin({
                           </Flex>
                         ))}
                       </Flex>
-                    </Flex>
-                  );
-                })}
+                    );
+                  })
+                ) : (
+                  <Box p={2} color={'myGray.400'} fontSize={'sm'}>
+                    {'无可用变量'}
+                  </Box>
+                )}
               </Box>,
               anchorElementRef.current
             )
@@ -159,9 +183,12 @@ function transformData(data: EditorVariablePickerType[]): TransformedParent[] {
   const parentMap: { [key: string]: TransformedParent } = {};
 
   data.forEach((item, index) => {
-    const parentId = item.parent ? item.parent.id : '';
-    const parentLabel = item.parent ? item.parent.label : '';
-    const parentAvatar = item.parent ? item.parent.avatar : '';
+    const itemWithParent = item.parent
+      ? item
+      : { ...item, parent: { id: DEFAULT_PARENT_ID, label: DEFAULT_PARENT_ID, avatar: '' } };
+    const parentId = itemWithParent.parent!.id;
+    const parentLabel = itemWithParent.parent!.label;
+    const parentAvatar = itemWithParent.parent!.avatar;
 
     if (!parentMap[parentId]) {
       parentMap[parentId] = {
@@ -179,9 +206,32 @@ function transformData(data: EditorVariablePickerType[]): TransformedParent[] {
     });
   });
 
-  for (const key in parentMap) {
-    transformedData.push(parentMap[key]);
-  }
-
+  const addedParents = new Set<string>();
+  data.forEach((item) => {
+    const parentId = item.parent ? item.parent.id : DEFAULT_PARENT_ID;
+    if (!addedParents.has(parentId)) {
+      transformedData.push(parentMap[parentId]);
+      addedParents.add(parentId);
+    }
+  });
   return transformedData;
+}
+
+function variableFilter(
+  data: EditorVariablePickerType[],
+  queryString: string
+): EditorVariablePickerType[] {
+  const lowerCaseQuery = queryString.toLowerCase();
+
+  return data.filter((item) => {
+    const itemWithParent = item.parent
+      ? item
+      : { ...item, parent: { id: DEFAULT_PARENT_ID, label: DEFAULT_PARENT_ID, avatar: '' } };
+    const labelMatch = itemWithParent.label.toLowerCase().includes(lowerCaseQuery);
+    const keyMatch = itemWithParent.key.toLowerCase().includes(lowerCaseQuery);
+    const parentLabelMatch = itemWithParent.parent!.label.toLowerCase().includes(lowerCaseQuery);
+    const parentIdMatch = itemWithParent.parent!.id.toLowerCase().includes(lowerCaseQuery);
+
+    return labelMatch || keyMatch || parentLabelMatch || parentIdMatch;
+  });
 }
