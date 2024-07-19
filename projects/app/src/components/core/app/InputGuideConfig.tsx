@@ -86,11 +86,11 @@ const InputGuideConfig = ({
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/inputGuides'} mr={2} w={'20px'} />
       <Flex alignItems={'center'}>
-        <FormLabel>{chatT('Input guide')}</FormLabel>
+        <FormLabel>{chatT('input_guide')}</FormLabel>
         <ChatFunctionTip type={'inputGuide'} />
       </Flex>
       <Box flex={1} />
-      <MyTooltip label={chatT('Config input guide')}>
+      <MyTooltip label={chatT('config_input_guide')}>
         <Button
           variant={'transparentBase'}
           iconSpacing={1}
@@ -102,7 +102,7 @@ const InputGuideConfig = ({
         </Button>
       </MyTooltip>
       <MyModal
-        title={chatT('Input guide')}
+        title={chatT('input_guide')}
         iconSrc="core/app/inputGuides"
         isOpen={isOpen}
         onClose={onClose}
@@ -124,7 +124,7 @@ const InputGuideConfig = ({
           {isOpenQuestionGuide && (
             <>
               <Flex mt={8} alignItems={'center'}>
-                <FormLabel>{chatT('Input guide lexicon')}</FormLabel>
+                <FormLabel>{chatT('input_guide_lexicon')}</FormLabel>
                 <Box fontSize={'xs'} px={2} bg={'myGray.100'} ml={1} rounded={'full'}>
                   {total}
                 </Box>
@@ -137,12 +137,12 @@ const InputGuideConfig = ({
                     onOpenLexiconConfig();
                   }}
                 >
-                  {chatT('Config input guide lexicon')}
+                  {chatT('config_input_guide_lexicon')}
                 </Button>
               </Flex>
               <>
                 <Flex mt={8} alignItems={'center'}>
-                  <FormLabel>{chatT('Custom input guide url')}</FormLabel>
+                  <FormLabel>{chatT('custom_input_guide_url')}</FormLabel>
                   <Flex
                     onClick={() => window.open(getDocPath('/docs/course/chat_input_guide'))}
                     color={'primary.700'}
@@ -226,7 +226,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
         if (res.insertLength < textList.length) {
           toast({
             status: 'warning',
-            title: chatT('Insert input guide, Some data already exists', { len: res.insertLength })
+            title: chatT('insert_input_guide,_some_data_already_exists', { len: res.insertLength })
           });
         } else {
           toast({
@@ -289,7 +289,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
 
   return (
     <MyModal
-      title={chatT('Config input guide lexicon title')}
+      title={chatT('config_input_guide_lexicon_title')}
       iconSrc="core/app/inputGuides"
       isOpen={true}
       onClose={onClose}
@@ -326,7 +326,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
             });
           }}
         >
-          <QuestionTip ml={-2} label={chatT('Csv input lexicon tip')} />
+          <QuestionTip ml={-2} label={chatT('csv_input_lexicon_tip')} />
         </Box>
       </Flex>
       <Box px={8}>
@@ -364,7 +364,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
             <MyInput
               autoFocus
               rightIcon={<MyIcon name={'save'} w={'14px'} cursor={'pointer'} />}
-              placeholder={chatT('New input guide lexicon')}
+              placeholder={chatT('new_input_guide_lexicon')}
               onBlur={(e) => {
                 createNewData([e.target.value.trim()]);
               }}
@@ -381,7 +381,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
         px={8}
         flex={'1 0 0'}
         fontSize={'sm'}
-        EmptyChildren={<EmptyTip text={chatT('Chat input guide lexicon is empty')} />}
+        EmptyChildren={<EmptyTip text={chatT('chat_input_guide_lexicon_is_empty')} />}
       >
         {list.map((data, index) => {
           const item = data.data;

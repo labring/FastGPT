@@ -157,7 +157,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
         <MoveModal
           moveResourceId={moveAppId}
           server={getAppFolderList}
-          title={appT('Move app')}
+          title={appT('move_app')}
           onClose={() => setMoveAppId(undefined)}
           onConfirm={onMoveApp}
         />

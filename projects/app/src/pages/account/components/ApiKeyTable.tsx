@@ -8,7 +8,7 @@ const ApiKey = () => {
   const { publishT } = useI18n();
   return (
     <Box px={[4, 8]} py={[4, 6]}>
-      <ApiKeyTable tips={publishT('key tips')}></ApiKeyTable>
+      <ApiKeyTable tips={publishT('key_tips')}></ApiKeyTable>
     </Box>
   );
 };

@@ -299,13 +299,13 @@ function EditLinkModal({
     <MyModal
       isOpen={true}
       iconSrc="/imgs/modal/shareFill.svg"
-      title={isEdit ? publishT('Edit Link') : publishT('Create Link')}
+      title={isEdit ? publishT('edit_link') : publishT('create_link')}
     >
       <ModalBody>
         <Flex alignItems={'center'}>
           <FormLabel flex={'0 0 90px'}>{t('common:Name')}</FormLabel>
           <Input
-            placeholder={publishT('Link Name')}
+            placeholder={publishT('link_name')}
             maxLength={20}
             {...register('name', {
               required: t('common:common.name_is_empty') || 'name_is_empty'
@@ -333,7 +333,7 @@ function EditLinkModal({
             <Flex alignItems={'center'} mt={4}>
               <Flex flex={'0 0 90px'} alignItems={'center'}>
                 <FormLabel>QPM</FormLabel>
-                <QuestionTip ml={1} label={publishT('QPM Tips' || '')}></QuestionTip>
+                <QuestionTip ml={1} label={publishT('qpm_tips' || '')}></QuestionTip>
               </Flex>
               <Input
                 max={1000}
@@ -341,7 +341,7 @@ function EditLinkModal({
                   min: 0,
                   max: 1000,
                   valueAsNumber: true,
-                  required: publishT('QPM is empty') || ''
+                  required: publishT('qpm_is_empty') || ''
                 })}
               />
             </Flex>
@@ -365,11 +365,11 @@ function EditLinkModal({
 
             <Flex alignItems={'center'} mt={4}>
               <Flex flex={'0 0 90px'} alignItems={'center'}>
-                <FormLabel>{publishT('token auth')}</FormLabel>
-                <QuestionTip ml={1} label={publishT('token auth Tips') || ''}></QuestionTip>
+                <FormLabel>{publishT('token_auth')}</FormLabel>
+                <QuestionTip ml={1} label={publishT('token_auth_tips') || ''}></QuestionTip>
               </Flex>
               <Input
-                placeholder={publishT('token auth Tips') || ''}
+                placeholder={publishT('token_auth_tips') || ''}
                 fontSize={'sm'}
                 {...register('limit.hookUrl')}
               />
@@ -380,7 +380,7 @@ function EditLinkModal({
               fontSize={'xs'}
               color={'myGray.500'}
             >
-              {publishT('token auth use cases')}
+              {publishT('token_auth_use_cases')}
             </Link>
           </>
         )}

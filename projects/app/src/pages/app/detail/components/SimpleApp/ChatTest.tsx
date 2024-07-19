@@ -36,7 +36,7 @@ const ChatTest = ({ appForm }: { appForm: AppSimpleEditFormType }) => {
     <Flex position={'relative'} flexDirection={'column'} h={'100%'} py={4}>
       <Flex px={[2, 5]}>
         <Box fontSize={['md', 'lg']} fontWeight={'bold'} flex={1} color={'myGray.900'}>
-          {appT('Chat Debug')}
+          {appT('chat_debug')}
         </Box>
         <MyTooltip label={t('common:core.chat.Restart')}>
           <IconButton

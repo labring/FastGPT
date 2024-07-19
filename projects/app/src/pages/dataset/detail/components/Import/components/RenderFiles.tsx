@@ -40,13 +40,13 @@ export const RenderUploadFiles = ({
           <Thead draggable={false}>
             <Tr bg={'myGray.100'} mb={2}>
               <Th borderLeftRadius={'md'} borderBottom={'none'} py={4}>
-                {fileT('File Name')}
+                {fileT('file_name')}
               </Th>
               <Th borderBottom={'none'} py={4}>
                 {t('common:core.dataset.import.Upload file progress')}
               </Th>
               <Th borderBottom={'none'} py={4}>
-                {fileT('File Size')}
+                {fileT('file_size')}
               </Th>
               <Th borderRightRadius={'md'} borderBottom={'none'} py={4}>
                 {t('common:common.Action')}

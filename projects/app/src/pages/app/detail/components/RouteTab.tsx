@@ -28,16 +28,16 @@ const RouteTab = () => {
   const tabList = useMemo(
     () => [
       {
-        label: appDetail.type === AppTypeEnum.plugin ? appT('Setting plugin') : appT('Setting app'),
+        label: appDetail.type === AppTypeEnum.plugin ? appT('setting_plugin') : appT('setting_app'),
         id: TabEnum.appEdit
       },
       ...(appDetail.permission.hasManagePer
         ? [
             {
-              label: appT('Publish channel'),
+              label: appT('publish_channel'),
               id: TabEnum.publish
             },
-            { label: appT('Chat logs'), id: TabEnum.logs }
+            { label: appT('chat_logs'), id: TabEnum.logs }
           ]
         : [])
     ],

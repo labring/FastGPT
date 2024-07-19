@@ -76,10 +76,10 @@ const Logs = () => {
         {isPc && (
           <>
             <Box fontWeight={'bold'} fontSize={['md', 'lg']} mb={2}>
-              {appT('Chat logs')}
+              {appT('chat_logs')}
             </Box>
             <Box color={'myGray.500'} fontSize={'sm'}>
-              {appT('Chat Logs Tips')},{' '}
+              {appT('chat_logs_tips')},{' '}
               <Box
                 as={'span'}
                 mr={2}
@@ -109,11 +109,11 @@ const Logs = () => {
             <Thead>
               <Tr>
                 <Th>{t('common:core.app.logs.Source And Time')}</Th>
-                <Th>{appT('Logs Title')}</Th>
-                <Th>{appT('Logs Message Total')}</Th>
-                <Th>{appT('Feedback Count')}</Th>
+                <Th>{appT('logs_title')}</Th>
+                <Th>{appT('logs_message_total')}</Th>
+                <Th>{appT('feedback_count')}</Th>
                 <Th>{t('common:core.app.feedback.Custom feedback')}</Th>
-                <Th>{appT('Mark Count')}</Th>
+                <Th>{appT('mark_count')}</Th>
               </Tr>
             </Thead>
             <Tbody fontSize={'xs'}>
@@ -183,7 +183,7 @@ const Logs = () => {
               ))}
             </Tbody>
           </Table>
-          {logs.length === 0 && !isLoading && <EmptyTip text={appT('Logs Empty')}></EmptyTip>}
+          {logs.length === 0 && !isLoading && <EmptyTip text={appT('logs_empty')}></EmptyTip>}
         </TableContainer>
 
         <HStack w={'100%'} mt={3} justifyContent={'flex-end'}>

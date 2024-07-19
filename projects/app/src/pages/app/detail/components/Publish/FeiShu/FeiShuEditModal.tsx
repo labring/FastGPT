@@ -60,13 +60,13 @@ const FeiShuEditModal = ({
     <MyModal
       isOpen={true}
       iconSrc="/imgs/modal/shareFill.svg"
-      title={isEdit ? publishT('Edit Link') : publishT('Create Link')}
+      title={isEdit ? publishT('edit_link') : publishT('create_link')}
     >
       <ModalBody>
         <Flex alignItems={'center'}>
           <Box flex={'0 0 90px'}>{t('common:Name')}</Box>
           <Input
-            placeholder={publishT('Feishu name') || 'Link Name'} // TODO: i18n
+            placeholder={publishT('feishu_name') || 'link_name'} // TODO: i18n
             maxLength={20}
             {...register('name', {
               required: t('common:common.name_is_empty') || 'name_is_empty'
@@ -76,7 +76,7 @@ const FeiShuEditModal = ({
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
             QPM
-            <QuestionTip ml={1} label={publishT('QPM Tips' || '')}></QuestionTip>
+            <QuestionTip ml={1} label={publishT('qpm_tips' || '')}></QuestionTip>
           </Flex>
           <Input
             max={1000}
@@ -84,7 +84,7 @@ const FeiShuEditModal = ({
               min: 0,
               max: 1000,
               valueAsNumber: true,
-              required: publishT('QPM is empty') || ''
+              required: publishT('qpm_is_empty') || ''
             })}
           />
         </Flex>
@@ -127,7 +127,7 @@ const FeiShuEditModal = ({
             {/* TODO: i18n */}
           </Flex>
           <Input
-            placeholder={publishT('Default Response') || 'Link Name'}
+            placeholder={publishT('default_response') || 'link_name'}
             maxLength={20}
             {...register('defaultResponse', {
               required: true
@@ -140,7 +140,7 @@ const FeiShuEditModal = ({
             {/* TODO: i18n */}
           </Flex>
           <Input
-            placeholder={publishT('Default Response') || 'Link Name'}
+            placeholder={publishT('default_response') || 'link_name'}
             maxLength={20}
             {...register('immediateResponse', {
               required: true
@@ -150,7 +150,7 @@ const FeiShuEditModal = ({
         <Flex alignItems={'center'} mt={4}>
           <Box flex={'0 0 90px'}>{t('common:core.module.http.AppId')}</Box>
           <Input
-            placeholder={t('common:core.module.http.AppId') || 'Link Name'}
+            placeholder={t('common:core.module.http.AppId') || 'link_name'}
             // maxLength={20}
             {...register('app.appId', {
               required: true
