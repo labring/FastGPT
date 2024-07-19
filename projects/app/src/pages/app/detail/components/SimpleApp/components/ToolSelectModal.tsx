@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import {
   Box,
   Button,
-  Divider,
   Flex,
   Input,
   InputGroup,
@@ -46,8 +45,8 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useI18n } from '@/web/context/I18n';
 import CoseTooltip from '@/components/core/app/plugin/CoseTooltip';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -185,7 +184,7 @@ const RenderList = React.memo(function RenderList({
   showCost?: boolean;
 }) {
   const { t } = useTranslation();
-  const { appT } = useI18n();
+  const { feConfigs } = useSystemStore();
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
 
@@ -255,9 +254,9 @@ const RenderList = React.memo(function RenderList({
               <Box ml={3} flex={'1 0 0'} color={'myGray.900'}>
                 {t(item.name as any)}
               </Box>
-              {showCost && (
+              {item.author !== undefined && (
                 <Box fontSize={'xs'} mr={3}>
-                  {item.author ? `by ${item.author}` : `by 匿名大佬`}
+                  {`by ${item.author || feConfigs.systemTitle}`}
                 </Box>
               )}
               {selected ? (

@@ -321,6 +321,7 @@ const RenderList = React.memo(function RenderList({
 }: RenderListProps) {
   const { t } = useTranslation();
   const { appT } = useI18n();
+  const { feConfigs } = useSystemStore();
 
   const { isPc } = useSystem();
   const isSystemPlugin = type === TemplateTypeEnum.systemPlugin;
@@ -506,9 +507,9 @@ const RenderList = React.memo(function RenderList({
                       >
                         {t(template.name as any)}
                       </Box>
-                      {template.author && (
+                      {template.author !== undefined && (
                         <Box fontSize={'xs'} color={'myGray.500'}>
-                          {`by ${template.author}`}
+                          {`by ${template.author || feConfigs.systemTitle}`}
                         </Box>
                       )}
                     </Flex>
