@@ -57,20 +57,20 @@ export async function getInitConfig() {
 }
 
 const defaultFeConfigs: FastGPTFeConfigsType = {
-  show_emptyChat: true,
-  show_git: true,
-  docUrl: 'https://doc.fastgpt.in',
-  openAPIDocUrl: 'https://doc.fastgpt.in/docs/development/openapi',
-  systemTitle: 'FastGPT',
+  show_emptyChat: false,
+  show_git: false,
+  docUrl: '',
+  openAPIDocUrl: '',
+  systemTitle: 'AI Agent',
   concatMd:
-    '项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n交流群: ![](https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg)',
+    '',
   limit: {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0
   },
   scripts: [],
   favicon: '/favicon.ico',
-  uploadFileMaxSize: 500
+  uploadFileMaxSize: 1000
 };
 
 export async function initSystemConfig() {
