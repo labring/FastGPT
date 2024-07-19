@@ -92,7 +92,7 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
             {rebuildingCount > 0 && (
               <Box mb={3}>
                 <Box fontSize={'sm'}>
-                  {datasetT('Rebuilding index count', { count: rebuildingCount })}
+                  {datasetT('rebuilding_index_count', { count: rebuildingCount })}
                 </Box>
               </Box>
             )}

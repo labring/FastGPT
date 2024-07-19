@@ -43,7 +43,7 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
           null,
           2
         ),
-        appT('Export Config Successful')
+        appT('export_config_successful')
       );
     }
   }, [appDetail.chatConfig, appT, copyData, flowData2StoreDataAndCheck]);
@@ -80,7 +80,7 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
               children: [
                 {
                   icon: 'edit',
-                  label: appT('Edit info'),
+                  label: appT('edit_info'),
                   onClick: onOpenInfoEdit
                 },
                 {
@@ -95,12 +95,12 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
                   {
                     children: [
                       {
-                        label: appT('Import Configs'),
+                        label: appT('import_configs'),
                         icon: 'common/importLight',
                         onClick: onOpenImport
                       },
                       {
-                        label: appT('Export Configs'),
+                        label: appT('export_configs'),
                         icon: 'export',
                         onClick: onExportWorkflow
                       }

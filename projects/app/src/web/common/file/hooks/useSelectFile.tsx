@@ -32,7 +32,7 @@ export const useSelectFile = (props?: {
             if (fileList.length > maxCount) {
               toast({
                 status: 'warning',
-                title: fileT('Select file amount limit', { max: maxCount })
+                title: fileT('select_file_amount_limit', { max: maxCount })
               });
               fileList = fileList.slice(0, maxCount);
             }
