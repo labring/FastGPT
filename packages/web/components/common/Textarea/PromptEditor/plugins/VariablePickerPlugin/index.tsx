@@ -10,7 +10,6 @@ import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import { EditorVariablePickerType } from '../../type.d';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { DEFAULT_PARENT_ID } from '@fastgpt/global/common/string/constant';
-import { IconNameType } from 'components/common/Icon/type';
 
 type EditorVariablePickerType1 = {
   key: string;
@@ -112,7 +111,7 @@ export default function VariablePickerPlugin({
                       >
                         {!isDefault && (
                           <Flex alignItems={'center'} mb={1.5}>
-                            <MyIcon name={item.avatar as IconNameType} w={'16px'} rounded={'xs'} />
+                            <MyIcon name={item.avatar as any} w={'16px'} rounded={'xs'} />
                             <Box
                               mx={2}
                               fontSize={'sm'}
