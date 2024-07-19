@@ -11,13 +11,15 @@ type Props = {
 // Response type same as HTTP outputs
 type Response = Promise<{
   result: string;
+  success: boolean;
 }>;
 
 const main = async ({ apikey, url, img_correction, formula }: Props): Response => {
   // Check the apikey
   if (!apikey) {
     return {
-      result: `API key is required`
+      result: `API key is required`,
+      success: false
     };
   }
   let real_api_key = apikey;
@@ -29,7 +31,8 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
     });
     if (response.status !== 200) {
       return {
-        result: `Get token failed: ${response.text()}`
+        result: `Get token failed: ${response.text()}`,
+        success: false
       };
     }
     const data = await response.json();
@@ -51,13 +54,15 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
   }
   if (mini === '') {
     return {
-      result: `Not supported image format, only support jpg/jpeg/png`
+      result: `Not supported image format, only support jpg/jpeg/png`,
+      success: false
     };
   }
   const response = await fetch(url);
   if (!response.ok) {
     return {
-      result: `Failed to fetch image from URL: ${url}`
+      result: `Failed to fetch image from URL: ${url}`,
+      success: false
     };
   }
   const blob = await response.blob();
@@ -71,7 +76,7 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
   if (real_api_key.startsWith('sk-')) {
     upload_url = 'https://api.doc2x.noedgeai.com/api/v1/async/img';
   }
-
+  let uuid;
   for (let i = 0; i < 3; i++) {
     const upload_response = await fetch(upload_url, {
       method: 'POST',
@@ -82,7 +87,8 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
     });
     if (!upload_response.ok) {
       return {
-        result: `Failed to upload image: ${upload_response.text()}`
+        result: `Failed to upload image: ${upload_response.text()}`,
+        success: false
       };
     }
     if (upload_response.status === 429) {
@@ -91,12 +97,54 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
       continue;
     }
     const upload_data = await upload_response.json();
-    const uuid = upload_data.data.uuid;
+    uuid = upload_data.data.uuid;
     break;
   }
 
+  // Get the result by uuid
+  let result_url = 'https://api.doc2x.noedgeai.com/api/platform/async/status?uuid=' + uuid;
+  if (real_api_key.startsWith('sk-')) {
+    result_url = 'https://api.doc2x.noedgeai.com/api/v1/async/status?uuid=' + uuid;
+  }
+
+  let result_response;
+  let result_data;
+  let result;
+  // Wait for the result, at most 100s
+  for (let i = 0; i < 100; i++) {
+    result_response = await fetch(result_url, {
+      headers: {
+        Authorization: `Bearer ${real_api_key}`
+      }
+    });
+    if (!result_response.ok) {
+      return {
+        result: `Failed to get result: ${result_response.text()}`,
+        success: false
+      };
+    }
+    result_data = await result_response.json();
+    if (result_data.data.status === 'ready' || result_data.data.status === 'processing') {
+      await delay(1000);
+    } else if (result_data.data.status === 'pages limit exceeded') {
+      return {
+        result: 'Doc2X Pages limit exceeded',
+        success: false
+      };
+    } else if (result_data.data.status === 'success') {
+      result = result_data.data.result.pages[0].md;
+      break;
+    } else {
+      return {
+        result: `Failed to get result: ${result_data.data.status}`,
+        success: false
+      };
+    }
+  }
+
   return {
-    result: `result: "test",`
+    result: result,
+    success: true
   };
 };
 
