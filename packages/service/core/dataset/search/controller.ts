@@ -20,6 +20,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { jiebaSplit } from '../../../common/string/jieba';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import { Types } from '../../../common/mongo';
+import json5 from 'json5';
 
 type SearchDatasetDataProps = {
   teamId: string;
@@ -31,6 +32,20 @@ type SearchDatasetDataProps = {
   usingReRank?: boolean;
   reRankQuery: string;
   queries: string[];
+
+  /* 
+    {
+      tags: {
+        $and: ["str1","str2"],
+        $or: ["str1","str2"]
+      },
+      createTime: {
+        $gte: 'xx',
+        $lte: 'xxx'
+      }
+    }
+  */
+  collectionFilterMatch?: string;
 };
 
 export async function searchDatasetData(props: SearchDatasetDataProps) {
@@ -43,7 +58,8 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     limit: maxTokens,
     searchMode = DatasetSearchModeEnum.embedding,
     usingReRank = false,
-    datasetIds = []
+    datasetIds = [],
+    collectionFilterMatch
   } = props;
 
   /* init params */
@@ -87,14 +103,68 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       forbidCollectionIdList: collections.map((item) => String(item._id))
     };
   };
+  // Collection metadata filter
+  const filterCollectionByMetadata = async (): Promise<string[] | undefined> => {
+    if (!collectionFilterMatch) return;
+
+    try {
+      const jsonMatch = json5.parse(collectionFilterMatch);
+      // Tag
+      const andTags = jsonMatch?.tags?.$and as string[] | undefined;
+      const orTags = jsonMatch?.tags?.$or as string[] | undefined;
+      if (andTags && Array.isArray(andTags)) {
+        const collections = await MongoDatasetCollection.find(
+          {
+            teamId,
+            datasetId: { $in: datasetIds },
+            tags: { $all: andTags }
+          },
+          '_id'
+        );
+        return collections.map((item) => String(item._id));
+      } else if (orTags && Array.isArray(orTags)) {
+        const collections = await MongoDatasetCollection.find(
+          {
+            teamId,
+            datasetId: { $in: datasetIds },
+            tags: { $in: orTags }
+          },
+          '_id'
+        );
+        return collections.map((item) => String(item._id));
+      }
+
+      // time
+      const getCreateTime = jsonMatch?.createTime?.$gte as string | undefined;
+      const lteCreateTime = jsonMatch?.createTime?.$lte as string | undefined;
+      if (getCreateTime || lteCreateTime) {
+        const collections = await MongoDatasetCollection.find(
+          {
+            teamId,
+            datasetId: { $in: datasetIds },
+            createTime: {
+              ...(getCreateTime && { $gte: new Date(getCreateTime) }),
+              ...(lteCreateTime && {
+                $lte: new Date(lteCreateTime)
+              })
+            }
+          },
+          '_id'
+        );
+        return collections.map((item) => String(item._id));
+      }
+    } catch (error) {}
+  };
   const embeddingRecall = async ({
     query,
     limit,
-    forbidCollectionIdList
+    forbidCollectionIdList,
+    filterCollectionIdList
   }: {
     query: string;
     limit: number;
     forbidCollectionIdList: string[];
+    filterCollectionIdList?: string[];
   }) => {
     const { vectors, tokens } = await getVectorsByText({
       model: getVectorModel(model),
@@ -107,7 +177,8 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       datasetIds,
       vector: vectors[0],
       limit,
-      forbidCollectionIdList
+      forbidCollectionIdList,
+      filterCollectionIdList
     });
 
     // get q and a
@@ -165,10 +236,12 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   };
   const fullTextRecall = async ({
     query,
-    limit
+    limit,
+    filterCollectionIdList
   }: {
     query: string;
     limit: number;
+    filterCollectionIdList?: string[];
   }): Promise<{
     fullTextRecallResults: SearchDataResponseItemType[];
     tokenLen: number;
@@ -188,7 +261,14 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
               $match: {
                 teamId: new Types.ObjectId(teamId),
                 datasetId: new Types.ObjectId(id),
-                $text: { $search: jiebaSplit({ text: query }) }
+                $text: { $search: jiebaSplit({ text: query }) },
+                ...(filterCollectionIdList && filterCollectionIdList.length > 0
+                  ? {
+                      collectionId: {
+                        $in: filterCollectionIdList.map((id) => new Types.ObjectId(id))
+                      }
+                    }
+                  : {})
               }
             },
             {
@@ -327,7 +407,10 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     const fullTextRecallResList: SearchDataResponseItemType[][] = [];
     let totalTokens = 0;
 
-    const { forbidCollectionIdList } = await getForbidData();
+    const [{ forbidCollectionIdList }, filterCollectionIdList] = await Promise.all([
+      getForbidData(),
+      filterCollectionByMetadata()
+    ]);
 
     await Promise.all(
       queries.map(async (query) => {
@@ -335,11 +418,13 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
           embeddingRecall({
             query,
             limit: embeddingLimit,
-            forbidCollectionIdList
+            forbidCollectionIdList,
+            filterCollectionIdList
           }),
           fullTextRecall({
             query,
-            limit: fullTextLimit
+            limit: fullTextLimit,
+            filterCollectionIdList
           })
         ]);
         totalTokens += tokens;
