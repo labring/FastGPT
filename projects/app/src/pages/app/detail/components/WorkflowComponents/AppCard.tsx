@@ -159,7 +159,7 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
     return (
       <HStack>
         <InfoMenu>
-          <Avatar src={appDetail.avatar} w={'1.75rem'} />
+          <Avatar src={appDetail.avatar} w={'1.75rem'} borderRadius={'md'} />
         </InfoMenu>
         <Box>
           <InfoMenu>

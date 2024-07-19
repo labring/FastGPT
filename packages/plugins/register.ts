@@ -3,6 +3,7 @@ import { SystemPluginResponseType } from './type';
 import { FastGPTProUrl, isProduction } from '../service/common/system/constants';
 import { GET, POST } from '@fastgpt/service/common/api/plusRequest';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
+import { cloneDeep } from 'lodash';
 
 let list = [
   'getTime',
@@ -38,14 +39,17 @@ export const getCommunityPlugins = () => {
 const getCommercialPlugins = () => {
   return GET<SystemPluginTemplateItemType[]>('/core/app/plugin/getSystemPlugins');
 };
-export const getSystemPluginTemplates = async () => {
-  if (isProduction && global.systemPlugins) return global.systemPlugins;
+export const getSystemPluginTemplates = async (refresh = false) => {
+  if (isProduction && global.systemPlugins && !refresh) return cloneDeep(global.systemPlugins);
 
   try {
-    global.systemPlugins = [];
+    if (!global.systemPlugins) {
+      global.systemPlugins = [];
+    }
+
     global.systemPlugins = FastGPTProUrl ? await getCommercialPlugins() : getCommunityPlugins();
 
-    return global.systemPlugins;
+    return cloneDeep(global.systemPlugins);
   } catch (error) {
     //@ts-ignore
     global.systemPlugins = undefined;

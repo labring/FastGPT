@@ -152,7 +152,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                   onClick: () => onChangeApp(item._id)
                 })}
           >
-            <Avatar src={item.avatar} w={'24px'} />
+            <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'md'} />
             <Box ml={2} className={'textEllipsis'}>
               {item.name}
             </Box>

@@ -80,10 +80,10 @@ const EditResourceModal = ({
           <HStack spacing={4}>
             <MyTooltip label={t('common:common.Set Avatar')}>
               <Avatar
-                flexShrink={0}
+                flex={'0 0 2rem'}
                 src={avatar}
-                w={['28px', '32px']}
-                h={['28px', '32px']}
+                w={'2rem'}
+                h={'2rem'}
                 cursor={'pointer'}
                 borderRadius={'md'}
                 onClick={onOpenSelectFile}

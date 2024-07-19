@@ -145,7 +145,7 @@ const ChatHistorySlider = ({
               })
             }
           >
-            <Avatar src={appAvatar} />
+            <Avatar src={appAvatar} borderRadius={'md'} />
             <Box flex={'1 0 0'} w={0} ml={2} fontWeight={'bold'} className={'textEllipsis'}>
               {appName}
             </Box>

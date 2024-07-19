@@ -135,7 +135,12 @@ const SelectOneResource = ({
                     />
                   </Flex>
                 )}
-                <Avatar ml={index !== 0 ? '0.5rem' : 0} src={item.avatar} w={'1.25rem'} />
+                <Avatar
+                  ml={index !== 0 ? '0.5rem' : 0}
+                  src={item.avatar}
+                  w={'1.25rem'}
+                  borderRadius={'sm'}
+                />
                 <Box fontSize={['md', 'sm']} ml={2} className="textEllipsis">
                   {item.name}
                 </Box>
