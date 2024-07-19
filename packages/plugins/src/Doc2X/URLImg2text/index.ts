@@ -25,13 +25,14 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
   let real_api_key = apikey;
   if (!apikey.startsWith('sk-')) {
     const response = await fetch('https://api.doc2x.noedgeai.com/api/token/refresh', {
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${apikey}`
       }
     });
     if (response.status !== 200) {
       return {
-        result: `Get token failed: ${response.text()}`,
+        result: `Get token failed: ${await response.text()}`,
         success: false
       };
     }
@@ -87,7 +88,7 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
     });
     if (!upload_response.ok) {
       return {
-        result: `Failed to upload image: ${upload_response.text()}`,
+        result: `Failed to upload image: ${await upload_response.text()}`,
         success: false
       };
     }
@@ -119,7 +120,7 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
     });
     if (!result_response.ok) {
       return {
-        result: `Failed to get result: ${result_response.text()}`,
+        result: `Failed to get result: ${await result_response.text()}`,
         success: false
       };
     }
@@ -136,7 +137,7 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
       break;
     } else {
       return {
-        result: `Failed to get result: ${result_data.data.status}`,
+        result: `Failed to get result: ${await result_data.text()}`,
         success: false
       };
     }
