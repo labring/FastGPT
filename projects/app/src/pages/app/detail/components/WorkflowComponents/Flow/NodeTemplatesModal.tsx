@@ -1,17 +1,30 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Flex, IconButton, Input, InputGroup, InputLeftElement, css } from '@chakra-ui/react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Box,
+  Divider,
+  Flex,
+  IconButton,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  css
+} from '@chakra-ui/react';
 import type {
   NodeTemplateListItemType,
   NodeTemplateListType
 } from '@fastgpt/global/core/workflow/type/node.d';
 import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getPreviewPluginNode, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
+import {
+  getPreviewPluginNode,
+  getSystemPlugTemplates,
+  getSystemPluginPaths
+} from '@/web/core/app/api/plugin';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { workflowNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
@@ -33,6 +46,7 @@ import { useWorkflowUtils } from './hooks/useUtils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { cloneDeep } from 'lodash';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import CostTooltip from '@/components/core/app/plugin/CostTooltip';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -40,6 +54,7 @@ type ModuleTemplateListProps = {
 };
 type RenderListProps = {
   templates: NodeTemplateListItemType[];
+  type: TemplateTypeEnum;
   onClose: () => void;
   parentId: ParentIdType;
   setParentId: React.Dispatch<React.SetStateAction<ParentIdType>>;
@@ -51,7 +66,7 @@ enum TemplateTypeEnum {
   'teamPlugin' = 'teamPlugin'
 }
 
-const sliderWidth = 390;
+const sliderWidth = 420;
 
 const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const { t } = useTranslation();
@@ -104,7 +119,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
       refreshDeps: [basicNodeTemplates, nodeList, hasToolNode, templateType, searchKey, parentId]
     }
   );
-  const { data: teamApps, loading: isLoadingTeamApp } = useRequest2(
+  const { data: teamAndSystemApps, loading: isLoadingTeamApp } = useRequest2(
     async () => {
       if (templateType === TemplateTypeEnum.teamPlugin) {
         return getTeamPlugTemplates({
@@ -113,6 +128,12 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
           type: [AppTypeEnum.folder, AppTypeEnum.httpPlugin, AppTypeEnum.plugin]
         }).then((res) => res.filter((app) => app.id !== appId));
       }
+      if (templateType === TemplateTypeEnum.systemPlugin) {
+        return getSystemPlugTemplates({
+          searchKey,
+          parentId
+        });
+      }
     },
     {
       manual: false,
@@ -120,28 +141,27 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
       refreshDeps: [templateType, searchKey, parentId]
     }
   );
-  const { data: systemPlugins, loading: isLoadingSystemPlugins } = useRequest2(
-    async () => {
-      if (templateType === TemplateTypeEnum.systemPlugin) {
-        return getSystemPlugTemplates();
-      }
+
+  const isLoading = isLoadingTeamApp;
+  const templates = useMemo(
+    () => basicNodes || teamAndSystemApps || [],
+    [basicNodes, teamAndSystemApps]
+  );
+
+  useEffect(() => {
+    setParentId('');
+  }, [templateType, searchKey]);
+
+  const { data: paths = [] } = useRequest2(
+    () => {
+      if (templateType === TemplateTypeEnum.teamPlugin) return getAppFolderPath(parentId);
+      return getSystemPluginPaths(parentId);
     },
     {
       manual: false,
-      refreshDeps: [templateType]
+      refreshDeps: [parentId]
     }
   );
-
-  const isLoading = isLoadingTeamApp || isLoadingSystemPlugins;
-  const templates = useMemo(
-    () => basicNodes || teamApps || systemPlugins || [],
-    [basicNodes, systemPlugins, teamApps]
-  );
-
-  const { data: paths = [] } = useRequest2(() => getAppFolderPath(parentId), {
-    manual: false,
-    refreshDeps: [parentId]
-  });
 
   const Render = useMemo(() => {
     return (
@@ -154,6 +174,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
           left={0}
           bottom={0}
           w={`${sliderWidth}px`}
+          maxW={'100%'}
           onClick={onClose}
           fontSize={'sm'}
         />
@@ -176,30 +197,35 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
           userSelect={'none'}
           overflow={isOpen ? 'none' : 'hidden'}
         >
+          {/* Header */}
           <Box pl={'20px'} mb={3} pr={'10px'} whiteSpace={'nowrap'} overflow={'hidden'}>
+            {/* Tabs */}
             <Flex flex={'1 0 0'} alignItems={'center'} gap={3}>
-              <FillRowTabs
-                list={[
-                  {
-                    icon: 'core/modules/basicNode',
-                    label: t('common:core.module.template.Basic Node'),
-                    value: TemplateTypeEnum.basic
-                  },
-                  {
-                    icon: 'core/modules/systemPlugin',
-                    label: t('common:core.module.template.System Plugin'),
-                    value: TemplateTypeEnum.systemPlugin
-                  },
-                  {
-                    icon: 'core/modules/teamPlugin',
-                    label: t('common:core.module.template.Team Plugin'),
-                    value: TemplateTypeEnum.teamPlugin
-                  }
-                ]}
-                py={'5px'}
-                value={templateType}
-                onChange={(e) => setTemplateType(e as TemplateTypeEnum)}
-              />
+              <Box flex={'1 0 0'}>
+                <FillRowTabs
+                  list={[
+                    {
+                      icon: 'core/modules/basicNode',
+                      label: t('core.module.template.Basic Node'),
+                      value: TemplateTypeEnum.basic
+                    },
+                    {
+                      icon: 'core/modules/systemPlugin',
+                      label: t('core.module.template.System Plugin'),
+                      value: TemplateTypeEnum.systemPlugin
+                    },
+                    {
+                      icon: 'core/modules/teamPlugin',
+                      label: t('core.module.template.Team Plugin'),
+                      value: TemplateTypeEnum.teamPlugin
+                    }
+                  ]}
+                  width={'100%'}
+                  py={'5px'}
+                  value={templateType}
+                  onChange={(e) => setTemplateType(e as TemplateTypeEnum)}
+                />
+              </Box>
               {/* close icon */}
               <IconButton
                 size={'sm'}
@@ -210,7 +236,9 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                 onClick={onClose}
               />
             </Flex>
-            {templateType === TemplateTypeEnum.teamPlugin && (
+            {/* Search */}
+            {(templateType === TemplateTypeEnum.teamPlugin ||
+              templateType === TemplateTypeEnum.systemPlugin) && (
               <Flex mt={2} alignItems={'center'} h={10}>
                 <InputGroup mr={4} h={'full'}>
                   <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
@@ -224,28 +252,52 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                   />
                 </InputGroup>
                 <Box flex={1} />
-                <Flex
-                  alignItems={'center'}
-                  cursor={'pointer'}
-                  _hover={{
-                    color: 'primary.600'
-                  }}
-                  fontSize={'sm'}
-                  onClick={() => router.push('/app/list')}
-                >
-                  <Box>去创建</Box>
-                  <MyIcon name={'common/rightArrowLight'} w={'14px'} />
+                {templateType === TemplateTypeEnum.teamPlugin && (
+                  <Flex
+                    alignItems={'center'}
+                    cursor={'pointer'}
+                    _hover={{
+                      color: 'primary.600'
+                    }}
+                    fontSize={'sm'}
+                    onClick={() => router.push('/app/list')}
+                    gap={1}
+                  >
+                    <Box>去创建</Box>
+                    <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
+                  </Flex>
+                )}
+                {templateType === TemplateTypeEnum.systemPlugin &&
+                  feConfigs.systemPluginCourseUrl && (
+                    <Flex
+                      alignItems={'center'}
+                      cursor={'pointer'}
+                      _hover={{
+                        color: 'primary.600'
+                      }}
+                      fontSize={'sm'}
+                      onClick={() => window.open(feConfigs.systemPluginCourseUrl)}
+                      gap={1}
+                    >
+                      <Box>贡献插件</Box>
+                      <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
+                    </Flex>
+                  )}
+              </Flex>
+            )}
+            {/* paths */}
+            {(templateType === TemplateTypeEnum.teamPlugin ||
+              templateType === TemplateTypeEnum.systemPlugin) &&
+              !searchKey &&
+              parentId && (
+                <Flex alignItems={'center'} mt={2}>
+                  <FolderPath paths={paths} FirstPathDom={null} onClick={setParentId} />
                 </Flex>
-              </Flex>
-            )}
-            {templateType === TemplateTypeEnum.teamPlugin && !searchKey && parentId && (
-              <Flex alignItems={'center'} mt={2}>
-                <FolderPath paths={paths} FirstPathDom={null} onClick={setParentId} />
-              </Flex>
-            )}
+              )}
           </Box>
           <RenderList
             templates={templates}
+            type={templateType}
             onClose={onClose}
             parentId={parentId}
             setParentId={setParentId}
@@ -262,14 +314,18 @@ export default React.memo(NodeTemplatesModal);
 
 const RenderList = React.memo(function RenderList({
   templates,
+  type,
   onClose,
   parentId,
   setParentId
 }: RenderListProps) {
   const { t } = useTranslation();
   const { appT } = useI18n();
+  const { feConfigs } = useSystemStore();
 
   const { isPc } = useSystem();
+  const isSystemPlugin = type === TemplateTypeEnum.systemPlugin;
+
   const { x, y, zoom } = useViewport();
   const { setLoading } = useSystemStore();
   const { toast } = useToast();
@@ -337,7 +393,7 @@ const RenderList = React.memo(function RenderList({
             flowNodeType: templateNode.flowNodeType,
             pluginId: templateNode.pluginId
           }),
-          intro: t(templateNode.intro || ('' as any))
+          intro: t(templateNode.intro as any)
         },
         position: { x: mouseX, y: mouseY - 20 },
         selected: true
@@ -371,9 +427,9 @@ const RenderList = React.memo(function RenderList({
                 }
               })}
             >
-              {item.label && (
+              {item.label && formatTemplates.length > 1 && (
                 <Flex>
-                  <Box fontSize={'sm'} fontWeight={'bold'} flex={1}>
+                  <Box fontSize={'sm'} fontWeight={'500'} flex={1} color={'myGray.900'}>
                     {t(item.label as any)}
                   </Box>
                 </Flex>
@@ -385,27 +441,29 @@ const RenderList = React.memo(function RenderList({
                     key={template.id}
                     placement={'right'}
                     label={
-                      <Box>
+                      <Box py={2}>
                         <Flex alignItems={'center'}>
                           <Avatar
                             src={template.avatar}
-                            w={'24px'}
+                            w={'1.75rem'}
                             objectFit={'contain'}
-                            borderRadius={'0'}
+                            borderRadius={'sm'}
                           />
-                          <Box fontWeight={'bold'} ml={3}>
+                          <Box fontWeight={'bold'} ml={3} color={'myGray.900'}>
                             {t(template.name as any)}
                           </Box>
                         </Flex>
                         <Box mt={2} color={'myGray.500'}>
                           {t(template.intro as any) || t('common:core.workflow.Not intro')}
                         </Box>
+                        {isSystemPlugin && <CostTooltip cost={template.currentCost} />}
                       </Box>
                     }
                   >
                     <Flex
                       alignItems={'center'}
-                      p={5}
+                      py={4}
+                      px={3}
                       cursor={'pointer'}
                       _hover={{ bg: 'myWhite.600' }}
                       borderRadius={'sm'}
@@ -436,13 +494,24 @@ const RenderList = React.memo(function RenderList({
                     >
                       <Avatar
                         src={template.avatar}
-                        w={'1.7rem'}
+                        w={'2rem'}
                         objectFit={'contain'}
-                        borderRadius={'0'}
+                        borderRadius={'md'}
                       />
-                      <Box color={'black'} fontSize={'sm'} ml={5} flex={'1 0 0'}>
+                      <Box
+                        color={'myGray.900'}
+                        fontWeight={'500'}
+                        fontSize={'sm'}
+                        ml={3}
+                        flex={'1 0 0'}
+                      >
                         {t(template.name as any)}
                       </Box>
+                      {template.author !== undefined && (
+                        <Box fontSize={'xs'} color={'myGray.500'}>
+                          {`by ${template.author || feConfigs.systemTitle}`}
+                        </Box>
+                      )}
                     </Flex>
                   </MyTooltip>
                 ))}
@@ -452,7 +521,17 @@ const RenderList = React.memo(function RenderList({
         </Box>
       </Box>
     );
-  }, [appT, formatTemplates, isPc, onAddNode, onClose, setParentId, t, templates.length]);
+  }, [
+    appT,
+    formatTemplates,
+    isPc,
+    isSystemPlugin,
+    onAddNode,
+    onClose,
+    setParentId,
+    t,
+    templates.length
+  ]);
 
   return Render;
 });

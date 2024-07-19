@@ -7,7 +7,7 @@ import {
 } from '@fastgpt/global/common/parentFolder/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Loading from '@fastgpt/web/components/common/MyLoading';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMemoizedFn } from 'ahooks';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
@@ -135,7 +135,12 @@ const SelectOneResource = ({
                     />
                   </Flex>
                 )}
-                <Avatar ml={index !== 0 ? '0.5rem' : 0} src={item.avatar} w={'1.25rem'} />
+                <Avatar
+                  ml={index !== 0 ? '0.5rem' : 0}
+                  src={item.avatar}
+                  w={'1.25rem'}
+                  borderRadius={'sm'}
+                />
                 <Box fontSize={['md', 'sm']} ml={2} className="textEllipsis">
                   {item.name}
                 </Box>

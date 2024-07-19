@@ -12,6 +12,7 @@ import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { useI18n } from '@/web/context/I18n';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 
 function RowRender({
   children,
@@ -125,18 +126,18 @@ export const ResponseBox = React.memo(function ResponseBox({
     () =>
       response.map((item, i) => ({
         label: (
-          <Flex alignItems={'center'} justifyContent={'center'} px={2}>
-            <Image
-              mr={2}
+          <Flex alignItems={'center'} justifyContent={'center'} px={2} py={1}>
+            <Avatar
               src={
                 item.moduleLogo ||
                 moduleTemplatesFlat.find((template) => item.moduleType === template.flowNodeType)
                   ?.avatar
               }
               alt={''}
-              w={['14px', '16px']}
+              w={'1.25rem'}
+              borderRadius={'sm'}
             />
-            {t(item.moduleName as any)}
+            <Box ml={1.5}> {t(item.moduleName as any)}</Box>
           </Flex>
         ),
         value: `${i}`
@@ -334,7 +335,9 @@ export const ResponseBox = React.memo(function ResponseBox({
               <Row
                 label={t('common:core.chat.response.Plugin response detail')}
                 rawDom={
-                  <ResponseBox response={activeModule.pluginDetail} showDetail={showDetail} />
+                  <Box h={'60vh'}>
+                    <ResponseBox response={activeModule.pluginDetail} showDetail={showDetail} />
+                  </Box>
                 }
               />
             )}
@@ -350,7 +353,11 @@ export const ResponseBox = React.memo(function ResponseBox({
           {activeModule?.toolDetail && activeModule?.toolDetail.length > 0 && (
             <Row
               label={t('common:core.chat.response.Tool call response detail')}
-              rawDom={<ResponseBox response={activeModule.toolDetail} showDetail={showDetail} />}
+              rawDom={
+                <Box h={'60vh'}>
+                  <ResponseBox response={activeModule.toolDetail} showDetail={showDetail} />
+                </Box>
+              }
             />
           )}
 

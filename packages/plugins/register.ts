@@ -1,57 +1,126 @@
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
-import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SystemPluginResponseType } from './type';
-import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
-import { isProduction } from '../service/common/system/constants';
+import { FastGPTProUrl, isProduction } from '../service/common/system/constants';
+import { GET, POST } from '@fastgpt/service/common/api/plusRequest';
+import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
+import { cloneDeep } from 'lodash';
 
-let list = ['getTime', 'fetchUrl', 'mathExprVal'];
+let list = [
+  'getTime',
+  'fetchUrl',
+  'mathExprVal',
+  'duckduckgo',
+  'duckduckgo/search',
+  'duckduckgo/searchImg',
+  'duckduckgo/searchNews',
+  'duckduckgo/searchVideo'
+];
 
+/* Get plugins */
 export const getCommunityPlugins = () => {
-  if (isProduction && global.communitySystemPlugins) return global.communitySystemPlugins;
+  return list.map<SystemPluginTemplateItemType>((name) => {
+    const config = require(`./src/${name}/template.json`);
 
-  global.communitySystemPlugins = list.map((name) => ({
-    ...require(`./src/${name}/template.json`),
-    id: `${PluginSourceEnum.community}-${name}`
-  }));
+    const isFolder = list.find((item) => item.startsWith(`${name}/`));
 
-  return global.communitySystemPlugins;
+    const parentIdList = name.split('/').slice(0, -1);
+    const parentId =
+      parentIdList.length > 0 ? `${PluginSourceEnum.community}-${parentIdList.join('/')}` : null;
+
+    return {
+      ...config,
+      id: `${PluginSourceEnum.community}-${name}`,
+      isFolder,
+      parentId,
+      isActive: true
+    };
+  });
 };
+const getCommercialPlugins = () => {
+  return GET<SystemPluginTemplateItemType[]>('/core/app/plugin/getSystemPlugins');
+};
+export const getSystemPluginTemplates = async (refresh = false) => {
+  if (isProduction && global.systemPlugins && !refresh) return cloneDeep(global.systemPlugins);
 
-export const getCommunityPluginsTemplateList = () => {
-  return getCommunityPlugins().map<NodeTemplateListItemType>((plugin) => ({
-    id: plugin.id,
-    templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
-    flowNodeType: FlowNodeTypeEnum.pluginModule,
-    avatar: plugin.avatar,
-    name: plugin.name,
-    intro: plugin.intro,
-    isTool: plugin.isTool
-  }));
+  try {
+    if (!global.systemPlugins) {
+      global.systemPlugins = [];
+    }
+
+    global.systemPlugins = FastGPTProUrl ? await getCommercialPlugins() : getCommunityPlugins();
+
+    return cloneDeep(global.systemPlugins);
+  } catch (error) {
+    //@ts-ignore
+    global.systemPlugins = undefined;
+    return Promise.reject(error);
+  }
 };
 
 export const getCommunityCb = async () => {
-  if (isProduction && global.communitySystemPluginCb) return global.communitySystemPluginCb;
-
   // Do not modify the following code
   const loadModule = async (name: string) => {
     const module = await import(`./src/${name}/index`);
     return module.default;
   };
 
-  const result = await Promise.all(
-    list.map(async (name) => ({
-      name,
-      cb: await loadModule(name)
-    }))
+  const result = (
+    await Promise.all(
+      list.map(async (name) => {
+        try {
+          return {
+            name,
+            cb: await loadModule(name)
+          };
+        } catch (error) {}
+      })
+    )
+  ).filter(Boolean) as {
+    name: string;
+    cb: any;
+  }[];
+
+  return result.reduce<Record<string, (e: any) => SystemPluginResponseType>>(
+    (acc, { name, cb }) => {
+      acc[name] = cb;
+      return acc;
+    },
+    {}
   );
+};
+const getCommercialCb = async () => {
+  const plugins = await getSystemPluginTemplates();
+  const result = plugins.map((plugin) => {
+    const name = plugin.id.split('-')[1];
 
-  global.communitySystemPluginCb = result.reduce<
-    Record<string, (e: any) => SystemPluginResponseType>
-  >((acc, { name, cb }) => {
-    acc[name] = cb;
-    return acc;
-  }, {});
+    return {
+      name,
+      cb: (e: any) =>
+        POST<Record<string, any>>('/core/app/plugin/run', {
+          pluginName: name,
+          data: e
+        })
+    };
+  });
 
-  return global.communitySystemPluginCb;
+  return result.reduce<Record<string, (e: any) => SystemPluginResponseType>>(
+    (acc, { name, cb }) => {
+      acc[name] = cb;
+      return acc;
+    },
+    {}
+  );
+};
+export const getSystemPluginCb = async () => {
+  if (isProduction && global.systemPluginCb) return global.systemPluginCb;
+
+  try {
+    global.systemPluginCb = {};
+    global.systemPluginCb = FastGPTProUrl ? await getCommercialCb() : await getCommunityCb();
+    return global.systemPluginCb;
+  } catch (error) {
+    //@ts-ignore
+    global.systemPluginCb = undefined;
+    return Promise.reject(error);
+  }
 };

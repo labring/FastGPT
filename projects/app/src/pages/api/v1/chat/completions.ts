@@ -538,7 +538,7 @@ const authHeaderRequest = async ({
         canWrite: apiKeyCanWrite
       };
     } else {
-      // token auth
+      // token_auth
       if (!appId) {
         return Promise.reject('appId is empty');
       }

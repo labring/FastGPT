@@ -2,7 +2,7 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import { dispatchWorkFlow } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getPluginRuntimeById, splitCombinePluginId } from '../../../app/plugin/controller';
+import { getPluginRuntimeById } from '../../../app/plugin/controller';
 import {
   getDefaultEntryNodeIds,
   initWorkflowEdgeStatus,
@@ -10,9 +10,9 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { updateToolInputValue } from '../agent/runTool/utils';
-import { authAppByTmbId } from '../../../../support/permission/app/auth';
+import { authPluginByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { computedPluginUsage } from '../../../app/plugin/utils';
 
 type RunPluginProps = ModuleDispatchProps<{
   [key: string]: any;
@@ -33,14 +33,12 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   }
 
   // auth plugin
-  const { source } = await splitCombinePluginId(pluginId);
-  if (source === PluginSourceEnum.personal) {
-    await authAppByTmbId({
-      appId: pluginId,
-      tmbId: workflowApp.tmbId,
-      per: ReadPermissionVal
-    });
-  }
+  await authPluginByTmbId({
+    appId: pluginId,
+    tmbId: workflowApp.tmbId,
+    per: ReadPermissionVal
+  });
+
   const plugin = await getPluginRuntimeById(pluginId);
 
   // concat dynamic inputs
@@ -78,12 +76,15 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     output.moduleLogo = plugin.avatar;
   }
 
+  const isError = !!output?.pluginOutput?.error;
+  const usagePoints = isError ? 0 : await computedPluginUsage(plugin, flowUsages);
+
   return {
     assistantResponses,
     // responseData, // debug
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: plugin.avatar,
-      totalPoints: flowResponses.reduce((sum, item) => sum + (item.totalPoints || 0), 0),
+      totalPoints: usagePoints,
       pluginOutput: output?.pluginOutput,
       pluginDetail:
         mode === 'test' && plugin.teamId === teamId
@@ -96,8 +97,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: plugin.name,
-        totalPoints: flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0),
-        model: plugin.name,
+        totalPoints: usagePoints,
         tokens: 0
       }
     ],

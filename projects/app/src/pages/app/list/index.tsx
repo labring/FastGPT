@@ -104,7 +104,7 @@ const MyApps = () => {
         <Input
           value={searchKey}
           onChange={(e) => setSearchKey(e.target.value)}
-          placeholder={appT('Search app')}
+          placeholder={appT('search_app')}
           maxLength={30}
           bg={'white'}
         />
@@ -258,7 +258,7 @@ const MyApps = () => {
                 });
               }}
               onMove={() => setMoveAppId(folderDetail._id)}
-              deleteTip={appT('Confirm delete folder tip')}
+              deleteTip={appT('confirm_delete_folder_tip')}
               onDelete={() => onDeleFolder(folderDetail._id)}
               defaultPer={{
                 value: folderDetail.defaultPermission,

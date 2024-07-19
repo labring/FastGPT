@@ -4,7 +4,7 @@ import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 
 import dynamic from 'next/dynamic';
 const Markdown = dynamic(() => import('@/components/Markdown'));
-const Avatar = dynamic(() => import('@/components/Avatar'));
+const Avatar = dynamic(() => import('@fastgpt/web/components/common/Avatar'));
 
 const Empty = ({
   showChatProblem,

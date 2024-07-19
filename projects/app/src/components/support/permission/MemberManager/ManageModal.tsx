@@ -15,7 +15,7 @@ import React from 'react';
 import { useContextSelector } from 'use-context-selector';
 import PermissionSelect from './PermissionSelect';
 import PermissionTags from './PermissionTags';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { CollaboratorContext } from './context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';

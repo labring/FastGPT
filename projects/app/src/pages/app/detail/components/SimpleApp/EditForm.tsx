@@ -18,7 +18,7 @@ import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
 import dynamic from 'next/dynamic';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
@@ -125,7 +125,7 @@ const EditForm = ({
           <Flex alignItems={'center'}>
             <MyIcon name={'core/app/simpleMode/ai'} w={'20px'} />
             <FormLabel ml={2} flex={1}>
-              {appT('AI Settings')}
+              {appT('ai_settings')}
             </FormLabel>
           </Flex>
           <Flex alignItems={'center'} mt={5}>
@@ -242,8 +242,15 @@ const EditForm = ({
                     })
                   }
                 >
-                  <Avatar src={item.avatar} w={'18px'} mr={1} />
-                  <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
+                  <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'sm'} />
+                  <Box
+                    ml={2}
+                    flex={'1 0 0'}
+                    w={0}
+                    className={'textEllipsis'}
+                    fontSize={'sm'}
+                    color={'myGray.900'}
+                  >
                     {item.name}
                   </Box>
                 </Flex>
@@ -257,8 +264,8 @@ const EditForm = ({
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'} flex={1}>
               <MyIcon name={'core/app/toolCall'} w={'20px'} />
-              <FormLabel ml={2}>{appT('Plugin dispatch')}</FormLabel>
-              <QuestionTip ml={1} label={appT('Plugin dispatch tip')} />
+              <FormLabel ml={2}>{appT('plugin_dispatch')}</FormLabel>
+              <QuestionTip ml={1} label={appT('plugin_dispatch_tip')} />
             </Flex>
             <Button
               variant={'transparentBase'}
@@ -292,8 +299,15 @@ const EditForm = ({
                     borderColor: 'primary.300'
                   }}
                 >
-                  <Avatar src={item.avatar} w={'1rem'} mr={1} />
-                  <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
+                  <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'sm'} />
+                  <Box
+                    ml={2}
+                    flex={'1 0 0'}
+                    w={0}
+                    className={'textEllipsis'}
+                    fontSize={'sm'}
+                    color={'myGray.900'}
+                  >
                     {item.name}
                   </Box>
                   <DeleteIcon

@@ -12,8 +12,11 @@ import type { copyAppQuery, copyAppResponse } from '@/pages/api/core/app/copy';
 export const postCreateAppFolder = (data: CreateAppFolderBody) =>
   POST('/core/app/folder/create', data);
 
-export const getAppFolderPath = (parentId: ParentIdType) =>
-  GET<ParentTreePathItemType[]>(`/core/app/folder/path`, { parentId });
+export const getAppFolderPath = (parentId: ParentIdType) => {
+  if (!parentId) return Promise.resolve<ParentTreePathItemType[]>([]);
+
+  return GET<ParentTreePathItemType[]>(`/core/app/folder/path`, { parentId });
+};
 
 /* detail */
 export const postTransition2Workflow = (data: transitionWorkflowBody) =>

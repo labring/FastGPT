@@ -84,6 +84,7 @@ export const storeNode2FlowNode = ({
   const nodeItem: FlowNodeItemType = {
     ...template,
     ...storeNode,
+    avatar: template.avatar ?? storeNode.avatar,
     version: storeNode.version ?? template.version ?? defaultNodeVersion,
 
     /* 
@@ -260,7 +261,6 @@ export const checkWorkflowNodeAndConnection = ({
     if (
       data.flowNodeType === FlowNodeTypeEnum.systemConfig ||
       data.flowNodeType === FlowNodeTypeEnum.pluginInput ||
-      data.flowNodeType === FlowNodeTypeEnum.pluginOutput ||
       data.flowNodeType === FlowNodeTypeEnum.workflowStart
     ) {
       continue;

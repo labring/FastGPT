@@ -1,0 +1,46 @@
+# .vscode/i18n-ally-custom-framework.yml
+
+# An array of strings which contain Language Ids defined by VS Code
+# You can check available language ids here: https://code.visualstudio.com/docs/languages/identifiers
+languageIds:
+  - javascript
+  - typescript
+  - javascriptreact
+  - typescriptreact
+
+# An array of RegExes to find the key usage. **The key should be captured in the first match group**.
+# You should unescape RegEx strings in order to fit in the YAML file
+# To help with this, you can use https://www.freeformatter.com/json-escape.html
+usageMatchRegex:
+  # The following example shows how to detect `t("your.i18n.keys")`
+  # the `{key}` will be placed by a proper keypath matching regex,
+  # you can ignore it and use your own matching rules as well
+  - "[^\\w\\d]t\\(['\"`]({key})['\"`]"
+  - "[^\\w\\d]commonT\\(['\"`]({key})['\"`]"
+  # 支持 appT("your.i18n.keys")
+  - "[^\\w\\d]appT\\(['\"`]({key})['\"`]"
+  # 支持 datasetT("your.i18n.keys")
+  - "[^\\w\\d]datasetT\\(['\"`]({key})['\"`]"
+  - "[^\\w\\d]fileT\\(['\"`]({key})['\"`]"
+  - "[^\\w\\d]publishT\\(['\"`]({key})['\"`]"
+  - "[^\\w\\d]workflowT\\(['\"`]({key})['\"`]"
+  - "[^\\w\\d]userT\\(['\"`]({key})['\"`]"
+  - "[^\\w\\d]chatT\\(['\"`]({key})['\"`]"
+  - "[^\\w\\d]i18nT\\(['\"`]({key})['\"`]"
+
+# A RegEx to set a custom scope range. This scope will be used as a prefix when detecting keys
+# and works like how the i18next framework identifies the namespace scope from the
+# useTranslation() hook.
+# You should unescape RegEx strings in order to fit in the YAML file
+# To help with this, you can use https://www.freeformatter.com/json-escape.html
+scopeRangeRegex: "([^:]+):"
+
+# An array of strings containing refactor templates.
+# The "$1" will be replaced by the keypath specified.
+# Optional: uncomment the following two lines to use
+
+# refactorTemplates:
+#  - i18n.get("$1")
+
+# If set to true, only enables this custom framework (will disable all built-in frameworks)
+monopoly: false

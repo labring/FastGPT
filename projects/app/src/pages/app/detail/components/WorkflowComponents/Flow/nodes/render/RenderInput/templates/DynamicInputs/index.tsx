@@ -58,7 +58,7 @@ const DynamicInputs = (props: RenderInputProps) => {
       <Box borderBottom={'base'} pb={3}>
         <HStack className="nodrag" cursor={'default'} position={'relative'}>
           <HStack spacing={1} position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
-            <Box>{item.label || workflowT('Custom input')}</Box>
+            <Box>{item.label || workflowT('custom_input')}</Box>
             {item.description && <QuestionTip label={t(item.description as any)} />}
           </HStack>
           <Box flex={'1 0 0'} />
@@ -115,7 +115,7 @@ function Reference({
   const { workflowT } = useI18n();
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
-    content: workflowT('Confirm delete field tip')
+    content: workflowT('confirm_delete_field_tip')
   });
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);

@@ -12,6 +12,27 @@ import { AuthResponseType } from '../type/auth.d';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { splitCombinePluginId } from '../../../core/app/plugin/controller';
+import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+
+export const authPluginByTmbId = async ({
+  tmbId,
+  appId,
+  per
+}: {
+  tmbId: string;
+  appId: string;
+  per: PermissionValueType;
+}) => {
+  const { source } = await splitCombinePluginId(appId);
+  if (source === PluginSourceEnum.personal) {
+    await authAppByTmbId({
+      appId,
+      tmbId,
+      per
+    });
+  }
+};
 
 export const authAppByTmbId = async ({
   tmbId,

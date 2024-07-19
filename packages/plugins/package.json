@@ -2,11 +2,14 @@
   "name": "@fastgpt/plugins",
   "version": "1.0.0",
   "dependencies": {
+    "duck-duck-scrape": "^2.2.5",
+    "lodash": "^4.17.21",
     "expr-eval": "^2.0.2"
   },
   "devDependencies": {
     "@fastgpt/global": "workspace:*",
     "@fastgpt/service": "workspace:*",
+    "@types/lodash": "^4.14.191",
     "@types/node": "20.14.0"
   }
 }

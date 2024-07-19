@@ -21,13 +21,27 @@ export interface I18nNamespaces {
 
 export type I18nNsType = (keyof I18nNamespaces)[];
 
-export type I18nCommonKey = keyof I18nNamespaces['common'];
-export type I18nDataSetKey = keyof I18nNamespaces['dataset'];
-export type I18nAppKey = keyof I18nNamespaces['app'];
-export type I18nPublishKey = keyof I18nNamespaces['publish'];
-export type I18nWorkflowKey = keyof I18nNamespaces['workflow'];
-export type I18nUserKey = keyof I18nNamespaces['user'];
-export type I18nChatKey = keyof I18nNamespaces['chat'];
+export type I18nCommonKey = NestedKeyOf<I18nNamespaces['common']>;
+export type I18nDataSetKey = NestedKeyOf<I18nNamespaces['dataset']>;
+export type I18nAppKey = NestedKeyOf<I18nNamespaces['app']>;
+export type I18nPublishKey = NestedKeyOf<I18nNamespaces['publish']>;
+export type I18nWorkflowKey = NestedKeyOf<I18nNamespaces['workflow']>;
+export type I18nUserKey = NestedKeyOf<I18nNamespaces['user']>;
+export type I18nChatKey = NestedKeyOf<I18nNamespaces['chat']>;
+
+export type NestedKeyOf<ObjectType extends object> = {
+  [Key in keyof ObjectType & (string | number)]: ObjectType[Key] extends object
+    ? `${Key}` | `${Key}.${NestedKeyOf<ObjectType[Key]>}`
+    : `${Key}`;
+}[keyof ObjectType & (string | number)];
+
+export type ParseKeys<Ns extends keyof I18nNamespaces = keyof I18nNamespaces> = {
+  [K in Ns]: `${K}:${NestedKeyOf<I18nNamespaces[K]>}`;
+}[Ns];
+
+export type I18nKeyFunction = {
+  <Key extends ParseKeys>(key: Key): Key;
+};
 
 declare module 'i18next' {
   interface CustomTypeOptions {

@@ -19,8 +19,8 @@ const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
   const map = useRef({
     [FnTypeEnum.inputGuide]: {
       icon: '/imgs/app/inputGuide-icon.svg',
-      title: chatT('Input guide'),
-      desc: chatT('Input guide tip'),
+      title: chatT('input_guide'),
+      desc: chatT('input_guide_tip'),
       imgUrl: '/imgs/app/inputGuide.svg'
     },
     [FnTypeEnum.nextQuestion]: {

@@ -26,7 +26,7 @@ export const AiChatModule: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.chatNode,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
-  avatar: '/imgs/workflow/AI.png',
+  avatar: 'core/workflow/template/aiChat',
   name: 'AI 对话',
   intro: 'AI 大模型对话',
   showStatus: true,

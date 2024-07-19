@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex, IconButton, useTheme, Progress } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -92,7 +92,7 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
             {rebuildingCount > 0 && (
               <Box mb={3}>
                 <Box fontSize={'sm'}>
-                  {datasetT('Rebuilding index count', { count: rebuildingCount })}
+                  {datasetT('rebuilding_index_count', { count: rebuildingCount })}
                 </Box>
               </Box>
             )}

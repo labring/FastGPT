@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { delAppById, putAppById, resumeInheritPer } from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import PermissionIconText from '@/components/support/permission/IconText';
 import { useI18n } from '@/web/context/I18n';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -95,14 +95,14 @@ const ListItem = () => {
   );
 
   const { openConfirm: openConfirmCopy, ConfirmModal: ConfirmCopyModal } = useConfirm({
-    content: appT('Confirm copy app tip')
+    content: appT('confirm_copy_app_tip')
   });
   const { runAsync: onclickCopy } = useRequest2(postCopyApp, {
     onSuccess({ appId }) {
       router.push(`/app/detail?appId=${appId}`);
       loadMyApps();
     },
-    successToast: appT('Create copy success')
+    successToast: appT('create_copy_success')
   });
 
   const { data: members = [] } = useRequest2(getTeamMembers, {
@@ -144,8 +144,8 @@ const ListItem = () => {
                 app.type === AppTypeEnum.folder
                   ? t('common:common.folder.Open folder')
                   : app.permission.hasWritePer
-                    ? appT('Edit app')
-                    : appT('Go to chat')
+                    ? appT('edit_app')
+                    : appT('go_to_chat')
               }
             >
               <MyBox
@@ -262,7 +262,7 @@ const ListItem = () => {
                                     children: [
                                       {
                                         icon: 'core/chat/chatLight',
-                                        label: appT('Go to chat'),
+                                        label: appT('go_to_chat'),
                                         onClick: () => {
                                           router.push(`/chat?appId=${app._id}`);
                                         }
@@ -277,7 +277,7 @@ const ListItem = () => {
                                     children: [
                                       {
                                         icon: 'core/chat/chatLight',
-                                        label: appT('Go to run'),
+                                        label: appT('go_to_run'),
                                         onClick: () => {
                                           router.push(`/chat?appId=${app._id}`);
                                         }
@@ -337,7 +337,7 @@ const ListItem = () => {
                                     children: [
                                       {
                                         icon: 'copy',
-                                        label: appT('Copy one app'),
+                                        label: appT('copy_one_app'),
                                         onClick: () =>
                                           openConfirmCopy(() => onclickCopy({ appId: app._id }))()
                                       }
@@ -358,8 +358,8 @@ const ListItem = () => {
                                             () => onclickDelApp(app._id),
                                             undefined,
                                             app.type === AppTypeEnum.folder
-                                              ? appT('Confirm delete folder tip')
-                                              : appT('Confirm Del App Tip')
+                                              ? appT('confirm_delete_folder_tip')
+                                              : appT('confirm_del_app_tip')
                                           )()
                                       }
                                     ]
