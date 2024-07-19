@@ -71,7 +71,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         type: FlowNodeOutputTypeEnum.hidden
       };
 
-      // Add new input
+      // add_new_input
       onChangeNode({
         nodeId,
         type: 'addInput',

@@ -6,7 +6,7 @@ import { useI18n } from '@/web/context/I18n';
 
 const API = ({ appId }: { appId: string }) => {
   const { publishT } = useI18n();
-  return <ApiKeyTable tips={publishT('app key tips')} appId={appId} />;
+  return <ApiKeyTable tips={publishT('app_key_tips')} appId={appId} />;
 };
 
 export default API;

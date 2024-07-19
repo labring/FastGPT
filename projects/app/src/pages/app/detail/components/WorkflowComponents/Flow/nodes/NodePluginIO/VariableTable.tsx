@@ -27,7 +27,7 @@ const VariableTable = ({
                 {t('common:core.module.variable.variable name')}
               </Th>
               <Th>{t('common:core.workflow.Value type')}</Th>
-              {showToolColumn && <Th>{workflowT('Tool input')}</Th>}
+              {showToolColumn && <Th>{workflowT('tool_input')}</Th>}
               <Th borderBottomRightRadius={'none !important'}></Th>
             </Tr>
           </Thead>

@@ -334,13 +334,13 @@ function EditKeyModal({
     <MyModal
       isOpen={true}
       iconSrc="/imgs/modal/key.svg"
-      title={isEdit ? publishT('Edit API Key') : publishT('Create API Key')}
+      title={isEdit ? publishT('edit_api_key') : publishT('create_api_key')}
     >
       <ModalBody>
         <Flex alignItems={'center'}>
           <FormLabel flex={'0 0 90px'}>{t('common:Name')}</FormLabel>
           <Input
-            placeholder={publishT('key alias') || 'key alias'}
+            placeholder={publishT('key_alias') || 'key_alias'}
             maxLength={20}
             {...register('name', {
               required: t('common:common.name_is_empty') || 'name_is_empty'

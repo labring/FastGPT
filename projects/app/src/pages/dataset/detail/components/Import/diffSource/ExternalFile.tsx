@@ -93,8 +93,8 @@ const CustomLinkInput = () => {
         <Table bg={'white'}>
           <Thead>
             <Tr bg={'myGray.50'}>
-              <Th>{datasetT('External url')}</Th>
-              <Th>{datasetT('External id')}</Th>
+              <Th>{datasetT('external_url')}</Th>
+              <Th>{datasetT('external_id')}</Th>
               <Th>{datasetT('filename')}</Th>
               <Th></Th>
             </Tr>
