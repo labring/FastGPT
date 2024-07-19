@@ -13,7 +13,10 @@ let list = [
   'duckduckgo/search',
   'duckduckgo/searchImg',
   'duckduckgo/searchNews',
-  'duckduckgo/searchVideo'
+  'duckduckgo/searchVideo',
+  'Doc2X',
+  'Doc2X/URLPDF2text',
+  'Doc2X/URLImg2text'
 ];
 
 /* Get plugins */

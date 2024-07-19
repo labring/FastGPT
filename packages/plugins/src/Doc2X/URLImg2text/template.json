@@ -1,0 +1,17 @@
+{
+  "author": "",
+  "version": "486",
+  "name": "Doc2X 图像(URL)识别",
+  "avatar": "/imgs/workflow/textEditor.svg",
+  "intro": "将传入的图片(URL)发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
+  "showStatus": true,
+  "weight": 10,
+
+  "isTool": true,
+  "templateType": "tools",
+
+  "workflow": {
+    "nodes": [],
+    "edges": []
+  }
+}
