@@ -2,8 +2,8 @@ import type { LLMModelItemType, VectorModelItemType } from './model.d';
 
 export const defaultQAModels: LLMModelItemType[] = [
   {
-    model: 'gpt-3.5-turbo',
-    name: 'gpt-3.5-turbo',
+    model: 'gpt-4o-mini',
+    name: 'gpt-4o-mini',
     maxContext: 16000,
     maxResponse: 16000,
     quoteMaxToken: 13000,

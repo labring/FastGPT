@@ -142,7 +142,7 @@ export const simpleBotTemplates: TemplateType = [
             ],
             label: 'core.module.input.label.aiModel',
             valueType: WorkflowIOValueTypeEnum.string,
-            value: 'gpt-3.5-turbo'
+            value: 'gpt-4o-mini'
           },
           {
             key: 'temperature',
@@ -389,7 +389,7 @@ export const simpleBotTemplates: TemplateType = [
             ],
             label: 'core.module.input.label.aiModel',
             valueType: WorkflowIOValueTypeEnum.string,
-            value: 'gpt-3.5-turbo'
+            value: 'gpt-4o-mini'
           },
           {
             key: 'temperature',
@@ -619,7 +619,7 @@ export const simpleBotTemplates: TemplateType = [
             ],
             label: 'core.module.input.label.aiModel',
             valueType: WorkflowIOValueTypeEnum.string,
-            value: 'gpt-3.5-turbo'
+            value: 'gpt-4o-mini'
           },
           {
             key: 'temperature',
@@ -896,7 +896,7 @@ export const simpleBotTemplates: TemplateType = [
             label: 'core.module.input.label.aiModel',
             valueType: 'string',
             llmModelType: 'all',
-            value: 'gpt-3.5-turbo'
+            value: 'gpt-4o-mini'
           },
           {
             key: 'temperature',
@@ -2546,7 +2546,7 @@ export const workflowTemplates: TemplateType = [
             ],
             label: 'core.module.input.label.aiModel',
             valueType: WorkflowIOValueTypeEnum.string,
-            value: 'gpt-3.5-turbo'
+            value: 'gpt-4o-mini'
           },
           {
             key: 'temperature',
@@ -2666,7 +2666,7 @@ export const workflowTemplates: TemplateType = [
             required: true,
             valueType: WorkflowIOValueTypeEnum.string,
             llmModelType: 'classify',
-            value: 'gpt-3.5-turbo'
+            value: 'gpt-4o-mini'
           },
           {
             key: 'systemPrompt',
