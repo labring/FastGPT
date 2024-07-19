@@ -12,6 +12,7 @@ import {
 import MyIcon from '../Icon';
 import MyBox from '../MyBox';
 import { useSystem } from '../../../hooks/useSystem';
+import Avatar from '../Avatar';
 
 export interface MyModalProps extends ModalContentProps {
   iconSrc?: string;
@@ -68,14 +69,18 @@ const MyModal = ({
           >
             {iconSrc && (
               <>
-                {iconSrc.startsWith('/') ? (
-                  <Image mr={3} objectFit={'contain'} alt="" src={iconSrc} w={'20px'} />
-                ) : (
-                  <MyIcon mr={3} name={iconSrc as any} w={'20px'} />
-                )}
+                <Avatar
+                  objectFit={'contain'}
+                  alt=""
+                  src={iconSrc}
+                  w={'1.5rem'}
+                  borderRadius={'md'}
+                />
               </>
             )}
-            {title}
+            <Box ml={3} color={'myGray.900'} fontWeight={'500'}>
+              {title}
+            </Box>
             <Box flex={1} />
             {onClose && (
               <ModalCloseButton position={'relative'} fontSize={'xs'} top={0} right={0} />

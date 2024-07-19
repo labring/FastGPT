@@ -26,7 +26,7 @@ export const ToolModule: FlowNodeTemplateType = {
   templateType: FlowNodeTemplateTypeEnum.ai,
   sourceHandle: getHandleConfig(true, true, false, true),
   targetHandle: getHandleConfig(true, true, false, true),
-  avatar: '/imgs/workflow/tool.svg',
+  avatar: 'core/workflow/template/toolCall',
   name: '工具调用',
   intro: '通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。',
   showStatus: true,

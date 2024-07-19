@@ -10,7 +10,6 @@ import { WorkflowContext, getWorkflowStore } from '../WorkflowComponents/context
 import { useInterval } from 'ahooks';
 import { AppContext, TabEnum } from '../context';
 import RouteTab from '../RouteTab';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRouter } from 'next/router';
 

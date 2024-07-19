@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -26,21 +26,27 @@ import {
   FlowNodeTemplateType,
   NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node.d';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AddIcon } from '@chakra-ui/icons';
-import { getPreviewPluginNode, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
+import {
+  getPreviewPluginNode,
+  getSystemPlugTemplates,
+  getSystemPluginPaths
+} from '@/web/core/app/api/plugin';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useForm } from 'react-hook-form';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { getTeamPlugTemplates } from '@/web/core/app/api/plugin';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import CoseTooltip from '@/components/core/app/plugin/CoseTooltip';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -63,9 +69,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   const { data: templates = [], loading: isLoading } = useRequest2(
     async () => {
       if (templateType === TemplateTypeEnum.systemPlugin) {
-        return (await getSystemPlugTemplates()).filter(
-          (item) => item.isTool && item.name.toLowerCase().includes(searchKey.toLowerCase())
-        );
+        return getSystemPlugTemplates({ parentId, searchKey });
       } else if (templateType === TemplateTypeEnum.teamPlugin) {
         return getTeamPlugTemplates({
           parentId,
@@ -82,10 +86,20 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     }
   );
 
-  const { data: paths = [] } = useRequest2(() => getAppFolderPath(parentId), {
-    manual: false,
-    refreshDeps: [parentId]
-  });
+  const { data: paths = [] } = useRequest2(
+    () => {
+      if (templateType === TemplateTypeEnum.teamPlugin) return getAppFolderPath(parentId);
+      return getSystemPluginPaths(parentId);
+    },
+    {
+      manual: false,
+      refreshDeps: [parentId]
+    }
+  );
+
+  useEffect(() => {
+    setParentId('');
+  }, [templateType, searchKey]);
 
   return (
     <MyModal
@@ -129,7 +143,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
         </InputGroup>
       </Box>
       {/* route components */}
-      {templateType === TemplateTypeEnum.teamPlugin && !searchKey && parentId && (
+      {!searchKey && parentId && (
         <Flex mt={2} px={[3, 6]}>
           <FolderPath
             paths={paths}
@@ -145,6 +159,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           templates={templates}
           isLoadingData={isLoading}
           setParentId={setParentId}
+          showCost={templateType === TemplateTypeEnum.systemPlugin}
           {...props}
         />
       </MyBox>
@@ -160,13 +175,16 @@ const RenderList = React.memo(function RenderList({
   isLoadingData,
   onAddTool,
   onRemoveTool,
-  setParentId
+  setParentId,
+  showCost
 }: Props & {
   templates: NodeTemplateListItemType[];
   isLoadingData: boolean;
   setParentId: React.Dispatch<React.SetStateAction<ParentIdType>>;
+  showCost?: boolean;
 }) {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
 
@@ -195,57 +213,78 @@ const RenderList = React.memo(function RenderList({
         const selected = selectedTools.some((tool) => tool.pluginId === item.id);
 
         return (
-          <Flex
+          <MyTooltip
             key={item.id}
-            alignItems={'center'}
-            p={[4, 5]}
-            _notLast={{
-              borderBottomWidth: '1px',
-              borderBottomColor: 'myGray.150'
-            }}
-            _hover={{
-              bg: 'myGray.50'
-            }}
+            placement={'bottom'}
+            shouldWrapChildren={false}
+            label={
+              <Box>
+                <Flex alignItems={'center'}>
+                  <Avatar
+                    src={item.avatar}
+                    w={'1.75rem'}
+                    objectFit={'contain'}
+                    borderRadius={'sm'}
+                  />
+                  <Box fontWeight={'bold'} ml={2} color={'myGray.900'}>
+                    {t(item.name as any)}
+                  </Box>
+                </Flex>
+                <Box mt={2} color={'myGray.500'}>
+                  {t(item.intro as any) || t('common:core.workflow.Not intro')}
+                </Box>
+                {showCost && <CoseTooltip cost={item.currentCost} />}
+              </Box>
+            }
           >
-            <Avatar
-              src={item.avatar}
-              w={['26px', '32px']}
-              objectFit={'contain'}
-              borderRadius={'0'}
-            />
-            <Box ml={5} flex={'1 0 0'}>
-              <Box color={'black'}>{t(item.name as any)}</Box>
-              {item.intro && (
-                <Box className="textEllipsis3" color={'myGray.500'} fontSize={'xs'}>
-                  {t(item.intro as any)}
+            <Flex
+              alignItems={'center'}
+              position={'relative'}
+              p={[4, 5]}
+              _notLast={{
+                borderBottomWidth: '1px',
+                borderBottomColor: 'myGray.150'
+              }}
+              _hover={{
+                bg: 'myGray.50'
+              }}
+            >
+              <Avatar src={item.avatar} w={'2rem'} objectFit={'contain'} borderRadius={'md'} />
+
+              <Box ml={3} flex={'1 0 0'} color={'myGray.900'}>
+                {t(item.name as any)}
+              </Box>
+              {item.author !== undefined && (
+                <Box fontSize={'xs'} mr={3}>
+                  {`by ${item.author || feConfigs.systemTitle}`}
                 </Box>
               )}
-            </Box>
-            {selected ? (
-              <Button
-                size={'sm'}
-                variant={'grayDanger'}
-                leftIcon={<MyIcon name={'delete'} w={'14px'} />}
-                onClick={() => onRemoveTool(item)}
-              >
-                {t('common:common.Remove')}
-              </Button>
-            ) : item.isFolder ? (
-              <Button size={'sm'} variant={'whiteBase'} onClick={() => setParentId(item.id)}>
-                {t('common:common.Open')}
-              </Button>
-            ) : (
-              <Button
-                size={'sm'}
-                variant={'whiteBase'}
-                leftIcon={<AddIcon fontSize={'10px'} />}
-                isLoading={isLoading}
-                onClick={() => onClickAdd(item)}
-              >
-                {t('common:common.Add')}
-              </Button>
-            )}
-          </Flex>
+              {selected ? (
+                <Button
+                  size={'sm'}
+                  variant={'grayDanger'}
+                  leftIcon={<MyIcon name={'delete'} w={'14px'} />}
+                  onClick={() => onRemoveTool(item)}
+                >
+                  {t('common:common.Remove')}
+                </Button>
+              ) : item.isFolder ? (
+                <Button size={'sm'} variant={'whiteBase'} onClick={() => setParentId(item.id)}>
+                  {t('common:common.Open')}
+                </Button>
+              ) : (
+                <Button
+                  size={'sm'}
+                  variant={'whiteBase'}
+                  leftIcon={<AddIcon fontSize={'10px'} />}
+                  isLoading={isLoading}
+                  onClick={() => onClickAdd(item)}
+                >
+                  {t('common:common.Add')}
+                </Button>
+              )}
+            </Flex>
+          </MyTooltip>
         );
       })}
       {!!configTool && (

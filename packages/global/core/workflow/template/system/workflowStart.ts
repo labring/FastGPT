@@ -14,7 +14,7 @@ export const WorkflowStart: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.workflowStart,
   sourceHandle: getHandleConfig(false, true, false, false),
   targetHandle: getHandleConfig(false, false, false, false),
-  avatar: '/imgs/workflow/userChatInput.svg',
+  avatar: 'core/workflow/template/workflowStart',
   name: '流程开始',
   intro: '',
   forbidDelete: true,

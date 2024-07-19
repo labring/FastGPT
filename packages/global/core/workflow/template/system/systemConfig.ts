@@ -9,7 +9,7 @@ export const SystemConfigNode: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.systemConfig,
   sourceHandle: getHandleConfig(false, false, false, false),
   targetHandle: getHandleConfig(false, false, false, false),
-  avatar: '/imgs/workflow/userGuide.png',
+  avatar: 'core/workflow/template/systemConfig',
   name: '系统配置',
   intro: '可以配置应用的系统参数。',
   unique: true,

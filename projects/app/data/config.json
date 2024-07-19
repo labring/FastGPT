@@ -10,16 +10,16 @@
   },
   "llmModels": [
     {
-      "model": "gpt-3.5-turbo", // 模型名(对应OneAPI中渠道的模型名)
-      "name": "gpt-3.5-turbo", // 模型别名
+      "model": "gpt-4o-mini", // 模型名(对应OneAPI中渠道的模型名)
+      "name": "gpt-4o-mini", // 模型别名
       "avatar": "/imgs/model/openai.svg", // 模型的logo
-      "maxContext": 16000, // 最大上下文
+      "maxContext": 125000, // 最大上下文
       "maxResponse": 4000, // 最大回复
-      "quoteMaxToken": 13000, // 最大引用内容
+      "quoteMaxToken": 120000, // 最大引用内容
       "maxTemperature": 1.2, // 最大温度
       "charsPointsPrice": 0, // n积分/1k token（商业版）
       "censor": false, // 是否开启敏感校验（商业版）
-      "vision": false, // 是否支持图片输入
+      "vision": true, // 是否支持图片输入
       "datasetProcess": true, // 是否设置为知识库处理模型（QA），务必保证至少有一个为true，否则知识库会报错
       "usedInClassify": true, // 是否用于问题分类（务必保证至少有一个为true）
       "usedInExtractFields": true, // 是否用于内容提取（务必保证至少有一个为true）
@@ -33,44 +33,21 @@
       "defaultConfig": {} // 请求API时，挟带一些默认配置（比如 GLM4 的 top_p）
     },
     {
-      "model": "gpt-4-0125-preview",
-      "name": "gpt-4-turbo",
+      "model": "gpt-4o",
+      "name": "gpt-4o",
       "avatar": "/imgs/model/openai.svg",
       "maxContext": 125000,
       "maxResponse": 4000,
-      "quoteMaxToken": 100000,
-      "maxTemperature": 1.2,
-      "charsPointsPrice": 0,
-      "censor": false,
-      "vision": false,
-      "datasetProcess": false,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInToolCall": true,
-      "usedInQueryExtension": true,
-      "toolChoice": true,
-      "functionCall": false,
-      "customCQPrompt": "",
-      "customExtractPrompt": "",
-      "defaultSystemChatPrompt": "",
-      "defaultConfig": {}
-    },
-    {
-      "model": "gpt-4-vision-preview",
-      "name": "gpt-4-vision",
-      "avatar": "/imgs/model/openai.svg",
-      "maxContext": 128000,
-      "maxResponse": 4000,
-      "quoteMaxToken": 100000,
+      "quoteMaxToken": 120000,
       "maxTemperature": 1.2,
       "charsPointsPrice": 0,
       "censor": false,
       "vision": true,
       "datasetProcess": false,
-      "usedInClassify": false,
-      "usedInExtractFields": false,
-      "usedInToolCall": false,
-      "usedInQueryExtension": false,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
       "toolChoice": true,
       "functionCall": false,
       "customCQPrompt": "",
@@ -91,6 +68,27 @@
       "defaultConfig": {}, // 自定义额外参数。例如，如果希望使用 embedding3-large 的话，可以传入 dimensions:1024，来返回1024维度的向量。（目前必须小于1536维度）
       "dbConfig": {}, // 存储时的额外参数（非对称向量模型时候需要用到）
       "queryConfig": {} // 参训时的额外参数
+    },
+    {
+      "model": "text-embedding-3-large",
+      "name": "text-embedding-3-large",
+      "avatar": "/imgs/model/openai.svg",
+      "charsPointsPrice": 0,
+      "defaultToken": 512,
+      "maxToken": 3000,
+      "weight": 100,
+      "defaultConfig": {
+        "dimensions": 1024
+      }
+    },
+    {
+      "model": "text-embedding-3-small",
+      "name": "text-embedding-3-small",
+      "avatar": "/imgs/model/openai.svg",
+      "charsPointsPrice": 0,
+      "defaultToken": 512,
+      "maxToken": 3000,
+      "weight": 100
     }
   ],
   "reRankModels": [],

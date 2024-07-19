@@ -67,7 +67,7 @@ const DatasetSchema = new Schema({
   agentModel: {
     type: String,
     required: true,
-    default: 'gpt-3.5-turbo'
+    default: 'gpt-4o-mini'
   },
   intro: {
     type: String,

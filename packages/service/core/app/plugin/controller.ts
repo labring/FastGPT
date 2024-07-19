@@ -9,7 +9,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { cloneDeep } from 'lodash';
 import { MongoApp } from '../schema';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
-import { getCommunityPlugins } from '@fastgpt/plugins/register';
+import { getSystemPluginTemplates } from '../../../../plugins/register';
 
 /* 
   plugin id rule:
@@ -28,7 +28,7 @@ export async function splitCombinePluginId(id: string) {
     };
   }
 
-  const [source, pluginId] = id.split('-') as [`${PluginSourceEnum}`, string];
+  const [source, pluginId] = id.split('-') as [PluginSourceEnum, string];
   if (!source || !pluginId) return Promise.reject('pluginId not found');
 
   return { source, pluginId: id };
@@ -39,14 +39,6 @@ const getPluginTemplateById = async (
 ): Promise<SystemPluginTemplateItemType & { teamId?: string }> => {
   const { source, pluginId } = await splitCombinePluginId(id);
 
-  if (source === PluginSourceEnum.community) {
-    const item = [...global.communityPlugins, ...getCommunityPlugins()].find(
-      (plugin) => plugin.id === pluginId
-    );
-    if (!item) return Promise.reject('plugin not found');
-
-    return cloneDeep(item);
-  }
   if (source === PluginSourceEnum.personal) {
     const item = await MongoApp.findById(id).lean();
     if (!item) return Promise.reject('plugin not found');
@@ -68,8 +60,14 @@ const getPluginTemplateById = async (
       originCost: 0,
       currentCost: 0
     };
+  } else {
+    const item = [...global.communityPlugins, ...(await getSystemPluginTemplates())].find(
+      (plugin) => plugin.id === pluginId
+    );
+    if (!item) return Promise.reject('plugin not found');
+
+    return cloneDeep(item);
   }
-  return Promise.reject('plugin not found');
 };
 
 /* format plugin modules to plugin preview module */
@@ -98,10 +96,12 @@ export async function getPluginRuntimeById(id: string): Promise<PluginRuntimeTyp
   const plugin = await getPluginTemplateById(id);
 
   return {
+    id: plugin.id,
     teamId: plugin.teamId,
     name: plugin.name,
     avatar: plugin.avatar,
     showStatus: plugin.showStatus,
+    currentCost: plugin.currentCost,
     nodes: plugin.workflow.nodes,
     edges: plugin.workflow.edges
   };
