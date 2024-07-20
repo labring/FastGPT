@@ -73,8 +73,9 @@ export const useSystemStore = create<State>()(
           return null;
         },
 
-        gitStar: 9300,
+        gitStar: 15600,
         async loadGitStar() {
+          if (!get().feConfigs?.show_git) return;
           try {
             const { data: git } = await axios.get('https://api.github.com/repos/labring/FastGPT');
 
