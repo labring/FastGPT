@@ -54,7 +54,7 @@ const RenderToolInput = ({
             size={'sm'}
             onClick={() => setEditField(defaultEditFormData)}
           >
-            {t('common:Add new')}
+            {t('common:add_new')}
           </Button>
         )}
       </HStack>
