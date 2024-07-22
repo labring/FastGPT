@@ -8,7 +8,7 @@ export enum WorkerNameEnum {
   countGptMessagesTokens = 'countGptMessagesTokens'
 }
 
-const getSafeEnv = () => {
+export const getSafeEnv = () => {
   return {
     LOG_LEVEL: process.env.LOG_LEVEL,
     STORE_LOG_LEVEL: process.env.STORE_LOG_LEVEL,
@@ -25,6 +25,7 @@ export const getWorker = (name: WorkerNameEnum) => {
 
 export const runWorker = <T = any>(name: WorkerNameEnum, params?: Record<string, any>) => {
   return new Promise<T>((resolve, reject) => {
+    const start = Date.now();
     const worker = getWorker(name);
 
     worker.postMessage(params);
@@ -33,6 +34,11 @@ export const runWorker = <T = any>(name: WorkerNameEnum, params?: Record<string,
       if (msg.type === 'error') return reject(msg.data);
 
       resolve(msg.data);
+
+      const time = Date.now() - start;
+      if (time > 1000) {
+        addLog.info(`Worker ${name} run time: ${time}ms`);
+      }
     });
 
     worker.on('error', (err) => {
@@ -113,7 +119,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
 
   run(data: Props) {
     // watch memory
-    addLog.debug(`Worker queueLength: ${this.workerQueue.length}`);
+    addLog.debug(`${this.name} worker queueLength: ${this.workerQueue.length}`);
 
     return new Promise<Response>((resolve, reject) => {
       // Get idle worker or create a new worker

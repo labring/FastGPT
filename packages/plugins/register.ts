@@ -4,10 +4,12 @@ import { FastGPTProUrl, isProduction } from '../service/common/system/constants'
 import { GET, POST } from '@fastgpt/service/common/api/plusRequest';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { cloneDeep } from 'lodash';
+import { runWorker } from './runtime/utils';
 
-let list = [
-  'getTime',
-  'fetchUrl',
+// Run in main thread
+const staticPluginList = ['getTime', 'fetchUrl'];
+// Run in worker thread (Have npm packages)
+const packagePluginList = [
   'mathExprVal',
   'duckduckgo',
   'duckduckgo/search',
@@ -15,6 +17,8 @@ let list = [
   'duckduckgo/searchNews',
   'duckduckgo/searchVideo'
 ];
+
+const list = [...staticPluginList, ...packagePluginList];
 
 /* Get plugins */
 export const getCommunityPlugins = () => {
@@ -57,18 +61,23 @@ export const getSystemPluginTemplates = async (refresh = false) => {
   }
 };
 
-export const loadCommunityModule = async (name: string) => {
-  const module = await import(`./src/${name}/index`);
-  return module.default;
-};
 export const getCommunityCb = async () => {
+  const loadCommunityModule = async (name: string) => {
+    const module = await import(`./src/${name}/index`);
+    return module.default;
+  };
+
   const result = (
     await Promise.all(
       list.map(async (name) => {
         try {
           return {
             name,
-            cb: await loadCommunityModule(name)
+            cb: staticPluginList.includes(name)
+              ? await loadCommunityModule(name)
+              : (e: any) => {
+                  return runWorker(name, e);
+                }
           };
         } catch (error) {}
       })

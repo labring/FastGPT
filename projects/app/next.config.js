@@ -54,7 +54,11 @@ const nextConfig = {
             const entries = await oldEntry(...args);
             return {
               ...entries,
-              ...getWorkerConfig()
+              ...getWorkerConfig(),
+              'worker/systemPluginRun': path.resolve(
+                process.cwd(),
+                '../../packages/plugins/runtime/worker.ts'
+              )
             };
           }
         };
