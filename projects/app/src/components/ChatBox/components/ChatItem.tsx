@@ -259,23 +259,29 @@ ${toolResponse}`}
         >
           {ContentCard}
           {children}
+          {/* 对话框底部的复制按钮 */}
+          {type == ChatRoleEnum.AI && (!isChatting || (isChatting && !isLastChild)) && (
+            <Box
+              position={'absolute'}
+              bottom={0}
+              right={[0, -2]}
+              color={'myGray.400'}
+              transform={'translateX(100%)'}
+            >
+              <MyTooltip label={t('common.Copy')}>
+                <MyIcon
+                  w={'14px'}
+                  cursor="pointer"
+                  p="5px"
+                  bg="white"
+                  name={'copy'}
+                  _hover={{ color: 'primary.600' }}
+                  onClick={() => copyData(chatText)}
+                />
+              </MyTooltip>
+            </Box>
+          )}
         </Card>
-        {/* 对话框底部的复制按钮 */}
-        {type == ChatRoleEnum.AI && (!isChatting || (isChatting && !isLastChild)) && (
-          <Box position={'absolute'} bottom={0} right={[0, 3]} color={'myGray.400'}>
-            <MyTooltip label={t('common.Copy')}>
-              <MyIcon
-                w={'14px'}
-                cursor="pointer"
-                p="5px"
-                bg="white"
-                name={'copy'}
-                _hover={{ color: 'primary.600' }}
-                onClick={() => copyData(chatText)}
-              />
-            </MyTooltip>
-          </Box>
-        )}
       </Box>
     </>
   );
