@@ -53,6 +53,7 @@
     "Exit": "Exit",
     "Expired Time": "Expired Time",
     "Field": "Field",
+    "File": "File",
     "Finish": "Finish",
     "Import": "Import",
     "Import failed": "Import failed",
@@ -118,6 +119,7 @@
     "Username": "Username",
     "Waiting": "Waiting",
     "Warning": "Warning",
+    "Website": "Website",
     "avatar": {
       "Select Avatar": "Click to select avatar",
       "Select Failed": "Select avatar failed"
@@ -317,6 +319,7 @@
       "Audio Not Support": "Device does not support audio playback",
       "Audio Speech Error": "Audio speech error",
       "Cancel Speak": "Cancel voice input",
+      "Chat API is error or undefined": "Chat API error or undefined",
       "Confirm to clear history": "Confirm to clear the online chat history of this app? Records of sharing and API calls will not be cleared.",
       "Confirm to clear share chat history": "Confirm to delete all chat history?",
       "Converting to text": "Converting to text...",
@@ -355,13 +358,22 @@
       "Unpin": "Unpin",
       "You need to a chat app": "You do not have a usable app",
       "error": {
-        "Chat error": "Chat error"
+        "Chat error": "Chat error",
+        "Messages empty": "API content is empty, text may be too long~",
+        "Select dataset empty": "You did not select a dataset",
+        "User input empty": "User question input is empty"
       },
       "feedback": {
         "Close User Like": "User expressed approval\nClick to close this mark",
         "Feedback Close": "Close feedback",
         "No Content": "User did not provide specific feedback content",
         "Read User dislike": "User expressed disapproval\nClick to view content"
+      },
+      "logs": {
+        "api": "API call",
+        "online": "Online use",
+        "share": "External link call",
+        "test": "Test"
       },
       "markdown": {
         "Edit Question": "Edit question",
@@ -385,7 +397,28 @@
         "module cq result": "Classification result",
         "module extract description": "Extract requirement description",
         "module extract result": "Extraction result",
-        "module historyPreview": "Complete record"
+        "module historyPreview": "Complete record",
+        "module_http_result": "Response body",
+        "module_http_url": "Request URL",
+        "module_if_else_Result": "Judger result",
+        "module_limit": "Single search limit",
+        "module_maxToken": "Maximum response Tokens",
+        "module_model": "Model",
+        "module_name": "Model name",
+        "module_price": "Billing",
+        "module_query": "Question/search term",
+        "module_question": "Question",
+        "module_quoteList": "Quoted content",
+        "module_runningTime": "Running time",
+        "module_search_query": "Search term",
+        "module_search_response": "Search result",
+        "module_similarity": "Similarity",
+        "module_temperature": "Temperature",
+        "module_time": "Running time",
+        "module_tokens": "Total Tokens",
+        "plugin_output": "Plugin output value",
+        "search_using_reRank": "Result re-ranking",
+        "text_output": "Text output"
       },
       "retry": "Regenerate",
       "tts": {
@@ -450,6 +483,12 @@
         "status": {
           "active": "Ready"
         },
+        "sync": {
+          "result": {
+            "sameRaw": "Content unchanged, no update needed",
+            "success": "Start syncing"
+          }
+        },
         "training": {}
       },
       "data": {
@@ -472,14 +511,23 @@
       "error": {
         "Data not found": "Data does not exist or has been deleted",
         "Start Sync Failed": "Failed to start syncing",
-        "Template does not exist": "Template does not exist"
+        "Template does not exist": "Template does not exist",
+        "unAuthDataset": "Unauthorized to operate this dataset",
+        "unAuthDatasetCollection": "Unauthorized to operate this collection",
+        "unAuthDatasetData": "Unauthorized to operate this data",
+        "unAuthDatasetFile": "Unauthorized to operate this file",
+        "unCreateCollection": "Unauthorized to operate this data",
+        "unLinkCollection": "Not a network link collection"
       },
       "file": "File",
+      "folder": "Directory",
       "import": {
         "Auto mode Estimated Price Tips": "Requires calling the file processing model, consuming more Tokens: {{price}} points/1k Tokens",
         "Auto process": "Automatic",
         "Auto process desc": "Automatically set segmentation and preprocessing rules",
         "Chunk Range": "Range: {{min}}~{{max}}",
+        "Chunk Split": "Direct segmentation",
+        "Chunk Split Tip": "Segment the text according to certain rules and convert it into a format that can be semantically searched, suitable for most scenarios. Does not require calling additional models for processing, low cost.",
         "Custom process": "Custom rules",
         "Custom process desc": "Customize segmentation and preprocessing rules",
         "Custom prompt": "Custom prompt words",
@@ -491,6 +539,7 @@
         "Data process params": "Data processing parameters",
         "Down load csv template": "Click to download CSV template",
         "Embedding Estimated Price Tips": "Only using the index model, consumes a small amount of AI points: {{price}} points/1k Tokens",
+        "Fetch Url": "Network link",
         "Ideal chunk length": "Ideal chunk length",
         "Ideal chunk length Tips": "Segment by end symbols. We recommend that your document should reasonably use punctuation to ensure that each complete sentence does not exceed this value\nChinese documents recommend 400~1000\nEnglish documents recommend 600~1200",
         "Import success": "Import successful, please wait for training",
@@ -502,6 +551,8 @@
         "Preview raw text": "Preview raw text (up to 3000 characters)",
         "Process way": "Processing method",
         "QA Estimated Price Tips": "Requires calling the file processing model, consuming more AI points: {{price}} points/1k Tokens",
+        "QA Import": "QA Split",
+        "QA Import Tip": "According to certain rules, split the text into a larger paragraph, call AI to generate Q&A pairs for that paragraph. Has very high search accuracy, but loses a lot of content details.",
         "Select file": "Select file",
         "Select source": "Select source",
         "Source name": "Source name",
@@ -515,6 +566,7 @@
         "Web link": "Web link",
         "Web link desc": "Read static web page content as a dataset"
       },
+      "link": "Link",
       "search": {
         "Dataset Search Params": "Knowledge base search configuration",
         "Empty result response": "Empty search reply",
@@ -532,9 +584,28 @@
         "Source id": "Source ID",
         "Source name": "Source name",
         "Using query extension": "Use question optimization",
+        "mode": {
+          "embedding": "Semantic retrieval",
+          "embedding desc": "Use vectors for text relevance queries",
+          "fullTextRecall": "Full-text retrieval",
+          "fullTextRecall desc": "Use traditional full-text retrieval, suitable for finding some keywords and special subject-predicate data",
+          "mixedRecall": "Mixed retrieval",
+          "mixedRecall desc": "Return the combined results of vector retrieval and full-text retrieval, sorted using the RRF algorithm."
+        },
+        "score": {
+          "embedding": "Semantic retrieval",
+          "embedding desc": "Obtain scores by calculating the distance between vectors, ranging from 0 to 1.",
+          "fullText": "Full-text retrieval",
+          "fullText desc": "Calculate the score of the same keywords, ranging from 0 to infinity.",
+          "reRank": "Result reranking",
+          "reRank desc": "Calculate the relevance between sentences using the ReRank model, ranging from 0 to 1.",
+          "rrf": "Comprehensive ranking",
+          "rrf desc": "Merge multiple search results by inverted calculation."
+        },
         "search mode": "Search mode"
       },
       "status": {
+        "active": "Ready",
         "syncing": "Syncing"
       },
       "test": {
@@ -553,8 +624,12 @@
       },
       "training": {
         "Agent queue": "QA training queue",
+        "Auto mode": "Enhanced processing (experimental)",
+        "Auto mode Tip": "Increase the semantic richness of data blocks by generating related questions and summaries through sub-indexes and model calls, which is more conducive to retrieval. Requires more storage space and increases AI call frequency.",
+        "Chunk mode": "Direct segmentation",
         "Full": "Estimated more than 5 minutes",
         "Leisure": "Idle",
+        "QA mode": "Question and answer split",
         "Vector queue": "Index queue",
         "Waiting": "Estimated 5 minutes",
         "Website Sync": "Web site sync"
@@ -660,11 +735,13 @@
       "output": {
         "description": {
           "Ai response content": "Triggered after the stream response is complete",
-          "New context": "Concatenate this response content with historical records to return as a new context"
+          "New context": "Concatenate this response content with historical records to return as a new context",
+          "query extension result": "Outputs as an array of strings, can directly connect this result to 'Knowledge base search' 'User question', it is recommended not to connect to 'AI dialogue' 'User question'"
         },
         "label": {
           "Ai response content": "AI response content",
-          "New context": "New context"
+          "New context": "New context",
+          "query extension result": "Optimized result"
         }
       },
       "template": {
@@ -683,14 +760,15 @@
       "templates": {
         "Load plugin error": "Load plugin error"
       },
-      "tool": {
-        "Tool input": "Tool input"
-      },
       "variable": {
+        "Custom type": "Custom variable",
         "add option": "Add option",
+        "input type": "Text",
         "key": "Variable key",
         "key is required": "Variable key is required",
+        "select type": "Dropdown single select",
         "text max length": "Maximum length",
+        "textarea type": "Paragraph",
         "variable name": "Variable name",
         "variable name is required": "Variable name cannot be empty",
         "variable option is required": "Options cannot be all empty",
@@ -700,11 +778,11 @@
       "variable add option": "Add option"
     },
     "plugin": {
-      "Free": "The plugin requires no points～",
-      "cost": "Plugin cost: ",
       "Custom headers": "Custom headers",
+      "Free": "The plugin requires no points～",
       "Get Plugin Module Detail Failed": "Plugin loading failed",
-      "Http plugin intro placeholder": "For display only, no actual effect"
+      "Http plugin intro placeholder": "For display only, no actual effect",
+      "cost": "Plugin cost: "
     },
     "workflow": {
       "Can not delete node": "This node cannot be deleted",
@@ -783,6 +861,7 @@
     "Select Dataset": "Select this dataset",
     "Select Dataset Tips": "Only datasets from the same index model can be selected",
     "Select Folder": "Enter folder",
+    "Training Name": "Data Training",
     "collections": {
       "Collection Embedding": "{{total}} groups indexing",
       "Confirm to delete the folder": "Confirm to delete the folder and all its contents?",
@@ -818,7 +897,12 @@
   },
   "error": {
     "Create failed": "Create failed",
-    "fileNotFound": "File not found~"
+    "fileNotFound": "File not found~",
+    "inheritPermissionError": "Inherit permission Error",
+    "missingParams": "Insufficient parameters",
+    "team": {
+      "overSize": "Team members exceed the limit"
+    }
   },
   "navbar": {
     "Account": "Account",
@@ -864,7 +948,8 @@
     "Plugin List": "Plugin list",
     "Search plugin": "Search plugin",
     "Set Name": "Name the plugin",
-    "go to laf": "Go to write"
+    "go to laf": "Go to write",
+    "path": "Path"
   },
   "select_reference_variable": "Select Reference Variable",
   "share_link": "Share Link",
@@ -964,11 +1049,20 @@
         "Status": "Status",
         "Type": "Order type",
         "payWay": {
-          "Way": "Payment method"
+          "Way": "Payment method",
+          "balance": "Balance payment",
+          "wx": "Wechat payment"
+        },
+        "status": {
+          "closed": "Closed",
+          "notpay": "Not paid",
+          "refund": "Refunded",
+          "success": "Payment successful"
         }
       },
       "moduleName": {
-        "index": "Index generation"
+        "index": "Index generation",
+        "qa": "QA split"
       },
       "noBill": "No bill records~",
       "subscription": {
@@ -1010,6 +1104,19 @@
           "Period": "Subscription period",
           "Year": "Yearly",
           "Year sale": "Two months free"
+        },
+        "standardSubLevel": {
+          "enterprise": "Enterprise edition",
+          "experience": "Experience edition",
+          "free": "Free edition",
+          "free desc": "Basic functions can be used for free every month, and the knowledge base will be cleared if there is no usage record for 30 days",
+          "team": "Team edition"
+        },
+        "type": {
+          "balance": "Balance recharge",
+          "extraDatasetSize": "Knowledge base expansion",
+          "extraPoints": "AI points package",
+          "standard": "Plan subscription"
         }
       },
       "usage": {
@@ -1116,10 +1223,15 @@
         "reject": "Reject"
       },
       "member": {
-        "Confirm Leave": "Confirm to leave this team?"
+        "Confirm Leave": "Confirm to leave this team?",
+        "active": "Joined",
+        "reject": "Reject",
+        "waiting": "Waiting for Acceptance"
       },
       "role": {
-        "Admin": "Admin"
+        "Admin": "Admin",
+        "Owner": "Owner",
+        "Visitor": "Visitor"
       }
     }
   }

@@ -12,6 +12,7 @@
   "external_read_url": "外部预览地址",
   "external_read_url_tip": "可以配置你文件库的阅读地址。便于对用户进行阅读鉴权操作。目前可以使用 {{fileId}} 变量来指代外部文件 ID。",
   "external_url": "文件访问 URL",
+  "folder_dataset": "文件夹",
   "rebuild_embedding_start_tip": "切换索引模型任务已开始",
   "rebuilding_index_count": "重建中索引数量：{{count}}",
   "the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt": "知识库有训练中或正在重建的索引",

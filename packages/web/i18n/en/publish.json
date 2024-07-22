@@ -1,4 +1,6 @@
 {
+  "copy_iframe": "Embed webpage",
+  "copy_link": "Copy",
   "create_api_key": "Create new Key",
   "create_link": "Create link",
   "default_response": "Default Response",

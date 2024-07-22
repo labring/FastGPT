@@ -1,5 +1,5 @@
 {
-  "plugin_cost_per_times": "{{cost}}/per time",
+  "ai_advanced_settings": "AI Advanced Settings",
   "ai_settings": "AI Settings",
   "app_detail": "App Details",
   "chat_debug": "Chat Debug",
@@ -26,6 +26,7 @@
   "mark_count": "Marked Answer Count",
   "move_app": "Move app",
   "paste_config": "Paste Config",
+  "plugin_cost_per_times": "{{cost}}/per time",
   "plugin_dispatch": "Plugins",
   "plugin_dispatch_tip": "It is up to the model to decide which plug-ins to add additional capabilities to. If the plug-in is selected, the knowledge base call is also treated as a special plug-in.",
   "publish_channel": "Publish channel",
@@ -46,13 +47,11 @@
   "module": {
     "Confirm Sync": "The template will be updated to the latest template configuration. Fields that do not exist in the template will be deleted (including all custom fields). You are advised to make a copy of the node and then update the original node version.",
     "Custom Title Tip": "This title will be displayed during the conversation",
-    "No Modules": "No plugins yet~"
+    "No Modules": "No plugins yet~",
+    "type": "\"{{type}}\" type\n{{description}}"
   },
   "modules": {
     "Title is required": "Module name cannot be empty"
-  },
-  "template": {
-    "simple_robot": "Simple Robot"
   },
   "type": {
     "All": "All",

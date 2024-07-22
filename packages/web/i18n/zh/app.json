@@ -1,5 +1,4 @@
 {
-  "plugin_cost_per_times": "{{cost}}/次",
   "ai_settings": "AI 配置",
   "app_detail": "应用详情",
   "chat_debug": "调试预览",
@@ -26,6 +25,7 @@
   "mark_count": "标注答案数量",
   "move_app": "移动应用",
   "paste_config": "粘贴配置",
+  "plugin_cost_per_times": "{{cost}}/次",
   "plugin_dispatch": "插件调用",
   "plugin_dispatch_tip": "给模型附加额外的能力，具体调用哪些插件，将由模型自主决定。\n若选择了插件，知识库调用将自动作为一个特殊的插件。",
   "publish_channel": "发布渠道",
@@ -46,13 +46,11 @@
   "module": {
     "Confirm Sync": "将会更新至最新的模板配置，不存在模板中的字段将会被删除（包括所有自定义字段），建议您先复制一份节点，再更新原来节点的版本。",
     "Custom Title Tip": "该标题名字会展示在对话过程中",
-    "No Modules": "没找到插件"
+    "No Modules": "没找到插件",
+    "type": "\"{{type}}\"类型\n{{description}}"
   },
   "modules": {
     "Title is required": "模块名不能为空"
-  },
-  "template": {
-    "simple_robot": "简易机器人"
   },
   "type": {
     "All": "全部",
