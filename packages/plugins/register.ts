@@ -57,20 +57,18 @@ export const getSystemPluginTemplates = async (refresh = false) => {
   }
 };
 
+export const loadCommunityModule = async (name: string) => {
+  const module = await import(`./src/${name}/index`);
+  return module.default;
+};
 export const getCommunityCb = async () => {
-  // Do not modify the following code
-  const loadModule = async (name: string) => {
-    const module = await import(`./src/${name}/index`);
-    return module.default;
-  };
-
   const result = (
     await Promise.all(
       list.map(async (name) => {
         try {
           return {
             name,
-            cb: await loadModule(name)
+            cb: await loadCommunityModule(name)
           };
         } catch (error) {}
       })
