@@ -123,26 +123,14 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     addLog.debug(`${this.name} worker queueLength: ${this.workerQueue.length}`);
 
     return new Promise<Response>((resolve, reject) => {
-      // Get idle worker or create a new worker
-      const runningWorker = (() => {
-        const worker = this.workerQueue.find((item) => item.status === 'idle');
-        if (worker) return worker;
-
-        if (this.workerQueue.length < this.maxReservedThreads) {
-          return this.createWorker();
-        }
-      })();
-
-      if (runningWorker) {
-        this.runTask({
-          data,
-          resolve,
-          reject
-        });
-      } else {
-        // Not enough worker, push to wait queue
-        this.waitQueue.push({ data, resolve, reject });
-      }
+      /* 
+        Whether the task is executed immediately or delayed, the promise callback will dispatch after task complete.
+      */
+      this.runTask({
+        data,
+        resolve,
+        reject
+      });
     }).finally(() => {
       // Run wait queue
       const waitTask = this.waitQueue.shift();

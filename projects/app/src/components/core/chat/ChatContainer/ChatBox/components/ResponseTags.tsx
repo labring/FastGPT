@@ -40,7 +40,6 @@ const ResponseTags = ({
       sourceName: string;
     };
   }>();
-  const [isOverflow, setIsOverflow] = useState<boolean>(true);
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
   const [contextModalData, setContextModalData] =
     useState<DispatchNodeResponseType['historyPreview']>();
@@ -51,11 +50,9 @@ const ResponseTags = ({
   } = useDisclosure();
 
   const quoteListSize = useSize(quoteListRef);
-  useEffect(() => {
-    setIsOverflow(
-      quoteListRef.current ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55) : true
-    );
-  }, [isOverflow, quoteListSize]);
+  const quoteIsOverflow = quoteListRef.current
+    ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55)
+    : true;
 
   const {
     llmModuleAccount,
@@ -114,7 +111,7 @@ const ResponseTags = ({
             <Box width={'100%'}>
               <ChatBoxDivider icon="core/chat/quoteFill" text={t('common:core.chat.Quote')} />{' '}
             </Box>
-            {quoteFolded && isOverflow && (
+            {quoteFolded && quoteIsOverflow && (
               <MyIcon
                 _hover={{ color: 'primary.500', cursor: 'pointer' }}
                 name="core/chat/chevronDown"
@@ -128,7 +125,7 @@ const ResponseTags = ({
             {
               <Collapse
                 startingHeight={isPc ? '50px' : '55px'}
-                in={(!quoteFolded && isOverflow) || !isOverflow}
+                in={(!quoteFolded && quoteIsOverflow) || !quoteIsOverflow}
               >
                 <Flex
                   ref={quoteListRef}
@@ -136,10 +133,10 @@ const ResponseTags = ({
                   position={'relative'}
                   flexWrap={'wrap'}
                   gap={2}
-                  height={quoteFolded && isOverflow ? ['55px', '50px'] : 'auto'}
+                  height={quoteFolded && quoteIsOverflow ? ['55px', '50px'] : 'auto'}
                   overflow={'hidden'}
                   _after={
-                    quoteFolded && isOverflow
+                    quoteFolded && quoteIsOverflow
                       ? {
                           content: '""',
                           position: 'absolute',
@@ -149,15 +146,17 @@ const ResponseTags = ({
                           width: '100%',
                           height: '50%',
                           background:
-                            'linear-gradient(to bottom, rgba(247,247,247,0), rgba(247, 247, 247, 0.91))',
-                          pointerEvents: 'none'
+                            'linear-gradient(to bottom, rgba(247,247,247,0), rgba(247, 247, 247, 0.91))'
                         }
                       : {}
                   }
                 >
                   {sourceList.map((item) => {
                     return (
-                      <MyTooltip key={item.collectionId} label={t('core.chat.quote.Read Quote')}>
+                      <MyTooltip
+                        key={item.collectionId}
+                        label={t('common:core.chat.quote.Read Quote')}
+                      >
                         <Flex
                           alignItems={'center'}
                           fontSize={'xs'}
@@ -193,7 +192,7 @@ const ResponseTags = ({
                       </MyTooltip>
                     );
                   })}
-                  {isOverflow && !quoteFolded && (
+                  {!quoteFolded && (
                     <MyIcon
                       position={'absolute'}
                       bottom={0}
