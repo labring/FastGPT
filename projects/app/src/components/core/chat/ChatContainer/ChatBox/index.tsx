@@ -925,12 +925,10 @@ const ChatBox = (
                         onReadUserDislike: onReadUserDislike(item)
                       })}
                     >
-                      {(index !== chatHistories.length - 1 || !isChatting) && (
-                        <ResponseTags
-                          flowResponses={item.responseData}
-                          showDetail={!shareId && !teamId}
-                        />
-                      )}
+                      <ResponseTags
+                        flowResponses={item.responseData}
+                        showDetail={!shareId && !teamId}
+                      />
 
                       {/* custom feedback */}
                       {item.customFeedbacks && item.customFeedbacks.length > 0 && (

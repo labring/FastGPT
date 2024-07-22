@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { DispatchNodeResponseType } from '@fastgpt/global/core/workflow/runtime/type.d';
-import { Flex, useDisclosure, useTheme, Box, Collapse } from '@chakra-ui/react';
+import { Flex, useDisclosure, Box, Collapse } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import dynamic from 'next/dynamic';
@@ -13,6 +13,7 @@ import ChatBoxDivider from '@/components/core/chat/Divider';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useSize } from 'ahooks';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'));
 const ContextModal = dynamic(() => import('./ContextModal'));
@@ -28,7 +29,6 @@ const ResponseTags = ({
   flowResponses?: ChatHistoryItemResType[];
   showDetail: boolean;
 }) => {
-  const theme = useTheme();
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const quoteListRef = React.useRef<HTMLDivElement>(null);
@@ -40,8 +40,8 @@ const ResponseTags = ({
       sourceName: string;
     };
   }>();
+  const [isOverflow, setIsOverflow] = useState<boolean>(true);
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
-  const [quoteOverflow, setQuoteOverflow] = useState<boolean>(true);
   const [contextModalData, setContextModalData] =
     useState<DispatchNodeResponseType['historyPreview']>();
   const {
@@ -49,14 +49,14 @@ const ResponseTags = ({
     onOpen: onOpenWholeModal,
     onClose: onCloseWholeModal
   } = useDisclosure();
+
+  const quoteListSize = useSize(quoteListRef);
   useEffect(() => {
-    //判断元素内容是否溢出
-    if (quoteListRef.current) {
-      const isOverflow = quoteListRef.current.scrollHeight > quoteListRef.current.clientHeight;
-      setQuoteOverflow(isOverflow);
-      setQuoteFolded(isOverflow);
-    }
-  }, []);
+    setIsOverflow(
+      quoteListRef.current ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55) : true
+    );
+  }, [isOverflow, quoteListSize]);
+
   const {
     llmModuleAccount,
     quoteList = [],
@@ -114,31 +114,32 @@ const ResponseTags = ({
             <Box width={'100%'}>
               <ChatBoxDivider icon="core/chat/quoteFill" text={t('common:core.chat.Quote')} />{' '}
             </Box>
-            {quoteFolded && (
-              <Box float={'right'}>
-                <MyIcon
-                  _hover={{ color: theme.colors.primary[500], cursor: 'pointer' }}
-                  name="core/chat/chevronDown"
-                  w={'14px'}
-                  onClick={() => setQuoteFolded(!quoteFolded)}
-                />
-              </Box>
+            {quoteFolded && isOverflow && (
+              <MyIcon
+                _hover={{ color: 'primary.500', cursor: 'pointer' }}
+                name="core/chat/chevronDown"
+                w={'14px'}
+                onClick={() => setQuoteFolded(!quoteFolded)}
+              />
             )}
           </Flex>
 
           <Flex alignItems={'center'} flexWrap={'wrap'} gap={2} position={'relative'}>
             {
-              <Collapse startingHeight={isPc ? '50px' : '65px'} in={!quoteFolded}>
+              <Collapse
+                startingHeight={isPc ? '50px' : '55px'}
+                in={(!quoteFolded && isOverflow) || !isOverflow}
+              >
                 <Flex
                   ref={quoteListRef}
                   alignItems={'center'}
                   position={'relative'}
                   flexWrap={'wrap'}
                   gap={2}
-                  height={quoteFolded ? ['65px', '50px'] : 'auto'}
+                  height={quoteFolded && isOverflow ? ['55px', '50px'] : 'auto'}
                   overflow={'hidden'}
                   _after={
-                    quoteFolded
+                    quoteFolded && isOverflow
                       ? {
                           content: '""',
                           position: 'absolute',
@@ -154,13 +155,13 @@ const ResponseTags = ({
                       : {}
                   }
                 >
-                  {sourceList.map((item, index) => {
+                  {sourceList.map((item) => {
                     return (
                       <MyTooltip key={item.collectionId} label={t('core.chat.quote.Read Quote')}>
                         <Flex
                           alignItems={'center'}
                           fontSize={'xs'}
-                          border={theme.borders.sm}
+                          border={'sm'}
                           py={1.5}
                           px={2}
                           borderRadius={'sm'}
@@ -192,12 +193,12 @@ const ResponseTags = ({
                       </MyTooltip>
                     );
                   })}
-                  {quoteOverflow && !quoteFolded && (
+                  {isOverflow && !quoteFolded && (
                     <MyIcon
                       position={'absolute'}
                       bottom={0}
                       right={0}
-                      _hover={{ color: theme.colors.primary[500], cursor: 'pointer' }}
+                      _hover={{ color: 'primary.500', cursor: 'pointer' }}
                       name="core/chat/chevronUp"
                       w={'14px'}
                       onClick={() => setQuoteFolded(!quoteFolded)}
