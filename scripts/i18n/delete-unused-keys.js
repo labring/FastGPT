@@ -4,7 +4,7 @@ const path = require('path')
 // 配置项
 const CONFIG = {
   i18nDirectory: path.join(__dirname, '../../packages/web/i18n'),
-  sourceDirectories: ['../../packages/web', '../../projects/app'].map(dir => path.join(__dirname, dir)),
+  sourceDirectories: ['../../packages', '../../projects/app'].map(dir => path.join(__dirname, dir)),
   fileExtensions: ['.ts', '.tsx', '.js', '.jsx'],
   ignoreDirectories: ['node_modules', '.next', 'public', 'i18n']
 }
