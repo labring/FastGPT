@@ -4,7 +4,8 @@ import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { CloseCustomFeedbackParams } from '@/global/core/chat/api.d';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { autChatCrud } from '@/service/support/permission/auth/chat';
+import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 /* remove custom feedback */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -16,12 +17,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('missing parameter');
     }
 
-    await autChatCrud({
+    await authChatCrud({
       req,
       authToken: true,
       appId,
       chatId,
-      per: 'r'
+      per: ReadPermissionVal
     });
     await authCert({ req, authToken: true });
 
