@@ -218,6 +218,8 @@ const Chat = ({
           >
             {/* header */}
             <ChatHeader
+              appId={appId}
+              apps={myApps}
               appAvatar={chatData.app.avatar}
               appName={chatData.app.name}
               history={chatData.history}
