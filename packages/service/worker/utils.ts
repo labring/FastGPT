@@ -46,6 +46,7 @@ export const runWorker = <T = any>(name: WorkerNameEnum, params?: Record<string,
   });
 };
 
+type WorkerRunTaskType<T> = { data: T; resolve: (e: any) => void; reject: (e: any) => void };
 type WorkerQueueItem = {
   id: string;
   worker: Worker;
@@ -62,10 +63,9 @@ type WorkerResponse<T = any> = {
 };
 
 /* 
-  多进程任务管理
+  多线程任务管理
   * 全局只需要创建一个示例
-  * 可以设置最大常驻线程（不会被销毁），超出常驻线程的任务，会创建一个临时线程
-  * 会检测已经空闲了 5 分钟的“超出常驻”的线程，把它们销毁，释放内存（目的是为了高并发时期，拥有更高的线程数量）
+  * 可以设置最大常驻线程（不会被销毁），线程满了后，后续任务会等待执行。
   * 每次执行，会把数据丢到一个空闲线程里运行。主线程需要监听子线程返回的数据，并执行对于的 callback，主要是通过 workerId 进行标记。
   * 务必保证，每个线程只会同时运行 1 个任务，否则 callback 会对应不上。
 */
@@ -73,24 +73,25 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
   name: WorkerNameEnum;
   maxReservedThreads: number;
   workerQueue: WorkerQueueItem[] = [];
+  waitQueue: WorkerRunTaskType<Props>[] = [];
 
   constructor({ name, maxReservedThreads }: { name: WorkerNameEnum; maxReservedThreads: number }) {
     this.name = name;
     this.maxReservedThreads = maxReservedThreads;
-
-    // Add clear timer
-    this.clearExtraWorker();
   }
 
-  run(data: Props) {
-    // watch memory
-    addLog.debug(`Worker queueLength: ${this.workerQueue.length}`);
+  runTask({ data, resolve, reject }: WorkerRunTaskType<Props>) {
+    // Get idle worker or create a new worker
+    const runningWorker = (() => {
+      const worker = this.workerQueue.find((item) => item.status === 'idle');
+      if (worker) return worker;
 
-    return new Promise<Response>((resolve, reject) => {
-      // Get idle worker or create a new worker
-      const runningWorker =
-        this.workerQueue.find((item) => item.status === 'idle') ?? this.createWorker();
+      if (this.workerQueue.length < this.maxReservedThreads) {
+        return this.createWorker();
+      }
+    })();
 
+    if (runningWorker) {
       // Update memory data to latest task
       runningWorker.status = 'running';
       runningWorker.taskTime = Date.now();
@@ -104,6 +105,43 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
         id: runningWorker.id,
         ...data
       });
+    } else {
+      // Not enough worker, push to wait queue
+      this.waitQueue.push({ data, resolve, reject });
+    }
+  }
+
+  run(data: Props) {
+    // watch memory
+    addLog.debug(`Worker queueLength: ${this.workerQueue.length}`);
+
+    return new Promise<Response>((resolve, reject) => {
+      // Get idle worker or create a new worker
+      const runningWorker = (() => {
+        const worker = this.workerQueue.find((item) => item.status === 'idle');
+        if (worker) return worker;
+
+        if (this.workerQueue.length < this.maxReservedThreads) {
+          return this.createWorker();
+        }
+      })();
+
+      if (runningWorker) {
+        this.runTask({
+          data,
+          resolve,
+          reject
+        });
+      } else {
+        // Not enough worker, push to wait queue
+        this.waitQueue.push({ data, resolve, reject });
+      }
+    }).finally(() => {
+      // Run wait queue
+      const waitTask = this.waitQueue.shift();
+      if (waitTask) {
+        this.runTask(waitTask);
+      }
     });
   }
 
@@ -165,24 +203,6 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     }
 
     this.workerQueue = this.workerQueue.filter((item) => item.id !== workerId);
-  }
-
-  clearExtraWorker() {
-    setInterval(() => {
-      if (this.workerQueue.length <= this.maxReservedThreads) return;
-      // Clear 5 minutes idle worker
-      for (let i = 0; i < this.workerQueue.length; i++) {
-        const item = this.workerQueue[i];
-        if (item.status !== 'idle') continue;
-
-        // 5 minutes
-        if (Date.now() - item.taskTime > 300000) {
-          this.deleteWorker(item.id);
-          i--;
-          if (this.workerQueue.length <= this.maxReservedThreads) return;
-        }
-      }
-    }, 30000);
   }
 }
 
