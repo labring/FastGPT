@@ -18,7 +18,6 @@ const WelcomeTextConfig = (props: TextareaProps) => {
       </Flex>
       <MyTextarea
         mt={2}
-        bg={'myWhite.400'}
         rows={6}
         fontSize={'sm'}
         placeholder={t('common:core.app.tip.welcomeTextTip')}

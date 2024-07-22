@@ -1,18 +1,18 @@
 import { ChevronRightIcon } from '@chakra-ui/icons';
-import { Box, Flex } from '@chakra-ui/react';
-import { DEFAULT_PARENT_ID } from '@fastgpt/global/common/string/constant';
-import MyIcon from '../../../../../../../components/common/Icon';
+import { Box } from '@chakra-ui/react';
+import { useTranslation } from 'react-i18next';
+import Avatar from '../../../../../../../components/common/Avatar';
 
 export default function VariableLabel({
-  variableKey,
   variableLabel,
   nodeAvatar
 }: {
-  variableKey: string;
   variableLabel: string;
   nodeAvatar: string;
 }) {
+  const { t } = useTranslation();
   const [parentLabel, childLabel] = variableLabel.split('.');
+
   return (
     <>
       <Box
@@ -24,22 +24,25 @@ export default function VariableLabel({
         py={'1px'}
         bg={parentLabel !== 'undefined' ? 'primary.50' : 'red.50'}
         color={parentLabel !== 'undefined' ? 'myGray.900' : 'red.600'}
-        cursor={'pointer'}
       >
         {parentLabel !== 'undefined' ? (
-          <>
-            <Flex hidden={parentLabel === DEFAULT_PARENT_ID} alignItems={'center'}>
-              <Box mr={1}>
-                <MyIcon name={nodeAvatar as any} w={'16px'} rounded={'2.8px'} mt={'2.5px'} />
-              </Box>
-              {parentLabel}
-              <ChevronRightIcon />
-            </Flex>
-            <Box>{childLabel}</Box>
-          </>
+          <span>
+            <Avatar
+              src={nodeAvatar as any}
+              w={'16px'}
+              mr={1}
+              borderRadius={'2.8px'}
+              display={'inline-flex'}
+              verticalAlign={'middle'}
+              mb={'3px'}
+            />
+            {parentLabel}
+            <ChevronRightIcon />
+            {childLabel}
+          </span>
         ) : (
           <>
-            <Box>{'无效变量'}</Box>
+            <Box>{t('common:invalid_variable')}</Box>
           </>
         )}
       </Box>

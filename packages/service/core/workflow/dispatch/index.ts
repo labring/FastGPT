@@ -16,9 +16,10 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { replaceVariable, replaceVariableLabel } from '@fastgpt/global/common/string/tools';
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { responseWriteNodeStatus } from '../../../common/response';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+import { replaceVariableLabel } from '@fastgpt/global/core/workflow/utils';
 
 import { dispatchWorkflowStart } from './init/workflowStart';
 import { dispatchChatCompletion } from './chat/oneapi';
@@ -54,6 +55,7 @@ import { surrenderProcess } from '../../../common/system/tools';
 import { dispatchRunCode } from './code/run';
 import { dispatchTextEditor } from './tools/textEditor';
 import { dispatchCustomFeedback } from './tools/customFeedback';
+import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -288,11 +290,27 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     node.inputs.forEach((input) => {
       if (input.key === dynamicInput?.key) return;
 
-      // replace {{}} variables &  {{$DEFAULT.xx$}} variables
+      // replace {{}} variables
       let value = replaceVariable(input.value, variables);
 
       // replace {{$$}} variables
-      value = replaceVariableLabel(value, runtimeNodes, variables);
+      const customInputs = node.inputs.flatMap((item) => {
+        if (Array.isArray(item.value)) {
+          return [
+            {
+              id: item.key,
+              value: getReferenceVariableValue({
+                value: item.value as ReferenceValueProps,
+                nodes: runtimeNodes,
+                variables
+              }),
+              nodeId: node.nodeId
+            }
+          ];
+        }
+        return [];
+      });
+      value = replaceVariableLabel(value, runtimeNodes, variables, customInputs);
 
       // replace reference variables
       value = getReferenceVariableValue({

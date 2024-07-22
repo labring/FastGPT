@@ -3,7 +3,8 @@ import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   VariableInputEnum,
-  variableMap
+  variableMap,
+  VARIABLE_NODE_ID
 } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './type/io.d';
 import { StoreNodeItemType } from './type/node';
@@ -226,3 +227,47 @@ export const updatePluginInputByVariables = (
       : node
   );
 };
+
+export function replaceVariableLabel(
+  text: any,
+  nodes: RuntimeNodeItemType[],
+  obj: Record<string, string | number>,
+  customInputs: {
+    nodeId: string;
+    id: string;
+    value: string | number;
+  }[]
+) {
+  if (!(typeof text === 'string')) return text;
+
+  const globalVariables = Object.keys(obj).map((key) => {
+    return {
+      nodeId: VARIABLE_NODE_ID,
+      id: key,
+      value: obj[key]
+    };
+  });
+
+  const nodeVariables = nodes
+    .map((node) => {
+      return node.outputs.map((output) => {
+        return {
+          nodeId: node.nodeId,
+          id: output.id,
+          value: output.value
+        };
+      });
+    })
+    .flat();
+
+  const allVariables = [...globalVariables, ...nodeVariables, ...customInputs];
+
+  for (const key in allVariables) {
+    const val = allVariables[key];
+    if (!['string', 'number'].includes(typeof val.value)) continue;
+    const regex = new RegExp(`\\{\\{\\$(${val.nodeId}\\.${val.id})\\$\\}\\}`, 'g');
+
+    text = text.replace(regex, String(val.value));
+  }
+  return text || '';
+}

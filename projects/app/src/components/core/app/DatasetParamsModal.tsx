@@ -13,7 +13,6 @@ import {
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import MySlider from '@/components/Slider';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';

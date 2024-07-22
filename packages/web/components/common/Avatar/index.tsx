@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image } from '@chakra-ui/react';
+import { Box, Flex, Image } from '@chakra-ui/react';
 import type { ImageProps } from '@chakra-ui/react';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import MyIcon from '../Icon';
@@ -10,12 +10,13 @@ const Avatar = ({ w = '30px', src, ...props }: ImageProps) => {
   const isIcon = !!iconPaths[src as any];
 
   return isIcon ? (
-    <MyIcon name={src as any} w={w} borderRadius={props.borderRadius} />
+    <Box {...props}>
+      <MyIcon name={src as any} w={w} borderRadius={props.borderRadius} />
+    </Box>
   ) : (
     <Image
       fallbackSrc={LOGO_ICON}
       fallbackStrategy={'onError'}
-      // borderRadius={'md'}
       objectFit={'contain'}
       alt=""
       w={w}

@@ -5,7 +5,7 @@ import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
-import { computedNodeInputReference, getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
+import { computedNodeInputReference } from '@/web/core/workflow/utils';
 import { useCreation } from 'ahooks';
 import { AppContext } from '@/pages/app/detail/components/context';
 
@@ -20,10 +20,16 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
 
   // get variable
   const variables = useCreation(() => {
+    const currentNode = nodeList.find((node) => node.nodeId === nodeId);
     const nodeVariables = formatEditorVariablePickerIcon(
       getNodeDynamicInputs(nodeId).map((item) => ({
         key: item.key,
-        label: item.label
+        label: item.label,
+        parent: {
+          id: currentNode?.nodeId,
+          label: currentNode?.name,
+          avatar: currentNode?.avatar
+        }
       }))
     );
 
@@ -46,9 +52,7 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
                 parent: {
                   id: node.nodeId,
                   label: node.name,
-                  avatar: node.avatar?.startsWith('/')
-                    ? 'core/workflow/template/variable'
-                    : node.avatar
+                  avatar: node.avatar
                 }
               };
             });
@@ -56,7 +60,8 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
           .flat();
 
     const formatSourceNodeVariables = formatEditorVariablePickerIcon(sourceNodeVariables);
-    return [...formatSourceNodeVariables, ...nodeVariables];
+
+    return [...nodeVariables, ...formatSourceNodeVariables];
   }, [nodeList, inputs, t]);
 
   const onChange = useCallback(

@@ -1,7 +1,5 @@
 import crypto from 'crypto';
 import { customAlphabet } from 'nanoid';
-import { DEFAULT_PARENT_ID } from './constant';
-import { RuntimeNodeItemType } from '../../core/workflow/runtime/type';
 
 /* check string is a web link */
 export function strIsLink(str?: string) {
@@ -38,49 +36,6 @@ export function replaceVariable(text: any, obj: Record<string, string | number>)
     if (!['string', 'number'].includes(typeof val)) continue;
 
     text = text.replace(new RegExp(`{{(${key})}}`, 'g'), String(val));
-    text = text.replace(
-      new RegExp(`\\{\\{\\$(${DEFAULT_PARENT_ID}\\.${key})\\$\\}\\}`, 'g'),
-      String(val)
-    );
-  }
-  return text || '';
-}
-
-export function replaceVariableLabel(
-  text: any,
-  nodes: RuntimeNodeItemType[],
-  obj: Record<string, string | number>
-) {
-  if (!(typeof text === 'string')) return text;
-
-  const globalVariables = Object.keys(obj).map((key) => {
-    return {
-      nodeId: 'VARIABLE_NODE_ID',
-      id: key,
-      value: obj[key]
-    };
-  });
-
-  const nodeVariables = nodes
-    .map((node) => {
-      return node.outputs.map((output) => {
-        return {
-          nodeId: node.nodeId,
-          id: output.id,
-          value: output.value
-        };
-      });
-    })
-    .flat();
-
-  const allVariables = [...globalVariables, ...nodeVariables];
-
-  for (const key in allVariables) {
-    const val = allVariables[key];
-    if (!['string', 'number'].includes(typeof val.value)) continue;
-    const regex = new RegExp(`\\{\\{\\$(${val.nodeId}\\.${val.id})\\$\\}\\}`, 'g');
-
-    text = text.replace(regex, String(val.value));
   }
   return text || '';
 }

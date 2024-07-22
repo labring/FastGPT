@@ -105,13 +105,7 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
     return `${this.__variableKey}`;
   }
   decorate(_editor: LexicalEditor, config: EditorConfig): JSX.Element {
-    return (
-      <VariableLabel
-        variableKey={this.__variableKey}
-        variableLabel={this.__variableLabel}
-        nodeAvatar={this.__nodeAvatar}
-      />
-    );
+    return <VariableLabel variableLabel={this.__variableLabel} nodeAvatar={this.__nodeAvatar} />;
   }
 }
 

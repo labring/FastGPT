@@ -4,12 +4,12 @@ import { $createTextNode, $getSelection, $isRangeSelection, TextNode } from 'lex
 import * as React from 'react';
 import { useCallback, useState } from 'react';
 import * as ReactDOM from 'react-dom';
-import MyIcon from '../../../../Icon';
 import { Box, Flex, Image } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import { EditorVariablePickerType } from '../../type.d';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { DEFAULT_PARENT_ID } from '@fastgpt/global/common/string/constant';
+import { useTranslation } from 'react-i18next';
+import Avatar from '../../../../Avatar';
 
 type EditorVariablePickerType1 = {
   key: string;
@@ -31,6 +31,7 @@ export default function VariablePickerPlugin({
 }: {
   variables: EditorVariablePickerType[];
 }) {
+  const { t } = useTranslation();
   const [editor] = useLexicalComposerContext();
   const [queryString, setQueryString] = useState<string | null>(null);
 
@@ -62,11 +63,7 @@ export default function VariablePickerPlugin({
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
-      options={variables.map((item) =>
-        item.parent
-          ? item
-          : { ...item, parent: { id: DEFAULT_PARENT_ID, label: DEFAULT_PARENT_ID, avatar: '' } }
-      )}
+      options={variables}
       menuRenderFn={(
         anchorElementRef,
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }
@@ -92,37 +89,40 @@ export default function VariablePickerPlugin({
               >
                 {variableFilter(variables, queryString || '').length === variables.length && (
                   <Box fontSize={'xs'} ml={4}>
-                    {'tips: 可输入变量名进行搜索'}
+                    {t('workflow:variable_picker_tips')}
                   </Box>
                 )}
                 {variableFilter(variables, queryString || '').length > 0 ? (
                   transformData(variableFilter(variables, queryString || '')).map((item) => {
-                    const isDefault = item?.id === DEFAULT_PARENT_ID;
                     return (
                       <Flex
                         key={item.id}
                         flexDirection={'column'}
-                        px={!isDefault ? 4 : 0}
-                        py={!isDefault ? 2 : 0}
+                        px={4}
+                        py={2}
                         _notLast={{
                           borderBottom: '1px solid',
                           borderColor: 'myGray.200'
                         }}
                       >
-                        {!isDefault && (
-                          <Flex alignItems={'center'} mb={1.5}>
-                            <MyIcon name={item.avatar as any} w={'16px'} rounded={'xs'} />
-                            <Box
-                              mx={2}
-                              fontSize={'sm'}
-                              whiteSpace={'nowrap'}
-                              color={'myGray.600'}
-                              fontWeight={'semibold'}
-                            >
-                              {item.label}
-                            </Box>
-                          </Flex>
-                        )}
+                        <Flex alignItems={'center'} mb={1.5}>
+                          <Avatar
+                            src={item.avatar as any}
+                            w={'16px'}
+                            borderRadius={'2.8px'}
+                            display={'inline-flex'}
+                            verticalAlign={'middle'}
+                          />
+                          <Box
+                            mx={2}
+                            fontSize={'sm'}
+                            whiteSpace={'nowrap'}
+                            color={'myGray.600'}
+                            fontWeight={'semibold'}
+                          >
+                            {item.label}
+                          </Box>
+                        </Flex>
                         {item.children?.map((child, index) => (
                           <Flex
                             alignItems={'center'}
@@ -153,12 +153,6 @@ export default function VariablePickerPlugin({
                               setHighlightedIndex(child.index);
                             }}
                           >
-                            {isDefault && (
-                              <MyIcon
-                                name={(child.icon as any) || 'core/modules/variable'}
-                                w={'14px'}
-                              />
-                            )}
                             <Box ml={2} fontSize={'sm'} whiteSpace={'nowrap'}>
                               {child.label}
                             </Box>
@@ -169,7 +163,7 @@ export default function VariablePickerPlugin({
                   })
                 ) : (
                   <Box p={2} color={'myGray.400'} fontSize={'sm'}>
-                    {'无可用变量'}
+                    {t('common:unusable_variable')}
                   </Box>
                 )}
               </Box>,
@@ -186,12 +180,9 @@ function transformData(data: EditorVariablePickerType[]): TransformedParent[] {
   const parentMap: { [key: string]: TransformedParent } = {};
 
   data.forEach((item, index) => {
-    const itemWithParent = item.parent
-      ? item
-      : { ...item, parent: { id: DEFAULT_PARENT_ID, label: DEFAULT_PARENT_ID, avatar: '' } };
-    const parentId = itemWithParent.parent!.id;
-    const parentLabel = itemWithParent.parent!.label;
-    const parentAvatar = itemWithParent.parent!.avatar;
+    const parentId = item.parent!.id;
+    const parentLabel = item.parent!.label;
+    const parentAvatar = item.parent!.avatar;
 
     if (!parentMap[parentId]) {
       parentMap[parentId] = {
@@ -211,12 +202,13 @@ function transformData(data: EditorVariablePickerType[]): TransformedParent[] {
 
   const addedParents = new Set<string>();
   data.forEach((item) => {
-    const parentId = item.parent ? item.parent.id : DEFAULT_PARENT_ID;
+    const parentId = item.parent!.id;
     if (!addedParents.has(parentId)) {
       transformedData.push(parentMap[parentId]);
       addedParents.add(parentId);
     }
   });
+
   return transformedData;
 }
 
@@ -227,12 +219,9 @@ function variableFilter(
   const lowerCaseQuery = queryString.toLowerCase();
 
   return data.filter((item) => {
-    const itemWithParent = item.parent
-      ? item
-      : { ...item, parent: { id: DEFAULT_PARENT_ID, label: DEFAULT_PARENT_ID, avatar: '' } };
-    const labelMatch = itemWithParent.label.toLowerCase().includes(lowerCaseQuery);
-    const keyMatch = itemWithParent.key.toLowerCase().includes(lowerCaseQuery);
-    const parentLabelMatch = itemWithParent.parent!.label.toLowerCase().includes(lowerCaseQuery);
+    const labelMatch = item.label.toLowerCase().includes(lowerCaseQuery);
+    const keyMatch = item.key.toLowerCase().includes(lowerCaseQuery);
+    const parentLabelMatch = item.parent!.label.toLowerCase().includes(lowerCaseQuery);
 
     return labelMatch || keyMatch || parentLabelMatch;
   });
