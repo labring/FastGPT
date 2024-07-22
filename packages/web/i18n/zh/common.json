@@ -72,7 +72,6 @@
       "No data": "没有可选值"
     },
     "Name": "名称",
-    "name_is_empty": "名称不能为空",
     "Next Step": "下一步",
     "No more data": "没有更多了~",
     "Not open": "未开启",
@@ -158,6 +157,7 @@
       "UnValid": "无效的链接"
     },
     "month": "月",
+    "name_is_empty": "名称不能为空",
     "speech": {
       "error tip": "语音转文字失败",
       "not support": "您的浏览器不支持语音输入"
@@ -436,7 +436,7 @@
       "Dataset ID": "知识库 ID",
       "Dataset Type": "知识库类型",
       "Delete Confirm": "确认删除该知识库？删除后数据无法恢复，请确认！",
-      "Empty Dataset": "",
+      "Empty Dataset": "空数据集",
       "Empty Dataset Tips": "还没有知识库，快去创建一个吧！",
       "Folder placeholder": "这是一个目录",
       "Go Dataset": "前往知识库",
@@ -946,7 +946,7 @@
     "Search plugin": "搜索插件",
     "Set Name": "给插件取个名字",
     "go to laf": "去编写",
-    "path": ""
+    "path": "路径"
   },
   "select_reference_variable": "选择引用变量",
   "share_link": "分享链接",
@@ -1166,7 +1166,7 @@
     "Password": "密码",
     "Pay": "充值",
     "Personal Information": "个人信息",
-    "Promotion": "",
+    "Promotion": "促销",
     "Promotion Rate": "返现比例",
     "Promotion Record": "推广记录",
     "Promotion rate tip": "好友充值时你将获得一定比例的余额奖励",

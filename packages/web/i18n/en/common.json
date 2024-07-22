@@ -72,7 +72,6 @@
       "No data": "No data available"
     },
     "Name": "Name",
-    "name_is_empty": "Name cannot be empty",
     "Next Step": "Next Step",
     "No more data": "No more data~",
     "Not open": "Not open",
@@ -83,6 +82,7 @@
     "Output": "Output",
     "Params": "Params",
     "Password inconsistency": "Passwords do not match",
+    "Permission": "Permissions",
     "Please Input Name": "Please enter a name",
     "Read document": "Read document",
     "Read intro": "Read intro",
@@ -157,6 +157,7 @@
       "UnValid": "Invalid link"
     },
     "month": "Month",
+    "name_is_empty": "Name cannot be empty",
     "speech": {
       "error tip": "Speech to text failed",
       "not support": "Your browser does not support speech input"
@@ -206,6 +207,7 @@
       "Onclick to save": "Click to save",
       "Publish": "Publish",
       "Publish Confirm": "Confirm to publish the app? It will immediately update the app status across all published channels.",
+      "Publish app tip": "Once you publish your app, all distribution channels will immediately use that version",
       "Question Guide": "Guess you want to ask",
       "Question Guide Tip": "After the conversation ends, it will generate 3 guiding questions.",
       "Quote prompt": "Quote template prompt",
@@ -397,7 +399,22 @@
         "module cq result": "Classification result",
         "module extract description": "Extract requirement description",
         "module extract result": "Extraction result",
-        "module historyPreview": "Complete record"
+        "module historyPreview": "Complete record",
+        "module http result": "response body",
+        "module if else Result": "Determinator result",
+        "module limit": "Single search limit",
+        "module maxToken": "Maximum response tokens",
+        "module model": "Model",
+        "module name": "Model name",
+        "module query": "question/search term",
+        "module quoteList": "Quote content",
+        "module similarity": "Similarity",
+        "module temperature": "temperature",
+        "module time": "Running time",
+        "module tokens": "total tokens",
+        "plugin output": "Plugin output value",
+        "search using reRank": "Result rearrangement",
+        "text output": "text output"
       },
       "retry": "Regenerate",
       "tts": {
@@ -419,6 +436,7 @@
       "Dataset ID": "Dataset ID",
       "Dataset Type": "Dataset type",
       "Delete Confirm": "Confirm to delete this dataset? Data cannot be recovered after deletion, please confirm!",
+      "Empty Dataset": "Empty Dataset",
       "Empty Dataset Tips": "No datasets yet, go create one!",
       "Folder placeholder": "This is a directory",
       "Go Dataset": "Go to dataset",
@@ -498,6 +516,7 @@
         "unCreateCollection": "Unauthorized to operate this data",
         "unLinkCollection": "Not a network link collection"
       },
+      "externalFile": "external file repository",
       "file": "File",
       "folder": "Directory",
       "import": {
@@ -890,7 +909,7 @@
     "Tools": "Tools"
   },
   "permission": {
-    "Collaborator": "",
+    "Collaborator": "collaborator",
     "Default permission": "Default permission",
     "Manage": "Manage",
     "No InheritPermission": "The permission has been restricted, and the parent folder's permission will not be inherited,",
@@ -1147,7 +1166,7 @@
     "Password": "Password",
     "Pay": "Recharge",
     "Personal Information": "Personal information",
-    "Promotion": "",
+    "Promotion": "Promotion",
     "Promotion Rate": "Cashback ratio",
     "Promotion Record": "Promotion record",
     "Promotion rate tip": "You will receive a certain percentage of balance reward when your friend recharges",
