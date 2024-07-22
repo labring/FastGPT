@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Flex, useTheme, Grid, type GridProps } from '@chakra-ui/react';
+import { Box, Flex, useTheme, Grid, type GridProps, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '../MyTooltip';
 import QuestionTip from '../MyTooltip/QuestionTip';
@@ -90,16 +90,17 @@ const LeftRadio = ({
           </Box>
           <Box flex={'1 0 0'}>
             <Flex alignItems={'center'}>
-              <Box
+              <HStack
+                spacing={1}
                 color={'myGray.900'}
                 fontWeight={item.desc ? '500' : 'normal'}
                 whiteSpace={'nowrap'}
                 fontSize={'sm'}
               >
-                {typeof item.title === 'string' ? t(item.title as any) : item.title}
-              </Box>
+                <Box>{typeof item.title === 'string' ? t(item.title as any) : item.title}</Box>
+                {!!item.tooltip && <QuestionTip label={item.tooltip} ml={1} color={'myGray.600'} />}
+              </HStack>
             </Flex>
-            {!!item.tooltip && <QuestionTip label={item.tooltip} ml={1} color={'myGray.600'} />}
             {!!item.desc && (
               <Box fontSize={'xs'} color={'myGray.500'} lineHeight={1.2}>
                 {t(item.desc as any)}
