@@ -106,7 +106,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       runningWorker.reject = reject;
       runningWorker.timeoutId = setTimeout(() => {
         reject('Worker timeout');
-      }, 5000);
+      }, 30000);
 
       runningWorker.worker.postMessage({
         id: runningWorker.id,

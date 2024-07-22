@@ -155,20 +155,15 @@ const ChatItem = ({
           {children}
           {/* 对话框底部的复制按钮 */}
           {type == ChatRoleEnum.AI && (!isChatting || (isChatting && !isLastChild)) && (
-            <Box
-              position={'absolute'}
-              bottom={0}
-              right={[0, -2]}
-              color={'myGray.400'}
-              transform={'translateX(100%)'}
-            >
-              <MyTooltip label={t('common.Copy')}>
+            <Box position={'absolute'} bottom={0} right={0} transform={'translateX(100%)'}>
+              <MyTooltip label={t('common:common.Copy')}>
                 <MyIcon
-                  w={'14px'}
+                  w={'1rem'}
                   cursor="pointer"
                   p="5px"
                   bg="white"
                   name={'copy'}
+                  color={'myGray.500'}
                   _hover={{ color: 'primary.600' }}
                   onClick={() => copyData(chatText)}
                 />
