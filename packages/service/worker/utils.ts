@@ -5,7 +5,8 @@ import { addLog } from '../common/system/log';
 export enum WorkerNameEnum {
   readFile = 'readFile',
   htmlStr2Md = 'htmlStr2Md',
-  countGptMessagesTokens = 'countGptMessagesTokens'
+  countGptMessagesTokens = 'countGptMessagesTokens',
+  systemPluginRun = 'systemPluginRun'
 }
 
 export const getSafeEnv = () => {

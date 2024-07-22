@@ -4,7 +4,7 @@ import { FastGPTProUrl, isProduction } from '../service/common/system/constants'
 import { GET, POST } from '@fastgpt/service/common/api/plusRequest';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { cloneDeep } from 'lodash';
-import { runWorker } from './runtime/utils';
+import { WorkerNameEnum, runWorker } from '@fastgpt/service/worker/utils';
 
 // Run in main thread
 const staticPluginList = ['getTime', 'fetchUrl'];
@@ -76,7 +76,10 @@ export const getCommunityCb = async () => {
             cb: staticPluginList.includes(name)
               ? await loadCommunityModule(name)
               : (e: any) => {
-                  return runWorker(name, e);
+                  return runWorker(WorkerNameEnum.systemPluginRun, {
+                    pluginName: name,
+                    data: e
+                  });
                 }
           };
         } catch (error) {}

@@ -6,9 +6,9 @@ const loadModule = async (name: string): Promise<(e: any) => SystemPluginRespons
   return module.default;
 };
 
-parentPort?.on('message', async ({ name, data }: { name: string; data: any }) => {
+parentPort?.on('message', async ({ pluginName, data }: { pluginName: string; data: any }) => {
   try {
-    const cb = await loadModule(name);
+    const cb = await loadModule(pluginName);
     parentPort?.postMessage({
       type: 'success',
       data: await cb(data)
