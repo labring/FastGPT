@@ -5,38 +5,44 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import ToolMenu from './ToolMenu';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { useTranslation } from 'next-i18next';
+
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { InitChatResponse } from '@/global/core/chat/api';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useRouter } from 'next/router';
-import { AppListItemType } from '@fastgpt/global/core/app/type';
+import SelectOneResource from '@/components/common/folder/SelectOneResource';
 import {
   GetResourceFolderListProps,
   GetResourceListItemResponse
 } from '@fastgpt/global/common/parentFolder/type';
 import { getMyApps } from '@/web/core/app/api';
-import SelectOneResource from '@/components/common/folder/SelectOneResource';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppListItemType } from '@fastgpt/global/core/app/type';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { InitChatResponse } from '@/global/core/chat/api';
 enum TabEnum {
   recently = 'recently',
   'app' = 'app'
 }
 const ChatHeader = ({
-  chatData,
   history,
+  appName,
+  appAvatar,
   showHistory,
   onRoute2AppDetail,
+  chatData,
   apps
 }: {
-  chatData: InitChatResponse;
   history: ChatItemType[];
+  appName: string;
+  appAvatar: string;
+  chatModels?: string[];
   showHistory?: boolean;
   onRoute2AppDetail?: () => void;
   apps?: AppListItemType[];
+  chatData: InitChatResponse;
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
