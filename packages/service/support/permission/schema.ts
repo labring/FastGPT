@@ -2,10 +2,10 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { Model, connectionMongo, getMongoModel } from '../../common/mongo';
+import { connectionMongo, getMongoModel } from '../../common/mongo';
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-const { Schema, model, models } = connectionMongo;
+const { Schema } = connectionMongo;
 
 export const ResourcePermissionCollectionName = 'resource_permission';
 
@@ -19,7 +19,8 @@ export const ResourcePermissionSchema = new Schema({
     ref: TeamMemberCollectionName
   },
   resourceType: {
-    type: Object.values(PerResourceTypeEnum),
+    type: String,
+    enum: Object.values(PerResourceTypeEnum),
     required: true
   },
   permission: {
