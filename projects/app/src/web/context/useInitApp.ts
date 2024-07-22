@@ -18,7 +18,7 @@ export const useInitApp = () => {
 
   const initFetch = useMemoizedFn(async () => {
     const {
-      feConfigs: { scripts, isPlus, show_git, systemTitle }
+      feConfigs: { scripts, isPlus, systemTitle }
     } = await clientInitData();
 
     setTitle(systemTitle || 'FastGPT');
@@ -31,9 +31,8 @@ export const useInitApp = () => {
         `GitHub：https://github.com/labring/FastGPT`
       );
     }
-    if (show_git) {
-      loadGitStar();
-    }
+
+    loadGitStar();
 
     setScripts(scripts || []);
     setInitd();

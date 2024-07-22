@@ -139,9 +139,8 @@ const ChatItem = ({
         )}
       </Flex>
       {/* content */}
-      <Box mt={['6px', 2]} textAlign={styleMap.textAlign}>
+      <Box mt={['6px', 2]} className="chat-box-card" textAlign={styleMap.textAlign}>
         <Card
-          className="markdown"
           {...MessageCardStyle}
           bg={styleMap.bg}
           borderRadius={styleMap.borderRadius}
