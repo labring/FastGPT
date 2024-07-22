@@ -23,12 +23,20 @@ pnpm dev
 make dev name=app
 ```
 
+Note: If the Node version is >= 20, you need to pass the `--no-node-snapshot` parameter to Node when running `pnpm i`
+
+```sh
+NODE_OPTIONS=--no-node-snapshot pnpm i
+```
+
 ## I18N
+
 ### Install i18n-ally Plugin
 
 1. Open the Extensions Marketplace in VSCode, search for and install the `i18n Ally` plugin.
 
 ### Code Optimization Examples
+
 #### Fetch Specific Namespace Translations in `getServerSideProps`
 
 ```typescript
@@ -42,7 +50,9 @@ export async function getServerSideProps(context: any) {
   };
 }
 ```
+
 #### Use useTranslation Hook in Page
+
 ```typescript
 // pages/yourPage.tsx
 import { useTranslation } from 'next-i18next';
@@ -64,7 +74,9 @@ const YourComponent = () => {
 
 export default YourComponent;
 ```
+
 #### Handle Static File Translations
+
 ```typescript
 // utils/i18n.ts
 import { i18nT } from '@fastgpt/web/i18n/utils';
@@ -77,11 +89,11 @@ const staticContent = {
 
 export default staticContent;
 ```
+
 ### Standardize Translation Format
+
 - Use the t(namespace:key) format to ensure consistent naming.
 - Translation keys should use lowercase letters and underscores, e.g., common.close.
-
-
 
 ## Build
 
@@ -96,4 +108,3 @@ docker build -f ./projects/app/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/f
 # Make cmd: Build image with proxy
 make build name=app image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 proxy=taobao
 ```
-

@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { DispatchNodeResponseType } from '@fastgpt/global/core/workflow/runtime/type.d';
-import { Flex, useDisclosure, useTheme, Box } from '@chakra-ui/react';
+import { Flex, useDisclosure, Box, Collapse } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import dynamic from 'next/dynamic';
@@ -13,6 +13,7 @@ import ChatBoxDivider from '@/components/core/chat/Divider';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useSize } from 'ahooks';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'));
 const ContextModal = dynamic(() => import('./ContextModal'));
@@ -28,9 +29,9 @@ const ResponseTags = ({
   flowResponses?: ChatHistoryItemResType[];
   showDetail: boolean;
 }) => {
-  const theme = useTheme();
   const { isPc } = useSystem();
   const { t } = useTranslation();
+  const quoteListRef = React.useRef<HTMLDivElement>(null);
   const [quoteModalData, setQuoteModalData] = useState<{
     rawSearch: SearchDataResponseItemType[];
     metadata?: {
@@ -39,6 +40,8 @@ const ResponseTags = ({
       sourceName: string;
     };
   }>();
+  const [isOverflow, setIsOverflow] = useState<boolean>(true);
+  const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
   const [contextModalData, setContextModalData] =
     useState<DispatchNodeResponseType['historyPreview']>();
   const {
@@ -46,6 +49,13 @@ const ResponseTags = ({
     onOpen: onOpenWholeModal,
     onClose: onCloseWholeModal
   } = useDisclosure();
+
+  const quoteListSize = useSize(quoteListRef);
+  useEffect(() => {
+    setIsOverflow(
+      quoteListRef.current ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55) : true
+    );
+  }, [isOverflow, quoteListSize]);
 
   const {
     llmModuleAccount,
@@ -64,7 +74,6 @@ const ResponseTags = ({
       .flat();
 
     const chatData = flatResponse.find(isLLMNode);
-
     const quoteList = flatResponse
       .filter((item) => item.moduleType === FlowNodeTypeEnum.datasetSearchNode)
       .map((item) => item.quoteList)
@@ -80,7 +89,6 @@ const ResponseTags = ({
       },
       {}
     );
-
     return {
       llmModuleAccount: flatResponse.filter(isLLMNode).length,
       quoteList,
@@ -102,44 +110,103 @@ const ResponseTags = ({
     <>
       {sourceList.length > 0 && (
         <>
-          <ChatBoxDivider icon="core/chat/quoteFill" text={t('common:core.chat.Quote')} />
-          <Flex alignItems={'center'} flexWrap={'wrap'} gap={2}>
-            {sourceList.map((item) => (
-              <MyTooltip key={item.collectionId} label={t('common:core.chat.quote.Read Quote')}>
+          <Flex justifyContent={'space-between'} alignItems={'center'}>
+            <Box width={'100%'}>
+              <ChatBoxDivider icon="core/chat/quoteFill" text={t('common:core.chat.Quote')} />{' '}
+            </Box>
+            {quoteFolded && isOverflow && (
+              <MyIcon
+                _hover={{ color: 'primary.500', cursor: 'pointer' }}
+                name="core/chat/chevronDown"
+                w={'14px'}
+                onClick={() => setQuoteFolded(!quoteFolded)}
+              />
+            )}
+          </Flex>
+
+          <Flex alignItems={'center'} flexWrap={'wrap'} gap={2} position={'relative'}>
+            {
+              <Collapse
+                startingHeight={isPc ? '50px' : '55px'}
+                in={(!quoteFolded && isOverflow) || !isOverflow}
+              >
                 <Flex
+                  ref={quoteListRef}
                   alignItems={'center'}
-                  fontSize={'xs'}
-                  border={theme.borders.sm}
-                  py={1.5}
-                  px={2}
-                  borderRadius={'sm'}
-                  _hover={{
-                    '.controller': {
-                      display: 'flex'
-                    }
-                  }}
-                  overflow={'hidden'}
                   position={'relative'}
-                  cursor={'pointer'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setQuoteModalData({
-                      rawSearch: quoteList,
-                      metadata: {
-                        collectionId: item.collectionId,
-                        sourceId: item.sourceId,
-                        sourceName: item.sourceName
-                      }
-                    });
-                  }}
+                  flexWrap={'wrap'}
+                  gap={2}
+                  height={quoteFolded && isOverflow ? ['55px', '50px'] : 'auto'}
+                  overflow={'hidden'}
+                  _after={
+                    quoteFolded && isOverflow
+                      ? {
+                          content: '""',
+                          position: 'absolute',
+                          zIndex: 2,
+                          bottom: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '50%',
+                          background:
+                            'linear-gradient(to bottom, rgba(247,247,247,0), rgba(247, 247, 247, 0.91))',
+                          pointerEvents: 'none'
+                        }
+                      : {}
+                  }
                 >
-                  <MyIcon name={item.icon as any} mr={1} flexShrink={0} w={'12px'} />
-                  <Box className="textEllipsis3" wordBreak={'break-all'} flex={'1 0 0'}>
-                    {item.sourceName}
-                  </Box>
+                  {sourceList.map((item) => {
+                    return (
+                      <MyTooltip key={item.collectionId} label={t('core.chat.quote.Read Quote')}>
+                        <Flex
+                          alignItems={'center'}
+                          fontSize={'xs'}
+                          border={'sm'}
+                          py={1.5}
+                          px={2}
+                          borderRadius={'sm'}
+                          _hover={{
+                            '.controller': {
+                              display: 'flex'
+                            }
+                          }}
+                          overflow={'hidden'}
+                          position={'relative'}
+                          cursor={'pointer'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQuoteModalData({
+                              rawSearch: quoteList,
+                              metadata: {
+                                collectionId: item.collectionId,
+                                sourceId: item.sourceId,
+                                sourceName: item.sourceName
+                              }
+                            });
+                          }}
+                        >
+                          <MyIcon name={item.icon as any} mr={1} flexShrink={0} w={'12px'} />
+                          <Box className="textEllipsis3" wordBreak={'break-all'} flex={'1 0 0'}>
+                            {item.sourceName}
+                          </Box>
+                        </Flex>
+                      </MyTooltip>
+                    );
+                  })}
+                  {isOverflow && !quoteFolded && (
+                    <MyIcon
+                      position={'absolute'}
+                      bottom={0}
+                      right={0}
+                      _hover={{ color: 'primary.500', cursor: 'pointer' }}
+                      name="core/chat/chevronUp"
+                      w={'14px'}
+                      onClick={() => setQuoteFolded(!quoteFolded)}
+                    />
+                  )}
                 </Flex>
-              </MyTooltip>
-            ))}
+              </Collapse>
+            }
           </Flex>
         </>
       )}
