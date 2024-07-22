@@ -4,38 +4,22 @@ import { $createTextNode, $getSelection, $isRangeSelection, TextNode } from 'lex
 import * as React from 'react';
 import { useCallback, useState } from 'react';
 import * as ReactDOM from 'react-dom';
-import { Box, Flex, Image } from '@chakra-ui/react';
+import { useTranslation } from 'next-i18next';
+import MyIcon from '../../../../Icon';
+import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
 import { EditorVariablePickerType } from '../../type.d';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { useTranslation } from 'react-i18next';
-import Avatar from '../../../../Avatar';
-
-type EditorVariablePickerType1 = {
-  key: string;
-  label: string;
-  required?: boolean;
-  icon?: string;
-  valueType?: WorkflowIOValueTypeEnum;
-  index: number;
-};
-interface TransformedParent {
-  id: string;
-  label: string;
-  avatar: string;
-  children: EditorVariablePickerType1[];
-}
 
 export default function VariablePickerPlugin({
   variables
 }: {
   variables: EditorVariablePickerType[];
 }) {
-  const { t } = useTranslation();
   const [editor] = useLexicalComposerContext();
   const [queryString, setQueryString] = useState<string | null>(null);
+  const { t } = useTranslation();
 
-  const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
+  const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('{', {
     minLength: 0
   });
 
@@ -49,9 +33,7 @@ export default function VariablePickerPlugin({
         if (nodeToRemove) {
           nodeToRemove.remove();
         }
-        selection.insertNodes([
-          $createTextNode(`{{$${selectedOption.parent?.id}.${selectedOption.key}$}}`)
-        ]);
+        selection.insertNodes([$createTextNode(`{{${selectedOption.key}}}`)]);
         closeMenu();
       });
     },
@@ -63,7 +45,7 @@ export default function VariablePickerPlugin({
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
-      options={variables}
+      options={variables as any[]}
       menuRenderFn={(
         anchorElementRef,
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }
@@ -82,90 +64,47 @@ export default function VariablePickerPlugin({
                 borderRadius={'md'}
                 position={'absolute'}
                 w={'auto'}
-                maxH={'300px'}
-                minW={'240px'}
-                overflow={'auto'}
+                overflow={'hidden'}
                 zIndex={99999}
               >
-                {variableFilter(variables, queryString || '').length === variables.length && (
-                  <Box fontSize={'xs'} ml={4}>
-                    {t('workflow:variable_picker_tips')}
-                  </Box>
-                )}
-                {variableFilter(variables, queryString || '').length > 0 ? (
-                  transformData(variableFilter(variables, queryString || '')).map((item) => {
-                    return (
-                      <Flex
-                        key={item.id}
-                        flexDirection={'column'}
-                        px={4}
-                        py={2}
-                        _notLast={{
-                          borderBottom: '1px solid',
-                          borderColor: 'myGray.200'
-                        }}
-                      >
-                        <Flex alignItems={'center'} mb={1.5}>
-                          <Avatar
-                            src={item.avatar as any}
-                            w={'16px'}
-                            borderRadius={'2.8px'}
-                            display={'inline-flex'}
-                            verticalAlign={'middle'}
-                          />
-                          <Box
-                            mx={2}
-                            fontSize={'sm'}
-                            whiteSpace={'nowrap'}
-                            color={'myGray.600'}
-                            fontWeight={'semibold'}
-                          >
-                            {item.label}
-                          </Box>
-                        </Flex>
-                        {item.children?.map((child, index) => (
-                          <Flex
-                            alignItems={'center'}
-                            as={'li'}
-                            key={child.key}
-                            px={4}
-                            py={1.5}
-                            rounded={'md'}
-                            cursor={'pointer'}
-                            overflow={'auto'}
-                            _notLast={{
-                              mb: 1
-                            }}
-                            {...(selectedIndex === child.index
-                              ? {
-                                  bg: '#1118240D',
-                                  color: 'primary.700'
-                                }
-                              : {
-                                  bg: 'white',
-                                  color: 'myGray.600'
-                                })}
-                            onClick={() => {
-                              setHighlightedIndex(child.index);
-                              selectOptionAndCleanUp({ ...child, parent: item });
-                            }}
-                            onMouseEnter={() => {
-                              setHighlightedIndex(child.index);
-                            }}
-                          >
-                            <Box ml={2} fontSize={'sm'} whiteSpace={'nowrap'}>
-                              {child.label}
-                            </Box>
-                          </Flex>
-                        ))}
-                      </Flex>
-                    );
-                  })
-                ) : (
-                  <Box p={2} color={'myGray.400'} fontSize={'sm'}>
-                    {t('common:unusable_variable')}
-                  </Box>
-                )}
+                {variables.map((item, index) => (
+                  <Flex
+                    alignItems={'center'}
+                    as={'li'}
+                    key={item.key}
+                    px={4}
+                    py={2}
+                    borderRadius={'sm'}
+                    cursor={'pointer'}
+                    maxH={'300px'}
+                    overflow={'auto'}
+                    _notLast={{
+                      mb: 2
+                    }}
+                    {...(selectedIndex === index
+                      ? {
+                          bg: 'primary.50',
+                          color: 'primary.600'
+                        }
+                      : {
+                          bg: 'white',
+                          color: 'myGray.600'
+                        })}
+                    onClick={() => {
+                      setHighlightedIndex(index);
+                      selectOptionAndCleanUp(item);
+                    }}
+                    onMouseEnter={() => {
+                      setHighlightedIndex(index);
+                    }}
+                  >
+                    <MyIcon name={(item.icon as any) || 'core/modules/variable'} w={'14px'} />
+                    <Box ml={2} fontSize={'sm'} whiteSpace={'nowrap'}>
+                      {item.key}
+                      {item.key !== item.label && `(${item.label})`}
+                    </Box>
+                  </Flex>
+                ))}
               </Box>,
               anchorElementRef.current
             )
@@ -173,56 +112,4 @@ export default function VariablePickerPlugin({
       }}
     />
   );
-}
-
-function transformData(data: EditorVariablePickerType[]): TransformedParent[] {
-  const transformedData: TransformedParent[] = [];
-  const parentMap: { [key: string]: TransformedParent } = {};
-
-  data.forEach((item, index) => {
-    const parentId = item.parent!.id;
-    const parentLabel = item.parent!.label;
-    const parentAvatar = item.parent!.avatar;
-
-    if (!parentMap[parentId]) {
-      parentMap[parentId] = {
-        id: parentId,
-        label: parentLabel,
-        avatar: parentAvatar || '',
-        children: []
-      };
-    }
-    parentMap[parentId].children.push({
-      label: item.label,
-      key: item.key,
-      icon: item.icon,
-      index
-    });
-  });
-
-  const addedParents = new Set<string>();
-  data.forEach((item) => {
-    const parentId = item.parent!.id;
-    if (!addedParents.has(parentId)) {
-      transformedData.push(parentMap[parentId]);
-      addedParents.add(parentId);
-    }
-  });
-
-  return transformedData;
-}
-
-function variableFilter(
-  data: EditorVariablePickerType[],
-  queryString: string
-): EditorVariablePickerType[] {
-  const lowerCaseQuery = queryString.toLowerCase();
-
-  return data.filter((item) => {
-    const labelMatch = item.label.toLowerCase().includes(lowerCaseQuery);
-    const keyMatch = item.key.toLowerCase().includes(lowerCaseQuery);
-    const parentLabelMatch = item.parent!.label.toLowerCase().includes(lowerCaseQuery);
-
-    return labelMatch || keyMatch || parentLabelMatch;
-  });
 }

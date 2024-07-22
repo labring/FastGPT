@@ -5,7 +5,7 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
-import VariablePickerPlugin from './plugins/VariablePickerPlugin';
+import VariableLabelPickerPlugin from './plugins/VariableLabelPickerPlugin';
 import { Box } from '@chakra-ui/react';
 import styles from './index.module.scss';
 import VariablePlugin from './plugins/VariablePlugin';
@@ -129,7 +129,7 @@ export default function Editor({
             });
           }}
         />
-        <VariablePickerPlugin variables={variables} />
+        <VariableLabelPickerPlugin variables={variables} />
         <VariablePlugin variables={variables} />
         <VariableLabelPlugin variables={variables} />
         <OnBlurPlugin onBlur={onBlur} />

@@ -8,6 +8,7 @@ import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponent
 import { computedNodeInputReference } from '@/web/core/workflow/utils';
 import { useCreation } from 'ahooks';
 import { AppContext } from '@/pages/app/detail/components/context';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -45,17 +46,19 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
       ? []
       : sourceNodes
           .map((node) => {
-            return node.outputs.map((output) => {
-              return {
-                label: t((output.label as any) || ''),
-                key: output.id,
-                parent: {
-                  id: node.nodeId,
-                  label: node.name,
-                  avatar: node.avatar
-                }
-              };
-            });
+            return node.outputs
+              .filter((output) => output.valueType !== WorkflowIOValueTypeEnum.dynamic)
+              .map((output) => {
+                return {
+                  label: t((output.label as any) || ''),
+                  key: output.id,
+                  parent: {
+                    id: node.nodeId,
+                    label: node.name,
+                    avatar: node.avatar
+                  }
+                };
+              });
           })
           .flat();
 
