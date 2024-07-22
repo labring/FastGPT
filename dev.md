@@ -23,7 +23,7 @@ pnpm dev
 make dev name=app
 ```
 
-注意: 如果node版本 >=20 则在pnpm i时需要向node传递参数 --no-node-snapshot
+Note: If the Node version is >= 20, you need to pass the `--no-node-snapshot` parameter to Node when running `pnpm i`
 
 ```sh
 NODE_OPTIONS=--no-node-snapshot pnpm i
