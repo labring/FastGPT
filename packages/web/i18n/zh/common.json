@@ -53,6 +53,7 @@
     "Exit": "退出",
     "Expired Time": "过期时间",
     "Field": "字段",
+    "File": "文件",
     "Finish": "完成",
     "Import": "导入",
     "Import failed": "导入失败",
@@ -71,7 +72,6 @@
       "No data": "没有可选值"
     },
     "Name": "名称",
-    "name_is_empty": "名称不能为空",
     "Next Step": "下一步",
     "No more data": "没有更多了~",
     "Not open": "未开启",
@@ -119,6 +119,7 @@
     "Username": "用户名",
     "Waiting": "等待中",
     "Warning": "警告",
+    "Website": "网站",
     "avatar": {
       "Select Avatar": "点击选择头像",
       "Select Failed": "选择头像异常"
@@ -156,6 +157,7 @@
       "UnValid": "无效的链接"
     },
     "month": "月",
+    "name_is_empty": "名称不能为空",
     "speech": {
       "error tip": "语音转文字失败",
       "not support": "您的浏览器不支持语音输入"
@@ -319,6 +321,7 @@
       "Audio Not Support": "设备不支持语音播放",
       "Audio Speech Error": "语音播报异常",
       "Cancel Speak": "取消语音输入",
+      "Chat API is error or undefined": "对话接口报错或返回为空",
       "Confirm to clear history": "确认清空该应用的在线聊天记录？分享和 API 调用的记录不会被清空。",
       "Confirm to clear share chat history": "确认删除所有聊天记录？",
       "Converting to text": "正在转换为文本...",
@@ -357,13 +360,22 @@
       "Unpin": "取消置顶",
       "You need to a chat app": "你没有可用的应用",
       "error": {
-        "Chat error": "对话出现异常"
+        "Chat error": "对话出现异常",
+        "Messages empty": "接口内容为空，可能文本超长了~",
+        "Select dataset empty": "你没有选择知识库",
+        "User input empty": "传入的用户问题为空"
       },
       "feedback": {
         "Close User Like": "用户表示赞同\n点击关闭该标记",
         "Feedback Close": "关闭反馈",
         "No Content": "用户没有填写具体反馈内容",
         "Read User dislike": "用户表示反对\n点击查看内容"
+      },
+      "logs": {
+        "api": "API 调用",
+        "online": "在线使用",
+        "share": "外部链接调用",
+        "test": "测试"
       },
       "markdown": {
         "Edit Question": "编辑问题",
@@ -424,7 +436,7 @@
       "Dataset ID": "知识库 ID",
       "Dataset Type": "知识库类型",
       "Delete Confirm": "确认删除该知识库？删除后数据无法恢复，请确认！",
-      "Empty Dataset": "",
+      "Empty Dataset": "空数据集",
       "Empty Dataset Tips": "还没有知识库，快去创建一个吧！",
       "Folder placeholder": "这是一个目录",
       "Go Dataset": "前往知识库",
@@ -468,6 +480,12 @@
         "status": {
           "active": "已就绪"
         },
+        "sync": {
+          "result": {
+            "sameRaw": "内容未变动，无需更新",
+            "success": "开始同步"
+          }
+        },
         "training": {}
       },
       "data": {
@@ -490,14 +508,24 @@
       "error": {
         "Data not found": "数据不存在或已被删除",
         "Start Sync Failed": "开始同步失败",
-        "Template does not exist": "模板不存在"
+        "Template does not exist": "模板不存在",
+        "unAuthDataset": "无权操作该知识库",
+        "unAuthDatasetCollection": "无权操作该数据集",
+        "unAuthDatasetData": "无权操作该数据",
+        "unAuthDatasetFile": "无权操作该文件",
+        "unCreateCollection": "无权操作该数据",
+        "unLinkCollection": "不是网络链接集合"
       },
+      "externalFile": "外部文件库",
       "file": "文件",
+      "folder": "目录",
       "import": {
         "Auto mode Estimated Price Tips": "需调用文件处理模型，需要消耗较多 tokens：{{price}} 积分/1K tokens",
         "Auto process": "自动",
         "Auto process desc": "自动设置分割和预处理规则",
         "Chunk Range": "范围：{{min}}~{{max}}",
+        "Chunk Split": "直接分段",
+        "Chunk Split Tip": "将文本按一定的规则进行分段处理后，转成可进行语义搜索的格式，适合绝大多数场景。不需要调用模型额外处理，成本低。",
         "Custom process": "自定义规则",
         "Custom process desc": "自定义设置分制和预处理规则",
         "Custom prompt": "自定义提示词",
@@ -520,6 +548,8 @@
         "Preview raw text": "预览源文本（最多 3000 字）",
         "Process way": "处理方式",
         "QA Estimated Price Tips": "需调用文件处理模型，需要消耗较多 AI 积分：{{price}} 积分/1K tokens",
+        "QA Import": "QA 拆分",
+        "QA Import Tip": "根据一定规则，将文本拆成一段较大的段落，调用 AI 为该段落生成问答对。有非常高的检索精度，但是会丢失很多内容细节。",
         "Select file": "选择文件",
         "Select source": "选择来源",
         "Source name": "来源名",
@@ -533,6 +563,7 @@
         "Web link": "网页链接",
         "Web link desc": "读取静态网页内容作为数据集"
       },
+      "link": "链接",
       "search": {
         "Dataset Search Params": "知识库搜索配置",
         "Empty result response": "空搜索回复",
@@ -550,9 +581,28 @@
         "Source id": "来源 ID",
         "Source name": "引用来源名",
         "Using query extension": "使用问题优化",
+        "mode": {
+          "embedding": "语义检索",
+          "embedding desc": "使用向量进行文本相关性查询",
+          "fullTextRecall": "全文检索",
+          "fullTextRecall desc": "使用传统的全文检索，适合查找一些关键词和主谓语特殊的数据",
+          "mixedRecall": "混合检索",
+          "mixedRecall desc": "使用向量检索与全文检索的综合结果返回，使用 RRF 算法进行排序。"
+        },
+        "score": {
+          "embedding": "语义检索",
+          "embedding desc": "通过计算向量之间的距离获取得分，范围为 0~1。",
+          "fullText": "全文检索",
+          "fullText desc": "计算相同关键词的得分，范围为 0~无穷。",
+          "reRank": "结果重排",
+          "reRank desc": "通过 Rerank 模型计算句子之间的关联度，范围为 0~1。",
+          "rrf": "综合排名",
+          "rrf desc": "通过倒排计算的方式，合并多个检索结果。"
+        },
         "search mode": "搜索模式"
       },
       "status": {
+        "active": "已就绪",
         "syncing": "同步中"
       },
       "test": {
@@ -571,8 +621,12 @@
       },
       "training": {
         "Agent queue": "QA 训练排队",
+        "Auto mode": "增强处理（实验）",
+        "Auto mode Tip": "通过子索引以及调用模型生成相关问题与摘要，来增加数据块的语义丰富度，更利于检索。需要消耗更多的存储空间和增加 AI 调用次数。",
+        "Chunk mode": "直接分段",
         "Full": "预计 5 分钟以上",
         "Leisure": "空闲",
+        "QA mode": "问答拆分",
         "Vector queue": "索引排队",
         "Waiting": "预计 5 分钟",
         "Website Sync": "Web 站点同步"
@@ -678,11 +732,13 @@
       "output": {
         "description": {
           "Ai response content": "将在 stream 回复完毕后触发",
-          "New context": "将本次回复内容拼接上历史记录，作为新的上下文返回"
+          "New context": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+          "query extension result": "以字符串数组的形式输出，可将该结果直接连接到“知识库搜索”的“用户问题”中，建议不要连接到“AI 对话”的“用户问题”中"
         },
         "label": {
           "Ai response content": "AI 回复内容",
-          "New context": "新的上下文"
+          "New context": "新的上下文",
+          "query extension result": "优化结果"
         }
       },
       "template": {
@@ -701,14 +757,15 @@
       "templates": {
         "Load plugin error": "加载插件失败"
       },
-      "tool": {
-        "Tool input": "工具输入"
-      },
       "variable": {
+        "Custom type": "自定义变量",
         "add option": "添加选项",
+        "input type": "文本",
         "key": "变量 key",
         "key is required": "变量 key 是必须的",
+        "select type": "下拉单选",
         "text max length": "最大长度",
+        "textarea type": "段落",
         "variable name": "变量名",
         "variable name is required": "变量名不能为空",
         "variable option is required": "选项不能全空",
@@ -718,16 +775,11 @@
       "variable add option": "添加选项"
     },
     "plugin": {
-      "Free": "该插件无需积分消耗～",
-      "Intro placeholder": "如果该插件作为工具被调用，则会使用该介绍作为提示词。",
-      "cost": "积分消耗：",
       "Custom headers": "自定义请求头",
+      "Free": "该插件无需积分消耗～",
       "Get Plugin Module Detail Failed": "加载插件异常",
-      "Http plugin intro placeholder": "仅做展示，无实际效果"
-    },
-    "template": {
-      "Multimodal": "多模态",
-      "Search": "搜索"
+      "Http plugin intro placeholder": "仅做展示，无实际效果",
+      "cost": "积分消耗："
     },
     "workflow": {
       "Can not delete node": "该节点不允许删除",
@@ -806,6 +858,7 @@
     "Select Dataset": "选择该知识库",
     "Select Dataset Tips": "仅能选择同一个索引模型的知识库",
     "Select Folder": "进入文件夹",
+    "Training Name": "数据训练",
     "collections": {
       "Collection Embedding": "{{total}} 组索引中",
       "Confirm to delete the folder": "确认删除该文件夹及里面所有内容？",
@@ -841,7 +894,12 @@
   },
   "error": {
     "Create failed": "创建失败",
-    "fileNotFound": "文件找不到了~"
+    "fileNotFound": "文件找不到了~",
+    "inheritPermissionError": "权限继承错误",
+    "missingParams": "参数缺失",
+    "team": {
+      "overSize": "团队成员超出上限"
+    }
   },
   "navbar": {
     "Account": "账号",
@@ -887,7 +945,8 @@
     "Plugin List": "插件列表",
     "Search plugin": "搜索插件",
     "Set Name": "给插件取个名字",
-    "go to laf": "去编写"
+    "go to laf": "去编写",
+    "path": "路径"
   },
   "select_reference_variable": "选择引用变量",
   "share_link": "分享链接",
@@ -987,11 +1046,20 @@
         "Status": "状态",
         "Type": "订单类型",
         "payWay": {
-          "Way": "支付方式"
+          "Way": "支付方式",
+          "balance": "余额支付",
+          "wx": "微信支付"
+        },
+        "status": {
+          "closed": "已关闭",
+          "notpay": "未支付",
+          "refund": "已退款",
+          "success": "支付成功"
         }
       },
       "moduleName": {
-        "index": "索引生成"
+        "index": "索引生成",
+        "qa": "QA 拆分"
       },
       "noBill": "无账单记录~",
       "subscription": {
@@ -1033,6 +1101,19 @@
           "Period": "订阅周期",
           "Year": "按年",
           "Year sale": "赠送两个月"
+        },
+        "standardSubLevel": {
+          "enterprise": "企业版",
+          "experience": "体验版",
+          "free": "免费版",
+          "free desc": "每月均可免费使用基础功能，30 天无使用记录时，将会清除知识库",
+          "team": "团队版"
+        },
+        "type": {
+          "balance": "余额充值",
+          "extraDatasetSize": "知识库扩容",
+          "extraPoints": "AI 积分套餐",
+          "standard": "套餐订阅"
         }
       },
       "usage": {
@@ -1085,7 +1166,7 @@
     "Password": "密码",
     "Pay": "充值",
     "Personal Information": "个人信息",
-    "Promotion": "",
+    "Promotion": "促销",
     "Promotion Rate": "返现比例",
     "Promotion Record": "推广记录",
     "Promotion rate tip": "好友充值时你将获得一定比例的余额奖励",
@@ -1139,10 +1220,15 @@
         "reject": "拒绝"
       },
       "member": {
-        "Confirm Leave": "确认离开该团队？"
+        "Confirm Leave": "确认离开该团队？",
+        "active": "已加入",
+        "reject": "拒绝",
+        "waiting": "待接受"
       },
       "role": {
-        "Admin": "管理员"
+        "Admin": "管理员",
+        "Owner": "创建者",
+        "Visitor": "访客"
       }
     }
   }
