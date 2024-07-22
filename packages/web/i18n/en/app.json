@@ -43,9 +43,6 @@
       "has new version": "has new version"
     }
   },
-  "common": {
-    "plugin_cost_per_times": "{{cost}} points/times"
-  },
   "module": {
     "Confirm Sync": "The template will be updated to the latest template configuration. Fields that do not exist in the template will be deleted (including all custom fields). You are advised to make a copy of the node and then update the original node version.",
     "Custom Title Tip": "This title will be displayed during the conversation",
