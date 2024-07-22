@@ -54,15 +54,24 @@ const getAllJSONFiles = async (dir) => {
 
 // 提取文件夹中所有 JSON 文件的键
 const extractKeysFromDirectory = async (dir) => {
-  const files = await getAllJSONFiles(dir)
-  const allKeys = new Set()
-  await Promise.all(files.map(async (file) => {
-    const jsonObject = await loadJSON(file)
-    if (jsonObject) {
-      const keys = extractKeysFromJSON(jsonObject)
-      keys.forEach(key => allKeys.add(key))
+  let allKeys = new Set()
+
+  const subDirs = await fs.readdir(dir)
+  await Promise.all(subDirs.map(async (subDir) => {
+    const subDirPath = path.join(dir, subDir)
+    const stat = await fs.stat(subDirPath)
+    if (stat.isDirectory() && !CONFIG.ignoreDirectories.includes(subDir)) {
+      const files = await getAllJSONFiles(subDirPath)
+      await Promise.all(files.map(async (file) => {
+        const jsonObject = await loadJSON(file)
+        if (jsonObject) {
+          const keys = extractKeysFromJSON(jsonObject)
+          keys.forEach(key => allKeys.add(key))
+        }
+      }))
     }
   }))
+
   return Array.from(allKeys)
 }
 
@@ -151,14 +160,27 @@ const processJSONFilesInDirectory = async (dir, unusedKeys) => {
   }))
 }
 
+// 将 keys 写入 JSON 文件
+const writeKeysToFile = async (filePath, keys) => {
+  try {
+    await fs.writeFile(filePath, JSON.stringify(keys, null, 2), 'utf8')
+    console.log(`已将 keys 写入文件 ${filePath}`)
+  } catch (error) {
+    console.error(`写入文件 ${filePath} 时出错:`, error)
+  }
+}
+
 // 主函数
 const main = async () => {
   const allKeys = await extractKeysFromDirectory(CONFIG.i18nDirectory)
-
+  // await writeKeysToFile(path.join(__dirname, 'allKeys.json'), allKeys)
   const usedKeys = new Set()
   await Promise.all(CONFIG.sourceDirectories.map(dir => searchKeysInFiles(dir, allKeys, usedKeys)))
 
   const unusedKeys = allKeys.filter(key => !usedKeys.has(key))
+  // await writeKeysToFile(path.join(__dirname, 'unusedKeys.json'), unusedKeys)
+  console.log(unusedKeys)
+
   const nestedUnusedKeys = restoreNestedStructure(unusedKeys)
   await processJSONFilesInDirectory(CONFIG.i18nDirectory, nestedUnusedKeys)
 }
