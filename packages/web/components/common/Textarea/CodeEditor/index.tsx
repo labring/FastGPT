@@ -17,7 +17,7 @@ const CodeEditor = (props: Props) => {
         isOpen={isOpen}
         onClose={onClose}
         iconSrc="modal/edit"
-        title={t('common:Code editor')}
+        title={t('common:code_editor')}
         w={'full'}
       >
         <ModalBody>

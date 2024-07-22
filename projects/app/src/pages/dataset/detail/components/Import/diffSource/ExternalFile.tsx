@@ -159,7 +159,7 @@ const CustomLinkInput = () => {
             });
           }}
         >
-          {commonT('Add new')}
+          {commonT('add_new')}
         </Button>
         <Button
           isDisabled={list.filter((item) => !!item.externalFileUrl).length === 0}

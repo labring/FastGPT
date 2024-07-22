@@ -36,7 +36,7 @@ const ResumeInherit = ({
           )();
         }}
       >
-        {commonT('Click to resume')}
+        {commonT('click_to_resume')}
       </Box>
 
       <CommonConfirmModal />
