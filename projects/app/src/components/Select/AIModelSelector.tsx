@@ -7,7 +7,7 @@ import { AI_POINT_USAGE_CARD_ROUTE } from '@/web/support/wallet/sub/constants';
 import MySelect, { SelectProps } from '@fastgpt/web/components/common/MySelect';
 import { HUGGING_FACE_ICON, LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { Box, Flex } from '@chakra-ui/react';
-import Avatar from '../Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 type Props = SelectProps & {

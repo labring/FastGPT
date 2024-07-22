@@ -4,7 +4,7 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useI18n } from '@/web/context/I18n';
@@ -43,7 +43,7 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
           null,
           2
         ),
-        appT('Export Config Successful')
+        appT('export_config_successful')
       );
     }
   }, [appDetail.chatConfig, appT, copyData, flowData2StoreDataAndCheck]);
@@ -80,7 +80,7 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
               children: [
                 {
                   icon: 'edit',
-                  label: appT('Edit info'),
+                  label: appT('edit_info'),
                   onClick: onOpenInfoEdit
                 },
                 {
@@ -95,12 +95,12 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
                   {
                     children: [
                       {
-                        label: appT('Import Configs'),
+                        label: appT('import_configs'),
                         icon: 'common/importLight',
                         onClick: onOpenImport
                       },
                       {
-                        label: appT('Export Configs'),
+                        label: appT('export_configs'),
                         icon: 'export',
                         onClick: onExportWorkflow
                       }
@@ -159,7 +159,7 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
     return (
       <HStack>
         <InfoMenu>
-          <Avatar src={appDetail.avatar} w={'1.75rem'} />
+          <Avatar src={appDetail.avatar} w={'1.75rem'} borderRadius={'md'} />
         </InfoMenu>
         <Box>
           <InfoMenu>

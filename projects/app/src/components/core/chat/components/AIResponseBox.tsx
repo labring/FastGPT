@@ -15,7 +15,7 @@ import {
 } from '@fastgpt/global/core/chat/type';
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 
 type props = {
   value: UserChatItemValueItemType | AIChatItemValueItemType;
@@ -81,12 +81,14 @@ ${JSON.stringify(questionGuides)}`;
                   borderWidth={'1px'}
                   borderColor={'myGray.200'}
                   boxShadow={'1'}
+                  pl={3}
+                  pr={2.5}
                   _hover={{
                     bg: 'auto'
                   }}
                 >
-                  <Avatar src={tool.toolAvatar} w={'1rem'} h={'1rem'} mr={2} />
-                  <Box mr={1} fontSize={'sm'}>
+                  <Avatar src={tool.toolAvatar} w={'1.25rem'} h={'1.25rem'} borderRadius={'sm'} />
+                  <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
                     {tool.toolName}
                   </Box>
                   {isChatting && !tool.response && <MyIcon name={'common/loading'} w={'14px'} />}

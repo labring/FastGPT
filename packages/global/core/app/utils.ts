@@ -8,7 +8,7 @@ import { DatasetSearchModeEnum } from '../dataset/constants';
 
 export const getDefaultAppForm = (): AppSimpleEditFormType => ({
   aiSettings: {
-    model: 'gpt-3.5-turbo',
+    model: 'gpt-4o-mini',
     systemPrompt: '',
     temperature: 0,
     isResponseAnswerText: true,

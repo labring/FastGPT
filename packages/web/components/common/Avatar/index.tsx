@@ -2,9 +2,16 @@ import React from 'react';
 import { Image } from '@chakra-ui/react';
 import type { ImageProps } from '@chakra-ui/react';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
+import MyIcon from '../Icon';
+import { iconPaths } from '../Icon/constants';
 
 const Avatar = ({ w = '30px', src, ...props }: ImageProps) => {
-  return (
+  // @ts-ignore
+  const isIcon = !!iconPaths[src as any];
+
+  return isIcon ? (
+    <MyIcon name={src as any} w={w} borderRadius={props.borderRadius} />
+  ) : (
     <Image
       fallbackSrc={LOGO_ICON}
       fallbackStrategy={'onError'}

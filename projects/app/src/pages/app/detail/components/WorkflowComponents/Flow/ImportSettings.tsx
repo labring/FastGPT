@@ -22,11 +22,11 @@ const ImportSettings = ({ onClose }: Props) => {
       w={'600px'}
       onClose={onClose}
       iconSrc="/imgs/modal/params.svg"
-      title={appT('Import Configs')}
+      title={appT('import_configs')}
     >
       <ModalBody>
         <Textarea
-          placeholder={appT('Paste Config')}
+          placeholder={appT('paste_config')}
           defaultValue={value}
           rows={16}
           onChange={(e) => setValue(e.target.value)}
@@ -45,7 +45,7 @@ const ImportSettings = ({ onClose }: Props) => {
               onClose();
             } catch (error) {
               toast({
-                title: appT('Import Configs Failed')
+                title: appT('import_configs_failed')
               });
             }
           }}

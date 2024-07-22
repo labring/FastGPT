@@ -112,7 +112,7 @@ function Reference({
   const { workflowT } = useI18n();
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
-    content: workflowT('Confirm delete field tip')
+    content: workflowT('confirm_delete_field_tip')
   });
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);

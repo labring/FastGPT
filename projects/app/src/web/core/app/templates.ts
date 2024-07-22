@@ -11,6 +11,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 type TemplateType = (AppItemType & {
   avatar: string;
@@ -22,8 +23,8 @@ type TemplateType = (AppItemType & {
 export const simpleBotTemplates: TemplateType = [
   {
     id: 'simpleChat',
-    avatar: '/imgs/workflow/AI.png',
-    name: '简易机器人',
+    avatar: 'core/workflow/template/aiChat',
+    name: i18nT('app:template.simple_robot'),
     intro: '一个极其简单的 AI 应用，你可以绑定知识库或工具。',
     type: AppTypeEnum.simple,
     modules: [
@@ -31,7 +32,7 @@ export const simpleBotTemplates: TemplateType = [
         nodeId: 'userGuide',
         name: '系统配置',
         intro: '可以配置应用的系统参数',
-        avatar: '/imgs/workflow/userGuide.png',
+        avatar: 'core/workflow/template/systemConfig',
         flowNodeType: FlowNodeTypeEnum.systemConfig,
         position: {
           x: 531.2422736065552,
@@ -94,7 +95,7 @@ export const simpleBotTemplates: TemplateType = [
         nodeId: '448745',
         name: '流程开始',
         intro: '',
-        avatar: '/imgs/workflow/userChatInput.svg',
+        avatar: 'core/workflow/template/workflowStart',
         flowNodeType: FlowNodeTypeEnum.workflowStart,
         position: {
           x: 558.4082376415505,
@@ -125,7 +126,7 @@ export const simpleBotTemplates: TemplateType = [
         nodeId: 'loOvhld2ZTKa',
         name: 'AI 对话',
         intro: 'AI 大模型对话',
-        avatar: '/imgs/workflow/AI.png',
+        avatar: 'core/workflow/template/aiChat',
         flowNodeType: FlowNodeTypeEnum.chatNode,
         showStatus: true,
         position: {
@@ -142,7 +143,7 @@ export const simpleBotTemplates: TemplateType = [
             ],
             label: 'core.module.input.label.aiModel',
             valueType: WorkflowIOValueTypeEnum.string,
-            value: 'gpt-3.5-turbo'
+            value: 'gpt-4o-mini'
           },
           {
             key: 'temperature',
@@ -252,7 +253,7 @@ export const simpleBotTemplates: TemplateType = [
   },
   {
     id: 'chatGuide',
-    avatar: '/imgs/workflow/userGuide.png',
+    avatar: 'core/workflow/template/systemConfig',
     name: '对话引导 + 变量',
     intro: '可以在对话开始发送一段提示，或者让用户填写一些内容，作为本次对话的变量',
     type: AppTypeEnum.simple,
@@ -261,7 +262,7 @@ export const simpleBotTemplates: TemplateType = [
         nodeId: 'userGuide',
         name: '系统配置',
         intro: '可以配置应用的系统参数',
-        avatar: '/imgs/workflow/userGuide.png',
+        avatar: 'core/workflow/template/systemConfig',
         flowNodeType: FlowNodeTypeEnum.systemConfig,
         position: {
           x: 496.57560693988853,
@@ -341,7 +342,7 @@ export const simpleBotTemplates: TemplateType = [
         nodeId: '448745',
         name: '流程开始',
         intro: '',
-        avatar: '/imgs/workflow/userChatInput.svg',
+        avatar: 'core/workflow/template/workflowStart',
         flowNodeType: FlowNodeTypeEnum.workflowStart,
         position: {
           x: 558.4082376415505,
@@ -372,7 +373,7 @@ export const simpleBotTemplates: TemplateType = [
         nodeId: 'loOvhld2ZTKa',
         name: 'AI 对话',
         intro: 'AI 大模型对话',
-        avatar: '/imgs/workflow/AI.png',
+        avatar: 'core/workflow/template/aiChat',
         flowNodeType: FlowNodeTypeEnum.chatNode,
         showStatus: true,
         position: {
@@ -389,7 +390,7 @@ export const simpleBotTemplates: TemplateType = [
             ],
             label: 'core.module.input.label.aiModel',
             valueType: WorkflowIOValueTypeEnum.string,
-            value: 'gpt-3.5-turbo'
+            value: 'gpt-4o-mini'
           },
           {
             key: 'temperature',
@@ -499,7 +500,7 @@ export const simpleBotTemplates: TemplateType = [
   },
   {
     id: 'simpleDatasetChat',
-    avatar: '/imgs/workflow/db.png',
+    avatar: 'core/workflow/template/datasetSearch',
     name: '知识库+对话引导',
     intro: '每次提问时进行一次知识库搜索，将搜索结果注入 LLM 模型进行参考回答',
     type: AppTypeEnum.simple,
@@ -508,7 +509,7 @@ export const simpleBotTemplates: TemplateType = [
         nodeId: 'userGuide',
         name: '系统配置',
         intro: '可以配置应用的系统参数',
-        avatar: '/imgs/workflow/userGuide.png',
+        avatar: 'core/workflow/template/systemConfig',
         flowNodeType: FlowNodeTypeEnum.systemConfig,
         position: {
           x: 531.2422736065552,
@@ -571,7 +572,7 @@ export const simpleBotTemplates: TemplateType = [
         nodeId: 'workflowStartNodeId',
         name: '流程开始',
         intro: '',
-        avatar: '/imgs/workflow/userChatInput.svg',
+        avatar: 'core/workflow/template/workflowStart',
         flowNodeType: FlowNodeTypeEnum.workflowStart,
         position: {
           x: 558.4082376415505,
@@ -602,7 +603,7 @@ export const simpleBotTemplates: TemplateType = [
         nodeId: '7BdojPlukIQw',
         name: 'AI 对话',
         intro: 'AI 大模型对话',
-        avatar: '/imgs/workflow/AI.png',
+        avatar: 'core/workflow/template/aiChat',
         flowNodeType: FlowNodeTypeEnum.chatNode,
         showStatus: true,
         position: {
@@ -619,7 +620,7 @@ export const simpleBotTemplates: TemplateType = [
             ],
             label: 'core.module.input.label.aiModel',
             valueType: WorkflowIOValueTypeEnum.string,
-            value: 'gpt-3.5-turbo'
+            value: 'gpt-4o-mini'
           },
           {
             key: 'temperature',
@@ -722,7 +723,7 @@ export const simpleBotTemplates: TemplateType = [
         nodeId: 'iKBoX2vIzETU',
         name: '知识库搜索',
         intro: '调用“语义检索”和“全文检索”能力，从“知识库”中查找可能与问题相关的参考内容',
-        avatar: '/imgs/workflow/db.png',
+        avatar: 'core/workflow/template/datasetSearch',
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
         showStatus: true,
         position: {
@@ -827,7 +828,7 @@ export const simpleBotTemplates: TemplateType = [
   },
   {
     id: 'toolChat',
-    avatar: '/imgs/workflow/history.png',
+    avatar: 'core/workflow/template/getTime',
     name: '知道时间的机器人',
     intro: '通过挂载时间插件，让模型获取当前最新时间',
     type: AppTypeEnum.simple,
@@ -836,7 +837,7 @@ export const simpleBotTemplates: TemplateType = [
         nodeId: 'userGuide',
         name: '系统配置',
         intro: '可以配置应用的系统参数',
-        avatar: '/imgs/workflow/userGuide.png',
+        avatar: 'core/workflow/template/systemConfig',
         flowNodeType: FlowNodeTypeEnum.systemConfig,
         position: {
           x: 531.2422736065552,
@@ -850,7 +851,7 @@ export const simpleBotTemplates: TemplateType = [
         nodeId: 'workflowStartNodeId',
         name: '流程开始',
         intro: '',
-        avatar: '/imgs/workflow/userChatInput.svg',
+        avatar: 'core/workflow/template/workflowStart',
         flowNodeType: FlowNodeTypeEnum.workflowStart,
         position: {
           x: 558.4082376415505,
@@ -881,7 +882,7 @@ export const simpleBotTemplates: TemplateType = [
         nodeId: 'jrWPV9',
         name: '工具调用',
         intro: '通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。',
-        avatar: '/imgs/workflow/tool.svg',
+        avatar: 'core/workflow/template/toolCall',
         flowNodeType: FlowNodeTypeEnum.tools,
         showStatus: true,
         position: {
@@ -896,7 +897,7 @@ export const simpleBotTemplates: TemplateType = [
             label: 'core.module.input.label.aiModel',
             valueType: 'string',
             llmModelType: 'all',
-            value: 'gpt-3.5-turbo'
+            value: 'gpt-4o-mini'
           },
           {
             key: 'temperature',
@@ -963,7 +964,7 @@ export const simpleBotTemplates: TemplateType = [
         nodeId: 'zBxjo5',
         name: '获取当前时间',
         intro: '获取用户当前时区的时间。',
-        avatar: '/imgs/workflow/getCurrentTime.svg',
+        avatar: 'core/workflow/template/getTime',
         flowNodeType: 'pluginModule',
         showStatus: false,
         position: {
@@ -1021,7 +1022,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: 'userGuide',
         name: '系统配置',
         intro: '可以配置应用的系统参数',
-        avatar: '/imgs/workflow/userGuide.png',
+        avatar: 'core/workflow/template/systemConfig',
         flowNodeType: 'userGuide',
         position: {
           x: 531.2422736065552,
@@ -1084,7 +1085,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: '448745',
         name: '流程开始',
         intro: '',
-        avatar: '/imgs/workflow/userChatInput.svg',
+        avatar: 'core/workflow/template/workflowStart',
         flowNodeType: 'workflowStart',
         position: {
           x: 558.4082376415505,
@@ -1115,7 +1116,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: 'loOvhld2ZTKa',
         name: '第一轮翻译',
         intro: 'AI 大模型对话',
-        avatar: '/imgs/workflow/AI.png',
+        avatar: 'core/workflow/template/aiChat',
         flowNodeType: 'chatNode',
         showStatus: true,
         position: {
@@ -1235,7 +1236,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: 'w0oBbQ3YJHye',
         name: '代码运行',
         intro: '执行一段简单的脚本代码，通常用于进行复杂的数据处理。',
-        avatar: '/imgs/workflow/code.svg',
+        avatar: 'core/workflow/template/codeRun',
         flowNodeType: 'code',
         showStatus: true,
         position: {
@@ -1348,7 +1349,7 @@ export const workflowTemplates: TemplateType = [
         name: '指定回复',
         intro:
           '该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。',
-        avatar: '/imgs/workflow/reply.png',
+        avatar: 'core/workflow/template/reply',
         flowNodeType: 'answerNode',
         position: {
           x: 3798.4479531204515,
@@ -1374,7 +1375,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: 'gBDvemE4FBhp',
         name: '文本拼接',
         intro: '可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。',
-        avatar: '/imgs/workflow/textEditor.svg',
+        avatar: 'core/workflow/template/textConcat',
         flowNodeType: 'textEditor',
         position: {
           x: 1031.371061396644,
@@ -1463,7 +1464,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: 'bcqtxqxE2R6o',
         name: '合并输出结果',
         intro: '可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。',
-        avatar: '/imgs/workflow/textEditor.svg',
+        avatar: 'core/workflow/template/textConcat',
         flowNodeType: 'textEditor',
         position: {
           x: 3113.6227559936665,
@@ -1593,7 +1594,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: 'userGuide',
         name: '系统配置',
         intro: '可以配置应用的系统参数',
-        avatar: '/imgs/workflow/userGuide.png',
+        avatar: 'core/workflow/template/systemConfig',
         flowNodeType: 'userGuide',
         position: {
           x: 262.2732338817093,
@@ -1656,7 +1657,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: '448745',
         name: '流程开始',
         intro: '',
-        avatar: '/imgs/workflow/userChatInput.svg',
+        avatar: 'core/workflow/template/workflowStart',
         flowNodeType: 'workflowStart',
         position: {
           x: 295.8944548701009,
@@ -1687,7 +1688,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: 'NOgbnBzUwDgT',
         name: '工具调用',
         intro: '通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。',
-        avatar: '/imgs/workflow/tool.svg',
+        avatar: 'core/workflow/template/toolCall',
         flowNodeType: 'tools',
         showStatus: true,
         position: {
@@ -1769,7 +1770,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: 'GMELVPxHfpg5',
         name: 'HTTP 请求',
         intro: '调用谷歌搜索，查询相关内容',
-        avatar: '/imgs/workflow/http.png',
+        avatar: 'core/workflow/template/httpRequest',
         flowNodeType: 'httpRequest468',
         showStatus: true,
         position: {
@@ -1914,7 +1915,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: 'poIbrrA8aiR0',
         name: '代码运行',
         intro: '执行一段简单的脚本代码，通常用于进行复杂的数据处理。',
-        avatar: '/imgs/workflow/code.svg',
+        avatar: 'core/workflow/template/codeRun',
         flowNodeType: 'code',
         showStatus: true,
         position: {
@@ -2032,7 +2033,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: 'userGuide',
         name: '系统配置',
         intro: '可以配置应用的系统参数',
-        avatar: '/imgs/workflow/userGuide.png',
+        avatar: 'core/workflow/template/systemConfig',
         flowNodeType: 'userGuide',
         position: {
           x: 531.2422736065552,
@@ -2095,7 +2096,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: '448745',
         name: '流程开始',
         intro: '',
-        avatar: '/imgs/workflow/userChatInput.svg',
+        avatar: 'core/workflow/template/workflowStart',
         flowNodeType: 'workflowStart',
         position: {
           x: 532.1275542407774,
@@ -2126,7 +2127,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: 'tMyUnRL5jIrC',
         name: 'HTTP 请求',
         intro: '可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
-        avatar: '/imgs/workflow/http.png',
+        avatar: 'core/workflow/template/httpRequest',
         flowNodeType: 'httpRequest468',
         showStatus: true,
         position: {
@@ -2291,7 +2292,7 @@ export const workflowTemplates: TemplateType = [
         name: '指定回复',
         intro:
           '该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。',
-        avatar: '/imgs/workflow/reply.png',
+        avatar: 'core/workflow/template/reply',
         flowNodeType: 'answerNode',
         position: {
           x: 2204.4609372615846,
@@ -2317,7 +2318,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: 'vEXJF8pQ8eOv',
         name: '文本拼接',
         intro: '可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。',
-        avatar: '/imgs/workflow/textEditor.svg',
+        avatar: 'core/workflow/template/textConcat',
         flowNodeType: 'textEditor',
         position: {
           x: 1544.8821308368042,
@@ -2426,7 +2427,7 @@ export const workflowTemplates: TemplateType = [
   },
   {
     id: 'CQ',
-    avatar: '/imgs/workflow/cq.png',
+    avatar: 'core/workflow/template/questionClassify',
     name: '问题分类 + 知识库',
     intro: '先对用户的问题进行分类，再根据不同类型问题，执行不同的操作',
     type: AppTypeEnum.workflow,
@@ -2435,7 +2436,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: 'userGuide',
         name: '系统配置',
         intro: '可以配置应用的系统参数',
-        avatar: '/imgs/workflow/userGuide.png',
+        avatar: 'core/workflow/template/systemConfig',
         flowNodeType: FlowNodeTypeEnum.systemConfig,
         position: {
           x: 531.2422736065552,
@@ -2498,7 +2499,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: 'workflowStartNodeId',
         name: '流程开始',
         intro: '',
-        avatar: '/imgs/workflow/userChatInput.svg',
+        avatar: 'core/workflow/template/workflowStart',
         flowNodeType: FlowNodeTypeEnum.workflowStart,
         position: {
           x: 558.4082376415505,
@@ -2529,7 +2530,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: '7BdojPlukIQw',
         name: 'AI 对话',
         intro: 'AI 大模型对话',
-        avatar: '/imgs/workflow/AI.png',
+        avatar: 'core/workflow/template/aiChat',
         flowNodeType: FlowNodeTypeEnum.chatNode,
         showStatus: true,
         position: {
@@ -2546,7 +2547,7 @@ export const workflowTemplates: TemplateType = [
             ],
             label: 'core.module.input.label.aiModel',
             valueType: WorkflowIOValueTypeEnum.string,
-            value: 'gpt-3.5-turbo'
+            value: 'gpt-4o-mini'
           },
           {
             key: 'temperature',
@@ -2650,7 +2651,7 @@ export const workflowTemplates: TemplateType = [
         name: '问题分类',
         intro:
           '根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：\n类型1: 打招呼\n类型2: 关于商品“使用”问题\n类型3: 关于商品“购买”问题\n类型4: 其他问题',
-        avatar: '/imgs/workflow/cq.png',
+        avatar: 'core/workflow/template/questionClassify',
         flowNodeType: FlowNodeTypeEnum.classifyQuestion,
         showStatus: true,
         position: {
@@ -2666,7 +2667,7 @@ export const workflowTemplates: TemplateType = [
             required: true,
             valueType: WorkflowIOValueTypeEnum.string,
             llmModelType: 'classify',
-            value: 'gpt-3.5-turbo'
+            value: 'gpt-4o-mini'
           },
           {
             key: 'systemPrompt',
@@ -2732,7 +2733,7 @@ export const workflowTemplates: TemplateType = [
         name: '指定回复',
         intro:
           '该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。',
-        avatar: '/imgs/workflow/reply.png',
+        avatar: 'core/workflow/template/reply',
         flowNodeType: FlowNodeTypeEnum.answerNode,
         position: {
           x: 1874.9167551056487,
@@ -2757,7 +2758,7 @@ export const workflowTemplates: TemplateType = [
         nodeId: 'MNMMMIjjWyMU',
         name: '知识库搜索',
         intro: '调用“语义检索”和“全文检索”能力，从“知识库”中查找可能与问题相关的参考内容',
-        avatar: '/imgs/workflow/db.png',
+        avatar: 'core/workflow/template/datasetSearch',
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
         showStatus: true,
         position: {
@@ -2883,7 +2884,7 @@ export const workflowTemplates: TemplateType = [
 export const pluginTemplates: TemplateType = [
   {
     id: 'plugin-simple',
-    avatar: '/imgs/workflow/AI.png',
+    avatar: 'core/workflow/template/aiChat',
     name: '默认模板',
     intro: '标准的插件初始模板',
     type: AppTypeEnum.plugin,
@@ -2891,7 +2892,7 @@ export const pluginTemplates: TemplateType = [
       {
         nodeId: 'pluginInput',
         name: '自定义插件输入',
-        avatar: '/imgs/workflow/input.png',
+        avatar: 'core/workflow/template/workflowStart',
         flowNodeType: FlowNodeTypeEnum.pluginInput,
         showStatus: false,
         position: {
@@ -2930,7 +2931,7 @@ export const pluginTemplates: TemplateType = [
         nodeId: 'pluginInput',
         name: '自定义插件输入',
         intro: '自定义配置外部输入，使用插件时，仅暴露自定义配置的输入',
-        avatar: '/imgs/workflow/input.png',
+        avatar: 'core/workflow/template/workflowStart',
         flowNodeType: 'pluginInput',
         showStatus: false,
         position: {
@@ -3015,7 +3016,7 @@ export const pluginTemplates: TemplateType = [
         nodeId: 'rKBYGQuYefae',
         name: 'HTTP 请求',
         intro: '可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
-        avatar: '/imgs/workflow/http.png',
+        avatar: 'core/workflow/template/httpRequest',
         flowNodeType: 'httpRequest468',
         showStatus: true,
         position: {

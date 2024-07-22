@@ -130,7 +130,7 @@ const PublishHistoriesSlider = ({
             });
           }}
         >
-          {appT('Current settings')}
+          {appT('current_settings')}
         </Button>
         <ScrollList isLoading={showLoading} flex={'1 0 0'} px={5}>
           {list.map((data, index) => {

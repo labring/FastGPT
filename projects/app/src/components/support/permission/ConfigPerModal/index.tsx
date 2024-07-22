@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import CollaboratorContextProvider, { MemberManagerInputPropsType } from '../MemberManager/context';
 import { Box, Button, Flex, HStack, ModalBody } from '@chakra-ui/react';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import DefaultPermissionList from '../DefaultPerList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';

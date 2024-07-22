@@ -26,7 +26,7 @@ export const LafModule: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.lafModule,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
-  avatar: '/imgs/workflow/laf.png',
+  avatar: 'core/workflow/template/lafDispatch',
   name: 'Laf 函数调用（测试）',
   intro: '可以调用Laf账号下的云函数。',
   showStatus: true,

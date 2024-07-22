@@ -57,11 +57,14 @@ export async function getInitConfig() {
 }
 
 const defaultFeConfigs: FastGPTFeConfigsType = {
-  show_emptyChat: false,
-  show_git: false,
-  docUrl: '',
-  openAPIDocUrl: '',
-  systemTitle: 'AI Agent',
+
+  show_emptyChat: true,
+  show_git: true,
+  docUrl: 'https://doc.fastgpt.in',
+  openAPIDocUrl: 'https://doc.fastgpt.in/docs/development/openapi',
+  systemPluginCourseUrl: 'https://fael3z0zfze.feishu.cn/wiki/ERZnw9R26iRRG0kXZRec6WL9nwh',
+  systemTitle: 'FastGPT',
+
   concatMd:
     '',
   limit: {

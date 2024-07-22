@@ -31,7 +31,7 @@ const RawSourceBox = ({
 
   return (
     <MyTooltip
-      label={canPreview ? fileT('Click to view raw source') : ''}
+      label={canPreview ? fileT('click_to_view_raw_source') : ''}
       shouldWrapChildren={false}
     >
       <Box

@@ -8,7 +8,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useForm } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -66,7 +66,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   });
   const { openConfirm: onOpenConfirmRebuild, ConfirmModal: ConfirmRebuildModal } = useConfirm({
     title: t('common:common.confirm.Common Tip'),
-    content: datasetT('Confirm to rebuild embedding tip'),
+    content: datasetT('confirm_to_rebuild_embedding_tip'),
     type: 'delete'
   });
 
@@ -128,7 +128,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       refetchDatasetTraining();
       loadDatasetDetail(datasetId);
     },
-    successToast: datasetT('Rebuild embedding start tip'),
+    successToast: datasetT('rebuild_embedding_start_tip'),
     errorToast: t('common:common.Update Failed')
   });
 
@@ -152,7 +152,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             value={vectorModel.model}
             disableTip={
               rebuildingCount > 0 || trainingCount > 0
-                ? datasetT('The knowledge base has indexes that are being trained or being rebuilt')
+                ? datasetT('the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt')
                 : undefined
             }
             list={vectorModelList.map((item) => ({
@@ -209,8 +209,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               gap={1}
               alignItems={'center'}
             >
-              <Box>{datasetT('External read url')}</Box>
-              <QuestionTip label={datasetT('External read url tip')} />
+              <Box>{datasetT('external_read_url')}</Box>
+              <QuestionTip label={datasetT('external_read_url_tip')} />
             </FormLabel>
             <Input
               flex={[1, '0 0 320px']}

@@ -163,12 +163,12 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       reloadAppLatestVersion();
     },
     {
-      successToast: appT('Publish success')
+      successToast: appT('publish_success')
     }
   );
 
   const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
-    content: appT('Confirm Del App Tip'),
+    content: appT('confirm_del_app_tip'),
     type: 'delete'
   });
   const { runAsync: deleteApp } = useRequest2(

@@ -42,17 +42,29 @@ export type WorkflowTemplateType = {
 
   workflow: WorkflowTemplateBasicType;
 };
+
 // template market
 export type TemplateMarketItemType = WorkflowTemplateType & {
   tags?: { id: string; label: string }[];
 };
+
 // system plugin
 export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   templateType: FlowNodeTemplateTypeEnum;
   isTool?: boolean;
 
+  // commercial plugin config
   originCost: number; // n points/one time
   currentCost: number;
+
+  isActive?: boolean;
+  inputConfig?: {
+    // Render config input form. Find the corresponding node and replace the variable directly
+    key: string;
+    label: string;
+    description: string;
+    value?: any;
+  }[];
 
   workflow: WorkflowTemplateBasicType;
 };

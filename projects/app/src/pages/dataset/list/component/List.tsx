@@ -8,7 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 import PermissionIconText from '@/components/support/permission/IconText';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { DatasetItemType } from '@fastgpt/global/core/dataset/type';

@@ -19,7 +19,7 @@ export const RunAppModule: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.runApp,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
-  avatar: '/imgs/workflow/app.png',
+  avatar: 'core/workflow/template/runApp',
   name: '应用调用',
   intro: '可以选择一个其他应用进行调用',
   showStatus: true,
