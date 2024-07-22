@@ -1,5 +1,6 @@
 import { Worker } from 'worker_threads';
 import path from 'path';
+import { addLog } from '../common/system/log';
 
 export enum WorkerNameEnum {
   readFile = 'readFile',
@@ -7,9 +8,19 @@ export enum WorkerNameEnum {
   countGptMessagesTokens = 'countGptMessagesTokens'
 }
 
+const getSafeEnv = () => {
+  return {
+    LOG_LEVEL: process.env.LOG_LEVEL,
+    STORE_LOG_LEVEL: process.env.STORE_LOG_LEVEL,
+    NODE_ENV: process.env.NODE_ENV
+  };
+};
+
 export const getWorker = (name: WorkerNameEnum) => {
   const workerPath = path.join(process.cwd(), '.next', 'server', 'worker', `${name}.js`);
-  return new Worker(workerPath);
+  return new Worker(workerPath, {
+    env: getSafeEnv()
+  });
 };
 
 export const runWorker = <T = any>(name: WorkerNameEnum, params?: Record<string, any>) => {
@@ -33,4 +44,162 @@ export const runWorker = <T = any>(name: WorkerNameEnum, params?: Record<string,
       worker.terminate();
     });
   });
+};
+
+type WorkerQueueItem = {
+  id: string;
+  worker: Worker;
+  status: 'running' | 'idle';
+  taskTime: number;
+  timeoutId?: NodeJS.Timeout;
+  resolve: (e: any) => void;
+  reject: (e: any) => void;
+};
+type WorkerResponse<T = any> = {
+  id: string;
+  type: 'success' | 'error';
+  data: T;
+};
+
+/* 
+  多进程任务管理
+  * 全局只需要创建一个示例
+  * 可以设置最大常驻线程（不会被销毁），超出常驻线程的任务，会创建一个临时线程
+  * 会检测已经空闲了 5 分钟的“超出常驻”的线程，把它们销毁，释放内存（目的是为了高并发时期，拥有更高的线程数量）
+  * 每次执行，会把数据丢到一个空闲线程里运行。主线程需要监听子线程返回的数据，并执行对于的 callback，主要是通过 workerId 进行标记。
+  * 务必保证，每个线程只会同时运行 1 个任务，否则 callback 会对应不上。
+*/
+export class WorkerPool<Props = Record<string, any>, Response = any> {
+  name: WorkerNameEnum;
+  maxReservedThreads: number;
+  workerQueue: WorkerQueueItem[] = [];
+
+  constructor({ name, maxReservedThreads }: { name: WorkerNameEnum; maxReservedThreads: number }) {
+    this.name = name;
+    this.maxReservedThreads = maxReservedThreads;
+
+    // Add clear timer
+    this.clearExtraWorker();
+  }
+
+  run(data: Props) {
+    // watch memory
+    addLog.debug(`Worker queueLength: ${this.workerQueue.length}`);
+
+    return new Promise<Response>((resolve, reject) => {
+      // Get idle worker or create a new worker
+      const runningWorker =
+        this.workerQueue.find((item) => item.status === 'idle') ?? this.createWorker();
+
+      // Update memory data to latest task
+      runningWorker.status = 'running';
+      runningWorker.taskTime = Date.now();
+      runningWorker.resolve = resolve;
+      runningWorker.reject = reject;
+      runningWorker.timeoutId = setTimeout(() => {
+        reject('Worker timeout');
+      }, 5000);
+
+      runningWorker.worker.postMessage({
+        id: runningWorker.id,
+        ...data
+      });
+    });
+  }
+
+  createWorker() {
+    // Create a new worker and push it queue.
+    const workerId = `${Date.now()}${Math.random()}`;
+    const worker = getWorker(this.name);
+
+    const item: WorkerQueueItem = {
+      id: workerId,
+      worker,
+      status: 'running',
+      taskTime: Date.now(),
+      resolve: () => {},
+      reject: () => {}
+    };
+    this.workerQueue.push(item);
+
+    // watch response
+    worker.on('message', ({ id, type, data }: WorkerResponse<Response>) => {
+      // Run callback
+      const workerItem = this.workerQueue.find((item) => item.id === id);
+
+      if (!workerItem) {
+        addLog.warn('Invalid worker', { id, type, data });
+        return;
+      }
+
+      if (type === 'success') {
+        workerItem.resolve(data);
+      } else if (type === 'error') {
+        workerItem.reject(data);
+      }
+
+      // Clear timeout timer and update worker status
+      clearTimeout(workerItem.timeoutId);
+      workerItem.status = 'idle';
+    });
+
+    // Worker error, terminate and delete it.（Un catch error)
+    worker.on('error', (err) => {
+      addLog.warn('Worker error', { err });
+      this.deleteWorker(workerId);
+    });
+    worker.on('messageerror', (err) => {
+      addLog.warn('Worker error', { err });
+      this.deleteWorker(workerId);
+    });
+
+    return item;
+  }
+
+  deleteWorker(workerId: string) {
+    const item = this.workerQueue.find((item) => item.id === workerId);
+    if (item) {
+      item.reject?.('error');
+      clearTimeout(item.timeoutId);
+      item.worker.terminate();
+    }
+
+    this.workerQueue = this.workerQueue.filter((item) => item.id !== workerId);
+  }
+
+  clearExtraWorker() {
+    setInterval(() => {
+      if (this.workerQueue.length <= this.maxReservedThreads) return;
+      // Clear 5 minutes idle worker
+      for (let i = 0; i < this.workerQueue.length; i++) {
+        const item = this.workerQueue[i];
+        if (item.status !== 'idle') continue;
+
+        // 5 minutes
+        if (Date.now() - item.taskTime > 300000) {
+          this.deleteWorker(item.id);
+          i--;
+          if (this.workerQueue.length <= this.maxReservedThreads) return;
+        }
+      }
+    }, 30000);
+  }
+}
+
+export const getWorkerController = <Props, Response>(props: {
+  name: WorkerNameEnum;
+  maxReservedThreads: number;
+}) => {
+  if (!global.workerPoll) {
+    // @ts-ignore
+    global.workerPoll = {};
+  }
+
+  const name = props.name;
+
+  if (global.workerPoll[name]) return global.workerPoll[name] as WorkerPool<Props, Response>;
+
+  global.workerPoll[name] = new WorkerPool(props);
+
+  return global.workerPoll[name] as WorkerPool<Props, Response>;
 };
