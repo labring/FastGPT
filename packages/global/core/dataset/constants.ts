@@ -8,22 +8,22 @@ export enum DatasetTypeEnum {
 export const DatasetTypeMap = {
   [DatasetTypeEnum.folder]: {
     icon: 'common/folderFill',
-    label: 'Folder Dataset',
+    label: 'folder_dataset',
     collectionLabel: 'common.Folder'
   },
   [DatasetTypeEnum.dataset]: {
     icon: 'core/dataset/commonDataset',
-    label: 'Common Dataset',
+    label: 'common_dataset',
     collectionLabel: 'common.File'
   },
   [DatasetTypeEnum.websiteDataset]: {
     icon: 'core/dataset/websiteDataset',
-    label: 'Website Dataset',
+    label: 'website_dataset',
     collectionLabel: 'common.Website'
   },
   [DatasetTypeEnum.externalFile]: {
     icon: 'core/dataset/externalDataset',
-    label: 'External File',
+    label: 'external_file',
     collectionLabel: 'common.File'
   }
 };

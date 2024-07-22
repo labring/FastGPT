@@ -12,6 +12,7 @@
   "external_read_url": "External read url",
   "external_read_url_tip": "You can configure the reading address of your file library. This allows users to read and authenticate. You can currently use the {{fileId}} variable to refer to the external file ID.",
   "external_url": "File read url",
+  "folder_dataset": "Folder",
   "rebuild_embedding_start_tip": "The task of switching index models has begun",
   "rebuilding_index_count": "Rebuilding count: {{count}}",
   "the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt": "The knowledge base has indexes that are being trained or being rebuilt",

@@ -9,7 +9,8 @@
     "gen:theme-typings": "chakra-cli tokens packages/web/styles/theme.ts --out node_modules/.pnpm/node_modules/@chakra-ui/styled-system/dist/theming.types.d.ts",
     "postinstall": "sh ./scripts/postinstall.sh",
     "initIcon": "node ./scripts/icon/init.js",
-    "previewIcon": "node ./scripts/icon/index.js"
+    "previewIcon": "node ./scripts/icon/index.js",
+    "checkI18n": "node ./scripts/i18n/delete-unused-keys.js"
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",

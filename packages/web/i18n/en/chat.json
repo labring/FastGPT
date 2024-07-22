@@ -1,5 +1,6 @@
 {
   "chat_input_guide_lexicon_is_empty": "The lexicon has not been configured",
+  "config_input_guide": "Configure input boot",
   "config_input_guide_lexicon": "Config",
   "config_input_guide_lexicon_title": "Config lexicon",
   "csv_input_lexicon_tip": "Only CSV can be imported in batches. Click to download the template",
