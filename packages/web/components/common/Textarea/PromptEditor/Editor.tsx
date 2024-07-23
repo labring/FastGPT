@@ -129,7 +129,7 @@ export default function Editor({
             });
           }}
         />
-        <VariableLabelPickerPlugin variables={variables} />
+        <VariableLabelPickerPlugin variables={variables} isFocus={focus} />
         <VariablePlugin variables={variables} />
         <VariableLabelPlugin variables={variables} />
         <OnBlurPlugin onBlur={onBlur} />

@@ -240,7 +240,7 @@ export function replaceVariableLabel({
   variables: Record<string, string | number>;
   runningNode: RuntimeNodeItemType;
 }) {
-  if (!(typeof text === 'string')) return text;
+  if (typeof text !== 'string') return text;
 
   const globalVariables = Object.keys(variables).map((key) => {
     return {
