@@ -230,7 +230,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
             flexDirection={'column'}
           >
             {/* header */}
-            <ChatHeader chatData={chatData} history={chatData.history} showHistory />
+            <ChatHeader apps={myApps} chatData={chatData} history={chatData.history} showHistory />
             {/* chat box */}
             <Box flex={1}>
               {chatData.app.type === AppTypeEnum.plugin ? (
