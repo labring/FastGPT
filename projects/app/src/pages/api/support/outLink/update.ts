@@ -4,6 +4,7 @@ import { authOutLinkCrud } from '@fastgpt/service/support/permission/publish/aut
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 export type OutLinkUpdateQuery = {};
 export type OutLinkUpdateBody = OutLinkEditType & {};
@@ -15,7 +16,7 @@ async function handler(
   const { _id, name, responseDetail, limit } = req.body;
 
   if (!_id) {
-    throw new Error('_id is required');
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   await authOutLinkCrud({ req, outLinkId: _id, authToken: true, per: OwnerPermissionVal });

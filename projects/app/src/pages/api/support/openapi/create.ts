@@ -9,6 +9,7 @@ import {
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 
 async function handler(req: ApiRequestProps<EditApiKeyProps>): Promise<string> {
   const { appId, name, limit } = req.body;
@@ -35,7 +36,7 @@ async function handler(req: ApiRequestProps<EditApiKeyProps>): Promise<string> {
   const count = await MongoOpenApi.find({ tmbId, appId }).countDocuments();
 
   if (count >= 10) {
-    throw new Error('最多 10 组 API 秘钥');
+    return Promise.reject(OpenApiErrEnum.exceedLimit);
   }
 
   const nanoid = getNanoid(Math.floor(Math.random() * 14) + 52);
