@@ -40,7 +40,6 @@ const ResponseTags = ({
       sourceName: string;
     };
   }>();
-  const [isOverflow, setIsOverflow] = useState<boolean>(true);
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
   const [contextModalData, setContextModalData] =
     useState<DispatchNodeResponseType['historyPreview']>();
@@ -51,11 +50,9 @@ const ResponseTags = ({
   } = useDisclosure();
 
   const quoteListSize = useSize(quoteListRef);
-  useEffect(() => {
-    setIsOverflow(
-      quoteListRef.current ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55) : true
-    );
-  }, [isOverflow, quoteListSize]);
+  const quoteIsOverflow = quoteListRef.current
+    ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55)
+    : true;
 
   const {
     llmModuleAccount,
@@ -114,7 +111,7 @@ const ResponseTags = ({
             <Box width={'100%'}>
               <ChatBoxDivider icon="core/chat/quoteFill" text={t('common:core.chat.Quote')} />{' '}
             </Box>
-            {quoteFolded && isOverflow && (
+            {quoteFolded && quoteIsOverflow && (
               <MyIcon
                 _hover={{ color: 'primary.500', cursor: 'pointer' }}
                 name="core/chat/chevronDown"
@@ -124,89 +121,79 @@ const ResponseTags = ({
             )}
           </Flex>
 
-          <Flex alignItems={'center'} flexWrap={'wrap'} gap={2} position={'relative'}>
-            {
-              <Collapse
-                startingHeight={isPc ? '50px' : '55px'}
-                in={(!quoteFolded && isOverflow) || !isOverflow}
-              >
-                <Flex
-                  ref={quoteListRef}
-                  alignItems={'center'}
-                  position={'relative'}
-                  flexWrap={'wrap'}
-                  gap={2}
-                  height={quoteFolded && isOverflow ? ['55px', '50px'] : 'auto'}
-                  overflow={'hidden'}
-                  _after={
-                    quoteFolded && isOverflow
-                      ? {
-                          content: '""',
-                          position: 'absolute',
-                          zIndex: 2,
-                          bottom: 0,
-                          left: 0,
-                          width: '100%',
-                          height: '50%',
-                          background:
-                            'linear-gradient(to bottom, rgba(247,247,247,0), rgba(247, 247, 247, 0.91))',
-                          pointerEvents: 'none'
-                        }
-                      : {}
+          <Flex
+            ref={quoteListRef}
+            alignItems={'center'}
+            position={'relative'}
+            flexWrap={'wrap'}
+            gap={2}
+            maxH={quoteFolded && quoteIsOverflow ? ['50px', '55px'] : 'auto'}
+            overflow={'hidden'}
+            _after={
+              quoteFolded && quoteIsOverflow
+                ? {
+                    content: '""',
+                    position: 'absolute',
+                    zIndex: 2,
+                    bottom: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '50%',
+                    background:
+                      'linear-gradient(to bottom, rgba(247,247,247,0), rgba(247, 247, 247, 0.91))'
                   }
-                >
-                  {sourceList.map((item) => {
-                    return (
-                      <MyTooltip key={item.collectionId} label={t('core.chat.quote.Read Quote')}>
-                        <Flex
-                          alignItems={'center'}
-                          fontSize={'xs'}
-                          border={'sm'}
-                          py={1.5}
-                          px={2}
-                          borderRadius={'sm'}
-                          _hover={{
-                            '.controller': {
-                              display: 'flex'
-                            }
-                          }}
-                          overflow={'hidden'}
-                          position={'relative'}
-                          cursor={'pointer'}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setQuoteModalData({
-                              rawSearch: quoteList,
-                              metadata: {
-                                collectionId: item.collectionId,
-                                sourceId: item.sourceId,
-                                sourceName: item.sourceName
-                              }
-                            });
-                          }}
-                        >
-                          <MyIcon name={item.icon as any} mr={1} flexShrink={0} w={'12px'} />
-                          <Box className="textEllipsis3" wordBreak={'break-all'} flex={'1 0 0'}>
-                            {item.sourceName}
-                          </Box>
-                        </Flex>
-                      </MyTooltip>
-                    );
-                  })}
-                  {isOverflow && !quoteFolded && (
-                    <MyIcon
-                      position={'absolute'}
-                      bottom={0}
-                      right={0}
-                      _hover={{ color: 'primary.500', cursor: 'pointer' }}
-                      name="core/chat/chevronUp"
-                      w={'14px'}
-                      onClick={() => setQuoteFolded(!quoteFolded)}
-                    />
-                  )}
-                </Flex>
-              </Collapse>
+                : {}
             }
+          >
+            {sourceList.map((item) => {
+              return (
+                <MyTooltip key={item.collectionId} label={t('common:core.chat.quote.Read Quote')}>
+                  <Flex
+                    alignItems={'center'}
+                    fontSize={'xs'}
+                    border={'sm'}
+                    py={1.5}
+                    px={2}
+                    borderRadius={'sm'}
+                    _hover={{
+                      '.controller': {
+                        display: 'flex'
+                      }
+                    }}
+                    overflow={'hidden'}
+                    position={'relative'}
+                    cursor={'pointer'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setQuoteModalData({
+                        rawSearch: quoteList,
+                        metadata: {
+                          collectionId: item.collectionId,
+                          sourceId: item.sourceId,
+                          sourceName: item.sourceName
+                        }
+                      });
+                    }}
+                  >
+                    <MyIcon name={item.icon as any} mr={1} flexShrink={0} w={'12px'} />
+                    <Box className="textEllipsis3" wordBreak={'break-all'} flex={'1 0 0'}>
+                      {item.sourceName}
+                    </Box>
+                  </Flex>
+                </MyTooltip>
+              );
+            })}
+            {!quoteFolded && (
+              <MyIcon
+                position={'absolute'}
+                bottom={0}
+                right={0}
+                _hover={{ color: 'primary.500', cursor: 'pointer' }}
+                name="core/chat/chevronUp"
+                w={'14px'}
+                onClick={() => setQuoteFolded(!quoteFolded)}
+              />
+            )}
           </Flex>
         </>
       )}

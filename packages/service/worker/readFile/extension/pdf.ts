@@ -59,16 +59,16 @@ export const readPdfFile = async ({ buffer }: ReadRawTextByBuffer): Promise<Read
   const loadingTask = pdfjs.getDocument(buffer.buffer);
   const doc = await loadingTask.promise;
 
-  const pageTextPromises = [];
-  for (let pageNo = 1; pageNo <= doc.numPages; pageNo++) {
-    pageTextPromises.push(readPDFPage(doc, pageNo));
+  // Avoid OOM.
+  let result = '';
+  const pageArr = Array.from({ length: doc.numPages }, (_, i) => i + 1);
+  for await (const pageNo of pageArr) {
+    result += await readPDFPage(doc, pageNo);
   }
-
-  const pageTexts = await Promise.all(pageTextPromises);
 
   loadingTask.destroy();
 
   return {
-    rawText: pageTexts.join('')
+    rawText: result
   };
 };

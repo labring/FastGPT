@@ -6,7 +6,7 @@ import { addHours } from 'date-fns';
 import { WorkerNameEnum, runWorker } from '../../../worker/utils';
 import fs from 'fs';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
-import { ReadFileResponse } from '../../../worker/file/type';
+import type { ReadFileResponse } from '../../../worker/readFile/type';
 
 export const initMarkdownText = ({
   teamId,
