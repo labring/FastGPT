@@ -18,18 +18,6 @@ export type PermissionListType<T = {}> = Record<
   }
 >;
 
-// ! [deprecated]
-// use AuthResponseType in @fastgpt/service/support
-export type AuthResponseType = {
-  teamId: string;
-  tmbId: string;
-  isOwner: boolean;
-  canWrite: boolean;
-  authType?: `${AuthUserTypeEnum}`;
-  appId?: string;
-  apikey?: string;
-};
-
 export type ResourcePermissionType = {
   teamId: string;
   tmbId: string;
