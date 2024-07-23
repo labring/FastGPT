@@ -22,9 +22,7 @@ async function handler(req: ApiRequestProps<any, GetApiKeyProps>) {
       appId
     }).sort({ _id: -1 });
 
-    return {
-      data: findResponse.map((item) => item.toObject())
-    };
+    return findResponse.map((item) => item.toObject());
   }
   // global apikey
   const { teamId, tmbId, permission } = await authUserPer({
@@ -39,9 +37,7 @@ async function handler(req: ApiRequestProps<any, GetApiKeyProps>) {
     ...(!permission.isOwner && { tmbId })
   }).sort({ _id: -1 });
 
-  return {
-    data: findResponse.map((item) => item.toObject())
-  };
+  return findResponse.map((item) => item.toObject());
 }
 
 export default NextAPI(handler);
