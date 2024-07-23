@@ -228,7 +228,7 @@ const Chat = ({
             <ChatHeader
               apps={myApps}
               chatData={chatData}
-              history={chatData.history}
+              history={chatRecords}
               onRoute2AppDetail={() => router.push(`/app/detail?appId=${appId}`)}
               showHistory
             />
