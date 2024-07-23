@@ -8,7 +8,12 @@ import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { authTeamSpaceToken } from './team';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
-import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  AuthUserTypeEnum,
+  OwnerPermissionVal,
+  ReadPermissionVal,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { addLog } from '@fastgpt/service/common/system/log';
@@ -16,7 +21,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
   outLink: Must be the owner
   token: team owner and chat owner have all permissions
 */
-export async function autChatCrud({
+export async function authChatCrud({
   appId,
   chatId,
   shareId,
@@ -24,7 +29,7 @@ export async function autChatCrud({
 
   teamId: spaceTeamId,
   teamToken,
-  per = 'owner',
+  per = OwnerPermissionVal,
   ...props
 }: AuthModeType & {
   appId: string;
@@ -77,7 +82,7 @@ export async function autChatCrud({
     if (String(tmbId) === String(chat.tmbId)) return { uid: outLinkUid };
 
     // admin
-    if (per === 'r' && permission.hasManagePer) return { uid: outLinkUid };
+    if (per === WritePermissionVal && permission.hasManagePer) return { uid: outLinkUid };
 
     return Promise.reject(ChatErrEnum.unAuthChat);
   })();

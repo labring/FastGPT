@@ -6,10 +6,15 @@ import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { MongoOpenApi } from '../../openapi/schema';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import {
+  OwnerPermissionVal,
+  ReadPermissionVal,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
 
 export async function authOpenApiKeyCrud({
   id,
-  per = 'owner',
+  per = OwnerPermissionVal,
   ...props
 }: AuthModeType & {
   id: string;
@@ -21,7 +26,7 @@ export async function authOpenApiKeyCrud({
   const result = await parseHeaderCert(props);
   const { tmbId, teamId } = result;
 
-  const { role } = await getTmbInfoByTmbId({ tmbId });
+  const { role, permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
 
   const { openapi, isOwner, canWrite } = await (async () => {
     const openapi = await MongoOpenApi.findOne({ _id: id, teamId });
@@ -31,16 +36,15 @@ export async function authOpenApiKeyCrud({
     }
 
     const isOwner = String(openapi.tmbId) === tmbId || role === TeamMemberRoleEnum.owner;
-    const canWrite =
-      isOwner || (String(openapi.tmbId) === tmbId && role !== TeamMemberRoleEnum.visitor);
+    const canWrite = isOwner || (String(openapi.tmbId) === tmbId && tmbPer.hasWritePer);
 
-    if (per === 'r' && !canWrite) {
+    if (per === ReadPermissionVal && !canWrite) {
       return Promise.reject(OpenApiErrEnum.unAuth);
     }
-    if (per === 'w' && !canWrite) {
+    if (per === WritePermissionVal && !canWrite) {
       return Promise.reject(OpenApiErrEnum.unAuth);
     }
-    if (per === 'owner' && !isOwner) {
+    if (per === OwnerPermissionVal && !isOwner) {
       return Promise.reject(OpenApiErrEnum.unAuth);
     }
 

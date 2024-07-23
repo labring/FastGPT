@@ -1,6 +1,5 @@
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { getResourcePermission, parseHeaderCert } from '../controller';
-import { AuthPropsType, AuthResponseType } from '../type/auth';
 import {
   CollectionWithDatasetType,
   DatasetDataItemType,
@@ -9,7 +8,7 @@ import {
 } from '@fastgpt/global/core/dataset/type';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { MongoDataset } from '../../../core/dataset/schema';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { NullPermission, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { getCollectionWithDataset } from '../../../core/dataset/controller';
@@ -19,6 +18,7 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoDatasetData } from '../../../core/dataset/data/schema';
 import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
+import { AuthModeType, AuthResponseType } from '../type';
 
 export async function authDatasetByTmbId({
   tmbId,
@@ -70,9 +70,9 @@ export async function authDatasetByTmbId({
 // Auth Dataset
 export async function authDataset({
   datasetId,
-  per,
+  per = NullPermission,
   ...props
-}: AuthPropsType & {
+}: AuthModeType & {
   datasetId: string;
 }): Promise<
   AuthResponseType<DatasetPermission> & {
@@ -98,9 +98,9 @@ export async function authDataset({
 // the temporary solution for authDatasetCollection is getting the
 export async function authDatasetCollection({
   collectionId,
-  per,
+  per = NullPermission,
   ...props
-}: AuthPropsType & {
+}: AuthModeType & {
   collectionId: string;
 }): Promise<
   AuthResponseType<DatasetPermission> & {
@@ -132,7 +132,7 @@ export async function authDatasetFile({
   fileId,
   per,
   ...props
-}: AuthPropsType & {
+}: AuthModeType & {
   fileId: string;
 }): Promise<
   AuthResponseType<DatasetPermission> & {
@@ -178,7 +178,7 @@ export async function authDatasetFile({
 export async function authDatasetData({
   dataId,
   ...props
-}: AuthPropsType & {
+}: AuthModeType & {
   dataId: string;
 }) {
   // get mongo dataset.data

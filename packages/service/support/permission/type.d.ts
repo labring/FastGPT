@@ -1,3 +1,4 @@
+import { Permission } from '@fastgpt/global/support/permission/controller';
 import { ApiRequestProps } from '../../type/next';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 
@@ -10,10 +11,26 @@ export type ReqHeaderAuthType = {
   authorization?: string;
 };
 
-export type AuthModeType = {
+type RequireAtLeastOne<T, Keys extends keyof T = keyof T> = Omit<T, Keys> &
+  {
+    [K in Keys]-?: Required<Pick<T, K>> & Partial<Omit<T, K>>;
+  }[Keys];
+
+type authModeType = {
   req: ApiRequestProps;
   authToken?: boolean;
   authRoot?: boolean;
   authApiKey?: boolean;
-  per?: PermissionValueType | 'r' | 'w' | 'owner'; // this is for compatibility
+  per?: PermissionValueType;
+};
+
+export type AuthModeType = RequireAtLeastOne<authModeType, 'authApiKey' | 'authRoot' | 'authToken'>;
+
+export type AuthResponseType<T extends Permission = Permission> = {
+  teamId: string;
+  tmbId: string;
+  authType?: `${AuthUserTypeEnum}`;
+  appId?: string;
+  apikey?: string;
+  permission: T;
 };
