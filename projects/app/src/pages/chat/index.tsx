@@ -226,6 +226,7 @@ const Chat = ({
           >
             {/* header */}
             <ChatHeader
+              apps={myApps}
               chatData={chatData}
               history={chatRecords}
               onRoute2AppDetail={() => router.push(`/app/detail?appId=${appId}`)}
