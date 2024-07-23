@@ -294,23 +294,12 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       let value = replaceVariable(input.value, variables);
 
       // replace {{$$}} variables
-      const customInputs = node.inputs.flatMap((item) => {
-        if (Array.isArray(item.value)) {
-          return [
-            {
-              id: item.key,
-              value: getReferenceVariableValue({
-                value: item.value as ReferenceValueProps,
-                nodes: runtimeNodes,
-                variables
-              }),
-              nodeId: node.nodeId
-            }
-          ];
-        }
-        return [];
+      value = replaceVariableLabel({
+        text: value,
+        nodes: runtimeNodes,
+        variables: variables,
+        runningNode: node
       });
-      value = replaceVariableLabel(value, runtimeNodes, variables, customInputs);
 
       // replace reference variables
       value = getReferenceVariableValue({

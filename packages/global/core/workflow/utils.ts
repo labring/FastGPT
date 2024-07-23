@@ -6,7 +6,7 @@ import {
   variableMap,
   VARIABLE_NODE_ID
 } from './constants';
-import { FlowNodeInputItemType, FlowNodeOutputItemType } from './type/io.d';
+import { FlowNodeInputItemType, FlowNodeOutputItemType, ReferenceValueProps } from './type/io.d';
 import { StoreNodeItemType } from './type/node';
 import type {
   VariableItemType,
@@ -24,6 +24,7 @@ import {
 } from '../app/constants';
 import { IfElseResultEnum } from './template/system/ifElse/constant';
 import { RuntimeNodeItemType } from './runtime/type';
+import { getReferenceVariableValue } from './runtime/utils';
 
 export const getHandleId = (nodeId: string, type: 'source' | 'target', key: string) => {
   return `${nodeId}-${type}-${key}`;
@@ -228,23 +229,24 @@ export const updatePluginInputByVariables = (
   );
 };
 
-export function replaceVariableLabel(
-  text: any,
-  nodes: RuntimeNodeItemType[],
-  obj: Record<string, string | number>,
-  customInputs: {
-    nodeId: string;
-    id: string;
-    value: string | number;
-  }[]
-) {
+export function replaceVariableLabel({
+  text,
+  nodes,
+  variables,
+  runningNode
+}: {
+  text: any;
+  nodes: RuntimeNodeItemType[];
+  variables: Record<string, string | number>;
+  runningNode: RuntimeNodeItemType;
+}) {
   if (!(typeof text === 'string')) return text;
 
-  const globalVariables = Object.keys(obj).map((key) => {
+  const globalVariables = Object.keys(variables).map((key) => {
     return {
       nodeId: VARIABLE_NODE_ID,
       id: key,
-      value: obj[key]
+      value: variables[key]
     };
   });
 
@@ -260,14 +262,35 @@ export function replaceVariableLabel(
     })
     .flat();
 
+  const customInputs = runningNode.inputs.flatMap((item) => {
+    if (Array.isArray(item.value)) {
+      return [
+        {
+          id: item.key,
+          value: getReferenceVariableValue({
+            value: item.value as ReferenceValueProps,
+            nodes,
+            variables
+          }),
+          nodeId: runningNode.nodeId
+        }
+      ];
+    }
+    return [];
+  });
+
   const allVariables = [...globalVariables, ...nodeVariables, ...customInputs];
 
   for (const key in allVariables) {
     const val = allVariables[key];
-    if (!['string', 'number'].includes(typeof val.value)) continue;
     const regex = new RegExp(`\\{\\{\\$(${val.nodeId}\\.${val.id})\\$\\}\\}`, 'g');
-
-    text = text.replace(regex, String(val.value));
+    if (['string', 'number'].includes(typeof val.value)) {
+      text = text.replace(regex, String(val.value));
+    } else if (['object'].includes(typeof val.value)) {
+      text = text.replace(regex, JSON.stringify(val.value));
+    } else {
+      continue;
+    }
   }
   return text || '';
 }

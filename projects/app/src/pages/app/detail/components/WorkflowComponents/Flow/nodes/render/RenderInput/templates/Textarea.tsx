@@ -47,7 +47,7 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
       : sourceNodes
           .map((node) => {
             return node.outputs
-              .filter((output) => output.valueType !== WorkflowIOValueTypeEnum.dynamic)
+              .filter((output) => !!output.label)
               .map((output) => {
                 return {
                   label: t((output.label as any) || ''),
