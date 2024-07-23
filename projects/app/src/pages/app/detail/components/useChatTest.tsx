@@ -10,7 +10,6 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { useMemoizedFn } from 'ahooks';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -21,6 +20,7 @@ import dynamic from 'next/dynamic';
 import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 import { Box } from '@chakra-ui/react';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
+import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 

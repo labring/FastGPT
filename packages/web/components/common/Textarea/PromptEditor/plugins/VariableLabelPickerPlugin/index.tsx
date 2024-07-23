@@ -27,13 +27,18 @@ interface TransformedParent {
 }
 
 export default function VariableLabelPickerPlugin({
-  variables
+  variables,
+  isFocus
 }: {
   variables: EditorVariablePickerType[];
+  isFocus: boolean;
 }) {
   const { t } = useTranslation();
   const [editor] = useLexicalComposerContext();
   const [queryString, setQueryString] = useState<string | null>(null);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [highlightIndex, setHighlightIndex] = useState<number | null>(null);
+  const highlightedItemRef = React.useRef<any>(null);
 
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
     minLength: 0
@@ -58,6 +63,15 @@ export default function VariableLabelPickerPlugin({
     [editor]
   );
 
+  React.useEffect(() => {
+    if (highlightedItemRef.current) {
+      highlightedItemRef.current.scrollIntoView({
+        behavior: 'auto',
+        block: 'end'
+      });
+    }
+  }, [currentIndex]);
+
   return (
     <LexicalTypeaheadMenuPlugin
       onQueryChange={setQueryString}
@@ -71,7 +85,11 @@ export default function VariableLabelPickerPlugin({
         if (anchorElementRef.current == null) {
           return null;
         }
-        return anchorElementRef.current && variables.length
+        if (currentIndex !== selectedIndex) {
+          setCurrentIndex(selectedIndex || 0);
+          setHighlightIndex(selectedIndex || 0);
+        }
+        return anchorElementRef.current && variables.length && isFocus
           ? ReactDOM.createPortal(
               <Box
                 bg={'white'}
@@ -123,7 +141,7 @@ export default function VariableLabelPickerPlugin({
                             {item.label}
                           </Box>
                         </Flex>
-                        {item.children?.map((child, index) => (
+                        {item.children?.map((child) => (
                           <Flex
                             alignItems={'center'}
                             as={'li'}
@@ -136,7 +154,8 @@ export default function VariableLabelPickerPlugin({
                             _notLast={{
                               mb: 1
                             }}
-                            {...(selectedIndex === child.index
+                            ref={selectedIndex === child.index ? highlightedItemRef : null}
+                            {...(highlightIndex === child.index
                               ? {
                                   bg: '#1118240D',
                                   color: 'primary.700'
@@ -145,12 +164,11 @@ export default function VariableLabelPickerPlugin({
                                   bg: 'white',
                                   color: 'myGray.600'
                                 })}
-                            onClick={() => {
-                              setHighlightedIndex(child.index);
+                            onMouseDown={() => {
                               selectOptionAndCleanUp({ ...child, parent: item });
                             }}
                             onMouseEnter={() => {
-                              setHighlightedIndex(child.index);
+                              setHighlightIndex(child.index);
                             }}
                           >
                             <Box ml={2} fontSize={'sm'} whiteSpace={'nowrap'}>

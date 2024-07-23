@@ -35,6 +35,7 @@ type useChatStoreType = OutLinkChatAuthProps &
   ChatProviderProps & {
     welcomeText: string;
     variableList: VariableItemType[];
+    allVariableList: VariableItemType[];
     questionGuide: boolean;
     ttsConfig: AppTTSConfigType;
     whisperConfig: AppWhisperConfigType;
@@ -189,6 +190,7 @@ const Provider = ({
     teamToken,
     welcomeText,
     variableList: variables.filter((item) => item.type !== VariableInputEnum.custom),
+    allVariableList: variables,
     questionGuide,
     ttsConfig,
     whisperConfig,

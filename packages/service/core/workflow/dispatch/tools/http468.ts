@@ -292,14 +292,14 @@ async function fetchData({
 function replaceVariable(text: string, obj: Record<string, any>) {
   for (const [key, value] of Object.entries(obj)) {
     if (value === undefined) {
-      text = text.replace(new RegExp(`{{${key}}}`, 'g'), UNDEFINED_SIGN);
+      text = text.replace(new RegExp(`{{(${key})}}`, 'g'), UNDEFINED_SIGN);
     } else {
       const replacement = JSON.stringify(value);
       const unquotedReplacement =
         replacement.startsWith('"') && replacement.endsWith('"')
           ? replacement.slice(1, -1)
           : replacement;
-      text = text.replace(new RegExp(`{{${key}}}`, 'g'), unquotedReplacement);
+      text = text.replace(new RegExp(`{{(${key})}}`, 'g'), unquotedReplacement);
     }
   }
   return text || '';
