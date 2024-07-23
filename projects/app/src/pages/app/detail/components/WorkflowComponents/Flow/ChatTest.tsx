@@ -32,7 +32,8 @@ const ChatTest = ({
 
   const { restartChat, ChatContainer, pluginRunTab, setPluginRunTab, chatRecords } = useChatTest({
     nodes,
-    edges
+    edges,
+    chatConfig: appDetail.chatConfig
   });
 
   return (

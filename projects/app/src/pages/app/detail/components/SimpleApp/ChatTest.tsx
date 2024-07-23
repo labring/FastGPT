@@ -31,7 +31,10 @@ const ChatTest = ({ appForm }: { appForm: AppSimpleEditFormType }) => {
     setWorkflowData({ nodes, edges });
   }, [appForm, setWorkflowData, allDatasets]);
 
-  const { restartChat, ChatContainer } = useChatTest(workflowData);
+  const { restartChat, ChatContainer } = useChatTest({
+    ...workflowData,
+    chatConfig: appForm.chatConfig
+  });
 
   return (
     <Flex position={'relative'} flexDirection={'column'} h={'100%'} py={4}>
