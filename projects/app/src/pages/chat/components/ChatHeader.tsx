@@ -22,10 +22,7 @@ import {
 } from '@fastgpt/global/common/parentFolder/type';
 import { getMyApps } from '@/web/core/app/api';
 import SelectOneResource from '@/components/common/folder/SelectOneResource';
-enum TabEnum {
-  recently = 'recently',
-  'app' = 'app'
-}
+
 const ChatHeader = ({
   chatData,
   history,
@@ -39,30 +36,8 @@ const ChatHeader = ({
   apps?: AppListItemType[];
   chatData: InitChatResponse;
 }) => {
-  const theme = useTheme();
-  const { t } = useTranslation();
-  const { isPc } = useSystem();
-  const router = useRouter();
-  const { onChangeAppId, chatId: activeChatId } = useContextSelector(ChatContext, (v) => v);
-  const chatModels = chatData.app.chatModels;
   const isPlugin = chatData.app.type === AppTypeEnum.plugin;
-  const { isOpen: isOpenDrawer, onToggle: toggleDrawer, onClose: onCloseDrawer } = useDisclosure();
-  const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
-  const isTeamChat = router.pathname === '/chat/team';
-  const isShareChat = router.pathname === '/chat/share';
-  const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
-    return getMyApps({ parentId }).then((res) =>
-      res.map<GetResourceListItemResponse>((item) => ({
-        id: item._id,
-        name: item.name,
-        avatar: item.avatar,
-        isFolder: item.type === AppTypeEnum.folder
-      }))
-    );
-  }, []);
-  const [currentTab, setCurrentTab] = useState<TabEnum>(
-    isTeamChat ? TabEnum.app : TabEnum.recently
-  );
+  const { isPc } = useSystem();
   return (
     <>
       {isPc && isPlugin ? null : (
@@ -75,243 +50,249 @@ const ChatHeader = ({
           fontSize={'sm'}
         >
           {isPc ? (
-            <>
-              <Box mr={3} maxW={'160px'} className="textEllipsis" color={'myGray.1000'}>
-                {chatData.title}
-              </Box>
-              <MyTag>
-                <MyIcon name={'history'} w={'14px'} />
-                <Box ml={1}>
-                  {history.length === 0
-                    ? t('common:core.chat.New Chat')
-                    : t('core.chat.History Amount', { amount: history.length })}
-                </Box>
-              </MyTag>
-              {!!chatModels && chatModels.length > 0 && (
-                <MyTooltip label={chatModels.join(',')}>
-                  <MyTag ml={2} colorSchema={'green'}>
-                    <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
-                    <Box ml={1} maxW={'200px'} className="textEllipsis">
-                      {chatModels.join(',')}
-                    </Box>
-                  </MyTag>
-                </MyTooltip>
-              )}
-              <Box flex={1} />
-            </>
+            <PcHeader
+              title={chatData.title}
+              chatModels={chatData.app.chatModels}
+              history={history}
+            />
           ) : (
-            <>
-              {showHistory && (
-                <MyIcon
-                  name={'menu'}
-                  w={'20px'}
-                  h={'20px'}
-                  color={'myGray.900'}
-                  onClick={onOpenSlider}
-                />
-              )}
-              {isPc && isPlugin ? null : (
-                <Flex
-                  alignItems={'center'}
-                  px={[3, 5]}
-                  minH={['46px', '60px']}
-                  borderBottom={theme.borders.sm}
-                  color={'myGray.900'}
-                  fontSize={'sm'}
-                >
-                  {isPc ? (
-                    <>
-                      <Box mr={3} maxW={'160px'} className="textEllipsis" color={'myGray.1000'}>
-                        {chatData.title}
-                      </Box>
-                      <MyTag>
-                        <MyIcon name={'history'} w={'14px'} />
-                        <Box ml={1}>
-                          {history.length === 0
-                            ? t('common:core.chat.New Chat')
-                            : t('core.chat.History Amount', { amount: history.length })}
-                        </Box>
-                      </MyTag>
-                      {!!chatModels && chatModels.length > 0 && (
-                        <MyTooltip label={chatModels.join(',')}>
-                          <MyTag ml={2} colorSchema={'green'}>
-                            <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
-                            <Box ml={1} maxW={'200px'} className="textEllipsis">
-                              {chatModels.join(',')}
-                            </Box>
-                          </MyTag>
-                        </MyTooltip>
-                      )}
-                      <Box flex={1} />
-                    </>
-                  ) : (
-                    <>
-                      {showHistory && (
-                        <MyIcon
-                          name={'menu'}
-                          w={'20px'}
-                          h={'20px'}
-                          color={'myGray.900'}
-                          onClick={onOpenSlider}
-                        />
-                      )}
-
-                      <Flex
-                        px={3}
-                        alignItems={'center'}
-                        flex={'1 0 0'}
-                        w={0}
-                        justifyContent={'center'}
-                      >
-                        <Avatar src={chatData.app.avatar} w={'16px'} />
-                        <Box ml={1} className="textEllipsis" onClick={onRoute2AppDetail}>
-                          {chatData.app.name}
-                        </Box>
-                        {isShareChat ? null : (
-                          <MyIcon
-                            _active={{ transform: 'scale(0.9)' }}
-                            name={'core/chat/chevronSelector'}
-                            w={'20px'}
-                            h={'20px'}
-                            color={isOpenDrawer ? 'primary.600' : 'myGray.900'}
-                            onClick={toggleDrawer}
-                          />
-                        )}
-                      </Flex>
-                    </>
-                  )}
-
-                  {/* control */}
-                  {!isPlugin && <ToolMenu history={history} />}
-                </Flex>
-              )}
-              <Flex px={3} alignItems={'center'} flex={'1 0 0'} w={0} justifyContent={'center'}>
-                <Avatar src={chatData.app.avatar} w={'16px'} />
-                <Box ml={1} className="textEllipsis" onClick={onRoute2AppDetail}>
-                  {chatData.app.name}
-                </Box>
-                {isShareChat ? null : (
-                  <MyIcon
-                    _active={{ transform: 'scale(0.9)' }}
-                    name={'core/chat/chevronSelector'}
-                    w={'20px'}
-                    h={'20px'}
-                    color={isOpenDrawer ? 'primary.600' : 'myGray.900'}
-                    onClick={toggleDrawer}
-                  />
-                )}
-              </Flex>
-            </>
+            <MobileHeader
+              apps={apps}
+              appId={chatData.appId}
+              go2AppDetail={onRoute2AppDetail}
+              name={chatData.app.name}
+              avatar={chatData.app.avatar}
+              showHistory={showHistory}
+            />
           )}
 
           {/* control */}
           {!isPlugin && <ToolMenu history={history} />}
         </Flex>
       )}
-      {/* 最近使用和应用弹窗 */}
-      {!isPc && isOpenDrawer && !isShareChat && (
+    </>
+  );
+};
+
+const MobileDrawer = ({
+  onCloseDrawer,
+  appId,
+  apps
+}: {
+  onCloseDrawer: () => void;
+  appId: string;
+  apps?: AppListItemType[];
+}) => {
+  enum TabEnum {
+    recently = 'recently',
+    app = 'app'
+  }
+  const { t } = useTranslation();
+  const { isPc } = useSystem();
+  const router = useRouter();
+  const isTeamChat = router.pathname === '/chat/team';
+  const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.recently);
+  const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
+    return getMyApps({ parentId }).then((res) =>
+      res.map<GetResourceListItemResponse>((item) => ({
+        id: item._id,
+        name: item.name,
+        avatar: item.avatar,
+        isFolder: item.type === AppTypeEnum.folder
+      }))
+    );
+  }, []);
+  const { onChangeAppId } = useContextSelector(ChatContext, (v) => v);
+  return (
+    <>
+      <Box
+        position={'absolute'}
+        top={'46px'}
+        w={'100vw'}
+        h={'calc(100% - 46px)'}
+        background={'rgba(0, 0, 0, 0.2)'}
+        left={0}
+        zIndex={5}
+        onClick={() => {
+          onCloseDrawer();
+        }}
+      >
+        {/* menu */}
         <Box
-          position={'absolute'}
-          top={'46px'}
-          w={'100%'}
-          h={'calc(100% - 46px)'}
-          background={'rgba(0, 0, 0, 0.2)'}
-          zIndex={5}
-          onClick={() => {
-            onCloseDrawer();
-            onCloseDrawer();
-          }}
+          w={'100vw'}
+          px={[2, 5]}
+          padding={2}
+          onClick={(e) => e.stopPropagation()}
+          background={'white'}
+          position={'relative'}
         >
-          {/* menu */}
-          <Box
-            w={'100%'}
-            px={[2, 5]}
-            padding={2}
-            onClick={(e) => e.stopPropagation()}
-            background={'white'}
-            position={'relative'}
-          >
-            {!isPc && chatData.appId && (
-              <LightRowTabs<TabEnum>
-                flex={'1 0 0'}
-                width={isTeamChat ? '30%' : '60%'}
-                mr={10}
-                inlineStyles={{
-                  px: 1
-                }}
-                list={[
-                  ...(isTeamChat
-                    ? [{ label: t('all_app'), value: TabEnum.recently }]
-                    : [
-                        { label: t('core.chat.Recent use'), value: TabEnum.recently },
-                        { label: t('all_app'), value: TabEnum.app }
-                      ])
-                ]}
-                value={currentTab}
-                onChange={setCurrentTab}
-              />
-            )}
-          </Box>
-          <Box
-            width={'100%'}
-            height={'auto'}
-            minH={'10vh'}
-            maxH={'60vh'}
-            overflow={'auto'}
-            background={'white'}
-            zIndex={3}
-            onClick={(e) => e.stopPropagation()}
-            borderRadius={'0 0 10px 10px'}
-            position={'relative'}
-            padding={3}
-            pt={0}
-            pb={4}
-          >
-            {/* history */}
-            {currentTab === TabEnum.recently && !isPc && (
-              <>
-                {Array.isArray(apps) &&
-                  apps.map((item) => (
-                    <Flex justify={'center'} key={item._id}>
-                      <Flex
-                        py={2.5}
-                        px={2}
-                        width={'100%'}
-                        borderRadius={'md'}
-                        alignItems={'center'}
-                        {...(item._id === chatData.appId
-                          ? {
-                              backgroundColor: 'primary.50 !important',
-                              color: 'primary.600'
-                            }
-                          : {
-                              onClick: () => onChangeAppId(item._id)
-                            })}
-                      >
-                        <Avatar src={item.avatar} w={'24px'} />
-                        <Box ml={2} className={'textEllipsis'}>
-                          {item.name}
-                        </Box>
-                      </Flex>
-                    </Flex>
-                  ))}
-              </>
-            )}
-            {currentTab === TabEnum.app && !isPc && (
-              <>
-                <SelectOneResource
-                  value={chatData.appId}
-                  onSelect={(id) => {
-                    if (!id) return;
-                    onChangeAppId(id);
-                  }}
-                  server={getAppList}
-                />
-              </>
-            )}
-          </Box>
+          {!isPc && appId && (
+            <LightRowTabs<TabEnum>
+              flex={'1 0 0'}
+              width={isTeamChat ? '30%' : '60%'}
+              mr={10}
+              inlineStyles={{
+                px: 1
+              }}
+              list={[
+                ...(isTeamChat
+                  ? [{ label: t('common:all_apps'), value: TabEnum.recently }]
+                  : [
+                      { label: t('common:core.chat.Recent use'), value: TabEnum.recently },
+                      { label: t('common:all_apps'), value: TabEnum.app }
+                    ])
+              ]}
+              value={currentTab}
+              onChange={setCurrentTab}
+            />
+          )}
         </Box>
+        <Box
+          width={'100vw'}
+          height={'auto'}
+          minH={'10vh'}
+          maxH={'60vh'}
+          overflow={'auto'}
+          background={'white'}
+          zIndex={3}
+          onClick={(e) => e.stopPropagation()}
+          borderRadius={'0 0 10px 10px'}
+          position={'relative'}
+          padding={3}
+          pt={0}
+          pb={4}
+        >
+          {/* history */}
+          {currentTab === TabEnum.recently && (
+            <>
+              {Array.isArray(apps) &&
+                apps.map((item) => (
+                  <Flex justify={'center'} key={item._id}>
+                    <Flex
+                      py={2.5}
+                      px={2}
+                      width={'100%'}
+                      borderRadius={'md'}
+                      alignItems={'center'}
+                      {...(item._id === appId
+                        ? {
+                            backgroundColor: 'primary.50 !important',
+                            color: 'primary.600'
+                          }
+                        : {
+                            onClick: () => onChangeAppId(item._id)
+                          })}
+                    >
+                      <Avatar src={item.avatar} w={'24px'} />
+                      <Box ml={2} className={'textEllipsis'}>
+                        {item.name}
+                      </Box>
+                    </Flex>
+                  </Flex>
+                ))}
+            </>
+          )}
+          {currentTab === TabEnum.app && !isPc && (
+            <>
+              <SelectOneResource
+                value={appId}
+                onSelect={(id) => {
+                  if (!id) return;
+                  onChangeAppId(id);
+                }}
+                server={getAppList}
+              />
+            </>
+          )}
+        </Box>
+      </Box>
+    </>
+  );
+};
+
+const MobileHeader = ({
+  showHistory,
+  go2AppDetail,
+  name,
+  avatar,
+  appId,
+  apps
+}: {
+  showHistory?: boolean;
+  go2AppDetail?: () => void;
+  avatar: string;
+  name: string;
+  apps?: AppListItemType[];
+  appId: string;
+}) => {
+  const { isPc } = useSystem();
+  const router = useRouter();
+  const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
+  const { isOpen: isOpenDrawer, onToggle: toggleDrawer, onClose: onCloseDrawer } = useDisclosure();
+  const isShareChat = router.pathname === '/chat/share';
+
+  return (
+    <>
+      {showHistory && (
+        <MyIcon name={'menu'} w={'20px'} h={'20px'} color={'myGray.900'} onClick={onOpenSlider} />
       )}
+      <Flex px={3} alignItems={'center'} flex={'1 0 0'} w={0} justifyContent={'center'}>
+        <Avatar src={avatar} w={'16px'} />
+        <Box ml={1} className="textEllipsis" onClick={go2AppDetail}>
+          {name}
+        </Box>
+        {isShareChat ? null : (
+          <MyIcon
+            _active={{ transform: 'scale(0.9)' }}
+            name={'core/chat/chevronSelector'}
+            w={'20px'}
+            h={'20px'}
+            color={isOpenDrawer ? 'primary.600' : 'myGray.900'}
+            onClick={toggleDrawer}
+          />
+        )}
+      </Flex>
+      {!isPc && isOpenDrawer && !isShareChat && (
+        <MobileDrawer apps={apps} appId={appId} onCloseDrawer={onCloseDrawer} />
+      )}
+    </>
+  );
+};
+
+const PcHeader = ({
+  title,
+  chatModels,
+  history
+}: {
+  title: string;
+  chatModels?: string[];
+  history: ChatItemType[];
+}) => {
+  const { t } = useTranslation();
+  return (
+    <>
+      <Box mr={3} maxW={'160px'} className="textEllipsis" color={'myGray.1000'}>
+        {title}
+      </Box>
+      <MyTag>
+        <MyIcon name={'history'} w={'14px'} />
+        <Box ml={1}>
+          {history.length === 0
+            ? t('common:core.chat.New Chat')
+            : t('common:core.chat.History Amount', { amount: history.length })}
+        </Box>
+      </MyTag>
+      {!!chatModels && chatModels.length > 0 && (
+        <MyTooltip label={chatModels.join(',')}>
+          <MyTag ml={2} colorSchema={'green'}>
+            <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
+            <Box ml={1} maxW={'200px'} className="textEllipsis">
+              {chatModels.join(',')}
+            </Box>
+          </MyTag>
+        </MyTooltip>
+      )}
+      <Box flex={1} />
     </>
   );
 };

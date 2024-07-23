@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Box, Button, Flex, useTheme, IconButton } from '@chakra-ui/react';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
@@ -12,12 +12,6 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useI18n } from '@/web/context/I18n';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import {
-  GetResourceFolderListProps,
-  GetResourceListItemResponse
-} from '@fastgpt/global/common/parentFolder/type';
-import { getMyApps } from '@/web/core/app/api';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -28,12 +22,6 @@ type HistoryItemType = {
   customTitle?: string;
   top?: boolean;
 };
-
-enum TabEnum {
-  recently = 'recently',
-  'app' = 'app',
-  'history' = 'history'
-}
 
 const ChatHistorySlider = ({
   appId,
@@ -82,7 +70,7 @@ const ChatHistorySlider = ({
     }));
     const newChat: HistoryItemType = {
       id: activeChatId,
-      title: t('core.chat.New Chat')
+      title: t('common:core.chat.New Chat')
     };
     const activeChat = histories.find((item) => item.chatId === activeChatId);
 
@@ -93,8 +81,8 @@ const ChatHistorySlider = ({
 
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
-    title: t('core.chat.Custom History Title'),
-    placeholder: t('core.chat.Custom History Title Description')
+    title: t('common:core.chat.Custom History Title'),
+    placeholder: t('common:core.chat.Custom History Title Description')
   });
   const { openConfirm, ConfirmModal } = useConfirm({
     content: confirmClearText
@@ -104,17 +92,6 @@ const ChatHistorySlider = ({
     () => appId && userInfo?.team.permission.hasWritePer,
     [appId, userInfo?.team.permission.hasWritePer]
   );
-
-  const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
-    return getMyApps({ parentId }).then((res) =>
-      res.map<GetResourceListItemResponse>((item) => ({
-        id: item._id,
-        name: item.name,
-        avatar: item.avatar,
-        isFolder: item.type === AppTypeEnum.folder
-      }))
-    );
-  }, []);
 
   return (
     <MyBox
@@ -165,7 +142,7 @@ const ChatHistorySlider = ({
           <Flex height={'100%'} align={'center'} justify={'center'}>
             <MyIcon ml={2} name="core/chat/sideLine" />
             <Box ml={2} fontWeight={'bold'}>
-              {t('core.chat.History')}
+              {t('common:core.chat.History')}
             </Box>
           </Flex>
         )}
@@ -180,7 +157,7 @@ const ChatHistorySlider = ({
           overflow={'hidden'}
           onClick={() => onChangeChatId()}
         >
-          {t('core.chat.New Chat')}
+          {t('common:core.chat.New Chat')}
         </Button>
         {/* Clear */}
         {isPc && (
@@ -259,7 +236,9 @@ const ChatHistorySlider = ({
                           ...(onSetHistoryTop
                             ? [
                                 {
-                                  label: item.top ? t('core.chat.Unpin') : t('core.chat.Pin'),
+                                  label: item.top
+                                    ? t('common:core.chat.Unpin')
+                                    : t('common:core.chat.Pin'),
                                   icon: 'core/chat/setTopLight',
                                   onClick: () => {
                                     onSetHistoryTop({
@@ -273,7 +252,7 @@ const ChatHistorySlider = ({
                           ...(onSetCustomTitle
                             ? [
                                 {
-                                  label: t('common.Custom Title'),
+                                  label: t('common:common.Custom Title'),
                                   icon: 'common/customTitleLight',
                                   onClick: () => {
                                     onOpenModal({
@@ -289,7 +268,7 @@ const ChatHistorySlider = ({
                               ]
                             : []),
                           {
-                            label: t('common.Delete'),
+                            label: t('common:common.Delete'),
                             icon: 'delete',
                             onClick: () => {
                               onDelHistory({ chatId: item.id });
@@ -329,7 +308,7 @@ const ChatHistorySlider = ({
             borderRadius={'50%'}
             aria-label={''}
           />
-          {t('core.chat.Exit Chat')}
+          {t('common:core.chat.Exit Chat')}
         </Flex>
       )}
       <EditTitleModal />
