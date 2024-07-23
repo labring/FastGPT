@@ -140,6 +140,7 @@ const ChatBox = (
   const {
     welcomeText,
     variableList,
+    allVariableList,
     questionGuide,
     startSegmentedAudio,
     finishSegmentedAudio,
@@ -388,6 +389,12 @@ const ChatBox = (
             return;
           }
 
+          // delete invalid variables， 只保留在 variableList 中的变量
+          const requestVariables: Record<string, any> = {};
+          allVariableList?.forEach((item) => {
+            requestVariables[item.key] = variables[item.key] || '';
+          });
+
           const responseChatId = getNanoid(24);
           questionGuideController.current?.abort('stop');
 
@@ -462,7 +469,7 @@ const ChatBox = (
               responseChatItemId: responseChatId,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
-              variables
+              variables: requestVariables
             });
 
             isNewChatReplace.current = isNewChat;
