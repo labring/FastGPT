@@ -1,23 +1,19 @@
 {
-  "add_new": "Add new",
   "App": "App",
   "all_apps": "All Apps",
   "click_to_resume": "Resume",
   "code_editor": "Code edit",
   "Export": "Export",
-  "field_name": "Name",
   "Folder": "Folder",
-  "is_open": "Opened",
   "Login": "Login",
   "Move": "Move",
   "Name": "Name",
-  "new_create": "Create New",
-  "no_data": "No data",
   "Rename": "Rename",
   "Resume": "Resume",
   "Running": "Running",
   "UnKnow": "Unknown",
   "Warning": "Warning",
+  "add_new": "Add new",
   "common": {
     "Action": "Action",
     "Add": "Add",
@@ -294,7 +290,7 @@
       },
       "tip": {
         "Add a intro to app": "Come and give the app an introduction~",
-        "chatNodeSystemPromptTip": "Model fixed guide words, by adjusting this content, you can guide the model's chat direction. This content will be fixed at the beginning of the context. Variables can be used, for example, {{language}}\nIf a knowledge base is associated, you can also guide the model when to call the knowledge base search by appropriately describing it. For example:\nYou are the assistant for the movie 'Interstellar', when the user asks about content related to 'Interstellar', please search the knowledge base and combine the search results for answers.",
+        "chatNodeSystemPromptTip": "The model has a fixed guide word. By adjusting this content, you can guide the model in the chat direction. \nThe content will be anchored at the beginning of the context. \nVariables can be selected via input/insert\n\nIf a knowledge base is associated, you can also use appropriate descriptions to guide the model when to call the knowledge base search. \nFor example:\n\nYou are an assistant in the movie \"Interstellar\". When users ask about content related to \"Interstellar\", please search the knowledge base and answer based on the search results.",
         "variableTip": "You can ask the user to fill in some content as specific variables for this round of conversation before the conversation starts. This module is located after the opening guide.\nVariables can be injected into other module string type inputs through the form of {{variable key}}, such as: prompt words, limiting words, etc.",
         "welcomeTextTip": "Send an initial content before each conversation starts. Supports standard Markdown syntax, additional tags available:\n[Shortcut key]: User can click to send the question directly"
       },
@@ -902,7 +898,9 @@
       "overSize": "Team members exceed the limit"
     }
   },
+  "field_name": "Name",
   "invalid_variable": "Invalid variable",
+  "is_open": "Opened",
   "navbar": {
     "Account": "Account",
     "Chat": "Chat",
@@ -910,6 +908,8 @@
     "Studio": "Studio",
     "Tools": "Tools"
   },
+  "new_create": "Create New",
+  "no_data": "No data",
   "permission": {
     "Collaborator": "collaborator",
     "Default permission": "Default permission",
@@ -1148,6 +1148,7 @@
     "Quote Content Tip": "You can customize the structure of the quote content to better adapt to different scenarios. You can use some variables for template configuration:\n{{q}} - search content, {{a}} - expected content, {{source}} - source, {{sourceId}} - source file name, {{index}} - the nth quote, they are all optional, here are the default values:\n{{default}}",
     "Quote Prompt Tip": "You can use {{quote}} to insert the quote content template, and use {{question}} to insert the question. Here are the default values:\n{{default}}"
   },
+  "textarea_variable_picker_tip": "Input / to select variables",
   "unusable_variable": "no usable variable",
   "user": {
     "Account": "Account",
