@@ -140,6 +140,7 @@ const ChatBox = (
   const {
     welcomeText,
     variableList,
+    allVariableList,
     questionGuide,
     startSegmentedAudio,
     finishSegmentedAudio,
@@ -390,7 +391,7 @@ const ChatBox = (
 
           // delete invalid variables， 只保留在 variableList 中的变量
           const requestVariables: Record<string, any> = {};
-          variableList?.forEach((item) => {
+          allVariableList?.forEach((item) => {
             requestVariables[item.key] = variables[item.key] || '';
           });
 
