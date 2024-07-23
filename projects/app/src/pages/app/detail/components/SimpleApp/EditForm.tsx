@@ -107,7 +107,14 @@ const EditForm = ({
       formatEditorVariablePickerIcon([
         ...getSystemVariables(t),
         ...(appForm.chatConfig.variables || [])
-      ]),
+      ]).map((item) => ({
+        ...item,
+        parent: {
+          id: 'VARIABLE_NODE_ID',
+          label: '全局变量',
+          avatar: '/imgs/workflow/variable.png'
+        }
+      })),
     [appForm.chatConfig.variables, t]
   );
 

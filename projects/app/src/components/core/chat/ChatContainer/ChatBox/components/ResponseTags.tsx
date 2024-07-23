@@ -207,6 +207,56 @@ const ResponseTags = ({
                 </Flex>
               </Collapse>
             }
+
+            {sourceList.map((item) => {
+              return (
+                <MyTooltip key={item.collectionId} label={t('common:core.chat.quote.Read Quote')}>
+                  <Flex
+                    alignItems={'center'}
+                    fontSize={'xs'}
+                    border={'sm'}
+                    py={1.5}
+                    px={2}
+                    borderRadius={'sm'}
+                    _hover={{
+                      '.controller': {
+                        display: 'flex'
+                      }
+                    }}
+                    overflow={'hidden'}
+                    position={'relative'}
+                    cursor={'pointer'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setQuoteModalData({
+                        rawSearch: quoteList,
+                        metadata: {
+                          collectionId: item.collectionId,
+                          sourceId: item.sourceId,
+                          sourceName: item.sourceName
+                        }
+                      });
+                    }}
+                  >
+                    <MyIcon name={item.icon as any} mr={1} flexShrink={0} w={'12px'} />
+                    <Box className="textEllipsis3" wordBreak={'break-all'} flex={'1 0 0'}>
+                      {item.sourceName}
+                    </Box>
+                  </Flex>
+                </MyTooltip>
+              );
+            })}
+            {!quoteFolded && (
+              <MyIcon
+                position={'absolute'}
+                bottom={0}
+                right={0}
+                _hover={{ color: 'primary.500', cursor: 'pointer' }}
+                name="core/chat/chevronUp"
+                w={'14px'}
+                onClick={() => setQuoteFolded(!quoteFolded)}
+              />
+            )}
           </Flex>
         </>
       )}

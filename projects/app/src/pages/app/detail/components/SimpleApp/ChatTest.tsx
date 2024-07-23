@@ -11,21 +11,25 @@ import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { useChatTest } from '../useChatTest';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
 const ChatTest = ({ appForm }: { appForm: AppSimpleEditFormType }) => {
   const { t } = useTranslation();
   const { appT } = useI18n();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
+  // form2AppWorkflow dependent allDatasets
+  const { allDatasets } = useDatasetStore();
 
   const [workflowData, setWorkflowData] = useSafeState({
     nodes: appDetail.modules || [],
     edges: appDetail.edges || []
   });
+
   useEffect(() => {
     const { nodes, edges } = form2AppWorkflow(appForm);
     setWorkflowData({ nodes, edges });
-  }, [appForm, setWorkflowData]);
+  }, [appForm, setWorkflowData, allDatasets]);
 
   const { restartChat, ChatContainer } = useChatTest({
     ...workflowData,

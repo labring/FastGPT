@@ -5,7 +5,7 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
-import VariablePickerPlugin from './plugins/VariablePickerPlugin';
+import VariableLabelPickerPlugin from './plugins/VariableLabelPickerPlugin';
 import { Box } from '@chakra-ui/react';
 import styles from './index.module.scss';
 import VariablePlugin from './plugins/VariablePlugin';
@@ -18,6 +18,8 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import FocusPlugin from './plugins/FocusPlugin';
 import { textToEditorState } from './utils';
 import { MaxLengthPlugin } from './plugins/MaxLengthPlugin';
+import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
+import VariableLabelPlugin from './plugins/VariableLabelPlugin';
 
 export default function Editor({
   h = 200,
@@ -51,7 +53,7 @@ export default function Editor({
 
   const initialConfig = {
     namespace: 'promptEditor',
-    nodes: [VariableNode],
+    nodes: [VariableNode, VariableLabelNode],
     editorState: textToEditorState(value),
     onError: (error: Error) => {
       throw error;
@@ -127,8 +129,9 @@ export default function Editor({
             });
           }}
         />
-        <VariablePickerPlugin variables={variables} />
+        <VariableLabelPickerPlugin variables={variables} />
         <VariablePlugin variables={variables} />
+        <VariableLabelPlugin variables={variables} />
         <OnBlurPlugin onBlur={onBlur} />
       </LexicalComposer>
       {showResize && (

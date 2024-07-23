@@ -19,6 +19,7 @@ import {
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { responseWriteNodeStatus } from '../../../common/response';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+import { replaceVariableLabel } from '@fastgpt/global/core/workflow/utils';
 
 import { dispatchWorkflowStart } from './init/workflowStart';
 import { dispatchChatCompletion } from './chat/oneapi';
@@ -54,6 +55,7 @@ import { surrenderProcess } from '../../../common/system/tools';
 import { dispatchRunCode } from './code/run';
 import { dispatchTextEditor } from './tools/textEditor';
 import { dispatchCustomFeedback } from './tools/customFeedback';
+import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -120,7 +122,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   let chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user
   let chatNodeUsages: ChatNodeUsageType[] = [];
   let toolRunResponse: ToolRunResponseItemType;
-  let runningTime = Date.now();
   let debugNextStepRunNodes: RuntimeNodeItemType[] = [];
 
   /* Store special response field  */
@@ -140,13 +141,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       [DispatchNodeResponseKeyEnum.assistantResponses]?: AIChatItemValueItemType[]; // tool module, save the response value
     }
   ) {
-    const time = Date.now();
-
     if (responseData) {
-      chatResponses.push({
-        ...responseData,
-        runningTime: +((time - runningTime) / 1000).toFixed(2)
-      });
+      chatResponses.push(responseData);
     }
     if (nodeDispatchUsages) {
       chatNodeUsages = chatNodeUsages.concat(nodeDispatchUsages);
@@ -173,8 +169,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         });
       }
     }
-
-    runningTime = time;
   }
   /* Pass the output of the module to the next stage */
   function nodeOutput(
@@ -291,6 +285,14 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       // replace {{}} variables
       let value = replaceVariable(input.value, variables);
 
+      // replace {{$$}} variables
+      value = replaceVariableLabel({
+        text: value,
+        nodes: runtimeNodes,
+        variables: variables,
+        runningNode: node
+      });
+
       // replace reference variables
       value = getReferenceVariableValue({
         value,
@@ -318,6 +320,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         status: 'running'
       });
     }
+    const startTime = Date.now();
 
     // get node running params
     const params = getNodeRunParams(node);
@@ -352,6 +355,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         nodeId: node.nodeId,
         moduleName: node.name,
         moduleType: node.flowNodeType,
+        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
         ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]
       };
     })();

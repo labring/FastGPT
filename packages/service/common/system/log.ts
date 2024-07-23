@@ -30,7 +30,7 @@ const { LOG_LEVEL, STORE_LOG_LEVEL } = (() => {
   const STORE_LOG_LEVEL = (process.env.STORE_LOG_LEVEL || '').toLocaleLowerCase();
 
   return {
-    LOG_LEVEL: envLogLevelMap[LOG_LEVEL] || LogLevelEnum.info,
+    LOG_LEVEL: envLogLevelMap[LOG_LEVEL] ?? LogLevelEnum.info,
     STORE_LOG_LEVEL: envLogLevelMap[STORE_LOG_LEVEL] ?? 99
   };
 })();

@@ -441,11 +441,18 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
 
   // token filter
   const filterMaxTokensResult = await (async () => {
+    const tokensScoreFilter = await Promise.all(
+      scoreFilter.map(async (item) => ({
+        ...item,
+        tokens: await countPromptTokens(item.q + item.a)
+      }))
+    );
+
     const results: SearchDataResponseItemType[] = [];
     let totalTokens = 0;
 
-    for await (const item of scoreFilter) {
-      totalTokens += await countPromptTokens(item.q + item.a);
+    for await (const item of tokensScoreFilter) {
+      totalTokens += item.tokens;
 
       if (totalTokens > maxTokens + 500) {
         break;

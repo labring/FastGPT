@@ -7,6 +7,7 @@ import {
   LLMModelItemType
 } from '@fastgpt/global/core/ai/model.d';
 import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
+import { WorkerNameEnum, WorkerPool } from './worker/utils';
 import { Worker } from 'worker_threads';
 
 declare global {
@@ -20,12 +21,8 @@ declare global {
   var whisperModel: WhisperModelType;
   var reRankModels: ReRankModelItemType[];
 
-  var tiktokenWorkers: {
-    index: number;
-    worker: Worker;
-    callbackMap: Record<string, (e: number) => void>;
-  }[];
-
   var systemLoadedGlobalVariables: boolean;
   var systemLoadedGlobalConfig: boolean;
+
+  var workerPoll: Record<WorkerNameEnum, WorkerPool>;
 }

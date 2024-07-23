@@ -4,6 +4,7 @@
   "dependencies": {
     "duck-duck-scrape": "^2.2.5",
     "lodash": "^4.17.21",
+    "axios": "^1.5.1",
     "expr-eval": "^2.0.2"
   },
   "devDependencies": {

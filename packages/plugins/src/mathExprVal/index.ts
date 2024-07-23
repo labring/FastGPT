@@ -1,4 +1,3 @@
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { Parser } from 'expr-eval';
 
 type Props = {
