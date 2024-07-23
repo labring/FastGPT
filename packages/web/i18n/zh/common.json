@@ -901,6 +901,7 @@
       "overSize": "团队成员超出上限"
     }
   },
+  "invalid_variable": "无效变量",
   "navbar": {
     "Account": "账号",
     "Chat": "聊天",
@@ -1146,6 +1147,7 @@
     "Quote Content Tip": "可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置：\n{{q}} - 检索内容，{{a}} - 预期内容，{{source}} - 来源，{{sourceId}} - 来源文件名，{{index}} - 第 n 个引用，他们都是可选的，下面是默认值：\n{{default}}",
     "Quote Prompt Tip": "可以用 {{quote}} 来插入引用内容模板，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"
   },
+  "unusable_variable": "无可用变量",
   "user": {
     "Account": "账号",
     "Amount of earnings": "收益（￥）",

@@ -3,9 +3,10 @@ import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   VariableInputEnum,
-  variableMap
+  variableMap,
+  VARIABLE_NODE_ID
 } from './constants';
-import { FlowNodeInputItemType, FlowNodeOutputItemType } from './type/io.d';
+import { FlowNodeInputItemType, FlowNodeOutputItemType, ReferenceValueProps } from './type/io.d';
 import { StoreNodeItemType } from './type/node';
 import type {
   VariableItemType,
@@ -23,6 +24,7 @@ import {
 } from '../app/constants';
 import { IfElseResultEnum } from './template/system/ifElse/constant';
 import { RuntimeNodeItemType } from './runtime/type';
+import { getReferenceVariableValue } from './runtime/utils';
 
 export const getHandleId = (nodeId: string, type: 'source' | 'target', key: string) => {
   return `${nodeId}-${type}-${key}`;
@@ -226,3 +228,69 @@ export const updatePluginInputByVariables = (
       : node
   );
 };
+
+export function replaceVariableLabel({
+  text,
+  nodes,
+  variables,
+  runningNode
+}: {
+  text: any;
+  nodes: RuntimeNodeItemType[];
+  variables: Record<string, string | number>;
+  runningNode: RuntimeNodeItemType;
+}) {
+  if (!(typeof text === 'string')) return text;
+
+  const globalVariables = Object.keys(variables).map((key) => {
+    return {
+      nodeId: VARIABLE_NODE_ID,
+      id: key,
+      value: variables[key]
+    };
+  });
+
+  const nodeVariables = nodes
+    .map((node) => {
+      return node.outputs.map((output) => {
+        return {
+          nodeId: node.nodeId,
+          id: output.id,
+          value: output.value
+        };
+      });
+    })
+    .flat();
+
+  const customInputs = runningNode.inputs.flatMap((item) => {
+    if (Array.isArray(item.value)) {
+      return [
+        {
+          id: item.key,
+          value: getReferenceVariableValue({
+            value: item.value as ReferenceValueProps,
+            nodes,
+            variables
+          }),
+          nodeId: runningNode.nodeId
+        }
+      ];
+    }
+    return [];
+  });
+
+  const allVariables = [...globalVariables, ...nodeVariables, ...customInputs];
+
+  for (const key in allVariables) {
+    const val = allVariables[key];
+    const regex = new RegExp(`\\{\\{\\$(${val.nodeId}\\.${val.id})\\$\\}\\}`, 'g');
+    if (['string', 'number'].includes(typeof val.value)) {
+      text = text.replace(regex, String(val.value));
+    } else if (['object'].includes(typeof val.value)) {
+      text = text.replace(regex, JSON.stringify(val.value));
+    } else {
+      continue;
+    }
+  }
+  return text || '';
+}
