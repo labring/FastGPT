@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from 'react';
-import { Flex, useTheme, Box, useDisclosure } from '@chakra-ui/react';
+import React, { useMemo, useState, useCallback } from 'react';
+import { Flex, Box, useDisclosure } from '@chakra-ui/react';
+
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import ToolMenu from './ToolMenu';
@@ -44,7 +45,6 @@ const ChatHeader = ({
   apps?: AppListItemType[];
   chatData: InitChatResponse;
 }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const router = useRouter();
@@ -75,7 +75,7 @@ const ChatHeader = ({
           alignItems={'center'}
           px={[3, 5]}
           minH={['46px', '60px']}
-          borderBottom={theme.borders.sm}
+          borderBottom={'sm'}
           color={'myGray.900'}
           fontSize={'sm'}
         >
