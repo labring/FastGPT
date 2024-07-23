@@ -20,6 +20,7 @@ import { textToEditorState } from './utils';
 import { MaxLengthPlugin } from './plugins/MaxLengthPlugin';
 import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import VariableLabelPlugin from './plugins/VariableLabelPlugin';
+import { useDeepCompareEffect } from 'ahooks';
 
 export default function Editor({
   h = 200,
@@ -79,10 +80,10 @@ export default function Editor({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  useEffect(() => {
+  useDeepCompareEffect(() => {
     if (focus) return;
     setKey(getNanoid(6));
-  }, [value, variables.length]);
+  }, [value, variables]);
 
   return (
     <Box position={'relative'} width={'full'} h={`${height}px`} cursor={'text'}>
