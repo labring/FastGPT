@@ -107,9 +107,9 @@ const MobileDrawer = ({
     <>
       <Box
         position={'absolute'}
-        top={'46px'}
+        top={'45px'}
         w={'100vw'}
-        h={'calc(100% - 46px)'}
+        h={'calc(100% - 45px)'}
         background={'rgba(0, 0, 0, 0.2)'}
         left={0}
         zIndex={5}

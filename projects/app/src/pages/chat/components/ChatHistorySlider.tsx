@@ -77,8 +77,6 @@ const ChatHistorySlider = ({
     return !activeChat ? [newChat].concat(formatHistories) : formatHistories;
   }, [activeChatId, histories, t]);
 
-  const showApps = apps?.length > 0;
-
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('common:core.chat.Custom History Title'),
@@ -121,7 +119,7 @@ const ChatHistorySlider = ({
               })
             }
           >
-            <Avatar src={appAvatar} />
+            <Avatar src={appAvatar} borderRadius={'md'} />
             <Box flex={'1 0 0'} w={0} ml={2} fontWeight={'bold'} className={'textEllipsis'}>
               {appName}
             </Box>
