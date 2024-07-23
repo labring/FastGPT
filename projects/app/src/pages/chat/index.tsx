@@ -224,7 +224,13 @@ const Chat = ({
             flexDirection={'column'}
           >
             {/* header */}
-            <ChatHeader apps={myApps} chatData={chatData} history={chatRecords} showHistory />
+            <ChatHeader
+              apps={myApps}
+              chatData={chatData}
+              history={chatRecords}
+              showHistory
+              onRouteToAppDetail={() => router.push(`/app/detail?appId=${appId}`)}
+            />
 
             {/* chat box */}
             <Box flex={'1 0 0'} bg={'white'}>

@@ -27,50 +27,45 @@ const ChatHeader = ({
   chatData,
   history,
   showHistory,
-  apps
+  apps,
+  onRouteToAppDetail
 }: {
   history: ChatItemType[];
   showHistory?: boolean;
-  apps?: AppListItemType[];
   chatData: InitChatResponse;
+  apps?: AppListItemType[];
+  onRouteToAppDetail?: () => void;
 }) => {
   const isPlugin = chatData.app.type === AppTypeEnum.plugin;
   const { isPc } = useSystem();
-  return (
-    <>
-      {isPc && isPlugin ? null : (
-        <Flex
-          alignItems={'center'}
-          px={[3, 5]}
-          minH={['46px', '60px']}
-          borderBottom={'sm'}
-          color={'myGray.900'}
-          fontSize={'sm'}
-        >
-          {isPc ? (
-            <>
-              <PcHeader
-                title={chatData.title}
-                chatModels={chatData.app.chatModels}
-                history={history}
-              />
-              <Box flex={1} />
-            </>
-          ) : (
-            <MobileHeader
-              apps={apps}
-              appId={chatData.appId}
-              name={chatData.app.name}
-              avatar={chatData.app.avatar}
-              showHistory={showHistory}
-            />
-          )}
 
-          {/* control */}
-          {!isPlugin && <ToolMenu history={history} />}
-        </Flex>
+  return isPc && isPlugin ? null : (
+    <Flex
+      alignItems={'center'}
+      px={[3, 5]}
+      minH={['46px', '60px']}
+      borderBottom={'sm'}
+      color={'myGray.900'}
+      fontSize={'sm'}
+    >
+      {isPc ? (
+        <>
+          <PcHeader title={chatData.title} chatModels={chatData.app.chatModels} history={history} />
+          <Box flex={1} />
+        </>
+      ) : (
+        <MobileHeader
+          apps={apps}
+          appId={chatData.appId}
+          name={chatData.app.name}
+          avatar={chatData.app.avatar}
+          showHistory={showHistory}
+        />
       )}
-    </>
+
+      {/* control */}
+      {!isPlugin && <ToolMenu history={history} onRouteToAppDetail={onRouteToAppDetail} />}
+    </Flex>
   );
 };
 
