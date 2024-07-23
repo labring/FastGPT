@@ -1,12 +1,18 @@
 {
-  "plugin_cost_per_times": "{{cost}}/per time",
+  "Run": "Run",
   "ai_settings": "AI Settings",
+  "app": {
+    "modules": {
+      "click to update": "click to update",
+      "has new version": "has new version"
+    }
+  },
   "app_detail": "App Details",
   "chat_debug": "Chat Debug",
-  "chat_logs_tips": "Logs will record online, shared and API (chatId required) conversation records for this app",
   "chat_logs": "Chat Logs",
-  "confirm_del_app_tip": "Confirm to delete this app and all its chat records?",
+  "chat_logs_tips": "Logs will record online, shared and API (chatId required) conversation records for this app",
   "confirm_copy_app_tip": "The system will create an application with the same configuration for you, but the permission will not be copied, please confirm!",
+  "confirm_del_app_tip": "Confirm to delete this app and all its chat records?",
   "confirm_delete_folder_tip": "Are you sure to delete this folder? All the following applications and corresponding chat records will be deleted, please confirm!",
   "copy_one_app": "Copy",
   "create_copy_success": "Create copy success",
@@ -24,39 +30,31 @@
   "logs_message_total": "Total Messages",
   "logs_title": "Title",
   "mark_count": "Marked Answer Count",
-  "move_app": "Move app",
-  "paste_config": "Paste Config",
-  "plugin_dispatch": "Plugins",
-  "plugin_dispatch_tip": "It is up to the model to decide which plug-ins to add additional capabilities to. If the plug-in is selected, the knowledge base call is also treated as a special plug-in.",
-  "publish_channel": "Publish channel",
-  "publish_success": "Publish success",
-  "Run": "Run",
-  "search_app": "Search app",
-  "setting_app": "Settings",
-  "setting_plugin": "Setting plugin",
-  "transition_to_workflow": "Transition to workflow",
-  "transition_to_workflow_create_new_placeholder": "Create a new application instead of modifying the current one",
-  "transition_to_workflow_create_new_tip": "After converting to workflow, it will not be able to convert back to simple mode, please confirm!",
-  "app": {
-    "modules": {
-      "click to update": "click to update",
-      "has new version": "has new version"
-    }
-  },
-  "common": {
-    "plugin_cost_per_times": "{{cost}} points/times"
-  },
   "module": {
     "Confirm Sync": "The template will be updated to the latest template configuration. Fields that do not exist in the template will be deleted (including all custom fields). You are advised to make a copy of the node and then update the original node version.",
     "Custom Title Tip": "This title will be displayed during the conversation",
-    "No Modules": "No plugins yet~"
+    "No Modules": "No plugins yet~",
+    "type": "\"{{type}}\" type\n{{description}}"
   },
   "modules": {
     "Title is required": "Module name cannot be empty"
   },
+  "move_app": "Move app",
+  "paste_config": "Paste Config",
+  "plugin_cost_per_times": "{{cost}}/per time",
+  "plugin_dispatch": "Plugins",
+  "plugin_dispatch_tip": "It is up to the model to decide which plug-ins to add additional capabilities to. If the plug-in is selected, the knowledge base call is also treated as a special plug-in.",
+  "publish_channel": "Publish channel",
+  "publish_success": "Publish success",
+  "search_app": "Search app",
+  "setting_app": "Settings",
+  "setting_plugin": "Setting plugin",
   "template": {
     "simple_robot": "Simple Robot"
   },
+  "transition_to_workflow": "Transition to workflow",
+  "transition_to_workflow_create_new_placeholder": "Create a new application instead of modifying the current one",
+  "transition_to_workflow_create_new_tip": "After converting to workflow, it will not be able to convert back to simple mode, please confirm!",
   "type": {
     "All": "All",
     "Create http plugin tip": "Create plug-ins in batches using OpenAPI schema, compatible with GPTs format.",

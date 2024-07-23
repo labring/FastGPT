@@ -45,7 +45,7 @@ const RenderToolInput = ({
   return (
     <>
       <HStack mb={2} justifyContent={'space-between'}>
-        <IOTitle text={t('common:core.module.tool.Tool input')} mb={0} />
+        <IOTitle text={t('workflow:tool_input')} mb={0} />
         {dynamicInput && (
           <Button
             variant={'whiteBase'}
@@ -54,7 +54,7 @@ const RenderToolInput = ({
             size={'sm'}
             onClick={() => setEditField(defaultEditFormData)}
           >
-            {t('common:Add new')}
+            {t('common:add_new')}
           </Button>
         )}
       </HStack>

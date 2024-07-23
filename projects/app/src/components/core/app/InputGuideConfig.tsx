@@ -110,7 +110,7 @@ const InputGuideConfig = ({
       >
         <ModalBody px={[5, 16]} py={[4, 8]}>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
-            <FormLabel>{t('common:Is open')}</FormLabel>
+            <FormLabel>{t('common:is_open')}</FormLabel>
             <Switch
               isChecked={isOpenQuestionGuide}
               onChange={(e) => {

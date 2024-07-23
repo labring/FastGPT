@@ -1,12 +1,18 @@
 {
-  "plugin_cost_per_times": "{{cost}}/次",
+  "Run": "运行",
   "ai_settings": "AI 配置",
+  "app": {
+    "modules": {
+      "click to update": "点击更新",
+      "has new version": "有新版本"
+    }
+  },
   "app_detail": "应用详情",
   "chat_debug": "调试预览",
-  "chat_logs_tips": "日志会记录该应用的在线、分享和 API（需填写 chatId）对话记录",
   "chat_logs": "对话日志",
-  "confirm_del_app_tip": "确认删除该应用及其所有聊天记录？",
+  "chat_logs_tips": "日志会记录该应用的在线、分享和 API（需填写 chatId）对话记录",
   "confirm_copy_app_tip": "系统将为您创建一个相同配置应用，但权限不会进行复制，请确认！",
+  "confirm_del_app_tip": "确认删除该应用及其所有聊天记录？",
   "confirm_delete_folder_tip": "确认删除该文件夹？将会删除它下面所有应用及对应的聊天记录，请确认！",
   "copy_one_app": "创建副本",
   "create_copy_success": "创建副本成功",
@@ -24,39 +30,31 @@
   "logs_message_total": "消息总数",
   "logs_title": "标题",
   "mark_count": "标注答案数量",
-  "move_app": "移动应用",
-  "paste_config": "粘贴配置",
-  "plugin_dispatch": "插件调用",
-  "plugin_dispatch_tip": "给模型附加额外的能力，具体调用哪些插件，将由模型自主决定。\n若选择了插件，知识库调用将自动作为一个特殊的插件。",
-  "publish_channel": "发布渠道",
-  "publish_success": "发布成功",
-  "Run": "运行",
-  "search_app": "搜索应用",
-  "setting_app": "应用配置",
-  "setting_plugin": "插件配置",
-  "transition_to_workflow": "转成工作流",
-  "transition_to_workflow_create_new_placeholder": "创建一个新的应用，而不是修改当前应用",
-  "transition_to_workflow_create_new_tip": "转化成工作流后，将无法转化回简易模式，请确认！",
-  "app": {
-    "modules": {
-      "click to update": "点击更新",
-      "has new version": "有新版本"
-    }
-  },
-  "common": {
-    "plugin_cost_per_times": "{{cost}}积分/次"
-  },
   "module": {
     "Confirm Sync": "将会更新至最新的模板配置，不存在模板中的字段将会被删除（包括所有自定义字段），建议您先复制一份节点，再更新原来节点的版本。",
     "Custom Title Tip": "该标题名字会展示在对话过程中",
-    "No Modules": "没找到插件"
+    "No Modules": "没找到插件",
+    "type": "\"{{type}}\"类型\n{{description}}"
   },
   "modules": {
     "Title is required": "模块名不能为空"
   },
+  "move_app": "移动应用",
+  "paste_config": "粘贴配置",
+  "plugin_cost_per_times": "{{cost}}/次",
+  "plugin_dispatch": "插件调用",
+  "plugin_dispatch_tip": "给模型附加额外的能力，具体调用哪些插件，将由模型自主决定。\n若选择了插件，知识库调用将自动作为一个特殊的插件。",
+  "publish_channel": "发布渠道",
+  "publish_success": "发布成功",
+  "search_app": "搜索应用",
+  "setting_app": "应用配置",
+  "setting_plugin": "插件配置",
   "template": {
     "simple_robot": "简易机器人"
   },
+  "transition_to_workflow": "转成工作流",
+  "transition_to_workflow_create_new_placeholder": "创建一个新的应用，而不是修改当前应用",
+  "transition_to_workflow_create_new_tip": "转化成工作流后，将无法转化回简易模式，请确认！",
   "type": {
     "All": "全部",
     "Create http plugin tip": "通过 OpenAPI Schema 批量创建插件，兼容 GPTs 格式。",

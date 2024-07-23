@@ -92,7 +92,7 @@ const ExtractFieldModal = ({
         </Flex>
 
         <Flex mt={5} alignItems={'center'}>
-          <FormLabel flex={['0 0 80px', '0 0 100px']}>{t('common:Field name')}</FormLabel>
+          <FormLabel flex={['0 0 80px', '0 0 100px']}>{t('common:field_name')}</FormLabel>
           <Input
             bg={'myGray.50'}
             placeholder="name/age/sql"
