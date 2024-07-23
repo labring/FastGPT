@@ -10,7 +10,6 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { useMemoizedFn } from 'ahooks';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -26,12 +25,10 @@ const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/
 
 export const useChatTest = ({
   nodes,
-  edges,
-  chatConfig
+  edges
 }: {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
-  chatConfig: AppChatConfigType;
 }) => {
   const { userInfo } = useUserStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -98,7 +95,7 @@ export const useChatTest = ({
         appAvatar={appDetail.avatar}
         userAvatar={userInfo?.avatar}
         showMarkIcon
-        chatConfig={chatConfig}
+        chatConfig={appDetail.chatConfig}
         showFileSelector={checkChatSupportSelectFileByModules(nodes)}
         onStartChat={startChat}
         onDelMessage={() => {}}

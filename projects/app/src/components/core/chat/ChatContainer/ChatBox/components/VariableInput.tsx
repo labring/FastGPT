@@ -21,7 +21,7 @@ const VariableInput = ({
   const { t } = useTranslation();
 
   const { appAvatar, variableList, variablesForm } = useContextSelector(ChatBoxContext, (v) => v);
-  const { register, getValues, setValue, handleSubmit: handleSubmitChat, control } = variablesForm;
+  const { register, setValue, handleSubmit: handleSubmitChat, control } = variablesForm;
 
   return (
     <Box py={3}>

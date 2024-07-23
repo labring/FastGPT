@@ -38,7 +38,7 @@ export default function VariableLabelPickerPlugin({
   const [queryString, setQueryString] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [highlightIndex, setHighlightIndex] = useState<number | null>(null);
-  const highlightedItemRef = React.useRef<HTMLElement | null>(null);
+  const highlightedItemRef = React.useRef<any>(null);
 
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
     minLength: 0
@@ -154,7 +154,7 @@ export default function VariableLabelPickerPlugin({
                             _notLast={{
                               mb: 1
                             }}
-                            ref={selectedIndex === child.index ? (highlightedItemRef as any) : null}
+                            ref={selectedIndex === child.index ? highlightedItemRef : null}
                             {...(highlightIndex === child.index
                               ? {
                                   bg: '#1118240D',
