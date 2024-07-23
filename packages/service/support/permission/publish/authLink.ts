@@ -4,16 +4,15 @@ import { parseHeaderCert } from '../controller';
 import { MongoOutLink } from '../../outLink/schema';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { AuthPropsType } from '../type/auth';
-import { AuthResponseType } from '../type/auth';
 import { authAppByTmbId } from '../app/auth';
+import { AuthModeType, AuthResponseType } from '../type';
 
 /* crud outlink permission */
 export async function authOutLinkCrud({
   outLinkId,
   per,
   ...props
-}: AuthPropsType & {
+}: AuthModeType & {
   outLinkId: string;
 }): Promise<
   AuthResponseType & {

@@ -3,6 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { authOpenApiKeyCrud } from '@fastgpt/service/support/permission/auth/openapi';
+import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -13,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('缺少参数');
     }
 
-    await authOpenApiKeyCrud({ req, authToken: true, id, per: 'owner' });
+    await authOpenApiKeyCrud({ req, authToken: true, id, per: OwnerPermissionVal });
 
     await MongoOpenApi.findOneAndRemove({ _id: id });
 

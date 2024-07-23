@@ -1,18 +1,17 @@
-import { AuthModeType } from '../type';
+import { AuthModeType, AuthResponseType } from '../type';
 import { DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
 import { parseHeaderCert } from '../controller';
 import { getFileById } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { OwnerPermissionVal, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { AuthPropsType, AuthResponseType } from '../type/auth';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 
 export async function authFile({
   fileId,
   per = OwnerPermissionVal,
   ...props
-}: AuthPropsType & {
+}: AuthModeType & {
   fileId: string;
 }): Promise<
   AuthResponseType & {
