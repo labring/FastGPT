@@ -241,10 +241,10 @@ const ChatHeader = ({
                 }}
                 list={[
                   ...(isTeamChat
-                    ? [{ label: t('App'), value: TabEnum.recently }]
+                    ? [{ label: t('all_app'), value: TabEnum.recently }]
                     : [
                         { label: t('core.chat.Recent use'), value: TabEnum.recently },
-                        { label: t('App'), value: TabEnum.app }
+                        { label: t('all_app'), value: TabEnum.app }
                       ])
                 ]}
                 value={currentTab}

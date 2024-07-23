@@ -41,7 +41,6 @@ const ResponseTags = ({
     };
   }>();
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
-  const [quoteOverflow, setQuoteOverflow] = useState<boolean>(true);
   const [contextModalData, setContextModalData] =
     useState<DispatchNodeResponseType['historyPreview']>();
   const {
