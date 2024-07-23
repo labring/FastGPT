@@ -901,6 +901,7 @@
       "overSize": "Team members exceed the limit"
     }
   },
+  "invalid_variable": "Invalid variable",
   "navbar": {
     "Account": "Account",
     "Chat": "Chat",
@@ -1146,6 +1147,7 @@
     "Quote Content Tip": "You can customize the structure of the quote content to better adapt to different scenarios. You can use some variables for template configuration:\n{{q}} - search content, {{a}} - expected content, {{source}} - source, {{sourceId}} - source file name, {{index}} - the nth quote, they are all optional, here are the default values:\n{{default}}",
     "Quote Prompt Tip": "You can use {{quote}} to insert the quote content template, and use {{question}} to insert the question. Here are the default values:\n{{default}}"
   },
+  "unusable_variable": "no usable variable",
   "user": {
     "Account": "Account",
     "Amount of earnings": "Earnings (¥)",

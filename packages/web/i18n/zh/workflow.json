@@ -1,31 +1,32 @@
 {
-  "add_new_input": "新增输入",
   "Code": "代码",
-  "confirm_delete_field_tip": "确认删除该字段？",
-  "custom_input": "自定义输入",
-  "edit_input": "编辑输入",
-  "field_name_already_exists": "字段名已经存在",
-  "field_description": "字段描述",
-  "field_description_placeholder": "描述该输入字段的功能，如果为工具调用参数，则该描述会影响模型生成的质量",
-  "field_required": "必填",
-  "field_used_as_tool_input": "作为工具调用参数",
-  "input_description": "字段描述",
-  "only_the_reference_type_is_supported": "仅支持引用类型",
-  "optional_value_type": "可选的数据类型",
-  "optional_value_type_tip": "可以指定 1 个或多个数据类型，用户在冬天添加字段时，仅可选择配置的类型",
-  "tool_input": "工具参数",
+  "add_new_input": "新增输入",
   "code": {
     "Reset template": "还原模板",
     "Reset template confirm": "确认还原代码模板？将会重置所有输入和输出至模板值，请注意保存当前代码。"
   },
+  "confirm_delete_field_tip": "确认删除该字段？",
+  "custom_input": "自定义输入",
+  "edit_input": "编辑输入",
+  "field_description": "字段描述",
+  "field_description_placeholder": "描述该输入字段的功能，如果为工具调用参数，则该描述会影响模型生成的质量",
+  "field_name_already_exists": "字段名已经存在",
+  "field_required": "必填",
+  "field_used_as_tool_input": "作为工具调用参数",
   "ifelse": {
     "Input value": "输入值",
     "Select value": "选择值"
   },
+  "input_description": "字段描述",
+  "only_the_reference_type_is_supported": "仅支持引用类型",
+  "optional_value_type": "可选的数据类型",
+  "optional_value_type_tip": "可以指定 1 个或多个数据类型，用户在冬天添加字段时，仅可选择配置的类型",
   "response": {
     "Code log": "Log 日志",
     "Custom inputs": "自定义输入",
     "Custom outputs": "自定义输出",
     "Error": "错误信息"
-  }
+  },
+  "tool_input": "工具参数",
+  "variable_picker_tips": "tips: 可输入节点名或变量名搜索"
 }

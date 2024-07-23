@@ -2,10 +2,11 @@
   position: relative;
   height: 100%;
   width: 100%;
-  border: 1px solid var(--chakra-colors-borderColor-base);
+  border: 1px solid rgb(232, 235, 240);
   border-radius: var(--chakra-radii-md);
   padding: 8px 12px;
-  background: var(--chakra-colors-gray-50);
+  background: #fff;
+
   font-size: var(--chakra-fontSizes-sm);
   overflow-y: auto;
 }

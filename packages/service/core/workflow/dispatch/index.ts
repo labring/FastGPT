@@ -19,6 +19,7 @@ import {
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { responseWriteNodeStatus } from '../../../common/response';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+import { replaceVariableLabel } from '@fastgpt/global/core/workflow/utils';
 
 import { dispatchWorkflowStart } from './init/workflowStart';
 import { dispatchChatCompletion } from './chat/oneapi';
@@ -54,6 +55,7 @@ import { surrenderProcess } from '../../../common/system/tools';
 import { dispatchRunCode } from './code/run';
 import { dispatchTextEditor } from './tools/textEditor';
 import { dispatchCustomFeedback } from './tools/customFeedback';
+import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -290,6 +292,14 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
       // replace {{}} variables
       let value = replaceVariable(input.value, variables);
+
+      // replace {{$$}} variables
+      value = replaceVariableLabel({
+        text: value,
+        nodes: runtimeNodes,
+        variables: variables,
+        runningNode: node
+      });
 
       // replace reference variables
       value = getReferenceVariableValue({

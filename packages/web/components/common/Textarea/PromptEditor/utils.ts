@@ -1,9 +1,10 @@
-import type { Klass, LexicalEditor, LexicalNode } from 'lexical';
+import type { DecoratorNode, Klass, LexicalEditor, LexicalNode } from 'lexical';
 import type { EntityMatch } from '@lexical/text';
 import { $createTextNode, $getRoot, $isTextNode, TextNode } from 'lexical';
 import { useCallback } from 'react';
+import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 
-export function registerLexicalTextEntity<T extends TextNode>(
+export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode>(
   editor: LexicalEditor,
   getMatch: (text: string) => null | EntityMatch,
   targetNode: Klass<T>,
@@ -13,7 +14,7 @@ export function registerLexicalTextEntity<T extends TextNode>(
     return node instanceof targetNode;
   };
 
-  const replaceWithSimpleText = (node: TextNode): void => {
+  const replaceWithSimpleText = (node: TextNode | VariableLabelNode): void => {
     const textNode = $createTextNode(node.getTextContent());
     textNode.setFormat(node.getFormat());
     node.replace(textNode);
@@ -136,7 +137,7 @@ export function registerLexicalTextEntity<T extends TextNode>(
       return;
     }
 
-    if (text.length > match.end) {
+    if (text.length > match.end && $isTextNode(node)) {
       // This will split out the rest of the text as simple text
       node.splitText(match.end);
 
@@ -163,7 +164,7 @@ export function registerLexicalTextEntity<T extends TextNode>(
   };
 
   const removePlainTextTransform = editor.registerNodeTransform(TextNode, textNodeTransform);
-  const removeReverseNodeTransform = editor.registerNodeTransform<T>(
+  const removeReverseNodeTransform = editor.registerNodeTransform<any>(
     targetNode,
     reverseNodeTransform
   );
@@ -217,6 +218,8 @@ export function editorStateToText(editor: LexicalEditor) {
 `);
       } else if (child.text) {
         paragraphText.push(child.text);
+      } else if (child.type === 'variableLabel') {
+        paragraphText.push(child.variableKey);
       }
     });
     editorStateTextString.push(paragraphText.join(''));
