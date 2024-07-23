@@ -29,9 +29,9 @@ export default function VariableLabel({
           <span>
             <Avatar
               src={nodeAvatar as any}
-              w={'16px'}
+              w={'1rem'}
               mr={1}
-              borderRadius={'2.8px'}
+              borderRadius={'xs'}
               display={'inline-flex'}
               verticalAlign={'middle'}
               mb={'3px'}

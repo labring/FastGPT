@@ -44,7 +44,7 @@ const InputLabel = ({ nodeId, input }: Props) => {
     },
     [input, nodeId, onChangeNode, renderTypeList]
   );
-  console.log(input.renderTypeList[input.selectedTypeIndex ?? 0]);
+
   const RenderLabel = useMemo(() => {
     const renderType = renderTypeList?.[selectedTypeIndex || 0];
 
