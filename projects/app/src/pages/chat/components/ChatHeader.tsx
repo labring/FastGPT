@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { Flex, useTheme, Box, useDisclosure } from '@chakra-ui/react';
+import { Flex, Box, useDisclosure } from '@chakra-ui/react';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -45,7 +45,6 @@ const ChatHeader = ({
   appId: string;
   apps?: AppListItemType[];
 }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const title = useMemo(
@@ -85,7 +84,7 @@ const ChatHeader = ({
         alignItems={'center'}
         px={[3, 5]}
         h={['46px', '70px']}
-        borderBottom={theme.borders.sm}
+        borderBottom={'sm'}
         color={'myGray.900'}
         fontSize={'sm'}
       >
@@ -166,35 +165,26 @@ const ChatHeader = ({
             onClick={(e) => e.stopPropagation()}
             background={'white'}
             position={'relative'}
-            _after={{
-              content: '""',
-              position: 'absolute',
-              bottom: '12px',
-              height: '2px',
-              width: '97%',
-              backgroundColor: 'myGray.100'
-            }}
           >
             {!isPc && appId && (
-              <Box width={'50%'} zIndex={3} position={'relative'}>
-                <LightRowTabs<TabEnum>
-                  flex={'1 0 0'}
-                  mr={10}
-                  inlineStyles={{
-                    px: 1
-                  }}
-                  list={[
-                    ...(isTeamChat
-                      ? [{ label: t('App'), value: TabEnum.recently }]
-                      : [
-                          { label: t('core.chat.Recent use'), value: TabEnum.recently },
-                          { label: t('App'), value: TabEnum.app }
-                        ])
-                  ]}
-                  value={currentTab}
-                  onChange={setCurrentTab}
-                />
-              </Box>
+              <LightRowTabs<TabEnum>
+                flex={'1 0 0'}
+                width={'70%'}
+                mr={10}
+                inlineStyles={{
+                  px: 1
+                }}
+                list={[
+                  ...(isTeamChat
+                    ? [{ label: t('App'), value: TabEnum.recently }]
+                    : [
+                        { label: t('core.chat.Recent use'), value: TabEnum.recently },
+                        { label: t('App'), value: TabEnum.app }
+                      ])
+                ]}
+                value={currentTab}
+                onChange={setCurrentTab}
+              />
             )}
           </Box>
           <Box
