@@ -144,7 +144,16 @@ const ChatItem = ({
         )}
       </Flex>
       {/* content */}
-      <Box mt={['6px', 2]} className="chat-box-card" textAlign={styleMap.textAlign}>
+      <Box
+        mt={['6px', 2]}
+        className="chat-box-card"
+        textAlign={styleMap.textAlign}
+        _hover={{
+          '& .footer-copy': {
+            display: 'block'
+          }
+        }}
+      >
         <Card
           {...MessageCardStyle}
           bg={styleMap.bg}
@@ -156,19 +165,21 @@ const ChatItem = ({
           {/* 对话框底部的复制按钮 */}
           {type == ChatRoleEnum.AI && (!isChatting || (isChatting && !isLastChild)) && (
             <Box
+              className="footer-copy"
+              display={['block', 'none']}
               position={'absolute'}
               bottom={0}
-              right={[0, -2]}
-              color={'myGray.400'}
+              right={0}
               transform={'translateX(100%)'}
             >
-              <MyTooltip label={t('common.Copy')}>
+              <MyTooltip label={t('common:common.Copy')}>
                 <MyIcon
-                  w={'14px'}
+                  w={'1rem'}
                   cursor="pointer"
                   p="5px"
                   bg="white"
                   name={'copy'}
+                  color={'myGray.500'}
                   _hover={{ color: 'primary.600' }}
                   onClick={() => copyData(chatText)}
                 />

@@ -1,5 +1,6 @@
 const { i18n } = require('./next-i18next.config');
 const path = require('path');
+const fs = require('fs');
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -53,17 +54,10 @@ const nextConfig = {
             const entries = await oldEntry(...args);
             return {
               ...entries,
-              'worker/htmlStr2Md': path.resolve(
+              ...getWorkerConfig(),
+              'worker/systemPluginRun': path.resolve(
                 process.cwd(),
-                '../../packages/service/worker/htmlStr2Md/index.ts'
-              ),
-              'worker/countGptMessagesTokens': path.resolve(
-                process.cwd(),
-                '../../packages/service/worker/tiktoken/countGptMessagesTokens.ts'
-              ),
-              'worker/readFile': path.resolve(
-                process.cwd(),
-                '../../packages/service/worker/file/read.ts'
+                '../../packages/plugins/runtime/worker.ts'
               )
             };
           }
@@ -95,3 +89,39 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
+
+function getWorkerConfig() {
+  const result = fs.readdirSync(path.resolve(__dirname, '../../packages/service/worker'));
+
+  // 获取所有的目录名
+  const folderList = result.filter((item) => {
+    return fs
+      .statSync(path.resolve(__dirname, '../../packages/service/worker', item))
+      .isDirectory();
+  });
+
+  /* 
+    {
+      'worker/htmlStr2Md': path.resolve(
+                process.cwd(),
+                '../../packages/service/worker/htmlStr2Md/index.ts'
+              ),
+              'worker/countGptMessagesTokens': path.resolve(
+                process.cwd(),
+                '../../packages/service/worker/countGptMessagesTokens/index.ts'
+              ),
+              'worker/readFile': path.resolve(
+                process.cwd(),
+                '../../packages/service/worker/readFile/index.ts'
+              )
+    }
+  */
+  const workerConfig = folderList.reduce((acc, item) => {
+    acc[`worker/${item}`] = path.resolve(
+      process.cwd(),
+      `../../packages/service/worker/${item}/index.ts`
+    );
+    return acc;
+  }, {});
+  return workerConfig;
+}
