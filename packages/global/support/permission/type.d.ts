@@ -18,16 +18,6 @@ export type PermissionListType<T = {}> = Record<
   }
 >;
 
-export type AuthResponseType = {
-  teamId: string;
-  tmbId: string;
-  isOwner: boolean;
-  canWrite: boolean;
-  authType?: `${AuthUserTypeEnum}`;
-  appId?: string;
-  apikey?: string;
-};
-
 export type ResourcePermissionType = {
   teamId: string;
   tmbId: string;
