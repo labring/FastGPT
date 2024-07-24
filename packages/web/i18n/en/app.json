@@ -73,6 +73,9 @@
     "Revert success": "Revert success"
   },
   "workflow": {
-    "Input guide": "Input guide"
+    "Input guide": "Input guide",
+    "template": {
+      "communication": "Communication"
+    }
   }
 }

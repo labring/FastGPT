@@ -40,7 +40,7 @@ export const getGlobalVariableNode = ({
     flowNodeType: FlowNodeTypeEnum.emptyNode,
     sourceHandle: getHandleConfig(false, false, false, false),
     targetHandle: getHandleConfig(false, false, false, false),
-    avatar: '/imgs/workflow/variable.png',
+    avatar: 'core/workflow/template/variable',
     name: '全局变量',
     intro: '',
     unique: true,
