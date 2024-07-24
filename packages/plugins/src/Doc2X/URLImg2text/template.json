@@ -1,8 +1,8 @@
 {
   "author": "",
-  "version": "486",
+  "version": "488",
   "name": "Doc2X 图像(URL)识别",
-  "avatar": "/imgs/workflow/textEditor.svg",
+  "avatar": "plugins/doc2x",
   "intro": "将传入的图片(URL)发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
   "showStatus": true,
   "weight": 10,
@@ -26,9 +26,7 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": [
-              "input"
-            ],
+            "renderTypeList": ["input"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -36,13 +34,11 @@
             "label": "apikey",
             "description": "Doc2X的验证密匙，对于个人用户可以从Doc2X官网 - 个人信息 - 身份令牌获得",
             "required": true,
-            "toolDescription": "Doc2X的验证密匙，对于个人用户可以从Doc2X官网 - 个人信息 - 身份令牌获得",
+            "toolDescription": "",
             "defaultValue": ""
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -53,9 +49,7 @@
             "toolDescription": "待处理图片的URL"
           },
           {
-            "renderTypeList": [
-              "switch"
-            ],
+            "renderTypeList": ["switch"],
             "selectedTypeIndex": 0,
             "valueType": "boolean",
             "canEdit": true,
@@ -63,13 +57,11 @@
             "label": "img_correction",
             "description": "是否启用图形矫正功能",
             "required": true,
-            "toolDescription": "是否启用图形矫正功能",
+            "toolDescription": "",
             "defaultValue": false
           },
           {
-            "renderTypeList": [
-              "switch"
-            ],
+            "renderTypeList": ["switch"],
             "selectedTypeIndex": 0,
             "valueType": "boolean",
             "canEdit": true,
@@ -77,7 +69,7 @@
             "label": "formula",
             "description": "是否开启纯公式识别(仅适用于图片内容仅有公式时)",
             "required": true,
-            "toolDescription": "是否开启纯公式识别(仅适用于图片内容仅有公式时)",
+            "toolDescription": "",
             "defaultValue": false
           }
         ],
@@ -126,32 +118,22 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "result",
             "label": "result",
             "description": "处理结果(或者是报错信息)",
-            "value": [
-              "zHG5jJBkXmjB",
-              "xWQuEf50F3mr"
-            ]
+            "value": ["zHG5jJBkXmjB", "xWQuEf50F3mr"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "boolean",
             "canEdit": true,
             "key": "success",
             "label": "success",
             "description": "是否处理成功",
-            "value": [
-              "zHG5jJBkXmjB",
-              "m6CJJj7GFud5"
-            ]
+            "value": ["zHG5jJBkXmjB", "m6CJJj7GFud5"]
           }
         ],
         "outputs": []
@@ -171,9 +153,7 @@
         "inputs": [
           {
             "key": "system_addInputParam",
-            "renderTypeList": [
-              "addInputParam"
-            ],
+            "renderTypeList": ["addInputParam"],
             "valueType": "dynamic",
             "label": "",
             "required": false,
@@ -201,9 +181,7 @@
           },
           {
             "key": "system_httpMethod",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "string",
             "label": "",
             "value": "POST",
@@ -211,9 +189,7 @@
           },
           {
             "key": "system_httpReqUrl",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "string",
             "label": "",
             "description": "core.module.input.description.Http Request Url",
@@ -223,9 +199,7 @@
           },
           {
             "key": "system_httpHeader",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -235,9 +209,7 @@
           },
           {
             "key": "system_httpParams",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -245,18 +217,14 @@
           },
           {
             "key": "system_httpJsonBody",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"url\": \"{{url}}\",\n  \"img_correction\": \"{{img_correction}}\",\n  \"formula\": \"{{img_correction}}\"\n}",
             "label": "",
             "required": false
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "apikey",
@@ -282,15 +250,10 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "apikey"
-            ]
+            "value": ["pluginInput", "apikey"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "url",
@@ -316,15 +279,10 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "url"
-            ]
+            "value": ["pluginInput", "url"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "boolean",
             "canEdit": true,
             "key": "img_correction",
@@ -350,15 +308,10 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "img_correction"
-            ]
+            "value": ["pluginInput", "img_correction"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "boolean",
             "canEdit": true,
             "key": "formula",
@@ -384,10 +337,7 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "formula"
-            ]
+            "value": ["pluginInput", "formula"]
           }
         ],
         "outputs": [

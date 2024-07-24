@@ -1,8 +1,8 @@
 {
   "author": "",
-  "version": "486",
+  "version": "488",
   "name": "Doc2X服务",
-  "avatar": "/imgs/workflow/textEditor.svg",
+  "avatar": "plugins/doc2x",
   "intro": "传入的URL形式的图片或PDF文件发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本。",
   "showStatus": true,
   "weight": 10,
