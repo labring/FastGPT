@@ -1,23 +1,66 @@
 import { RunCodeDto, RunCodeResponse } from 'src/sandbox/dto/create-sandbox.dto';
 import { parentPort } from 'worker_threads';
 import { workerResponse } from './utils';
+import { Reference } from 'isolated-vm';
+import { countToken } from './jsFn/tiktoken';
+import { timeDelay } from './jsFn/delay';
 
 // @ts-ignore
 const ivm = require('isolated-vm');
+const CustomLogStr = 'CUSTOM_LOG';
 
-parentPort?.on('message', ({ code, variables = {} }: RunCodeDto) => {
+function registerSystemFn(jail: any) {
+  return Promise.all([
+    // delay
+    jail.set('global_delay', new Reference(timeDelay)),
+    jail.set('global_countToken', new Reference(countToken))
+  ]);
+}
+
+/* 
+  Rewrite code to add custom function
+  - delay
+  - countToken
+  - log
+*/
+function getFnCode(code: string) {
+  const rewriteSystemFn = `
+      const thisDelay = (...args) => global_delay.applySyncPromise(undefined,args)
+      const thisCountToken = (...args) => global_countToken.applySyncPromise(undefined,args)
+  `;
+
+  /* rewrite code */
+
+  // rewrite delay
+  code = code.replace(/delay\((.*)\)/g, `thisDelay($1)`);
+  code = code.replace(/countToken\((.*)\)/g, `thisCountToken($1)`);
+
+  // rewrite log
+  code = code.replace(/console\.log/g, `${CustomLogStr}`);
+
+  return `
+    (async() => { 
+      ${rewriteSystemFn}
+      ${code}
+
+      const res = await main(variables,{})
+      return JSON.stringify(res);
+    })
+  `;
+}
+
+parentPort?.on('message', async ({ code, variables = {} }: RunCodeDto) => {
   const resolve = (data: RunCodeResponse) => workerResponse({ parentPort, type: 'success', data });
   const reject = (error: any) => workerResponse({ parentPort, type: 'error', data: error });
+
   try {
     const isolate = new ivm.Isolate({ memoryLimit: 32 });
-    const context = isolate.createContextSync();
+    const context = await isolate.createContext();
     const jail = context.global;
 
     // custom function
     const logData = [];
-    const CustomLogStr = 'CUSTOM_LOG';
-    code = code.replace(/console\.log/g, `${CustomLogStr}`);
-    jail.setSync(CustomLogStr, function (...args) {
+    await jail.set(CustomLogStr, function (...args) {
       logData.push(
         args
           .map((item) => (typeof item === 'object' ? JSON.stringify(item, null, 2) : item))
@@ -25,25 +68,23 @@ parentPort?.on('message', ({ code, variables = {} }: RunCodeDto) => {
       );
     });
 
-    jail.setSync('responseData', function (args: any): any {
-      if (typeof args === 'object') {
-        resolve({
-          codeReturn: args,
-          log: logData.join('\n')
-        });
-      } else {
-        reject('Not an invalid response, must return an object');
-      }
-    });
+    await registerSystemFn(jail);
 
     // Add global variables
-    jail.setSync('variables', new ivm.ExternalCopy(variables).copyInto());
+    await jail.set('variables', new ivm.ExternalCopy(variables).copyInto());
 
-    const scriptCode = `
-      ${code}
-      responseData(main(variables))`;
+    const fn = await context.eval(getFnCode(code), { reference: true, timeout: 10000 });
+    const value = await fn.apply(undefined, [], { result: { promise: true } });
 
-    context.evalSync(scriptCode, { timeout: 6000 });
+    try {
+      const result = JSON.parse(value);
+      resolve({
+        codeReturn: result,
+        log: logData.join('\n')
+      });
+    } catch (error) {
+      reject('Not an invalid response.You must return an object');
+    }
   } catch (err) {
     console.log(err);
     reject(err);
