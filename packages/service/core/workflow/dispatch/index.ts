@@ -262,13 +262,14 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   /* Inject data into module input */
   function getNodeRunParams(node: RuntimeNodeItemType) {
     if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
+      // Format plugin input to object
       return node.inputs.reduce<Record<string, any>>((acc, item) => {
         acc[item.key] = valueTypeFormat(item.value, item.valueType);
         return acc;
       }, {});
     }
 
-    // common nodes
+    // Dynamic input need to store a key.
     const dynamicInput = node.inputs.find(
       (item) => item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam
     );
@@ -281,14 +282,14 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     node.inputs.forEach((input) => {
       if (input.key === dynamicInput?.key) return;
 
-      // replace {{}} variables
+      // replace {{xx}} variables
       let value = replaceVariable(input.value, variables);
 
-      // replace {{$$}} variables
+      // replace {{$xx.xx$}} variables
       value = replaceVariableLabel({
         text: value,
         nodes: runtimeNodes,
-        variables: variables,
+        variables,
         runningNode: node
       });
 
@@ -299,12 +300,11 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         variables
       });
 
-      // concat dynamic inputs
+      // Dynamic input is stored in the dynamic key
       if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
         params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
       }
 
-      // Not dynamic input
       params[input.key] = valueTypeFormat(value, input.valueType);
     });
 
