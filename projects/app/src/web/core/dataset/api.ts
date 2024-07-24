@@ -42,6 +42,7 @@ import type { GetDatasetListBody } from '@/pages/api/core/dataset/list';
 import type { UpdateDatasetCollectionParams } from '@/pages/api/core/dataset/collection/update';
 import type { GetDatasetDataListProps } from '@/pages/api/core/dataset/data/list';
 import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
+import { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -68,6 +69,9 @@ export const postWebsiteSync = (data: PostWebsiteSyncParams) =>
   POST(`/proApi/core/dataset/websiteSync`, data, {
     timeout: 600000
   }).catch();
+
+export const postCreateDatasetFolder = (data: DatasetFolderCreateBody) =>
+  POST(`/core/dataset/folder/create`, data);
 
 /* =========== search test ============ */
 export const postSearchText = (data: SearchTestProps) =>
