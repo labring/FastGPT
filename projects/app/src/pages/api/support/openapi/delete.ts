@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { authOpenApiKeyCrud } from '@fastgpt/service/support/permission/auth/openapi';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -11,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { id } = req.query as { id: string };
 
     if (!id) {
-      throw new Error('缺少参数');
+      return Promise.reject(CommonErrEnum.missingParams);
     }
 
     await authOpenApiKeyCrud({ req, authToken: true, id, per: OwnerPermissionVal });

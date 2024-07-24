@@ -3,7 +3,8 @@ import { ErrType } from '../errorCode';
 /* dataset: 506000 */
 export enum OpenApiErrEnum {
   unExist = 'openapiUnExist',
-  unAuth = 'openapiUnAuth'
+  unAuth = 'openapiUnAuth',
+  exceedLimit = 'openapiExceedLimit'
 }
 const errList = [
   {
@@ -13,6 +14,10 @@ const errList = [
   {
     statusText: OpenApiErrEnum.unAuth,
     message: '无权操作该 Api Key'
+  },
+  {
+    statusText: OpenApiErrEnum.exceedLimit,
+    message: '最多 10 组 API 密钥'
   }
 ];
 export default errList.reduce((acc, cur, index) => {
