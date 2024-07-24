@@ -28,7 +28,7 @@ export const workflowNodeTemplateList = [
     list: []
   },
   {
-    type: FlowNodeTemplateTypeEnum.multimodal,
+    type: FlowNodeTemplateTypeEnum.communication,
     label: i18nT('app:workflow.template.communication'),
     list: []
   },
