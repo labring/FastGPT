@@ -14,18 +14,18 @@ export const workflowNodeTemplateList = (t: TFunction): NodeTemplateListType => 
     list: []
   },
   {
-    type: FlowNodeTemplateTypeEnum.tools,
-    label: t('common:core.module.template.Tool module'),
-    list: []
-  },
-  {
     type: FlowNodeTemplateTypeEnum.search,
-    label: t('core.workflow.template.Search'),
+    label: t('common:core.workflow.template.Search'),
     list: []
   },
   {
     type: FlowNodeTemplateTypeEnum.multimodal,
-    label: t('core.workflow.template.Multimodal'),
+    label: t('common:core.workflow.template.Multimodal'),
+    list: []
+  },
+  {
+    type: FlowNodeTemplateTypeEnum.tools,
+    label: t('common:core.module.template.Tool module'),
     list: []
   },
   {

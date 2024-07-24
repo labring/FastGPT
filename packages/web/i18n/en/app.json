@@ -71,5 +71,8 @@
   },
   "version": {
     "Revert success": "Revert success"
+  },
+  "workflow": {
+    "Input guide": "Input guide"
   }
 }

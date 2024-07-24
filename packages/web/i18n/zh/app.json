@@ -71,5 +71,8 @@
   },
   "version": {
     "Revert success": "回滚成功"
+  },
+  "workflow": {
+    "Input guide": "填写说明"
   }
 }
