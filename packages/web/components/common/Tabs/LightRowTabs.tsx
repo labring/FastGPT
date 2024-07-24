@@ -52,6 +52,7 @@ const LightRowTabs = <ValueType = string,>({
       fontSize={sizeMap.fontSize}
       overflowX={'auto'}
       userSelect={'none'}
+      display={'inline-grid'}
       {...props}
     >
       {list.map((item) => (

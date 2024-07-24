@@ -94,8 +94,7 @@ export default function VariableLabelPickerPlugin({
               <Box
                 bg={'white'}
                 boxShadow={'lg'}
-                borderWidth={'1px'}
-                borderColor={'borderColor.base'}
+                border={'base'}
                 p={2}
                 borderRadius={'md'}
                 position={'absolute'}

@@ -55,7 +55,6 @@ import { surrenderProcess } from '../../../common/system/tools';
 import { dispatchRunCode } from './code/run';
 import { dispatchTextEditor } from './tools/textEditor';
 import { dispatchCustomFeedback } from './tools/customFeedback';
-import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,

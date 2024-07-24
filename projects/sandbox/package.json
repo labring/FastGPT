@@ -25,7 +25,9 @@
     "@nestjs/platform-fastify": "^10.3.8",
     "@nestjs/swagger": "^7.3.1",
     "fastify": "^4.27.0",
+    "dayjs": "^1.11.7",
     "isolated-vm": "^4.7.2",
+    "tiktoken": "^1.0.15",
     "node-gyp": "^10.1.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1"

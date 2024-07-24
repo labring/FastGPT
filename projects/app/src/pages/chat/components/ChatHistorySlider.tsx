@@ -27,7 +27,6 @@ const ChatHistorySlider = ({
   appId,
   appName,
   appAvatar,
-  apps = [],
   confirmClearText,
   onDelHistory,
   onClearHistory,
@@ -37,7 +36,6 @@ const ChatHistorySlider = ({
   appId?: string;
   appName: string;
   appAvatar: string;
-  apps?: AppListItemType[];
   confirmClearText: string;
   onDelHistory: (e: { chatId: string }) => void;
   onClearHistory: () => void;
@@ -46,10 +44,9 @@ const ChatHistorySlider = ({
 }) => {
   const theme = useTheme();
   const router = useRouter();
-  const isTeamChat = router.pathname === '/chat/team';
+  const isUserChatPage = router.pathname === '/chat';
 
   const { t } = useTranslation();
-  const { appT } = useI18n();
 
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
@@ -103,7 +100,7 @@ const ChatHistorySlider = ({
       whiteSpace={'nowrap'}
     >
       {isPc && (
-        <MyTooltip label={canRouteToDetail ? appT('app_detail') : ''} offset={[0, 0]}>
+        <MyTooltip label={canRouteToDetail ? t('app:app_detail') : ''} offset={[0, 0]}>
           <Flex
             pt={5}
             pb={2}
@@ -136,7 +133,7 @@ const ChatHistorySlider = ({
         justify={['space-between', '']}
         alignItems={'center'}
       >
-        {!isPc && appId && (
+        {!isPc && (
           <Flex height={'100%'} align={'center'} justify={'center'}>
             <MyIcon ml={2} name="core/chat/sideLine" />
             <Box ml={2} fontWeight={'bold'}>
@@ -147,8 +144,9 @@ const ChatHistorySlider = ({
 
         <Button
           variant={'whitePrimary'}
-          flex={[appId ? '0 0 auto' : 1, 1]}
+          flex={['0 0 auto', 1]}
           h={'100%'}
+          px={6}
           color={'primary.600'}
           borderRadius={'xl'}
           leftIcon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
@@ -158,7 +156,7 @@ const ChatHistorySlider = ({
           {t('common:core.chat.New Chat')}
         </Button>
         {/* Clear */}
-        {isPc && (
+        {isPc && histories.length > 0 && (
           <IconButton
             ml={3}
             h={'100%'}
@@ -288,7 +286,7 @@ const ChatHistorySlider = ({
       </Box>
 
       {/* exec */}
-      {!isPc && appId && !isTeamChat && (
+      {!isPc && isUserChatPage && (
         <Flex
           mt={2}
           borderTop={theme.borders.base}

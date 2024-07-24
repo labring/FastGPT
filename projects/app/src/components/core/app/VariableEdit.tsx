@@ -299,6 +299,8 @@ const VariableEdit = ({
           </Button>
           <Button
             onClick={handleSubmitEdit(({ variable }) => {
+              variable.key = variable.key.trim();
+
               // check select
               if (variable.type === VariableInputEnum.select) {
                 const enums = variable.enums.filter((item) => item.value);

@@ -20,5 +20,8 @@
     "i18n-ally.displayLanguage": "zh", // 显示语言
     "i18n-ally.namespace": true,
     "i18n-ally.pathMatcher": "{locale}/{namespaces}.json",
-    "i18n-ally.extract.targetPickingStrategy": "most-similar-by-key"
+    "i18n-ally.extract.targetPickingStrategy": "most-similar-by-key",
+    "[typescript]": {
+        "editor.defaultFormatter": "rvest.vs-code-prettier-eslint"
+    }
 }
