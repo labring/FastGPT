@@ -5,7 +5,7 @@ import React from 'react';
 import { DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { useI18n } from '@/web/context/I18n';
 
-const DatasetTypeTag = ({ type, ...props }: { type: DatasetTypeEnum } & FlexProps) => {
+const DatasetTypeTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps) => {
   const { datasetT } = useI18n();
 
   const item = DatasetTypeMap[type] || DatasetTypeMap['dataset'];

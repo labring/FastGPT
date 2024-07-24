@@ -14,10 +14,10 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { AddIcon } from '@chakra-ui/icons';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { FolderIcon, FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
+import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
 import { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
 import dynamic from 'next/dynamic';
-import { postCreateDatasetFolder, putDatasetById } from '@/web/core/dataset/api';
+import { postCreateDatasetFolder, resumeInheritPer } from '@/web/core/dataset/api';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
 import {
   DatasetDefaultPermissionVal,
@@ -42,17 +42,18 @@ const Dataset = () => {
   const router = useRouter();
   const { parentId } = router.query as { parentId: string };
 
-  const { myDatasets } = useDatasetStore();
-
   const {
+    myDatasets,
     paths,
     isFetchingDatasets,
     refetchPaths,
-    refetchDatasets,
+    loadMyDatasets,
+    refetchFolderDetail,
     folderDetail,
     setEditedDataset,
     setMoveDatasetId,
-    onDelDataset
+    onDelDataset,
+    onUpdateDataset
   } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
 
@@ -137,7 +138,11 @@ const Dataset = () => {
         {!!folderDetail && isPc && (
           <Box ml="6">
             <FolderSlideCard
-              refreshDeps={[folderDetail._id]}
+              resumeInheritPermission={() => resumeInheritPer(folderDetail._id)}
+              isInheritPermission={folderDetail.inheritPermission}
+              hasParent={!!folderDetail.parentId}
+              refetchResource={() => Promise.all([refetchFolderDetail(), loadMyDatasets()])}
+              refreshDeps={[folderDetail._id, folderDetail.inheritPermission]}
               name={folderDetail.name}
               intro={folderDetail.intro}
               onEdit={() => {
@@ -163,7 +168,7 @@ const Dataset = () => {
                 value: folderDetail.defaultPermission,
                 defaultValue: DatasetDefaultPermissionVal,
                 onChange: (e) => {
-                  return putDatasetById({
+                  return onUpdateDataset({
                     id: folderDetail._id,
                     defaultPermission: e
                   });
@@ -190,7 +195,8 @@ const Dataset = () => {
                   deleteDatasetCollaborators({
                     datasetId: folderDetail._id,
                     tmbId
-                  })
+                  }),
+                refreshDeps: [folderDetail._id, folderDetail.inheritPermission]
               }}
             />
           </Box>
@@ -207,7 +213,7 @@ const Dataset = () => {
                 name,
                 intro: intro ?? ''
               });
-              refetchDatasets();
+              loadMyDatasets();
               refetchPaths();
             } catch (error) {
               return Promise.reject(error);
@@ -215,13 +221,11 @@ const Dataset = () => {
           }}
           onEdit={async ({ name, intro, id }) => {
             try {
-              await putDatasetById({
+              await onUpdateDataset({
                 id,
                 name,
                 intro
               });
-              refetchDatasets();
-              refetchPaths();
             } catch (error) {
               return Promise.reject(error);
             }

@@ -73,6 +73,9 @@ export const postWebsiteSync = (data: PostWebsiteSyncParams) =>
 export const postCreateDatasetFolder = (data: DatasetFolderCreateBody) =>
   POST(`/core/dataset/folder/create`, data);
 
+export const resumeInheritPer = (datasetId: string) =>
+  GET(`/core/dataset/resumeInheritPermission`, { datasetId });
+
 /* =========== search test ============ */
 export const postSearchText = (data: SearchTestProps) =>
   POST<SearchTestResponse>(`/core/dataset/searchTest`, data);

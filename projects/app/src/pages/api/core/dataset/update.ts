@@ -58,12 +58,6 @@ async function handler(
     defaultPermission !== undefined && dataset.defaultPermission !== defaultPermission;
   const isFolder = dataset.type === DatasetTypeEnum.folder;
 
-  console.debug(
-    `isDefaultPermissionChanged: ${isDefaultPermissionChanged}`,
-    defaultPermission,
-    dataset.defaultPermission
-  );
-
   const onUpdate = async (
     session?: ClientSession,
     updatedDefaultPermission?: PermissionValueType
