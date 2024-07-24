@@ -1,7 +1,7 @@
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, HStack } from '@chakra-ui/react';
 
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -10,6 +10,10 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 
 type Props = {
   nodeId: string;
@@ -67,6 +71,14 @@ const InputLabel = ({ nodeId, input }: Props) => {
               onChange={onChangeRenderType}
             />
           </Box>
+        )}
+
+        {/* Variable picker tip */}
+        {input.renderTypeList[input.selectedTypeIndex ?? 0] === FlowNodeInputTypeEnum.textarea && (
+          <>
+            <Box flex={1} />
+            <VariableTip transform={'translateY(2px)'} />
+          </>
         )}
       </Flex>
     );

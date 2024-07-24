@@ -28,5 +28,5 @@
     "Error": "错误信息"
   },
   "tool_input": "工具参数",
-  "variable_picker_tips": "tips: 可输入节点名或变量名搜索"
+  "variable_picker_tips": "可输入节点名或变量名搜索"
 }

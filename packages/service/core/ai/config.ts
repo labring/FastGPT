@@ -21,3 +21,16 @@ export const getAIApi = (props?: {
     maxRetries: 2
   });
 };
+
+export const getAxiosConfig = (props?: { userKey?: UserModelSchema['openaiAccount'] }) => {
+  const { userKey } = props || {};
+
+  const baseUrl =
+    userKey?.baseUrl || global?.systemEnv?.oneapiUrl || process.env.ONEAPI_URL || openaiBaseUrl;
+  const apiKey = userKey?.key || global?.systemEnv?.chatApiKey || process.env.CHAT_API_KEY || '';
+
+  return {
+    baseUrl,
+    authorization: `Bearer ${apiKey}`
+  };
+};

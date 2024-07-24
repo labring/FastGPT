@@ -309,6 +309,7 @@ export function RenderHttpProps({
           ></QuestionTip>
         </Flex>
         <LightRowTabs<TabEnum>
+          width={'100%'}
           list={[
             { label: <RenderPropsItem text="Params" num={paramsLength} />, value: TabEnum.params },
             ...(!['GET', 'DELETE'].includes(requestMethods)

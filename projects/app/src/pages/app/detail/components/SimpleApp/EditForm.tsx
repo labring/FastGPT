@@ -34,6 +34,7 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pages/app/detail/components/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -57,7 +58,8 @@ const LabelStyles: BoxProps = {
   w: ['60px', '100px'],
   whiteSpace: 'nowrap',
   flexShrink: 0,
-  fontSize: 'xs'
+  fontSize: 'sm',
+  color: 'myGray.900'
 };
 
 const EditForm = ({
@@ -162,10 +164,13 @@ const EditForm = ({
             </Box>
           </Flex>
 
-          <Box mt={3}>
-            <HStack {...LabelStyles}>
+          <Box mt={4}>
+            <HStack {...LabelStyles} w={'100%'}>
               <Box>{t('common:core.ai.Prompt')}</Box>
               <QuestionTip label={t('common:core.app.tip.chatNodeSystemPromptTip')} />
+
+              <Box flex={1} />
+              <VariableTip color={'myGray.500'} />
             </HStack>
             <Box mt={1}>
               <PromptEditor

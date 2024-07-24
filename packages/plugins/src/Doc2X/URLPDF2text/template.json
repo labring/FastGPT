@@ -1,8 +1,8 @@
 {
   "author": "",
-  "version": "486",
+  "version": "488",
   "name": "Doc2X PDF文件(URL)识别",
-  "avatar": "/imgs/workflow/textEditor.svg",
+  "avatar": "plugins/doc2x",
   "intro": "将传入的PDF文件(URL)发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
   "showStatus": true,
   "weight": 10,
@@ -26,9 +26,7 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": [
-              "input"
-            ],
+            "renderTypeList": ["input"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -36,13 +34,11 @@
             "label": "apikey",
             "description": "Doc2X的验证密匙，对于个人用户可以从Doc2X官网 - 个人信息 - 身份令牌获得",
             "required": true,
-            "toolDescription": "Doc2X的验证密匙，对于个人用户可以从Doc2X官网 - 个人信息 - 身份令牌获得",
+            "toolDescription": "",
             "defaultValue": ""
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -53,9 +49,7 @@
             "toolDescription": "待处理PDF文件的URL"
           },
           {
-            "renderTypeList": [
-              "switch"
-            ],
+            "renderTypeList": ["switch"],
             "selectedTypeIndex": 0,
             "valueType": "boolean",
             "canEdit": true,
@@ -63,7 +57,7 @@
             "label": "ocr",
             "description": "是否开启对PDF文件内图片的OCR识别，建议开启",
             "required": true,
-            "toolDescription": "是否开启对PDF文件内图片的OCR识别，建议开启",
+            "toolDescription": "",
             "defaultValue": true
           }
         ],
@@ -105,32 +99,22 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "result",
             "label": "result",
             "description": "处理结果(或者是报错信息)",
-            "value": [
-              "zHG5jJBkXmjB",
-              "xWQuEf50F3mr"
-            ]
+            "value": ["zHG5jJBkXmjB", "xWQuEf50F3mr"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "boolean",
             "canEdit": true,
             "key": "success",
             "label": "success",
             "description": "是否处理成功",
-            "value": [
-              "zHG5jJBkXmjB",
-              "m6CJJj7GFud5"
-            ]
+            "value": ["zHG5jJBkXmjB", "m6CJJj7GFud5"]
           }
         ],
         "outputs": []
@@ -150,9 +134,7 @@
         "inputs": [
           {
             "key": "system_addInputParam",
-            "renderTypeList": [
-              "addInputParam"
-            ],
+            "renderTypeList": ["addInputParam"],
             "valueType": "dynamic",
             "label": "",
             "required": false,
@@ -180,9 +162,7 @@
           },
           {
             "key": "system_httpMethod",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "string",
             "label": "",
             "value": "POST",
@@ -190,9 +170,7 @@
           },
           {
             "key": "system_httpReqUrl",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "string",
             "label": "",
             "description": "core.module.input.description.Http Request Url",
@@ -202,9 +180,7 @@
           },
           {
             "key": "system_httpHeader",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -214,9 +190,7 @@
           },
           {
             "key": "system_httpParams",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -224,18 +198,14 @@
           },
           {
             "key": "system_httpJsonBody",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"url\": \"{{url}}\",\n  \"ocr\": \"{{ocr}}\"\n}",
             "label": "",
             "required": false
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "apikey",
@@ -261,15 +231,10 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "apikey"
-            ]
+            "value": ["pluginInput", "apikey"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "url",
@@ -295,15 +260,10 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "url"
-            ]
+            "value": ["pluginInput", "url"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "boolean",
             "canEdit": true,
             "key": "ocr",
@@ -329,10 +289,7 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "formula"
-            ]
+            "value": ["pluginInput", "formula"]
           }
         ],
         "outputs": [

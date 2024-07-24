@@ -157,6 +157,7 @@ export const ResponseBox = React.memo(function ResponseBox({
       {!hideTabs && (
         <Box>
           <LightRowTabs
+            w={'100%'}
             list={list}
             value={currentTab}
             inlineStyles={{ pt: 0 }}

@@ -7,7 +7,7 @@ import { cloneDeep } from 'lodash';
 import { WorkerNameEnum, runWorker } from '@fastgpt/service/worker/utils';
 
 // Run in main thread
-const staticPluginList = ['getTime', 'fetchUrl'];
+const staticPluginList = ['getTime', 'fetchUrl', 'Doc2X', 'Doc2X/URLPDF2text', 'Doc2X/URLImg2text'];
 // Run in worker thread (Have npm packages)
 const packagePluginList = [
   'mathExprVal',
@@ -15,10 +15,7 @@ const packagePluginList = [
   'duckduckgo/search',
   'duckduckgo/searchImg',
   'duckduckgo/searchNews',
-  'duckduckgo/searchVideo',
-  'Doc2X',
-  'Doc2X/URLPDF2text',
-  'Doc2X/URLImg2text'
+  'duckduckgo/searchVideo'
 ];
 
 const list = [...staticPluginList, ...packagePluginList];

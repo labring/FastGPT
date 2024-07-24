@@ -439,7 +439,7 @@ export const simpleBotTemplates: TemplateType = [
             label: 'core.ai.Prompt',
             description: 'core.app.tip.chatNodeSystemPromptTip',
             placeholder: 'core.app.tip.chatNodeSystemPromptTip',
-            value: '请直接将我的问题翻译成{{language}}，不需要回答问题。'
+            value: '请直接将我的问题翻译成{{$VARIABLE_NODE_ID.language$}}，不需要回答问题。'
           },
           {
             key: 'history',

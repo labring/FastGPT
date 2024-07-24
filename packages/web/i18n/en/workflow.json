@@ -28,5 +28,5 @@
     "Error": "Error"
   },
   "tool_input": "Tool",
-  "variable_picker_tips": "tips: enter node name or variable name to search"
+  "variable_picker_tips": "enter node name or variable name to search"
 }
