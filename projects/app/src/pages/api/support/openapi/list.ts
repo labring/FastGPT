@@ -27,14 +27,13 @@ async function handler(req: ApiRequestProps<any, GetApiKeyProps>) {
   // global apikey
   const { teamId, tmbId, permission } = await authUserPer({
     req,
-    authToken: true,
-    per: ManagePermissionVal
+    authToken: true
   });
 
   const findResponse = await MongoOpenApi.find({
     appId,
     teamId,
-    ...(!permission.isOwner && { tmbId })
+    ...(!permission.hasManagePer && { tmbId }) // if not manager, read own key
   }).sort({ _id: -1 });
 
   return findResponse.map((item) => item.toObject());
