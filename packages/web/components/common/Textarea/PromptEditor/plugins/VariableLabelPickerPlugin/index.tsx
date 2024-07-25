@@ -6,31 +6,31 @@ import { useCallback, useState } from 'react';
 import * as ReactDOM from 'react-dom';
 import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
-import { EditorVariablePickerType } from '../../type';
+import { EditorVariableLabelPickerType } from '../../type';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'react-i18next';
 import Avatar from '../../../../Avatar';
 
-type EditorVariablePickerType1 = {
+interface EditorVariableItemType {
   key: string;
   label: string;
   required?: boolean;
   icon?: string;
   valueType?: WorkflowIOValueTypeEnum;
   index: number;
-};
+}
 interface TransformedParent {
   id: string;
   label: string;
   avatar: string;
-  children: EditorVariablePickerType1[];
+  children: EditorVariableItemType[];
 }
 
 export default function VariableLabelPickerPlugin({
   variables,
   isFocus
 }: {
-  variables: EditorVariablePickerType[];
+  variables: EditorVariableLabelPickerType[];
   isFocus: boolean;
 }) {
   const { t } = useTranslation();
@@ -110,7 +110,7 @@ export default function VariableLabelPickerPlugin({
                   </Box>
                 )}
                 {variableFilter(variables, queryString || '').length > 0 ? (
-                  transformData(variableFilter(variables, queryString || '')).map((item) => {
+                  transformVariables(variableFilter(variables, queryString || '')).map((item) => {
                     return (
                       <Flex
                         key={item.id}
@@ -192,14 +192,14 @@ export default function VariableLabelPickerPlugin({
   );
 }
 
-function transformData(data: EditorVariablePickerType[]): TransformedParent[] {
+function transformVariables(variables: EditorVariableLabelPickerType[]): TransformedParent[] {
   const transformedData: TransformedParent[] = [];
   const parentMap: { [key: string]: TransformedParent } = {};
 
-  data.forEach((item, index) => {
-    const parentId = item.parent!.id;
-    const parentLabel = item.parent!.label;
-    const parentAvatar = item.parent!.avatar;
+  variables.forEach((item, index) => {
+    const parentId = item.parent.id;
+    const parentLabel = item.parent.label;
+    const parentAvatar = item.parent.avatar;
 
     if (!parentMap[parentId]) {
       parentMap[parentId] = {
@@ -218,8 +218,8 @@ function transformData(data: EditorVariablePickerType[]): TransformedParent[] {
   });
 
   const addedParents = new Set<string>();
-  data.forEach((item) => {
-    const parentId = item.parent!.id;
+  variables.forEach((item) => {
+    const parentId = item.parent.id;
     if (!addedParents.has(parentId)) {
       transformedData.push(parentMap[parentId]);
       addedParents.add(parentId);
@@ -230,15 +230,15 @@ function transformData(data: EditorVariablePickerType[]): TransformedParent[] {
 }
 
 function variableFilter(
-  data: EditorVariablePickerType[],
+  variables: EditorVariableLabelPickerType[],
   queryString: string
-): EditorVariablePickerType[] {
+): EditorVariableLabelPickerType[] {
   const lowerCaseQuery = queryString.toLowerCase();
 
-  return data.filter((item) => {
+  return variables.filter((item) => {
     const labelMatch = item.label.toLowerCase().includes(lowerCaseQuery);
     const keyMatch = item.key.toLowerCase().includes(lowerCaseQuery);
-    const parentLabelMatch = item.parent!.label.toLowerCase().includes(lowerCaseQuery);
+    const parentLabelMatch = item.parent.label.toLowerCase().includes(lowerCaseQuery);
 
     return labelMatch || keyMatch || parentLabelMatch;
   });

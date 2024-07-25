@@ -1,6 +1,6 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { EditorVariablePickerType } from '../../type';
-import { useCallback, useEffect, useMemo } from 'react';
+import { EditorVariableLabelPickerType } from '../../type';
+import { useCallback, useEffect } from 'react';
 import { $createVariableLabelNode, VariableLabelNode } from './node';
 import { TextNode } from 'lexical';
 import { getHashtagRegexString } from './utils';
@@ -12,7 +12,7 @@ const REGEX = new RegExp(getHashtagRegexString(), 'i');
 export default function VariableLabelPlugin({
   variables
 }: {
-  variables: EditorVariablePickerType[];
+  variables: EditorVariableLabelPickerType[];
 }) {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {

@@ -104,7 +104,7 @@ const EditForm = ({
     onClose: onCloseToolsSelect
   } = useDisclosure();
 
-  const formatVariables: any = useMemo(
+  const formatVariables = useMemo(
     () =>
       formatEditorVariablePickerIcon([
         ...getSystemVariables(t),
@@ -186,6 +186,7 @@ const EditForm = ({
                     }));
                   });
                 }}
+                variableLabels={formatVariables}
                 variables={formatVariables}
                 placeholder={t('common:core.app.tip.chatNodeSystemPromptTip')}
                 title={t('common:core.ai.Prompt')}
