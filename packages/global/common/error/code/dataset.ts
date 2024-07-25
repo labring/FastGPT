@@ -8,8 +8,8 @@ export enum DatasetErrEnum {
   unAuthDatasetCollection = 'unAuthDatasetCollection',
   unAuthDatasetData = 'unAuthDatasetData',
   unAuthDatasetFile = 'unAuthDatasetFile',
-
-  unLinkCollection = 'unLinkCollection'
+  unLinkCollection = 'unLinkCollection',
+  invalidVectorModelOrQAModel = 'invalidVectorModelOrQAModel'
 }
 const datasetErr = [
   {
@@ -39,6 +39,10 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.unLinkCollection,
     message: 'core.dataset.error.unLinkCollection'
+  },
+  {
+    statusText: DatasetErrEnum.invalidVectorModelOrQAModel,
+    message: 'core.dataset.error.invalidVectorModelOrQAModel'
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

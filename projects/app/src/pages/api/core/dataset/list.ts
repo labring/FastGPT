@@ -1,4 +1,3 @@
-import type { NextApiRequest } from 'next';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -14,29 +13,70 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 
-export type GetDatasetListBody = { parentId: ParentIdType; type?: DatasetTypeEnum };
+export type GetDatasetListBody = {
+  parentId: ParentIdType;
+  type?: DatasetTypeEnum;
+  searchKey?: string;
+};
 
-async function handler(req: NextApiRequest) {
-  const { parentId, type } = req.body as GetDatasetListBody;
+async function handler(req: ApiRequestProps<GetDatasetListBody>) {
+  const { parentId, type, searchKey } = req.body;
   // 凭证校验
   const {
+    dataset: parentDataset,
     teamId,
     tmbId,
     permission: tmbPer
-  } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: ReadPermissionVal
-  });
+  } = await (async () => {
+    if (parentId) {
+      return await authDataset({
+        req,
+        authToken: true,
+        per: ReadPermissionVal,
+        datasetId: parentId
+      });
+    }
+    return {
+      ...(await authUserPer({
+        req,
+        authToken: true,
+        authApiKey: true,
+        per: ReadPermissionVal
+      })),
+      dataset: undefined
+    };
+  })();
+
+  const findDatasetQuery = (() => {
+    const searchMatch = searchKey
+      ? {
+          $or: [
+            { name: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } },
+            { intro: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } }
+          ]
+        }
+      : {};
+
+    if (searchKey) {
+      return {
+        teamId,
+        ...searchMatch
+      };
+    }
+
+    return {
+      teamId,
+      ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
+      ...parseParentIdInMongo(parentId)
+    };
+  })();
 
   const [myDatasets, rpList] = await Promise.all([
-    MongoDataset.find({
-      teamId,
-      ...parseParentIdInMongo(parentId),
-      ...(type && { type })
-    })
+    MongoDataset.find(findDatasetQuery)
       .sort({
         updateTime: -1
       })
@@ -50,14 +90,26 @@ async function handler(req: NextApiRequest) {
 
   const filterDatasets = myDatasets
     .map((dataset) => {
-      const perVal = rpList.find(
-        (item) => String(item.resourceId) === String(dataset._id)
-      )?.permission;
-      const Per = new DatasetPermission({
-        per: perVal ?? dataset.defaultPermission,
-        isOwner: String(dataset.tmbId) === tmbId || tmbPer.isOwner
-      });
-
+      const Per = (() => {
+        if (dataset.inheritPermission && parentDataset && dataset.type !== DatasetTypeEnum.folder) {
+          dataset.defaultPermission = parentDataset.defaultPermission;
+          const perVal = rpList.find(
+            (item) => String(item.resourceId) === String(parentDataset._id)
+          )?.permission;
+          return new DatasetPermission({
+            per: perVal ?? parentDataset.defaultPermission,
+            isOwner: String(parentDataset.tmbId) === tmbId || tmbPer.isOwner
+          });
+        } else {
+          const perVal = rpList.find(
+            (item) => String(item.resourceId) === String(dataset._id)
+          )?.permission;
+          return new DatasetPermission({
+            per: perVal ?? dataset.defaultPermission,
+            isOwner: String(dataset.tmbId) === tmbId || tmbPer.isOwner
+          });
+        }
+      })();
       return {
         ...dataset,
         permission: Per
@@ -68,14 +120,14 @@ async function handler(req: NextApiRequest) {
   const data = await Promise.all(
     filterDatasets.map<DatasetListItemType>((item) => ({
       _id: item._id,
-      parentId: item.parentId,
       avatar: item.avatar,
       name: item.name,
       intro: item.intro,
       type: item.type,
       permission: item.permission,
       vectorModel: getVectorModel(item.vectorModel),
-      defaultPermission: item.defaultPermission ?? DatasetDefaultPermissionVal
+      defaultPermission: item.defaultPermission ?? DatasetDefaultPermissionVal,
+      inheritPermission: item.inheritPermission
     }))
   );
 

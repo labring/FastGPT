@@ -25,7 +25,6 @@ export type CreateDatasetParams = {
   avatar: string;
   vectorModel?: string;
   agentModel?: string;
-  defaultPermission?: PermissionValueType;
 };
 
 export type RebuildEmbeddingProps = {
