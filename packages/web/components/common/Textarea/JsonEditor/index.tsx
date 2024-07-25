@@ -80,7 +80,6 @@ const JSONEditor = ({
         const lineContent = model.getLineContent(position.lineNumber);
 
         if (context.triggerCharacter) {
-          console.log(context.triggerCharacter);
           triggerChar.current = context.triggerCharacter;
         }
         const word = model.getWordUntilPosition(position);

@@ -229,6 +229,24 @@ export const updatePluginInputByVariables = (
   );
 };
 
+export const filterPluginInputVariables = (
+  variables: Record<string, any>,
+  nodes: RuntimeNodeItemType[]
+) => {
+  const pluginInputNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput);
+
+  if (!pluginInputNode) return variables;
+  return Object.keys(variables).reduce(
+    (acc, key) => {
+      if (!pluginInputNode.inputs.find((input) => input.key === key)) {
+        acc[key] = variables[key];
+      }
+      return acc;
+    },
+    {} as Record<string, any>
+  );
+};
+
 export function replaceVariableLabel({
   text,
   nodes,
