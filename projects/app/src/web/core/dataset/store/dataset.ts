@@ -11,7 +11,7 @@ type State = {
   allDatasets: DatasetSimpleItemType[];
   loadAllDatasets: () => Promise<DatasetSimpleItemType[]>;
   myDatasets: DatasetListItemType[];
-  loadMyDatasets: (parentId?: string) => Promise<any>;
+  loadMyDatasets: (parentId?: string) => Promise<DatasetListItemType[]>;
 };
 
 export const useDatasetStore = create<State>()(

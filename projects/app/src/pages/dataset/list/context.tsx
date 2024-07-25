@@ -5,7 +5,6 @@ import {
   getDatasetById,
   delDatasetById
 } from '@/web/core/dataset/api';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import {
   GetResourceFolderListProps,
   ParentIdType,
@@ -19,16 +18,17 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
+import { DatasetItemType, DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import { useTranslation } from 'react-i18next';
 
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 export type DatasetContextType = {
-  refetchDatasets: () => void;
+  myDatasets: DatasetListItemType[];
+  loadMyDatasets: () => Promise<DatasetListItemType[]>;
   refetchPaths: () => void;
-  refetchFolderDetail: () => void;
+  refetchFolderDetail: () => Promise<DatasetItemType | undefined>;
   isFetchingDatasets: boolean;
   setMoveDatasetId: (id: string) => void;
   paths: ParentTreePathItemType[];
@@ -36,28 +36,48 @@ export type DatasetContextType = {
   editedDataset?: EditResourceInfoFormType;
   setEditedDataset: (data?: EditResourceInfoFormType) => void;
   onDelDataset: (id: string) => Promise<void>;
+  onUpdateDataset: (data: DatasetUpdateBody) => Promise<void>;
 };
 
 export const DatasetsContext = createContext<DatasetContextType>({
-  refetchDatasets: () => {},
   isFetchingDatasets: false,
   setMoveDatasetId: () => {},
   refetchPaths: () => {},
   paths: [],
-  refetchFolderDetail: () => {},
   folderDetail: {} as any,
   editedDataset: {} as any,
   setEditedDataset: () => {},
-  onDelDataset: () => Promise.resolve()
+  onDelDataset: () => Promise.resolve(),
+  loadMyDatasets: function (): Promise<DatasetListItemType[]> {
+    throw new Error('Function not implemented.');
+  },
+  refetchFolderDetail: function (): Promise<DatasetItemType | undefined> {
+    throw new Error('Function not implemented.');
+  },
+  onUpdateDataset: function (_data: DatasetUpdateBody): Promise<void> {
+    throw new Error('Function not implemented.');
+  },
+  myDatasets: []
 });
 
 function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { commonT } = useI18n();
   const { t } = useTranslation();
+  const [moveDatasetId, setMoveDatasetId] = useState<string>();
 
   const { parentId = null } = router.query as { parentId?: string | null };
-  const { myDatasets, loadMyDatasets } = useDatasetStore();
+
+  const { data: myDatasets = [], runAsync: loadMyDatasets } = useRequest2(
+    () =>
+      getDatasets({
+        parentId
+      }),
+    {
+      manual: false,
+      refreshDeps: [parentId]
+    }
+  );
 
   const { data: folderDetail, runAsync: refetchFolderDetail } = useRequest2(
     () => (parentId ? getDatasetById(parentId) : Promise.resolve(undefined)),
@@ -66,17 +86,6 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
       refreshDeps: [parentId, myDatasets]
     }
   );
-  const getDatasetFolderList = useCallback(({ parentId }: GetResourceFolderListProps) => {
-    return getDatasets({
-      parentId,
-      type: DatasetTypeEnum.folder
-    }).then((res) => {
-      return res.map((item) => ({
-        id: item._id,
-        name: item.name
-      }));
-    });
-  }, []);
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest2(
     () => getDatasetPaths(parentId),
@@ -87,21 +96,16 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   );
 
   const { runAsync: refetchDatasets, loading: isFetchingDatasets } = useRequest2(
-    () => loadMyDatasets(parentId ?? undefined),
+    () => loadMyDatasets(),
     {
       manual: false,
       refreshDeps: [parentId]
     }
   );
 
-  const [moveDatasetId, setMoveDatasetId] = useState<string>();
-
-  const { runAsync: onUpdateDataset } = useRequest2((data: DatasetUpdateBody) =>
-    putDatasetById(data).then(async (res) => {
-      await Promise.all([refetchDatasets(), refetchPaths()]);
-      return res;
-    })
-  );
+  const { runAsync: onUpdateDataset } = useRequest2(putDatasetById, {
+    onSuccess: () => Promise.all([refetchDatasets(), refetchPaths(), loadMyDatasets()])
+  });
 
   const onMoveDataset = useCallback(
     async (parentId: ParentIdType) => {
@@ -113,6 +117,18 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     },
     [moveDatasetId, onUpdateDataset]
   );
+
+  const getDatasetFolderList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
+    return (
+      await getDatasets({
+        parentId,
+        type: DatasetTypeEnum.folder
+      })
+    ).map((item) => ({
+      id: item._id,
+      name: item.name
+    }));
+  }, []);
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
 
@@ -131,7 +147,10 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     folderDetail,
     editedDataset,
     setEditedDataset,
-    onDelDataset
+    onDelDataset,
+    onUpdateDataset,
+    myDatasets,
+    loadMyDatasets
   };
 
   return (
