@@ -102,7 +102,7 @@ const EditForm = ({
     onClose: onCloseToolsSelect
   } = useDisclosure();
 
-  const formatVariables: any = useMemo(
+  const formatVariables = useMemo(
     () =>
       formatEditorVariablePickerIcon([
         ...getSystemVariables(t),

@@ -6,7 +6,15 @@ export type EditorVariablePickerType = {
   required?: boolean;
   icon?: string;
   valueType?: WorkflowIOValueTypeEnum;
-  parent?: {
+};
+
+export type EditorVariableLabelPickerType = {
+  key: string;
+  label: string;
+  required?: boolean;
+  icon?: string;
+  valueType?: WorkflowIOValueTypeEnum;
+  parent: {
     id: string;
     label: string;
     avatar?: string;

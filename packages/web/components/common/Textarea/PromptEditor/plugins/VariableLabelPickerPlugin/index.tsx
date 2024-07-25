@@ -6,7 +6,7 @@ import { useCallback, useState } from 'react';
 import * as ReactDOM from 'react-dom';
 import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
-import { EditorVariablePickerType } from '../../type';
+import { EditorVariableLabelPickerType } from '../../type';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'react-i18next';
 import Avatar from '../../../../Avatar';
@@ -30,7 +30,7 @@ export default function VariableLabelPickerPlugin({
   variables,
   isFocus
 }: {
-  variables: EditorVariablePickerType[];
+  variables: EditorVariableLabelPickerType[];
   isFocus: boolean;
 }) {
   const { t } = useTranslation();
@@ -193,14 +193,14 @@ export default function VariableLabelPickerPlugin({
   );
 }
 
-function transformVariables(variables: EditorVariablePickerType[]): TransformedParent[] {
+function transformVariables(variables: EditorVariableLabelPickerType[]): TransformedParent[] {
   const transformedData: TransformedParent[] = [];
   const parentMap: { [key: string]: TransformedParent } = {};
 
   variables.forEach((item, index) => {
-    const parentId = item.parent?.id || '';
-    const parentLabel = item.parent?.label || '';
-    const parentAvatar = item.parent?.avatar || '';
+    const parentId = item.parent.id;
+    const parentLabel = item.parent.label;
+    const parentAvatar = item.parent.avatar;
 
     if (!parentMap[parentId]) {
       parentMap[parentId] = {
@@ -220,7 +220,7 @@ function transformVariables(variables: EditorVariablePickerType[]): TransformedP
 
   const addedParents = new Set<string>();
   variables.forEach((item) => {
-    const parentId = item.parent?.id || '';
+    const parentId = item.parent.id;
     if (!addedParents.has(parentId)) {
       transformedData.push(parentMap[parentId]);
       addedParents.add(parentId);
@@ -231,15 +231,15 @@ function transformVariables(variables: EditorVariablePickerType[]): TransformedP
 }
 
 function variableFilter(
-  variables: EditorVariablePickerType[],
+  variables: EditorVariableLabelPickerType[],
   queryString: string
-): EditorVariablePickerType[] {
+): EditorVariableLabelPickerType[] {
   const lowerCaseQuery = queryString.toLowerCase();
 
   return variables.filter((item) => {
     const labelMatch = item.label.toLowerCase().includes(lowerCaseQuery);
     const keyMatch = item.key.toLowerCase().includes(lowerCaseQuery);
-    const parentLabelMatch = item.parent?.label.toLowerCase().includes(lowerCaseQuery);
+    const parentLabelMatch = item.parent.label.toLowerCase().includes(lowerCaseQuery);
 
     return labelMatch || keyMatch || parentLabelMatch;
   });

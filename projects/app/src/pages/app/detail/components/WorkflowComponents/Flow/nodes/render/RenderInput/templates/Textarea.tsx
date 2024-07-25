@@ -21,17 +21,15 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   // get variable
   const variables = useCreation(() => {
     const currentNode = nodeList.find((node) => node.nodeId === nodeId);
-    const nodeVariables = formatEditorVariablePickerIcon(
-      getNodeDynamicInputs(nodeId).map((item) => ({
-        key: item.key,
-        label: item.label,
-        parent: {
-          id: currentNode?.nodeId,
-          label: currentNode?.name,
-          avatar: currentNode?.avatar
-        }
-      }))
-    );
+    const nodeVariables = getNodeDynamicInputs(nodeId).map((item) => ({
+      key: item.key,
+      label: item.label,
+      parent: {
+        id: currentNode?.nodeId || '',
+        label: currentNode?.name || '',
+        avatar: currentNode?.avatar || ''
+      }
+    }));
 
     const sourceNodes = computedNodeInputReference({
       nodeId,
@@ -61,9 +59,7 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
           })
           .flat();
 
-    const formatSourceNodeVariables = formatEditorVariablePickerIcon(sourceNodeVariables);
-
-    return [...nodeVariables, ...formatSourceNodeVariables];
+    return [...nodeVariables, ...sourceNodeVariables];
   }, [nodeList, edges, inputs, t]);
 
   const onChange = useCallback(
