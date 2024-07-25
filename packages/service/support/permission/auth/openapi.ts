@@ -25,7 +25,7 @@ export async function authOpenApiKeyCrud({
   const { openapi, permission } = await (async () => {
     const openapi = await MongoOpenApi.findOne({ _id: id, teamId });
     if (!openapi) {
-      throw new Error(OpenApiErrEnum.unExist);
+      return Promise.reject(OpenApiErrEnum.unExist);
     }
 
     if (!!openapi.appId) {
