@@ -68,7 +68,11 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
 
   const { parentId = null } = router.query as { parentId?: string | null };
 
-  const { data: myDatasets = [], runAsync: loadMyDatasets } = useRequest2(
+  const {
+    data: myDatasets = [],
+    runAsync: loadMyDatasets,
+    loading: isFetchingDatasets
+  } = useRequest2(
     () =>
       getDatasets({
         parentId
@@ -83,7 +87,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     () => (parentId ? getDatasetById(parentId) : Promise.resolve(undefined)),
     {
       manual: false,
-      refreshDeps: [parentId, myDatasets]
+      refreshDeps: [parentId]
     }
   );
 
@@ -95,16 +99,8 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     }
   );
 
-  const { runAsync: refetchDatasets, loading: isFetchingDatasets } = useRequest2(
-    () => loadMyDatasets(),
-    {
-      manual: false,
-      refreshDeps: [parentId]
-    }
-  );
-
   const { runAsync: onUpdateDataset } = useRequest2(putDatasetById, {
-    onSuccess: () => Promise.all([refetchDatasets(), refetchPaths(), loadMyDatasets()])
+    onSuccess: () => Promise.all([refetchFolderDetail(), refetchPaths(), loadMyDatasets()])
   });
 
   const onMoveDataset = useCallback(
@@ -138,7 +134,6 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   });
 
   const contextValue = {
-    refetchDatasets,
     isFetchingDatasets,
     setMoveDatasetId,
     paths,

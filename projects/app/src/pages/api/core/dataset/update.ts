@@ -78,7 +78,7 @@ async function handler(
           defaultPermission: updatedDefaultPermission
         }),
         // update the defaultPermission
-        ...(isDefaultPermissionChanged && { inheritPermission: false })
+        ...(dataset.parentId && isDefaultPermissionChanged && { inheritPermission: false })
       },
       { session }
     );
