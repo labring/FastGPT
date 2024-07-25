@@ -127,6 +127,7 @@ const DatasetParamsModal = ({
     >
       <ModalBody flex={'auto'} overflow={'auto'}>
         <LightRowTabs<SearchSettingTabEnum>
+          width={'100%'}
           mb={3}
           list={[
             {

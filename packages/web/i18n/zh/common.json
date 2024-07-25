@@ -1,23 +1,19 @@
 {
-  "add_new": "新增",
   "App": "应用",
   "all_apps": "全部应用",
   "click_to_resume": "点击恢复",
   "code_editor": "代码编辑",
   "Export": "导出",
-  "field_name": "字段名",
   "Folder": "文件夹",
-  "is_open": "是否开启",
   "Login": "登录",
   "Move": "移动",
   "Name": "名称",
-  "new_create": "新建",
-  "no_data": "暂无数据",
   "Rename": "重命名",
   "Resume": "恢复",
   "Running": "运行中",
   "UnKnow": "未知",
   "Warning": "提示",
+  "add_new": "新增",
   "common": {
     "Action": "操作",
     "Add": "添加",
@@ -294,7 +290,7 @@
       },
       "tip": {
         "Add a intro to app": "快来给应用一个介绍~",
-        "chatNodeSystemPromptTip": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}\n如果关联了知识库，你还可以通过适当的描述，来引导模型何时去调用知识库搜索。例如：\n你是电影《星际穿越》的助手，当用户询问与《星际穿越》相关的内容时，请搜索知识库并结合搜索结果进行回答。",
+        "chatNodeSystemPromptTip": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可通过输入 / 插入选择变量\n如果关联了知识库，你还可以通过适当的描述，来引导模型何时去调用知识库搜索。例如：\n你是电影《星际穿越》的助手，当用户询问与《星际穿越》相关的内容时，请搜索知识库并结合搜索结果进行回答。",
         "variableTip": "可以在对话开始前，要求用户填写一些内容作为本轮对话的特定变量。该模块位于开场引导之后。\n变量可以通过 {{变量key}} 的形式注入到其他模块 string 类型的输入中，例如：提示词、限定词等",
         "welcomeTextTip": "每次对话开始前，发送一个初始内容。支持标准 Markdown 语法，可使用的额外标记：\n[快捷按键]：用户点击后可以直接发送该问题"
       },
@@ -902,7 +898,9 @@
       "overSize": "团队成员超出上限"
     }
   },
+  "field_name": "字段名",
   "invalid_variable": "无效变量",
+  "is_open": "是否开启",
   "navbar": {
     "Account": "账号",
     "Chat": "聊天",
@@ -910,6 +908,8 @@
     "Studio": "工作台",
     "Tools": "工具"
   },
+  "new_create": "新建",
+  "no_data": "暂无数据",
   "permission": {
     "Collaborator": "协作者",
     "Default permission": "默认权限",
@@ -1148,6 +1148,7 @@
     "Quote Content Tip": "可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置：\n{{q}} - 检索内容，{{a}} - 预期内容，{{source}} - 来源，{{sourceId}} - 来源文件名，{{index}} - 第 n 个引用，他们都是可选的，下面是默认值：\n{{default}}",
     "Quote Prompt Tip": "可以用 {{quote}} 来插入引用内容模板，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"
   },
+  "textarea_variable_picker_tip": "输入 / 可选择变量",
   "unusable_variable": "无可用变量",
   "user": {
     "Account": "账号",

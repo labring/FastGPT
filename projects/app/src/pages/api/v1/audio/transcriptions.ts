@@ -3,15 +3,14 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { getUploadModel } from '@fastgpt/service/common/file/multer';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import fs from 'fs';
-import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { pushWhisperUsage } from '@/service/support/wallet/usage/push';
 import { authChatCert } from '@/service/support/permission/auth/chat';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { NextAPI } from '@/service/middleware/entry';
+import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
 
 const upload = getUploadModel({
-  maxSize: 2
+  maxSize: 20
 });
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -45,6 +44,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
 
     // auth role
     const { teamId, tmbId } = await authChatCert({ req, authToken: true });
+
     // auth app
     // const app = await MongoApp.findById(appId, 'modules').lean();
     // if (!app) {
@@ -54,11 +54,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     //   throw new Error('Whisper is not open in the app');
     // }
 
-    const ai = getAIApi();
-
-    const result = await ai.audio.transcriptions.create({
-      file: fs.createReadStream(file.path),
-      model: global.whisperModel.model
+    const result = await aiTranscriptions({
+      model: global.whisperModel.model,
+      fileStream: fs.createReadStream(file.path)
     });
 
     pushWhisperUsage({

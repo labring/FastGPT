@@ -292,7 +292,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
             {showHead === '1' ? (
               <ChatHeader
                 chatData={chatData}
-                history={chatData.history}
+                history={chatRecords}
                 showHistory={showHistory === '1'}
               />
             ) : null}
@@ -396,7 +396,7 @@ export async function getServerSideProps(context: any) {
       appIntro: app?.appId?.intro ?? 'intro',
       shareId: shareId ?? '',
       authToken: authToken ?? '',
-      ...(await serviceSideProps(context, ['file']))
+      ...(await serviceSideProps(context, ['file', 'app']))
     }
   };
 }

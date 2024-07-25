@@ -7,7 +7,13 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 
-const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
+const ToolMenu = ({
+  history,
+  onRouteToAppDetail
+}: {
+  history: ChatItemType[];
+  onRouteToAppDetail?: () => void;
+}) => {
   const { t } = useTranslation();
   const { onExportChat } = useChatBox();
   const router = useRouter();
@@ -57,7 +63,20 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
             //   onClick: () => onExportChat({ type: 'pdf', history })
             // }
           ]
-        }
+        },
+        ...(onRouteToAppDetail
+          ? [
+              {
+                children: [
+                  {
+                    icon: 'core/app/aiLight',
+                    label: t('app:app_detail'),
+                    onClick: onRouteToAppDetail
+                  }
+                ]
+              }
+            ]
+          : [])
       ]}
     />
   ) : (
