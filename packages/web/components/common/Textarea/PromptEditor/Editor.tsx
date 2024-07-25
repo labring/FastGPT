@@ -86,7 +86,7 @@ export default function Editor({
   useDeepCompareEffect(() => {
     if (focus) return;
     setKey(getNanoid(6));
-  }, [value, variables]);
+  }, [value, variables, variableLabels]);
 
   return (
     <Box position={'relative'} width={'full'} h={`${height}px`} cursor={'text'}>
