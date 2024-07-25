@@ -25,8 +25,8 @@ const TeamMemberSchema = new Schema({
     default: 'Member'
   },
   role: {
-    type: String,
-    enum: Object.keys(TeamMemberRoleMap)
+    type: String
+    // enum: Object.keys(TeamMemberRoleMap) // disable enum validation for old data
   },
   status: {
     type: String,
