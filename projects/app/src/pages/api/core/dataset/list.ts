@@ -70,7 +70,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
 
     return {
       teamId,
-      ...(type && Array.isArray(type) ? { type: { $in: type } } : { type }),
+      ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
       ...parseParentIdInMongo(parentId)
     };
   })();
