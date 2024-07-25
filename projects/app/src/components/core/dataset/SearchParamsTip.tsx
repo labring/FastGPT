@@ -14,6 +14,7 @@ const SearchParamsTip = ({
   limit = 1500,
   responseEmptyText,
   usingReRank = false,
+  datasetSearchUsingExtensionQuery,
   queryExtensionModel
 }: {
   searchMode: `${DatasetSearchModeEnum}`;
@@ -21,6 +22,7 @@ const SearchParamsTip = ({
   limit?: number;
   responseEmptyText?: string;
   usingReRank?: boolean;
+  datasetSearchUsingExtensionQuery?: boolean;
   queryExtensionModel?: string;
 }) => {
   const { t } = useTranslation();
@@ -32,11 +34,11 @@ const SearchParamsTip = ({
 
   const extensionModelName = useMemo(
     () =>
-      queryExtensionModel
+      datasetSearchUsingExtensionQuery
         ? llmModelList.find((item) => item.model === queryExtensionModel)?.name ??
           llmModelList[0]?.name
         : undefined,
-    [llmModelList, queryExtensionModel]
+    [datasetSearchUsingExtensionQuery, llmModelList, queryExtensionModel]
   );
 
   return (

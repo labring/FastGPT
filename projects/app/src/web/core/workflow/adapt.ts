@@ -41,7 +41,7 @@ export const getGlobalVariableNode = ({
     sourceHandle: getHandleConfig(false, false, false, false),
     targetHandle: getHandleConfig(false, false, false, false),
     avatar: 'core/workflow/template/variable',
-    name: '全局变量',
+    name: t('common:core.module.Variable'),
     intro: '',
     unique: true,
     forbidDelete: true,
