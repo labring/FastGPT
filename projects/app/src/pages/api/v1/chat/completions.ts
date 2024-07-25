@@ -235,6 +235,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         )
       : storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes));
 
+    const runtimeVariables = isPlugin ? {} : variables;
+
     /* start flow controller */
     const { flowResponses, flowUsages, assistantResponses, newVariables } = await (async () => {
       if (app.version === 'v2') {
@@ -249,7 +251,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           responseChatItemId,
           runtimeNodes,
           runtimeEdges: initWorkflowEdgeStatus(edges),
-          variables,
+          variables: runtimeVariables,
           query: removeEmptyUserInput(userQuestion.value),
           histories: newHistories,
           stream,

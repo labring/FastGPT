@@ -19,7 +19,9 @@ const PromptEditor = ({
   maxLength,
   placeholder,
   title,
-  isFlow
+  isFlow,
+  showVariablePickerPlugin = false,
+  showVariableLabelPickerPlugin = true
 }: {
   showOpenModal?: boolean;
   showResize?: boolean;
@@ -32,6 +34,8 @@ const PromptEditor = ({
   placeholder?: string;
   title?: string;
   isFlow?: boolean;
+  showVariablePickerPlugin?: boolean;
+  showVariableLabelPickerPlugin?: boolean;
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [, startSts] = useTransition();
@@ -62,6 +66,8 @@ const PromptEditor = ({
         onBlur={onBlurInput}
         placeholder={placeholder}
         isFlow={isFlow}
+        showVariablePickerPlugin={showVariablePickerPlugin}
+        showVariableLabelPickerPlugin={showVariableLabelPickerPlugin}
       />
       <MyModal isOpen={isOpen} onClose={onClose} iconSrc="modal/edit" title={title} w={'full'}>
         <ModalBody>
@@ -75,6 +81,8 @@ const PromptEditor = ({
             onChange={onChangeInput}
             onBlur={onBlurInput}
             placeholder={placeholder}
+            showVariablePickerPlugin={showVariablePickerPlugin}
+            showVariableLabelPickerPlugin={showVariableLabelPickerPlugin}
           />
         </ModalBody>
         <ModalFooter>

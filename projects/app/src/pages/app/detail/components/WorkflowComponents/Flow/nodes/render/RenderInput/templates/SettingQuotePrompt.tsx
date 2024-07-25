@@ -212,6 +212,8 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
                 onChange={(e) => {
                   setValue('quoteTemplate', e);
                 }}
+                showVariableLabelPickerPlugin={false}
+                showVariablePickerPlugin
               />
             </Box>
             <Box mt={4}>
@@ -235,6 +237,8 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
                 onChange={(e) => {
                   setValue('quotePrompt', e);
                 }}
+                showVariableLabelPickerPlugin={false}
+                showVariablePickerPlugin
               />
             </Box>
           </ModalBody>

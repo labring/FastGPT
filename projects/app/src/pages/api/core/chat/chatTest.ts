@@ -63,6 +63,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Plugin need to replace inputs
     if (isPlugin) {
       nodes = updatePluginInputByVariables(nodes, variables);
+      variables = {};
     } else {
       if (!userInput) {
         throw new Error('Params Error');

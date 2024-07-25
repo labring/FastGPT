@@ -21,6 +21,7 @@ import { MaxLengthPlugin } from './plugins/MaxLengthPlugin';
 import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import VariableLabelPlugin from './plugins/VariableLabelPlugin';
 import { useDeepCompareEffect } from 'ahooks';
+import VariablePickerPlugin from './plugins/VariablePickerPlugin';
 
 export default function Editor({
   h = 200,
@@ -33,7 +34,9 @@ export default function Editor({
   onBlur,
   value,
   placeholder = '',
-  isFlow
+  isFlow,
+  showVariablePickerPlugin,
+  showVariableLabelPickerPlugin
 }: {
   h?: number;
   maxLength?: number;
@@ -46,6 +49,8 @@ export default function Editor({
   value?: string;
   placeholder?: string;
   isFlow?: boolean;
+  showVariablePickerPlugin: boolean;
+  showVariableLabelPickerPlugin: boolean;
 }) {
   const [key, setKey] = useState(getNanoid(6));
   const [_, startSts] = useTransition();
@@ -130,9 +135,14 @@ export default function Editor({
             });
           }}
         />
-        <VariableLabelPickerPlugin variables={variables} isFocus={focus} />
-        <VariablePlugin variables={variables} />
         <VariableLabelPlugin variables={variables} />
+        {showVariableLabelPickerPlugin ? (
+          <VariableLabelPickerPlugin variables={variables} isFocus={focus} />
+        ) : (
+          ''
+        )}
+        <VariablePlugin variables={variables} />
+        {showVariablePickerPlugin ? <VariablePickerPlugin variables={variables} /> : ''}
         <OnBlurPlugin onBlur={onBlur} />
       </LexicalComposer>
       {showResize && (
