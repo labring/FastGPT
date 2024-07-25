@@ -34,16 +34,18 @@ export const authDatasetByTmbId = async ({
     permission: DatasetPermission;
   };
 }> => {
-  const { teamId, permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
-
   const dataset = await (async () => {
-    const dataset = await MongoDataset.findOne({ _id: datasetId }).lean();
+    const [{ teamId, permission: tmbPer }, dataset] = await Promise.all([
+      getTmbInfoByTmbId({ tmbId }),
+      MongoDataset.findOne({ _id: datasetId }).lean()
+    ]);
 
     if (!dataset) {
       return Promise.reject(DatasetErrEnum.unExist);
     }
     const isOwner = tmbPer.isOwner || String(dataset.tmbId) === String(tmbId);
 
+    // get dataset permission or inherit permission from parent folder.
     const { Per, defaultPermission } = await (async () => {
       if (
         dataset.type === DatasetTypeEnum.folder ||

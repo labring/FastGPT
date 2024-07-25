@@ -42,7 +42,7 @@ import type { GetDatasetListBody } from '@/pages/api/core/dataset/list';
 import type { UpdateDatasetCollectionParams } from '@/pages/api/core/dataset/collection/update';
 import type { GetDatasetDataListProps } from '@/pages/api/core/dataset/data/list';
 import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
-import { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
+import type { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
