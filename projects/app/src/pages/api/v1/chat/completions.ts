@@ -54,7 +54,10 @@ import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { updatePluginInputByVariables } from '@fastgpt/global/core/workflow/utils';
+import {
+  filterPluginInputVariables,
+  updatePluginInputByVariables
+} from '@fastgpt/global/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   getPluginInputsFromStoreNodes,
@@ -235,7 +238,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         )
       : storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes));
 
-    const runtimeVariables = isPlugin ? {} : variables;
+    const runtimeVariables = filterPluginInputVariables(
+      variables,
+      storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes))
+    );
 
     /* start flow controller */
     const { flowResponses, flowUsages, assistantResponses, newVariables } = await (async () => {
