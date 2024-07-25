@@ -155,7 +155,7 @@ const HttpPluginEditModal = ({
   /* load api from url */
   const { mutate: onClickUrlLoadApi, isLoading: isLoadingUrlApi } = useRequest({
     mutationFn: async () => {
-      if (!schemaUrl || !schemaUrl.startsWith('https://')) {
+      if (!schemaUrl || (!schemaUrl.startsWith('https://') && !schemaUrl.startsWith('http://'))) {
         return toast({
           title: t('common:plugin.Invalid URL'),
           status: 'warning'
