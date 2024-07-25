@@ -50,6 +50,7 @@ const StandDetailModal = dynamic(() => import('./standardDetailModal'));
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
 const PayModal = dynamic(() => import('./PayModal'));
 const UpdatePswModal = dynamic(() => import('./UpdatePswModal'));
+const UpdateNotification = dynamic(() => import('./UpdateNotificationModal'));
 const OpenAIAccountModal = dynamic(() => import('./OpenAIAccountModal'));
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
@@ -112,6 +113,11 @@ const MyInfo = () => {
     isOpen: isOpenUpdatePsw,
     onClose: onCloseUpdatePsw,
     onOpen: onOpenUpdatePsw
+  } = useDisclosure();
+  const {
+    isOpen: isOpenUpdateNotification,
+    onClose: onCloseUpdateNotification,
+    onOpen: onOpenUpdateNotification
   } = useDisclosure();
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
@@ -258,6 +264,17 @@ const MyInfo = () => {
             </Button>
           </Flex>
         )}
+        {feConfigs.isPlus && (
+          <Flex mt={6} alignItems={'center'}>
+            <Box {...labelStyles}>{t('common:user.Notification Receive')}:&nbsp;</Box>
+            <Box flex={1} {...(userInfo?.email || userInfo?.phone ? {} : { color: 'red.600' })}>
+              {userInfo?.email || userInfo?.phone || t('common:user.Notification Receive Bind')}
+            </Box>
+            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdateNotification}>
+              {t('common:user.Change')}
+            </Button>
+          </Flex>
+        )}
         <Flex mt={6} alignItems={'center'}>
           <Box {...labelStyles}>{t('common:user.Team')}:&nbsp;</Box>
           <Box flex={1}>
@@ -282,6 +299,7 @@ const MyInfo = () => {
       </Box>
       {isOpenPayModal && <PayModal onClose={onClosePayModal} />}
       {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
+      {isOpenUpdateNotification && <UpdateNotification onClose={onCloseUpdateNotification} />}
       <File onSelect={onSelectFile} />
     </Box>
   );

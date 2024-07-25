@@ -10,6 +10,7 @@ import type {
   PostLoginProps
 } from '@fastgpt/global/support/user/api.d';
 import { GetWXLoginQRResponse } from '@fastgpt/global/support/user/login/api.d';
+import { UserAccountUpdateNotificationMethodBody } from '@/pages/api/support/user/account/updateNotificationMethod';
 
 export const sendAuthCode = (data: {
   username: string;
@@ -62,6 +63,9 @@ export const updatePasswordByOld = ({ oldPsw, newPsw }: { oldPsw: string; newPsw
     oldPsw: hashStr(oldPsw),
     newPsw: hashStr(newPsw)
   });
+
+export const updateNotificationMethod = (data: UserAccountUpdateNotificationMethodBody) =>
+  POST('/support/user/account/update', data);
 
 export const postLogin = ({ password, ...props }: PostLoginProps) =>
   POST<ResLogin>('/support/user/account/loginByPassword', {

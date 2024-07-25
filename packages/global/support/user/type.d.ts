@@ -7,6 +7,7 @@ export type UserModelSchema = {
   email?: string;
   phonePrefix?: number;
   phone?: string;
+  receiveNotification: boolean;
   password: string;
   avatar: string;
   promotionRate: number;
@@ -31,4 +32,7 @@ export type UserType = {
   openaiAccount: UserModelSchema['openaiAccount'];
   team: TeamTmbItemType;
   standardInfo?: standardInfoType;
+  phone?: string;
+  email?: string;
+  receiveNotification: boolean;
 };

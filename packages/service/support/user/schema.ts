@@ -1,5 +1,5 @@
-import { connectionMongo, getMongoModel, type Model } from '../../common/mongo';
-const { Schema, model, models } = connectionMongo;
+import { connectionMongo, getMongoModel } from '../../common/mongo';
+const { Schema } = connectionMongo;
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/constant';
@@ -26,6 +26,10 @@ const UserSchema = new Schema({
   },
   phone: {
     type: String
+  },
+  receiveNotification: {
+    type: Boolean,
+    default: true
   },
   password: {
     type: String,

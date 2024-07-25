@@ -1165,6 +1165,8 @@
     "Language": "Language",
     "Member Name": "Nickname",
     "Notice": "Notice",
+    "Notification Receive": "Notification Receive",
+    "Notification Receive Bind": "Please bind notification receive method",
     "Old password is error": "Old password is incorrect",
     "OpenAI Account Setting": "OpenAI account settings",
     "Password": "Password",
