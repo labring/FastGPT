@@ -2,7 +2,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin';
 import { $createTextNode, $getSelection, $isRangeSelection, TextNode } from 'lexical';
 import * as React from 'react';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import * as ReactDOM from 'react-dom';
 import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
@@ -37,8 +37,7 @@ export default function VariableLabelPickerPlugin({
   const [editor] = useLexicalComposerContext();
   const [queryString, setQueryString] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
-  const [highlightIndex, setHighlightIndex] = useState<number | null>(null);
-  const highlightedItemRef = React.useRef<any>(null);
+  const highlightedItemRef = useRef<any>(null);
 
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
     minLength: 0
@@ -63,7 +62,7 @@ export default function VariableLabelPickerPlugin({
     [editor]
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (highlightedItemRef.current) {
       highlightedItemRef.current.scrollIntoView({
         behavior: 'auto',
@@ -87,7 +86,6 @@ export default function VariableLabelPickerPlugin({
         }
         if (currentIndex !== selectedIndex) {
           setCurrentIndex(selectedIndex || 0);
-          setHighlightIndex(selectedIndex || 0);
         }
         return anchorElementRef.current && variables.length && isFocus
           ? ReactDOM.createPortal(
@@ -95,7 +93,7 @@ export default function VariableLabelPickerPlugin({
                 bg={'white'}
                 boxShadow={'lg'}
                 border={'base'}
-                p={2}
+                p={1.5}
                 borderRadius={'md'}
                 position={'absolute'}
                 w={'auto'}
@@ -105,9 +103,7 @@ export default function VariableLabelPickerPlugin({
                 zIndex={99999}
               >
                 {variableFilter(variables, queryString || '').length === variables.length && (
-                  <Box fontSize={'xs'} ml={4}>
-                    {t('workflow:variable_picker_tips')}
-                  </Box>
+                  <Box fontSize={'xs'}>{t('workflow:variable_picker_tips')}</Box>
                 )}
                 {variableFilter(variables, queryString || '').length > 0 ? (
                   transformVariables(variableFilter(variables, queryString || '')).map((item) => {
@@ -115,8 +111,7 @@ export default function VariableLabelPickerPlugin({
                       <Flex
                         key={item.id}
                         flexDirection={'column'}
-                        px={4}
-                        py={2}
+                        pt={2}
                         _notLast={{
                           borderBottom: '1px solid',
                           borderColor: 'myGray.200'
@@ -145,16 +140,16 @@ export default function VariableLabelPickerPlugin({
                             alignItems={'center'}
                             as={'li'}
                             key={child.key}
-                            px={4}
-                            py={1.5}
-                            rounded={'md'}
+                            px={2}
+                            py={1}
+                            rounded={'4px'}
                             cursor={'pointer'}
                             overflow={'auto'}
                             _notLast={{
                               mb: 1
                             }}
                             ref={selectedIndex === child.index ? highlightedItemRef : null}
-                            {...(highlightIndex === child.index
+                            {...(selectedIndex === child.index
                               ? {
                                   bg: '#1118240D',
                                   color: 'primary.700'
@@ -163,11 +158,12 @@ export default function VariableLabelPickerPlugin({
                                   bg: 'white',
                                   color: 'myGray.600'
                                 })}
+                            _hover={{
+                              bg: '#1118240D',
+                              color: 'primary.700'
+                            }}
                             onMouseDown={() => {
                               selectOptionAndCleanUp({ ...child, parent: item });
-                            }}
-                            onMouseEnter={() => {
-                              setHighlightIndex(child.index);
                             }}
                           >
                             <Box ml={2} fontSize={'sm'} whiteSpace={'nowrap'}>
