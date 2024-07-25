@@ -20,14 +20,14 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
 
   // get variable
   const variables = useCreation(() => {
-    const currentNode = nodeList.find((node) => node.nodeId === nodeId);
+    const currentNode = nodeList.find((node) => node.nodeId === nodeId)!;
     const nodeVariables = getNodeDynamicInputs(nodeId).map((item) => ({
       key: item.key,
       label: item.label,
       parent: {
-        id: currentNode?.nodeId || '',
-        label: currentNode?.name || '',
-        avatar: currentNode?.avatar || ''
+        id: currentNode.nodeId,
+        label: currentNode.name,
+        avatar: currentNode.avatar
       }
     }));
 
