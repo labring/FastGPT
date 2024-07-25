@@ -95,7 +95,7 @@ export default function VariableLabelPickerPlugin({
                 bg={'white'}
                 boxShadow={'lg'}
                 border={'base'}
-                p={2}
+                p={1.5}
                 borderRadius={'md'}
                 position={'absolute'}
                 w={'auto'}
@@ -105,9 +105,7 @@ export default function VariableLabelPickerPlugin({
                 zIndex={99999}
               >
                 {variableFilter(variables, queryString || '').length === variables.length && (
-                  <Box fontSize={'xs'} ml={4}>
-                    {t('workflow:variable_picker_tips')}
-                  </Box>
+                  <Box fontSize={'xs'}>{t('workflow:variable_picker_tips')}</Box>
                 )}
                 {variableFilter(variables, queryString || '').length > 0 ? (
                   transformVariables(variableFilter(variables, queryString || '')).map((item) => {
@@ -115,8 +113,7 @@ export default function VariableLabelPickerPlugin({
                       <Flex
                         key={item.id}
                         flexDirection={'column'}
-                        px={4}
-                        py={2}
+                        pt={2}
                         _notLast={{
                           borderBottom: '1px solid',
                           borderColor: 'myGray.200'
@@ -145,9 +142,9 @@ export default function VariableLabelPickerPlugin({
                             alignItems={'center'}
                             as={'li'}
                             key={child.key}
-                            px={4}
-                            py={1.5}
-                            rounded={'md'}
+                            px={2}
+                            py={1}
+                            rounded={'4px'}
                             cursor={'pointer'}
                             overflow={'auto'}
                             _notLast={{
