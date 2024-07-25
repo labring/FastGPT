@@ -229,7 +229,7 @@ export const updatePluginInputByVariables = (
   );
 };
 
-export const filterPluginInputVariables = (
+export const removePluginInputVariables = (
   variables: Record<string, any>,
   nodes: RuntimeNodeItemType[]
 ) => {
