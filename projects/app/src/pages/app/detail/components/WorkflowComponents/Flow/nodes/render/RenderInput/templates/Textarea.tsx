@@ -84,6 +84,7 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const Render = useMemo(() => {
     return (
       <PromptEditor
+        variableLabels={variables}
         variables={variables}
         title={t(item.label as any)}
         maxLength={item.maxLength}

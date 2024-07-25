@@ -30,13 +30,12 @@ export default function Editor({
   showOpenModal = true,
   onOpenModal,
   variables,
+  variableLabels,
   onChange,
   onBlur,
   value,
   placeholder = '',
-  isFlow,
-  showVariablePickerPlugin,
-  showVariableLabelPickerPlugin
+  isFlow
 }: {
   h?: number;
   maxLength?: number;
@@ -44,13 +43,12 @@ export default function Editor({
   showOpenModal?: boolean;
   onOpenModal?: () => void;
   variables: EditorVariablePickerType[];
+  variableLabels: EditorVariablePickerType[];
   onChange?: (editorState: EditorState, editor: LexicalEditor) => void;
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
   placeholder?: string;
   isFlow?: boolean;
-  showVariablePickerPlugin: boolean;
-  showVariableLabelPickerPlugin: boolean;
 }) {
   const [key, setKey] = useState(getNanoid(6));
   const [_, startSts] = useTransition();
@@ -135,14 +133,10 @@ export default function Editor({
             });
           }}
         />
-        <VariableLabelPlugin variables={variables} />
-        {showVariableLabelPickerPlugin ? (
-          <VariableLabelPickerPlugin variables={variables} isFocus={focus} />
-        ) : (
-          ''
-        )}
+        <VariableLabelPlugin variables={variableLabels} />
+        <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
         <VariablePlugin variables={variables} />
-        {showVariablePickerPlugin ? <VariablePickerPlugin variables={variables} /> : ''}
+        <VariablePickerPlugin variables={variableLabels.length > 0 ? [] : variables} />
         <OnBlurPlugin onBlur={onBlur} />
       </LexicalComposer>
       {showResize && (

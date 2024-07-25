@@ -181,6 +181,7 @@ const EditForm = ({
                     }));
                   });
                 }}
+                variableLabels={formatVariables}
                 variables={formatVariables}
                 placeholder={t('common:core.app.tip.chatNodeSystemPromptTip')}
                 title={t('common:core.ai.Prompt')}

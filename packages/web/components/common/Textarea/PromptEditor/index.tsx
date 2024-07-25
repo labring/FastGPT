@@ -12,6 +12,7 @@ const PromptEditor = ({
   showOpenModal = true,
   showResize = true,
   variables = [],
+  variableLabels = [],
   value,
   onChange,
   onBlur,
@@ -19,13 +20,12 @@ const PromptEditor = ({
   maxLength,
   placeholder,
   title,
-  isFlow,
-  showVariablePickerPlugin = false,
-  showVariableLabelPickerPlugin = true
+  isFlow
 }: {
   showOpenModal?: boolean;
   showResize?: boolean;
   variables?: EditorVariablePickerType[];
+  variableLabels?: EditorVariablePickerType[];
   value?: string;
   onChange?: (text: string) => void;
   onBlur?: (text: string) => void;
@@ -34,8 +34,6 @@ const PromptEditor = ({
   placeholder?: string;
   title?: string;
   isFlow?: boolean;
-  showVariablePickerPlugin?: boolean;
-  showVariableLabelPickerPlugin?: boolean;
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [, startSts] = useTransition();
@@ -59,6 +57,7 @@ const PromptEditor = ({
         showOpenModal={showOpenModal}
         onOpenModal={onOpen}
         variables={variables}
+        variableLabels={variableLabels}
         h={h}
         maxLength={maxLength}
         value={value}
@@ -66,8 +65,6 @@ const PromptEditor = ({
         onBlur={onBlurInput}
         placeholder={placeholder}
         isFlow={isFlow}
-        showVariablePickerPlugin={showVariablePickerPlugin}
-        showVariableLabelPickerPlugin={showVariableLabelPickerPlugin}
       />
       <MyModal isOpen={isOpen} onClose={onClose} iconSrc="modal/edit" title={title} w={'full'}>
         <ModalBody>
@@ -77,12 +74,11 @@ const PromptEditor = ({
             showResize
             showOpenModal={false}
             variables={variables}
+            variableLabels={variableLabels}
             value={value}
             onChange={onChangeInput}
             onBlur={onBlurInput}
             placeholder={placeholder}
-            showVariablePickerPlugin={showVariablePickerPlugin}
-            showVariableLabelPickerPlugin={showVariableLabelPickerPlugin}
           />
         </ModalBody>
         <ModalFooter>
