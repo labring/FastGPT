@@ -371,7 +371,6 @@ const RenderList = React.memo(function RenderList({
             <Button
               variant={'primary'}
               onClick={handleSubmit((data) => {
-                console.log(data);
                 onAddTool({
                   ...configTool,
                   inputs: configTool.inputs.map((input) => ({
