@@ -82,6 +82,7 @@ export async function getPluginPreviewNode({ id }: { id: string }): Promise<Flow
     avatar: plugin.avatar,
     name: plugin.name,
     intro: plugin.intro,
+    inputExplanationUrl: plugin.inputExplanationUrl,
     showStatus: plugin.showStatus,
     isTool: plugin.isTool,
     version: plugin.version,

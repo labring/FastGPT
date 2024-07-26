@@ -24,7 +24,7 @@ async function handler(req: NextApiRequest) {
     searchMode,
     usingReRank,
 
-    datasetSearchUsingExtensionQuery = false,
+    datasetSearchUsingExtensionQuery = true,
     datasetSearchExtensionModel,
     datasetSearchExtensionBg = ''
   } = req.body as SearchTestProps;

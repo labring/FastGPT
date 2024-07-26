@@ -1,6 +1,7 @@
 {
   "Run": "运行",
   "ai_settings": "AI 配置",
+  "all_apps": "全部应用",
   "app": {
     "modules": {
       "click to update": "点击更新",
@@ -52,6 +53,7 @@
   "template": {
     "simple_robot": "简易机器人"
   },
+  "tool_input_param_tip": "该插件正常运行需要配置相关信息",
   "transition_to_workflow": "转成工作流",
   "transition_to_workflow_create_new_placeholder": "创建一个新的应用，而不是修改当前应用",
   "transition_to_workflow_create_new_tip": "转化成工作流后，将无法转化回简易模式，请确认！",
@@ -71,5 +73,11 @@
   },
   "version": {
     "Revert success": "回滚成功"
+  },
+  "workflow": {
+    "Input guide": "填写说明",
+    "template": {
+      "communication": "通信"
+    }
   }
 }

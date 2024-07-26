@@ -106,6 +106,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     acc[key] = valueTypeFormat(value, WorkflowIOValueTypeEnum.string);
     return acc;
   }, {});
+
   const requestBody = await (() => {
     if (!httpJsonBody) return {};
     try {
