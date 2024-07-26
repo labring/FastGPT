@@ -287,18 +287,18 @@ const codeLight: { [key: string]: React.CSSProperties } = {
 const CodeLight = ({
   children,
   className,
-  inline,
+  codeBlock,
   match
 }: {
   children: React.ReactNode & React.ReactNode[];
   className?: string;
-  inline?: boolean;
+  codeBlock?: boolean;
   match: RegExpExecArray | null;
 }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
 
-  if (!inline) {
+  if (codeBlock) {
     const codeBoxName = useMemo(() => {
       const input = match?.['input'] || '';
       if (!input) return match?.[1];
