@@ -36,10 +36,7 @@ import {
   getSystemPluginPaths
 } from '@/web/core/app/api/plugin';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { useForm } from 'react-hook-form';
-import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { Controller, useForm } from 'react-hook-form';
 import { getTeamPlugTemplates } from '@/web/core/app/api/plugin';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -48,6 +45,8 @@ import FolderPath from '@/components/common/folder/Path';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CostTooltip from '@/components/core/app/plugin/CostTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import RenderPluginInput from '@/components/core/chat/ChatContainer/PluginRunBox/components/renderPluginInput';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -189,7 +188,25 @@ const RenderList = React.memo(function RenderList({
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
 
-  const { register, getValues, setValue, handleSubmit, reset } = useForm<Record<string, any>>({});
+  const {
+    handleSubmit,
+    reset,
+    control,
+    formState: { errors }
+  } = useForm();
+
+  useEffect(() => {
+    if (configTool) {
+      const defaultValues = configTool.inputs.reduce(
+        (acc, input) => {
+          acc[input.key] = input.defaultValue;
+          return acc;
+        },
+        {} as Record<string, any>
+      );
+      reset(defaultValues);
+    }
+  }, [configTool, reset]);
 
   const { mutate: onClickAdd, isLoading } = useRequest({
     mutationFn: async (template: FlowNodeTemplateType) => {
@@ -314,65 +331,36 @@ const RenderList = React.memo(function RenderList({
             {configTool.inputs
               .filter((item) => !item.toolDescription)
               .map((input) => {
-                const required = input.required || false;
-
                 return (
-                  <Box key={input.key} _notLast={{ mb: 4 }} px={1}>
-                    <Flex position={'relative'} mb={1} alignItems={'center'}>
-                      {t(input.debugLabel || (input.label as any))}
-                      {input.description && <QuestionTip label={input.description} ml={1} />}
-                    </Flex>
-                    {(() => {
-                      if (input.valueType === WorkflowIOValueTypeEnum.string) {
-                        return (
-                          <Textarea
-                            {...register(input.key, {
-                              required
-                            })}
-                            placeholder={t(input.placeholder || ('' as any))}
-                            bg={'myGray.50'}
-                          />
-                        );
+                  <Controller
+                    key={input.key}
+                    control={control}
+                    name={input.key}
+                    rules={{
+                      validate: (value) => {
+                        if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
+                          return value !== undefined;
+                        }
+                        return !!value;
                       }
-                      if (input.valueType === WorkflowIOValueTypeEnum.number) {
-                        return (
-                          <NumberInput
-                            step={input.step}
-                            min={input.min}
-                            max={input.max}
-                            bg={'myGray.50'}
-                          >
-                            <NumberInputField
-                              {...register(input.key, {
-                                required: input.required,
-                                min: input.min,
-                                max: input.max,
-                                valueAsNumber: true
-                              })}
-                            />
-                            <NumberInputStepper>
-                              <NumberIncrementStepper />
-                              <NumberDecrementStepper />
-                            </NumberInputStepper>
-                          </NumberInput>
-                        );
-                      }
-                      if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
-                        return <Switch {...register(input.key, { required })} />;
-                      }
+                    }}
+                    render={({ field: { onChange, value } }) => {
                       return (
-                        <JsonEditor
-                          bg={'myGray.50'}
-                          placeholder={t(input.placeholder || ('' as any))}
-                          resize
-                          value={getValues(input.key)}
-                          onChange={(e) => {
-                            setValue(input.key, e);
-                          }}
+                        <RenderPluginInput
+                          value={value}
+                          onChange={onChange}
+                          label={input.label}
+                          description={input.description}
+                          valueType={input.valueType}
+                          placeholder={input.placeholder}
+                          required={input.required}
+                          min={input.min}
+                          max={input.max}
+                          isInvalid={errors && Object.keys(errors).includes(input.key)}
                         />
                       );
-                    })()}
-                  </Box>
+                    }}
+                  />
                 );
               })}
           </ModalBody>

@@ -18,6 +18,7 @@ const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea
 
 const RenderPluginInput = ({
   value,
+  defaultValue,
   onChange,
   label,
   description,
@@ -30,6 +31,7 @@ const RenderPluginInput = ({
   isInvalid
 }: {
   value: any;
+  defaultValue?: any;
   onChange: () => void;
   label: string;
   description?: string;
@@ -48,6 +50,7 @@ const RenderPluginInput = ({
       return (
         <Textarea
           value={value}
+          defaultValue={defaultValue}
           onChange={onChange}
           isDisabled={isDisabled}
           placeholder={t(placeholder as any)}
@@ -66,7 +69,7 @@ const RenderPluginInput = ({
           isDisabled={isDisabled}
           isInvalid={isInvalid}
         >
-          <NumberInputField value={value} onChange={onChange} />
+          <NumberInputField value={value} onChange={onChange} defaultValue={defaultValue} />
           <NumberInputStepper>
             <NumberIncrementStepper />
             <NumberDecrementStepper />
@@ -81,6 +84,7 @@ const RenderPluginInput = ({
           onChange={onChange}
           isDisabled={isDisabled}
           isInvalid={isInvalid}
+          defaultChecked={defaultValue}
         />
       );
     }
@@ -93,6 +97,7 @@ const RenderPluginInput = ({
         value={value}
         onChange={onChange}
         isInvalid={isInvalid}
+        defaultValue={defaultValue}
       />
     );
   })();
