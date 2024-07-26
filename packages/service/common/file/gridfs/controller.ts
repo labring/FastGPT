@@ -163,6 +163,7 @@ export const readFileContentFromMongo = async ({
 
   const encoding = file?.metadata?.encoding || detectFileEncoding(fileBuffers);
 
+  // Get raw text
   const { rawText } = await readRawContentByFileBuffer({
     extension,
     isQAImport,
