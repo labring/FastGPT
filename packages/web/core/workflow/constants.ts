@@ -1,36 +1,40 @@
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeTemplateListType } from '@fastgpt/global/core/workflow/type/node';
-import { TFunction } from 'next-i18next';
+import { i18nT } from '../../i18n/utils';
 
-export const workflowNodeTemplateList = (t: TFunction): NodeTemplateListType => [
+export const workflowNodeTemplateList = [
   {
     type: FlowNodeTemplateTypeEnum.systemInput,
-    label: t('common:core.module.template.System input module'),
+    label: i18nT('common:core.module.template.System input module'),
     list: []
   },
   {
     type: FlowNodeTemplateTypeEnum.ai,
-    label: t('common:core.module.template.AI function'),
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.tools,
-    label: t('common:core.module.template.Tool module'),
+    label: i18nT('common:core.module.template.AI function'),
     list: []
   },
   {
     type: FlowNodeTemplateTypeEnum.search,
-    label: t('core.workflow.template.Search'),
+    label: i18nT('common:core.workflow.template.Search'),
     list: []
   },
   {
     type: FlowNodeTemplateTypeEnum.multimodal,
-    label: t('core.workflow.template.Multimodal'),
+    label: i18nT('common:core.workflow.template.Multimodal'),
+    list: []
+  },
+  {
+    type: FlowNodeTemplateTypeEnum.tools,
+    label: i18nT('common:core.module.template.Tool module'),
+    list: []
+  },
+  {
+    type: FlowNodeTemplateTypeEnum.communication,
+    label: i18nT('app:workflow.template.communication'),
     list: []
   },
   {
     type: FlowNodeTemplateTypeEnum.other,
-    label: t('common:common.Other'),
+    label: i18nT('common:common.Other'),
     list: []
   },
   {

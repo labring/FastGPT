@@ -6,6 +6,7 @@ export enum FlowNodeTemplateTypeEnum {
 
   search = 'search',
   multimodal = 'multimodal',
+  communication = 'communication',
 
   other = 'other',
   teamApp = 'teamApp'

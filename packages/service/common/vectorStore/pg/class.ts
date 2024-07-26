@@ -10,6 +10,7 @@ import {
   InsertVectorControllerProps
 } from '../controller.d';
 import dayjs from 'dayjs';
+import { addLog } from '../../system/log';
 
 export class PgVectorCtrl {
   constructor() {}
@@ -38,9 +39,9 @@ export class PgVectorCtrl {
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${DatasetVectorTableName} USING btree(createtime);`
       );
 
-      console.log('init pg successful');
+      addLog.info('init pg successful');
     } catch (error) {
-      console.log('init pg error', error);
+      addLog.error('init pg error', error);
     }
   };
   insert = async (props: InsertVectorControllerProps): Promise<{ insertId: string }> => {

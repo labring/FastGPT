@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Flex,
+  HStack,
   Input,
   InputGroup,
   InputLeftElement,
@@ -287,6 +288,8 @@ const RenderList = React.memo(function RenderList({
           </MyTooltip>
         );
       })}
+
+      {/* Plugin input config */}
       {!!configTool && (
         <MyModal
           isOpen
@@ -295,6 +298,19 @@ const RenderList = React.memo(function RenderList({
           overflow={'auto'}
         >
           <ModalBody>
+            <HStack mb={4} spacing={1} fontSize={'sm'}>
+              <MyIcon name={'common/info'} w={'1.25rem'} />
+              <Box flex={1}>{t('app:tool_input_param_tip')}</Box>
+              {configTool.inputExplanationUrl && (
+                <Box
+                  cursor={'pointer'}
+                  color={'primary.500'}
+                  onClick={() => window.open(configTool.inputExplanationUrl, '_blank')}
+                >
+                  {t('app:workflow.Input guide')}
+                </Box>
+              )}
+            </HStack>
             {configTool.inputs
               .filter((item) => !item.toolDescription)
               .map((input) => {

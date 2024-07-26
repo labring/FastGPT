@@ -229,7 +229,7 @@ export const updatePluginInputByVariables = (
   );
 };
 
-export const filterPluginInputVariables = (
+export const removePluginInputVariables = (
   variables: Record<string, any>,
   nodes: RuntimeNodeItemType[]
 ) => {
@@ -268,6 +268,7 @@ export function replaceVariableLabel({
     };
   });
 
+  // Upstream node outputs
   const nodeVariables = nodes
     .map((node) => {
       return node.outputs.map((output) => {
@@ -280,6 +281,7 @@ export function replaceVariableLabel({
     })
     .flat();
 
+  // Get runningNode inputs(Will be replaced with reference)
   const customInputs = runningNode.inputs.flatMap((item) => {
     if (Array.isArray(item.value)) {
       return [
@@ -299,6 +301,7 @@ export function replaceVariableLabel({
 
   const allVariables = [...globalVariables, ...nodeVariables, ...customInputs];
 
+  // Replace {{$xxx.xxx$}} to value
   for (const key in allVariables) {
     const val = allVariables[key];
     const regex = new RegExp(`\\{\\{\\$(${val.nodeId}\\.${val.id})\\$\\}\\}`, 'g');

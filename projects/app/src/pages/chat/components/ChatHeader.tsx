@@ -131,10 +131,10 @@ const MobileDrawer = ({
           }}
           list={[
             ...(isTeamChat
-              ? [{ label: t('common:all_apps'), value: TabEnum.recently }]
+              ? [{ label: t('app:all_apps'), value: TabEnum.recently }]
               : [
                   { label: t('common:core.chat.Recent use'), value: TabEnum.recently },
-                  { label: t('common:all_apps'), value: TabEnum.app }
+                  { label: t('app:all_apps'), value: TabEnum.app }
                 ])
           ]}
           value={currentTab}

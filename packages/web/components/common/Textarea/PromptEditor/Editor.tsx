@@ -89,7 +89,13 @@ export default function Editor({
   }, [value, variables, variableLabels]);
 
   return (
-    <Box position={'relative'} width={'full'} h={`${height}px`} cursor={'text'}>
+    <Box
+      position={'relative'}
+      width={'full'}
+      h={`${height}px`}
+      cursor={'text'}
+      color={'myGray.700'}
+    >
       <LexicalComposer initialConfig={initialConfig} key={key}>
         <PlainTextPlugin
           contentEditable={

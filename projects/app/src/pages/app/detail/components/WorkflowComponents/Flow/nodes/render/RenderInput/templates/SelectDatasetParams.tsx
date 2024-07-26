@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
-import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
+import { Flex, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -54,7 +54,8 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
       if (data[input.key] !== undefined) {
         setData((state) => ({
           ...state,
-          [input.key]: input.value
+          // @ts-ignore
+          [input.key]: input.value || state[input.key]
         }));
       }
     });
@@ -82,6 +83,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           similarity={data.similarity}
           limit={data.limit}
           usingReRank={data.usingReRank}
+          datasetSearchUsingExtensionQuery={data.datasetSearchUsingExtensionQuery}
           queryExtensionModel={data.datasetSearchExtensionModel}
         />
       </>

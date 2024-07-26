@@ -89,7 +89,7 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
           defaultPermission: updatedDefaultPermission
         }),
         // Not root, update default permission
-        ...(isDefaultPermissionChanged && { inheritPermission: false }),
+        ...(app.parentId && isDefaultPermissionChanged && { inheritPermission: false }),
         ...(teamTags && { teamTags }),
         ...(formatNodes && {
           modules: formatNodes
