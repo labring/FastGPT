@@ -1,4 +1,4 @@
-import { PermissionValueType } from 'support/permission/type';
+import { PermissionSchemaType } from '../../support/permission/type';
 import type { LLMModelItemType, VectorModelItemType } from '../../core/ai/model.d';
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import { PushDatasetDataChunkProps } from './api';
@@ -12,31 +12,28 @@ import {
 import { DatasetPermission } from '../../support/permission/dataset/controller';
 import { Permission } from '../../support/permission/controller';
 
-/* schema */
 export type DatasetSchemaType = {
   _id: string;
-  parentId: string;
+  parentId?: string;
   userId: string;
   teamId: string;
   tmbId: string;
   updateTime: Date;
+
   avatar: string;
   name: string;
   vectorModel: string;
   agentModel: string;
   intro: string;
-  type: DatasetTypeEnum;
+  type: `${DatasetTypeEnum}`;
   status: `${DatasetStatusEnum}`;
-  // permission: DatasetPermission;
-
-  // metadata
   websiteConfig?: {
     url: string;
     selector: string;
   };
   externalReadUrl?: string;
-  defaultPermission: PermissionValueType;
-};
+} & PermissionSchemaType;
+// } & PermissionSchemaType;
 
 export type DatasetCollectionSchemaType = {
   _id: string;
@@ -133,15 +130,13 @@ export type DatasetSimpleItemType = {
 };
 export type DatasetListItemType = {
   _id: string;
-  parentId: string;
   avatar: string;
   name: string;
   intro: string;
-  type: DatasetTypeEnum;
+  type: `${DatasetTypeEnum}`;
   permission: DatasetPermission;
   vectorModel: VectorModelItemType;
-  defaultPermission: PermissionValueType;
-};
+} & PermissionSchemaType;
 
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel'> & {
   vectorModel: VectorModelItemType;

@@ -92,7 +92,12 @@ const Header = ({
       )}
       <Flex pt={[2, 3]} alignItems={'flex-start'} position={'relative'}>
         <Box flex={'1'}>
-          <FolderPath paths={paths} hoverStyle={{ color: 'primary.600' }} onClick={onclickRoute} />
+          <FolderPath
+            rootName={t('app:all_apps')}
+            paths={paths}
+            hoverStyle={{ color: 'primary.600' }}
+            onClick={onclickRoute}
+          />
         </Box>
         {isPc && (
           <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>

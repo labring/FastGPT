@@ -80,27 +80,36 @@ const NodeCard = (props: Props) => {
 
   const node = nodeList.find((node) => node.nodeId === nodeId);
   const { openConfirm: onOpenConfirmSync, ConfirmModal: ConfirmSyncModal } = useConfirm({
-    content: appT('module.Confirm Sync')
+    content: t('app:module.Confirm Sync')
   });
 
-  const { data: newNodeVersion, runAsync: getNodeVersion } = useRequest2(
+  const { data: nodeTemplate, runAsync: getNodeLatestTemplate } = useRequest2(
     async () => {
       if (node?.flowNodeType === FlowNodeTypeEnum.pluginModule) {
         if (!node?.pluginId) return;
         const template = await getPreviewPluginNode({ appId: node.pluginId });
-        return template.version;
+
+        // Focus update plugin latest inputExplanationUrl
+        onChangeNode({
+          nodeId,
+          type: 'attr',
+          key: 'inputExplanationUrl',
+          value: template.inputExplanationUrl
+        });
+
+        return template;
       } else {
         const template = moduleTemplatesFlat.find(
           (item) => item.flowNodeType === node?.flowNodeType
         );
-        return template?.version;
+        return template;
       }
     },
     {
       manual: false
     }
   );
-  const hasNewVersion = newNodeVersion && newNodeVersion !== node?.version;
+  const hasNewVersion = nodeTemplate && nodeTemplate.version !== node?.version;
 
   const { runAsync: onClickSyncVersion } = useRequest2(
     async () => {
@@ -119,10 +128,10 @@ const NodeCard = (props: Props) => {
           node: getLatestNodeTemplate(node, template)
         });
       }
-      await getNodeVersion();
+      await getNodeLatestTemplate();
     },
     {
-      refreshDeps: [node, nodeId, onResetNode, getNodeVersion]
+      refreshDeps: [node, nodeId, onResetNode, getNodeLatestTemplate]
     }
   );
 

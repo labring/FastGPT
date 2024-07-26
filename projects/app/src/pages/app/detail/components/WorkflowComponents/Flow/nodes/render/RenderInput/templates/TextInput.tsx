@@ -10,7 +10,7 @@ const TextInput = ({ item, nodeId }: RenderInputProps) => {
   const Render = useMemo(() => {
     return (
       <Input
-        placeholder={item.placeholder}
+        placeholder={item.placeholder ?? item.description}
         defaultValue={item.value}
         bg={'white'}
         px={3}

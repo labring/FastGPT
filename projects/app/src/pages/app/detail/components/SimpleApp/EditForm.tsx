@@ -113,8 +113,8 @@ const EditForm = ({
         ...item,
         parent: {
           id: 'VARIABLE_NODE_ID',
-          label: '全局变量',
-          avatar: '/imgs/workflow/variable.png'
+          label: t('common:core.module.Variable'),
+          avatar: 'core/workflow/template/variable'
         }
       })),
     [appForm.chatConfig.variables, t]
@@ -230,6 +230,7 @@ const EditForm = ({
                 similarity={appForm.dataset.similarity}
                 limit={appForm.dataset.limit}
                 usingReRank={appForm.dataset.usingReRank}
+                datasetSearchUsingExtensionQuery={appForm.dataset.datasetSearchUsingExtensionQuery}
                 queryExtensionModel={appForm.dataset.datasetSearchExtensionModel}
               />
             </Box>

@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Controller } from 'react-hook-form';
 import RenderPluginInput from './renderPluginInput';
 import { Button, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { PluginRunContext } from '../context';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 const RenderInput = () => {
   const { pluginInputs, variablesForm, histories, onStartChat, onNewChat, onSubmit, isChatting } =
@@ -14,8 +15,21 @@ const RenderInput = () => {
   const {
     control,
     handleSubmit,
+    reset,
     formState: { errors }
   } = variablesForm;
+
+  useEffect(() => {
+    reset(
+      pluginInputs.reduce(
+        (acc, input) => {
+          acc[input.key] = input.defaultValue;
+          return acc;
+        },
+        {} as Record<string, any>
+      )
+    );
+  }, [pluginInputs, histories]);
   const isDisabledInput = histories.length > 0;
 
   return (
@@ -26,7 +40,14 @@ const RenderInput = () => {
             key={input.key}
             control={control}
             name={input.key}
-            rules={{ required: input.required }}
+            rules={{
+              validate: (value) => {
+                if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
+                  return value !== undefined;
+                }
+                return !!value;
+              }
+            }}
             render={({ field: { onChange, value } }) => {
               return (
                 <RenderPluginInput

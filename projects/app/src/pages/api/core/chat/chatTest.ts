@@ -15,7 +15,7 @@ import { removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
-  filterPluginInputVariables,
+  removePluginInputVariables,
   updatePluginInputByVariables
 } from '@fastgpt/global/core/workflow/utils';
 import { NextAPI } from '@/service/middleware/entry';
@@ -66,7 +66,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Plugin need to replace inputs
     if (isPlugin) {
       nodes = updatePluginInputByVariables(nodes, variables);
-      variables = filterPluginInputVariables(variables, nodes);
+      variables = removePluginInputVariables(variables, nodes);
     } else {
       if (!userInput) {
         throw new Error('Params Error');

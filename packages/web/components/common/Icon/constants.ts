@@ -36,6 +36,7 @@ export const iconPaths = {
   'common/leftArrowLight': () => import('./icons/common/leftArrowLight.svg'),
   'common/linkBlue': () => import('./icons/common/linkBlue.svg'),
   'common/loading': () => import('./icons/common/loading.svg'),
+  'common/logLight': () => import('./icons/common/logLight.svg'),
   'common/navbar/pluginFill': () => import('./icons/common/navbar/pluginFill.svg'),
   'common/navbar/pluginLight': () => import('./icons/common/navbar/pluginLight.svg'),
   'common/openai': () => import('./icons/common/openai.svg'),

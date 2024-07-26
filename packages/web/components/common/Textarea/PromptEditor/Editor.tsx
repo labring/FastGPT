@@ -86,10 +86,16 @@ export default function Editor({
   useDeepCompareEffect(() => {
     if (focus) return;
     setKey(getNanoid(6));
-  }, [value, variables]);
+  }, [value, variables, variableLabels]);
 
   return (
-    <Box position={'relative'} width={'full'} h={`${height}px`} cursor={'text'}>
+    <Box
+      position={'relative'}
+      width={'full'}
+      h={`${height}px`}
+      cursor={'text'}
+      color={'myGray.700'}
+    >
       <LexicalComposer initialConfig={initialConfig} key={key}>
         <PlainTextPlugin
           contentEditable={

@@ -1,6 +1,5 @@
 {
   "App": "应用",
-  "all_apps": "全部应用",
   "click_to_resume": "点击恢复",
   "code_editor": "代码编辑",
   "Export": "导出",
@@ -511,7 +510,8 @@
         "unAuthDatasetData": "无权操作该数据",
         "unAuthDatasetFile": "无权操作该文件",
         "unCreateCollection": "无权操作该数据",
-        "unLinkCollection": "不是网络链接集合"
+        "unLinkCollection": "不是网络链接集合",
+        "invalidVectorModelOrQAModel": "VectorModel 或 QA 模型错误"
       },
       "externalFile": "外部文件库",
       "file": "文件",

@@ -1,6 +1,5 @@
 {
   "App": "App",
-  "all_apps": "All Apps",
   "click_to_resume": "Resume",
   "code_editor": "Code edit",
   "Export": "Export",
@@ -511,7 +510,8 @@
         "unAuthDatasetData": "Unauthorized to operate this data",
         "unAuthDatasetFile": "Unauthorized to operate this file",
         "unCreateCollection": "Unauthorized to operate this data",
-        "unLinkCollection": "Not a network link collection"
+        "unLinkCollection": "Not a network link collection",
+        "invalidVectorModelOrQAModel": "Invalid vector model or QA model"
       },
       "externalFile": "external file repository",
       "file": "File",

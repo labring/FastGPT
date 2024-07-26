@@ -334,7 +334,7 @@ const RenderList = React.memo(function RenderList({
   const { computedNewNodeName } = useWorkflowUtils();
 
   const formatTemplates = useMemo<NodeTemplateListType>(() => {
-    const copy: NodeTemplateListType = cloneDeep(workflowNodeTemplateList(t));
+    const copy: NodeTemplateListType = cloneDeep(workflowNodeTemplateList);
     templates.forEach((item) => {
       const index = copy.findIndex((template) => template.type === item.templateType);
       if (index === -1) return;

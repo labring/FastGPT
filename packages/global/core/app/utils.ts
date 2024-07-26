@@ -6,27 +6,29 @@ import { getAppChatConfig } from '../workflow/utils';
 import { StoreNodeItemType } from '../workflow/type/node';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 
-export const getDefaultAppForm = (): AppSimpleEditFormType => ({
-  aiSettings: {
-    model: 'gpt-4o-mini',
-    systemPrompt: '',
-    temperature: 0,
-    isResponseAnswerText: true,
-    maxHistories: 6,
-    maxToken: 4000
-  },
-  dataset: {
-    datasets: [],
-    similarity: 0.4,
-    limit: 1500,
-    searchMode: DatasetSearchModeEnum.embedding,
-    usingReRank: false,
-    datasetSearchUsingExtensionQuery: false,
-    datasetSearchExtensionBg: ''
-  },
-  selectedTools: [],
-  chatConfig: {}
-});
+export const getDefaultAppForm = (): AppSimpleEditFormType => {
+  return {
+    aiSettings: {
+      model: 'gpt-4o-mini',
+      systemPrompt: '',
+      temperature: 0,
+      isResponseAnswerText: true,
+      maxHistories: 6,
+      maxToken: 4000
+    },
+    dataset: {
+      datasets: [],
+      similarity: 0.4,
+      limit: 1500,
+      searchMode: DatasetSearchModeEnum.embedding,
+      usingReRank: false,
+      datasetSearchUsingExtensionQuery: true,
+      datasetSearchExtensionBg: ''
+    },
+    selectedTools: [],
+    chatConfig: {}
+  };
+};
 
 /* format app nodes to edit form */
 export const appWorkflow2Form = ({

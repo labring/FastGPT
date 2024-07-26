@@ -10,7 +10,6 @@ export type DatasetUpdateBody = {
   name?: string;
   avatar?: string;
   intro?: string;
-  permission?: DatasetSchemaType['permission']; // TODO: Should be deleted.
   agentModel?: LLMModelItemType;
   status?: DatasetSchemaType['status'];
 

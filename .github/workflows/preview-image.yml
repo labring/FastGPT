@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-fastgpt-images:
+  preview-fastgpt-images:
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout

@@ -16,6 +16,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 
 type Props = TextareaProps & {
   title?: string;
+  iconSrc?: string;
   // variables: string[];
 };
 
@@ -24,7 +25,11 @@ const MyTextarea = React.forwardRef<HTMLTextAreaElement, Props>(function MyTexta
   const TextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { t } = useTranslation();
-  const { title = t('common:core.app.edit.Prompt Editor'), ...childProps } = props;
+  const {
+    title = t('common:core.app.edit.Prompt Editor'),
+    iconSrc = 'modal/edit',
+    ...childProps
+  } = props;
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -32,7 +37,7 @@ const MyTextarea = React.forwardRef<HTMLTextAreaElement, Props>(function MyTexta
     <>
       <Editor textareaRef={TextareaRef} {...childProps} onOpenModal={onOpen} />
       {isOpen && (
-        <MyModal iconSrc="/imgs/modal/edit.svg" title={title} isOpen onClose={onClose}>
+        <MyModal iconSrc={iconSrc} title={title} isOpen onClose={onClose}>
           <ModalBody>
             <Editor
               textareaRef={ModalTextareaRef}

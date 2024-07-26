@@ -52,7 +52,7 @@ const ConfigPerModal = ({
       >
         <ModalBody>
           <HStack>
-            <Avatar src={avatar} w={'1.75rem'} />
+            <Avatar src={avatar} w={'1.75rem'} borderRadius={'md'} />
             <Box>{name}</Box>
           </HStack>
           {!isInheritPermission && (

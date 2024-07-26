@@ -1,6 +1,7 @@
 {
   "Run": "Run",
   "ai_settings": "AI Settings",
+  "all_apps": "All Apps",
   "app": {
     "modules": {
       "click to update": "click to update",
@@ -52,6 +53,7 @@
   "template": {
     "simple_robot": "Simple Robot"
   },
+  "tool_input_param_tip": "Configure related information before the plugin runs properly",
   "transition_to_workflow": "Transition to workflow",
   "transition_to_workflow_create_new_placeholder": "Create a new application instead of modifying the current one",
   "transition_to_workflow_create_new_tip": "After converting to workflow, it will not be able to convert back to simple mode, please confirm!",
@@ -71,5 +73,11 @@
   },
   "version": {
     "Revert success": "Revert success"
+  },
+  "workflow": {
+    "Input guide": "Input guide",
+    "template": {
+      "communication": "Communication"
+    }
   }
 }

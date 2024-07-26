@@ -22,6 +22,6 @@
     "i18n-ally.pathMatcher": "{locale}/{namespaces}.json",
     "i18n-ally.extract.targetPickingStrategy": "most-similar-by-key",
     "[typescript]": {
-        "editor.defaultFormatter": "rvest.vs-code-prettier-eslint"
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
     }
 }

@@ -55,7 +55,7 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
-  filterPluginInputVariables,
+  removePluginInputVariables,
   updatePluginInputByVariables
 } from '@fastgpt/global/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -238,7 +238,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         )
       : storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes));
 
-    const runtimeVariables = filterPluginInputVariables(
+    const runtimeVariables = removePluginInputVariables(
       variables,
       storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes))
     );

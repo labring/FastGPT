@@ -1,6 +1,4 @@
-import { connectionMongo, getMongoModel, type Model } from '../../common/mongo';
-const { Schema, model, models } = connectionMongo;
-import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
+import { getMongoModel, Schema } from '../../common/mongo';
 import {
   DatasetStatusEnum,
   DatasetStatusMap,
@@ -12,6 +10,8 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
+import { getPermissionSchema } from '@fastgpt/global/support/permission/utils';
+import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
 
 export const DatasetCollectionName = 'datasets';
 
@@ -85,11 +85,10 @@ const DatasetSchema = new Schema({
       }
     }
   },
-  externalReadUrl: String,
-  defaultPermission: {
-    type: Number,
-    default: DatasetDefaultPermissionVal
-  }
+  externalReadUrl: {
+    type: String
+  },
+  ...getPermissionSchema(DatasetDefaultPermissionVal)
 });
 
 try {
