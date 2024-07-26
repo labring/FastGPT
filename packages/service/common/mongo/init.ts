@@ -46,12 +46,11 @@ export async function connectMongo(): Promise<Mongoose> {
     });
 
     console.log('mongo connected');
+    return connectionMongo;
   } catch (error) {
     addLog.error('mongo connect error', error);
     await connectionMongo.disconnect();
     await delay(1000);
-    connectMongo();
+    return connectMongo();
   }
-
-  return connectionMongo;
 }

@@ -2,7 +2,6 @@
     Read db file content and response 3000 words
 */
 import type { NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
 import { authFile } from '@fastgpt/service/support/permission/auth/file';
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
