@@ -221,7 +221,7 @@ export const ResponseBox = React.memo(function ResponseBox({
                     borderRadius={'sm'}
                   />
 
-                  <Box ml={1.5} lineHeight={'1.25rem'} aline={'center'}>
+                  <Box ml={1.5} lineHeight={'1.25rem'} alignItems={'center'}>
                     {t(activeModule.moduleName as any)}
                   </Box>
                 </Flex>
