@@ -1,7 +1,7 @@
 import { useSpeech } from '@/web/common/hooks/useSpeech';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Image, Spinner, Textarea } from '@chakra-ui/react';
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -26,14 +26,12 @@ const ChatInput = ({
   onSendMessage,
   onStop,
   TextareaDom,
-  showFileSelector = false,
   resetInputVal,
   chatForm,
   appId
 }: {
   onSendMessage: (val: ChatBoxInputType & { autoTTSResponse?: boolean }) => void;
   onStop: () => void;
-  showFileSelector?: boolean;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
@@ -52,8 +50,14 @@ const ChatInput = ({
     name: 'files'
   });
 
-  const { isChatting, whisperConfig, autoTTSResponse, chatInputGuide, outLinkAuthData } =
-    useContextSelector(ChatBoxContext, (v) => v);
+  const {
+    isChatting,
+    whisperConfig,
+    autoTTSResponse,
+    chatInputGuide,
+    outLinkAuthData,
+    fileSelectConfig
+  } = useContextSelector(ChatBoxContext, (v) => v);
   const { whisperModel } = useSystemStore();
   const { isPc } = useSystem();
 
@@ -63,6 +67,23 @@ const ChatInput = ({
   const havInput = !!inputValue || fileList.length > 0;
   const hasFileUploading = fileList.some((item) => !item.url);
   const canSendMessage = havInput && !hasFileUploading;
+
+  const showSelectFile = fileSelectConfig.canSelectFile && fileSelectConfig.canSelectImg;
+  const showSelectImg = !fileSelectConfig.canSelectFile && fileSelectConfig.canSelectImg;
+  const { icon: selectFileIcon, tooltip: selectFileTip } = useMemo(() => {
+    if (showSelectImg) {
+      return {
+        icon: 'core/chat/fileSelect',
+        tooltip: t('chat:select_img')
+      };
+    } else if (showSelectFile) {
+      return {
+        icon: 'core/chat/fileSelect',
+        tooltip: t('chat:select_file')
+      };
+    }
+    return {};
+  }, [showSelectFile, showSelectImg, t]);
 
   /* file selector and upload */
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
@@ -324,7 +345,7 @@ const ChatInput = ({
 
         <Flex alignItems={'flex-end'} mt={fileList.length > 0 ? 1 : 0} pl={[2, 4]}>
           {/* file selector */}
-          {showFileSelector && (
+          {(showSelectFile || showSelectImg) && (
             <Flex
               h={'22px'}
               alignItems={'center'}
@@ -336,8 +357,8 @@ const ChatInput = ({
                 onOpenSelectFile();
               }}
             >
-              <MyTooltip label={t('common:core.chat.Select Image')}>
-                <MyIcon name={'core/chat/fileSelect'} w={'18px'} color={'myGray.600'} />
+              <MyTooltip label={selectFileTip}>
+                <MyIcon name={selectFileIcon as any} w={'18px'} color={'myGray.600'} />
               </MyTooltip>
               <File onSelect={onSelectFile} />
             </Flex>
@@ -404,7 +425,7 @@ const ChatInput = ({
             }}
             onPaste={(e) => {
               const clipboardData = e.clipboardData;
-              if (clipboardData && showFileSelector) {
+              if (clipboardData && (showSelectFile || showSelectImg)) {
                 const items = clipboardData.items;
                 const files = Array.from(items)
                   .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))

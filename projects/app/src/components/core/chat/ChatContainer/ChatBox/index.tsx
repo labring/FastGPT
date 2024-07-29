@@ -75,7 +75,6 @@ type Props = OutLinkChatAuthProps &
     showVoiceIcon?: boolean;
     showEmptyIntro?: boolean;
     userAvatar?: string;
-    showFileSelector?: boolean;
     active?: boolean; // can use
     appId: string;
 
@@ -105,7 +104,6 @@ const ChatBox = (
     showEmptyIntro = false,
     appAvatar,
     userAvatar,
-    showFileSelector,
     active = true,
     appId,
     chatId,
@@ -980,7 +978,6 @@ const ChatBox = (
           onStop={() => chatController.current?.abort('stop')}
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
-          showFileSelector={showFileSelector}
           chatForm={chatForm}
           appId={appId}
         />

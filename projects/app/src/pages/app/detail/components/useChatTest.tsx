@@ -99,7 +99,6 @@ export const useChatTest = ({
         userAvatar={userInfo?.avatar}
         showMarkIcon
         chatConfig={chatConfig}
-        showFileSelector={checkChatSupportSelectFileByModules(nodes)}
         onStartChat={startChat}
         onDelMessage={() => {}}
       />

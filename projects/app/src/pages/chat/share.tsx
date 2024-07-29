@@ -318,7 +318,6 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
                   appAvatar={chatData.app.avatar}
                   userAvatar={chatData.userAvatar}
                   chatConfig={chatData.app?.chatConfig}
-                  showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                   feedbackType={'user'}
                   onStartChat={startChat}
                   onDelMessage={({ contentId }) =>

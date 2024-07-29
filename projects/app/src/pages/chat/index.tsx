@@ -255,7 +255,6 @@ const Chat = ({
                   appAvatar={chatData.app.avatar}
                   userAvatar={userInfo?.avatar}
                   chatConfig={chatData.app?.chatConfig}
-                  showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                   feedbackType={'user'}
                   onStartChat={onStartChat}
                   onDelMessage={({ contentId }) => delChatRecordById({ contentId, appId, chatId })}

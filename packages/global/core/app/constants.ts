@@ -25,7 +25,7 @@ export const defaultChatInputGuideConfig = {
 };
 
 export const defaultAppSelectFileConfig: AppFileSelectConfigType = {
-  canSelectFile: true,
-  canSelectImg: true,
+  canSelectFile: false,
+  canSelectImg: false,
   maxFiles: 10
 };
