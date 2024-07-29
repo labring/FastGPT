@@ -3,6 +3,7 @@ import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import { MongoImage } from './schema';
 import { ClientSession } from '../../../common/mongo';
 import { guessBase64ImageType } from '../utils';
+import { readFromSecondary } from '../../mongo/utils';
 
 export function getMongoImgUrl(id: string, extension: string) {
   return `${imageBaseUrl}${id}.${extension}`;
@@ -44,10 +45,13 @@ export async function uploadMongoImg({
 export async function readMongoImg({ id }: { id: string }) {
   const formatId = id.replace(/\.[^/.]+$/, '');
 
-  const data = await MongoImage.findById(formatId);
+  const data = await MongoImage.findById(formatId, undefined, {
+    ...readFromSecondary
+  });
   if (!data) {
     return Promise.reject('Image not found');
   }
+
   return {
     binary: data.binary,
     mime: data.metadata?.mime ?? guessBase64ImageType(data.binary.toString('base64'))

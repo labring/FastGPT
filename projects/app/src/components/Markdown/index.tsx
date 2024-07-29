@@ -36,7 +36,7 @@ const Markdown = ({
   const components = useMemo<any>(
     () => ({
       img: Image,
-      pre: 'div',
+      pre: RewritePre,
       p: (pProps: any) => <p {...pProps} dir="auto" />,
       code: Code,
       a: A
@@ -70,8 +70,7 @@ export default React.memo(Markdown);
 
 /* Custom dom */
 const Code = React.memo(function Code(e: any) {
-  const { inline, className, children } = e;
-
+  const { className, codeBlock, children } = e;
   const match = /language-(\w+)/.exec(className || '');
   const codeType = match?.[1];
 
@@ -92,11 +91,11 @@ const Code = React.memo(function Code(e: any) {
     }
 
     return (
-      <CodeLight className={className} inline={inline} match={match}>
+      <CodeLight className={className} codeBlock={codeBlock} match={match}>
         {children}
       </CodeLight>
     );
-  }, [codeType, className, inline, match, children, strChildren]);
+  }, [codeType, className, codeBlock, match, children, strChildren]);
 
   return Component;
 });
@@ -149,3 +148,15 @@ const A = React.memo(function A({ children, ...props }: any) {
 
   return <Link {...props}>{children}</Link>;
 });
+
+function RewritePre({ children }: any) {
+  const modifiedChildren = React.Children.map(children, (child) => {
+    if (React.isValidElement(child)) {
+      // @ts-ignore
+      return React.cloneElement(child, { codeBlock: true });
+    }
+    return child;
+  });
+
+  return <>{modifiedChildren}</>;
+}
