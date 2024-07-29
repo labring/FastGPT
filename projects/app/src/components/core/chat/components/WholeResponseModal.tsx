@@ -132,7 +132,9 @@ export const ResponseBox = React.memo(function ResponseBox({
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const flattedResponse = useMemo(() => flattenArray(response), [response]);
-  const [currentNodeId, setCurrentNodeId] = useState(flattedResponse[0].nodeId);
+  const [currentNodeId, setCurrentNodeId] = useState(
+    flattedResponse[0]?.nodeId ? flattedResponse[0].nodeId : ''
+  );
   const activeModule = useMemo(
     () => flattedResponse.find((item) => item.nodeId === currentNodeId) as ChatHistoryItemResType,
     [currentNodeId, flattedResponse]
@@ -170,29 +172,23 @@ export const ResponseBox = React.memo(function ResponseBox({
       ) : (
         <>
           <Box position={'relative'}>
-            <Box height={'100%'}>
-              <WholeResponseSideTab
-                response={sideResponse}
-                value={currentNodeId}
-                onChange={(item: string) => {
-                  setCurrentNodeId(item);
-                  onOpenMobileModal();
-                }}
-                isMobile={true}
-              />
-            </Box>
+            {!isOpenMobileModal && (
+              <Box height={'100%'}>
+                <WholeResponseSideTab
+                  response={sideResponse}
+                  value={currentNodeId}
+                  onChange={(item: string) => {
+                    setCurrentNodeId(item);
+                    onOpenMobileModal();
+                  }}
+                  isMobile={true}
+                />
+              </Box>
+            )}
             {isOpenMobileModal && (
-              <Box
-                position={'absolute'}
-                top={0}
-                left={0}
-                right={0}
-                bottom={0}
-                zIndex={10}
-                background={'white'}
-              >
+              <Box h={'100%'} w={'100%'} zIndex={10} background={'white'}>
                 <Flex
-                  alignItems={'center'}
+                  align={'center'}
                   justifyContent={'center'}
                   px={2}
                   py={2}
@@ -212,6 +208,7 @@ export const ResponseBox = React.memo(function ResponseBox({
                     top={'50%'}
                     transform={'translateY(-50%)'}
                   />
+
                   <Avatar
                     src={
                       activeModule.moduleLogo ||
@@ -219,11 +216,14 @@ export const ResponseBox = React.memo(function ResponseBox({
                         (template) => activeModule.moduleType === template.flowNodeType
                       )?.avatar
                     }
-                    alt={''}
                     w={'1.25rem'}
+                    h={'1.25rem'}
                     borderRadius={'sm'}
                   />
-                  <Box ml={1.5}> {t(activeModule.moduleName as any)}</Box>
+
+                  <Box ml={1.5} lineHeight={'1.25rem'} aline={'center'}>
+                    {t(activeModule.moduleName as any)}
+                  </Box>
                 </Flex>
                 <WholeResponseContent
                   activeModule={activeModule}

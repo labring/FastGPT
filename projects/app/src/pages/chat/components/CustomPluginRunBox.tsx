@@ -27,7 +27,7 @@ const CustomPluginRunBox = (props: PluginRunBoxProps) => {
         <PluginRunBox {...props} tab={PluginRunBoxTabEnum.input} />
       </Box>
       <Stack px={3} py={4} h={'100%'} alignItems={'flex-start'} w={'100%'} overflow={'auto'}>
-        <Box display={'inline-block'} mb={5}>
+        <Box display={'inline-block'}>
           <LightRowTabs<PluginRunBoxTabEnum>
             list={[
               { label: t('common:common.Output'), value: PluginRunBoxTabEnum.output },
@@ -61,7 +61,7 @@ const CustomPluginRunBox = (props: PluginRunBoxProps) => {
         py={0}
         fontSize={'sm'}
       />
-      <Box mt={3} flex={'1 0 0'} w={'100%'}>
+      <Box flex={'1 0 0'} w={'100%'}>
         <PluginRunBox {...props} />
       </Box>
     </Stack>

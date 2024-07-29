@@ -574,7 +574,7 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
             zIndex={10}
             w={'420px'}
             minH={'300px'}
-            h={'100%'}
+            maxH={'100%'}
             border={'base'}
           >
             {/* Status header */}
@@ -614,7 +614,7 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
               )}
             </Flex>
             {/* Show result */}
-            <Box h={'calc(100% - 54px)'} overflow={'auto'}>
+            <Box overflowY={'auto'}>
               {!debugResult.message && !response && (
                 <EmptyTip text={t('common:core.workflow.debug.Not result')} pt={2} pb={5} />
               )}

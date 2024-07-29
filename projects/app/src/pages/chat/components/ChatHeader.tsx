@@ -174,7 +174,7 @@ const MobileDrawer = ({
                           onClick: () => onclickApp(item._id)
                         })}
                   >
-                    <Avatar src={item.avatar} w={'24px'} />
+                    <Avatar src={item.avatar} w={'24px'} borderRadius={'sm'} />
                     <Box ml={2} className={'textEllipsis'}>
                       {item.name}
                     </Box>
@@ -223,7 +223,7 @@ const MobileHeader = ({
       )}
       <Flex px={3} alignItems={'center'} flex={'1 0 0'} w={0} justifyContent={'center'}>
         <Flex alignItems={'center'} onClick={toggleDrawer}>
-          <Avatar src={avatar} w={'1rem'} />
+          <Avatar borderRadius={'sm'} src={avatar} w={'1rem'} />
           <Box ml={1} className="textEllipsis">
             {name}
           </Box>
