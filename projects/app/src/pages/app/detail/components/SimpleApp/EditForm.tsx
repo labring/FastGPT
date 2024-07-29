@@ -47,6 +47,7 @@ const ScheduledTriggerConfig = dynamic(
   () => import('@/components/core/app/ScheduledTriggerConfig')
 );
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
+const FileSelectConfig = dynamic(() => import('@/components/core/app/FileSelect'));
 
 const BoxStyles: BoxProps = {
   px: [4, 6],
@@ -336,6 +337,22 @@ const EditForm = ({
               </MyTooltip>
             ))}
           </Grid>
+        </Box>
+
+        {/* File select */}
+        <Box {...BoxStyles}>
+          <FileSelectConfig
+            value={appForm.chatConfig.fileSelectConfig}
+            onChange={(e) => {
+              setAppForm((state) => ({
+                ...state,
+                chatConfig: {
+                  ...state.chatConfig,
+                  fileSelectConfig: e
+                }
+              }));
+            }}
+          />
         </Box>
 
         {/* variable */}

@@ -12,7 +12,6 @@ import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConf
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { form2AppWorkflow } from '@/web/core/app/utils';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { TabEnum } from '../context';
 import PublishHistoriesSlider, { type InitProps } from '../PublishHistoriesSlider';
 import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';

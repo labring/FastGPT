@@ -8,6 +8,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 type Props = {
   llmModelType?: `${LLMModelTypeEnum}`;
@@ -71,10 +72,13 @@ const SettingLLMModel = ({ llmModelType = LLMModelTypeEnum.all, defaultData, onC
               w={'18px'}
             />
           }
+          rightIcon={<MyIcon name={'common/select'} w={'1rem'} />}
           pl={4}
           onClick={onOpenAIChatSetting}
         >
-          {selectedModel?.name}
+          <Box flex={1} textAlign={'left'}>
+            {selectedModel?.name}
+          </Box>
         </Button>
       </MyTooltip>
       {isOpenAIChatSetting && (

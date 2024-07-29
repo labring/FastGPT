@@ -91,6 +91,7 @@ export type AppChatConfigType = {
   whisperConfig?: AppWhisperConfigType;
   scheduledTriggerConfig?: AppScheduledTriggerConfigType;
   chatInputGuide?: ChatInputGuideConfigType;
+  fileSelectConfig?: AppFileSelectConfigType;
 };
 export type SettingAIDataType = {
   model: string;
@@ -133,4 +134,10 @@ export type AppScheduledTriggerConfigType = {
   cronString: string;
   timezone: string;
   defaultPrompt: string;
+};
+// File
+export type AppFileSelectConfigType = {
+  canSelectFile: boolean;
+  canSelectImg: boolean;
+  maxFiles: number;
 };

@@ -670,7 +670,7 @@
         "Total files": "A total of {{total}} files",
         "Training mode": "Training mode",
         "Upload data": "Upload data",
-        "Upload file progress": "File upload progress",
+        "Upload file progress": "file_upload progress",
         "Upload status": "Status",
         "Web link": "Web link",
         "Web link desc": "Read static web page content as a dataset"
