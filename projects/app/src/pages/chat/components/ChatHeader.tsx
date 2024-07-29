@@ -11,7 +11,7 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { InitChatResponse } from '@/global/core/chat/api';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useRouter } from 'next/router';
@@ -92,7 +92,7 @@ const MobileDrawer = ({
         id: item._id,
         name: item.name,
         avatar: item.avatar,
-        isFolder: item.type === AppTypeEnum.folder
+        isFolder: AppFolderTypeList.includes(item.type)
       }))
     );
   }, []);
