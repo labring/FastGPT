@@ -74,7 +74,7 @@ function Row({
       label={label}
       mb={isObject ? 0 : 1}
       {...(isObject
-        ? { transform: 'translateY(-3px)' }
+        ? { py: 2, transform: 'translateY(-3px)' }
         : value
           ? { px: 3, py: 2, border: 'base' }
           : {})}
@@ -195,8 +195,9 @@ export const ResponseBox = React.memo(function ResponseBox({
                   alignItems={'center'}
                   justifyContent={'center'}
                   px={2}
-                  paddingBottom={2}
+                  py={2}
                   borderBottom={'sm'}
+                  position={'relative'}
                 >
                   <MyIcon
                     width={4}
@@ -208,7 +209,8 @@ export const ResponseBox = React.memo(function ResponseBox({
                     }}
                     position={'absolute'}
                     left={2}
-                    top={2}
+                    top={'50%'}
+                    transform={'translateY(-50%)'}
                   />
                   <Avatar
                     src={
