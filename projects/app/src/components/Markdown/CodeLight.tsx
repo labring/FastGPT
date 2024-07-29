@@ -312,7 +312,6 @@ const CodeLight = ({
         my={3}
         borderRadius={'md'}
         overflow={'overlay'}
-        bg={'myGray.900'}
         boxShadow={
           '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)'
         }

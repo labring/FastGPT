@@ -336,7 +336,7 @@
 }
 .markdown pre code,
 .markdown pre tt {
-  background-color: transparent;
+  background-color: transparent !important;
   border: medium none;
 }
 .markdown hr {
@@ -360,13 +360,12 @@
     margin: 0;
     border: none;
     border-radius: 0;
-    background-color: #292b33 !important;
+    background-color: var(--chakra-colors-gray-900) !important;
     overflow-x: auto;
     color: #fff;
   }
 
   pre code {
-    background-color: #292b33 !important;
     width: 100%;
   }
 
