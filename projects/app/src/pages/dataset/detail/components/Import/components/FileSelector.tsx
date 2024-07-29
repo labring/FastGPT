@@ -89,7 +89,7 @@ const FileSelector = ({
           // upload file
           await Promise.all(
             files.map(async ({ fileId, file }) => {
-              const uploadFileId = await uploadFile2DB({
+              const { fileId: uploadFileId } = await uploadFile2DB({
                 file,
                 bucketName: BucketNameEnum.dataset,
                 percentListen: (e) => {

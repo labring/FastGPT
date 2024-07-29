@@ -1330,6 +1330,7 @@
     "minute": "minute"
   },
   "unusable_variable": "no usable variable",
+  "upload_file_error": "Upload file error",
   "user": {
     "Account": "Account",
     "Amount of earnings": "Earnings (¥)",

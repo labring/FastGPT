@@ -1,4 +1,6 @@
 {
+  "bucket_chat": "Chat file",
+  "bucket_file": "Dataset file",
   "click_to_view_raw_source": "View source",
   "file_name": "File Name",
   "file_size": "File Size",

@@ -73,10 +73,13 @@ const ChatItem = ({
   const ContentCard = useMemo(() => {
     if (type === 'Human') {
       const { text, files = [] } = formatChatValue2InputType(chat.value);
-
       return (
         <>
-          {files.length > 0 && <FilesBlock files={files} />}
+          {files.length > 0 && (
+            <Box mb={4}>
+              <FilesBlock files={files} />
+            </Box>
+          )}
           <Markdown source={text} />
         </>
       );

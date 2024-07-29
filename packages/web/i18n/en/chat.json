@@ -26,6 +26,7 @@
   "stream_output": "stream output",
   "view_citations": "View citations",
   "web_site_sync": "Web site synchronization",
+  "file_amount_over": "Exceed maximum number of files {{max}}",
   "input_guide": "Input guide",
   "input_guide_lexicon": "Lexicon",
   "input_guide_tip": "You can configure some preset questions. When the user enters a question, the relevant question is retrieved from these preset questions for prompt.",

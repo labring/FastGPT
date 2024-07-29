@@ -250,11 +250,13 @@ export const clearCookie = (res: NextApiResponse) => {
 };
 
 /* file permission */
-export const createFileToken = (data: FileTokenQuery) => {
+export const createFileToken = ({
+  expiredTime = Math.floor(Date.now() / 1000) + 60 * 30,
+  ...data
+}: FileTokenQuery) => {
   if (!process.env.FILE_TOKEN_KEY) {
     return Promise.reject('System unset FILE_TOKEN_KEY');
   }
-  const expiredTime = Math.floor(Date.now() / 1000) + 60 * 30;
 
   const key = process.env.FILE_TOKEN_KEY as string;
   const token = jwt.sign(

@@ -4,13 +4,32 @@ import type {
   ChatCompletionChunk,
   ChatCompletionMessageParam,
   ChatCompletionToolMessageParam,
-  ChatCompletionAssistantMessageParam
+  ChatCompletionAssistantMessageParam,
+  ChatCompletionContentPart as SdkChatCompletionContentPart
 } from 'openai/resources';
 import { ChatMessageTypeEnum } from './constants';
 
 export * from 'openai/resources';
 
-export type ChatCompletionMessageParam = ChatCompletionMessageParam & {
+export type ChatCompletionContentPartFile = {
+  type: 'file_url';
+  url: string;
+};
+
+export type ChatCompletionContentPart =
+  | SdkChatCompletionContentPart
+  | ChatCompletionContentPartFile;
+
+type CustomChatCompletionUserMessageParam = {
+  content: string | Array<ChatCompletionContentPart>;
+  role: 'user';
+  name?: string;
+};
+
+export type ChatCompletionMessageParam = (
+  | ChatCompletionMessageParam
+  | CustomChatCompletionUserMessageParam
+) & {
   dataId?: string;
 };
 export type ChatCompletionToolMessageParam = ChatCompletionToolMessageParam & { name: string };

@@ -9,7 +9,10 @@ export const postUploadFiles = (
   data: FormData,
   onUploadProgress: (progressEvent: AxiosProgressEvent) => void
 ) =>
-  POST<string>('/common/file/upload', data, {
+  POST<{
+    fileId: string;
+    previewUrl: string;
+  }>('/common/file/upload', data, {
     timeout: 600000,
     onUploadProgress,
     headers: {

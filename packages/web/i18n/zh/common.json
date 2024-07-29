@@ -1331,6 +1331,7 @@
   },
   "textarea_variable_picker_tip": "输入 / 可选择变量",
   "unusable_variable": "无可用变量",
+  "upload_file_error": "上传文件失败",
   "user": {
     "Account": "账号",
     "Amount of earnings": "收益（￥）",
