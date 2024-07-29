@@ -11,6 +11,7 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   let { datasetId } = req.query as {
@@ -53,7 +54,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       teamId,
       datasetId: { $in: datasets.map((d) => d._id) }
     },
-    'q a'
+    'q a',
+    {
+      ...readFromSecondary
+    }
   )
     .limit(50000)
     .cursor();
