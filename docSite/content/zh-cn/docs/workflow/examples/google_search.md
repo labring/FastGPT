@@ -4,7 +4,7 @@ description: '将 FastGPT 接入谷歌搜索'
 icon: 'search'
 draft: false
 toc: true
-weight: 402
+weight: 406
 ---
 
 |                     |                       |

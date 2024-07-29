@@ -4,7 +4,7 @@ description: '使用 HTTP 模块绘制图片'
 icon: 'image'
 draft: false
 toc: true
-weight: 404
+weight: 408
 ---
 
 |                       |                       |
