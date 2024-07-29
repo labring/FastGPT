@@ -122,6 +122,9 @@ const Login = () => {
 
         {isOpen && <CommunityModal onClose={onClose} />}
       </Flex>
+      <div className="fixed right-0 bottom-0 pl-2 pr-2 bg-green-400 text-white z-index-10">
+        V: 29.07.2024
+      </div>
     </>
   );
 };
