@@ -13,7 +13,7 @@ const RenderResponseDetail = () => {
     <>{'进行中'}</>
   ) : (
     <Box flex={'1 0 0'} h={'100%'} overflow={'auto'}>
-      <ResponseBox response={responseData} showDetail={true} />
+      <ResponseBox useMobile={true} response={responseData} showDetail={true} />
     </Box>
   );
 };
