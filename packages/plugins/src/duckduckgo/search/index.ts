@@ -31,6 +31,7 @@ const main = async (props: Props, retry = 3): Response => {
       result: JSON.stringify(result)
     };
   } catch (error) {
+    console.log(error);
     if (retry <= 0) {
       addLog.warn('DuckDuckGo error', { error });
       return {
