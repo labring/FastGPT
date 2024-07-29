@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('url is empty');
     }
     if (!FastGPTProUrl) {
-      throw new Error('未配置商业版链接');
+      throw new Error(`未配置商业版链接: ${path}`);
     }
 
     const parsedUrl = new URL(FastGPTProUrl);

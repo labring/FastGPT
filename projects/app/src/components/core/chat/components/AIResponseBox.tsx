@@ -98,7 +98,7 @@ ${JSON.stringify(questionGuides)}`;
                 <AccordionPanel
                   py={0}
                   px={0}
-                  mt={0}
+                  mt={3}
                   borderRadius={'md'}
                   overflow={'hidden'}
                   maxH={'500px'}
@@ -111,10 +111,12 @@ ${toolParams}`}
                     />
                   )}
                   {toolResponse && (
-                    <Markdown
-                      source={`~~~json#Response
+                    <Box mt={3}>
+                      <Markdown
+                        source={`~~~json#Response
 ${toolResponse}`}
-                    />
+                      />
+                    </Box>
                   )}
                 </AccordionPanel>
               </AccordionItem>
