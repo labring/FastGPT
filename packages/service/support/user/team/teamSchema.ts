@@ -51,6 +51,15 @@ const TeamSchema = new Schema({
     pat: {
       type: String
     }
+  },
+  notification: {
+    target: {
+      type: String // email or phone nummer
+    },
+    receive: {
+      type: Boolean, // if receive notification
+      default: true
+    }
   }
 });
 

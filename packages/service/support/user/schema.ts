@@ -27,10 +27,6 @@ const UserSchema = new Schema({
   phone: {
     type: String
   },
-  receiveNotification: {
-    type: Boolean,
-    default: true
-  },
   password: {
     type: String,
     required: true,

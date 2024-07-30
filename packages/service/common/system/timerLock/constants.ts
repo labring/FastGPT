@@ -15,3 +15,18 @@ export const timerIdMap = {
   [TimerIdEnum.updateStandardPlan]: 'updateStandardPlan',
   [TimerIdEnum.scheduleTriggerApp]: 'scheduleTriggerApp'
 };
+
+export enum LockNotificationEnum {
+  VerifyCode = 'verify_code',
+  NotificationExpire = 'notification_expire',
+  NotificationFreeClean = 'notification_free_clean'
+}
+
+export type LockType = `${LockNotificationEnum}`;
+
+// add a new type enum example:
+// export enum ExampleLockEnum {
+//    ExampleLockType1 = 'example_lock_type1'
+// }
+//
+// export type LockType = `${NotificationLockEnum}` | `${ExampleLockEnum}`
