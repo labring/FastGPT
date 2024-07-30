@@ -67,6 +67,7 @@ export const chats2GPTMessages = ({
             } else if (item.file?.type === ChatFileTypeEnum.file) {
               return {
                 type: 'file_url',
+                name: item.file?.name || '',
                 url: item.file?.url || ''
               };
             }
@@ -185,7 +186,7 @@ export const GPTMessages2Chats = (
                 type: ChatItemValueTypeEnum.file,
                 file: {
                   type: ChatFileTypeEnum.file,
-                  name: '',
+                  name: item.name,
                   url: item.url
                 }
               });

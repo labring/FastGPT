@@ -34,10 +34,10 @@ function RowRender({
 }: { children: React.ReactNode; label: string } & BoxProps) {
   return (
     <Box mb={3}>
-      <Box fontSize={'sm'} mb={mb} flex={'0 0 90px'}>
+      <Box fontSize={'sm'} mb={mb} color={'myGray.800'} flex={'0 0 90px'}>
         {label}:
       </Box>
-      <Box borderRadius={'sm'} fontSize={['xs', 'sm']} bg={'myGray.50'} {...props}>
+      <Box borderRadius={'sm'} fontSize={['xs', 'sm']} {...props}>
         {children}
       </Box>
     </Box>

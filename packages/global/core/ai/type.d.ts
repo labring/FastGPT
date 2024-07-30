@@ -11,8 +11,10 @@ import { ChatMessageTypeEnum } from './constants';
 
 export * from 'openai/resources';
 
+// Extension of ChatCompletionMessageParam, Add file url type
 export type ChatCompletionContentPartFile = {
   type: 'file_url';
+  name: string;
   url: string;
 };
 
@@ -25,19 +27,19 @@ type CustomChatCompletionUserMessageParam = {
   role: 'user';
   name?: string;
 };
-
 export type ChatCompletionMessageParam = (
   | ChatCompletionMessageParam
   | CustomChatCompletionUserMessageParam
 ) & {
   dataId?: string;
 };
+
+/* ToolChoice and functionCall extension */
 export type ChatCompletionToolMessageParam = ChatCompletionToolMessageParam & { name: string };
 export type ChatCompletionAssistantToolParam = {
   role: 'assistant';
   tool_calls: ChatCompletionMessageToolCall[];
 };
-
 export type ChatCompletionMessageToolCall = ChatCompletionMessageToolCall & {
   toolName?: string;
   toolAvatar?: string;
@@ -47,13 +49,16 @@ export type ChatCompletionMessageFunctionCall = ChatCompletionAssistantMessagePa
   toolName?: string;
   toolAvatar?: string;
 };
+
+// Stream response
 export type StreamChatType = Stream<ChatCompletionChunk>;
 
+export default openai;
+export * from 'openai';
+
+// Other
 export type PromptTemplateItem = {
   title: string;
   desc: string;
   value: string;
 };
-
-export default openai;
-export * from 'openai';
