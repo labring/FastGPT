@@ -151,7 +151,7 @@ export const ResponseBox = React.memo(function ResponseBox({
   return (
     <>
       {isPc && !useMobile ? (
-        <Flex overflow={'hidden'}>
+        <Flex overflow={'hidden'} height={'100%'}>
           <Box flex={'2 0 0'} borderRight={'sm'} p={3}>
             <Box overflow={'auto'} height={'100%'}>
               <WholeResponseSideTab
@@ -171,7 +171,7 @@ export const ResponseBox = React.memo(function ResponseBox({
         </Flex>
       ) : (
         <>
-          <Box position={'relative'}>
+          <Box position={'relative'} overflow={isOpenMobileModal ? 'hidden' : ''}>
             {!isOpenMobileModal && (
               <Box height={'100%'}>
                 <WholeResponseSideTab
@@ -194,6 +194,7 @@ export const ResponseBox = React.memo(function ResponseBox({
                   py={2}
                   borderBottom={'sm'}
                   position={'relative'}
+                  height={'40px'}
                 >
                   <MyIcon
                     width={4}
@@ -207,6 +208,8 @@ export const ResponseBox = React.memo(function ResponseBox({
                     left={2}
                     top={'50%'}
                     transform={'translateY(-50%)'}
+                    cursor={'pointer'}
+                    _hover={{ color: 'primary.500' }}
                   />
 
                   <Avatar
@@ -225,11 +228,13 @@ export const ResponseBox = React.memo(function ResponseBox({
                     {t(activeModule.moduleName as any)}
                   </Box>
                 </Flex>
-                <WholeResponseContent
-                  activeModule={activeModule}
-                  hideTabs={hideTabs}
-                  showDetail={showDetail}
-                />
+                <Box overflow={'auto'} height={'calc(100% - 40px)'}>
+                  <WholeResponseContent
+                    activeModule={activeModule}
+                    hideTabs={hideTabs}
+                    showDetail={showDetail}
+                  />
+                </Box>
               </Box>
             )}
           </Box>
