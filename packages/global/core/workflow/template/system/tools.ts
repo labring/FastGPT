@@ -41,21 +41,23 @@ export const ToolModule: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
       label: '',
       value: 0,
-      valueType: WorkflowIOValueTypeEnum.number,
-      min: 0,
-      max: 10,
-      step: 1
+      valueType: WorkflowIOValueTypeEnum.number
     },
     {
       key: NodeInputKeyEnum.aiChatMaxToken,
       renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
       label: '',
       value: 2000,
-      valueType: WorkflowIOValueTypeEnum.number,
-      min: 100,
-      max: 4000,
-      step: 50
+      valueType: WorkflowIOValueTypeEnum.number
     },
+    {
+      key: NodeInputKeyEnum.aiChatVision,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      value: true
+    },
+
     {
       ...Input_Template_System_Prompt,
       label: 'core.ai.Prompt',

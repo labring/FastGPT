@@ -50,6 +50,9 @@
     "per_hour": "per hour"
   },
   "intro": "It is a large model application orchestration system that provides out-of-the-box data processing, model calling and other capabilities. It can quickly build a knowledge base and perform workflow orchestration through Flow visualization to realize complex knowledge base scenarios!",
+  "llm_not_support_vision": "This model does not support image recognition",
+  "llm_use_vision": "Enable vision",
+  "llm_use_vision_tip": "When image recognition is enabled, the model automatically receives images from Dialog Uploads, as well as image links from User Questions.",
   "logs_empty": "No logs yet~",
   "logs_message_total": "Total Messages",
   "logs_title": "Title",

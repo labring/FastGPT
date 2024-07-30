@@ -75,6 +75,7 @@ export enum NodeInputKeyEnum {
   aiChatQuoteTemplate = 'quoteTemplate',
   aiChatQuotePrompt = 'quotePrompt',
   aiChatDatasetQuote = 'quoteQA',
+  aiChatVision = 'aiChatVision',
 
   // dataset
   datasetSelectList = 'datasets',

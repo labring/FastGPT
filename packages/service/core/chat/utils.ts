@@ -95,92 +95,151 @@ export const filterGPTMessageByMaxTokens = async ({
   return filterEmptyMessages([...systemPrompts, ...chats]);
 };
 
-export const formatGPTMessagesInRequestBefore = (messages: ChatCompletionMessageParam[]) => {
-  return messages
-    .map((item) => {
-      if (!item.content) return;
-      if (typeof item.content === 'string') {
-        return {
-          ...item,
-          content: item.content.trim()
-        };
+export const loadRequestMessages = async (
+  messages: ChatCompletionMessageParam[],
+  useVision = true
+) => {
+  function parseStringWithImages(input: string): ChatCompletionContentPart[] {
+    if (!useVision) {
+      return [{ type: 'text', text: input }];
+    }
+
+    // 正则表达式匹配图片URL
+    const imageRegex = /(https?:\/\/.*\.(?:png|jpe?g|gif|webp|bmp|tiff?|svg|ico|heic|avif))/i;
+
+    const result: { type: 'text' | 'image'; value: string }[] = [];
+    let lastIndex = 0;
+    let match;
+
+    // 使用正则表达式查找所有匹配项
+    while ((match = imageRegex.exec(input.slice(lastIndex))) !== null) {
+      const textBefore = input.slice(lastIndex, lastIndex + match.index);
+
+      // 如果图片URL前有文本，添加文本部分
+      if (textBefore) {
+        result.push({ type: 'text', value: textBefore });
       }
 
-      // array
-      if (item.content.length === 0) return;
-      if (item.content.length === 1 && item.content[0].type === 'text') {
-        return {
-          ...item,
-          content: item.content[0].text
-        };
-      }
+      // 添加图片URL
+      result.push({ type: 'image', value: match[0] });
 
-      return item;
-    })
-    .filter(Boolean) as ChatCompletionMessageParam[];
-};
+      lastIndex += match.index + match[0].length;
+    }
 
-/* Load user chat content.
-  Img: to base 64
-*/
-export const loadChatImgToBase64 = async (content: string | ChatCompletionContentPart[]) => {
-  if (typeof content === 'string') {
-    return content;
-  }
+    // 添加剩余的文本（如果有的话）
+    if (lastIndex < input.length) {
+      result.push({ type: 'text', value: input.slice(lastIndex) });
+    }
 
-  return Promise.all(
-    content
-      .map(async (item) => {
-        if (item.type === 'text') return item;
-        if (item.type === 'file_url') return;
-
-        if (!item.image_url.url) return item;
-
-        /* 
-          1. From db: Get it from db
-          2. From web: Not update
-        */
-        if (item.image_url.url.startsWith('/')) {
-          const response = await axios.get(item.image_url.url, {
-            baseURL: serverRequestBaseUrl,
-            responseType: 'arraybuffer'
-          });
-          const base64 = Buffer.from(response.data, 'binary').toString('base64');
-          const imageType =
-            getFileContentTypeFromHeader(response.headers['content-type']) ||
-            guessBase64ImageType(base64);
-
+    return result
+      .map((item) => {
+        if (item.type === 'text') {
+          return { type: 'text', text: item.value };
+        }
+        if (item.type === 'image') {
           return {
-            ...item,
+            type: 'image_url',
             image_url: {
-              ...item.image_url,
-              url: `data:${imageType};base64,${base64}`
+              url: item.value
             }
           };
+        }
+        return { type: 'text', text: item.value };
+      })
+      .filter(Boolean) as ChatCompletionContentPart[];
+  }
+  /* 
+    Parse user input
+  */
+  const parseUserContent = async (content: string | ChatCompletionContentPart[]) => {
+    if (typeof content === 'string') {
+      return parseStringWithImages(content);
+    }
+
+    return Promise.all(
+      content
+        .map(async (item) => {
+          if (item.type === 'text') return parseStringWithImages(item.text);
+          if (item.type === 'file_url') return;
+
+          if (!item.image_url.url) return item;
+
+          /* 
+            1. From db: Get it from db
+            2. From web: Not update
+          */
+          if (item.image_url.url.startsWith('/')) {
+            const response = await axios.get(item.image_url.url, {
+              baseURL: serverRequestBaseUrl,
+              responseType: 'arraybuffer'
+            });
+            const base64 = Buffer.from(response.data, 'binary').toString('base64');
+            const imageType =
+              getFileContentTypeFromHeader(response.headers['content-type']) ||
+              guessBase64ImageType(base64);
+
+            return {
+              ...item,
+              image_url: {
+                ...item.image_url,
+                url: `data:${imageType};base64,${base64}`
+              }
+            };
+          }
+
+          return item;
+        })
+        .filter(Boolean)
+    );
+  };
+  // format GPT messages, concat text messages
+  const clearInvalidMessages = (messages: ChatCompletionMessageParam[]) => {
+    return messages
+      .map((item) => {
+        if (item.role === ChatCompletionRequestMessageRoleEnum.System && !item.content) {
+          return;
+        }
+        if (item.role === ChatCompletionRequestMessageRoleEnum.User) {
+          if (!item.content) return;
+
+          if (typeof item.content === 'string') {
+            return {
+              ...item,
+              content: item.content.trim()
+            };
+          }
+
+          // array
+          if (item.content.length === 0) return;
+          if (item.content.length === 1 && item.content[0].type === 'text') {
+            return {
+              ...item,
+              content: item.content[0].text
+            };
+          }
         }
 
         return item;
       })
-      .filter(Boolean)
-  );
-};
-export const loadRequestMessages = async (messages: ChatCompletionMessageParam[]) => {
+      .filter(Boolean) as ChatCompletionMessageParam[];
+  };
+
   if (messages.length === 0) {
     return Promise.reject('core.chat.error.Messages empty');
   }
 
-  const loadMessages = await Promise.all(
+  const loadMessages = (await Promise.all(
     messages.map(async (item) => {
       if (item.role === ChatCompletionRequestMessageRoleEnum.User) {
         return {
           ...item,
-          content: await loadChatImgToBase64(item.content)
+          content: await parseUserContent(item.content)
         };
       } else {
         return item;
       }
     })
-  );
+  )) as ChatCompletionMessageParam[];
 
-  return loadMessages;
+  return clearInvalidMessages(loadMessages);
 };

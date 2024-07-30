@@ -1,9 +1,5 @@
 import type { NextApiResponse } from 'next';
-import {
-  filterGPTMessageByMaxTokens,
-  formatGPTMessagesInRequestBefore,
-  loadRequestMessages
-} from '../../../chat/utils';
+import { filterGPTMessageByMaxTokens, loadRequestMessages } from '../../../chat/utils';
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -19,10 +15,7 @@ import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '../../../../common/api/requestPlusApi';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import {
-  countGptMessagesTokens,
-  countMessagesTokens
-} from '../../../../common/string/tiktoken/index';
+import { countMessagesTokens } from '../../../../common/string/tiktoken/index';
 import {
   chats2GPTMessages,
   chatValue2RuntimePrompt,
@@ -46,6 +39,7 @@ import { getHistories } from '../utils';
 import { filterSearchResultsByMaxChars } from '../../utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { addLog } from '../../../../common/system/log';
+import { computedMaxToken, computedTemperature } from '../../../ai/utils';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -79,7 +73,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       isResponseAnswerText = true,
       systemPrompt = '',
       quoteTemplate,
-      quotePrompt
+      quotePrompt,
+      aiChatVision
     }
   } = props;
   const { files: inputFiles } = chatValue2RuntimePrompt(query);
@@ -91,9 +86,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   const chatHistories = getHistories(history, histories);
 
-  // temperature adapt
   const modelConstantsData = getLLMModel(model);
-
   if (!modelConstantsData) {
     return Promise.reject('The chat model is undefined, you need to select a chat model.');
   }
@@ -104,41 +97,31 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     quoteTemplate
   });
 
-  // censor model and system key
-  if (modelConstantsData.censor && !user.openaiAccount?.key) {
-    await postTextCensor({
-      text: `${systemPrompt}
-      ${quoteText}
-      ${userChatInput}
-      `
-    });
-  }
+  const [{ filterMessages }] = await Promise.all([
+    getChatMessages({
+      model: modelConstantsData,
+      histories: chatHistories,
+      quoteQA,
+      quoteText,
+      quotePrompt,
+      userChatInput,
+      inputFiles,
+      systemPrompt
+    }),
+    async () => {
+      // censor model and system key
+      if (modelConstantsData.censor && !user.openaiAccount?.key) {
+        await postTextCensor({
+          text: `${systemPrompt}
+            ${quoteText}
+            ${userChatInput}
+          `
+        });
+      }
+    }
+  ]);
 
-  const { filterMessages } = await getChatMessages({
-    model: modelConstantsData,
-    histories: chatHistories,
-    quoteQA,
-    quoteText,
-    quotePrompt,
-    userChatInput,
-    inputFiles,
-    systemPrompt
-  });
-
-  const { max_tokens } = await getMaxTokens({
-    model: modelConstantsData,
-    maxToken,
-    filterMessages
-  });
-
-  // FastGPT temperature range: 1~10
-  temperature = +(modelConstantsData.maxTemperature * (temperature / 10)).toFixed(2);
-  temperature = Math.max(temperature, 0.01);
-  const ai = getAIApi({
-    userKey: user.openaiAccount,
-    timeout: 480000
-  });
-
+  // Get the request messages
   const concatMessages = [
     ...(modelConstantsData.defaultSystemChatPrompt
       ? [
@@ -148,20 +131,34 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
           }
         ]
       : []),
-    ...formatGPTMessagesInRequestBefore(filterMessages)
+    ...filterMessages
   ] as ChatCompletionMessageParam[];
 
-  const requestMessages = await loadRequestMessages(concatMessages);
+  const [requestMessages, max_tokens] = await Promise.all([
+    loadRequestMessages(concatMessages, modelConstantsData.vision && aiChatVision),
+    computedMaxToken({
+      model: modelConstantsData,
+      maxToken,
+      filterMessages
+    })
+  ]);
 
   const requestBody = {
     ...modelConstantsData?.defaultConfig,
     model: modelConstantsData.model,
-    temperature,
+    temperature: computedTemperature({
+      model: modelConstantsData,
+      temperature
+    }),
     max_tokens,
     stream,
     messages: requestMessages
   };
   try {
+    const ai = getAIApi({
+      userKey: user.openaiAccount,
+      timeout: 480000
+    });
     const response = await ai.chat.completions.create(requestBody, {
       headers: {
         Accept: 'application/json, text/plain, */*'
@@ -321,29 +318,6 @@ async function getChatMessages({
 
   return {
     filterMessages
-  };
-}
-async function getMaxTokens({
-  maxToken,
-  model,
-  filterMessages = []
-}: {
-  maxToken: number;
-  model: LLMModelItemType;
-  filterMessages: ChatCompletionMessageParam[];
-}) {
-  maxToken = Math.min(maxToken, model.maxResponse);
-  const tokensLimit = model.maxContext;
-
-  /* count response max token */
-  const promptsToken = await countGptMessagesTokens(filterMessages);
-  maxToken = promptsToken + maxToken > tokensLimit ? tokensLimit - promptsToken : maxToken;
-
-  if (maxToken <= 0) {
-    maxToken = 200;
-  }
-  return {
-    max_tokens: maxToken
   };
 }
 

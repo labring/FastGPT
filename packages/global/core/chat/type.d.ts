@@ -117,6 +117,7 @@ export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemTy
   dataId?: string;
 } & ResponseTagItemType;
 
+// Frontend type
 export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
   dataId: string;
   status: `${ChatStatusEnum}`;

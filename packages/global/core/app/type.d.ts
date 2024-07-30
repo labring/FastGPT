@@ -1,7 +1,7 @@
 import type { FlowNodeTemplateType, StoreNodeItemType } from '../workflow/type/node';
 import { AppTypeEnum } from './constants';
 import { PermissionTypeEnum } from '../../support/permission/constant';
-import { VariableInputEnum } from '../workflow/constants';
+import { NodeInputKeyEnum, VariableInputEnum } from '../workflow/constants';
 import { SelectedDatasetType } from '../workflow/api';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/user/team/type.d';
@@ -99,6 +99,7 @@ export type SettingAIDataType = {
   maxToken: number;
   isResponseAnswerText?: boolean;
   maxHistories?: number;
+  [NodeInputKeyEnum.aiChatVision]?: boolean; // Is open vision mode
 };
 
 // variable

@@ -37,7 +37,7 @@ function RowRender({
       <Box fontSize={'sm'} mb={mb} color={'myGray.800'} flex={'0 0 90px'}>
         {label}:
       </Box>
-      <Box borderRadius={'sm'} fontSize={['xs', 'sm']} {...props}>
+      <Box borderRadius={'sm'} fontSize={['xs', 'sm']} bg={'myGray.50'} {...props}>
         {children}
       </Box>
     </Box>

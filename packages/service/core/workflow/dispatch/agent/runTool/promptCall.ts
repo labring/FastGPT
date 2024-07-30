@@ -24,6 +24,7 @@ import { getNanoid, replaceVariable, sliceJsonStr } from '@fastgpt/global/common
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { updateToolInputValue } from './utils';
+import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
 
 type FunctionCallCompletion = {
   id: string;
@@ -43,7 +44,17 @@ export const runToolWithPromptCall = async (
   },
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
-  const { toolModel, toolNodes, messages, res, runtimeNodes, detail = false, node, stream } = props;
+  const {
+    toolModel,
+    toolNodes,
+    messages,
+    res,
+    runtimeNodes,
+    detail = false,
+    node,
+    stream,
+    params: { temperature = 0, maxToken = 4000, aiChatVision }
+  } = props;
   const assistantResponses = response?.assistantResponses || [];
 
   const toolsPrompt = JSON.stringify(
@@ -77,7 +88,7 @@ export const runToolWithPromptCall = async (
 
   const lastMessage = messages[messages.length - 1];
   if (typeof lastMessage.content !== 'string') {
-    return Promise.reject('暂时只支持纯文本');
+    return Promise.reject('只支持发送纯文本问题');
   }
   lastMessage.content = replaceVariable(lastMessage.content, {
     toolsPrompt
@@ -87,27 +98,36 @@ export const runToolWithPromptCall = async (
     messages,
     maxTokens: toolModel.maxContext - 500 // filter token. not response maxToken
   });
-  const requestMessages = await loadRequestMessages(filterMessages);
+  const [requestMessages, max_tokens] = await Promise.all([
+    loadRequestMessages(filterMessages, toolModel.vision && aiChatVision),
+    computedMaxToken({
+      model: toolModel,
+      maxToken,
+      filterMessages
+    })
+  ]);
+  const requestBody = {
+    ...toolModel?.defaultConfig,
+    model: toolModel.model,
+    temperature: computedTemperature({
+      model: toolModel,
+      temperature
+    }),
+    max_tokens,
+    stream,
+    messages: requestMessages
+  };
 
-  // console.log(JSON.stringify(filterMessages, null, 2));
+  // console.log(JSON.stringify(requestBody, null, 2));
   /* Run llm */
   const ai = getAIApi({
     timeout: 480000
   });
-  const aiResponse = await ai.chat.completions.create(
-    {
-      ...toolModel?.defaultConfig,
-      model: toolModel.model,
-      temperature: 0,
-      stream,
-      messages: requestMessages
-    },
-    {
-      headers: {
-        Accept: 'application/json, text/plain, */*'
-      }
+  const aiResponse = await ai.chat.completions.create(requestBody, {
+    headers: {
+      Accept: 'application/json, text/plain, */*'
     }
-  );
+  });
 
   const answer = await (async () => {
     if (res && stream) {

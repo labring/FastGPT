@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { LLMModelTypeEnum, llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
-import { Box, Button, Flex, css, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, css, useDisclosure } from '@chakra-ui/react';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
 import AISettingModal from '@/components/core/ai/AISettingModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -9,6 +9,7 @@ import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useMount } from 'ahooks';
 
 type Props = {
   llmModelType?: `${LLMModelTypeEnum}`;
@@ -38,14 +39,15 @@ const SettingLLMModel = ({ llmModelType = LLMModelTypeEnum.all, defaultData, onC
     onClose: onCloseAIChatSetting
   } = useDisclosure();
 
-  useEffect(() => {
+  // Set default model
+  useMount(() => {
     if (!model && modelList.length > 0) {
       onChange({
         ...defaultData,
         model: modelList[0].model
       });
     }
-  }, []);
+  });
 
   return (
     <Box
