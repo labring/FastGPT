@@ -46,8 +46,8 @@ export async function getUserDetail({
     promotionRate: user.promotionRate,
     openaiAccount: user.openaiAccount,
     team: tmb,
-    receiveNotification: user.receiveNotification,
     phone: user.phone,
-    email: user.email
+    email: user.email,
+    notification: tmb.notification
   };
 }

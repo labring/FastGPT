@@ -267,8 +267,8 @@ const MyInfo = () => {
         {feConfigs.isPlus && (
           <Flex mt={6} alignItems={'center'}>
             <Box {...labelStyles}>{t('common:user.Notification Receive')}:&nbsp;</Box>
-            <Box flex={1} {...(userInfo?.email || userInfo?.phone ? {} : { color: 'red.600' })}>
-              {userInfo?.email || userInfo?.phone || t('common:user.Notification Receive Bind')}
+            <Box flex={1} {...(userInfo?.team.notification ? {} : { color: 'red.600' })}>
+              {userInfo?.team.notification.target || t('common:user.Notification Receive Bind')}
             </Box>
             <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdateNotification}>
               {t('common:user.Change')}

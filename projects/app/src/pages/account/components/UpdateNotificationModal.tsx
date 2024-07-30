@@ -7,14 +7,16 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { updateNotificationMethod } from '@/web/support/user/api';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 type FormType = {
   account: string;
   verifyCode: string;
 };
 
-const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
+const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
+  const { initUserInfo } = useUserStore();
   const { register, handleSubmit, trigger, getValues } = useForm<FormType>({
     defaultValues: {
       account: '',
@@ -27,6 +29,7 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
       return updateNotificationMethod(data);
     },
     onSuccess() {
+      initUserInfo();
       onClose();
     },
     successToast: t('common:user.Update password successful'),
@@ -117,4 +120,4 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-export default UpdatePswModal;
+export default UpdateNotificationModal;

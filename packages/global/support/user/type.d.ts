@@ -33,4 +33,8 @@ export type UserType = {
   standardInfo?: standardInfoType;
   phone?: string;
   email?: string;
+  notification?: {
+    target: string;
+    receive: boolean;
+  };
 };

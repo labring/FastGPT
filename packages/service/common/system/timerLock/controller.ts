@@ -7,14 +7,14 @@ export type LockIdType = {
   type?: LockType;
 };
 
-export function getLockId({ id, type }: LockIdType): string {
+export function getLockTimerId({ id, type }: LockIdType): string {
   if (!type) {
     return id;
   }
   return `${type}${splitString}${id}`;
 }
 
-export function parseLockId(lockId: string): LockIdType {
+export function parseLockTimerId(lockId: string): LockIdType {
   const [type, id] = (() => {
     if (lockId.includes(splitString)) {
       return lockId.split(splitString) as [LockType, string]; // HACK: cast string to LockType

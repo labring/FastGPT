@@ -18,6 +18,10 @@ export type TeamSchema = {
   };
   lafAccount: LafAccountType;
   defaultPermission: PermissionValueType;
+  notification: {
+    target: string;
+    receive: boolean;
+  };
 };
 export type tagsType = {
   label: string;
@@ -63,6 +67,10 @@ export type TeamTmbItemType = {
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
   lafAccount?: LafAccountType;
+  notification: {
+    target: string;
+    receive: boolean;
+  };
   permission: TeamPermission;
 };
 
