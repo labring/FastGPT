@@ -3,7 +3,7 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import fsp from 'fs/promises';
 import fs from 'fs';
 import { DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
-import { MongoFileSchema } from './schema';
+import { MongoChatFileSchema, MongoDatasetFileSchema } from './schema';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoRawTextBuffer } from '../../buffer/rawText/schema';
@@ -12,7 +12,9 @@ import { gridFsStream2Buffer, stream2Encoding } from './utils';
 import { addLog } from '../../system/log';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
-  MongoFileSchema;
+  MongoDatasetFileSchema;
+  MongoChatFileSchema;
+
   return connectionMongo.connection.db.collection(`${bucket}.files`);
 }
 export function getGridBucket(bucket: `${BucketNameEnum}`) {
@@ -49,6 +51,7 @@ export async function uploadFile({
 
   const { stream: readStream, encoding } = await stream2Encoding(fs.createReadStream(path));
 
+  // Add default metadata
   metadata.teamId = teamId;
   metadata.tmbId = tmbId;
   metadata.encoding = encoding;
@@ -103,7 +106,9 @@ export async function delFileByFileIdList({
   try {
     const bucket = getGridBucket(bucketName);
 
-    await Promise.all(fileIdList.map((id) => bucket.delete(new Types.ObjectId(id))));
+    for await (const fileId of fileIdList) {
+      await bucket.delete(new Types.ObjectId(fileId));
+    }
   } catch (error) {
     if (retry > 0) {
       return delFileByFileIdList({ bucketName, fileIdList, retry: retry - 1 });

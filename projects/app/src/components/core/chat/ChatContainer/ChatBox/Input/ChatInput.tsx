@@ -17,9 +17,10 @@ import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { ReadFileBaseUrl, documentFileType } from '@fastgpt/global/common/file/constants';
+import { documentFileType } from '@fastgpt/global/common/file/constants';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { clone } from 'lodash';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -45,17 +46,17 @@ const ChatInput = ({
   chatForm: UseFormReturn<ChatBoxInputFormType>;
   appId: string;
 }) => {
+  const { isPc } = useSystem();
   const { toast } = useToast();
   const { t } = useTranslation();
 
   const { setValue, watch, control } = chatForm;
   const inputValue = watch('input');
   const {
-    update: updateFile,
-    remove: removeFile,
+    update: updateFiles,
+    remove: removeFiles,
     fields: fileList,
-    append: appendFile,
-    replace: replaceFile
+    replace: replaceFiles
   } = useFieldArray({
     control,
     name: 'files'
@@ -70,7 +71,6 @@ const ChatInput = ({
     outLinkAuthData,
     fileSelectConfig
   } = useContextSelector(ChatBoxContext, (v) => v);
-  const { isPc } = useSystem();
 
   const havInput = !!inputValue || fileList.length > 0;
   const hasFileUploading = fileList.some((item) => !item.url);
@@ -106,7 +106,7 @@ const ChatInput = ({
 
       if (filterFiles.length === 0) return;
 
-      replaceFile(fileList.map((item) => ({ ...item, status: 1 })));
+      replaceFiles(fileList.map((item) => ({ ...item, status: 1 })));
 
       for (const file of filterFiles) {
         if (!file.rawFile) continue;
@@ -120,13 +120,13 @@ const ChatInput = ({
             }
           });
 
-          updateFile(fileList.findIndex((item) => item.id === file.id)!, {
+          updateFiles(fileList.findIndex((item) => item.id === file.id)!, {
             ...file,
             status: 1,
             url: previewUrl
           });
         } catch (error) {
-          removeFile(fileList.findIndex((item) => item.id === file.id)!);
+          removeFiles(fileList.findIndex((item) => item.id === file.id)!);
           console.log(error);
           return Promise.reject(error);
         }
@@ -186,9 +186,22 @@ const ChatInput = ({
             })
         )
       );
-      appendFile(loadFiles);
+
+      // Document, image
+      const concatFileList = clone(
+        fileList.concat(loadFiles).sort((a, b) => {
+          if (a.type === ChatFileTypeEnum.image && b.type === ChatFileTypeEnum.file) {
+            return 1;
+          } else if (a.type === ChatFileTypeEnum.file && b.type === ChatFileTypeEnum.image) {
+            return -1;
+          }
+          return 0;
+        })
+      );
+      console.log(concatFileList, loadFiles);
+      replaceFiles(concatFileList);
     },
-    [appendFile, fileList.length, maxSelectFiles, t, toast]
+    [fileList, maxSelectFiles, replaceFiles, toast, t]
   );
 
   /* on send */
@@ -200,7 +213,7 @@ const ChatInput = ({
       text: textareaValue.trim(),
       files: fileList
     });
-    replaceFile([]);
+    replaceFiles([]);
   };
 
   /* whisper init */
@@ -241,12 +254,12 @@ const ChatInput = ({
           files: fileList,
           autoTTSResponse
         });
-        replaceFile([]);
+        replaceFiles([]);
       } else {
         resetInputVal({ text });
       }
     },
-    [autoTTSResponse, fileList, onSendMessage, replaceFile, resetInputVal, whisperConfig?.autoSend]
+    [autoTTSResponse, fileList, onSendMessage, replaceFiles, resetInputVal, whisperConfig?.autoSend]
   );
   const onWhisperRecord = useCallback(() => {
     if (isSpeaking) {
@@ -351,13 +364,13 @@ const ChatInput = ({
                 h={'16px'}
                 color={'myGray.700'}
                 cursor={'pointer'}
-                _hover={{ color: 'primary.500' }}
+                _hover={{ color: 'red.500' }}
                 position={'absolute'}
                 bg={'white'}
                 right={'-8px'}
                 top={'-8px'}
                 onClick={() => {
-                  removeFile(index);
+                  removeFiles(index);
                 }}
                 className="close-icon"
                 display={['', 'none']}
@@ -373,7 +386,7 @@ const ChatInput = ({
                 />
               )}
               {item.type === ChatFileTypeEnum.file && (
-                <HStack w={['150px', '250px']} p={2}>
+                <HStack minW={['100px', '150px']} maxW={'250px'} p={2}>
                   <MyIcon name={item.icon as any} w={['1.5rem', '2rem']} h={['1.5rem', '2rem']} />
                   <Box flex={'1 0 0'} className="textEllipsis" fontSize={'xs'}>
                     {item.name}
