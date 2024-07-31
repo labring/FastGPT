@@ -119,14 +119,44 @@ export class PgVectorCtrl {
     }
   };
   embRecall = async (props: EmbeddingRecallCtrlProps): Promise<EmbeddingRecallResponse> => {
-    const { teamId, datasetIds, vector, limit, forbidCollectionIdList, retry = 2 } = props;
+    const {
+      teamId,
+      datasetIds,
+      vector,
+      limit,
+      forbidCollectionIdList,
+      filterCollectionIdList,
+      retry = 2
+    } = props;
 
+    // Get forbid collection
+    const formatForbidCollectionIdList = (() => {
+      if (!filterCollectionIdList) return forbidCollectionIdList;
+      const list = forbidCollectionIdList
+        .map((id) => String(id))
+        .filter((id) => !filterCollectionIdList.includes(id));
+      return list;
+    })();
     const forbidCollectionSql =
-      forbidCollectionIdList.length > 0
-        ? `AND collection_id NOT IN (${forbidCollectionIdList.map((id) => `'${String(id)}'`).join(',')})`
-        : 'AND collection_id IS NOT NULL';
-    // const forbidDataSql =
-    //   forbidEmbIndexIdList.length > 0 ? `AND id NOT IN (${forbidEmbIndexIdList.join(',')})` : '';
+      formatForbidCollectionIdList.length > 0
+        ? `AND collection_id NOT IN (${formatForbidCollectionIdList.map((id) => `'${id}'`).join(',')})`
+        : '';
+
+    // Filter by collectionId
+    const formatFilterCollectionId = (() => {
+      if (!filterCollectionIdList) return;
+
+      return filterCollectionIdList
+        .map((id) => String(id))
+        .filter((id) => !forbidCollectionIdList.includes(id));
+    })();
+    const filterCollectionIdSql = formatFilterCollectionId
+      ? `AND collection_id IN (${formatFilterCollectionId.map((id) => `'${id}'`).join(',')})`
+      : '';
+    // Empty data
+    if (formatFilterCollectionId && formatFilterCollectionId.length === 0) {
+      return { results: [] };
+    }
 
     try {
       // const explan: any = await PgClient.query(
@@ -150,6 +180,7 @@ export class PgVectorCtrl {
             from ${DatasetVectorTableName} 
             where team_id='${teamId}'
               AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+              ${filterCollectionIdSql}
               ${forbidCollectionSql}
             order by score limit ${limit};
         COMMIT;`
