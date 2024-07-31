@@ -69,4 +69,4 @@ const Render = () => {
   );
 };
 
-export default React.memo(Render);
+export default Render;
