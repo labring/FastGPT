@@ -74,14 +74,10 @@ const ChatItem = ({
     if (type === 'Human') {
       const { text, files = [] } = formatChatValue2InputType(chat.value);
       return (
-        <>
-          {files.length > 0 && (
-            <Box mb={4}>
-              <FilesBlock files={files} />
-            </Box>
-          )}
-          <Markdown source={text} />
-        </>
+        <Flex flexDirection={'column'} gap={4}>
+          {files.length > 0 && <FilesBlock files={files} />}
+          {text && <Markdown source={text} />}
+        </Flex>
       );
     }
 
