@@ -26,9 +26,7 @@ export type EmbeddingRecallProps = {
   datasetIds: string[];
 
   forbidCollectionIdList: string[];
-  // forbidEmbIndexIdList: string[];
-  // similarity?: number;
-  // efSearch?: number;
+  filterCollectionIdList?: string[];
 };
 export type EmbeddingRecallCtrlProps = EmbeddingRecallProps & {
   vector: number[];
