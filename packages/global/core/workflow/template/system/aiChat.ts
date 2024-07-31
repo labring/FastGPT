@@ -15,7 +15,8 @@ import {
   Input_Template_Dataset_Quote,
   Input_Template_History,
   Input_Template_System_Prompt,
-  Input_Template_UserChatInput
+  Input_Template_UserChatInput,
+  Input_Template_Text_Quote
 } from '../input';
 import { chatNodeSystemPromptTip } from '../tip';
 import { getHandleConfig } from '../utils';
@@ -83,8 +84,9 @@ export const AiChatModule: FlowNodeTemplateType = {
       placeholder: chatNodeSystemPromptTip
     },
     Input_Template_History,
-    { ...Input_Template_UserChatInput, toolDescription: '用户问题' },
-    Input_Template_Dataset_Quote
+    Input_Template_Dataset_Quote,
+    Input_Template_Text_Quote,
+    { ...Input_Template_UserChatInput, toolDescription: '用户问题' }
   ],
   outputs: [
     {

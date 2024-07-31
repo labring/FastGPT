@@ -26,6 +26,8 @@
   },
   "current_settings": "Current settings",
   "day": "day",
+  "document_quote": "Document quote",
+  "document_quote_tip": "It is usually used to accept document content uploaded by users (which requires document parsing), and can also be used to reference other string data.",
   "document_upload": "Document upload",
   "edit_app": "Edit app",
   "edit_info": "Edit info",

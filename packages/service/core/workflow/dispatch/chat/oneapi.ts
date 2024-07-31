@@ -24,6 +24,7 @@ import {
   runtimePrompt2ChatsValue
 } from '@fastgpt/global/core/chat/adapt';
 import {
+  Prompt_DocumentQuote,
   Prompt_QuotePromptList,
   Prompt_QuoteTemplateList
 } from '@fastgpt/global/core/ai/prompt/AIChat';
@@ -75,7 +76,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       systemPrompt = '',
       quoteTemplate,
       quotePrompt,
-      aiChatVision
+      aiChatVision,
+      stringQuoteText
     }
   } = props;
   const { files: inputFiles } = chatValue2RuntimePrompt(query);
@@ -92,7 +94,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     return Promise.reject('The chat model is undefined, you need to select a chat model.');
   }
 
-  const { quoteText } = await filterQuote({
+  const { datasetQuoteText } = await filterDatasetQuote({
     quoteQA,
     model: modelConstantsData,
     quoteTemplate
@@ -102,12 +104,13 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     getChatMessages({
       model: modelConstantsData,
       histories: chatHistories,
-      quoteQA,
-      quoteText,
-      quotePrompt,
+      useDatasetQuote: quoteQA !== undefined,
+      datasetQuoteText,
+      datasetQuotePrompt: quotePrompt,
       userChatInput,
       inputFiles,
-      systemPrompt
+      systemPrompt,
+      stringQuoteText
     }),
     async () => {
       // censor model and system key
@@ -245,7 +248,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   }
 };
 
-async function filterQuote({
+async function filterDatasetQuote({
   quoteQA = [],
   model,
   quoteTemplate
@@ -267,44 +270,52 @@ async function filterQuote({
   // slice filterSearch
   const filterQuoteQA = await filterSearchResultsByMaxChars(quoteQA, model.quoteMaxToken);
 
-  const quoteText =
+  const datasetQuoteText =
     filterQuoteQA.length > 0
       ? `${filterQuoteQA.map((item, index) => getValue(item, index).trim()).join('\n------\n')}`
       : '';
 
   return {
-    quoteText
+    datasetQuoteText
   };
 }
 async function getChatMessages({
-  quotePrompt,
-  quoteText,
-  quoteQA,
+  datasetQuotePrompt,
+  datasetQuoteText,
+  useDatasetQuote,
   histories = [],
   systemPrompt,
   userChatInput,
   inputFiles,
-  model
+  model,
+  stringQuoteText
 }: {
-  quotePrompt?: string;
-  quoteText: string;
-  quoteQA: ChatProps['params']['quoteQA'];
+  datasetQuotePrompt?: string;
+  datasetQuoteText: string;
+  useDatasetQuote: boolean;
   histories: ChatItemType[];
   systemPrompt: string;
   userChatInput: string;
   inputFiles: UserChatItemValueItemType['file'][];
   model: LLMModelItemType;
+  stringQuoteText?: string;
 }) {
-  const replaceInputValue =
-    quoteQA !== undefined
-      ? replaceVariable(quotePrompt || Prompt_QuotePromptList[0].value, {
-          quote: quoteText,
-          question: userChatInput
-        })
-      : userChatInput;
+  const replaceInputValue = useDatasetQuote
+    ? replaceVariable(datasetQuotePrompt || Prompt_QuotePromptList[0].value, {
+        quote: datasetQuoteText,
+        question: userChatInput
+      })
+    : userChatInput;
 
   const messages: ChatItemType[] = [
     ...getSystemPrompt(systemPrompt),
+    ...(stringQuoteText
+      ? getSystemPrompt(
+          replaceVariable(Prompt_DocumentQuote, {
+            quote: stringQuoteText
+          })
+        )
+      : []),
     ...histories,
     {
       obj: ChatRoleEnum.Human,
