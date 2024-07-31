@@ -85,6 +85,7 @@ export enum NodeInputKeyEnum {
   datasetSearchUsingExtensionQuery = 'datasetSearchUsingExtensionQuery',
   datasetSearchExtensionModel = 'datasetSearchExtensionModel',
   datasetSearchExtensionBg = 'datasetSearchExtensionBg',
+  collectionFilterMatch = 'collectionFilterMatch',
 
   // concat dataset
   datasetQuoteList = 'system_datasetQuoteList',
