@@ -118,6 +118,7 @@
     "Input guide": "Input guide",
     "template": {
       "communication": "Communication"
-    }
+    },
+    "user_file_input": "Files url"
   }
 }

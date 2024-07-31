@@ -857,7 +857,7 @@
         "AppSecret": "AppSecret",
         "ChatId": "当前对话 ID",
         "Current time": "当前时间",
-        "Histories": "最近 10 条聊天记录",
+        "Histories": "历史记录",
         "Key already exists": "Key 已经存在",
         "Key cannot be empty": "参数名不能为空",
         "Props name": "参数名",

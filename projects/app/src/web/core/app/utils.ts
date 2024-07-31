@@ -18,6 +18,7 @@ import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textare
 import { TFunction } from 'next-i18next';
 import { ToolModule } from '@fastgpt/global/core/workflow/template/system/tools';
 import { useDatasetStore } from '../dataset/store/dataset';
+import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 
 type WorkflowType = {
   nodes: StoreNodeItemType[];
@@ -51,34 +52,17 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
   function workflowStartTemplate(): StoreNodeItemType {
     return {
       nodeId: workflowStartNodeId,
-      name: '流程开始',
+      name: WorkflowStart.name,
       intro: '',
-      avatar: '/imgs/workflow/userChatInput.svg',
-      flowNodeType: FlowNodeTypeEnum.workflowStart,
+      avatar: WorkflowStart.avatar,
+      flowNodeType: WorkflowStart.flowNodeType,
       position: {
         x: 558.4082376415505,
         y: 123.72387429194112
       },
-      version: '481',
-      inputs: [
-        {
-          key: 'userChatInput',
-          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-          valueType: WorkflowIOValueTypeEnum.string,
-          label: '用户问题',
-          required: true,
-          toolDescription: '用户问题'
-        }
-      ],
-      outputs: [
-        {
-          id: 'userChatInput',
-          key: 'userChatInput',
-          label: 'core.module.input.label.user question',
-          valueType: WorkflowIOValueTypeEnum.string,
-          type: FlowNodeOutputTypeEnum.static
-        }
-      ]
+      version: WorkflowStart.version,
+      inputs: WorkflowStart.inputs,
+      outputs: WorkflowStart.outputs
     };
   }
 

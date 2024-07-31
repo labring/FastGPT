@@ -76,19 +76,19 @@ const ChatInput = ({
   const hasFileUploading = fileList.some((item) => !item.url);
   const canSendMessage = havInput && !hasFileUploading;
 
-  const showSelectFile = fileSelectConfig.canSelectFile && fileSelectConfig.canSelectImg;
-  const showSelectImg = !fileSelectConfig.canSelectFile && fileSelectConfig.canSelectImg;
+  const showSelectFile = fileSelectConfig.canSelectFile;
+  const showSelectImg = fileSelectConfig.canSelectImg;
   const maxSelectFiles = fileSelectConfig.maxFiles ?? 10;
   const { icon: selectFileIcon, tooltip: selectFileTip } = useMemo(() => {
-    if (showSelectImg) {
-      return {
-        icon: 'core/chat/fileSelect',
-        tooltip: t('chat:select_img')
-      };
-    } else if (showSelectFile) {
+    if (showSelectFile) {
       return {
         icon: 'core/chat/fileSelect',
         tooltip: t('chat:select_file')
+      };
+    } else if (showSelectImg) {
+      return {
+        icon: 'core/chat/fileSelect',
+        tooltip: t('chat:select_img')
       };
     }
     return {};
@@ -96,7 +96,7 @@ const ChatInput = ({
 
   /* file selector and upload */
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
-    fileType: `image/*, ${documentFileType}`,
+    fileType: `${showSelectImg ? 'image/*,' : ''} ${showSelectFile ? documentFileType : ''}`,
     multiple: true,
     maxCount: maxSelectFiles
   });
@@ -198,7 +198,6 @@ const ChatInput = ({
           return 0;
         })
       );
-      console.log(concatFileList, loadFiles);
       replaceFiles(concatFileList);
     },
     [fileList, maxSelectFiles, replaceFiles, toast, t]

@@ -134,6 +134,9 @@ export enum NodeOutputKeyEnum {
   addOutputParam = 'system_addOutputParam',
   rawResponse = 'system_rawResponse',
 
+  // start
+  userFiles = 'userFiles',
+
   // dataset
   datasetQuoteQA = 'quoteQA',
 
