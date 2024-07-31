@@ -19,10 +19,10 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 import { Box } from '@chakra-ui/react';
-import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
+const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
 
 export const useChatTest = ({
   nodes,

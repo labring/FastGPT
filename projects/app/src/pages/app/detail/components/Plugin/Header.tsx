@@ -14,7 +14,6 @@ import { useRouter } from 'next/router';
 
 import AppCard from '../WorkflowComponents/AppCard';
 import { uiWorkflow2StoreWorkflow } from '../WorkflowComponents/utils';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import RouteTab from '../RouteTab';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const PublishHistories = dynamic(() => import('../PublishHistoriesSlider'));
@@ -54,6 +53,7 @@ const Header = () => {
       router.push('/app/list');
     } catch (error) {}
   }, [onSaveWorkflow, router]);
+
   // effect
   useBeforeunload({
     callback: onSaveWorkflow,

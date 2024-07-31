@@ -6,7 +6,7 @@ import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
 import { EditorState, type LexicalEditor } from 'lexical';
 import { EditorVariableLabelPickerType, EditorVariablePickerType } from './type.d';
-import { useCallback, useTransition } from 'react';
+import { useCallback } from 'react';
 
 const PromptEditor = ({
   showOpenModal = true,
@@ -36,7 +36,6 @@ const PromptEditor = ({
   isFlow?: boolean;
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [, startSts] = useTransition();
   const { t } = useTranslation();
 
   const onChangeInput = useCallback((editorState: EditorState, editor: LexicalEditor) => {
@@ -44,10 +43,8 @@ const PromptEditor = ({
     onChange?.(text);
   }, []);
   const onBlurInput = useCallback((editor: LexicalEditor) => {
-    startSts(() => {
-      const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
-      onBlur?.(text);
-    });
+    const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
+    onBlur?.(text);
   }, []);
 
   return (
