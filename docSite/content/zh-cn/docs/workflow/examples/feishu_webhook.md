@@ -4,7 +4,7 @@ description: '利用工具调用模块，发送一个飞书webhook通知'
 icon: 'image'
 draft: false
 toc: true
-weight: 404
+weight: 409
 ---
 
 该文章展示如何发送一个简单的飞书webhook通知，以此类推，发送其他类型的通知也可以这么操作。

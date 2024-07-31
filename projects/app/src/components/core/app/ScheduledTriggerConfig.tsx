@@ -187,7 +187,7 @@ const ScheduledTriggerConfig = ({
       cronField: [CronJobTypeEnum.interval, 24 / cronField.hour.length, 0]
     };
   }, [cronString]);
-  const isOpenSchedule = cronConfig?.isOpen;
+  const isOpenSchedule = cronConfig?.isOpen ?? false;
   const cronField = (cronConfig?.cronField || defaultValue) as CronFieldType;
 
   const cronConfig2cronString = useCallback(

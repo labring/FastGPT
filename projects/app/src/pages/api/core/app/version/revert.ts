@@ -34,7 +34,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
 
   const { nodes: formatEditNodes } = beforeUpdateAppFormat({ nodes: editNodes });
 
-  const scheduledTriggerConfig = version.chatConfig.scheduledTriggerConfig;
+  const scheduledTriggerConfig = version.chatConfig?.scheduledTriggerConfig;
 
   await mongoSessionRun(async (session) => {
     // 为编辑中的数据创建一个版本
@@ -69,7 +69,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
       edges: version.edges,
       chatConfig: version.chatConfig,
       updateTime: new Date(),
-      scheduledTriggerConfig,
+      scheduledTriggerConfig: scheduledTriggerConfig ? scheduledTriggerConfig : null,
       scheduledTriggerNextTime: scheduledTriggerConfig?.cronString
         ? getNextTimeByCronStringAndTimezone(scheduledTriggerConfig)
         : null,

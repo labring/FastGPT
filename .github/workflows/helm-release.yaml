@@ -24,11 +24,6 @@ jobs:
           export APP_VERSION=${{ steps.vars.outputs.tag }}
           export HELM_VERSION=${{ steps.vars.outputs.tag }}
           export HELM_REPO=ghcr.io/${{ github.repository_owner }}
-          if [[ ! "$line" =~ ^v ]]
-          then
-            unset APP_VERSION
-            unset HELM_VERSION
-          fi
           helm dependency update files/helm/fastgpt
           helm package files/helm/fastgpt --version ${HELM_VERSION}-helm --app-version ${APP_VERSION} -d bin
           helm push bin/fastgpt-${HELM_VERSION}-helm.tgz oci://${HELM_REPO}

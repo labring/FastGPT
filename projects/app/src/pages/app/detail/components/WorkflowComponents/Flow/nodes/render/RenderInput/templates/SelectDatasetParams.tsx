@@ -55,7 +55,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
         setData((state) => ({
           ...state,
           // @ts-ignore
-          [input.key]: input.value || state[input.key]
+          [input.key]: input.value ?? state[input.key]
         }));
       }
     });
