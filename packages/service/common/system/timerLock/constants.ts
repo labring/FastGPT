@@ -17,9 +17,9 @@ export const timerIdMap = {
 };
 
 export enum LockNotificationEnum {
-  VerifyCode = 'verify_code',
   NotificationExpire = 'notification_expire',
-  NotificationFreeClean = 'notification_free_clean'
+  NotificationFreeClean = 'notification_free_clean',
+  NotificationLackOfPoints = 'notification_lack_of_points'
 }
 
 export type LockType = `${LockNotificationEnum}`;

@@ -1,3 +1,4 @@
+import { TeamPermission } from '../permission/user/controller';
 import { UserStatusEnum } from './constant';
 import { TeamTmbItemType } from './team/type';
 
@@ -33,8 +34,6 @@ export type UserType = {
   standardInfo?: standardInfoType;
   phone?: string;
   email?: string;
-  notification?: {
-    target: string;
-    receive: boolean;
-  };
+  notification?: string;
+  permission: TeamPermission;
 };

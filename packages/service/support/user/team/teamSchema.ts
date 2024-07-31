@@ -1,5 +1,5 @@
-import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
-const { Schema, model, models } = connectionMongo;
+import { connectionMongo, getMongoModel } from '../../../common/mongo';
+const { Schema } = connectionMongo;
 import { TeamSchema as TeamType } from '@fastgpt/global/support/user/team/type.d';
 import { userCollectionName } from '../../user/schema';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
@@ -53,13 +53,8 @@ const TeamSchema = new Schema({
     }
   },
   notification: {
-    target: {
-      type: String // email or phone nummer
-    },
-    receive: {
-      type: Boolean, // if receive notification
-      default: true
-    }
+    type: String,
+    required: false
   }
 });
 
