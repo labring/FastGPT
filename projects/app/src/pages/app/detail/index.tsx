@@ -9,12 +9,15 @@ import AppContextProvider, { AppContext } from './components/context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const SimpleEdit = dynamic(() => import('./components/SimpleApp'), {
+  ssr: false,
   loading: () => <Loading fixed={false} />
 });
 const Workflow = dynamic(() => import('./components/Workflow'), {
+  ssr: false,
   loading: () => <Loading fixed={false} />
 });
 const Plugin = dynamic(() => import('./components/Plugin'), {
+  ssr: false,
   loading: () => <Loading fixed={false} />
 });
 

@@ -305,7 +305,7 @@ export function RenderHttpProps({
           {t('common:core.module.Http request props')}
           <QuestionTip
             ml={1}
-            label={t('core.module.http.Props tip', { variable: variableText })}
+            label={t('common:core.module.http.Props tip', { variable: variableText })}
           ></QuestionTip>
         </Flex>
         <LightRowTabs<TabEnum>
