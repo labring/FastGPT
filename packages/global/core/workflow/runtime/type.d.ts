@@ -20,6 +20,7 @@ import { RuntimeEdgeItemType } from './edge';
 /* workflow props */
 export type ChatDispatchProps = {
   res?: NextApiResponse;
+  requestOrigin?: string;
   mode: 'test' | 'chat' | 'debug';
   teamId: string;
   tmbId: string;

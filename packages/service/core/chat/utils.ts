@@ -95,10 +95,22 @@ export const filterGPTMessageByMaxTokens = async ({
   return filterEmptyMessages([...systemPrompts, ...chats]);
 };
 
-export const loadRequestMessages = async (
-  messages: ChatCompletionMessageParam[],
-  useVision = true
-) => {
+/* 
+  Format requested messages
+  1. If not useVision, only retain text.
+  2. Remove file_url
+  3. If useVision, parse url from question, and load image from url(Local url)
+*/
+export const loadRequestMessages = async ({
+  messages,
+  useVision = true,
+  origin
+}: {
+  messages: ChatCompletionMessageParam[];
+  useVision?: boolean;
+  origin?: string;
+}) => {
+  // Split question text and image
   function parseStringWithImages(input: string): ChatCompletionContentPart[] {
     if (!useVision) {
       return [{ type: 'text', text: input }];
@@ -148,15 +160,13 @@ export const loadRequestMessages = async (
       })
       .filter(Boolean) as ChatCompletionContentPart[];
   }
-  /* 
-    Parse user input
-  */
+  // Load image
   const parseUserContent = async (content: string | ChatCompletionContentPart[]) => {
     if (typeof content === 'string') {
       return parseStringWithImages(content);
     }
 
-    return Promise.all(
+    const result = await Promise.all(
       content
         .map(async (item) => {
           if (item.type === 'text') return parseStringWithImages(item.text);
@@ -164,12 +174,17 @@ export const loadRequestMessages = async (
 
           if (!item.image_url.url) return item;
 
-          /* 
-            1. From db: Get it from db
-            2. From web: Not update
-          */
-          if (item.image_url.url.startsWith('/')) {
-            const response = await axios.get(item.image_url.url, {
+          // Remove url origin
+          const imgUrl = (() => {
+            if (origin && item.image_url.url.startsWith(origin)) {
+              return item.image_url.url.replace(origin, '');
+            }
+            return item.image_url.url;
+          })();
+
+          /* Load local image */
+          if (imgUrl.startsWith('/')) {
+            const response = await axios.get(imgUrl, {
               baseURL: serverRequestBaseUrl,
               responseType: 'arraybuffer'
             });
@@ -191,6 +206,8 @@ export const loadRequestMessages = async (
         })
         .filter(Boolean)
     );
+
+    return result.flat();
   };
   // format GPT messages, concat text messages
   const clearInvalidMessages = (messages: ChatCompletionMessageParam[]) => {
@@ -228,8 +245,25 @@ export const loadRequestMessages = async (
     return Promise.reject('core.chat.error.Messages empty');
   }
 
+  // filter messages file
+  const filterMessages = messages.map((item) => {
+    // If useVision=false, only retain text.
+    if (
+      item.role === ChatCompletionRequestMessageRoleEnum.User &&
+      Array.isArray(item.content) &&
+      !useVision
+    ) {
+      return {
+        ...item,
+        content: item.content.filter((item) => item.type === 'text')
+      };
+    }
+
+    return item;
+  });
+
   const loadMessages = (await Promise.all(
-    messages.map(async (item) => {
+    filterMessages.map(async (item) => {
       if (item.role === ChatCompletionRequestMessageRoleEnum.User) {
         return {
           ...item,

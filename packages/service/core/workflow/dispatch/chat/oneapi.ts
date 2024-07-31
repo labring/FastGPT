@@ -57,6 +57,7 @@ export type ChatResponse = DispatchNodeResultType<{
 export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResponse> => {
   let {
     res,
+    requestOrigin,
     stream = false,
     detail = false,
     user,
@@ -135,7 +136,11 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   ] as ChatCompletionMessageParam[];
 
   const [requestMessages, max_tokens] = await Promise.all([
-    loadRequestMessages(concatMessages, modelConstantsData.vision && aiChatVision),
+    loadRequestMessages({
+      messages: concatMessages,
+      useVision: modelConstantsData.vision && aiChatVision,
+      origin: requestOrigin
+    }),
     computedMaxToken({
       model: modelConstantsData,
       maxToken,

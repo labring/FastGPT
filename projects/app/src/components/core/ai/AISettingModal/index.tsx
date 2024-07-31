@@ -42,7 +42,7 @@ const AIChatSettingsModal = ({
   const model = watch('model');
   const showResponseAnswerText = watch(NodeInputKeyEnum.aiChatIsResponseText) !== undefined;
   const showMaxHistoriesSlider = watch('maxHistories') !== undefined;
-  const useVision = watch('aiChatVision') ?? true;
+  const useVision = watch('aiChatVision');
   const selectedModel = llmModelList.find((item) => item.model === model) || llmModelList[0];
   const llmSupportVision = !!selectedModel?.vision;
 

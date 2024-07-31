@@ -55,6 +55,7 @@ export const runToolWithToolChoice = async (
     toolNodes,
     messages,
     res,
+    requestOrigin,
     runtimeNodes,
     detail = false,
     node,
@@ -113,7 +114,11 @@ export const runToolWithToolChoice = async (
   });
 
   const [requestMessages, max_tokens] = await Promise.all([
-    loadRequestMessages(filterMessages, toolModel.vision && aiChatVision),
+    loadRequestMessages({
+      messages: filterMessages,
+      useVision: toolModel.vision && aiChatVision,
+      origin: requestOrigin
+    }),
     computedMaxToken({
       model: toolModel,
       maxToken,

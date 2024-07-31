@@ -79,6 +79,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     /* start process */
     const { flowResponses, flowUsages } = await dispatchWorkFlow({
       res,
+      requestOrigin: req.headers.origin,
       mode: 'test',
       teamId,
       tmbId,

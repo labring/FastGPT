@@ -123,7 +123,7 @@ const ChatInput = ({
           updateFiles(fileList.findIndex((item) => item.id === file.id)!, {
             ...file,
             status: 1,
-            url: previewUrl
+            url: `${location.origin}${previewUrl}`
           });
         } catch (error) {
           removeFiles(fileList.findIndex((item) => item.id === file.id)!);

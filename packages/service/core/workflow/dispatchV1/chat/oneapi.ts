@@ -149,7 +149,10 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     return Promise.reject('core.chat.error.Messages empty');
   }
 
-  const loadMessages = await loadRequestMessages(concatMessages, false);
+  const loadMessages = await loadRequestMessages({
+    messages: concatMessages,
+    useVision: false
+  });
 
   const response = await ai.chat.completions.create(
     {
