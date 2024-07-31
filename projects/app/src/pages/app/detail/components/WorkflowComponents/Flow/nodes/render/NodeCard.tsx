@@ -25,7 +25,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
-import { ResponseBox } from '@/components/core/chat/components/WholeResponseModal';
+import { WholeResponseContent } from '@/components/core/chat/components/WholeResponseModal';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -623,9 +623,7 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
                   {debugResult.message}
                 </Box>
               )}
-              {response && (
-                <ResponseBox useMobile={true} response={[response]} showDetail hideTabs />
-              )}
+              {response && <WholeResponseContent activeModule={response} showDetail />}
             </Box>
           </Card>
         )}

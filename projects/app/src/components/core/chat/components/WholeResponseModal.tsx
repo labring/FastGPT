@@ -170,81 +170,77 @@ export const ResponseBox = React.memo(function ResponseBox({
           </Box>
         </Flex>
       ) : (
-        <>
-          <Box position={'relative'} overflow={isOpenMobileModal ? 'hidden' : ''}>
-            {!isOpenMobileModal && (
-              <Box height={'100%'}>
-                <WholeResponseSideTab
-                  response={sideResponse}
-                  value={currentNodeId}
-                  onChange={(item: string) => {
-                    setCurrentNodeId(item);
-                    onOpenMobileModal();
+        <Box h={'100%'} overflow={'auto'}>
+          {!isOpenMobileModal && (
+            <WholeResponseSideTab
+              response={sideResponse}
+              value={currentNodeId}
+              onChange={(item: string) => {
+                setCurrentNodeId(item);
+                onOpenMobileModal();
+              }}
+              isMobile={true}
+            />
+          )}
+          {isOpenMobileModal && (
+            <Flex flexDirection={'column'} h={'100%'}>
+              <Flex
+                align={'center'}
+                justifyContent={'center'}
+                px={2}
+                py={2}
+                borderBottom={'sm'}
+                position={'relative'}
+                height={'40px'}
+              >
+                <MyIcon
+                  width={4}
+                  height={4}
+                  name="common/backLight"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCloseMobileModal();
                   }}
-                  isMobile={true}
+                  position={'absolute'}
+                  left={2}
+                  top={'50%'}
+                  transform={'translateY(-50%)'}
+                  cursor={'pointer'}
+                  _hover={{ color: 'primary.500' }}
+                />
+
+                <Avatar
+                  src={
+                    activeModule.moduleLogo ||
+                    moduleTemplatesFlat.find(
+                      (template) => activeModule.moduleType === template.flowNodeType
+                    )?.avatar
+                  }
+                  w={'1.25rem'}
+                  h={'1.25rem'}
+                  borderRadius={'sm'}
+                />
+
+                <Box ml={1.5} lineHeight={'1.25rem'} alignItems={'center'}>
+                  {t(activeModule.moduleName as any)}
+                </Box>
+              </Flex>
+              <Box flex={'1 0 0'} overflow={'auto'}>
+                <WholeResponseContent
+                  activeModule={activeModule}
+                  hideTabs={hideTabs}
+                  showDetail={showDetail}
                 />
               </Box>
-            )}
-            {isOpenMobileModal && (
-              <Box h={'100%'} w={'100%'} zIndex={10} background={'white'}>
-                <Flex
-                  align={'center'}
-                  justifyContent={'center'}
-                  px={2}
-                  py={2}
-                  borderBottom={'sm'}
-                  position={'relative'}
-                  height={'40px'}
-                >
-                  <MyIcon
-                    width={4}
-                    height={4}
-                    name="common/backLight"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCloseMobileModal();
-                    }}
-                    position={'absolute'}
-                    left={2}
-                    top={'50%'}
-                    transform={'translateY(-50%)'}
-                    cursor={'pointer'}
-                    _hover={{ color: 'primary.500' }}
-                  />
-
-                  <Avatar
-                    src={
-                      activeModule.moduleLogo ||
-                      moduleTemplatesFlat.find(
-                        (template) => activeModule.moduleType === template.flowNodeType
-                      )?.avatar
-                    }
-                    w={'1.25rem'}
-                    h={'1.25rem'}
-                    borderRadius={'sm'}
-                  />
-
-                  <Box ml={1.5} lineHeight={'1.25rem'} alignItems={'center'}>
-                    {t(activeModule.moduleName as any)}
-                  </Box>
-                </Flex>
-                <Box overflow={'auto'} height={'calc(100% - 40px)'}>
-                  <WholeResponseContent
-                    activeModule={activeModule}
-                    hideTabs={hideTabs}
-                    showDetail={showDetail}
-                  />
-                </Box>
-              </Box>
-            )}
-          </Box>
-        </>
+            </Flex>
+          )}
+        </Box>
       )}
     </>
   );
 });
 
-const WholeResponseContent = ({
+export const WholeResponseContent = ({
   activeModule,
   hideTabs,
   showDetail
