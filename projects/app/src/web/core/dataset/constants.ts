@@ -51,6 +51,7 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
     defaultPermission: DatasetDefaultPermissionVal,
     inheritPermission: true
   },
+  tags: [],
   parentId: '',
   name: '',
   type: DatasetCollectionTypeEnum.file,

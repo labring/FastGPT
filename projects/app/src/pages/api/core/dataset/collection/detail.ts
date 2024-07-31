@@ -10,6 +10,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { MongoDatasetCollectionTags } from '@fastgpt/service/core/dataset/tag/schema';
 
 async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> {
   const { id } = req.query as { id: string };
@@ -32,11 +33,17 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
     ? await getFileById({ bucketName: BucketNameEnum.dataset, fileId: collection.fileId })
     : undefined;
 
+  // get tags
+  const tags = await MongoDatasetCollectionTags.find({
+    _id: { $in: collection.tags }
+  }).lean();
+
   return {
     ...collection,
     ...getCollectionSourceData(collection),
     permission,
-    file
+    file,
+    tags: tags as any
   };
 }
 

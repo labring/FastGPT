@@ -10,14 +10,17 @@ import type {
 } from '@fastgpt/global/core/dataset/type.d';
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq.d';
 import type {
+  AddTagsToCollectionsParams,
   CreateDatasetCollectionParams,
+  CreateDatasetCollectionTagParams,
   CsvTableCreateDatasetCollectionParams,
   DatasetUpdateBody,
   ExternalFileCreateDatasetCollectionParams,
   FileIdCreateDatasetCollectionParams,
   LinkCreateDatasetCollectionParams,
   PostWebsiteSyncParams,
-  TextCreateDatasetCollectionParams
+  TextCreateDatasetCollectionParams,
+  UpdateDatasetCollectionTagParams
 } from '@fastgpt/global/core/dataset/api.d';
 import type {
   GetTrainingQueueProps,
@@ -43,6 +46,8 @@ import type { UpdateDatasetCollectionParams } from '@/pages/api/core/dataset/col
 import type { GetDatasetDataListProps } from '@/pages/api/core/dataset/data/list';
 import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
 import type { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
+import { GetDatasetTagsProps, GetDatasetTagsResponse } from '@/pages/api/core/dataset/tag/list';
+import { TagUsageResponse } from '@/pages/api/core/dataset/tag/tagUsage';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -116,6 +121,21 @@ export const postLinkCollectionSync = (collectionId: string) =>
   POST<`${DatasetCollectionSyncResultEnum}`>(`/core/dataset/collection/sync/link`, {
     collectionId
   });
+
+/* =============================== tag ==================================== */
+
+export const postCreateDatasetCollectionTag = (data: CreateDatasetCollectionTagParams) =>
+  POST(`/core/dataset/tag/create`, data);
+export const postAddTagsToCollections = (data: AddTagsToCollectionsParams) =>
+  POST(`/core/dataset/tag/addToCollections`, data);
+export const delDatasetCollectionTag = (data: { id: string; datasetId: string }) =>
+  DELETE(`/core/dataset/tag/delete`, data);
+export const updateDatasetCollectionTag = (data: UpdateDatasetCollectionTagParams) =>
+  POST(`/core/dataset/tag/update`, data);
+export const getDatasetCollectionTags = (data: GetDatasetTagsProps) =>
+  GET<GetDatasetTagsResponse>(`/core/dataset/tag/list`, data);
+export const getTagUsage = (datasetId: string) =>
+  GET<TagUsageResponse>(`/core/dataset/tag/tagUsage?datasetId=${datasetId}`);
 
 /* =============================== data ==================================== */
 /* get dataset list */

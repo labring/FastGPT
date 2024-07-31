@@ -49,6 +49,7 @@ import {
   getTrainingTypeLabel
 } from '@fastgpt/global/core/dataset/collection/utils';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
+import TagsPopOver from './TagsPopOver';
 
 const Header = dynamic(() => import('./Header'));
 const EmptyCollectionTip = dynamic(() => import('./EmptyCollectionTip'));
@@ -244,6 +245,7 @@ const CollectionCard = () => {
                         </Box>
                       </MyTooltip>
                     </Flex>
+                    <TagsPopOver currentCollection={collection} />
                   </Td>
                   <Td py={2}>
                     {!checkCollectionIsFolder(collection.type) ? (

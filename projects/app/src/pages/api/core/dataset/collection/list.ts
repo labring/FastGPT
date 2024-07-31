@@ -11,6 +11,7 @@ import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { PagingData } from '@/types';
+import { MongoDatasetCollectionTags } from '@fastgpt/service/core/dataset/tag/schema';
 
 async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectionsListItemType>> {
   let {
@@ -20,6 +21,7 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
     parentId = null,
     searchText = '',
     selectFolder = false,
+    filterTags = [],
     simple = false
   } = req.body as GetDatasetCollectionsProps;
   searchText = searchText?.replace(/'/g, '');
@@ -43,7 +45,8 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
       ? {
           name: new RegExp(searchText, 'i')
         }
-      : {})
+      : {}),
+    ...(filterTags.length ? { tags: { $all: filterTags } } : {})
   };
 
   const selectField = {
@@ -57,7 +60,8 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
     updateTime: 1,
     trainingType: 1,
     fileId: 1,
-    rawLink: 1
+    rawLink: 1,
+    tags: 1
   };
 
   // not count data amount
@@ -68,17 +72,26 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
         updateTime: -1
       })
       .lean();
-    return {
-      pageNum,
-      pageSize,
-      data: await Promise.all(
-        collections.map(async (item) => ({
+
+    const collectionsWithTags = await Promise.all(
+      collections.map(async (item) => {
+        const tags = await MongoDatasetCollectionTags.find({
+          _id: { $in: item.tags }
+        }).lean();
+        return {
           ...item,
+          tags,
           dataAmount: 0,
           trainingAmount: 0,
           permission
-        }))
-      ),
+        };
+      })
+    );
+
+    return {
+      pageNum,
+      pageSize,
+      data: collectionsWithTags,
       total: await MongoDatasetCollection.countDocuments(match)
     };
   }
@@ -153,10 +166,16 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
   ]);
 
   const data = await Promise.all(
-    collections.map(async (item) => ({
-      ...item,
-      permission
-    }))
+    collections.map(async (item) => {
+      const tags = await MongoDatasetCollectionTags.find({
+        _id: { $in: item.tags }
+      }).lean();
+      return {
+        ...item,
+        tags: tags,
+        permission
+      };
+    })
   );
 
   if (data.find((item) => item.trainingAmount > 0)) {

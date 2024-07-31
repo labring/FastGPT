@@ -40,21 +40,30 @@ const Detail = ({ datasetId, currentTab }: Props) => {
   const router = useRouter();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const loadDatasetDetail = useContextSelector(DatasetPageContext, (v) => v.loadDatasetDetail);
+  const loadDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadDatasetTags);
 
-  useQuery([datasetId], () => loadDatasetDetail(datasetId), {
-    onError(err: any) {
-      router.replace(`/dataset/list`);
-      toast({
-        title: t(getErrText(err, t('common:common.Load Failed')) as any),
-        status: 'error'
-      });
+  useQuery(
+    [datasetId],
+    () => {
+      loadDatasetDetail(datasetId);
+      loadDatasetTags({ id: datasetId, searchKey: '' });
+      return null;
+    },
+    {
+      onError(err: any) {
+        router.replace(`/dataset/list`);
+        toast({
+          title: t(getErrText(err, t('common:common.Load Failed')) as any),
+          status: 'error'
+        });
+      }
     }
-  });
+  );
 
   return (
     <>
       <NextHead title={datasetDetail?.name} icon={datasetDetail?.avatar} />
-      <PageContainer>
+      <PageContainer insertProps={{ bg: 'white' }}>
         <MyBox display={'flex'} flexDirection={['column', 'row']} h={'100%'} pt={[4, 0]}>
           <Slider currentTab={currentTab} />
 

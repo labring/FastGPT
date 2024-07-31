@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -14,8 +14,7 @@ import {
   DrawerOverlay,
   DrawerContent,
   useDisclosure,
-  HStack,
-  Switch
+  HStack
 } from '@chakra-ui/react';
 import {
   getDatasetDataList,
@@ -26,14 +25,12 @@ import {
 import { DeleteIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { debounce } from 'lodash';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
-import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import InputDataModal from '../components/InputDataModal';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import type { DatasetDataListItemType } from '@/global/core/dataset/type.d';
@@ -54,6 +51,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import TagsPopOver from './CollectionCard/TagsPopOver';
 
 const DataCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -224,22 +222,25 @@ const DataCard = () => {
             }
           />
           <Flex className="textEllipsis" flex={'1 0 0'} mr={[3, 5]} alignItems={'center'}>
-            <Box lineHeight={1.2}>
-              {collection?._id && (
-                <RawSourceBox
-                  collectionId={collection._id}
-                  {...getCollectionSourceData(collection)}
-                  fontSize={['sm', 'md']}
-                  color={'black'}
-                  textDecoration={'none'}
-                />
-              )}
-              <Box fontSize={'sm'} color={'myGray.500'}>
-                {t('common:core.dataset.collection.id')}:{' '}
-                <Box as={'span'} userSelect={'all'}>
-                  {collection?._id}
+            <Box>
+              <Flex alignItems={'center'} gap={2}>
+                {collection?._id && (
+                  <RawSourceBox
+                    collectionId={collection._id}
+                    {...getCollectionSourceData(collection)}
+                    fontSize={['sm', 'md']}
+                    color={'black'}
+                    textDecoration={'none'}
+                  />
+                )}
+                <Box fontSize={'sm'} color={'myGray.500'}>
+                  {t('common:core.dataset.collection.id')}:{' '}
+                  <Box as={'span'} userSelect={'all'}>
+                    {collection?._id}
+                  </Box>
                 </Box>
-              </Box>
+              </Flex>
+              {collection && <TagsPopOver currentCollection={collection as any} />}
             </Box>
           </Flex>
           {canWrite && (

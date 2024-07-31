@@ -1,22 +1,27 @@
 import { useQuery } from '@tanstack/react-query';
-import { ReactNode, useMemo, useState } from 'react';
+import { ReactNode, SetStateAction, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext } from 'use-context-selector';
 import {
   getDatasetById,
+  getDatasetCollectionTags,
   getDatasetTrainingQueue,
   getTrainingQueueLen,
   putDatasetById
 } from '../api';
 import { defaultDatasetDetail } from '../constants';
 import { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
-import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
+import { DatasetItemType, DatasetTagType } from '@fastgpt/global/core/dataset/type';
 
 type DatasetPageContextType = {
   datasetId: string;
   datasetDetail: DatasetItemType;
   loadDatasetDetail: (id: string) => Promise<DatasetItemType>;
   updateDataset: (data: DatasetUpdateBody) => Promise<void>;
+  datasetTags: DatasetTagType[];
+  loadDatasetTags: (data: { id: string; searchKey: string }) => Promise<void>;
+  checkedDatasetTag: DatasetTagType[];
+  setCheckedDatasetTag: React.Dispatch<SetStateAction<DatasetTagType[]>>;
 
   vectorTrainingMap: {
     colorSchema: string;
@@ -52,6 +57,14 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
   },
   updateDataset: function (data: DatasetUpdateBody): Promise<void> {
     throw new Error('Function not implemented.');
+  },
+  datasetTags: [],
+  loadDatasetTags: function (data: { id: string; searchKey: string }): Promise<void> {
+    throw new Error('Function not implemented.');
+  },
+  checkedDatasetTag: [],
+  setCheckedDatasetTag: function (): void {
+    throw new Error('Function not implemented.');
   }
 });
 
@@ -84,6 +97,21 @@ export const DatasetPageContextProvider = ({
       }));
     }
   };
+
+  // dataset tags
+  const [datasetTags, setDatasetTags] = useState<DatasetTagType[]>([]);
+
+  const loadDatasetTags = async ({ id, searchKey }: { id: string; searchKey: string }) => {
+    const { list } = await getDatasetCollectionTags({
+      datasetId: id,
+      searchText: searchKey,
+      current: 1,
+      pageSize: 15
+    });
+    setDatasetTags(list);
+  };
+
+  const [checkedDatasetTag, setCheckedDatasetTag] = useState<DatasetTagType[]>([]);
 
   // global queue
   const { data: { vectorTrainingCount = 0, agentTrainingCount = 0 } = {} } = useQuery(
@@ -152,7 +180,11 @@ export const DatasetPageContextProvider = ({
     agentTrainingMap,
     rebuildingCount,
     trainingCount,
-    refetchDatasetTraining
+    refetchDatasetTraining,
+    datasetTags,
+    loadDatasetTags,
+    checkedDatasetTag,
+    setCheckedDatasetTag
   };
 
   return <DatasetPageContext.Provider value={contextValue}>{children}</DatasetPageContext.Provider>;
