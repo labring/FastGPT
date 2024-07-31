@@ -52,7 +52,7 @@ const TeamSchema = new Schema({
       type: String
     }
   },
-  notification: {
+  notificationAccount: {
     type: String,
     required: false
   }

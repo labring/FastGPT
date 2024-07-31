@@ -231,7 +231,7 @@ const MyInfo = () => {
             </Flex>
           </Flex>
         )}
-        {feConfigs.isPlus && (
+        {feConfigs?.isPlus && (
           <Flex mt={[0, 4]} alignItems={'center'}>
             <Box {...labelStyles}>{t('common:user.Member Name')}:&nbsp;</Box>
             <Input
@@ -255,7 +255,7 @@ const MyInfo = () => {
           <Box {...labelStyles}>{t('common:user.Account')}:&nbsp;</Box>
           <Box flex={1}>{userInfo?.username}</Box>
         </Flex>
-        {feConfigs.isPlus && (
+        {feConfigs?.isPlus && (
           <Flex mt={6} alignItems={'center'}>
             <Box {...labelStyles}>{t('common:user.Password')}:&nbsp;</Box>
             <Box flex={1}>*****</Box>
@@ -267,8 +267,8 @@ const MyInfo = () => {
         {feConfigs.isPlus && userInfo?.permission.isOwner && (
           <Flex mt={6} alignItems={'center'}>
             <Box {...labelStyles}>{t('common:user.Notification Receive')}:&nbsp;</Box>
-            <Box flex={1} {...(userInfo?.team.notification ? {} : { color: 'red.600' })}>
-              {userInfo?.team.notification || t('common:user.Notification Receive Bind')}
+            <Box flex={1} {...(userInfo?.team.notificationAccount ? {} : { color: 'red.600' })}>
+              {userInfo?.team.notificationAccount || t('common:user.Notification Receive Bind')}
             </Box>
             <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdateNotification}>
               {t('common:user.Change')}
@@ -281,7 +281,7 @@ const MyInfo = () => {
             <TeamMenu />
           </Box>
         </Flex>
-        {feConfigs.isPlus && (
+        {feConfigs?.isPlus && (
           <Box mt={6} whiteSpace={'nowrap'}>
             <Flex alignItems={'center'}>
               <Box {...labelStyles}>{t('common:user.team.Balance')}:&nbsp;</Box>
@@ -597,7 +597,7 @@ const Other = () => {
         )}
         {feConfigs?.chatbotUrl && (
           <Link
-            href={feConfigs.chatbotUrl}
+            href={feConfigs?.chatbotUrl}
             target="_blank"
             display={'flex'}
             py={3}

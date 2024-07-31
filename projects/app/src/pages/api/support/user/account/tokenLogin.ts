@@ -10,6 +10,6 @@ async function handler(
   _res: ApiResponseType<any>
 ): Promise<TokenLoginResponse> {
   const { tmbId } = await authCert({ req, authToken: true });
-  return await getUserDetail({ tmbId });
+  return getUserDetail({ tmbId });
 }
 export default NextAPI(handler);

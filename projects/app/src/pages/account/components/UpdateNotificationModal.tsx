@@ -3,7 +3,7 @@ import { ModalBody, Box, Flex, Input, ModalFooter, Button } from '@chakra-ui/rea
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { updateNotificationMethod } from '@/web/support/user/api';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
@@ -24,17 +24,19 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
     }
   });
 
-  const { mutate: onSubmit, isLoading } = useRequest({
-    mutationFn: (data: FormType) => {
+  const { runAsync: onSubmit, loading: isLoading } = useRequest2(
+    (data: FormType) => {
       return updateNotificationMethod(data);
     },
-    onSuccess() {
-      initUserInfo();
-      onClose();
-    },
-    successToast: t('common:user.Update password successful'),
-    errorToast: t('common:user.Update password failed')
-  });
+    {
+      onSuccess() {
+        initUserInfo();
+        onClose();
+      },
+      successToast: t('common:user.Update password successful'),
+      errorToast: t('common:user.Update password failed')
+    }
+  );
 
   const { sendCodeText, sendCode, codeCountDown } = useSendCode();
 
@@ -69,24 +71,22 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
             justifyItems="center"
           >
             <Icon name="common/info" mr="2" w="14px" />
-            <Box>
-              请绑定通知接收账号，以确保您能正常使用找回密码的功能，并能及时接收套餐过期提醒。
-            </Box>
+            <Box>{t('user:notification.Bind Notification Pipe Hint')}</Box>
           </Flex>
           <Flex mt="4" alignItems="center">
-            <Box flex={'0 0 70px'}>账号</Box>
+            <Box flex={'0 0 70px'}>{t('common:user.Account')}</Box>
             <Input
               flex={1}
               {...register('account', { required: true })}
-              placeholder="电话/邮箱"
+              placeholder={t('common:support.user.Email Or Phone')}
             ></Input>
           </Flex>
           <Flex mt="4" alignItems="center">
-            <Box flex={'0 0 70px'}>验证码</Box>
+            <Box flex={'0 0 70px'}>{t('common:support.user.Verify Code')}</Box>
             <Input
               flex={1}
               {...register('verifyCode', { required: true })}
-              placeholder="验证码"
+              placeholder={t('common:support.user.Verify Code')}
             ></Input>
             <Box
               position={'absolute'}
@@ -110,10 +110,10 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
       </ModalBody>
       <ModalFooter>
         <Button mr={3} variant={'whiteBase'} onClick={onClose}>
-          取消
+          {t('common:common.Cancel')}
         </Button>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data))}>
-          确认
+          {t('common:common.Save')}
         </Button>
       </ModalFooter>
     </MyModal>

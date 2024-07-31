@@ -18,14 +18,8 @@ const UserSchema = new Schema({
     required: true,
     unique: true // 唯一
   },
-  email: {
-    type: String
-  },
   phonePrefix: {
     type: Number
-  },
-  phone: {
-    type: String
   },
   password: {
     type: String,

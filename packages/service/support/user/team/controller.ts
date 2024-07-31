@@ -41,7 +41,7 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
       per: tmbPer?.permission ?? tmb.teamId.defaultPermission,
       isOwner: tmb.role === TeamMemberRoleEnum.owner
     }),
-    notification: tmb.teamId.notification
+    notificationAccount: tmb.teamId.notificationAccount
   };
 }
 

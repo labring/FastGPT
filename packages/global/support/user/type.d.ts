@@ -5,9 +5,6 @@ import { TeamTmbItemType } from './team/type';
 export type UserModelSchema = {
   _id: string;
   username: string;
-  email?: string;
-  phonePrefix?: number;
-  phone?: string;
   password: string;
   avatar: string;
   promotionRate: number;
@@ -32,8 +29,6 @@ export type UserType = {
   openaiAccount: UserModelSchema['openaiAccount'];
   team: TeamTmbItemType;
   standardInfo?: standardInfoType;
-  phone?: string;
-  email?: string;
-  notification?: string;
+  notificationAccount?: string;
   permission: TeamPermission;
 };

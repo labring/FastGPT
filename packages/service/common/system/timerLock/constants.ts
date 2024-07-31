@@ -8,16 +8,6 @@ export enum TimerIdEnum {
   notification = 'notification'
 }
 
-export const timerIdMap = {
-  [TimerIdEnum.checkInValidDatasetFiles]: 'checkInValidDatasetFiles',
-  [TimerIdEnum.checkInvalidDatasetData]: 'checkInvalidDatasetData',
-  [TimerIdEnum.checkInvalidVector]: 'checkInvalidVector',
-  [TimerIdEnum.clearExpiredSubPlan]: 'clearExpiredSubPlan',
-  [TimerIdEnum.updateStandardPlan]: 'updateStandardPlan',
-  [TimerIdEnum.scheduleTriggerApp]: 'scheduleTriggerApp',
-  [TimerIdEnum.notification]: 'notification'
-};
-
 export enum LockNotificationEnum {
   NotificationExpire = 'notification_expire',
   NotificationFreeClean = 'notification_free_clean',
