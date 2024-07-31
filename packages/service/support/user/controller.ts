@@ -32,9 +32,7 @@ export async function getUserDetail({
     }
     return Promise.reject(ERROR_ENUM.unAuthorization);
   })();
-  console.log('tmb', tmb);
   const user = await MongoUser.findById(tmb.userId);
-  console.log('user', user);
 
   if (!user) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
@@ -48,8 +46,6 @@ export async function getUserDetail({
     promotionRate: user.promotionRate,
     openaiAccount: user.openaiAccount,
     team: tmb,
-    phone: user.phone,
-    email: user.email,
     notification: tmb.notification,
     permission: tmb.permission
   };
