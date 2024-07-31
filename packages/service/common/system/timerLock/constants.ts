@@ -4,7 +4,8 @@ export enum TimerIdEnum {
   checkInvalidVector = 'checkInvalidVector',
   clearExpiredSubPlan = 'clearExpiredSubPlan',
   updateStandardPlan = 'updateStandardPlan',
-  scheduleTriggerApp = 'scheduleTriggerApp'
+  scheduleTriggerApp = 'scheduleTriggerApp',
+  notification = 'notification'
 }
 
 export const timerIdMap = {
@@ -13,7 +14,8 @@ export const timerIdMap = {
   [TimerIdEnum.checkInvalidVector]: 'checkInvalidVector',
   [TimerIdEnum.clearExpiredSubPlan]: 'clearExpiredSubPlan',
   [TimerIdEnum.updateStandardPlan]: 'updateStandardPlan',
-  [TimerIdEnum.scheduleTriggerApp]: 'scheduleTriggerApp'
+  [TimerIdEnum.scheduleTriggerApp]: 'scheduleTriggerApp',
+  [TimerIdEnum.notification]: 'notification'
 };
 
 export enum LockNotificationEnum {
