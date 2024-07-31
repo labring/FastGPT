@@ -2,38 +2,42 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin';
 import { $createTextNode, $getSelection, $isRangeSelection, TextNode } from 'lexical';
 import * as React from 'react';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import * as ReactDOM from 'react-dom';
 import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
-import { EditorVariablePickerType } from '../../type';
+import { EditorVariableLabelPickerType } from '../../type';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'react-i18next';
 import Avatar from '../../../../Avatar';
 
-type EditorVariablePickerType1 = {
+interface EditorVariableItemType {
   key: string;
   label: string;
   required?: boolean;
   icon?: string;
   valueType?: WorkflowIOValueTypeEnum;
   index: number;
-};
+}
 interface TransformedParent {
   id: string;
   label: string;
   avatar: string;
-  children: EditorVariablePickerType1[];
+  children: EditorVariableItemType[];
 }
 
 export default function VariableLabelPickerPlugin({
-  variables
+  variables,
+  isFocus
 }: {
-  variables: EditorVariablePickerType[];
+  variables: EditorVariableLabelPickerType[];
+  isFocus: boolean;
 }) {
   const { t } = useTranslation();
   const [editor] = useLexicalComposerContext();
   const [queryString, setQueryString] = useState<string | null>(null);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const highlightedItemRef = useRef<any>(null);
 
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
     minLength: 0
@@ -58,12 +62,21 @@ export default function VariableLabelPickerPlugin({
     [editor]
   );
 
+  useEffect(() => {
+    if (highlightedItemRef.current) {
+      highlightedItemRef.current.scrollIntoView({
+        behavior: 'auto',
+        block: 'end'
+      });
+    }
+  }, [currentIndex]);
+
   return (
     <LexicalTypeaheadMenuPlugin
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
-      options={variables}
+      options={variableFilter(variables, queryString || '')}
       menuRenderFn={(
         anchorElementRef,
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }
@@ -71,14 +84,16 @@ export default function VariableLabelPickerPlugin({
         if (anchorElementRef.current == null) {
           return null;
         }
-        return anchorElementRef.current && variables.length
+        if (currentIndex !== selectedIndex) {
+          setCurrentIndex(selectedIndex || 0);
+        }
+        return anchorElementRef.current && variables.length && isFocus
           ? ReactDOM.createPortal(
               <Box
                 bg={'white'}
                 boxShadow={'lg'}
-                borderWidth={'1px'}
-                borderColor={'borderColor.base'}
-                p={2}
+                border={'base'}
+                p={1.5}
                 borderRadius={'md'}
                 position={'absolute'}
                 w={'auto'}
@@ -88,18 +103,15 @@ export default function VariableLabelPickerPlugin({
                 zIndex={99999}
               >
                 {variableFilter(variables, queryString || '').length === variables.length && (
-                  <Box fontSize={'xs'} ml={4}>
-                    {t('workflow:variable_picker_tips')}
-                  </Box>
+                  <Box fontSize={'xs'}>{t('workflow:variable_picker_tips')}</Box>
                 )}
                 {variableFilter(variables, queryString || '').length > 0 ? (
-                  transformData(variableFilter(variables, queryString || '')).map((item) => {
+                  transformVariables(variableFilter(variables, queryString || '')).map((item) => {
                     return (
                       <Flex
                         key={item.id}
                         flexDirection={'column'}
-                        px={4}
-                        py={2}
+                        pt={2}
                         _notLast={{
                           borderBottom: '1px solid',
                           borderColor: 'myGray.200'
@@ -123,19 +135,20 @@ export default function VariableLabelPickerPlugin({
                             {item.label}
                           </Box>
                         </Flex>
-                        {item.children?.map((child, index) => (
+                        {item.children?.map((child) => (
                           <Flex
                             alignItems={'center'}
                             as={'li'}
                             key={child.key}
-                            px={4}
-                            py={1.5}
-                            rounded={'md'}
+                            px={2}
+                            py={1}
+                            rounded={'4px'}
                             cursor={'pointer'}
                             overflow={'auto'}
                             _notLast={{
                               mb: 1
                             }}
+                            ref={selectedIndex === child.index ? highlightedItemRef : null}
                             {...(selectedIndex === child.index
                               ? {
                                   bg: '#1118240D',
@@ -145,12 +158,12 @@ export default function VariableLabelPickerPlugin({
                                   bg: 'white',
                                   color: 'myGray.600'
                                 })}
-                            onClick={() => {
-                              setHighlightedIndex(child.index);
-                              selectOptionAndCleanUp({ ...child, parent: item });
+                            _hover={{
+                              bg: '#1118240D',
+                              color: 'primary.700'
                             }}
-                            onMouseEnter={() => {
-                              setHighlightedIndex(child.index);
+                            onMouseDown={() => {
+                              selectOptionAndCleanUp({ ...child, parent: item });
                             }}
                           >
                             <Box ml={2} fontSize={'sm'} whiteSpace={'nowrap'}>
@@ -175,14 +188,14 @@ export default function VariableLabelPickerPlugin({
   );
 }
 
-function transformData(data: EditorVariablePickerType[]): TransformedParent[] {
+function transformVariables(variables: EditorVariableLabelPickerType[]): TransformedParent[] {
   const transformedData: TransformedParent[] = [];
   const parentMap: { [key: string]: TransformedParent } = {};
 
-  data.forEach((item, index) => {
-    const parentId = item.parent!.id;
-    const parentLabel = item.parent!.label;
-    const parentAvatar = item.parent!.avatar;
+  variables.forEach((item, index) => {
+    const parentId = item.parent.id;
+    const parentLabel = item.parent.label;
+    const parentAvatar = item.parent.avatar;
 
     if (!parentMap[parentId]) {
       parentMap[parentId] = {
@@ -201,8 +214,8 @@ function transformData(data: EditorVariablePickerType[]): TransformedParent[] {
   });
 
   const addedParents = new Set<string>();
-  data.forEach((item) => {
-    const parentId = item.parent!.id;
+  variables.forEach((item) => {
+    const parentId = item.parent.id;
     if (!addedParents.has(parentId)) {
       transformedData.push(parentMap[parentId]);
       addedParents.add(parentId);
@@ -213,15 +226,15 @@ function transformData(data: EditorVariablePickerType[]): TransformedParent[] {
 }
 
 function variableFilter(
-  data: EditorVariablePickerType[],
+  variables: EditorVariableLabelPickerType[],
   queryString: string
-): EditorVariablePickerType[] {
+): EditorVariableLabelPickerType[] {
   const lowerCaseQuery = queryString.toLowerCase();
 
-  return data.filter((item) => {
+  return variables.filter((item) => {
     const labelMatch = item.label.toLowerCase().includes(lowerCaseQuery);
     const keyMatch = item.key.toLowerCase().includes(lowerCaseQuery);
-    const parentLabelMatch = item.parent!.label.toLowerCase().includes(lowerCaseQuery);
+    const parentLabelMatch = item.parent.label.toLowerCase().includes(lowerCaseQuery);
 
     return labelMatch || keyMatch || parentLabelMatch;
   });

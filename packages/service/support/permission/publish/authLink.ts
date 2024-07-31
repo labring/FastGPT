@@ -3,17 +3,16 @@ import { OutLinkSchema } from '@fastgpt/global/support/outLink/type';
 import { parseHeaderCert } from '../controller';
 import { MongoOutLink } from '../../outLink/schema';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
-import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { AuthPropsType } from '../type/auth';
-import { AuthResponseType } from '../type/auth';
+import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authAppByTmbId } from '../app/auth';
+import { AuthModeType, AuthResponseType } from '../type';
 
 /* crud outlink permission */
 export async function authOutLinkCrud({
   outLinkId,
-  per,
+  per = OwnerPermissionVal,
   ...props
-}: AuthPropsType & {
+}: AuthModeType & {
   outLinkId: string;
 }): Promise<
   AuthResponseType & {
@@ -27,13 +26,13 @@ export async function authOutLinkCrud({
   const { app, outLink } = await (async () => {
     const outLink = await MongoOutLink.findOne({ _id: outLinkId, teamId });
     if (!outLink) {
-      throw new Error(OutLinkErrEnum.unExist);
+      return Promise.reject(OutLinkErrEnum.unExist);
     }
 
     const { app } = await authAppByTmbId({
       tmbId,
       appId: outLink.appId,
-      per: ManagePermissionVal
+      per: per
     });
 
     return {

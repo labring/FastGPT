@@ -199,7 +199,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           })(
             <ChatHistorySlider
               appId={appId}
-              apps={myApps}
               appName={chatData.app.name}
               appAvatar={chatData.app.avatar}
               confirmClearText={t('common:core.chat.Confirm to clear history')}
@@ -230,7 +229,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
             flexDirection={'column'}
           >
             {/* header */}
-            <ChatHeader chatData={chatData} history={chatData.history} showHistory />
+            <ChatHeader apps={myApps} chatData={chatData} history={chatRecords} showHistory />
             {/* chat box */}
             <Box flex={1}>
               {chatData.app.type === AppTypeEnum.plugin ? (
@@ -340,7 +339,7 @@ export async function getServerSideProps(context: any) {
       chatId: context?.query?.chatId || '',
       teamId: context?.query?.teamId || '',
       teamToken: context?.query?.teamToken || '',
-      ...(await serviceSideProps(context, ['file']))
+      ...(await serviceSideProps(context, ['file', 'app']))
     }
   };
 }

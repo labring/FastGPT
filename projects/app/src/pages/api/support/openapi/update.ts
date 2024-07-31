@@ -1,27 +1,19 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import type { EditApiKeyProps } from '@/global/support/openapi/api.d';
 import { authOpenApiKeyCrud } from '@fastgpt/service/support/permission/auth/openapi';
+import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { NextAPI } from '@/service/middleware/entry';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    await connectToDatabase();
-    const { _id, name, limit } = req.body as EditApiKeyProps & { _id: string };
+async function handler(req: ApiRequestProps<EditApiKeyProps & { _id: string }>): Promise<void> {
+  const { _id, name, limit } = req.body;
 
-    await authOpenApiKeyCrud({ req, authToken: true, id: _id, per: 'owner' });
+  await authOpenApiKeyCrud({ req, authToken: true, id: _id, per: OwnerPermissionVal });
 
-    await MongoOpenApi.findByIdAndUpdate(_id, {
-      ...(name && { name }),
-      ...(limit && { limit })
-    });
-
-    jsonRes(res);
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
-  }
+  await MongoOpenApi.findByIdAndUpdate(_id, {
+    ...(name && { name }),
+    ...(limit && { limit })
+  });
 }
+
+export default NextAPI(handler);

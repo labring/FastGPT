@@ -8,7 +8,6 @@ import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponent
 import { computedNodeInputReference } from '@/web/core/workflow/utils';
 import { useCreation } from 'ahooks';
 import { AppContext } from '@/pages/app/detail/components/context';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -21,18 +20,16 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
 
   // get variable
   const variables = useCreation(() => {
-    const currentNode = nodeList.find((node) => node.nodeId === nodeId);
-    const nodeVariables = formatEditorVariablePickerIcon(
-      getNodeDynamicInputs(nodeId).map((item) => ({
-        key: item.key,
-        label: item.label,
-        parent: {
-          id: currentNode?.nodeId,
-          label: currentNode?.name,
-          avatar: currentNode?.avatar
-        }
-      }))
-    );
+    const currentNode = nodeList.find((node) => node.nodeId === nodeId)!;
+    const nodeVariables = getNodeDynamicInputs(nodeId).map((item) => ({
+      key: item.key,
+      label: item.label,
+      parent: {
+        id: currentNode.nodeId,
+        label: currentNode.name,
+        avatar: currentNode.avatar
+      }
+    }));
 
     const sourceNodes = computedNodeInputReference({
       nodeId,
@@ -62,10 +59,8 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
           })
           .flat();
 
-    const formatSourceNodeVariables = formatEditorVariablePickerIcon(sourceNodeVariables);
-
-    return [...nodeVariables, ...formatSourceNodeVariables];
-  }, [nodeList, inputs, t]);
+    return [...nodeVariables, ...sourceNodeVariables];
+  }, [nodeList, edges, inputs, t]);
 
   const onChange = useCallback(
     (e: string) => {
@@ -85,6 +80,7 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const Render = useMemo(() => {
     return (
       <PromptEditor
+        variableLabels={variables}
         variables={variables}
         title={t(item.label as any)}
         maxLength={item.maxLength}

@@ -1,0 +1,421 @@
+{
+  "author": "Menghuan1918",
+  "version": "488",
+  "name": "Doc2X 图像(URL)识别",
+  "avatar": "plugins/doc2x",
+  "intro": "将传入的图片(URL)发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
+  "inputExplanationUrl": "https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview",
+  "showStatus": true,
+  "weight": 10,
+
+  "isTool": true,
+  "templateType": "tools",
+
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "自定义插件输入",
+        "intro": "可以配置插件需要哪些输入，利用这些输入来运行插件",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 388.243055058894,
+          "y": -75.09744210499466
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": ["input"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "apikey",
+            "label": "apikey",
+            "description": "Doc2X的验证密匙，对于个人用户可以从Doc2X官网 - 个人信息 - 身份令牌获得",
+            "required": true,
+            "toolDescription": "",
+            "defaultValue": ""
+          },
+          {
+            "renderTypeList": ["reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "url",
+            "label": "url",
+            "description": "待处理图片的URL",
+            "required": true,
+            "toolDescription": "待处理图片的URL"
+          },
+          {
+            "renderTypeList": ["switch"],
+            "selectedTypeIndex": 0,
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "img_correction",
+            "label": "img_correction",
+            "description": "是否启用图形矫正功能",
+            "required": true,
+            "toolDescription": "",
+            "defaultValue": false
+          },
+          {
+            "renderTypeList": ["switch"],
+            "selectedTypeIndex": 0,
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "formula",
+            "label": "formula",
+            "description": "是否开启纯公式识别(仅适用于图片内容仅有公式时)",
+            "required": true,
+            "toolDescription": "",
+            "defaultValue": false
+          }
+        ],
+        "outputs": [
+          {
+            "id": "apikey",
+            "valueType": "string",
+            "key": "apikey",
+            "label": "apikey",
+            "type": "hidden"
+          },
+          {
+            "id": "url",
+            "valueType": "string",
+            "key": "url",
+            "label": "url",
+            "type": "hidden"
+          },
+          {
+            "id": "img_correction",
+            "valueType": "boolean",
+            "key": "img_correction",
+            "label": "img_correction",
+            "type": "hidden"
+          },
+          {
+            "id": "formula",
+            "valueType": "boolean",
+            "key": "formula",
+            "label": "formula",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "自定义插件输出",
+        "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
+        "avatar": "core/workflow/template/pluginOutput",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 1654.8021754314786,
+          "y": -22.243376051504086
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "result",
+            "label": "result",
+            "description": "处理结果(或者是报错信息)",
+            "value": ["zHG5jJBkXmjB", "xWQuEf50F3mr"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "success",
+            "label": "success",
+            "description": "是否处理成功",
+            "value": ["zHG5jJBkXmjB", "m6CJJj7GFud5"]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "zHG5jJBkXmjB",
+        "name": "HTTP 请求",
+        "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
+        "avatar": "core/workflow/template/httpRequest",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 1081.967607938733,
+          "y": -426.08028677656125
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "core.module.input.description.HTTP Dynamic Input",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": ["custom"],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "label": "",
+            "description": "core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "Doc2X/URLImg2text"
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": ["custom"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "description": "core.module.input.description.Http Request Header",
+            "placeholder": "core.module.input.description.Http Request Header",
+            "required": false
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"url\": \"{{url}}\",\n  \"img_correction\": \"{{img_correction}}\",\n  \"formula\": \"{{img_correction}}\"\n}",
+            "label": "",
+            "required": false
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "apikey",
+            "label": "apikey",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["pluginInput", "apikey"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "url",
+            "label": "url",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["pluginInput", "url"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "img_correction",
+            "label": "img_correction",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["pluginInput", "img_correction"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "formula",
+            "label": "formula",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["pluginInput", "formula"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "error",
+            "key": "error",
+            "label": "请求错误",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "label": "原始响应",
+            "required": true,
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            }
+          },
+          {
+            "id": "xWQuEf50F3mr",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "result",
+            "label": "result"
+          },
+          {
+            "id": "m6CJJj7GFud5",
+            "valueType": "boolean",
+            "type": "dynamic",
+            "key": "success",
+            "label": "success"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "pluginInput",
+        "target": "zHG5jJBkXmjB",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "zHG5jJBkXmjB-target-left"
+      },
+      {
+        "source": "zHG5jJBkXmjB",
+        "target": "pluginOutput",
+        "sourceHandle": "zHG5jJBkXmjB-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      }
+    ]
+  }
+}

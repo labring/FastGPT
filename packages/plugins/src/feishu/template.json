@@ -1,0 +1,443 @@
+{
+  "author": "",
+  "version": "488",
+  "name": "飞书机器人 webhook",
+  "avatar": "/imgs/app/templates/feishu.svg",
+  "intro": "向飞书机器人发起 webhook 请求。",
+  "inputExplanationUrl": "https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot#f62e72d5",
+  "showStatus": false,
+  "weight": 10,
+
+  "isTool": true,
+  "templateType": "communication",
+
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "自定义插件输入",
+        "intro": "可以配置插件需要哪些输入，利用这些输入来运行插件",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 156.37657136084977,
+          "y": 90.73380846709256
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": ["reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "content",
+            "label": "content",
+            "description": "需要发送的消息",
+            "required": true,
+            "toolDescription": "需要发送的消息"
+          },
+          {
+            "renderTypeList": ["input"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "hook_url",
+            "label": "hook_url",
+            "description": "飞书机器人地址",
+            "required": true,
+            "defaultValue": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "query",
+            "valueType": "string",
+            "key": "content",
+            "label": "content",
+            "type": "hidden"
+          },
+          {
+            "id": "hook_url",
+            "valueType": "string",
+            "key": "hook_url",
+            "label": "hook_url",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "自定义插件输出",
+        "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
+        "avatar": "core/workflow/template/pluginOutput",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 2110.7223589692912,
+          "y": 120.17602722162474
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "object",
+            "canEdit": true,
+            "key": "result",
+            "label": "result",
+            "description": "",
+            "value": ["vzreK6vHrPvZ", "httpRawResponse"]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "vzreK6vHrPvZ",
+        "name": "HTTP 请求",
+        "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
+        "avatar": "core/workflow/template/httpRequest",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 1363.4233257919495,
+          "y": -182.3490463845037
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "core.module.input.description.HTTP Dynamic Input",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": ["custom"],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "label": "",
+            "description": "core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "{{url}}"
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": ["custom"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "description": "core.module.input.description.Http Request Header",
+            "placeholder": "core.module.input.description.Http Request Header",
+            "required": false
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": "{{content}}",
+            "label": "",
+            "required": false
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "url",
+            "label": "url",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["pluginInput", "hook_url"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "object",
+            "canEdit": true,
+            "key": "content",
+            "label": "content",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["qcJpBBVtXsGd", "system_rawResponse"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "error",
+            "key": "error",
+            "label": "请求错误",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "label": "原始响应",
+            "required": true,
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            }
+          }
+        ]
+      },
+      {
+        "nodeId": "qcJpBBVtXsGd",
+        "name": "代码运行",
+        "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+        "avatar": "core/workflow/template/codeRun",
+        "flowNodeType": "code",
+        "showStatus": true,
+        "position": {
+          "x": 805.8169457909617,
+          "y": -159.52218926716316
+        },
+        "version": "482",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "这些变量会作为代码的运行的输入参数",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
+          },
+          {
+            "key": "codeType",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": "js"
+          },
+          {
+            "key": "code",
+            "renderTypeList": ["custom"],
+            "label": "",
+            "value": "function main({data1}){\n    try{\n        const parseData = JSON.parse(data1)\n        if(typeof parseData === 'object') {\n            return parseData\n        }\n        return {\n            \"msg_type\": \"text\",\n            content: {\n                \"text\": data1\n            }\n        }\n    } catch(err) {\n        return {\n            \"msg_type\": \"text\",\n            content: {\n                \"text\": data1\n            }\n        }\n    }\n}"
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "data1",
+            "label": "data1",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["pluginInput", "query"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_rawResponse",
+            "key": "system_rawResponse",
+            "label": "完整响应数据",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "运行错误",
+            "description": "代码运行错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key"
+          },
+          {
+            "id": "qLUQfhG0ILRX",
+            "type": "dynamic",
+            "key": "content",
+            "valueType": "object",
+            "label": "content"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "vzreK6vHrPvZ",
+        "target": "pluginOutput",
+        "sourceHandle": "vzreK6vHrPvZ-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      },
+      {
+        "source": "pluginInput",
+        "target": "qcJpBBVtXsGd",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "qcJpBBVtXsGd-target-left"
+      },
+      {
+        "source": "qcJpBBVtXsGd",
+        "target": "vzreK6vHrPvZ",
+        "sourceHandle": "qcJpBBVtXsGd-source-right",
+        "targetHandle": "vzreK6vHrPvZ-target-left"
+      }
+    ]
+  }
+}

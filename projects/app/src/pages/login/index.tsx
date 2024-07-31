@@ -128,7 +128,7 @@ const Login = () => {
 
 export async function getServerSideProps(context: any) {
   return {
-    props: { ...(await serviceSideProps(context)) }
+    props: { ...(await serviceSideProps(context, ['app'])) }
   };
 }
 

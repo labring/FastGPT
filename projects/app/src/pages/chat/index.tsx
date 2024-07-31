@@ -195,7 +195,6 @@ const Chat = ({
             );
           })(
             <ChatHistorySlider
-              apps={myApps}
               confirmClearText={t('common:core.chat.Confirm to clear history')}
               appId={appId}
               appName={chatData.app.name}
@@ -226,10 +225,11 @@ const Chat = ({
           >
             {/* header */}
             <ChatHeader
+              apps={myApps}
               chatData={chatData}
               history={chatRecords}
-              onRoute2AppDetail={() => router.push(`/app/detail?appId=${appId}`)}
               showHistory
+              onRouteToAppDetail={() => router.push(`/app/detail?appId=${appId}`)}
             />
 
             {/* chat box */}
@@ -340,7 +340,7 @@ export async function getServerSideProps(context: any) {
     props: {
       appId: context?.query?.appId || '',
       chatId: context?.query?.chatId || '',
-      ...(await serviceSideProps(context, ['file']))
+      ...(await serviceSideProps(context, ['file', 'app']))
     }
   };
 }

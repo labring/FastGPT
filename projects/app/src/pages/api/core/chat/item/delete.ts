@@ -2,10 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { autChatCrud } from '@/service/support/permission/auth/chat';
+import { authChatCrud } from '@/service/support/permission/auth/chat';
 import type { DeleteChatItemProps } from '@/global/core/chat/api.d';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 async function handler(req: ApiRequestProps<{}, DeleteChatItemProps>, res: NextApiResponse) {
   const { appId, chatId, contentId, shareId, outLinkUid } = req.query;
@@ -14,11 +15,11 @@ async function handler(req: ApiRequestProps<{}, DeleteChatItemProps>, res: NextA
     return jsonRes(res);
   }
 
-  await autChatCrud({
+  await authChatCrud({
     req,
     authToken: true,
     ...req.query,
-    per: 'w'
+    per: WritePermissionVal
   });
 
   await MongoChatItem.deleteOne({

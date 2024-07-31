@@ -49,7 +49,7 @@ const SelectFile = React.memo(function SelectFile() {
 
   const onclickNext = useCallback(() => {
     // filter uploaded files
-    setSelectFiles((state) => state.filter((item) => (item.uploadedFileRate || 0) >= 100));
+    setSelectFiles((state) => state.filter((item) => item.dbFileId));
     goToNext();
   }, [goToNext]);
 

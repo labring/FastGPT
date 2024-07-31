@@ -3,20 +3,21 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DelHistoryProps } from '@/global/core/chat/api';
-import { autChatCrud } from '@/service/support/permission/auth/chat';
+import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 /* clear chat history */
 async function handler(req: ApiRequestProps<{}, DelHistoryProps>, res: NextApiResponse) {
   const { appId, chatId } = req.query;
 
-  await autChatCrud({
+  await authChatCrud({
     req,
     authToken: true,
     ...req.query,
-    per: 'w'
+    per: WritePermissionVal
   });
 
   await mongoSessionRun(async (session) => {

@@ -111,7 +111,8 @@ const FileSelector = ({
                     ? {
                         ...item,
                         dbFileId: uploadFileId,
-                        isUploading: false
+                        isUploading: false,
+                        uploadedFileRate: 100
                       }
                     : item
                 )

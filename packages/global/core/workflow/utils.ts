@@ -229,6 +229,24 @@ export const updatePluginInputByVariables = (
   );
 };
 
+export const removePluginInputVariables = (
+  variables: Record<string, any>,
+  nodes: RuntimeNodeItemType[]
+) => {
+  const pluginInputNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput);
+
+  if (!pluginInputNode) return variables;
+  return Object.keys(variables).reduce(
+    (acc, key) => {
+      if (!pluginInputNode.inputs.find((input) => input.key === key)) {
+        acc[key] = variables[key];
+      }
+      return acc;
+    },
+    {} as Record<string, any>
+  );
+};
+
 export function replaceVariableLabel({
   text,
   nodes,
@@ -240,7 +258,7 @@ export function replaceVariableLabel({
   variables: Record<string, string | number>;
   runningNode: RuntimeNodeItemType;
 }) {
-  if (!(typeof text === 'string')) return text;
+  if (typeof text !== 'string') return text;
 
   const globalVariables = Object.keys(variables).map((key) => {
     return {
@@ -250,6 +268,7 @@ export function replaceVariableLabel({
     };
   });
 
+  // Upstream node outputs
   const nodeVariables = nodes
     .map((node) => {
       return node.outputs.map((output) => {
@@ -262,6 +281,7 @@ export function replaceVariableLabel({
     })
     .flat();
 
+  // Get runningNode inputs(Will be replaced with reference)
   const customInputs = runningNode.inputs.flatMap((item) => {
     if (Array.isArray(item.value)) {
       return [
@@ -281,6 +301,7 @@ export function replaceVariableLabel({
 
   const allVariables = [...globalVariables, ...nodeVariables, ...customInputs];
 
+  // Replace {{$xxx.xxx$}} to value
   for (const key in allVariables) {
     const val = allVariables[key];
     const regex = new RegExp(`\\{\\{\\$(${val.nodeId}\\.${val.id})\\$\\}\\}`, 'g');

@@ -144,7 +144,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       ];
     }
 
-    const isCustomSteep = checkIsCustomStep(step);
+    const isCustomStep = checkIsCustomStep(step);
     const isMarkdownSplit = checkIsMarkdownSplit(step);
     const independentChunk = checkIndependentChunk(step);
 
@@ -154,7 +154,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       .replace(
         reg,
         (() => {
-          if (isCustomSteep) return splitMarker;
+          if (isCustomStep) return splitMarker;
           if (independentChunk) return `${splitMarker}$1`;
           return `$1${splitMarker}`;
         })()

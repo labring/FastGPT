@@ -1,15 +1,16 @@
-import { AuthResponseType } from '@fastgpt/global/support/permission/type';
-import { AuthModeType } from '../type';
+import { AuthModeType, AuthResponseType } from '../type';
 import { OpenApiSchema } from '@fastgpt/global/support/openapi/type';
 import { parseHeaderCert } from '../controller';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { MongoOpenApi } from '../../openapi/schema';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authAppByTmbId } from '../app/auth';
+import { Permission } from '@fastgpt/global/support/permission/controller';
 
 export async function authOpenApiKeyCrud({
   id,
-  per = 'owner',
+  per = OwnerPermissionVal,
   ...props
 }: AuthModeType & {
   id: string;
@@ -21,40 +22,38 @@ export async function authOpenApiKeyCrud({
   const result = await parseHeaderCert(props);
   const { tmbId, teamId } = result;
 
-  const { role } = await getTmbInfoByTmbId({ tmbId });
-
-  const { openapi, isOwner, canWrite } = await (async () => {
+  const { openapi, permission } = await (async () => {
     const openapi = await MongoOpenApi.findOne({ _id: id, teamId });
-
     if (!openapi) {
-      throw new Error(OpenApiErrEnum.unExist);
+      return Promise.reject(OpenApiErrEnum.unExist);
     }
 
-    const isOwner = String(openapi.tmbId) === tmbId || role === TeamMemberRoleEnum.owner;
-    const canWrite =
-      isOwner || (String(openapi.tmbId) === tmbId && role !== TeamMemberRoleEnum.visitor);
+    if (!!openapi.appId) {
+      // if is not global openapi, then auth app
+      const { app } = await authAppByTmbId({ appId: openapi.appId!, tmbId, per });
+      return {
+        permission: app.permission,
+        openapi
+      };
+    }
+    // if is global openapi, then auth openapi
+    const { permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
 
-    if (per === 'r' && !canWrite) {
-      return Promise.reject(OpenApiErrEnum.unAuth);
-    }
-    if (per === 'w' && !canWrite) {
-      return Promise.reject(OpenApiErrEnum.unAuth);
-    }
-    if (per === 'owner' && !isOwner) {
+    if (!tmbPer.checkPer(per) && tmbId !== String(openapi.tmbId)) {
       return Promise.reject(OpenApiErrEnum.unAuth);
     }
 
     return {
       openapi,
-      isOwner,
-      canWrite
+      permission: new Permission({
+        per
+      })
     };
   })();
 
   return {
     ...result,
     openapi,
-    isOwner,
-    canWrite
+    permission
   };
 }

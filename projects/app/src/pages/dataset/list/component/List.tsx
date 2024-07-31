@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { putDatasetById } from '@/web/core/dataset/api';
+import { resumeInheritPer } from '@/web/core/dataset/api';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { Box, Flex, Grid } from '@chakra-ui/react';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
@@ -42,16 +42,16 @@ function List() {
   const { t } = useTranslation();
   const { commonT } = useI18n();
   const {
-    refetchDatasets,
+    loadMyDatasets,
     setMoveDatasetId,
     refetchPaths,
-    refetchFolderDetail,
     editedDataset,
     setEditedDataset,
-    onDelDataset
+    onDelDataset,
+    onUpdateDataset,
+    myDatasets
   } = useContextSelector(DatasetsContext, (v) => v);
   const [editPerDatasetIndex, setEditPerDatasetIndex] = useState<number>();
-  const { myDatasets, loadMyDatasets } = useDatasetStore();
   const [loadingDatasetId, setLoadingDatasetId] = useState<string>();
 
   const { getBoxProps } = useFolderDrag({
@@ -61,11 +61,10 @@ function List() {
     onDrop: async (dragId: string, targetId: string) => {
       setLoadingDatasetId(dragId);
       try {
-        await putDatasetById({
+        await onUpdateDataset({
           id: dragId,
           parentId: targetId
         });
-        refetchDatasets();
       } catch (error) {}
       setLoadingDatasetId(undefined);
     }
@@ -132,7 +131,7 @@ function List() {
       () =>
         onDelDataset(id).then(() => {
           refetchPaths();
-          refetchDatasets();
+          loadMyDatasets();
         }),
       undefined,
       DeleteTipsMap.current[DatasetTypeEnum.dataset]
@@ -350,15 +349,12 @@ function List() {
           title={commonT('dataset.Edit Info')}
           onClose={() => setEditedDataset(undefined)}
           onEdit={async (data) => {
-            await putDatasetById({
+            await onUpdateDataset({
               id: editedDataset.id,
               name: data.name,
               intro: data.intro,
               avatar: data.avatar
             });
-            loadMyDatasets(parentId ? parentId : undefined);
-            refetchFolderDetail();
-            refetchPaths();
             setEditedDataset(undefined);
           }}
         />
@@ -366,18 +362,22 @@ function List() {
 
       {!!editPerDataset && (
         <ConfigPerModal
+          hasParent={!!parentId}
+          refetchResource={loadMyDatasets}
+          isInheritPermission={editPerDataset.inheritPermission}
+          resumeInheritPermission={() =>
+            resumeInheritPer(editPerDataset._id).then(() => Promise.all([loadMyDatasets()]))
+          }
           avatar={editPerDataset.avatar}
           name={editPerDataset.name}
           defaultPer={{
             value: editPerDataset.defaultPermission,
             defaultValue: DatasetDefaultPermissionVal,
-            onChange: async (e) => {
-              await putDatasetById({
+            onChange: (e) =>
+              onUpdateDataset({
                 id: editPerDataset._id,
                 defaultPermission: e
-              });
-              refetchDatasets();
-            }
+              })
           }}
           managePer={{
             permission: editPerDataset.permission,
@@ -400,7 +400,8 @@ function List() {
               deleteDatasetCollaborators({
                 datasetId: editPerDataset._id,
                 tmbId
-              })
+              }),
+            refreshDeps: [editPerDataset._id, editPerDataset.inheritPermission]
           }}
           onClose={() => setEditPerDatasetIndex(undefined)}
         />

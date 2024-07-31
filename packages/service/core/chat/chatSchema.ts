@@ -1,5 +1,5 @@
-import { connectionMongo, getMongoModel, type Model } from '../../common/mongo';
-const { Schema, model, models } = connectionMongo;
+import { connectionMongo, getMongoModel } from '../../common/mongo';
+const { Schema } = connectionMongo;
 import { ChatSchema as ChatType } from '@fastgpt/global/core/chat/type.d';
 import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import {

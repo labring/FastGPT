@@ -71,7 +71,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         usingReRank: false,
         limit: 5000,
         similarity: 0,
-        datasetSearchUsingExtensionQuery: false,
+        datasetSearchUsingExtensionQuery: true,
         datasetSearchExtensionModel: llmModelList[0].model,
         datasetSearchExtensionBg: ''
       }
@@ -432,6 +432,7 @@ const TestResults = React.memo(function TestResults({
               similarity={datasetTestItem.similarity}
               limit={datasetTestItem.limit}
               usingReRank={datasetTestItem.usingReRank}
+              datasetSearchUsingExtensionQuery={!!datasetTestItem.queryExtensionModel}
               queryExtensionModel={datasetTestItem.queryExtensionModel}
             />
           </Box>

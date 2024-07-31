@@ -10,21 +10,21 @@ import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d'
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 
 export type GetPreviewNodeQuery = { appId: string };
 
 async function handler(
   req: ApiRequestProps<{}, GetPreviewNodeQuery>,
-  res: NextApiResponse<any>
+  _res: NextApiResponse<any>
 ): Promise<FlowNodeTemplateType> {
   const { appId } = req.query;
 
   const { source } = await splitCombinePluginId(appId);
 
   if (source === PluginSourceEnum.personal) {
-    await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+    await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
   }
 
   return getPluginPreviewNode({ id: appId });

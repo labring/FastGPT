@@ -96,9 +96,7 @@ const VariableEdit = ({
     <Box>
       <Flex alignItems={'center'}>
         <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />
-        <FormLabel ml={2} fontWeight={'medium'}>
-          {t('common:core.module.Variable')}
-        </FormLabel>
+        <FormLabel ml={2}>{t('common:core.module.Variable')}</FormLabel>
         <ChatFunctionTip type={'variable'} />
         <Box flex={1} />
         <Button
@@ -299,6 +297,8 @@ const VariableEdit = ({
           </Button>
           <Button
             onClick={handleSubmitEdit(({ variable }) => {
+              variable.key = variable.key.trim();
+
               // check select
               if (variable.type === VariableInputEnum.select) {
                 const enums = variable.enums.filter((item) => item.value);

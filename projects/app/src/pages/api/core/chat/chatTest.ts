@@ -14,7 +14,10 @@ import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type'
 import { removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { updatePluginInputByVariables } from '@fastgpt/global/core/workflow/utils';
+import {
+  removePluginInputVariables,
+  updatePluginInputByVariables
+} from '@fastgpt/global/core/workflow/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
@@ -63,6 +66,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Plugin need to replace inputs
     if (isPlugin) {
       nodes = updatePluginInputByVariables(nodes, variables);
+      variables = removePluginInputVariables(variables, nodes);
     } else {
       if (!userInput) {
         throw new Error('Params Error');

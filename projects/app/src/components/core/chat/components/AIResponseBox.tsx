@@ -1,4 +1,5 @@
-import Markdown, { CodeClassName } from '@/components/Markdown';
+import Markdown from '@/components/Markdown';
+import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import {
   Accordion,
   AccordionButton,
@@ -41,7 +42,7 @@ const AIResponseBox = ({ value, index, chat, isLastChild, isChatting, questionGu
       index === chat.value.length - 1
     ) {
       source = `${source}
-\`\`\`${CodeClassName.questionGuide}
+\`\`\`${CodeClassNameEnum.questionGuide}
 ${JSON.stringify(questionGuides)}`;
     }
 
@@ -97,7 +98,7 @@ ${JSON.stringify(questionGuides)}`;
                 <AccordionPanel
                   py={0}
                   px={0}
-                  mt={0}
+                  mt={3}
                   borderRadius={'md'}
                   overflow={'hidden'}
                   maxH={'500px'}
@@ -110,10 +111,12 @@ ${toolParams}`}
                     />
                   )}
                   {toolResponse && (
-                    <Markdown
-                      source={`~~~json#Response
+                    <Box mt={3}>
+                      <Markdown
+                        source={`~~~json#Response
 ${toolResponse}`}
-                    />
+                      />
+                    </Box>
                   )}
                 </AccordionPanel>
               </AccordionItem>

@@ -4,6 +4,7 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 
 export type getDatasetTrainingQueueResponse = {
   rebuildingCount: number;
@@ -24,8 +25,18 @@ async function handler(
   });
 
   const [rebuildingCount, trainingCount] = await Promise.all([
-    MongoDatasetData.countDocuments({ rebuilding: true, teamId, datasetId }),
-    MongoDatasetTraining.countDocuments({ teamId, datasetId })
+    MongoDatasetData.countDocuments(
+      { rebuilding: true, teamId, datasetId },
+      {
+        ...readFromSecondary
+      }
+    ),
+    MongoDatasetTraining.countDocuments(
+      { teamId, datasetId },
+      {
+        ...readFromSecondary
+      }
+    )
   ]);
 
   return {
