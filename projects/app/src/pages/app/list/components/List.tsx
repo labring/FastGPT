@@ -39,6 +39,7 @@ import { getTeamMembers } from '@/web/support/user/team/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useChatStore } from '@/web/core/chat/context/storeChat';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
@@ -47,6 +48,8 @@ const ListItem = () => {
   const router = useRouter();
   const { parentId = null } = router.query;
   const { isPc } = useSystem();
+  const { lastChatAppId, setLastChatAppId } = useChatStore();
+  
 
   const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail } = useContextSelector(
     AppListContext,
@@ -83,6 +86,9 @@ const ListItem = () => {
   });
   const { runAsync: onclickDelApp } = useRequest2(
     (id: string) => {
+      if (id === lastChatAppId) {
+        setLastChatAppId('');
+      }
       return delAppById(id);
     },
     {
