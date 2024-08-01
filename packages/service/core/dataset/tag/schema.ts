@@ -23,6 +23,12 @@ const DatasetCollectionTagsSchema = new Schema({
   }
 });
 
+try {
+  DatasetCollectionTagsSchema.index({ teamId: 1, datasetId: 1 });
+} catch (error) {
+  console.log(error);
+}
+
 export const MongoDatasetCollectionTags = getMongoModel<DatasetCollectionTagsSchemaType>(
   DatasetCollectionTagsName,
   DatasetCollectionTagsSchema

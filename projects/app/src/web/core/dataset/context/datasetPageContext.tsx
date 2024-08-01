@@ -3,6 +3,7 @@ import { ReactNode, SetStateAction, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext } from 'use-context-selector';
 import {
+  getAllTags,
   getDatasetById,
   getDatasetCollectionTags,
   getDatasetTrainingQueue,
@@ -20,6 +21,8 @@ type DatasetPageContextType = {
   updateDataset: (data: DatasetUpdateBody) => Promise<void>;
   datasetTags: DatasetTagType[];
   loadDatasetTags: (data: { id: string; searchKey: string }) => Promise<void>;
+  allDatasetTags: DatasetTagType[];
+  loadAllDatasetTags: (data: { id: string }) => Promise<void>;
   checkedDatasetTag: DatasetTagType[];
   setCheckedDatasetTag: React.Dispatch<SetStateAction<DatasetTagType[]>>;
 
@@ -60,6 +63,10 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
   },
   datasetTags: [],
   loadDatasetTags: function (data: { id: string; searchKey: string }): Promise<void> {
+    throw new Error('Function not implemented.');
+  },
+  allDatasetTags: [],
+  loadAllDatasetTags: function (data: { id: string }): Promise<void> {
     throw new Error('Function not implemented.');
   },
   checkedDatasetTag: [],
@@ -112,6 +119,13 @@ export const DatasetPageContextProvider = ({
   };
 
   const [checkedDatasetTag, setCheckedDatasetTag] = useState<DatasetTagType[]>([]);
+
+  const [allDatasetTags, setAllDatasetTags] = useState<DatasetTagType[]>([]);
+
+  const loadAllDatasetTags = async ({ id }: { id: string }) => {
+    const { list } = await getAllTags(id);
+    setAllDatasetTags(list);
+  };
 
   // global queue
   const { data: { vectorTrainingCount = 0, agentTrainingCount = 0 } = {} } = useQuery(
@@ -184,7 +198,9 @@ export const DatasetPageContextProvider = ({
     datasetTags,
     loadDatasetTags,
     checkedDatasetTag,
-    setCheckedDatasetTag
+    setCheckedDatasetTag,
+    allDatasetTags,
+    loadAllDatasetTags
   };
 
   return <DatasetPageContext.Provider value={contextValue}>{children}</DatasetPageContext.Provider>;

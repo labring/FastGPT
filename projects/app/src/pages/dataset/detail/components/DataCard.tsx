@@ -35,7 +35,6 @@ import InputDataModal from '../components/InputDataModal';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import type { DatasetDataListItemType } from '@/global/core/dataset/type.d';
 import { TabEnum } from '..';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { DatasetCollectionTypeMap, TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
@@ -240,7 +239,7 @@ const DataCard = () => {
                   </Box>
                 </Box>
               </Flex>
-              {collection && <TagsPopOver currentCollection={collection as any} />}
+              {collection && <TagsPopOver currentCollection={collection} />}
             </Box>
           </Flex>
           {canWrite && (

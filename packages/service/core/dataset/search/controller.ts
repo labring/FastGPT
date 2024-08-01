@@ -134,7 +134,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       );
       const orTagIds = orTagArray.map((item) => item._id);
 
-      if (andTagIds && Array.isArray(andTagIds) && andTagIds.length > 0) {
+      if (Array.isArray(andTagIds) && andTagIds.length > 0) {
         const collections = await MongoDatasetCollection.find(
           {
             teamId,
@@ -144,7 +144,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
           '_id'
         );
         return collections.map((item) => String(item._id));
-      } else if (orTagIds && Array.isArray(orTagIds) && orTagIds.length > 0) {
+      } else if (Array.isArray(orTagIds) && orTagIds.length > 0) {
         const collections = await MongoDatasetCollection.find(
           {
             teamId,

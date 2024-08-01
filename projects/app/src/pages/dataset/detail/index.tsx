@@ -18,6 +18,7 @@ import {
 import CollectionPageContextProvider from './components/CollectionCard/Context';
 import { useContextSelector } from 'use-context-selector';
 import NextHead from '@/components/common/NextHead';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const CollectionCard = dynamic(() => import('./components/CollectionCard/index'));
 const DataCard = dynamic(() => import('./components/DataCard'));
@@ -41,24 +42,21 @@ const Detail = ({ datasetId, currentTab }: Props) => {
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const loadDatasetDetail = useContextSelector(DatasetPageContext, (v) => v.loadDatasetDetail);
   const loadDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadDatasetTags);
+  const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
 
-  useQuery(
-    [datasetId],
-    () => {
-      loadDatasetDetail(datasetId);
-      loadDatasetTags({ id: datasetId, searchKey: '' });
-      return null;
+  useRequest2(() => loadDatasetDetail(datasetId), {
+    onSuccess: () => {
+      loadAllDatasetTags({ id: datasetId });
     },
-    {
-      onError(err: any) {
-        router.replace(`/dataset/list`);
-        toast({
-          title: t(getErrText(err, t('common:common.Load Failed')) as any),
-          status: 'error'
-        });
-      }
-    }
-  );
+    onError(err: any) {
+      router.replace(`/dataset/list`);
+      toast({
+        title: t(getErrText(err, t('common:common.Load Failed')) as any),
+        status: 'error'
+      });
+    },
+    manual: false
+  });
 
   return (
     <>

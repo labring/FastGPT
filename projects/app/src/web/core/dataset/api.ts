@@ -141,6 +141,8 @@ export const getDatasetCollectionTags = (
 ) => GET<PaginationResponse<DatasetTagType>>(`/proApi/core/dataset/tag/list`, data);
 export const getTagUsage = (datasetId: string) =>
   GET<TagUsageType[]>(`/proApi/core/dataset/tag/tagUsage?datasetId=${datasetId}`);
+export const getAllTags = (datasetId: string) =>
+  GET<{ list: DatasetTagType[] }>(`/proApi/core/dataset/tag/getAllTags?datasetId=${datasetId}`);
 
 /* =============================== data ==================================== */
 /* get dataset list */
