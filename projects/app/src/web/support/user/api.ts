@@ -10,7 +10,6 @@ import type {
   PostLoginProps
 } from '@fastgpt/global/support/user/api.d';
 import { GetWXLoginQRResponse } from '@fastgpt/global/support/user/login/api.d';
-import { DELETE } from '@fastgpt/service/common/api/plusRequest';
 
 export const sendAuthCode = (data: {
   username: string;
