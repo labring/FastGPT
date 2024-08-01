@@ -34,7 +34,7 @@ const TagsPopOver = ({
           return tagObject ? { _id: tagObject._id, tag: tagObject.tag } : null;
         })
         .filter((tag) => tag !== null) || [],
-    [currentCollection.tags, datasetTags]
+    [currentCollection.tags, allDatasetTags]
   );
 
   const { getData } = useContextSelector(CollectionPageContext, (v) => v);

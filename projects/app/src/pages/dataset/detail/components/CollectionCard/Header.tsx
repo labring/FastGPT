@@ -39,7 +39,7 @@ const FileSourceSelector = dynamic(() => import('../Import/components/FileSource
 const Header = ({}: {}) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { setLoading } = useSystemStore();
+  const { setLoading, feConfigs } = useSystemStore();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   const router = useRouter();
@@ -183,7 +183,7 @@ const Header = ({}: {}) => {
               }
             }}
           />
-          <HeaderTagPopOver />
+          {feConfigs.isPlus && <HeaderTagPopOver />}
         </Flex>
       )}
 

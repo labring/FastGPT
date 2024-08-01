@@ -51,6 +51,7 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import TagsPopOver from './CollectionCard/TagsPopOver';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const DataCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -63,6 +64,7 @@ const DataCard = () => {
     datasetId: string;
   };
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const { feConfigs } = useSystemStore();
 
   const { t } = useTranslation();
   const { datasetT } = useI18n();
@@ -239,7 +241,7 @@ const DataCard = () => {
                   </Box>
                 </Box>
               </Flex>
-              {collection && <TagsPopOver currentCollection={collection} />}
+              {feConfigs.isPlus && collection && <TagsPopOver currentCollection={collection} />}
             </Box>
           </Flex>
           {canWrite && (
