@@ -9,5 +9,8 @@
   },
   "team": {
     "Add manager": "添加管理员"
+  },
+  "notification": {
+    "Bind Notification Pipe Hint": "绑定接收通知的邮箱或手机号，以确保您能及时接收到重要的系统通知。"
   }
 }

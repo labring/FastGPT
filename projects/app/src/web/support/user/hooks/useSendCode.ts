@@ -1,19 +1,22 @@
 import { useState, useMemo, useCallback } from 'react';
 import { sendAuthCode } from '@/web/support/user/api';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
-let timer: any;
+let timer: NodeJS.Timeout;
 
 export const useSendCode = () => {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const { feConfigs } = useSystemStore();
-  const [codeSending, setCodeSending] = useState(false);
   const [codeCountDown, setCodeCountDown] = useState(0);
+
+  const { runAsync: send, loading: codeSending } = useRequest2(sendAuthCode, {
+    successToast: '验证码已发送',
+    errorToast: '验证码发送异常'
+  });
+
   const sendCodeText = useMemo(() => {
     if (codeSending) return t('common:support.user.auth.Sending Code');
     if (codeCountDown >= 10) {
@@ -28,36 +31,19 @@ export const useSendCode = () => {
   const sendCode = useCallback(
     async ({ username, type }: { username: string; type: `${UserAuthTypeEnum}` }) => {
       if (codeCountDown > 0) return;
-      setCodeSending(true);
-      try {
-        await sendAuthCode({
-          username,
-          type,
-          googleToken: await getClientToken(feConfigs.googleClientVerKey)
+      const googleToken = await getClientToken(feConfigs.googleClientVerKey);
+      await send({ username, type, googleToken });
+      setCodeCountDown(60);
+      timer = setInterval(() => {
+        setCodeCountDown((val) => {
+          if (val <= 0) {
+            clearInterval(timer);
+          }
+          return val - 1;
         });
-        setCodeCountDown(60);
-        timer = setInterval(() => {
-          setCodeCountDown((val) => {
-            if (val <= 0) {
-              clearInterval(timer);
-            }
-            return val - 1;
-          });
-        }, 1000);
-        toast({
-          title: '验证码已发送',
-          status: 'success',
-          position: 'top'
-        });
-      } catch (error: any) {
-        toast({
-          title: getErrText(error, '验证码发送异常'),
-          status: 'error'
-        });
-      }
-      setCodeSending(false);
+      }, 1000);
     },
-    [codeCountDown, feConfigs?.googleClientVerKey, toast]
+    [codeCountDown, feConfigs?.googleClientVerKey, send]
   );
 
   return {
