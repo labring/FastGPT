@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { sendAuthCode } from '@/web/support/user/api';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { useTranslation } from 'next-i18next';
@@ -12,10 +12,28 @@ export const useSendCode = () => {
   const { feConfigs } = useSystemStore();
   const [codeCountDown, setCodeCountDown] = useState(0);
 
-  const { runAsync: send, loading: codeSending } = useRequest2(sendAuthCode, {
-    successToast: '验证码已发送',
-    errorToast: '验证码发送异常'
-  });
+  const { runAsync: sendCode, loading: codeSending } = useRequest2(
+    async ({ username, type }: { username: string; type: `${UserAuthTypeEnum}` }) => {
+      if (codeCountDown > 0) return;
+      const googleToken = await getClientToken(feConfigs.googleClientVerKey);
+      await sendAuthCode({ username, type, googleToken });
+      setCodeCountDown(60);
+
+      timer = setInterval(() => {
+        setCodeCountDown((val) => {
+          if (val <= 0) {
+            clearInterval(timer);
+          }
+          return val - 1;
+        });
+      }, 1000);
+    },
+    {
+      successToast: '验证码已发送',
+      errorToast: '验证码发送异常',
+      refreshDeps: [codeCountDown, feConfigs?.googleClientVerKey]
+    }
+  );
 
   const sendCodeText = useMemo(() => {
     if (codeSending) return t('common:support.user.auth.Sending Code');
@@ -27,24 +45,6 @@ export const useSendCode = () => {
     }
     return '获取验证码';
   }, [codeCountDown, codeSending, t]);
-
-  const sendCode = useCallback(
-    async ({ username, type }: { username: string; type: `${UserAuthTypeEnum}` }) => {
-      if (codeCountDown > 0) return;
-      const googleToken = await getClientToken(feConfigs.googleClientVerKey);
-      await send({ username, type, googleToken });
-      setCodeCountDown(60);
-      timer = setInterval(() => {
-        setCodeCountDown((val) => {
-          if (val <= 0) {
-            clearInterval(timer);
-          }
-          return val - 1;
-        });
-      }, 1000);
-    },
-    [codeCountDown, feConfigs?.googleClientVerKey, send]
-  );
 
   return {
     codeSending,

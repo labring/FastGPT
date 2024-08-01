@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { ModalBody, Box, Flex, Input, ModalFooter, Button } from '@chakra-ui/react';
+import { ModalBody, Box, Flex, Input, ModalFooter, Button, HStack } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
@@ -33,8 +33,8 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
         initUserInfo();
         onClose();
       },
-      successToast: t('common:user.Update password successful'),
-      errorToast: t('common:user.Update password failed')
+      successToast: t('user:bind_inform_account_success'),
+      errorToast: t('user:bind_inform_account_error')
     }
   );
 
@@ -52,45 +52,36 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
   return (
     <MyModal
       isOpen
-      onClose={onClose}
       iconSrc="common/settingLight"
+      w={'32rem'}
       title={t('common:user.Notification Receive')}
     >
-      <ModalBody>
+      <ModalBody px={10}>
         <Flex flexDirection="column">
-          <Flex
-            alignItems="center"
-            mx="4"
-            px="6"
-            py="3"
-            color="blue.600"
-            bgColor="blue.50"
-            fontWeight="500"
-            fontSize="11px"
-            borderRadius="6px"
-            justifyItems="center"
-          >
-            <Icon name="common/info" mr="2" w="14px" />
-            <Box>{t('user:notification.Bind Notification Pipe Hint')}</Box>
-          </Flex>
+          <HStack px="6" py="3" color="primary.600" bgColor="primary.50" borderRadius="md">
+            <Icon name="common/info" w="1rem" />
+            <Box fontSize={'sm'}>{t('user:notification.Bind Notification Pipe Hint')}</Box>
+          </HStack>
           <Flex mt="4" alignItems="center">
             <Box flex={'0 0 70px'}>{t('common:user.Account')}</Box>
             <Input
               flex={1}
+              bg={'myGray.50'}
               {...register('account', { required: true })}
               placeholder={t('common:support.user.Email Or Phone')}
             ></Input>
           </Flex>
-          <Flex mt="4" alignItems="center">
+          <Flex mt="6" alignItems="center" position={'relative'}>
             <Box flex={'0 0 70px'}>{t('common:support.user.Verify Code')}</Box>
             <Input
               flex={1}
+              bg={'myGray.50'}
               {...register('verifyCode', { required: true })}
               placeholder={t('common:support.user.Verify Code')}
             ></Input>
             <Box
               position={'absolute'}
-              right={10}
+              right={2}
               zIndex={1}
               fontSize={'sm'}
               {...(codeCountDown > 0
@@ -113,7 +104,7 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
           {t('common:common.Cancel')}
         </Button>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data))}>
-          {t('common:common.Save')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>
