@@ -157,6 +157,12 @@ export type DatasetTagType = {
   tag: string;
 };
 
+export type TagUsageType = {
+  tagId: string;
+  usage: number;
+  collections: string[];
+};
+
 /* ================= collection ===================== */
 export type DatasetCollectionItemType = CollectionWithDatasetType & {
   sourceName: string;
