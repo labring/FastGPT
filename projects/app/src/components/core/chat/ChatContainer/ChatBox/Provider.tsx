@@ -20,7 +20,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 
 export type ChatProviderProps = OutLinkChatAuthProps & {
   appAvatar?: string;
-
+  appId: string;
   chatConfig?: AppChatConfigType;
 
   chatHistories: ChatSiteItemType[];

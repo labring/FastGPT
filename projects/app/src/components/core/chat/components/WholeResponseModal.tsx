@@ -13,6 +13,10 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useContextSelector } from 'use-context-selector';
+import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
+import { useMount } from 'ahooks';
+import { getChatResData } from '@/web/core/chat/api';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -85,16 +89,24 @@ function Row({
 }
 
 const WholeResponseModal = ({
-  response,
   showDetail,
-  onClose
+  onClose,
+  dataId
 }: {
-  response: ChatHistoryItemResType[];
   showDetail: boolean;
   onClose: () => void;
+  dataId: string;
 }) => {
   const { t } = useTranslation();
-
+  const [response, setResponse] = useState<ChatHistoryItemResType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
+  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId) || '';
+  useMount(async () => {
+    const res = await getChatResData({ appId, chatId, dataId });
+    setResponse(res);
+    setIsLoading(false);
+  });
   return (
     <MyModal
       isCentered
@@ -111,7 +123,8 @@ const WholeResponseModal = ({
         </Flex>
       }
     >
-      <ResponseBox response={response} showDetail={showDetail} />
+      {!isLoading && response && <ResponseBox response={response} showDetail={showDetail} />}
+      {isLoading && <Box>加载中...</Box>}
     </MyModal>
   );
 };

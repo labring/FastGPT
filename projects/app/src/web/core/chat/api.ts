@@ -1,5 +1,5 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import type { ChatHistoryItemType, ChatAppListSchema } from '@fastgpt/global/core/chat/type.d';
+import type { ChatHistoryItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 
 import type {
   CloseCustomFeedbackParams,
@@ -7,7 +7,8 @@ import type {
   InitChatResponse,
   InitOutLinkChatProps,
   GetHistoriesProps,
-  InitTeamChatProps
+  InitTeamChatProps,
+  GetResDataProps
 } from '@/global/core/chat/api.d';
 import type {
   AdminUpdateFeedbackParams,
@@ -29,13 +30,16 @@ export const getInitOutLinkChatInfo = (data: InitOutLinkChatProps) =>
   GET<InitChatResponse>(`/core/chat/outLink/init`, data);
 export const getTeamChatInfo = (data: InitTeamChatProps) =>
   GET<InitChatResponse>(`/core/chat/team/init`, data);
-
 /**
  * get current window history(appid or shareId)
  */
 export const getChatHistories = (data: GetHistoriesProps) =>
   POST<ChatHistoryItemType[]>('/core/chat/getHistories', data);
-
+/**
+ * get detail responseData by dataId appId chatId
+ */
+export const getChatResData = (data: GetResDataProps) =>
+  POST<ChatHistoryItemResType[]>(`/core/chat/getResData`, data);
 /**
  * delete one history
  */

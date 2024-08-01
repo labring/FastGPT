@@ -543,6 +543,7 @@ const ChatBox = (
     },
     [
       abortRequest,
+      allVariableList,
       chatHistories,
       createQuestionGuide,
       finishSegmentedAudio,
@@ -559,7 +560,6 @@ const ChatBox = (
       startSegmentedAudio,
       t,
       toast,
-      variableList,
       variablesForm
     ]
   );
@@ -927,8 +927,13 @@ const ChatBox = (
                       })}
                     >
                       <ResponseTags
-                        flowResponses={item.responseData}
+                        quoteList={item.totalQuoteList}
+                        llmModuleAccount={item.llmModuleAccount}
+                        showTags={!item.isResDataEmpty}
+                        runningTime={item.totalRunningTime}
                         showDetail={!shareId && !teamId}
+                        dataId={item.dataId}
+                        historyPreviewLength={item.historyPreviewLength}
                       />
 
                       {/* custom feedback */}

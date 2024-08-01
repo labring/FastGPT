@@ -108,6 +108,11 @@ export type AdminFbkType = {
 /* --------- chat item ---------- */
 export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
   dataId?: string;
+  totalRunningTime?: number;
+  totalQuoteList?: SearchDataResponseItemType[];
+  llmModuleAccount?: number;
+  historyPreviewLength?: number;
+  isResDataEmpty?: boolean;
 };
 
 export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
@@ -116,6 +121,11 @@ export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatIt
   moduleName?: string;
   ttsBuffer?: Uint8Array;
   responseData?: ChatHistoryItemResType[];
+  totalRunningTime?: number;
+  totalQuoteList?: SearchDataResponseItemType[];
+  llmModuleAccount?: number;
+  historyPreviewLength?: number;
+  isResDataEmpty?: boolean;
 } & ChatBoxInputType;
 
 /* --------- team chat --------- */
