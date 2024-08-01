@@ -4,14 +4,16 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
-export type deleteInputGuideBody = { appId: string; dataIdList: string[] };
+export type deleteAllInputGuideBody = { appId: string };
 
-async function handler(req: ApiRequestProps<deleteInputGuideBody, ''>, res: ApiResponseType<any>) {
-  const { appId, dataIdList } = req.body;
+async function handler(
+  req: ApiRequestProps<deleteAllInputGuideBody, ''>,
+  res: ApiResponseType<any>
+) {
+  const { appId } = req.body;
   await authApp({ req, appId, authToken: true, per: ReadPermissionVal });
 
   await MongoChatInputGuide.deleteMany({
-    _id: { $in: dataIdList },
     appId
   });
 
