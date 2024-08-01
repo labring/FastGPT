@@ -20,6 +20,7 @@ import {
 } from '../input';
 import { chatNodeSystemPromptTip } from '../tip';
 import { getHandleConfig } from '../utils';
+import { i18nT } from '../../../../../web/i18n/utils';
 
 export const AiChatModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.chatNode,
@@ -28,8 +29,8 @@ export const AiChatModule: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/aiChat',
-  name: 'AI 对话',
-  intro: 'AI 大模型对话',
+  name: i18nT('workflow:template.ai_chat'),
+  intro: i18nT('workflow:template.ai_chat_intro'),
   showStatus: true,
   isTool: true,
   version: '481',

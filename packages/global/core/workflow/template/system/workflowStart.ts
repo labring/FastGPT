@@ -25,7 +25,7 @@ export const WorkflowStart: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(false, true, false, false),
   targetHandle: getHandleConfig(false, false, false, false),
   avatar: 'core/workflow/template/workflowStart',
-  name: '流程开始',
+  name: i18nT('workflow:template.workflow_start'),
   intro: '',
   forbidDelete: true,
   unique: true,

@@ -41,6 +41,7 @@ const AIChatSettingsModal = ({
   });
   const model = watch('model');
   const showResponseAnswerText = watch(NodeInputKeyEnum.aiChatIsResponseText) !== undefined;
+  const showVisionSwitch = watch(NodeInputKeyEnum.aiChatVision) !== undefined;
   const showMaxHistoriesSlider = watch('maxHistories') !== undefined;
   const useVision = watch('aiChatVision');
   const selectedModel = llmModelList.find((item) => item.model === model) || llmModelList[0];
@@ -227,27 +228,29 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        <Flex mt={6} alignItems={'center'}>
-          <Box {...LabelStyles}>
-            {t('app:llm_use_vision')}
-            <QuestionTip ml={1} label={t('app:llm_use_vision_tip')}></QuestionTip>
-          </Box>
-          <Box flex={1}>
-            {llmSupportVision ? (
-              <Switch
-                isChecked={useVision}
-                onChange={(e) => {
-                  const value = e.target.checked;
-                  setValue(NodeInputKeyEnum.aiChatVision, value);
-                }}
-              />
-            ) : (
-              <Box fontSize={'sm'} color={'myGray.500'}>
-                {t('app:llm_not_support_vision')}
-              </Box>
-            )}
-          </Box>
-        </Flex>
+        {showVisionSwitch && (
+          <Flex mt={6} alignItems={'center'}>
+            <Box {...LabelStyles}>
+              {t('app:llm_use_vision')}
+              <QuestionTip ml={1} label={t('app:llm_use_vision_tip')}></QuestionTip>
+            </Box>
+            <Box flex={1}>
+              {llmSupportVision ? (
+                <Switch
+                  isChecked={useVision}
+                  onChange={(e) => {
+                    const value = e.target.checked;
+                    setValue(NodeInputKeyEnum.aiChatVision, value);
+                  }}
+                />
+              ) : (
+                <Box fontSize={'sm'} color={'myGray.500'}>
+                  {t('app:llm_not_support_vision')}
+                </Box>
+              )}
+            </Box>
+          </Flex>
+        )}
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} onClick={onClose}>

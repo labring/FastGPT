@@ -19,6 +19,7 @@ import {
 import { chatNodeSystemPromptTip } from '../tip';
 import { LLMModelTypeEnum } from '../../../ai/constants';
 import { getHandleConfig } from '../utils';
+import { i18nT } from '../../../../../web/i18n/utils';
 
 export const ToolModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.tools,
@@ -27,8 +28,8 @@ export const ToolModule: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(true, true, false, true),
   targetHandle: getHandleConfig(true, true, false, true),
   avatar: 'core/workflow/template/toolCall',
-  name: '工具调用',
-  intro: '通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。',
+  name: i18nT('workflow:template.tool_call'),
+  intro: i18nT('workflow:template.tool_call_intro'),
   showStatus: true,
   version: '481',
   inputs: [

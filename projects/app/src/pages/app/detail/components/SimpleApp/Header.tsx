@@ -51,7 +51,7 @@ const Header = ({
   );
 
   const isPublished = useMemo(() => {
-    const data = form2AppWorkflow(appForm);
+    const data = form2AppWorkflow(appForm, t);
 
     return compareWorkflow(
       {
@@ -65,11 +65,11 @@ const Header = ({
         chatConfig: data.chatConfig
       }
     );
-  }, [appDetail.chatConfig, appDetail.modules, appForm]);
+  }, [appDetail.chatConfig, appDetail.modules, appForm, t]);
 
   const onSubmitPublish = useCallback(
     async (data: AppSimpleEditFormType) => {
-      const { nodes, edges } = form2AppWorkflow(data);
+      const { nodes, edges } = form2AppWorkflow(data, t);
       await onPublish({
         nodes,
         edges,
@@ -77,7 +77,7 @@ const Header = ({
         type: AppTypeEnum.simple
       });
     },
-    [onPublish]
+    [onPublish, t]
   );
 
   const [historiesDefaultData, setHistoriesDefaultData] = useState<InitProps>();
@@ -132,7 +132,7 @@ const Header = ({
                   w={'30px'}
                   variant={'whitePrimary'}
                   onClick={() => {
-                    const { nodes, edges } = form2AppWorkflow(appForm);
+                    const { nodes, edges } = form2AppWorkflow(appForm, t);
                     setHistoriesDefaultData({
                       nodes,
                       edges,
