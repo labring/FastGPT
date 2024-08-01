@@ -1,20 +1,32 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { GetResDataProps } from '@/global/core/chat/api';
-import { jsonRes } from '@fastgpt/service/common/response';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { NextAPI } from '@/service/middleware/entry';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { appId, chatId, dataId } = req.body as GetResDataProps;
-  if (!chatId || !dataId) {
-    return jsonRes(res);
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import { NextAPI } from '@/service/middleware/entry';
+import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+
+export type getResDataQuery = {
+  chatId: string;
+  dataId: string;
+  appId: string;
+};
+
+export type getResDataBody = {};
+
+export type getResDataResponse = ChatHistoryItemResType[] | {};
+
+async function handler(
+  req: ApiRequestProps<getResDataBody, getResDataQuery>,
+  res: ApiResponseType<any>
+): Promise<getResDataResponse> {
+  const { appId, chatId, dataId } = req.query;
+  if (!appId || !chatId || !dataId) {
+    return {};
   }
   await authChatCrud({
     req,
     authToken: true,
-    appId,
     ...req.query,
     per: ReadPermissionVal
   });
@@ -26,12 +38,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   });
 
   if (chatData?.obj === ChatRoleEnum.AI) {
-    jsonRes(res, {
-      data: chatData.responseData
-    });
-  } else {
-    return jsonRes(res);
-  }
+    return chatData.responseData || {};
+  } else return {};
 }
 
 export default NextAPI(handler);

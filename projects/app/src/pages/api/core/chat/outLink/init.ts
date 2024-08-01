@@ -17,11 +17,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-const isLLMNode = (item: ChatHistoryItemResType) =>
-  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.tools;
-
+import transformPreviewHistories from '@/service/core/chat/utils';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
@@ -69,32 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       });
 
-    histories.forEach((item) => {
-      if (item.obj === ChatRoleEnum.AI) {
-        const flatResData: ChatHistoryItemResType[] =
-          item.responseData
-            ?.map((item) => {
-              if (item.pluginDetail || item.toolDetail) {
-                return [item, ...(item.pluginDetail || []), ...(item.toolDetail || [])];
-              }
-              return item;
-            })
-            .flat() || [];
-
-        item.llmModuleAccount = flatResData.filter(isLLMNode).length;
-        item.totalQuoteList = flatResData
-          .filter((item) => item.moduleType === FlowNodeTypeEnum.datasetSearchNode)
-          .map((item) => item.quoteList)
-          .flat()
-          .filter(Boolean) as SearchDataResponseItemType[];
-        item.totalRunningTime = Number(
-          flatResData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
-        );
-        item.isResDataEmpty = !flatResData.length;
-        item.historyPreviewLength = flatResData.find(isLLMNode)?.historyPreview?.length;
-        item.responseData = [];
-      }
-    });
+    transformPreviewHistories(histories);
 
     jsonRes<InitChatResponse>(res, {
       data: {

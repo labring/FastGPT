@@ -106,8 +106,7 @@ export type AdminFbkType = {
 };
 
 /* --------- chat item ---------- */
-export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
-  dataId?: string;
+export type ResponseTagItemType = {
   totalRunningTime?: number;
   totalQuoteList?: SearchDataResponseItemType[];
   llmModuleAccount?: number;
@@ -115,18 +114,18 @@ export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemTy
   isResDataEmpty?: boolean;
 };
 
+export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
+  dataId?: string;
+} & ResponseTagItemType;
+
 export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
   dataId: string;
   status: `${ChatStatusEnum}`;
   moduleName?: string;
   ttsBuffer?: Uint8Array;
   responseData?: ChatHistoryItemResType[];
-  totalRunningTime?: number;
-  totalQuoteList?: SearchDataResponseItemType[];
-  llmModuleAccount?: number;
-  historyPreviewLength?: number;
-  isResDataEmpty?: boolean;
-} & ChatBoxInputType;
+} & ChatBoxInputType &
+  ResponseTagItemType;
 
 /* --------- team chat --------- */
 export type ChatAppListSchema = {

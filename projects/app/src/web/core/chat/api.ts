@@ -1,15 +1,15 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { ChatHistoryItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
-
+import { getResDataQuery } from '@/pages/api/core/chat/getResData';
 import type {
   CloseCustomFeedbackParams,
   InitChatProps,
   InitChatResponse,
   InitOutLinkChatProps,
   GetHistoriesProps,
-  InitTeamChatProps,
-  GetResDataProps
+  InitTeamChatProps
 } from '@/global/core/chat/api.d';
+
 import type {
   AdminUpdateFeedbackParams,
   ClearHistoriesProps,
@@ -38,8 +38,8 @@ export const getChatHistories = (data: GetHistoriesProps) =>
 /**
  * get detail responseData by dataId appId chatId
  */
-export const getChatResData = (data: GetResDataProps) =>
-  POST<ChatHistoryItemResType[]>(`/core/chat/getResData`, data);
+export const getChatResData = (data: getResDataQuery) =>
+  GET<ChatHistoryItemResType[]>(`/core/chat/getResData`, data);
 /**
  * delete one history
  */

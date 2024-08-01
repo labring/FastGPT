@@ -85,9 +85,3 @@ export type CloseCustomFeedbackParams = {
   chatItemId: string;
   index: number;
 };
-
-export type GetResDataProps = {
-  chatId: string;
-  dataId: string;
-  appId: string;
-};
