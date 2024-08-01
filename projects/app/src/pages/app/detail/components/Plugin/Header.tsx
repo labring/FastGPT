@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useEffect } from 'react';
 import { Box, Flex, Button, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
@@ -59,10 +59,17 @@ const Header = () => {
     callback: onSaveWorkflow,
     tip: t('common:core.common.tip.leave page')
   });
+  
   useInterval(() => {
     if (!appDetail._id) return;
     onSaveWorkflow();
   }, 40000);
+
+  useEffect(() => {
+    if (currentTab !== TabEnum.appEdit) {
+      setHistoriesDefaultData(undefined);
+    }
+  }, [currentTab, setHistoriesDefaultData]);
 
   const Render = useMemo(() => {
     return (

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import FolderPath from '@/components/common/folder/Path';
@@ -82,6 +82,12 @@ const Header = ({
   );
 
   const [historiesDefaultData, setHistoriesDefaultData] = useState<InitProps>();
+
+  useEffect(() => {
+    if (currentTab !== TabEnum.appEdit) {
+      setHistoriesDefaultData(undefined);
+    }
+  }, [currentTab, setHistoriesDefaultData]);
 
   return (
     <Box>
