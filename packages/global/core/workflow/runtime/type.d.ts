@@ -16,6 +16,7 @@ import { UserModelSchema } from '../../../support/user/type';
 import { AppDetailType, AppSchema } from '../../app/type';
 import { RuntimeNodeItemType } from '../runtime/type';
 import { RuntimeEdgeItemType } from './edge';
+import { ReadFileNodeResponse } from '../template/system/readFiles/type';
 
 /* workflow props */
 export type ChatDispatchProps = {
@@ -147,6 +148,10 @@ export type DispatchNodeResponseType = {
 
   // plugin
   pluginOutput?: Record<string, any>;
+
+  // read files
+  readFilesResult?: string;
+  readFiles?: ReadFileNodeResponse;
 };
 
 export type DispatchNodeResultType<T> = {

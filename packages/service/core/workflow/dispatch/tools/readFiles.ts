@@ -18,7 +18,17 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.text]: string;
 }>;
 
-const formatResponseObject = (filename: string, content: string) => ({
+const formatResponseObject = ({
+  filename,
+  url,
+  content
+}: {
+  filename: string;
+  url: string;
+  content: string;
+}) => ({
+  filename,
+  url,
   text: `File: ${filename}
 <Content>
 ${content}
@@ -36,7 +46,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     params: { fileUrlList = [] }
   } = props;
 
-  const bufferResult = await Promise.all(
+  const readFilesResult = await Promise.all(
     fileUrlList
       .map(async (url) => {
         // System file
@@ -62,7 +72,11 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
           ...readFromSecondary
         }).lean();
         if (fileBuffer) {
-          return formatResponseObject(fileBuffer.metadata?.filename || url, fileBuffer.rawText);
+          return formatResponseObject({
+            filename: fileBuffer.metadata?.filename || url,
+            url,
+            content: fileBuffer.rawText
+          });
         }
 
         try {
@@ -125,19 +139,29 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
             }
           } catch (error) {}
 
-          return formatResponseObject(filename, rawText);
+          return formatResponseObject({ filename, url, content: rawText });
         } catch (error) {
-          return formatResponseObject(url, getErrText(error, 'Load file error'));
+          return formatResponseObject({
+            filename: '',
+            url,
+            content: getErrText(error, 'Load file error')
+          });
         }
       })
       .filter(Boolean)
   );
-  const text = bufferResult.map((item) => item?.text ?? '').join('\n******\n');
+  const text = readFilesResult.map((item) => item?.text ?? '').join('\n******\n');
 
   return {
     [NodeOutputKeyEnum.text]: text,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      textOutput: bufferResult.map((item) => item?.nodeResponsePreviewText ?? '').join('\n******\n')
+      readFiles: readFilesResult.map((item) => ({
+        name: item?.filename || '',
+        url: item?.url || ''
+      })),
+      readFilesResult: readFilesResult
+        .map((item) => item?.nodeResponsePreviewText ?? '')
+        .join('\n******\n')
     },
     [DispatchNodeResponseKeyEnum.toolResponses]: {
       fileContent: text

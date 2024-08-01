@@ -27,7 +27,9 @@
     "Code log": "Log",
     "Custom inputs": "Custom inputs",
     "Custom outputs": "Custom outputs",
-    "Error": "Error"
+    "Error": "Error",
+    "Read file result": "Document parsing result preview",
+    "read files": "parsed document"
   },
   "tool_input": "Tool",
   "update_link_error": "Update link exception",

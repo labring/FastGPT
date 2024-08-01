@@ -25,7 +25,9 @@
     "Code log": "Log 日志",
     "Custom inputs": "自定义输入",
     "Custom outputs": "自定义输出",
-    "Error": "错误信息"
+    "Error": "错误信息",
+    "Read file result": "文档解析结果预览",
+    "read files": "解析的文档"
   },
   "tool_input": "工具参数",
   "variable_picker_tips": "可输入节点名或变量名搜索",

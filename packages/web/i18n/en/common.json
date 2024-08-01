@@ -508,7 +508,7 @@
         "module cq result": "Classification result",
         "module extract description": "Extract requirement description",
         "module extract result": "Extraction result",
-        "module historyPreview": "Complete record",
+        "module historyPreview": "Record preview (only part of the content is displayed)",
         "module http result": "response body",
         "module if else Result": "Determinator result",
         "module limit": "Single search limit",
