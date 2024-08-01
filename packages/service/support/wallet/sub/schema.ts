@@ -84,6 +84,9 @@ const SubSchema = new Schema({
 });
 
 try {
+  // Get plan by expiredTime
+  SubSchema.index({ expiredTime: -1, currentSubLevel: 1 });
+
   // get team plan
   SubSchema.index({ teamId: 1, type: 1, expiredTime: -1 });
 

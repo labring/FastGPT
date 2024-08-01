@@ -1,4 +1,6 @@
 {
+  "bind_inform_account_error": "Abnormal binding notification account",
+  "bind_inform_account_success": "Binding notification account successful",
   "permission": {
     "Manage": "administrator",
     "Manage tip": "Team administrator, with full permissions",
