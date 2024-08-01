@@ -12,7 +12,6 @@ export const useWidthVariable = <T = any>({
   const value = useMemo(() => {
     // 根据 width 计算，找到第一个大于 width 的值
     const index = widthList.findLastIndex((item) => width > item);
-    console.log(index, width);
     if (index === -1) {
       return list[0];
     }

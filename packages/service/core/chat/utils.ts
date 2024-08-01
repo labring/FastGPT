@@ -1,7 +1,8 @@
 import { countGptMessagesTokens } from '../../common/string/tiktoken/index';
 import type {
   ChatCompletionContentPart,
-  ChatCompletionMessageParam
+  ChatCompletionMessageParam,
+  SdkChatCompletionMessageParam
 } from '@fastgpt/global/core/ai/type.d';
 import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -113,7 +114,7 @@ export const loadRequestMessages = async ({
   // Split question text and image
   function parseStringWithImages(input: string): ChatCompletionContentPart[] {
     if (!useVision) {
-      return [{ type: 'text', text: input }];
+      return [{ type: 'text', text: input || '' }];
     }
 
     // 正则表达式匹配图片URL
@@ -167,47 +168,45 @@ export const loadRequestMessages = async ({
     }
 
     const result = await Promise.all(
-      content
-        .map(async (item) => {
-          if (item.type === 'text') return parseStringWithImages(item.text);
-          if (item.type === 'file_url') return;
+      content.map(async (item) => {
+        if (item.type === 'text') return parseStringWithImages(item.text);
+        if (item.type === 'file_url') return;
 
-          if (!item.image_url.url) return item;
+        if (!item.image_url.url) return item;
 
-          // Remove url origin
-          const imgUrl = (() => {
-            if (origin && item.image_url.url.startsWith(origin)) {
-              return item.image_url.url.replace(origin, '');
-            }
-            return item.image_url.url;
-          })();
-
-          /* Load local image */
-          if (imgUrl.startsWith('/')) {
-            const response = await axios.get(imgUrl, {
-              baseURL: serverRequestBaseUrl,
-              responseType: 'arraybuffer'
-            });
-            const base64 = Buffer.from(response.data, 'binary').toString('base64');
-            const imageType =
-              getFileContentTypeFromHeader(response.headers['content-type']) ||
-              guessBase64ImageType(base64);
-
-            return {
-              ...item,
-              image_url: {
-                ...item.image_url,
-                url: `data:${imageType};base64,${base64}`
-              }
-            };
+        // Remove url origin
+        const imgUrl = (() => {
+          if (origin && item.image_url.url.startsWith(origin)) {
+            return item.image_url.url.replace(origin, '');
           }
+          return item.image_url.url;
+        })();
 
-          return item;
-        })
-        .filter(Boolean)
+        /* Load local image */
+        if (imgUrl.startsWith('/')) {
+          const response = await axios.get(imgUrl, {
+            baseURL: serverRequestBaseUrl,
+            responseType: 'arraybuffer'
+          });
+          const base64 = Buffer.from(response.data, 'binary').toString('base64');
+          const imageType =
+            getFileContentTypeFromHeader(response.headers['content-type']) ||
+            guessBase64ImageType(base64);
+
+          return {
+            ...item,
+            image_url: {
+              ...item.image_url,
+              url: `data:${imageType};base64,${base64}`
+            }
+          };
+        }
+
+        return item;
+      })
     );
 
-    return result.flat();
+    return result.flat().filter(Boolean);
   };
   // format GPT messages, concat text messages
   const clearInvalidMessages = (messages: ChatCompletionMessageParam[]) => {
@@ -275,5 +274,5 @@ export const loadRequestMessages = async ({
     })
   )) as ChatCompletionMessageParam[];
 
-  return clearInvalidMessages(loadMessages);
+  return clearInvalidMessages(loadMessages) as SdkChatCompletionMessageParam[];
 };

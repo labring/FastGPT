@@ -117,7 +117,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       if (modelConstantsData.censor && !user.openaiAccount?.key) {
         await postTextCensor({
           text: `${systemPrompt}
-            ${quoteText}
+            ${datasetQuoteText}
             ${userChatInput}
           `
         });
@@ -162,6 +162,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     stream,
     messages: requestMessages
   };
+  // console.log(JSON.stringify(requestBody, null, 2), '===');
   try {
     const ai = getAIApi({
       userKey: user.openaiAccount,
@@ -199,7 +200,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       }
     })();
 
-    const completeMessages = filterMessages.concat({
+    const completeMessages = requestMessages.concat({
       role: ChatCompletionRequestMessageRoleEnum.Assistant,
       content: answerText
     });

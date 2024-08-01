@@ -125,7 +125,7 @@ export const runToolWithToolChoice = async (
       filterMessages
     })
   ]);
-  const requestBody = {
+  const requestBody: any = {
     ...toolModel?.defaultConfig,
     model: toolModel.model,
     temperature: computedTemperature({
@@ -256,7 +256,7 @@ export const runToolWithToolChoice = async (
       tool_calls: toolCalls
     };
     const concatToolMessages = [
-      ...filterMessages,
+      ...requestMessages,
       assistantToolMsgParams
     ] as ChatCompletionMessageParam[];
     const tokens = await countGptMessagesTokens(concatToolMessages, tools);

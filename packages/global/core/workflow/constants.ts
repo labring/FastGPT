@@ -120,7 +120,10 @@ export enum NodeInputKeyEnum {
 
   // code
   code = 'code',
-  codeType = 'codeType' // js|py
+  codeType = 'codeType', // js|py
+
+  // read files
+  fileUrlList = 'fileUrlList'
 }
 
 export enum NodeOutputKeyEnum {

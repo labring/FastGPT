@@ -1,5 +1,5 @@
-import { connectionMongo, getMongoModel, type Model } from '../../mongo';
-const { Schema, model, models } = connectionMongo;
+import { connectionMongo, getMongoModel } from '../../mongo';
+const { Schema } = connectionMongo;
 import { RawTextBufferSchemaType } from './type';
 
 export const collectionName = 'buffer_rawtexts';

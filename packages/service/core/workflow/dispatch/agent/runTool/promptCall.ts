@@ -275,7 +275,7 @@ export const runToolWithPromptCall = async (
     function_call: toolJson
   };
   const concatToolMessages = [
-    ...filterMessages,
+    ...requestMessages,
     assistantToolMsgParams
   ] as ChatCompletionMessageParam[];
   const tokens = await countGptMessagesTokens(concatToolMessages, undefined);

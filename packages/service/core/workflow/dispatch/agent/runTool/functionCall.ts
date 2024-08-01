@@ -9,7 +9,7 @@ import {
   ChatCompletionMessageFunctionCall,
   ChatCompletionFunctionMessageParam,
   ChatCompletionAssistantMessageParam
-} from '@fastgpt/global/core/ai/type';
+} from '@fastgpt/global/core/ai/type.d';
 import { NextApiResponse } from 'next';
 import {
   responseWrite,
@@ -114,7 +114,7 @@ export const runToolWithFunctionCall = async (
       filterMessages
     })
   ]);
-  const requestBody = {
+  const requestBody: any = {
     ...toolModel?.defaultConfig,
     model: toolModel.model,
     temperature: computedTemperature({
@@ -250,7 +250,7 @@ export const runToolWithFunctionCall = async (
       function_call: functionCall
     };
     const concatToolMessages = [
-      ...filterMessages,
+      ...requestMessages,
       assistantToolMsgParams
     ] as ChatCompletionMessageParam[];
     const tokens = await countGptMessagesTokens(concatToolMessages, undefined, functions);

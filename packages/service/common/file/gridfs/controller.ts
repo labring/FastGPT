@@ -10,6 +10,7 @@ import { MongoRawTextBuffer } from '../../buffer/rawText/schema';
 import { readRawContentByFileBuffer } from '../read/utils';
 import { gridFsStream2Buffer, stream2Encoding } from './utils';
 import { addLog } from '../../system/log';
+import { readFromSecondary } from '../../mongo/utils';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoDatasetFileSchema;
@@ -143,7 +144,9 @@ export const readFileContentFromMongo = async ({
   filename: string;
 }> => {
   // read buffer
-  const fileBuffer = await MongoRawTextBuffer.findOne({ sourceId: fileId }).lean();
+  const fileBuffer = await MongoRawTextBuffer.findOne({ sourceId: fileId }, undefined, {
+    ...readFromSecondary
+  }).lean();
   if (fileBuffer) {
     return {
       rawText: fileBuffer.rawText,
