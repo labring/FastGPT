@@ -86,7 +86,6 @@ async function handler(
       item.isResDataEmpty = !flatResData.length;
       item.historyPreviewLength = flatResData.find(isLLMNode)?.historyPreview?.length;
       item.responseData = [];
-      console.log('item', item);
     }
   });
 
