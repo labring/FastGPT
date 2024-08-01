@@ -9,7 +9,7 @@ export const checkTimerLock = async ({
   timerId,
   lockMinuted
 }: {
-  timerId: TimerIdEnum;
+  timerId: TimerIdEnum | string;
   lockMinuted: number;
 }) => {
   try {
