@@ -17,12 +17,14 @@ type FormType = {
 const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { initUserInfo } = useUserStore();
-  const { register, handleSubmit, trigger, getValues } = useForm<FormType>({
+  const { register, handleSubmit, trigger, getValues, watch } = useForm<FormType>({
     defaultValues: {
       account: '',
       verifyCode: ''
     }
   });
+  const account = watch('account');
+  const verifyCode = watch('verifyCode');
 
   const { runAsync: onSubmit, loading: isLoading } = useRequest2(
     (data: FormType) => {
@@ -103,7 +105,11 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
         <Button mr={3} variant={'whiteBase'} onClick={onClose}>
           {t('common:common.Cancel')}
         </Button>
-        <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data))}>
+        <Button
+          isLoading={isLoading}
+          isDisabled={!account || !verifyCode}
+          onClick={handleSubmit((data) => onSubmit(data))}
+        >
           {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
