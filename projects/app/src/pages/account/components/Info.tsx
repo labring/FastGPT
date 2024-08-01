@@ -264,15 +264,18 @@ const MyInfo = () => {
             </Button>
           </Flex>
         )}
-        {feConfigs.isPlus && userInfo?.permission.isOwner && (
+        {feConfigs?.isPlus && (
           <Flex mt={6} alignItems={'center'}>
             <Box {...labelStyles}>{t('common:user.Notification Receive')}:&nbsp;</Box>
             <Box flex={1} {...(userInfo?.team.notificationAccount ? {} : { color: 'red.600' })}>
               {userInfo?.team.notificationAccount || t('common:user.Notification Receive Bind')}
             </Box>
-            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdateNotification}>
-              {t('common:user.Change')}
-            </Button>
+
+            {userInfo?.permission.isOwner && (
+              <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdateNotification}>
+                {t('common:user.Change')}
+              </Button>
+            )}
           </Flex>
         )}
         <Flex mt={6} alignItems={'center'}>
