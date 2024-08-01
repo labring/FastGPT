@@ -10,6 +10,7 @@ import type {
   PostLoginProps
 } from '@fastgpt/global/support/user/api.d';
 import { GetWXLoginQRResponse } from '@fastgpt/global/support/user/login/api.d';
+import { DELETE } from '@fastgpt/service/common/api/plusRequest';
 
 export const sendAuthCode = (data: {
   username: string;
@@ -63,8 +64,8 @@ export const updatePasswordByOld = ({ oldPsw, newPsw }: { oldPsw: string; newPsw
     newPsw: hashStr(newPsw)
   });
 
-export const updateNotificationMethod = (data: { account: string; verifyCode: string }) =>
-  PUT('/proApi/support/user/team/updateNotificationMethod', data);
+export const updateNotificationAccount = (data: { account: string; verifyCode: string }) =>
+  PUT('/proApi/support/user/team/updateNotificationAccount', data);
 
 export const postLogin = ({ password, ...props }: PostLoginProps) =>
   POST<ResLogin>('/support/user/account/loginByPassword', {

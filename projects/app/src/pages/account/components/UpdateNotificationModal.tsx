@@ -4,7 +4,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { updateNotificationMethod } from '@/web/support/user/api';
+import { updateNotificationAccount } from '@/web/support/user/api';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -26,7 +26,7 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
 
   const { runAsync: onSubmit, loading: isLoading } = useRequest2(
     (data: FormType) => {
-      return updateNotificationMethod(data);
+      return updateNotificationAccount(data);
     },
     {
       onSuccess() {
