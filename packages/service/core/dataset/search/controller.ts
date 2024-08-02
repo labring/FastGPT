@@ -21,6 +21,7 @@ import { jiebaSplit } from '../../../common/string/jieba';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import { Types } from '../../../common/mongo';
 import json5 from 'json5';
+import { MongoDatasetCollectionTags } from '../tag/schema';
 
 type SearchDatasetDataProps = {
   teamId: string;
@@ -112,22 +113,43 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       // Tag
       const andTags = jsonMatch?.tags?.$and as string[] | undefined;
       const orTags = jsonMatch?.tags?.$or as string[] | undefined;
-      if (andTags && Array.isArray(andTags)) {
+
+      const andTagArray = await MongoDatasetCollectionTags.find(
+        {
+          teamId,
+          datasetId: { $in: datasetIds },
+          tag: { $in: andTags }
+        },
+        '_id'
+      );
+      const andTagIds = andTagArray.map((item) => item._id);
+
+      const orTagArray = await MongoDatasetCollectionTags.find(
+        {
+          teamId,
+          datasetId: { $in: datasetIds },
+          tag: { $in: orTags }
+        },
+        '_id'
+      );
+      const orTagIds = orTagArray.map((item) => item._id);
+
+      if (Array.isArray(andTagIds) && andTagIds.length > 0) {
         const collections = await MongoDatasetCollection.find(
           {
             teamId,
             datasetId: { $in: datasetIds },
-            tags: { $all: andTags }
+            tags: { $all: andTagIds }
           },
           '_id'
         );
         return collections.map((item) => String(item._id));
-      } else if (orTags && Array.isArray(orTags)) {
+      } else if (Array.isArray(orTagIds) && orTagIds.length > 0) {
         const collections = await MongoDatasetCollection.find(
           {
             teamId,
             datasetId: { $in: datasetIds },
-            tags: { $in: orTags }
+            tags: { $in: orTagIds }
           },
           '_id'
         );

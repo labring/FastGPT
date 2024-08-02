@@ -7,7 +7,6 @@ import {
   useBoolean,
   useLockFn,
   useMemoizedFn,
-  useMount,
   useScroll,
   useVirtualList,
   useRequest
@@ -50,6 +49,7 @@ export function useScrollPagination<
   const { toast } = useToast();
   const [current, setCurrent] = useState(1);
   const [data, setData] = useState<TData['list']>([]);
+  const [total, setTotal] = useState(0);
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
 
   const [list] = useVirtualList<TData['list'][0]>(data, {
@@ -71,6 +71,7 @@ export function useScrollPagination<
         ...defaultParams
       } as TParams);
 
+      setTotal(res.total);
       setCurrent(num);
 
       if (num === 1) {
@@ -146,6 +147,7 @@ export function useScrollPagination<
   return {
     containerRef,
     list,
+    total,
     data,
     setData,
     isLoading,

@@ -32,13 +32,14 @@ import { useContextSelector } from 'use-context-selector';
 import { CollectionPageContext } from './Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import HeaderTagPopOver from './HeaderTagPopOver';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
 
 const Header = ({}: {}) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { setLoading } = useSystemStore();
+  const { setLoading, feConfigs } = useSystemStore();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   const router = useRouter();
@@ -152,9 +153,8 @@ const Header = ({}: {}) => {
 
       {/* search input */}
       {isPc && (
-        <Flex alignItems={'center'} mr={4}>
+        <Flex alignItems={'center'} mr={4} gap={3}>
           <MyInput
-            bg={'myGray.50'}
             w={['100%', '250px']}
             size={'sm'}
             h={'36px'}
@@ -183,6 +183,7 @@ const Header = ({}: {}) => {
               }
             }}
           />
+          {feConfigs?.isPlus && <HeaderTagPopOver />}
         </Flex>
       )}
 

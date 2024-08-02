@@ -90,6 +90,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
             <MyPopover
               placement="bottom-end"
               offset={[20, 10]}
+              p={4}
               trigger="hover"
               Trigger={
                 <HStack

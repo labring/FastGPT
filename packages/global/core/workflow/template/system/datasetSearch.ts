@@ -90,6 +90,18 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
     {
       ...Input_Template_UserChatInput,
       toolDescription: '需要检索的内容'
+    },
+    {
+      key: NodeInputKeyEnum.collectionFilterMatch,
+      renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference],
+      label: '集合过滤',
+      valueType: WorkflowIOValueTypeEnum.object,
+      value: {
+        tags: {
+          $and: [],
+          $or: []
+        }
+      }
     }
   ],
   outputs: [
