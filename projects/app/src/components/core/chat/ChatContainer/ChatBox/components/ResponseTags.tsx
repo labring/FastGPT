@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import { DispatchNodeResponseType } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { Flex, useDisclosure, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -12,7 +11,7 @@ import { strIsLink } from '@fastgpt/global/common/string/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
-import { transformHistoryItem } from '@/global/core/chat/utils';
+import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'));
 const ContextModal = dynamic(() => import('./ContextModal'));
@@ -30,13 +29,13 @@ const ResponseTags = ({
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const quoteListRef = React.useRef<HTMLDivElement>(null);
+  const dataId = historyItem.dataId;
   const {
-    dataId = '',
     totalQuoteList: quoteList = [],
     llmModuleAccount = 0,
     totalRunningTime: runningTime = 0,
     historyPreviewLength = 0
-  } = transformHistoryItem(historyItem);
+  } = useMemo(() => addStatisticalDataToHistoryItem(historyItem), [historyItem]);
   const [quoteModalData, setQuoteModalData] = useState<{
     rawSearch: SearchDataResponseItemType[];
     metadata?: {

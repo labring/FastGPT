@@ -6,24 +6,18 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 const isLLMNode = (item: ChatHistoryItemResType) =>
   item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.tools;
 
-function transformPreviewHistories(histories: ChatItemType[]) {
+export function transformPreviewHistories(histories: ChatItemType[]) {
   return histories.map((item) => {
     return {
-      ...transformHistoryItem(item),
+      ...addStatisticalDataToHistoryItem(item),
       responseData: undefined
     };
   });
 }
 
-function transformHistoryItem(historyItem: ChatItemType) {
+export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   if (historyItem.obj !== ChatRoleEnum.AI) return historyItem;
-  if (
-    historyItem.totalQuoteList &&
-    historyItem.llmModuleAccount &&
-    historyItem.totalRunningTime &&
-    historyItem.historyPreviewLength
-  )
-    return historyItem;
+  if (historyItem.totalQuoteList !== undefined) return historyItem;
   const flatResData: ChatHistoryItemResType[] =
     historyItem.responseData
       ?.map((item) => {
@@ -46,4 +40,3 @@ function transformHistoryItem(historyItem: ChatItemType) {
   historyItem.historyPreviewLength = flatResData.find(isLLMNode)?.historyPreview?.length;
   return historyItem;
 }
-export { transformHistoryItem, transformPreviewHistories };
