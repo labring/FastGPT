@@ -927,7 +927,7 @@ const ChatBox = (
                       })}
                     >
                       <ResponseTags
-                        showTags={!isChatting}
+                        showTags={index !== chatHistories.length - 1 || !isChatting}
                         showDetail={!shareId && !teamId}
                         historyItem={item}
                       />
