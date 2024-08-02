@@ -159,7 +159,6 @@ export type DatasetTagType = {
 
 export type TagUsageType = {
   tagId: string;
-  usage: number;
   collections: string[];
 };
 

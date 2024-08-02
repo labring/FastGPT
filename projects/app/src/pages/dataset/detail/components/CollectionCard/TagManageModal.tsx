@@ -17,13 +17,11 @@ import {
   updateDatasetCollectionTag
 } from '@/web/core/dataset/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { debounce } from 'lodash';
 import MyInput from '@/components/MyInput';
 import { DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useQuery } from '@tanstack/react-query';
-import EmptyCollectionTip from './EmptyCollectionTip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
