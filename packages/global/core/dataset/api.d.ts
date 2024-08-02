@@ -80,6 +80,7 @@ export type CreateDatasetCollectionTagParams = {
   tag: string;
 };
 export type AddTagsToCollectionsParams = {
+  originCollectionIds: string[];
   collectionIds: string[];
   datasetId: string;
   tag: string;

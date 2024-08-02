@@ -11,6 +11,7 @@
   "common_dataset_desc": "可通过导入文件、网页链接或手动录入形式构建知识库",
   "confirm_to_rebuild_embedding_tip": "确认为知识库切换索引？\n切换索引是一个非常重量的操作，需要对您知识库内所有数据进行重新索引，时间可能较长，请确保账号内剩余积分充足。\n\n此外，你还需要注意修改选择该知识库的应用，避免它们与其他索引模型知识库混用。",
   "dataset": {
+    "no_collections": "暂无数据集",
     "no_tags": "暂无标签"
   },
   "external_file": "外部文件库",
@@ -29,6 +30,7 @@
     "Edit_tag": "编辑标签",
     "add": "创建",
     "cancel": "取消选择",
+    "delete_tag_confirm": "确定删除标签？",
     "manage": "标签管理",
     "searchOrAddTag": "搜索或添加标签",
     "tags": "标签"

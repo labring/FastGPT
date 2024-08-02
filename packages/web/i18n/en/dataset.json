@@ -11,6 +11,7 @@
   "common_dataset_desc": "Can be built by importing files, web links, or manual entry",
   "confirm_to_rebuild_embedding_tip": "Are you sure to switch the knowledge base index?\nSwitching index is a very heavy operation that requires re-indexing all the data in your knowledge base, which may take a long time. Please ensure that the remaining points in your account are sufficient.\n\nIn addition, you need to be careful to modify the applications that select this knowledge base to avoid mixing them with other index model knowledge bases.",
   "dataset": {
+    "no_collections": "no collections",
     "no_tags": "no tags"
   },
   "external_file": "External file",
@@ -29,6 +30,7 @@
     "Edit_tag": "Edit tag",
     "add": "Add",
     "cancel": "Cancel",
+    "delete_tag_confirm": "Confirm to delete tag",
     "manage": "Manage",
     "searchOrAddTag": "Search or add tags",
     "tags": "Tags"

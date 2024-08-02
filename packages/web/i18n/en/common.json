@@ -1,7 +1,5 @@
 {
   "App": "App",
-  "click_to_resume": "Resume",
-  "code_editor": "Code edit",
   "Export": "Export",
   "Folder": "Folder",
   "Login": "Login",
@@ -13,6 +11,8 @@
   "UnKnow": "Unknown",
   "Warning": "Warning",
   "add_new": "Add new",
+  "click_to_resume": "Resume",
+  "code_editor": "Code edit",
   "common": {
     "Action": "Action",
     "Add": "Add",
@@ -91,6 +91,8 @@
     "Root folder": "Root folder",
     "Run": "Run",
     "Save": "Save",
+    "Save Failed": "Saved failed",
+    "Save Success": "Saved success",
     "Search": "Search",
     "Select File Failed": "Select File Failed",
     "Select template": "Select template",
@@ -482,7 +484,8 @@
             "success": "Start syncing"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",
@@ -505,13 +508,13 @@
         "Data not found": "Data does not exist or has been deleted",
         "Start Sync Failed": "Failed to start syncing",
         "Template does not exist": "Template does not exist",
+        "invalidVectorModelOrQAModel": "Invalid vector model or QA model",
         "unAuthDataset": "Unauthorized to operate this dataset",
         "unAuthDatasetCollection": "Unauthorized to operate this collection",
         "unAuthDatasetData": "Unauthorized to operate this data",
         "unAuthDatasetFile": "Unauthorized to operate this file",
         "unCreateCollection": "Unauthorized to operate this data",
-        "unLinkCollection": "Not a network link collection",
-        "invalidVectorModelOrQAModel": "Invalid vector model or QA model"
+        "unLinkCollection": "Not a network link collection"
       },
       "externalFile": "external file repository",
       "file": "File",

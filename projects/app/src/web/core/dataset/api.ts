@@ -49,6 +49,7 @@ import type { GetDatasetDataListProps } from '@/pages/api/core/dataset/data/list
 import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
 import type { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { GetScrollCollectionsProps } from '@/pages/api/core/dataset/collection/scrollList';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -143,6 +144,11 @@ export const getTagUsage = (datasetId: string) =>
   GET<TagUsageType[]>(`/proApi/core/dataset/tag/tagUsage?datasetId=${datasetId}`);
 export const getAllTags = (datasetId: string) =>
   GET<{ list: DatasetTagType[] }>(`/proApi/core/dataset/tag/getAllTags?datasetId=${datasetId}`);
+export const getScrollCollectionList = (data: GetScrollCollectionsProps) =>
+  GET<PaginationResponse<DatasetCollectionsListItemType>>(
+    `/core/dataset/collection/scrollList`,
+    data
+  );
 
 /* =============================== data ==================================== */
 /* get dataset list */

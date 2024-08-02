@@ -114,67 +114,69 @@ const HeaderTagPopOver = () => {
             <Box px={1.5} pt={1.5}>
               <Input
                 pl={2}
-                h={9}
+                h={8}
                 borderRadius={'4px'}
                 value={searchTag}
                 placeholder={t('dataset:tag.searchOrAddTag')}
                 onChange={(e) => setSearchTag(e.target.value)}
               />
-              <Box my={1} maxH={'400px'} overflow={'auto'}>
-                {searchTag && !datasetTags.map((item) => item.tag).includes(searchTag) && (
+            </Box>
+
+            <Box my={1} px={1.5} maxH={'240px'} overflow={'auto'}>
+              {searchTag && !datasetTags.map((item) => item.tag).includes(searchTag) && (
+                <Flex
+                  alignItems={'center'}
+                  fontSize={'sm'}
+                  px={1}
+                  cursor={'pointer'}
+                  _hover={{ bg: '#1118240D', color: 'primary.700' }}
+                  borderRadius={'xs'}
+                  onClick={() => {
+                    onCreateCollectionTag(searchTag);
+                  }}
+                >
+                  <MyIcon name={'common/addLight'} w={'16px'} />
+                  <Box ml={2} py={2}>
+                    {t('dataset:tag.add') + ` "${searchTag}"`}
+                  </Box>
+                </Flex>
+              )}
+
+              {[
+                ...new Map(
+                  [...checkedDatasetTag, ...datasetTags].map((item) => [item._id, item])
+                ).values()
+              ].map((item) => {
+                const checked = checkedTags.includes(item._id);
+                return (
                   <Flex
                     alignItems={'center'}
                     fontSize={'sm'}
                     px={1}
+                    py={1}
+                    my={1}
                     cursor={'pointer'}
+                    bg={checked ? '#1118240D' : 'transparent'}
+                    color={checked ? 'primary.700' : 'myGray.600'}
                     _hover={{ bg: '#1118240D', color: 'primary.700' }}
                     borderRadius={'xs'}
-                    onClick={() => {
-                      onCreateCollectionTag(searchTag);
+                    key={item._id}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      checkTags(item);
                     }}
                   >
-                    <MyIcon name={'common/addLight'} w={'16px'} />
-                    <Box ml={2} py={2}>
-                      {t('dataset:tag.add') + ` "${searchTag}"`}
-                    </Box>
-                  </Flex>
-                )}
-
-                {[
-                  ...new Map(
-                    [...checkedDatasetTag, ...datasetTags].map((item) => [item._id, item])
-                  ).values()
-                ].map((item) => {
-                  const checked = checkedTags.includes(item._id);
-                  return (
-                    <Flex
-                      alignItems={'center'}
-                      fontSize={'sm'}
-                      px={1}
-                      py={2}
-                      cursor={'pointer'}
-                      bg={checked ? '#1118240D' : 'transparent'}
-                      color={checked ? 'primary.700' : 'myGray.600'}
-                      _hover={{ bg: '#1118240D', color: 'primary.700' }}
-                      borderRadius={'xs'}
-                      key={item._id}
-                      onClick={(e) => {
-                        e.preventDefault();
+                    <Checkbox
+                      isChecked={checkedTags.includes(item._id)}
+                      onChange={(e) => {
                         checkTags(item);
                       }}
-                    >
-                      <Checkbox
-                        isChecked={checkedTags.includes(item._id)}
-                        onChange={(e) => {
-                          checkTags(item);
-                        }}
-                        size={'md'}
-                      />
-                      <Box ml={2}>{item.tag}</Box>
-                    </Flex>
-                  );
-                })}
-              </Box>
+                      size={'md'}
+                    />
+                    <Box ml={2}>{item.tag}</Box>
+                  </Flex>
+                );
+              })}
             </Box>
             <Flex borderTop={'1px solid #E8EBF0'} color={'myGray.600'}>
               <Button

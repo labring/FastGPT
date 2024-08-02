@@ -201,55 +201,64 @@ const TagsPopOver = ({
                   placeholder={t('dataset:tag.searchOrAddTag')}
                   onChange={(e) => setSearchTag(e.target.value)}
                 />
-                <Box my={1}>
-                  {searchTag && !datasetTags.map((item) => item.tag).includes(searchTag) && (
+              </Box>
+              <Box my={1} px={1.5} maxH={'200px'} overflow={'auto'}>
+                {searchTag && !datasetTags.map((item) => item.tag).includes(searchTag) && (
+                  <Flex
+                    alignItems={'center'}
+                    fontSize={'xs'}
+                    px={1}
+                    cursor={'pointer'}
+                    _hover={{ bg: '#1118240D', color: '#2B5FD9' }}
+                    borderRadius={'xs'}
+                    onClick={() => {
+                      onCreateCollectionTag(searchTag);
+                    }}
+                  >
+                    <MyIcon name={'common/addLight'} w={'14px'} />
+                    <Box ml={1} py={1}>
+                      {t('dataset:tag.add') + ` "${searchTag}"`}
+                    </Box>
+                  </Flex>
+                )}
+                {datasetTags?.map((item) => {
+                  const tagsList = checkedTags.map((tag) => tag.tag);
+                  return (
                     <Flex
                       alignItems={'center'}
                       fontSize={'xs'}
                       px={1}
+                      py={0.5}
+                      my={0.5}
+                      key={item._id}
                       cursor={'pointer'}
+                      bg={tagsList.includes(item.tag) ? '#1118240D' : 'transparent'}
+                      color={tagsList.includes(item.tag) ? '#2B5FD9' : 'myGray.600'}
                       _hover={{ bg: '#1118240D', color: '#2B5FD9' }}
                       borderRadius={'xs'}
-                      onClick={() => {
-                        onCreateCollectionTag(searchTag);
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (tagsList.includes(item.tag)) {
+                          setCheckedTags(checkedTags.filter((t) => t.tag !== item.tag));
+                        } else {
+                          setCheckedTags([...checkedTags, item]);
+                        }
                       }}
                     >
-                      <MyIcon name={'common/addLight'} w={'14px'} />
-                      <Box ml={1} py={1}>
-                        {t('dataset:tag.add') + ` "${searchTag}"`}
-                      </Box>
+                      <Checkbox
+                        isChecked={tagsList.includes(item.tag)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setCheckedTags([...checkedTags, item]);
+                          } else {
+                            setCheckedTags(checkedTags.filter((t) => t._id !== item._id));
+                          }
+                        }}
+                      />
+                      <Box ml={1}>{item.tag}</Box>
                     </Flex>
-                  )}
-                  {datasetTags?.map((item) => {
-                    const tagsList = checkedTags.map((tag) => tag.tag);
-                    return (
-                      <Flex
-                        alignItems={'center'}
-                        fontSize={'xs'}
-                        px={1}
-                        py={1}
-                        key={item._id}
-                        cursor={'pointer'}
-                        bg={tagsList.includes(item.tag) ? '#1118240D' : 'transparent'}
-                        color={tagsList.includes(item.tag) ? '#2B5FD9' : 'myGray.600'}
-                        _hover={{ bg: '#1118240D', color: '#2B5FD9' }}
-                        borderRadius={'xs'}
-                      >
-                        <Checkbox
-                          isChecked={tagsList.includes(item.tag)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setCheckedTags([...checkedTags, item]);
-                            } else {
-                              setCheckedTags(checkedTags.filter((t) => t._id !== item._id));
-                            }
-                          }}
-                        />
-                        <Box ml={1}>{item.tag}</Box>
-                      </Flex>
-                    );
-                  })}
-                </Box>
+                  );
+                })}
               </Box>
             </MyBox>
           ) : (

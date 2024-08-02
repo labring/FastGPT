@@ -10,6 +10,7 @@ import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import {
   delDatasetCollectionTag,
   getDatasetCollectionTags,
+  getScrollCollectionList,
   getTagUsage,
   postAddTagsToCollections,
   postCreateDatasetCollectionTag,
@@ -23,11 +24,14 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useQuery } from '@tanstack/react-query';
 import EmptyCollectionTip from './EmptyCollectionTip';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
-
+  const loadDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadDatasetTags);
+  const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
   const { collections, getData } = useContextSelector(CollectionPageContext, (v) => v);
 
   const tagInputRef = useRef<HTMLInputElement>(null);
@@ -41,8 +45,6 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
 
   const [currentEditTagContent, setCurrentEditTagContent] = useState<string | undefined>(undefined);
   const [currentEditTag, setCurrentEditTag] = useState<DatasetTagType | undefined>(undefined);
-
-  const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
 
   useEffect(() => {
     if (newTag !== undefined && tagInputRef.current) {
@@ -67,6 +69,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
 
     onSuccess() {
       fetchData(1);
+      loadDatasetTags({ id: datasetDetail._id, searchKey: '' });
+      loadAllDatasetTags({ id: datasetDetail._id });
     },
     successToast: t('common:common.Create Success'),
     errorToast: t('common:common.Create Failed')
@@ -83,6 +87,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
 
     onSuccess() {
       fetchData(1);
+      loadDatasetTags({ id: datasetDetail._id, searchKey: '' });
+      loadAllDatasetTags({ id: datasetDetail._id });
     },
     successToast: t('common:common.Delete Success'),
     errorToast: t('common:common.Delete Failed')
@@ -103,11 +109,20 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   });
 
   const { mutate: onSaveCollectionTag, isLoading: isSaveCollectionTagLoading } = useRequest({
-    mutationFn: async (tag: string) => {
+    mutationFn: async ({
+      tag,
+      originCollectionIds,
+      collectionIds
+    }: {
+      tag: string;
+      originCollectionIds: string[];
+      collectionIds: string[];
+    }) => {
       try {
         await postAddTagsToCollections({
           tag,
-          collectionIds: selectedCollections,
+          originCollectionIds,
+          collectionIds,
           datasetId: datasetDetail._id
         });
       } catch (error) {}
@@ -115,7 +130,9 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
 
     onSuccess() {
       getData(1);
-    }
+    },
+    successToast: t('common:common.Save Success'),
+    errorToast: t('common:common.Save Failed')
   });
 
   const {
@@ -231,46 +248,50 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                     _hover={{ bg: 'myGray.100' }}
                     alignItems={'center'}
                     borderRadius={'4px'}
-                    onClick={() => {
-                      setCurrentAddTag({ ...item, collections });
-                    }}
-                    cursor={'pointer'}
                   >
-                    {currentEditTag?._id !== item._id ? (
-                      <Box
-                        px={3}
-                        py={1.5}
-                        bg={'#DBF3FF'}
-                        color={'#0884DD'}
-                        fontSize={'xs'}
-                        borderRadius={'6px'}
-                      >
-                        {item.tag}
-                      </Box>
-                    ) : (
-                      <Input
-                        placeholder={t('dataset:tag.Edit_tag')}
-                        value={currentEditTagContent || item.tag}
-                        onChange={(e) => setCurrentEditTagContent(e.target.value)}
-                        ref={editInputRef}
-                        w={'200px'}
-                        onBlur={() => {
-                          if (
-                            currentEditTagContent &&
-                            !list.map((item) => item.data.tag).includes(currentEditTagContent)
-                          ) {
-                            onUpdateCollectionTag({
-                              tag: currentEditTagContent,
-                              _id: item._id
-                            });
-                          }
-                          setCurrentEditTag(undefined);
-                          setCurrentEditTagContent(undefined);
-                        }}
-                      />
-                    )}
-                    <Box as={'span'} color={'myGray.500'} ml={2}>{`(${usage})`}</Box>
-                    <Box flex={'1 0 0'}></Box>
+                    <Flex
+                      flex={'1 0 0'}
+                      alignItems={'center'}
+                      onClick={() => {
+                        setCurrentAddTag({ ...item, collections });
+                      }}
+                      cursor={'pointer'}
+                    >
+                      {currentEditTag?._id !== item._id ? (
+                        <Box
+                          px={3}
+                          py={1.5}
+                          bg={'#DBF3FF'}
+                          color={'#0884DD'}
+                          fontSize={'xs'}
+                          borderRadius={'6px'}
+                        >
+                          {item.tag}
+                        </Box>
+                      ) : (
+                        <Input
+                          placeholder={t('dataset:tag.Edit_tag')}
+                          value={currentEditTagContent || item.tag}
+                          onChange={(e) => setCurrentEditTagContent(e.target.value)}
+                          ref={editInputRef}
+                          w={'200px'}
+                          onBlur={() => {
+                            if (
+                              currentEditTagContent &&
+                              !list.map((item) => item.data.tag).includes(currentEditTagContent)
+                            ) {
+                              onUpdateCollectionTag({
+                                tag: currentEditTagContent,
+                                _id: item._id
+                              });
+                            }
+                            setCurrentEditTag(undefined);
+                            setCurrentEditTagContent(undefined);
+                          }}
+                        />
+                      )}
+                      <Box as={'span'} color={'myGray.500'} ml={2}>{`(${usage})`}</Box>
+                    </Flex>
                     <Box
                       className="icon-box"
                       display="none"
@@ -278,6 +299,9 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                       mr={2}
                       p={1}
                       borderRadius={'6px'}
+                      onClick={() => {
+                        setCurrentAddTag({ ...item, collections });
+                      }}
                       cursor={'pointer'}
                     >
                       <MyIcon name="common/addLight" w={4} />
@@ -291,27 +315,30 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                       borderRadius={'6px'}
                       cursor={'pointer'}
                       onClick={(e) => {
-                        e.stopPropagation();
                         setCurrentEditTag(item);
                         editInputRef.current?.focus();
                       }}
                     >
                       <MyIcon name="edit" w={4} />
                     </Box>
-                    <Box
-                      className="icon-box"
-                      display="none"
-                      _hover={{ bg: '#1118240D' }}
-                      p={1}
-                      borderRadius={'6px'}
-                      cursor={'pointer'}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteCollectionTag(item._id);
-                      }}
-                    >
-                      <MyIcon name="delete" w={4} />
-                    </Box>
+                    <PopoverConfirm
+                      showCancel
+                      content={t('dataset:tag.delete_tag_confirm')}
+                      type="delete"
+                      Trigger={
+                        <Box
+                          className="icon-box"
+                          display="none"
+                          _hover={{ bg: '#1118240D' }}
+                          p={1}
+                          borderRadius={'6px'}
+                          cursor={'pointer'}
+                        >
+                          <MyIcon name="delete" w={4} />
+                        </Box>
+                      }
+                      onConfirm={() => onDeleteCollectionTag(item._id)}
+                    />
                   </Flex>
                 </Flex>
               );
@@ -323,8 +350,6 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
           currentAddTag={currentAddTag}
           setCurrentAddTag={setCurrentAddTag}
           onSaveCollectionTag={onSaveCollectionTag}
-          selectedCollections={selectedCollections}
-          setSelectedCollections={setSelectedCollections}
         />
       )}
     </MyModal>
@@ -336,24 +361,53 @@ export default TagManageModal;
 const AddTagToCollections = ({
   currentAddTag,
   setCurrentAddTag,
-  onSaveCollectionTag,
-  selectedCollections,
-  setSelectedCollections
+  onSaveCollectionTag
 }: {
   currentAddTag: DatasetTagType & { collections: string[] };
   setCurrentAddTag: (tag: (DatasetTagType & { collections: string[] }) | undefined) => void;
-  onSaveCollectionTag: (tag: string) => void;
-  selectedCollections: string[];
-  setSelectedCollections: React.Dispatch<React.SetStateAction<string[]>>;
+  onSaveCollectionTag: ({
+    tag,
+    originCollectionIds,
+    collectionIds
+  }: {
+    tag: string;
+    originCollectionIds: string[];
+    collectionIds: string[];
+  }) => void;
 }) => {
   const { t } = useTranslation();
 
-  const { collections, getData, searchText, setSearchText, Pagination, total, pageSize } =
-    useContextSelector(CollectionPageContext, (v) => v);
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
+
+  useEffect(() => {
+    setSelectedCollections(currentAddTag.collections);
+  }, []);
+
+  const [searchText, setSearchText] = useState('');
+
+  const {
+    list: collectionsList,
+    ScrollList: ScrollListCollections,
+    isLoading: isCollectionLoading
+  } = useScrollPagination(getScrollCollectionList, {
+    refreshDeps: [searchText],
+    debounceWait: 300,
+
+    itemHeight: 29,
+    overscan: 10,
+
+    pageSize: 30,
+    defaultParams: {
+      datasetId: datasetDetail._id,
+      searchText
+    }
+  });
 
   const formatCollections = useMemo(
     () =>
-      collections.map((collection) => {
+      collectionsList.map((item) => {
+        const collection = item.data;
         const icon = getCollectionIcon(collection.type, collection.name);
         return {
           id: collection._id,
@@ -362,24 +416,11 @@ const AddTagToCollections = ({
           icon
         };
       }),
-    [collections]
-  );
-
-  useEffect(() => {
-    setSelectedCollections(currentAddTag.collections);
-  }, []);
-
-  const lastSearch = useRef('');
-  const debounceRefetch = useCallback(
-    debounce(() => {
-      getData(1);
-      lastSearch.current = searchText;
-    }, 300),
-    []
+    [collectionsList]
   );
 
   return (
-    <>
+    <MyBox flex={'1 0 0'} isLoading={isCollectionLoading}>
       <Flex alignItems={'center'} pb={2} mx={8} pt={6} borderBottom={'1px solid #E8EBF0'}>
         <MyIcon
           name="common/backFill"
@@ -388,7 +429,6 @@ const AddTagToCollections = ({
           onClick={() => {
             setCurrentAddTag(undefined);
             setSearchText('');
-            getData(1);
           }}
         />
         {
@@ -419,19 +459,28 @@ const AddTagToCollections = ({
           mr={2}
           onChange={(e) => {
             setSearchText(e.target.value);
-            debounceRefetch();
           }}
         />
         <Button
           leftIcon={<MyIcon name="save" w={4} />}
           onClick={() => {
-            onSaveCollectionTag(currentAddTag._id);
+            onSaveCollectionTag({
+              tag: currentAddTag._id,
+              originCollectionIds: currentAddTag.collections,
+              collectionIds: selectedCollections
+            });
           }}
         >
           {t('common:common.Save')}
         </Button>
       </Flex>
-      <Box px={8} mt={2} overflow={'auto'}>
+      <ScrollListCollections
+        px={8}
+        mt={2}
+        flex={'1 0 0'}
+        fontSize={'sm'}
+        EmptyChildren={<EmptyTip text={t('dataset:dataset.no_collections')} />}
+      >
         {formatCollections.map((collection) => {
           return (
             <Flex
@@ -442,6 +491,15 @@ const AddTagToCollections = ({
               alignItems={'center'}
               borderRadius={'4px'}
               key={collection.id}
+              onClick={() => {
+                setSelectedCollections((prev) => {
+                  if (prev.includes(collection.id)) {
+                    return prev.filter((id) => id !== collection.id);
+                  } else {
+                    return [...prev, collection.id];
+                  }
+                });
+              }}
             >
               <Checkbox
                 size={'md'}
@@ -449,10 +507,8 @@ const AddTagToCollections = ({
                 onChange={() => {
                   setSelectedCollections((prev) => {
                     if (prev.includes(collection.id)) {
-                      setSelectedCollections((prev) => prev.filter((id) => id !== collection.id));
                       return prev.filter((id) => id !== collection.id);
                     } else {
-                      setSelectedCollections((prev) => [...prev, collection.id]);
                       return [...prev, collection.id];
                     }
                   });
@@ -466,13 +522,7 @@ const AddTagToCollections = ({
             </Flex>
           );
         })}
-      </Box>
-      {total > pageSize && (
-        <Flex justifyContent={'center'} pb={2}>
-          <Pagination />
-        </Flex>
-      )}
-      {total === 0 && <EmptyCollectionTip />}
-    </>
+      </ScrollListCollections>
+    </MyBox>
   );
 };
