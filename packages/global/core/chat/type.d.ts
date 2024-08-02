@@ -111,7 +111,6 @@ export type ResponseTagItemType = {
   totalQuoteList?: SearchDataResponseItemType[];
   llmModuleAccount?: number;
   historyPreviewLength?: number;
-  isResDataEmpty?: boolean;
 };
 
 export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {

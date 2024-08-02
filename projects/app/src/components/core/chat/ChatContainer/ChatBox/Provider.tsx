@@ -25,11 +25,15 @@ export type ChatProviderProps = OutLinkChatAuthProps & {
 
   chatHistories: ChatSiteItemType[];
   setChatHistories: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
-  getHistoryResponseData: (
-    appId: string,
-    dataId: string,
-    chatId?: string
-  ) => Promise<ChatHistoryItemResType[]>;
+  getHistoryResponseData: ({
+    appId,
+    chatId,
+    dataId
+  }: {
+    appId: string;
+    chatId?: string;
+    dataId: string;
+  }) => Promise<ChatHistoryItemResType[]>;
   variablesForm: UseFormReturn<FieldValues, any>;
 
   // not chat test params

@@ -10,6 +10,8 @@ export type getResDataQuery = {
   chatId: string;
   dataId: string;
   appId: string;
+  shareId?: string;
+  outLinkUid?: string;
 };
 
 export type getResDataBody = {};

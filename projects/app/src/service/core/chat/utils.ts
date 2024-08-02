@@ -7,7 +7,7 @@ const isLLMNode = (item: ChatHistoryItemResType) =>
   item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.tools;
 
 function transformPreviewHistories(histories: ChatItemType[]) {
-  histories.forEach((item) => {
+  return histories.map((item) => {
     if (item.obj === ChatRoleEnum.AI) {
       const flatResData: ChatHistoryItemResType[] =
         item.responseData
@@ -28,10 +28,10 @@ function transformPreviewHistories(histories: ChatItemType[]) {
       item.totalRunningTime = Number(
         flatResData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
       );
-      item.isResDataEmpty = !flatResData.length;
       item.historyPreviewLength = flatResData.find(isLLMNode)?.historyPreview?.length;
-      item.responseData = [];
+      item.responseData = undefined;
     }
+    return item;
   });
 }
 export default transformPreviewHistories;

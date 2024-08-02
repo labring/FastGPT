@@ -930,7 +930,7 @@ const ChatBox = (
                         quoteList={item.totalQuoteList}
                         llmModuleAccount={item.llmModuleAccount}
                         showTags={
-                          item.isResDataEmpty === false || (item.responseData?.length || 0) > 0
+                          (!item.responseData || item.responseData.length > 0) && !isChatting
                         }
                         runningTime={item.totalRunningTime}
                         showDetail={!shareId && !teamId}

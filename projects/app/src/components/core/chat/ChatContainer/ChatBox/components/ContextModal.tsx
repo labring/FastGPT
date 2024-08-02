@@ -24,25 +24,29 @@ const ContextModal = ({
     useState<DispatchNodeResponseType['historyPreview']>();
   const { appId, chatId, getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
 
-  const { loading: isLoading } = useRequest2(() => getHistoryResponseData(appId, dataId, chatId), {
-    manual: false,
-    onSuccess: (res) => {
-      const flatResData: ChatHistoryItemResType[] =
-        res
-          ?.map((item) => {
-            if (item.pluginDetail || item.toolDetail) {
-              return [item, ...(item.pluginDetail || []), ...(item.toolDetail || [])];
-            }
-            return item;
-          })
-          .flat() || [];
-      setContextModalData(flatResData.find(isLLMNode)?.historyPreview || []);
+  const { loading: isLoading } = useRequest2(
+    () => getHistoryResponseData({ appId, dataId, chatId }),
+    {
+      manual: false,
+      onSuccess: (res) => {
+        const flatResData: ChatHistoryItemResType[] =
+          res
+            ?.map((item) => {
+              if (item.pluginDetail || item.toolDetail) {
+                return [item, ...(item.pluginDetail || []), ...(item.toolDetail || [])];
+              }
+              return item;
+            })
+            .flat() || [];
+        setContextModalData(flatResData.find(isLLMNode)?.historyPreview || []);
+      }
     }
-  });
+  );
   return (
     <MyModal
       isOpen={true}
       onClose={onClose}
+      isLoading={isLoading}
       iconSrc="/imgs/modal/chatHistory.svg"
       title={`上下文预览(${historyPreviewLength || 0}条)`}
       h={['90vh', '80vh']}
@@ -55,21 +59,19 @@ const ContextModal = ({
         wordBreak={'break-all'}
         fontSize={'sm'}
       >
-        <MyBox width={'100%'} height={'100%'} isLoading={isLoading}>
-          {contextModalData?.map((item, i) => (
-            <Box
-              key={i}
-              p={2}
-              borderRadius={'md'}
-              border={'base'}
-              _notLast={{ mb: 2 }}
-              position={'relative'}
-            >
-              <Box fontWeight={'bold'}>{item.obj}</Box>
-              <Box>{item.value}</Box>
-            </Box>
-          ))}
-        </MyBox>
+        {contextModalData?.map((item, i) => (
+          <Box
+            key={i}
+            p={2}
+            borderRadius={'md'}
+            border={'base'}
+            _notLast={{ mb: 2 }}
+            position={'relative'}
+          >
+            <Box fontWeight={'bold'}>{item.obj}</Box>
+            <Box>{item.value}</Box>
+          </Box>
+        ))}
       </ModalBody>
     </MyModal>
   );

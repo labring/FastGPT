@@ -100,12 +100,15 @@ const WholeResponseModal = ({
   const { t } = useTranslation();
   const [response, setResponse] = useState<ChatHistoryItemResType[]>([]);
   const { appId, chatId, getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
-  const { loading: isLoading } = useRequest2(() => getHistoryResponseData(appId, dataId, chatId), {
-    manual: false,
-    onSuccess: (res) => {
-      setResponse(res);
+  const { loading: isLoading } = useRequest2(
+    () => getHistoryResponseData({ appId, dataId, chatId }),
+    {
+      manual: false,
+      onSuccess: (res) => {
+        setResponse(res);
+      }
     }
-  });
+  );
 
   return (
     <MyModal
@@ -113,6 +116,7 @@ const WholeResponseModal = ({
       isOpen={true}
       onClose={onClose}
       h={['90vh', '80vh']}
+      isLoading={isLoading}
       maxH={['90vh', '700px']}
       minW={['90vw', '880px']}
       iconSrc="/imgs/modal/wholeRecord.svg"
@@ -123,9 +127,7 @@ const WholeResponseModal = ({
         </Flex>
       }
     >
-      <MyBox width={'100%'} height={'100%'} isLoading={isLoading}>
-        {response.length && <ResponseBox response={response} showDetail={showDetail} />}
-      </MyBox>
+      {response.length && <ResponseBox response={response} showDetail={showDetail} />}
     </MyModal>
   );
 };

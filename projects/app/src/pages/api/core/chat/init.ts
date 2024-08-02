@@ -13,6 +13,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import transformPreviewHistories from '@/service/core/chat/utils';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -56,14 +57,14 @@ async function handler(
   ]);
   const pluginInputs =
     app?.modules?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ?? [];
-  transformPreviewHistories(histories);
+  const transformedHistories = transformPreviewHistories(histories);
   return {
     chatId,
     appId,
     title: chat?.title || '新对话',
     userAvatar: undefined,
     variables: chat?.variables || {},
-    history: histories,
+    history: app.type === AppTypeEnum.plugin ? histories : transformedHistories,
     app: {
       chatConfig: getAppChatConfig({
         chatConfig: app.chatConfig,
