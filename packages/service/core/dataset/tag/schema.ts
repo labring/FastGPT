@@ -24,8 +24,7 @@ const DatasetCollectionTagsSchema = new Schema({
 });
 
 try {
-  DatasetCollectionTagsSchema.index({ teamId: 1, datasetId: 1 });
-  DatasetCollectionTagsSchema.index({ tag: 1 });
+  DatasetCollectionTagsSchema.index({ teamId: 1, datasetId: 1, tag: 1 });
 } catch (error) {
   console.log(error);
 }
