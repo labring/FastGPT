@@ -241,7 +241,7 @@ const DataCard = () => {
                   </Box>
                 </Box>
               </Flex>
-              {feConfigs.isPlus && collection && <TagsPopOver currentCollection={collection} />}
+              {feConfigs?.isPlus && collection && <TagsPopOver currentCollection={collection} />}
             </Box>
           </Flex>
           {canWrite && (

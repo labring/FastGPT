@@ -8,7 +8,6 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { CollectionPageContext } from './Context';
 import { useDeepCompareEffect } from 'ahooks';
 import { DatasetCollectionItemType, DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { isEqual } from 'lodash';
@@ -26,25 +25,24 @@ const TagsPopOver = ({
   const allDatasetTags = useContextSelector(DatasetPageContext, (v) => v.allDatasetTags);
   const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
 
+  const [collectionTags, setCollectionTags] = useState<string[]>(currentCollection.tags || []);
+  const [searchTag, setSearchTag] = useState('');
+  const [checkedTags, setCheckedTags] = useState<DatasetTagType[]>([]);
+
+  const [showTagManage, setShowTagManage] = useState(false);
+  const [isFocusInput, setIsFocusInput] = useState(false);
+  const [isUpdateLoading, setIsUpdateLoading] = useState(false);
+
   const tagList = useMemo(
     () =>
-      currentCollection.tags
+      collectionTags
         ?.map((tagId) => {
           const tagObject = allDatasetTags.find((tag) => tag._id === tagId);
           return tagObject ? { _id: tagObject._id, tag: tagObject.tag } : null;
         })
         .filter((tag) => tag !== null) || [],
-    [currentCollection.tags, allDatasetTags]
+    [collectionTags, allDatasetTags]
   );
-
-  const { getData } = useContextSelector(CollectionPageContext, (v) => v);
-
-  const [searchTag, setSearchTag] = useState('');
-  const [checkedTags, setCheckedTags] = useState<DatasetTagType[]>(tagList);
-
-  const [showTagManage, setShowTagManage] = useState(false);
-  const [isFocusInput, setIsFocusInput] = useState(false);
-  const [isUpdateLoading, setIsUpdateLoading] = useState(false);
 
   useEffect(() => {
     if (!isFocusInput) return;
@@ -54,21 +52,21 @@ const TagsPopOver = ({
   const [visibleTags, setVisibleTags] = useState<DatasetTagType[]>(tagList);
   const [overflowTags, setOverflowTags] = useState<DatasetTagType[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
-  const tagRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const overflowRef = useRef<HTMLDivElement>(null);
 
   useDeepCompareEffect(() => {
     const calculateTags = () => {
       if (!containerRef.current || !tagList) return;
 
       const containerWidth = containerRef.current.offsetWidth;
-      let totalWidth = overflowRef.current?.offsetWidth || 30;
+      const tagWidth = 11;
+      let totalWidth = 30;
       let visibleCount = 0;
 
       for (let i = 0; i < tagList.length; i++) {
-        const tagWidth = tagRefs.current[i]?.offsetWidth || 0;
-        if (totalWidth + tagWidth <= containerWidth) {
-          totalWidth += tagWidth;
+        const tag = tagList[i];
+        const estimatedWidth = tag.tag.length * tagWidth + 16; // 加上左右 padding 的宽度
+        if (totalWidth + estimatedWidth <= containerWidth) {
+          totalWidth += estimatedWidth;
           visibleCount++;
         } else {
           break;
@@ -80,13 +78,14 @@ const TagsPopOver = ({
     };
 
     setTimeout(calculateTags, 100);
+    setCheckedTags(tagList);
 
     window.addEventListener('resize', calculateTags);
 
     return () => {
       window.removeEventListener('resize', calculateTags);
     };
-  }, [currentCollection, containerRef]);
+  }, [tagList]);
 
   const { mutate: onCreateCollectionTag, isLoading: isCreateCollectionTagLoading } = useRequest({
     mutationFn: async (tag: string) => {
@@ -146,7 +145,6 @@ const TagsPopOver = ({
             {visibleTags.map((item, index) => (
               <Box
                 key={index}
-                ref={(el) => (tagRefs.current[index] = el) as any}
                 h={5}
                 mr={1}
                 px={2}
@@ -160,14 +158,7 @@ const TagsPopOver = ({
             ))}
           </Flex>
           {overflowTags.length > 0 && (
-            <Box
-              h={5}
-              px={2}
-              bg={'#1118240D'}
-              borderRadius={'33px'}
-              fontSize={'11px'}
-              ref={overflowRef}
-            >
+            <Box h={5} px={2} bg={'#1118240D'} borderRadius={'33px'} fontSize={'11px'}>
               {`+${overflowTags.length}`}
             </Box>
           )}
@@ -181,12 +172,12 @@ const TagsPopOver = ({
           id: currentCollection._id,
           tags: checkedTags.map((tag) => tag._id)
         });
-        getData(1);
+        setCollectionTags(checkedTags.map((tag) => tag._id));
         setIsUpdateLoading(false);
       }}
       display={showTagManage || overflowTags.length > 0 ? 'block' : 'none'}
     >
-      {({ onClose }) => (
+      {({}) => (
         <>
           {showTagManage ? (
             <MyBox isLoading={isCreateCollectionTagLoading} onClick={(e) => e.stopPropagation()}>
@@ -266,7 +257,6 @@ const TagsPopOver = ({
               {overflowTags.map((tag, index) => (
                 <Box
                   key={index}
-                  ref={(el) => (tagRefs.current[index] = el) as any}
                   h={5}
                   px={2}
                   fontSize={'11px'}

@@ -39,7 +39,6 @@ async function handler(
   }
   searchText = searchText?.replace(/'/g, '');
   pageSize = Math.min(pageSize, 30);
-  console.log(datasetId, searchText);
 
   // auth dataset and get my role
   const { teamId, permission } = await authDataset({

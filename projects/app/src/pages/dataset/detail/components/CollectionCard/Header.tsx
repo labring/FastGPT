@@ -183,7 +183,7 @@ const Header = ({}: {}) => {
               }
             }}
           />
-          {feConfigs.isPlus && <HeaderTagPopOver />}
+          {feConfigs?.isPlus && <HeaderTagPopOver />}
         </Flex>
       )}
 

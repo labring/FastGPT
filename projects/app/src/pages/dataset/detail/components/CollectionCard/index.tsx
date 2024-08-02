@@ -247,7 +247,7 @@ const CollectionCard = () => {
                         </Box>
                       </MyTooltip>
                     </Flex>
-                    {feConfigs.isPlus && <TagsPopOver currentCollection={collection} />}
+                    {feConfigs?.isPlus && <TagsPopOver currentCollection={collection} />}
                   </Td>
                   <Td py={2}>
                     {!checkCollectionIsFolder(collection.type) ? (
