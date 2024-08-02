@@ -30,14 +30,13 @@ const ResponseTags = ({
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const quoteListRef = React.useRef<HTMLDivElement>(null);
-  const transformedHistoryItem = transformHistoryItem(historyItem);
   const {
     dataId = '',
     totalQuoteList: quoteList = [],
     llmModuleAccount = 0,
     totalRunningTime: runningTime = 0,
     historyPreviewLength = 0
-  } = transformedHistoryItem;
+  } = transformHistoryItem(historyItem);
   const [quoteModalData, setQuoteModalData] = useState<{
     rawSearch: SearchDataResponseItemType[];
     metadata?: {
