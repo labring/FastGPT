@@ -875,7 +875,6 @@ const ChatBox = (
       });
     }
   }));
-
   return (
     <Flex flexDirection={'column'} h={'100%'} position={'relative'}>
       <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
@@ -928,15 +927,9 @@ const ChatBox = (
                       })}
                     >
                       <ResponseTags
-                        quoteList={item.totalQuoteList}
-                        llmModuleAccount={item.llmModuleAccount}
-                        showTags={
-                          (!item.responseData || item.responseData.length > 0) && !isChatting
-                        }
-                        runningTime={item.totalRunningTime}
+                        showTags={!isChatting}
                         showDetail={!shareId && !teamId}
-                        dataId={item.dataId}
-                        historyPreviewLength={item.historyPreviewLength}
+                        historyItem={item}
                       />
 
                       {/* custom feedback */}

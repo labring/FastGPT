@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import { DispatchNodeResponseType } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { Flex, useDisclosure, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -11,6 +10,8 @@ import ChatBoxDivider from '@/components/core/chat/Divider';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'));
 const ContextModal = dynamic(() => import('./ContextModal'));
@@ -19,23 +20,22 @@ const WholeResponseModal = dynamic(() => import('../../../components/WholeRespon
 const ResponseTags = ({
   showTags,
   showDetail,
-  dataId,
-  quoteList = [],
-  llmModuleAccount = 0,
-  runningTime = 0,
-  historyPreviewLength = 0
+  historyItem
 }: {
   showTags: boolean;
   showDetail: boolean;
-  dataId: string;
-  quoteList?: SearchDataResponseItemType[];
-  llmModuleAccount?: number;
-  runningTime?: number;
-  historyPreviewLength?: number;
+  historyItem: ChatSiteItemType;
 }) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const quoteListRef = React.useRef<HTMLDivElement>(null);
+  const dataId = historyItem.dataId;
+  const {
+    totalQuoteList: quoteList = [],
+    llmModuleAccount = 0,
+    totalRunningTime: runningTime = 0,
+    historyPreviewLength = 0
+  } = useMemo(() => addStatisticalDataToHistoryItem(historyItem), [historyItem]);
   const [quoteModalData, setQuoteModalData] = useState<{
     rawSearch: SearchDataResponseItemType[];
     metadata?: {
