@@ -11,6 +11,8 @@ import ChatBoxDivider from '@/components/core/chat/Divider';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { transformHistoryItem } from '@/global/core/chat/utils';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'));
 const ContextModal = dynamic(() => import('./ContextModal'));
@@ -19,23 +21,23 @@ const WholeResponseModal = dynamic(() => import('../../../components/WholeRespon
 const ResponseTags = ({
   showTags,
   showDetail,
-  dataId,
-  quoteList = [],
-  llmModuleAccount = 0,
-  runningTime = 0,
-  historyPreviewLength = 0
+  historyItem
 }: {
   showTags: boolean;
   showDetail: boolean;
-  dataId: string;
-  quoteList?: SearchDataResponseItemType[];
-  llmModuleAccount?: number;
-  runningTime?: number;
-  historyPreviewLength?: number;
+  historyItem: ChatSiteItemType;
 }) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const quoteListRef = React.useRef<HTMLDivElement>(null);
+  const transformedHistoryItem = transformHistoryItem(historyItem);
+  const {
+    dataId = '',
+    totalQuoteList: quoteList = [],
+    llmModuleAccount = 0,
+    totalRunningTime: runningTime = 0,
+    historyPreviewLength = 0
+  } = transformedHistoryItem;
   const [quoteModalData, setQuoteModalData] = useState<{
     rawSearch: SearchDataResponseItemType[];
     metadata?: {
