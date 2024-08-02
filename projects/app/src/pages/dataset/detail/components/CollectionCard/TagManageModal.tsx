@@ -227,8 +227,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
             {list.map((listItem) => {
               const item = listItem.data;
               const tagUsage = tagUsages?.find((tagUsage) => tagUsage.tagId === item._id);
-              const usage = tagUsage?.usage || 0;
               const collections = tagUsage?.collections || [];
+              const usage = collections.length;
 
               return (
                 <Flex
