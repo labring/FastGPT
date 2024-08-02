@@ -11,6 +11,7 @@ import React, {
 import Script from 'next/script';
 import type {
   AIChatItemValueItemType,
+  ChatHistoryItemResType,
   ChatSiteItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type.d';
@@ -543,6 +544,7 @@ const ChatBox = (
     },
     [
       abortRequest,
+      allVariableList,
       chatHistories,
       createQuestionGuide,
       finishSegmentedAudio,
@@ -559,7 +561,6 @@ const ChatBox = (
       startSegmentedAudio,
       t,
       toast,
-      variableList,
       variablesForm
     ]
   );
@@ -927,8 +928,15 @@ const ChatBox = (
                       })}
                     >
                       <ResponseTags
-                        flowResponses={item.responseData}
+                        quoteList={item.totalQuoteList}
+                        llmModuleAccount={item.llmModuleAccount}
+                        showTags={
+                          (!item.responseData || item.responseData.length > 0) && !isChatting
+                        }
+                        runningTime={item.totalRunningTime}
                         showDetail={!shareId && !teamId}
+                        dataId={item.dataId}
+                        historyPreviewLength={item.historyPreviewLength}
                       />
 
                       {/* custom feedback */}

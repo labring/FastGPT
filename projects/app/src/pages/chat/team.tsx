@@ -4,7 +4,6 @@ import { delChatRecordById, getChatHistories, getTeamChatInfo } from '@/web/core
 import { useRouter } from 'next/router';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SideBar from '@/components/SideBar';
 import PageContainer from '@/components/PageContainer';
 import { getMyTokensApps } from '@/web/core/chat/api';
