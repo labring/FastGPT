@@ -359,7 +359,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
             </Button>
             <Button
               variant={'whiteBase'}
-              display={selectedRows.length === 0 ? 'none' : 'flex'}
+              display={selectedRows.length !== 0 ? 'none' : 'flex'}
               size={'sm'}
               leftIcon={<MyIcon name={'delete'} boxSize={4} />}
               onClick={() =>
