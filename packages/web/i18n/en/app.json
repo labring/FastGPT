@@ -126,6 +126,7 @@
     "template": {
       "communication": "Communication"
     },
-    "user_file_input": "Files url"
+    "user_file_input": "Files url",
+    "user_file_input_desc": "Links to documents and images uploaded by users"
   }
 }

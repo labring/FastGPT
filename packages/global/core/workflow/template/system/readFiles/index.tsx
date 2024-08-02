@@ -31,6 +31,7 @@ export const ReadFilesNodes: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.arrayString,
       label: i18nT('app:workflow.file_url'),
+      required: true,
       value: []
     }
   ],

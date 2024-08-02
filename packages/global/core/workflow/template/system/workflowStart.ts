@@ -14,6 +14,7 @@ export const userFilesInput: FlowNodeOutputItemType = {
   id: NodeOutputKeyEnum.userFiles,
   key: NodeOutputKeyEnum.userFiles,
   label: i18nT('app:workflow.user_file_input'),
+  description: i18nT('app:workflow.user_file_input_desc'),
   type: FlowNodeOutputTypeEnum.static,
   valueType: WorkflowIOValueTypeEnum.arrayString
 };

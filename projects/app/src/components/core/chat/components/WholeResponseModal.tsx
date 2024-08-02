@@ -447,7 +447,7 @@ export const WholeResponseContent = ({
 
           {/* read files */}
           <>
-            {activeModule?.readFiles && (
+            {activeModule?.readFiles && activeModule?.readFiles.length > 0 && (
               <Row
                 label={t('workflow:response.read files')}
                 rawDom={

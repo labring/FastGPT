@@ -43,9 +43,12 @@ export const getHistoryPreview = (
         return (
           item.value
             ?.map((item) => {
-              return item?.text?.content || item?.file?.url || '';
+              if (item?.text?.content) return item?.text?.content;
+              if (item.file?.type === 'image') return 'Input an image';
+              return '';
             })
-            .join('') || ''
+            .filter(Boolean)
+            .join('\n') || ''
         );
       } else if (item.obj === ChatRoleEnum.AI) {
         return (

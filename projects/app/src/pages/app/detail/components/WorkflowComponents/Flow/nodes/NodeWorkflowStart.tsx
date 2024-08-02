@@ -45,9 +45,9 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     const canUploadFiles =
       appDetail.chatConfig?.fileSelectConfig?.canSelectFile ||
       appDetail.chatConfig?.fileSelectConfig?.canSelectImg;
+    const repeatKey = outputs.find((item) => item.key === userFilesInput.key);
 
     if (canUploadFiles) {
-      const repeatKey = outputs.find((item) => item.key === userFilesInput.key);
       !repeatKey &&
         onChangeNode({
           nodeId,
@@ -55,11 +55,12 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           value: userFilesInput
         });
     } else {
-      onChangeNode({
-        nodeId,
-        type: 'delOutput',
-        key: userFilesInput.key
-      });
+      repeatKey &&
+        onChangeNode({
+          nodeId,
+          type: 'delOutput',
+          key: userFilesInput.key
+        });
     }
   }, [appDetail.chatConfig?.fileSelectConfig, nodeId, onChangeNode, outputs]);
 

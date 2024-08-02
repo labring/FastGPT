@@ -8,7 +8,7 @@ import { ModelTypeEnum, getLLMModel } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getHistories } from '../../utils';
 import { runToolWithToolChoice } from './toolChoice';
 import { DispatchToolModuleProps, ToolNodeItemType } from './type.d';
-import { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   GPTMessages2Chats,
@@ -22,11 +22,44 @@ import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { runToolWithFunctionCall } from './functionCall';
 import { runToolWithPromptCall } from './promptCall';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { Prompt_Tool_Call } from './constants';
+import { getMultiplePrompt, Prompt_Tool_Call } from './constants';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
 }>;
+
+/* 
+  Tool call， auth add file prompt to question。
+  Guide the LLM to call tool.
+*/
+export const toolCallMessagesAdapt = ({
+  userInput
+}: {
+  userInput: UserChatItemValueItemType[];
+}) => {
+  const files = userInput.filter((item) => item.type === 'file');
+
+  if (files.length > 0) {
+    return userInput.map((item) => {
+      if (item.type === 'text') {
+        const filesCount = files.filter((file) => file.file?.type === 'file').length;
+        const imgCount = files.filter((file) => file.file?.type === 'image').length;
+        const text = item.text?.content || '';
+
+        return {
+          ...item,
+          text: {
+            content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: text })
+          }
+        };
+      }
+
+      return item;
+    });
+  }
+
+  return userInput;
+};
 
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
@@ -65,9 +98,11 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     ...chatHistories,
     {
       obj: ChatRoleEnum.Human,
-      value: runtimePrompt2ChatsValue({
-        text: userChatInput,
-        files: chatValue2RuntimePrompt(query).files
+      value: toolCallMessagesAdapt({
+        userInput: runtimePrompt2ChatsValue({
+          text: userChatInput,
+          files: chatValue2RuntimePrompt(query).files
+        })
       })
     }
   ];
