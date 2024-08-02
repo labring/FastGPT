@@ -27,16 +27,17 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
         return item;
       })
       .flat() || [];
-
-  historyItem.llmModuleAccount = flatResData.filter(isLLMNode).length;
-  historyItem.totalQuoteList = flatResData
-    .filter((item) => item.moduleType === FlowNodeTypeEnum.datasetSearchNode)
-    .map((item) => item.quoteList)
-    .flat()
-    .filter(Boolean) as SearchDataResponseItemType[];
-  historyItem.totalRunningTime = Number(
-    flatResData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
-  );
-  historyItem.historyPreviewLength = flatResData.find(isLLMNode)?.historyPreview?.length;
-  return historyItem;
+  return {
+    ...historyItem,
+    llmModuleAccount: flatResData.filter(isLLMNode).length,
+    totalQuoteList: flatResData
+      .filter((item) => item.moduleType === FlowNodeTypeEnum.datasetSearchNode)
+      .map((item) => item.quoteList)
+      .flat()
+      .filter(Boolean) as SearchDataResponseItemType[],
+    totalRunningTime: Number(
+      flatResData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
+    ),
+    historyPreviewLength: flatResData.find(isLLMNode)?.historyPreview?.length
+  };
 }
