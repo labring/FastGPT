@@ -8,7 +8,7 @@ import {
   ChatInputGuideConfigType,
   VariableItemType
 } from '@fastgpt/global/core/app/type';
-import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { ChatHistoryItemResType, ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import {
   defaultChatInputGuideConfig,
   defaultTTSConfig,
@@ -25,6 +25,11 @@ export type ChatProviderProps = OutLinkChatAuthProps & {
 
   chatHistories: ChatSiteItemType[];
   setChatHistories: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
+  getHistoryResponseData: (
+    appId: string,
+    dataId: string,
+    chatId?: string
+  ) => Promise<ChatHistoryItemResType[]>;
   variablesForm: UseFormReturn<FieldValues, any>;
 
   // not chat test params

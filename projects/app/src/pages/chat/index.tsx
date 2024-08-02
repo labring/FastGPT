@@ -70,7 +70,8 @@ const Chat = ({
     variablesForm,
     pluginRunTab,
     setPluginRunTab,
-    resetChatRecords
+    resetChatRecords,
+    getHistoryResponseData
   } = useChat();
 
   const { userInfo } = useUserStore();
@@ -248,6 +249,7 @@ const Chat = ({
                 />
               ) : (
                 <ChatBox
+                  getHistoryResponseData={getHistoryResponseData}
                   ref={ChatBoxRef}
                   chatHistories={chatRecords}
                   setChatHistories={setChatRecords}

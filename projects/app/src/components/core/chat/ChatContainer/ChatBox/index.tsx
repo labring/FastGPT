@@ -929,7 +929,9 @@ const ChatBox = (
                       <ResponseTags
                         quoteList={item.totalQuoteList}
                         llmModuleAccount={item.llmModuleAccount}
-                        showTags={!item.isResDataEmpty}
+                        showTags={
+                          item.isResDataEmpty === false || (item.responseData?.length || 0) > 0
+                        }
                         runningTime={item.totalRunningTime}
                         showDetail={!shareId && !teamId}
                         dataId={item.dataId}

@@ -3,11 +3,11 @@ import { ModalBody, Box } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
-import { getChatResData } from '@/web/core/chat/api';
-import { useMount } from 'ahooks';
 import { DispatchNodeResponseType } from '@fastgpt/global/core/workflow/runtime/type';
 import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 const isLLMNode = (item: ChatHistoryItemResType) =>
   item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.tools;
 
@@ -22,22 +22,22 @@ const ContextModal = ({
 }) => {
   const [contextModalData, setContextModalData] =
     useState<DispatchNodeResponseType['historyPreview']>();
-  const [isLoading, setIsLoading] = useState(true);
-  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
-  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId) || '';
-  useMount(async () => {
-    const res = await getChatResData({ appId, chatId, dataId });
-    const flatResData: ChatHistoryItemResType[] =
-      res
-        ?.map((item) => {
-          if (item.pluginDetail || item.toolDetail) {
-            return [item, ...(item.pluginDetail || []), ...(item.toolDetail || [])];
-          }
-          return item;
-        })
-        .flat() || [];
-    setContextModalData(flatResData.find(isLLMNode)?.historyPreview || []);
-    setIsLoading(false);
+  const { appId, chatId, getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
+
+  const { loading: isLoading } = useRequest2(() => getHistoryResponseData(appId, dataId, chatId), {
+    manual: false,
+    onSuccess: (res) => {
+      const flatResData: ChatHistoryItemResType[] =
+        res
+          ?.map((item) => {
+            if (item.pluginDetail || item.toolDetail) {
+              return [item, ...(item.pluginDetail || []), ...(item.toolDetail || [])];
+            }
+            return item;
+          })
+          .flat() || [];
+      setContextModalData(flatResData.find(isLLMNode)?.historyPreview || []);
+    }
   });
   return (
     <MyModal
@@ -55,9 +55,8 @@ const ContextModal = ({
         wordBreak={'break-all'}
         fontSize={'sm'}
       >
-        {!isLoading &&
-          contextModalData &&
-          contextModalData.map((item, i) => (
+        <MyBox width={'100%'} height={'100%'} isLoading={isLoading}>
+          {contextModalData?.map((item, i) => (
             <Box
               key={i}
               p={2}
@@ -70,7 +69,7 @@ const ContextModal = ({
               <Box>{item.value}</Box>
             </Box>
           ))}
-        {isLoading && <Box>加载中...</Box>}
+        </MyBox>
       </ModalBody>
     </MyModal>
   );

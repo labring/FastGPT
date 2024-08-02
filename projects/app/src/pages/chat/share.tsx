@@ -94,7 +94,8 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
     variablesForm,
     pluginRunTab,
     setPluginRunTab,
-    resetChatRecords
+    resetChatRecords,
+    getHistoryResponseData
   } = useChat();
 
   const startChat = useCallback(
@@ -312,6 +313,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
                 />
               ) : (
                 <ChatBox
+                  getHistoryResponseData={getHistoryResponseData}
                   ref={ChatBoxRef}
                   chatHistories={chatRecords}
                   setChatHistories={setChatRecords}

@@ -40,7 +40,8 @@ const DetailLogsModal = ({
     variablesForm,
     pluginRunTab,
     setPluginRunTab,
-    resetChatRecords
+    resetChatRecords,
+    getHistoryResponseData
   } = useChat();
 
   const { data: chat, isFetching } = useQuery(
@@ -176,6 +177,7 @@ const DetailLogsModal = ({
           ) : (
             <ChatBox
               ref={ChatBoxRef}
+              getHistoryResponseData={getHistoryResponseData}
               chatHistories={chatRecords}
               setChatHistories={setChatRecords}
               variablesForm={variablesForm}

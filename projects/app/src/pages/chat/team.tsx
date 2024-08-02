@@ -76,7 +76,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     variablesForm,
     pluginRunTab,
     setPluginRunTab,
-    resetChatRecords
+    resetChatRecords,
+    getHistoryResponseData
   } = useChat();
 
   const startChat = useCallback(
@@ -254,6 +255,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                   userAvatar={chatData.userAvatar}
                   chatConfig={chatData.app?.chatConfig}
                   showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
+                  getHistoryResponseData={getHistoryResponseData}
                   feedbackType={'user'}
                   onStartChat={startChat}
                   onDelMessage={({ contentId }) =>

@@ -1,8 +1,9 @@
-import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { ChatHistoryItemResType, ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { useCallback, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './PluginRunBox/constants';
 import { ComponentRef as ChatComponentRef } from './ChatBox/type';
+import { getChatResData } from '@/web/core/chat/api';
 
 export const useChat = () => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
@@ -49,7 +50,30 @@ export const useChat = () => {
 
     ChatBoxRef.current?.restartChat?.();
   }, [variablesForm]);
-
+  const getHistoryResponseData = useCallback(
+    async (appId: string, dataId: string, chatId?: string) => {
+      let resData: ChatHistoryItemResType[] = [];
+      const updateChatRecords = await Promise.all(
+        chatRecords.map(async (item) => {
+          if (item.dataId === dataId) {
+            if (item.responseData?.length || item?.isResDataEmpty || !chatId) {
+              resData = item.responseData || [];
+              return item;
+            }
+            resData = await getChatResData({ appId, chatId, dataId });
+            return {
+              ...item,
+              responseData: resData
+            };
+          }
+          return item;
+        })
+      );
+      setChatRecords(updateChatRecords.filter((item) => !!item));
+      return resData;
+    },
+    [chatRecords]
+  );
   return {
     ChatBoxRef,
     chatRecords,
@@ -58,6 +82,7 @@ export const useChat = () => {
     pluginRunTab,
     setPluginRunTab,
     clearChatRecords,
-    resetChatRecords
+    resetChatRecords,
+    getHistoryResponseData
   };
 };

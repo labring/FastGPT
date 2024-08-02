@@ -15,8 +15,8 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
-import { useMount } from 'ahooks';
-import { getChatResData } from '@/web/core/chat/api';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -99,14 +99,14 @@ const WholeResponseModal = ({
 }) => {
   const { t } = useTranslation();
   const [response, setResponse] = useState<ChatHistoryItemResType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
-  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId) || '';
-  useMount(async () => {
-    const res = await getChatResData({ appId, chatId, dataId });
-    setResponse(res);
-    setIsLoading(false);
+  const { appId, chatId, getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
+  const { loading: isLoading } = useRequest2(() => getHistoryResponseData(appId, dataId, chatId), {
+    manual: false,
+    onSuccess: (res) => {
+      setResponse(res);
+    }
   });
+
   return (
     <MyModal
       isCentered
@@ -119,12 +119,13 @@ const WholeResponseModal = ({
       title={
         <Flex alignItems={'center'}>
           {t('common:core.chat.response.Complete Response')}
-          <QuestionTip ml={2} label={'从左往右，为各个模块的响应顺序'}></QuestionTip>
+          <QuestionTip ml={2} label={'从上到下，为各个模块的响应顺序'}></QuestionTip>
         </Flex>
       }
     >
-      {!isLoading && response && <ResponseBox response={response} showDetail={showDetail} />}
-      {isLoading && <Box>加载中...</Box>}
+      <MyBox width={'100%'} height={'100%'} isLoading={isLoading}>
+        {response.length && <ResponseBox response={response} showDetail={showDetail} />}
+      </MyBox>
     </MyModal>
   );
 };
@@ -148,6 +149,7 @@ export const ResponseBox = React.memo(function ResponseBox({
   const [currentNodeId, setCurrentNodeId] = useState(
     flattedResponse[0]?.nodeId ? flattedResponse[0].nodeId : ''
   );
+
   const activeModule = useMemo(
     () => flattedResponse.find((item) => item.nodeId === currentNodeId) as ChatHistoryItemResType,
     [currentNodeId, flattedResponse]
