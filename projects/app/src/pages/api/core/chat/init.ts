@@ -57,14 +57,14 @@ async function handler(
   ]);
   const pluginInputs =
     app?.modules?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ?? [];
-  const transformedHistories = transformPreviewHistories(histories);
+
   return {
     chatId,
     appId,
     title: chat?.title || '新对话',
     userAvatar: undefined,
     variables: chat?.variables || {},
-    history: app.type === AppTypeEnum.plugin ? histories : transformedHistories,
+    history: app.type === AppTypeEnum.plugin ? histories : transformPreviewHistories(histories),
     app: {
       chatConfig: getAppChatConfig({
         chatConfig: app.chatConfig,

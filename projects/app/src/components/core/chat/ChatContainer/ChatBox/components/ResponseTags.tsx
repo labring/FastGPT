@@ -234,13 +234,7 @@ const ResponseTags = ({
           onClose={() => setQuoteModalData(undefined)}
         />
       )}
-      {isOpenContextModal && (
-        <ContextModal
-          historyPreviewLength={historyPreviewLength}
-          dataId={dataId}
-          onClose={onCloseContextModal}
-        />
-      )}
+      {isOpenContextModal && <ContextModal dataId={dataId} onClose={onCloseContextModal} />}
       {isOpenWholeModal && (
         <WholeResponseModal dataId={dataId} showDetail={showDetail} onClose={onCloseWholeModal} />
       )}

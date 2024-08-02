@@ -1,9 +1,8 @@
-import { ChatHistoryItemResType, ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { useCallback, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './PluginRunBox/constants';
 import { ComponentRef as ChatComponentRef } from './ChatBox/type';
-import { getChatResData } from '@/web/core/chat/api';
 
 export const useChat = () => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);

@@ -68,8 +68,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       });
 
-    const transformedHistories = transformPreviewHistories(histories);
-
     jsonRes<InitChatResponse>(res, {
       data: {
         chatId,
@@ -77,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         title: chat?.title || '新对话',
         userAvatar: team?.avatar,
         variables: chat?.variables || {},
-        history: app.type === AppTypeEnum.plugin ? histories : transformedHistories,
+        history: app.type === AppTypeEnum.plugin ? histories : transformPreviewHistories(histories),
         app: {
           chatConfig: getAppChatConfig({
             chatConfig: app.chatConfig,

@@ -70,8 +70,7 @@ export const useChatTest = ({
     variablesForm,
     pluginRunTab,
     setPluginRunTab,
-    clearChatRecords,
-    getHistoryResponseData
+    clearChatRecords
   } = useChat();
 
   const CustomChatContainer = useMemoizedFn(() =>
@@ -103,7 +102,6 @@ export const useChatTest = ({
         showFileSelector={checkChatSupportSelectFileByModules(nodes)}
         onStartChat={startChat}
         onDelMessage={() => {}}
-        getHistoryResponseData={getHistoryResponseData}
       />
     )
   );

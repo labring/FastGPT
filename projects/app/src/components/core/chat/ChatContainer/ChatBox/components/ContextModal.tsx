@@ -1,34 +1,20 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ModalBody, Box } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
-import { DispatchNodeResponseType } from '@fastgpt/global/core/workflow/runtime/type';
 import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 const isLLMNode = (item: ChatHistoryItemResType) =>
   item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.tools;
 
-const ContextModal = ({
-  onClose,
-  dataId,
-  historyPreviewLength
-}: {
-  onClose: () => void;
-  dataId: string;
-  historyPreviewLength?: number;
-}) => {
-  const [contextModalData, setContextModalData] =
-    useState<DispatchNodeResponseType['historyPreview']>();
-  const { appId, chatId, getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
+const ContextModal = ({ onClose, dataId }: { onClose: () => void; dataId: string }) => {
+  const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
 
-  const { loading: isLoading } = useRequest2(
-    () => getHistoryResponseData({ appId, dataId, chatId }),
-    {
-      manual: false,
-      onSuccess: (res) => {
+  const { loading: isLoading, data: contextModalData } = useRequest2(
+    () =>
+      getHistoryResponseData({ dataId }).then((res) => {
         const flatResData: ChatHistoryItemResType[] =
           res
             ?.map((item) => {
@@ -38,9 +24,9 @@ const ContextModal = ({
               return item;
             })
             .flat() || [];
-        setContextModalData(flatResData.find(isLLMNode)?.historyPreview || []);
-      }
-    }
+        return flatResData.find(isLLMNode)?.historyPreview || [];
+      }),
+    { manual: false }
   );
   return (
     <MyModal
@@ -48,7 +34,7 @@ const ContextModal = ({
       onClose={onClose}
       isLoading={isLoading}
       iconSrc="/imgs/modal/chatHistory.svg"
-      title={`上下文预览(${historyPreviewLength || 0}条)`}
+      title={`上下文预览(${contextModalData?.length || 0}条)`}
       h={['90vh', '80vh']}
       minW={['90vw', '600px']}
       isCentered

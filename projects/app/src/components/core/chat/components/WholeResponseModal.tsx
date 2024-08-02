@@ -16,7 +16,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -98,15 +97,12 @@ const WholeResponseModal = ({
   dataId: string;
 }) => {
   const { t } = useTranslation();
-  const [response, setResponse] = useState<ChatHistoryItemResType[]>([]);
+
   const { appId, chatId, getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
-  const { loading: isLoading } = useRequest2(
-    () => getHistoryResponseData({ appId, dataId, chatId }),
+  const { loading: isLoading, data: response } = useRequest2(
+    () => getHistoryResponseData({ dataId }),
     {
-      manual: false,
-      onSuccess: (res) => {
-        setResponse(res);
-      }
+      manual: false
     }
   );
 
@@ -127,7 +123,7 @@ const WholeResponseModal = ({
         </Flex>
       }
     >
-      {response.length && <ResponseBox response={response} showDetail={showDetail} />}
+      {response?.length && <ResponseBox response={response} showDetail={showDetail} />}
     </MyModal>
   );
 };
