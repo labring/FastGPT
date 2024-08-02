@@ -1,13 +1,18 @@
 import { InformLevelEnum } from './constants';
 
 export type SendInformProps = {
-  title: string;
-  content: string;
   level: `${InformLevelEnum}`;
+  templateCode: string;
+  templateParams: {
+    title: string;
+    content: string;
+  };
 };
+
 export type SendInform2UserProps = SendInformProps & {
-  tmbId: string;
+  teamId: string;
 };
+
 export type SendInform2User = SendInformProps & {
   type: `${InformTypeEnum}`;
   tmbId: string;
