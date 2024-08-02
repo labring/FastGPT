@@ -3,7 +3,8 @@ import { i18nT } from '../../../../web/i18n/utils';
 /* dataset: 502000 */
 export enum AppErrEnum {
   unExist = 'appUnExist',
-  unAuthApp = 'unAuthApp'
+  unAuthApp = 'unAuthApp',
+  invalidOwner = 'invalidOwner'
 }
 const appErrList = [
   {
@@ -13,6 +14,10 @@ const appErrList = [
   {
     statusText: AppErrEnum.unAuthApp,
     message: i18nT('common:code_error.app_error.un_auth_app')
+  },
+  {
+    statusText: AppErrEnum.invalidOwner,
+    message: i18nT('common:code_error.app.invalid_owner')
   }
 ];
 export default appErrList.reduce((acc, cur, index) => {
