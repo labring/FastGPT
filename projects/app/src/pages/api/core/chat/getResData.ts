@@ -5,13 +5,12 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
-export type getResDataQuery = {
-  chatId: string;
+export type getResDataQuery = OutLinkChatAuthProps & {
+  chatId?: string;
   dataId: string;
   appId: string;
-  shareId?: string;
-  outLinkUid?: string;
 };
 
 export type getResDataBody = {};

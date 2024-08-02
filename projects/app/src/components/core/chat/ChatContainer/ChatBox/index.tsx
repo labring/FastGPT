@@ -11,6 +11,7 @@ import React, {
 import Script from 'next/script';
 import type {
   AIChatItemValueItemType,
+  ChatHistoryItemResType,
   ChatSiteItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type.d';

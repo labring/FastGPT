@@ -50,25 +50,6 @@ export const useChat = () => {
 
     ChatBoxRef.current?.restartChat?.();
   }, [variablesForm]);
-  const getHistoryResponseData = useCallback(
-    async ({ appId, chatId, dataId }: { appId: string; chatId?: string; dataId: string }) => {
-      let resData: ChatHistoryItemResType[] = [];
-      const aimItem = chatRecords.find((item) => item.dataId === dataId) as ChatSiteItemType;
-      if (!!aimItem?.responseData || !chatId) {
-        resData = aimItem.responseData || [];
-      } else {
-        resData = await getChatResData({ appId, chatId, dataId });
-        setChatRecords((state) => {
-          const index = state.findIndex((item) => item.dataId === dataId);
-          if (index > -1) state[index].responseData = resData;
-          return [...state];
-        });
-      }
-
-      return resData;
-    },
-    [chatRecords]
-  );
   return {
     ChatBoxRef,
     chatRecords,
@@ -77,7 +58,6 @@ export const useChat = () => {
     pluginRunTab,
     setPluginRunTab,
     clearChatRecords,
-    resetChatRecords,
-    getHistoryResponseData
+    resetChatRecords
   };
 };
