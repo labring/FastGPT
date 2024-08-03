@@ -40,8 +40,27 @@ const main = async ({ apikey, url, ocr }: Props): Response => {
     real_api_key = data.data.token;
   }
 
-  //Get the image binary from the URL
+  //Fetch the pdf and check its contene type
+  const PDFResponse = await fetch(url);
+  if (!PDFResponse.ok) {
+    return {
+      result: `Failed to fetch PDF from URL: ${url}`,
+      success: false
+    };
+  }
+
+  const contentType = PDFResponse.headers.get('content-type');
+  if (!contentType || !contentType.startsWith('application/pdf')) {
+    return {
+      result: `The provided URL does not point to a PDF: ${contentType}`,
+      success: false
+    };
+  }
+
+  const blob = await PDFResponse.blob();
   const formData = new FormData();
+  const fileName = url.split('/').pop()?.split('?')[0] || 'pdf';
+  formData.append('file', blob, fileName);
   formData.append('pdf_url', url);
   formData.append('ocr', ocr ? '1' : '0');
 

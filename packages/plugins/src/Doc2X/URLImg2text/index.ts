@@ -8,7 +8,6 @@ type Props = {
   formula: boolean;
 };
 
-// Response type same as HTTP outputs
 type Response = Promise<{
   result: string;
   success: boolean;
@@ -41,36 +40,27 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
     real_api_key = data.data.token;
   }
 
-  //Get the image binary from the URL
-  const extension = url.split('.').pop()?.toLowerCase();
-  const name = url.split('/').pop()?.split('.').shift();
-  let mini = '';
-  switch (extension) {
-    case 'jpg':
-    case 'jpeg':
-      mini = 'image/jpeg';
-      break;
-    case 'png':
-      mini = 'image/png';
-      break;
-    default:
-      return {
-        result: `Not supported image format, only support jpg/jpeg/png`,
-        success: false
-      };
-  }
-
-  const response = await fetch(url);
-  if (!response.ok) {
+  // Fetch the image and check its content type
+  const imageResponse = await fetch(url);
+  if (!imageResponse.ok) {
     return {
       result: `Failed to fetch image from URL: ${url}`,
       success: false
     };
   }
 
-  const blob = await response.blob();
+  const contentType = imageResponse.headers.get('content-type');
+  if (!contentType || !contentType.startsWith('image/')) {
+    return {
+      result: `The provided URL does not point to an image: ${contentType}`,
+      success: false
+    };
+  }
+
+  const blob = await imageResponse.blob();
   const formData = new FormData();
-  formData.append('file', new Blob([blob], { type: mini }), name + '.' + extension);
+  const fileName = url.split('/').pop()?.split('?')[0] || 'image';
+  formData.append('file', blob, fileName);
   formData.append('img_correction', img_correction ? '1' : '0');
   formData.append('equation', formula ? '1' : '0');
 
