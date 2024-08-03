@@ -1,37 +1,41 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
-import { DispatchNodeResponseType } from '@fastgpt/global/core/workflow/runtime/type.d';
-import { Flex, useDisclosure, Box, Collapse } from '@chakra-ui/react';
+import React, { useMemo, useState } from 'react';
+import { Flex, useDisclosure, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import dynamic from 'next/dynamic';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import ChatBoxDivider from '@/components/core/chat/Divider';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useSize } from 'ahooks';
+import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'));
 const ContextModal = dynamic(() => import('./ContextModal'));
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
 
-const isLLMNode = (item: ChatHistoryItemResType) =>
-  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.tools;
-
 const ResponseTags = ({
-  flowResponses = [],
-  showDetail
+  showTags,
+  showDetail,
+  historyItem
 }: {
-  flowResponses?: ChatHistoryItemResType[];
+  showTags: boolean;
   showDetail: boolean;
+  historyItem: ChatSiteItemType;
 }) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const quoteListRef = React.useRef<HTMLDivElement>(null);
+  const dataId = historyItem.dataId;
+  const {
+    totalQuoteList: quoteList = [],
+    llmModuleAccount = 0,
+    totalRunningTime: runningTime = 0,
+    historyPreviewLength = 0
+  } = useMemo(() => addStatisticalDataToHistoryItem(historyItem), [historyItem]);
   const [quoteModalData, setQuoteModalData] = useState<{
     rawSearch: SearchDataResponseItemType[];
     metadata?: {
@@ -41,69 +45,40 @@ const ResponseTags = ({
     };
   }>();
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
-  const [contextModalData, setContextModalData] =
-    useState<DispatchNodeResponseType['historyPreview']>();
   const {
     isOpen: isOpenWholeModal,
     onOpen: onOpenWholeModal,
     onClose: onCloseWholeModal
   } = useDisclosure();
-
-  const quoteListSize = useSize(quoteListRef);
+  const {
+    isOpen: isOpenContextModal,
+    onOpen: onOpenContextModal,
+    onClose: onCloseContextModal
+  } = useDisclosure();
   const quoteIsOverflow = quoteListRef.current
     ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55)
     : true;
 
-  const {
-    llmModuleAccount,
-    quoteList = [],
-    sourceList = [],
-    historyPreview = [],
-    runningTime = 0
-  } = useMemo(() => {
-    const flatResponse = flowResponses
-      .map((item) => {
-        if (item.pluginDetail || item.toolDetail) {
-          return [item, ...(item.pluginDetail || []), ...(item.toolDetail || [])];
-        }
-        return item;
-      })
-      .flat();
-
-    const chatData = flatResponse.find(isLLMNode);
-    const quoteList = flatResponse
-      .filter((item) => item.moduleType === FlowNodeTypeEnum.datasetSearchNode)
-      .map((item) => item.quoteList)
-      .flat()
-      .filter(Boolean) as SearchDataResponseItemType[];
-
-    const sourceList = quoteList.reduce(
-      (acc: Record<string, SearchDataResponseItemType[]>, cur) => {
+  const sourceList = useMemo(() => {
+    return Object.values(
+      quoteList.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
         if (!acc[cur.collectionId]) {
           acc[cur.collectionId] = [cur];
         }
         return acc;
-      },
-      {}
-    );
-    return {
-      llmModuleAccount: flatResponse.filter(isLLMNode).length,
-      quoteList,
-      sourceList: Object.values(sourceList)
-        .flat()
-        .map((item) => ({
-          sourceName: item.sourceName,
-          sourceId: item.sourceId,
-          icon: getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
-          canReadQuote: showDetail || strIsLink(item.sourceId),
-          collectionId: item.collectionId
-        })),
-      historyPreview: chatData?.historyPreview,
-      runningTime: +flowResponses.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
-    };
-  }, [showDetail, flowResponses]);
+      }, {})
+    )
+      .flat()
+      .map((item) => ({
+        sourceName: item.sourceName,
+        sourceId: item.sourceId,
+        icon: getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
+        canReadQuote: showDetail || strIsLink(item.sourceId),
+        collectionId: item.collectionId
+      }));
+  }, [quoteList, showDetail]);
 
-  return flowResponses.length === 0 ? null : (
+  return !showTags ? null : (
     <>
       {sourceList.length > 0 && (
         <>
@@ -213,15 +188,15 @@ const ResponseTags = ({
           )}
           {llmModuleAccount === 1 && (
             <>
-              {historyPreview.length > 0 && (
+              {historyPreviewLength > 0 && (
                 <MyTooltip label={'点击查看上下文预览'}>
                   <MyTag
                     colorSchema="green"
                     cursor={'pointer'}
                     type="borderSolid"
-                    onClick={() => setContextModalData(historyPreview)}
+                    onClick={onOpenContextModal}
                   >
-                    {historyPreview.length}条上下文
+                    {historyPreviewLength}条上下文
                   </MyTag>
                 </MyTooltip>
               )}
@@ -259,15 +234,9 @@ const ResponseTags = ({
           onClose={() => setQuoteModalData(undefined)}
         />
       )}
-      {!!contextModalData && (
-        <ContextModal context={contextModalData} onClose={() => setContextModalData(undefined)} />
-      )}
+      {isOpenContextModal && <ContextModal dataId={dataId} onClose={onCloseContextModal} />}
       {isOpenWholeModal && (
-        <WholeResponseModal
-          response={flowResponses}
-          showDetail={showDetail}
-          onClose={onCloseWholeModal}
-        />
+        <WholeResponseModal dataId={dataId} showDetail={showDetail} onClose={onCloseWholeModal} />
       )}
     </>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import {
@@ -8,7 +8,7 @@ import {
   ChatInputGuideConfigType,
   VariableItemType
 } from '@fastgpt/global/core/app/type';
-import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { ChatHistoryItemResType, ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import {
   defaultChatInputGuideConfig,
   defaultTTSConfig,
@@ -17,14 +17,16 @@ import {
 import { createContext } from 'use-context-selector';
 import { FieldValues, UseFormReturn } from 'react-hook-form';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { getChatResData } from '@/web/core/chat/api';
 
 export type ChatProviderProps = OutLinkChatAuthProps & {
   appAvatar?: string;
-
+  appId: string;
   chatConfig?: AppChatConfigType;
 
   chatHistories: ChatSiteItemType[];
   setChatHistories: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
+
   variablesForm: UseFormReturn<FieldValues, any>;
 
   // not chat test params
@@ -61,6 +63,7 @@ type useChatStoreType = OutLinkChatAuthProps &
     isChatting: boolean;
     chatInputGuide: ChatInputGuideConfigType;
     outLinkAuthData: OutLinkChatAuthProps;
+    getHistoryResponseData: ({ dataId }: { dataId: string }) => Promise<ChatHistoryItemResType[]>;
   };
 
 export const ChatBoxContext = createContext<useChatStoreType>({
@@ -181,7 +184,26 @@ const Provider = ({
       chatHistories[chatHistories.length - 1]?.status !== 'finish',
     [chatHistories]
   );
-
+  const getHistoryResponseData = useCallback(
+    async ({ dataId }: { dataId: string }) => {
+      const aimItem = chatHistories.find((item) => item.dataId === dataId)!;
+      if (!!aimItem?.responseData || !props.chatId) {
+        return aimItem.responseData || [];
+      } else {
+        let resData = await getChatResData({
+          appId: props.appId,
+          chatId: props.chatId,
+          dataId,
+          ...outLinkAuthData
+        });
+        setChatHistories((state) =>
+          state.map((item) => (item.dataId === dataId ? { ...item, responseData: resData } : item))
+        );
+        return resData;
+      }
+    },
+    [chatHistories, outLinkAuthData, props.appId, props.chatId, setChatHistories]
+  );
   const value: useChatStoreType = {
     ...props,
     shareId,
@@ -210,7 +232,8 @@ const Provider = ({
     isChatting,
     chatInputGuide,
     outLinkAuthData,
-    variablesForm
+    variablesForm,
+    getHistoryResponseData
   };
 
   return <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>;
