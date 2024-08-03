@@ -45,7 +45,7 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
           name: new RegExp(searchText, 'i')
         }
       : {}),
-    ...(filterTags.length ? { tags: { $all: filterTags } } : {})
+    ...(filterTags.length ? { tags: { $in: filterTags } } : {})
   };
 
   const selectField = {

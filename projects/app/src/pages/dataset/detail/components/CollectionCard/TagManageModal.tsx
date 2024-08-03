@@ -103,6 +103,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     },
     onSuccess() {
       fetchData(1);
+      loadDatasetTags({ id: datasetDetail._id, searchKey: '' });
+      loadAllDatasetTags({ id: datasetDetail._id });
     }
   });
 
@@ -269,7 +271,9 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                       ) : (
                         <Input
                           placeholder={t('dataset:tag.Edit_tag')}
-                          value={currentEditTagContent || item.tag}
+                          value={
+                            currentEditTagContent !== undefined ? currentEditTagContent : item.tag
+                          }
                           onChange={(e) => setCurrentEditTagContent(e.target.value)}
                           ref={editInputRef}
                           w={'200px'}
@@ -489,6 +493,7 @@ const AddTagToCollections = ({
               alignItems={'center'}
               borderRadius={'4px'}
               key={collection.id}
+              cursor={'pointer'}
               onClick={() => {
                 setSelectedCollections((prev) => {
                   if (prev.includes(collection.id)) {

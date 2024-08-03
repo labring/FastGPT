@@ -140,6 +140,7 @@ const TagsPopOver = ({
             e.stopPropagation();
             setShowTagManage(true);
           }}
+          cursor={'pointer'}
         >
           <Flex>
             {visibleTags.map((item, index) => (
