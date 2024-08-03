@@ -125,8 +125,17 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
         success: false
       };
     } else if (result_data.data.status === 'success') {
-      let result = result_data.data.result.pages[0].md;
-      result = result.replace(/\\[\(\)]/g, '$').replace(/\\[\[\]]/g, '$$');
+      let result;
+      try {
+        result = result_data.data.result.pages[0].md;
+        result = result.replace(/\\[\(\)]/g, '$').replace(/\\[\[\]]/g, '$$');
+      } catch {
+        // no pages
+        return {
+          result: '',
+          success: true
+        };
+      }
       return {
         result: result,
         success: true

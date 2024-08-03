@@ -61,7 +61,6 @@ const main = async ({ apikey, url, ocr }: Props): Response => {
   const formData = new FormData();
   const fileName = url.split('/').pop()?.split('?')[0] || 'pdf';
   formData.append('file', blob, fileName);
-  formData.append('pdf_url', url);
   formData.append('ocr', ocr ? '1' : '0');
 
   let upload_url = 'https://api.doc2x.noedgeai.com/api/platform/async/pdf';
