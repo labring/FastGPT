@@ -16,7 +16,7 @@ import {
   postCreateDatasetCollectionTag,
   updateDatasetCollectionTag
 } from '@/web/core/dataset/api';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyInput from '@/components/MyInput';
 import { DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
@@ -30,7 +30,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const loadDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadDatasetTags);
   const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
-  const { collections, getData } = useContextSelector(CollectionPageContext, (v) => v);
+  const { getData } = useContextSelector(CollectionPageContext, (v) => v);
 
   const tagInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -155,11 +155,9 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   });
 
-  const { data: tagUsages } = useQuery(
-    [datasetDetail._id, collections],
-    () => getTagUsage(datasetDetail._id),
-    {}
-  );
+  const { data: tagUsages } = useRequest2(() => getTagUsage(datasetDetail._id), {
+    manual: false
+  });
 
   return (
     <MyModal
