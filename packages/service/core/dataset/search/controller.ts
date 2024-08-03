@@ -111,30 +111,45 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     try {
       const jsonMatch = json5.parse(collectionFilterMatch);
       // Tag
-      const andTags = jsonMatch?.tags?.$and as string[] | undefined;
-      const orTags = jsonMatch?.tags?.$or as string[] | undefined;
+      const andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
+      const orTags = jsonMatch?.tags?.$or as (string | null)[] | undefined;
 
-      const andTagArray = await MongoDatasetCollectionTags.find(
-        {
-          teamId,
-          datasetId: { $in: datasetIds },
-          tag: { $in: andTags }
-        },
-        '_id'
-      );
-      const andTagIds = andTagArray.map((item) => item._id);
+      let andTagIds: string[] = [];
+      let orTagIds: string[] = [];
 
-      const orTagArray = await MongoDatasetCollectionTags.find(
-        {
-          teamId,
-          datasetId: { $in: datasetIds },
-          tag: { $in: orTags }
-        },
-        '_id'
-      );
-      const orTagIds = orTagArray.map((item) => item._id);
+      // get andTagIds
+      if (andTags) {
+        if (!andTags.includes(null)) {
+          const andTagArray = await MongoDatasetCollectionTags.find(
+            {
+              teamId,
+              datasetId: { $in: datasetIds },
+              tag: { $in: andTags }
+            },
+            '_id'
+          );
+          andTagIds = andTagArray.map((item) => item._id);
+          if (andTagIds.length !== andTags.length) {
+            return [];
+          }
+        } else {
+          if (andTags.some((tag) => typeof tag === 'string')) {
+            return [];
+          } else {
+            const collections = await MongoDatasetCollection.find(
+              {
+                teamId,
+                datasetId: { $in: datasetIds },
+                tags: { $size: 0 }
+              },
+              '_id'
+            );
+            return collections.map((item) => String(item._id));
+          }
+        }
+      }
 
-      if (Array.isArray(andTagIds) && andTagIds.length > 0) {
+      if (andTagIds.length > 0) {
         const collections = await MongoDatasetCollection.find(
           {
             teamId,
@@ -144,16 +159,40 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
           '_id'
         );
         return collections.map((item) => String(item._id));
-      } else if (Array.isArray(orTagIds) && orTagIds.length > 0) {
-        const collections = await MongoDatasetCollection.find(
+      }
+
+      if (orTags) {
+        const orTagArray = await MongoDatasetCollectionTags.find(
           {
             teamId,
             datasetId: { $in: datasetIds },
-            tags: { $in: orTagIds }
+            tag: { $in: orTags.filter((tag) => tag !== null) }
           },
           '_id'
         );
-        return collections.map((item) => String(item._id));
+        orTagIds = orTagArray.map((item) => item._id);
+
+        if (orTags.includes(null)) {
+          const collections = await MongoDatasetCollection.find(
+            {
+              teamId,
+              datasetId: { $in: datasetIds },
+              $or: [{ tags: { $in: orTagIds } }, { tags: { $size: 0 } }]
+            },
+            '_id'
+          );
+          return collections.map((item) => String(item._id));
+        } else {
+          const collections = await MongoDatasetCollection.find(
+            {
+              teamId,
+              datasetId: { $in: datasetIds },
+              tags: { $in: orTagIds }
+            },
+            '_id'
+          );
+          return collections.map((item) => String(item._id));
+        }
       }
 
       // time
