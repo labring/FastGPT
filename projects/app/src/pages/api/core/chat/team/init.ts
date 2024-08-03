@@ -17,6 +17,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { transformPreviewHistories } from '@/global/core/chat/utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -74,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         title: chat?.title || '新对话',
         userAvatar: team?.avatar,
         variables: chat?.variables || {},
-        history: histories,
+        history: app.type === AppTypeEnum.plugin ? histories : transformPreviewHistories(histories),
         app: {
           chatConfig: getAppChatConfig({
             chatConfig: app.chatConfig,
