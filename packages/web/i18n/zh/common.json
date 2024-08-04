@@ -992,6 +992,8 @@
       }
     },
     "user": {
+      "Email Or Phone": "邮箱/手机号",
+      "Verify Code": "验证码",
       "Avatar": "头像",
       "Go laf env": "点击前往 {{env}} 获取 PAT 凭证。",
       "Laf account course": "查看绑定 laf 账号教程。",
@@ -1165,6 +1167,8 @@
     "Language": "语言",
     "Member Name": "昵称",
     "Notice": "通知",
+    "Notification Receive": "通知接收",
+    "Notification Receive Bind": "请绑定通知接收途径",
     "Old password is error": "旧密码错误",
     "OpenAI Account Setting": "OpenAI 账号配置",
     "Password": "密码",
