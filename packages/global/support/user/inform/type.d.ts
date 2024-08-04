@@ -1,12 +1,10 @@
-import { InformLevelEnum } from './constants';
+import { InformLevelEnum, SendInformTemplateCodeEnum } from './constants';
 
 export type SendInformProps = {
   level: `${InformLevelEnum}`;
-  templateCode: string;
-  templateParams: {
-    title: string;
-    content: string;
-  };
+  templateCode: `${SendInformTemplateCodeEnum}`;
+  templateParam: Record<string, any>;
+  customLockMinutes?: number; // custom lock minutes
 };
 
 export type SendInform2UserProps = SendInformProps & {
