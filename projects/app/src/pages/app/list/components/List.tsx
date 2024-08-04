@@ -49,7 +49,6 @@ const ListItem = () => {
   const { parentId = null } = router.query;
   const { isPc } = useSystem();
   const { lastChatAppId, setLastChatAppId } = useChatStore();
-  
 
   const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail } = useContextSelector(
     AppListContext,
