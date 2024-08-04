@@ -88,7 +88,7 @@ export async function generateQA(): Promise<any> {
   }
 
   // auth balance
-  if (!(await checkTeamAiPointsAndLock(data.teamId, data.tmbId))) {
+  if (!(await checkTeamAiPointsAndLock(data.teamId))) {
     reduceQueue();
     return generateQA();
   }

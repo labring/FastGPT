@@ -1,5 +1,10 @@
 import dayjs from 'dayjs';
 import cronParser from 'cron-parser';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export const formatTime2YMDHMW = (time?: Date) => dayjs(time).format('YYYY-MM-DD HH:mm:ss dddd');
 export const formatTime2YMDHM = (time?: Date) =>

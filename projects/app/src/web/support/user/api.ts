@@ -63,6 +63,9 @@ export const updatePasswordByOld = ({ oldPsw, newPsw }: { oldPsw: string; newPsw
     newPsw: hashStr(newPsw)
   });
 
+export const updateNotificationAccount = (data: { account: string; verifyCode: string }) =>
+  PUT('/proApi/support/user/team/updateNotificationAccount', data);
+
 export const postLogin = ({ password, ...props }: PostLoginProps) =>
   POST<ResLogin>('/support/user/account/loginByPassword', {
     ...props,
