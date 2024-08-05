@@ -81,7 +81,7 @@
     "Simple bot": "简易应用",
     "Workflow bot": "工作流"
   },
-  "upload_file_max_amount": "对最大文件数量(包含历史记录)",
+  "upload_file_max_amount": "单轮最大文件上传数量",
   "version": {
     "Revert success": "回滚成功"
   },

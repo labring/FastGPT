@@ -19,11 +19,14 @@ import MySlider from '@/components/Slider';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { useMount } from 'ahooks';
 
 const FileSelect = ({
+  forbidVision = false,
   value = defaultAppSelectFileConfig,
   onChange
 }: {
+  forbidVision?: boolean;
   value?: AppFileSelectConfigType;
   onChange: (e: AppFileSelectConfigType) => void;
 }) => {
@@ -37,6 +40,16 @@ const FileSelect = ({
         : t('common:core.app.whisper.Close'),
     [t, value.canSelectFile, value.canSelectImg]
   );
+
+  // Close select img switch when vision is forbidden
+  useMount(() => {
+    if (forbidVision) {
+      onChange({
+        ...value,
+        canSelectImg: false
+      });
+    }
+  });
 
   return (
     <Flex alignItems={'center'}>
@@ -76,19 +89,28 @@ const FileSelect = ({
           </HStack>
           <HStack mt={6}>
             <FormLabel flex={'1 0 0'}>{t('app:image_upload')}</FormLabel>
-            <Switch
-              isChecked={value.canSelectImg}
-              onChange={(e) => {
-                onChange({
-                  ...value,
-                  canSelectImg: e.target.checked
-                });
-              }}
-            />
+            {forbidVision ? (
+              <Box fontSize={'sm'} color={'myGray.500'}>
+                {t('app:llm_not_support_vision')}
+              </Box>
+            ) : (
+              <Switch
+                isChecked={value.canSelectImg}
+                onChange={(e) => {
+                  onChange({
+                    ...value,
+                    canSelectImg: e.target.checked
+                  });
+                }}
+              />
+            )}
           </HStack>
-          <Box mt={2} color={'myGray.500'} fontSize={'xs'}>
-            {t('app:image_upload_tip')}
-          </Box>
+          {!forbidVision && (
+            <Box mt={2} color={'myGray.500'} fontSize={'xs'}>
+              {t('app:image_upload_tip')}
+            </Box>
+          )}
+
           <Box mt={6}>
             <FormLabel>{t('app:upload_file_max_amount')}</FormLabel>
             <Box mt={5}>
