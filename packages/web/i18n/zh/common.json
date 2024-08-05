@@ -1,7 +1,5 @@
 {
   "App": "应用",
-  "click_to_resume": "点击恢复",
-  "code_editor": "代码编辑",
   "Export": "导出",
   "Folder": "文件夹",
   "Login": "登录",
@@ -13,6 +11,8 @@
   "UnKnow": "未知",
   "Warning": "提示",
   "add_new": "新增",
+  "click_to_resume": "点击恢复",
+  "code_editor": "代码编辑",
   "common": {
     "Action": "操作",
     "Add": "添加",
@@ -91,6 +91,8 @@
     "Root folder": "根目录",
     "Run": "运行",
     "Save": "保存",
+    "Save Failed": "保存失败",
+    "Save Success": "保存成功",
     "Search": "搜索",
     "Select File Failed": "选择文件异常",
     "Select template": "选择模板",
@@ -482,7 +484,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -505,13 +508,13 @@
         "Data not found": "数据不存在或已被删除",
         "Start Sync Failed": "开始同步失败",
         "Template does not exist": "模板不存在",
+        "invalidVectorModelOrQAModel": "VectorModel 或 QA 模型错误",
         "unAuthDataset": "无权操作该知识库",
         "unAuthDatasetCollection": "无权操作该数据集",
         "unAuthDatasetData": "无权操作该数据",
         "unAuthDatasetFile": "无权操作该文件",
         "unCreateCollection": "无权操作该数据",
-        "unLinkCollection": "不是网络链接集合",
-        "invalidVectorModelOrQAModel": "VectorModel 或 QA 模型错误"
+        "unLinkCollection": "不是网络链接集合"
       },
       "externalFile": "外部文件库",
       "file": "文件",

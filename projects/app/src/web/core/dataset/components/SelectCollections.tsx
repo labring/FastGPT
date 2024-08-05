@@ -3,7 +3,6 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import ParentPaths from '@/components/common/ParentPaths';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollectionPathById, getDatasetCollections } from '@/web/core/dataset/api';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { Box, Flex, ModalFooter, Button, useTheme, Grid, Card, ModalBody } from '@chakra-ui/react';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';

@@ -21,6 +21,7 @@ export interface MyModalProps extends ModalContentProps {
   isLoading?: boolean;
   isOpen: boolean;
   onClose?: () => void;
+  closeOnOverlayClick?: boolean;
 }
 
 const MyModal = ({
@@ -33,6 +34,7 @@ const MyModal = ({
   isLoading,
   w = 'auto',
   maxW = ['90vw', '600px'],
+  closeOnOverlayClick = true,
   ...props
 }: MyModalProps) => {
   const isPc = useSystem();
@@ -44,6 +46,7 @@ const MyModal = ({
       autoFocus={false}
       isCentered={isPc ? isCentered : true}
       blockScrollOnMount={false}
+      closeOnOverlayClick={closeOnOverlayClick}
     >
       <ModalOverlay />
       <ModalContent

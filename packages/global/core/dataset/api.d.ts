@@ -74,6 +74,23 @@ export type ExternalFileCreateDatasetCollectionParams = ApiCreateDatasetCollecti
   filename?: string;
 };
 
+/* ================= tag ===================== */
+export type CreateDatasetCollectionTagParams = {
+  datasetId: string;
+  tag: string;
+};
+export type AddTagsToCollectionsParams = {
+  originCollectionIds: string[];
+  collectionIds: string[];
+  datasetId: string;
+  tag: string;
+};
+export type UpdateDatasetCollectionTagParams = {
+  datasetId: string;
+  tagId: string;
+  tag: string;
+};
+
 /* ================= data ===================== */
 export type PgSearchRawType = {
   id: string;

@@ -29,6 +29,8 @@ type CollectionPageContextType = {
   pageSize: number;
   searchText: string;
   setSearchText: Dispatch<SetStateAction<string>>;
+  filterTags: string[];
+  setFilterTags: Dispatch<SetStateAction<string[]>>;
 };
 
 export const CollectionPageContext = createContext<CollectionPageContextType>({
@@ -51,6 +53,10 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
   pageSize: 0,
   searchText: '',
   setSearchText: function (value: SetStateAction<string>): void {
+    throw new Error('Function not implemented.');
+  },
+  filterTags: [],
+  setFilterTags: function (value: SetStateAction<string[]>): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -96,6 +102,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
 
   // collection list
   const [searchText, setSearchText] = useState('');
+  const [filterTags, setFilterTags] = useState<string[]>([]);
   const {
     data: collections,
     Pagination,
@@ -110,7 +117,8 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     params: {
       datasetId,
       parentId,
-      searchText
+      searchText,
+      filterTags
     },
     defaultRequest: false
   });
@@ -124,6 +132,8 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
 
     searchText,
     setSearchText,
+    filterTags,
+    setFilterTags,
     collections,
     Pagination,
     total,
