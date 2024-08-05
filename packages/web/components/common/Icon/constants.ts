@@ -131,6 +131,7 @@ export const iconPaths = {
   'core/dataset/rerank': () => import('./icons/core/dataset/rerank.svg'),
   'core/dataset/splitLight': () => import('./icons/core/dataset/splitLight.svg'),
   'core/dataset/tableCollection': () => import('./icons/core/dataset/tableCollection.svg'),
+  'core/dataset/tag': () => import('./icons/core/dataset/tag.svg'),
   'core/dataset/websiteDataset': () => import('./icons/core/dataset/websiteDataset.svg'),
   'core/modules/basicNode': () => import('./icons/core/modules/basicNode.svg'),
   'core/modules/fixview': () => import('./icons/core/modules/fixview.svg'),

@@ -18,6 +18,7 @@ import {
 import CollectionPageContextProvider from './components/CollectionCard/Context';
 import { useContextSelector } from 'use-context-selector';
 import NextHead from '@/components/common/NextHead';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const CollectionCard = dynamic(() => import('./components/CollectionCard/index'));
 const DataCard = dynamic(() => import('./components/DataCard'));
@@ -40,21 +41,26 @@ const Detail = ({ datasetId, currentTab }: Props) => {
   const router = useRouter();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const loadDatasetDetail = useContextSelector(DatasetPageContext, (v) => v.loadDatasetDetail);
+  const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
 
-  useQuery([datasetId], () => loadDatasetDetail(datasetId), {
+  useRequest2(() => loadDatasetDetail(datasetId), {
+    onSuccess: () => {
+      loadAllDatasetTags({ id: datasetId });
+    },
     onError(err: any) {
       router.replace(`/dataset/list`);
       toast({
         title: t(getErrText(err, t('common:common.Load Failed')) as any),
         status: 'error'
       });
-    }
+    },
+    manual: false
   });
 
   return (
     <>
       <NextHead title={datasetDetail?.name} icon={datasetDetail?.avatar} />
-      <PageContainer>
+      <PageContainer insertProps={{ bg: 'white' }}>
         <MyBox display={'flex'} flexDirection={['column', 'row']} h={'100%'} pt={[4, 0]}>
           <Slider currentTab={currentTab} />
 

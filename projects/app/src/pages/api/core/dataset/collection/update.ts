@@ -10,11 +10,12 @@ export type UpdateDatasetCollectionParams = {
   id: string;
   parentId?: string;
   name?: string;
+  tags?: string[];
   forbid?: boolean;
 };
 
 async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
-  const { id, parentId, name, forbid } = req.body;
+  const { id, parentId, name, tags, forbid } = req.body;
 
   if (!id) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -32,6 +33,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
   const updateFields: Record<string, any> = {
     ...(parentId !== undefined && { parentId: parentId || null }),
     ...(name && { name, updateTime: getCollectionUpdateTime({ name }) }),
+    ...(tags && { tags }),
     ...(forbid !== undefined && { forbid })
   };
 

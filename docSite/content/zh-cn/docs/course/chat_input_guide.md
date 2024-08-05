@@ -4,7 +4,7 @@ description: "FastGPT 对话问题引导"
 icon: "code"
 draft: false
 toc: true
-weight: 350
+weight: 108
 ---
 
 ![](/imgs/questionGuide.png)

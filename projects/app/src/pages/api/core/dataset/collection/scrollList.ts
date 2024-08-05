@@ -1,28 +1,42 @@
-import type { NextApiRequest } from 'next';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { NextAPI } from '@/service/middleware/entry';
 import { DatasetTrainingCollectionName } from '@fastgpt/service/core/dataset/training/schema';
 import { Types } from '@fastgpt/service/common/mongo';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
-import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/schema';
 import { startTrainingQueue } from '@/service/core/dataset/training/utils';
-import { NextAPI } from '@/service/middleware/entry';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { PagingData } from '@/types';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 
-async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectionsListItemType>> {
+export type GetScrollCollectionsProps = PaginationProps<{
+  datasetId: string;
+  parentId?: string | null;
+  searchText?: string;
+  selectFolder?: boolean;
+  filterTags?: string[];
+  simple?: boolean;
+}>;
+
+async function handler(
+  req: ApiRequestProps<{}, GetScrollCollectionsProps>
+): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
   let {
-    pageNum = 1,
-    pageSize = 10,
     datasetId,
+    pageSize = 10,
+    current = 1,
     parentId = null,
     searchText = '',
     selectFolder = false,
     filterTags = [],
     simple = false
-  } = req.body as GetDatasetCollectionsProps;
+  } = req.query;
+  if (!datasetId) {
+    return Promise.reject(CommonErrEnum.missingParams);
+  }
   searchText = searchText?.replace(/'/g, '');
   pageSize = Math.min(pageSize, 30);
 
@@ -45,7 +59,7 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
           name: new RegExp(searchText, 'i')
         }
       : {}),
-    ...(filterTags.length ? { tags: { $in: filterTags } } : {})
+    ...(filterTags.length ? { tags: { $all: filterTags } } : {})
   };
 
   const selectField = {
@@ -70,12 +84,12 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
       .sort({
         updateTime: -1
       })
+      .skip(pageSize * (current - 1))
+      .limit(pageSize)
       .lean();
 
     return {
-      pageNum,
-      pageSize,
-      data: await Promise.all(
+      list: await Promise.all(
         collections.map(async (item) => ({
           ...item,
           dataAmount: 0,
@@ -96,7 +110,7 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
         $sort: { updateTime: -1 }
       },
       {
-        $skip: (pageNum - 1) * pageSize
+        $skip: (current - 1) * pageSize
       },
       {
         $limit: pageSize
@@ -169,9 +183,7 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
 
   // count collections
   return {
-    pageNum,
-    pageSize,
-    data,
+    list: data,
     total
   };
 }
