@@ -10,6 +10,8 @@ import { readFromSecondary } from '../../../../common/mongo/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { readRawContentByFileBuffer } from '../../../../common/file/read/utils';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -43,11 +45,35 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const {
     requestOrigin,
     teamId,
+    histories,
+    chatConfig,
     params: { fileUrlList = [] }
   } = props;
+  const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 0;
+
+  // Get files from histories
+  const filesFromHistories = histories
+    .filter((item) => {
+      if (item.obj === ChatRoleEnum.Human) {
+        return item.value.filter((value) => value.type === 'file');
+      }
+      return false;
+    })
+    .map((item) => {
+      const value = item.value as UserChatItemValueItemType[];
+      const files = value
+        .map((item) => {
+          return item.file?.url;
+        })
+        .filter(Boolean) as string[];
+      return files;
+    })
+    .flat();
+
+  const parseUrlList = [...fileUrlList, ...filesFromHistories].slice(0, maxFiles);
 
   const readFilesResult = await Promise.all(
-    fileUrlList
+    parseUrlList
       .map(async (url) => {
         // System file
         if (url.startsWith('/') || (requestOrigin && url.startsWith(requestOrigin))) {

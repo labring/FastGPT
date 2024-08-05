@@ -89,7 +89,7 @@ export const runToolWithPromptCall = async (
 
   const lastMessage = messages[messages.length - 1];
   if (typeof lastMessage.content !== 'string') {
-    return Promise.reject('只支持发送纯文本问题');
+    return Promise.reject('Prompt call invalid input');
   }
   lastMessage.content = replaceVariable(lastMessage.content, {
     toolsPrompt

@@ -95,7 +95,18 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
   const messages: ChatItemType[] = [
     ...getSystemPrompt(systemPrompt),
-    ...chatHistories,
+    // Add file input prompt to histories
+    ...chatHistories.map((item) => {
+      if (item.obj === ChatRoleEnum.Human) {
+        return {
+          ...item,
+          value: toolCallMessagesAdapt({
+            userInput: item.value
+          })
+        };
+      }
+      return item;
+    }),
     {
       obj: ChatRoleEnum.Human,
       value: toolCallMessagesAdapt({
@@ -106,6 +117,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       })
     }
   ];
+
+  // console.log(JSON.stringify(messages, null, 2));
 
   const {
     dispatchFlowResponse, // tool flow response
@@ -133,13 +146,23 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     }
 
     const lastMessage = adaptMessages[adaptMessages.length - 1];
-    if (typeof lastMessage.content !== 'string') {
-      return Promise.reject('暂时只支持纯文本');
+    if (typeof lastMessage.content === 'string') {
+      lastMessage.content = replaceVariable(Prompt_Tool_Call, {
+        question: lastMessage.content
+      });
+    } else if (Array.isArray(lastMessage.content)) {
+      // array, replace last element
+      const lastText = lastMessage.content[lastMessage.content.length - 1];
+      if (lastText.type === 'text') {
+        lastMessage.content = replaceVariable(Prompt_Tool_Call, {
+          question: lastText.text
+        });
+      } else {
+        return Promise.reject('Prompt call invalid input');
+      }
+    } else {
+      return Promise.reject('Prompt call invalid input');
     }
-
-    lastMessage.content = replaceVariable(Prompt_Tool_Call, {
-      question: userChatInput
-    });
 
     return runToolWithPromptCall({
       ...props,

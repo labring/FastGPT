@@ -32,6 +32,7 @@ export type ChatDispatchProps = {
   histories: ChatItemType[];
   variables: Record<string, any>; // global variable
   query: UserChatItemValueItemType[]; // trigger query
+  chatConfig: AppSchema['chatConfig'];
   stream: boolean;
   detail: boolean; // response detail
   maxRunTimes: number;
