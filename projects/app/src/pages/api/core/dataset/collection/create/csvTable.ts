@@ -21,7 +21,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { CreateCollectionResponse } from '@/global/core/dataset/api';
 
 async function handler(req: NextApiRequest): CreateCollectionResponse {
-  const { datasetId, parentId, fileId } = req.body as FileIdCreateDatasetCollectionParams;
+  const { datasetId, parentId, fileId, ...body } = req.body as FileIdCreateDatasetCollectionParams;
   const trainingType = TrainingModeEnum.chunk;
   const { teamId, tmbId, dataset } = await authDataset({
     req,
@@ -54,6 +54,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
   return mongoSessionRun(async (session) => {
     // 4. create collection
     const { _id: collectionId } = await createOneCollection({
+      ...body,
       teamId,
       tmbId,
       name: filename,

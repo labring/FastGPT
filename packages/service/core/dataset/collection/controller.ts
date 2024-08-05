@@ -1,7 +1,4 @@
-import {
-  TrainingModeEnum,
-  DatasetCollectionTypeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { MongoDatasetCollection } from './schema';
 import {
@@ -15,6 +12,7 @@ import { deleteDatasetDataVector } from '../../../common/vectorStore/controller'
 import { delFileByFileIdList } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { ClientSession } from '../../../common/mongo';
+import { createOrGetCollectionTags } from './utils';
 
 export async function createOneCollection({
   teamId,
@@ -39,6 +37,7 @@ export async function createOneCollection({
   rawTextLength,
   metadata = {},
   session,
+  tags,
   ...props
 }: CreateDatasetCollectionParams & {
   teamId: string;
@@ -46,6 +45,7 @@ export async function createOneCollection({
   [key: string]: any;
   session?: ClientSession;
 }) {
+  const collectionTags = await createOrGetCollectionTags({ tags, teamId, datasetId, session });
   const [collection] = await MongoDatasetCollection.create(
     [
       {
@@ -69,7 +69,8 @@ export async function createOneCollection({
 
         rawTextLength,
         hashRawText,
-        metadata
+        metadata,
+        tags: collectionTags
       }
     ],
     { session }
