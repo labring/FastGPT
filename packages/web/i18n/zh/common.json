@@ -61,7 +61,8 @@
     "app_error": {
       "not_exist": "应用不存在",
       "un_auth_app": "无权操作该应用",
-      "invalid_owner": "非法的应用所有者"
+      "invalid_owner": "非法的应用所有者",
+      "invalid_app_type": "错误的应用类型"
     },
     "chat_error": {
       "un_auth": "没有权限操作此对话记录"
