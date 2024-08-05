@@ -107,7 +107,7 @@ const Promotion = () => {
               <Tr>
                 <Th>{t('common:user.Time')}</Th>
                 <Th>{t('common:user.type')}</Th>
-                <Th>{t('common:user.amount')}</Th>
+                <Th>{t('common:pay.amount')}</Th>
               </Tr>
             </Thead>
             <Tbody fontSize={'sm'}>

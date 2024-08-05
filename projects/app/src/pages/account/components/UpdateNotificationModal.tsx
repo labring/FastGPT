@@ -70,16 +70,16 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
               flex={1}
               bg={'myGray.50'}
               {...register('account', { required: true })}
-              placeholder={t('common:support.user.Email Or Phone')}
+              placeholder={t('user:password.email_phone')}
             ></Input>
           </Flex>
           <Flex mt="6" alignItems="center" position={'relative'}>
-            <Box flex={'0 0 70px'}>{t('common:support.user.Verify Code')}</Box>
+            <Box flex={'0 0 70px'}>{t('user:password.verification_code')}</Box>
             <Input
               flex={1}
               bg={'myGray.50'}
               {...register('verifyCode', { required: true })}
-              placeholder={t('common:support.user.Verify Code')}
+              placeholder={t('user:password.code_required')}
             ></Input>
             <Box
               position={'absolute'}
