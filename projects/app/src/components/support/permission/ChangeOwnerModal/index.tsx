@@ -47,10 +47,9 @@ export function ChangeOwnerModal({
   } = useDisclosure();
   const [selectedMember, setSelectedMember] = useState<TeamMemberItemType | null>(null);
 
-  const onConfirm = () => {
-    if (selectedMember?.tmbId) onChangeOwner(selectedMember?.tmbId);
-    onClose();
-  };
+  const { runAsync: onConfirm, loading } = useRequest2(onChangeOwner, {
+    onSuccess: onClose
+  });
 
   return (
     <MyModal
@@ -58,6 +57,7 @@ export function ChangeOwnerModal({
       iconSrc="common/lineChange"
       onClose={onClose}
       title={t('common:permission.change_owner')}
+      isLoading={loading}
     >
       <ModalBody>
         <HStack>

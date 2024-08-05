@@ -399,6 +399,7 @@ const ListItem = () => {
       )}
       {!!editPerApp && (
         <ConfigPerModal
+          onChangeOwner={async (tmbId: string) => {}}
           refetchResource={loadMyApps}
           hasParent={Boolean(parentId)}
           resumeInheritPermission={onResumeInheritPermission}
