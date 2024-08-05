@@ -224,7 +224,7 @@ const DataCard = () => {
           />
           <Flex className="textEllipsis" flex={'1 0 0'} mr={[3, 5]} alignItems={'center'}>
             <Box>
-              <Flex alignItems={'center'} gap={2}>
+              <Box alignItems={'center'} gap={2} display={isPc ? 'flex' : ''}>
                 {collection?._id && (
                   <RawSourceBox
                     collectionId={collection._id}
@@ -240,7 +240,7 @@ const DataCard = () => {
                     {collection?._id}
                   </Box>
                 </Box>
-              </Flex>
+              </Box>
               {feConfigs?.isPlus && !!collection?.tags?.length && (
                 <TagsPopOver currentCollection={collection} />
               )}
@@ -249,7 +249,8 @@ const DataCard = () => {
           {canWrite && (
             <Box>
               <Button
-                mx={2}
+                ml={2}
+                mr={isPc ? 2 : 0}
                 variant={'whitePrimary'}
                 size={['sm', 'md']}
                 onClick={() => {

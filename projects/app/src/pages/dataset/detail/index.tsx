@@ -41,7 +41,6 @@ const Detail = ({ datasetId, currentTab }: Props) => {
   const router = useRouter();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const loadDatasetDetail = useContextSelector(DatasetPageContext, (v) => v.loadDatasetDetail);
-  const loadDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadDatasetTags);
   const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
 
   useRequest2(() => loadDatasetDetail(datasetId), {

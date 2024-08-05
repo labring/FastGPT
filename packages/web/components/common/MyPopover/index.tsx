@@ -17,6 +17,7 @@ interface Props extends PopoverContentProps {
   hasArrow?: boolean;
   children: (e: { onClose: () => void }) => React.ReactNode;
   onCloseFunc?: () => void;
+  closeOnBlur?: boolean;
 }
 
 const MyPopover = ({
@@ -27,6 +28,7 @@ const MyPopover = ({
   hasArrow = true,
   children,
   onCloseFunc,
+  closeOnBlur = false,
   ...props
 }: Props) => {
   const firstFieldRef = React.useRef(null);
@@ -44,7 +46,7 @@ const MyPopover = ({
       }}
       placement={placement}
       offset={offset}
-      closeOnBlur={false}
+      closeOnBlur={closeOnBlur}
       trigger={trigger}
       openDelay={100}
       closeDelay={100}

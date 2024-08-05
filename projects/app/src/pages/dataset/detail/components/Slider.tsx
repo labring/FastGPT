@@ -150,7 +150,7 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
         <Box mb={3}>
           <LightRowTabs<TabEnum>
             m={'auto'}
-            w={'260px'}
+            w={'full'}
             size={isPc ? 'md' : 'sm'}
             list={tabList}
             value={currentTab}
