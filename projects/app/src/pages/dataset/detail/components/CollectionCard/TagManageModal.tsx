@@ -21,7 +21,6 @@ import MyInput from '@/components/MyInput';
 import { DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useQuery } from '@tanstack/react-query';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
@@ -30,7 +29,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const loadDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadDatasetTags);
   const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
-  const { getData } = useContextSelector(CollectionPageContext, (v) => v);
+  const { getData, collections } = useContextSelector(CollectionPageContext, (v) => v);
 
   const tagInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -156,7 +155,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   });
 
   const { data: tagUsages } = useRequest2(() => getTagUsage(datasetDetail._id), {
-    manual: false
+    manual: false,
+    refreshDeps: [collections]
   });
 
   return (
