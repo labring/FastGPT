@@ -205,7 +205,6 @@ const HeaderTagPopOver = () => {
                 variant={'unstyled'}
                 onClick={() => {
                   onOpenTagManageModal();
-                  setCheckedTags([]);
                 }}
               >
                 {t('dataset:tag.manage')}
