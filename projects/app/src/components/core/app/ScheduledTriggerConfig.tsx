@@ -23,7 +23,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 const MultipleRowSelect = dynamic(
   () => import('@fastgpt/web/components/common/MySelect/MultipleRowSelect')
 );
-
+import { i18nT } from '@fastgpt/web/i18n/utils';
 // options type:
 enum CronJobTypeEnum {
   month = 'month',
@@ -32,7 +32,7 @@ enum CronJobTypeEnum {
   interval = 'interval'
 }
 type CronType = 'month' | 'week' | 'day' | 'interval';
-const { t } = useTranslation();
+
 const get24HoursOptions = () => {
   return Array.from({ length: 24 }, (_, i) => ({
     label: `${i < 10 ? '0' : ''}${i}:00`,
@@ -64,7 +64,7 @@ const getRoute = (i: number) => {
 const getWeekOptions = () => {
   return Array.from({ length: 7 }, (_, i) => {
     return {
-      label: t(getRoute(i)),
+      label: i18nT(getRoute(i)),
       value: i,
       children: get24HoursOptions()
     };
@@ -72,7 +72,7 @@ const getWeekOptions = () => {
 };
 const getMonthOptions = () => {
   return Array.from({ length: 28 }, (_, i) => ({
-    label: `${i + 1}` + t('app:month.unit'),
+    label: `${i + 1}` + i18nT('app:month.unit'),
     value: i,
     children: get24HoursOptions()
   }));
@@ -81,27 +81,27 @@ const getInterValOptions = () => {
   // 每n小时
   return [
     {
-      label: t('app:interval.per_hour'),
+      label: i18nT('app:interval.per_hour'),
       value: 1
     },
     {
-      label: t('app:interval.2_hours'),
+      label: i18nT('app:interval.2_hours'),
       value: 2
     },
     {
-      label: t('app:interval.3_hours'),
+      label: i18nT('app:interval.3_hours'),
       value: 3
     },
     {
-      label: t('app:interval.4_hours'),
+      label: i18nT('app:interval.4_hours'),
       value: 4
     },
     {
-      label: t('app:interval.6_hours'),
+      label: i18nT('app:interval.6_hours'),
       value: 6
     },
     {
-      label: t('app:interval.12_hours'),
+      label: i18nT('app:interval.12_hours'),
       value: 12
     }
   ];
