@@ -29,6 +29,7 @@ import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { updateToolInputValue } from './utils';
 import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
+import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 
 type ToolRunResponseType = {
   toolRunResponse: DispatchFlowResponse;
@@ -234,7 +235,7 @@ export const runToolWithToolChoice = async (
                 toolName: '',
                 toolAvatar: '',
                 params: '',
-                response: stringToolResponse
+                response: sliceStrStartEnd(stringToolResponse, 300, 300)
               }
             })
           });

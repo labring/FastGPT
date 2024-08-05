@@ -51,6 +51,7 @@ async function handler(
     runtimeEdges: edges,
     variables,
     query: [],
+    chatConfig: defaultApp.chatConfig,
     histories: [],
     stream: false,
     detail: true,

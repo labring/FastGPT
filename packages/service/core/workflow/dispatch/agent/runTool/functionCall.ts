@@ -24,7 +24,7 @@ import { DispatchToolModuleProps, RunToolResponse, ToolNodeItemType } from './ty
 import json5 from 'json5';
 import { DispatchFlowResponse } from '../../type';
 import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { updateToolInputValue } from './utils';
@@ -226,7 +226,7 @@ export const runToolWithFunctionCall = async (
                 toolName: '',
                 toolAvatar: '',
                 params: '',
-                response: stringToolResponse
+                response: sliceStrStartEnd(stringToolResponse, 300, 300)
               }
             })
           });

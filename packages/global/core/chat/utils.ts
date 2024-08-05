@@ -2,6 +2,7 @@ import { DispatchNodeResponseType } from '../workflow/runtime/type';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from './constants';
 import { ChatHistoryItemResType, ChatItemType, UserChatItemValueItemType } from './type.d';
+import { sliceStrStartEnd } from '../../common/string/tools';
 
 // Concat 2 -> 1, and sort by role
 export const concatHistories = (histories1: ChatItemType[], histories2: ChatItemType[]) => {
@@ -70,7 +71,7 @@ export const getHistoryPreview = (
 
     return {
       obj: item.obj,
-      value: content
+      value: sliceStrStartEnd(content, 80, 80)
     };
   });
 };

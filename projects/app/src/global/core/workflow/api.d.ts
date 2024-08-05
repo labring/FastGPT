@@ -1,3 +1,4 @@
+import { AppSchema } from '@fastgpt/global/core/app/type';
 import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';

@@ -23,6 +23,7 @@ import { runToolWithFunctionCall } from './functionCall';
 import { runToolWithPromptCall } from './promptCall';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getMultiplePrompt, Prompt_Tool_Call } from './constants';
+import { filterToolResponseToPreview } from './utils';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -190,12 +191,14 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     }, 0);
   const flatUsages = dispatchFlowResponse.map((item) => item.flowUsages).flat();
 
+  const previewAssistantResponses = filterToolResponseToPreview(assistantResponses);
+
   return {
-    [NodeOutputKeyEnum.answerText]: assistantResponses
+    [NodeOutputKeyEnum.answerText]: previewAssistantResponses
       .filter((item) => item.text?.content)
       .map((item) => item.text?.content || '')
       .join(''),
-    [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
+    [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: totalPointsUsage,
       toolCallTokens: totalTokens,
