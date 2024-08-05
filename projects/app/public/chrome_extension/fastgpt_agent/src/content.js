@@ -242,6 +242,10 @@ chrome.storage.local.get(["showChatBot"], function (result) {
                         }
                         chatWindow.appendChild(fullscreenBtn);
                         chatWindow.appendChild(switchBtn);
+                        const tmpEl = document.getElementById('configList');
+                        if (tmpEl) {
+                            chatWindow.removeChild(tmpEl);
+                        }
                     };
                 }, 100);
             });
