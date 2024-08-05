@@ -34,6 +34,73 @@
   "classification": "Classification",
   "click_to_resume": "Resume",
   "code_editor": "Code edit",
+  "code_error": {
+    "app_error": {
+      "not_exist": "App does not exist",
+      "un_auth_app": "No permission to operate this application"
+    },
+    "chat_error": {
+      "un_auth": "No permission to operate this conversation record"
+    },
+    "error_code": {
+      "400": "Request failed",
+      "401": "No access",
+      "403": "Nervous visit",
+      "404": "Request does not exist",
+      "405": "Request method error",
+      "406": "Request format error",
+      "410": "Resource deleted",
+      "422": "Validation error",
+      "500": "Server error occurred",
+      "502": "Gateway error",
+      "503": "The server is temporarily overloaded or under maintenance",
+      "504": "Gateway timeout"
+    },
+    "error_message": {
+      "403": "Credential error",
+      "510": "Insufficient account balance",
+      "511": "No permission to operate this model",
+      "513": "No permission to read the file",
+      "514": "Api Key is illegal"
+    },
+    "openapi_error": {
+      "api_key_not_exist": "API Key does not exist",
+      "exceed_limit": "Up to 10 sets of API keys",
+      "un_auth": "No permission to operate this API Key"
+    },
+    "outlink_error": {
+      "invalid_link": "Sharing link is invalid",
+      "link_not_exist": "Sharing link does not exist",
+      "un_auth_user": "Identity verification failed"
+    },
+    "plugin_error": {
+      "not_exist": "Plugin does not exist",
+      "un_auth": "No permission to operate this plug-in"
+    },
+    "system_error": {
+      "community_version_num_limit": "If the number limit of the open source version is exceeded, please upgrade to the commercial version: https://fastgpt.in"
+    },
+    "team_error": {
+      "ai_points_not_enough": "",
+      "app_amount_not_enough": "The number of applications has reached the upper limit~",
+      "dataset_amount_not_enough": "The number of knowledge bases has reached the upper limit~",
+      "dataset_size_not_enough": "The capacity of the knowledge base is insufficient, please expand it first~",
+      "over_size": "error.team.overSize",
+      "plugin_amount_not_enough": "The number of plug-ins has reached the upper limit~",
+      "re_rank_not_enough": "Not authorized to use search rearrangement~",
+      "un_auth": "No permission to operate this team",
+      "website_sync_not_enough": "No permission to use Web site synchronization~"
+    },
+    "token_error_code": {
+      "403": "Invalid login status, please log in again"
+    },
+    "user_error": {
+      "balance_not_enough": "Account balance is insufficient~",
+      "bin_visitor": "Your identity verification failed",
+      "bin_visitor_guest": "You are currently a visitor and do not have permission to operate",
+      "un_auth_user": "The user cannot be found"
+    }
+  },
   "common": {
     "Action": "Action",
     "Add": "Add",

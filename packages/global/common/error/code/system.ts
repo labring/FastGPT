@@ -8,7 +8,7 @@ export enum SystemErrEnum {
 const systemErr = [
   {
     statusText: SystemErrEnum.communityVersionNumLimit,
-    message: i18nT('error:system_error.community_version_num_limit')
+    message: i18nT('common:code_error.system_error.community_version_num_limit')
   }
 ];
 

@@ -11,20 +11,20 @@ export enum OutLinkErrEnum {
 const errList = [
   {
     statusText: OutLinkErrEnum.unExist,
-    message: i18nT('error:outlink_error.link_not_exist')
+    message: i18nT('common:code_error.outlink_error.link_not_exist')
   },
   {
     statusText: OutLinkErrEnum.unAuthLink,
-    message: i18nT('error:outlink_error.invalid_link')
+    message: i18nT('common:code_error.outlink_error.invalid_link')
   },
   {
     code: 501,
     statusText: OutLinkErrEnum.linkUnInvalid,
-    message: i18nT('error:outlink_error.invalid_link') // 使用相同的错误消息
+    message: i18nT('common:code_error.outlink_error.invalid_link') // 使用相同的错误消息
   },
   {
     statusText: OutLinkErrEnum.unAuthUser,
-    message: i18nT('error:outlink_error.un_auth_user')
+    message: i18nT('common:code_error.outlink_error.un_auth_user')
   }
 ];
 

@@ -9,11 +9,11 @@ export enum PluginErrEnum {
 const errList = [
   {
     statusText: PluginErrEnum.unExist,
-    message: i18nT('error:plugin_error.not_exist')
+    message: i18nT('common:code_error.plugin_error.not_exist')
   },
   {
     statusText: PluginErrEnum.unAuth,
-    message: i18nT('error:plugin_error.un_auth')
+    message: i18nT('common:code_error.plugin_error.un_auth')
   }
 ];
 

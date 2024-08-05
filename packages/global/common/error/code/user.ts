@@ -8,15 +8,21 @@ export enum UserErrEnum {
   balanceNotEnough = 'balanceNotEnough'
 }
 const errList = [
-  { statusText: UserErrEnum.unAuthUser, message: i18nT('error:user_error.un_auth_user') },
-  { statusText: UserErrEnum.binVisitor, message: i18nT('error:user_error.bin_visitor') }, // 身份校验未通过
+  {
+    statusText: UserErrEnum.unAuthUser,
+    message: i18nT('common:code_error.user_error.un_auth_user')
+  },
   {
     statusText: UserErrEnum.binVisitor,
-    message: i18nT('error:user_error.bin_visitor_guest')
+    message: i18nT('common:code_error.user_error.bin_visitor')
+  }, // 身份校验未通过
+  {
+    statusText: UserErrEnum.binVisitor,
+    message: i18nT('common:code_error.user_error.bin_visitor_guest')
   }, // 游客身份
   {
     statusText: UserErrEnum.balanceNotEnough,
-    message: i18nT('error:user_error.balance_not_enough')
+    message: i18nT('common:code_error.user_error.balance_not_enough')
   }
 ];
 export default errList.reduce((acc, cur, index) => {

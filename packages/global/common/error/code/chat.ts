@@ -7,7 +7,7 @@ export enum ChatErrEnum {
 const errList = [
   {
     statusText: ChatErrEnum.unAuthChat,
-    message: i18nT('error:chat_error.un_auth')
+    message: i18nT('common:code_error.chat_error.un_auth')
   }
 ];
 export default errList.reduce((acc, cur, index) => {

@@ -8,11 +8,11 @@ export enum AppErrEnum {
 const appErrList = [
   {
     statusText: AppErrEnum.unExist,
-    message: i18nT('error:app_error.not_exist')
+    message: i18nT('common:code_error.app_error.not_exist')
   },
   {
     statusText: AppErrEnum.unAuthApp,
-    message: i18nT('error:app_error.un_auth_app')
+    message: i18nT('common:code_error.app_error.un_auth_app')
   }
 ];
 export default appErrList.reduce((acc, cur, index) => {

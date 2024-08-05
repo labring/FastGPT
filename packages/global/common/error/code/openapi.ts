@@ -10,15 +10,15 @@ export enum OpenApiErrEnum {
 const errList = [
   {
     statusText: OpenApiErrEnum.unExist,
-    message: i18nT('error:openapi_error.api_key_not_exist')
+    message: i18nT('common:code_error.openapi_error.api_key_not_exist')
   },
   {
     statusText: OpenApiErrEnum.unAuth,
-    message: i18nT('error:openapi_error.un_auth')
+    message: i18nT('common:code_error.openapi_error.un_auth')
   },
   {
     statusText: OpenApiErrEnum.exceedLimit,
-    message: i18nT('error:openapi_error.exceed_limit')
+    message: i18nT('common:code_error.openapi_error.exceed_limit')
   }
 ];
 

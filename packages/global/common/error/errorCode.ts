@@ -11,22 +11,22 @@ import SystemErrEnum from './code/system';
 import { i18nT } from '../../../web/i18n/utils';
 
 export const ERROR_CODE: { [key: number]: string } = {
-  400: i18nT('error:error_code.400'),
-  401: i18nT('error:error_code.401'),
-  403: i18nT('error:error_code.403'),
-  404: i18nT('error:error_code.404'),
-  405: i18nT('error:error_code.405'),
-  406: i18nT('error:error_code.406'),
-  410: i18nT('error:error_code.410'),
-  422: i18nT('error:error_code.422'),
-  500: i18nT('error:error_code.500'),
-  502: i18nT('error:error_code.502'),
-  503: i18nT('error:error_code.503'),
-  504: i18nT('error:error_code.504')
+  400: i18nT('common:code_error.error_code.400'),
+  401: i18nT('common:code_error.error_code.401'),
+  403: i18nT('common:code_error.error_code.403'),
+  404: i18nT('common:code_error.error_code.404'),
+  405: i18nT('common:code_error.error_code.405'),
+  406: i18nT('common:code_error.error_code.406'),
+  410: i18nT('common:code_error.error_code.410'),
+  422: i18nT('common:code_error.error_code.422'),
+  500: i18nT('common:code_error.error_code.500'),
+  502: i18nT('common:code_error.error_code.502'),
+  503: i18nT('common:code_error.error_code.503'),
+  504: i18nT('common:code_error.error_code.504')
 };
 
 export const TOKEN_ERROR_CODE: Record<number, string> = {
-  403: i18nT('error:token_error_code.403')
+  403: i18nT('common:code_error.token_error_code.403')
 };
 
 export const proxyError: Record<string, boolean> = {
@@ -64,31 +64,31 @@ export const ERROR_RESPONSE: Record<
   [ERROR_ENUM.unAuthorization]: {
     code: 403,
     statusText: ERROR_ENUM.unAuthorization,
-    message: i18nT('error:error_message.403'),
+    message: i18nT('common:code_error.error_message.403'),
     data: null
   },
   [ERROR_ENUM.insufficientQuota]: {
     code: 510,
     statusText: ERROR_ENUM.insufficientQuota,
-    message: i18nT('error:error_message.510'),
+    message: i18nT('common:code_error.error_message.510'),
     data: null
   },
   [ERROR_ENUM.unAuthModel]: {
     code: 511,
     statusText: ERROR_ENUM.unAuthModel,
-    message: i18nT('error:error_message.511'),
+    message: i18nT('common:code_error.error_message.511'),
     data: null
   },
   [ERROR_ENUM.unAuthFile]: {
     code: 513,
     statusText: ERROR_ENUM.unAuthFile,
-    message: i18nT('error:error_message.513'),
+    message: i18nT('common:code_error.error_message.513'),
     data: null
   },
   [ERROR_ENUM.unAuthApiKey]: {
     code: 514,
     statusText: ERROR_ENUM.unAuthApiKey,
-    message: i18nT('error:error_message.514'),
+    message: i18nT('common:code_error.error_message.514'),
     data: null
   },
   ...appErr,

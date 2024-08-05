@@ -18,7 +18,7 @@ export const langMap = {
 };
 
 export const serviceSideProps = (content: any, ns: I18nNsType = []) => {
-  return serverSideTranslations(content.locale, ['common', ...ns], null, content.locales);
+  return serverSideTranslations(content.locale, ['common', 'error', ...ns], null, content.locales);
 };
 
 export const getLng = (lng: string) => {
