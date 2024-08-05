@@ -51,7 +51,7 @@ const PluginRunContextProvider = ({
   }, []);
 
   const generatingMessage = useCallback(
-    ({ event, text = '', status, name, tool, variables }: generatingMessageProps) => {
+    ({ event, text = '', status, name, tool }: generatingMessageProps) => {
       setHistories((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1 || item.obj !== ChatRoleEnum.AI) return item;
@@ -170,7 +170,8 @@ const PluginRunContextProvider = ({
             type: ChatItemValueTypeEnum.text,
             text: {
               content: getPluginRunContent({
-                pluginInputs
+                pluginInputs,
+                variables: e
               })
             }
           }

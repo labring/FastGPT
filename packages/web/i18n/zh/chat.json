@@ -1,10 +1,12 @@
 {
+  "Delete_all": "清空词库",
   "chat_input_guide_lexicon_is_empty": "还没有配置词库",
   "config_input_guide": "配置输入引导",
   "config_input_guide_lexicon": "配置词库",
   "config_input_guide_lexicon_title": "配置词库",
   "csv_input_lexicon_tip": "仅支持 CSV 批量导入，点击下载模板",
   "custom_input_guide_url": "自定义词库地址",
+  "delete_all_input_guide_confirm": "确定要清空输入引导词库吗？",
   "input_guide": "输入引导",
   "input_guide_lexicon": "词库",
   "input_guide_tip": "可以配置一些预设的问题。在用户输入问题时，会从这些预设问题中获取相关问题进行提示。",

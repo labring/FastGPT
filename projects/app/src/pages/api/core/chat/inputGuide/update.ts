@@ -2,7 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export type updateChatInputGuideQuery = {};
 
@@ -19,7 +19,7 @@ async function handler(
   res: ApiResponseType<any>
 ): Promise<updateInputGuideResponse> {
   const { appId, dataId, text } = req.body;
-  await authApp({ req, appId, authToken: true, per: ReadPermissionVal });
+  await authApp({ req, appId, authToken: true, per: WritePermissionVal });
 
   await MongoChatInputGuide.findOneAndUpdate(
     {

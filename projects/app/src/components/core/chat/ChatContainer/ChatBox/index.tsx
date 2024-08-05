@@ -11,6 +11,7 @@ import React, {
 import Script from 'next/script';
 import type {
   AIChatItemValueItemType,
+  ChatHistoryItemResType,
   ChatSiteItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type.d';
@@ -543,6 +544,7 @@ const ChatBox = (
     },
     [
       abortRequest,
+      allVariableList,
       chatHistories,
       createQuestionGuide,
       finishSegmentedAudio,
@@ -559,7 +561,6 @@ const ChatBox = (
       startSegmentedAudio,
       t,
       toast,
-      variableList,
       variablesForm
     ]
   );
@@ -874,7 +875,6 @@ const ChatBox = (
       });
     }
   }));
-
   return (
     <Flex flexDirection={'column'} h={'100%'} position={'relative'}>
       <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
@@ -927,8 +927,9 @@ const ChatBox = (
                       })}
                     >
                       <ResponseTags
-                        flowResponses={item.responseData}
+                        showTags={index !== chatHistories.length - 1 || !isChatting}
                         showDetail={!shareId && !teamId}
+                        historyItem={item}
                       />
 
                       {/* custom feedback */}

@@ -6,6 +6,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { PostLoginProps } from '@fastgpt/global/support/user/api.d';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
+import { checkTeamAiPointsAndLock } from '@/service/events/utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

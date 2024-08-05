@@ -13,6 +13,9 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useContextSelector } from 'use-context-selector';
+import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -85,15 +88,23 @@ function Row({
 }
 
 const WholeResponseModal = ({
-  response,
   showDetail,
-  onClose
+  onClose,
+  dataId
 }: {
-  response: ChatHistoryItemResType[];
   showDetail: boolean;
   onClose: () => void;
+  dataId: string;
 }) => {
   const { t } = useTranslation();
+
+  const { appId, chatId, getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
+  const { loading: isLoading, data: response } = useRequest2(
+    () => getHistoryResponseData({ dataId }),
+    {
+      manual: false
+    }
+  );
 
   return (
     <MyModal
@@ -101,17 +112,18 @@ const WholeResponseModal = ({
       isOpen={true}
       onClose={onClose}
       h={['90vh', '80vh']}
+      isLoading={isLoading}
       maxH={['90vh', '700px']}
       minW={['90vw', '880px']}
       iconSrc="/imgs/modal/wholeRecord.svg"
       title={
         <Flex alignItems={'center'}>
           {t('common:core.chat.response.Complete Response')}
-          <QuestionTip ml={2} label={'从左往右，为各个模块的响应顺序'}></QuestionTip>
+          <QuestionTip ml={2} label={'从上到下，为各个模块的响应顺序'}></QuestionTip>
         </Flex>
       }
     >
-      <ResponseBox response={response} showDetail={showDetail} />
+      {response?.length && <ResponseBox response={response} showDetail={showDetail} />}
     </MyModal>
   );
 };
@@ -135,6 +147,7 @@ export const ResponseBox = React.memo(function ResponseBox({
   const [currentNodeId, setCurrentNodeId] = useState(
     flattedResponse[0]?.nodeId ? flattedResponse[0].nodeId : ''
   );
+
   const activeModule = useMemo(
     () => flattedResponse.find((item) => item.nodeId === currentNodeId) as ChatHistoryItemResType,
     [currentNodeId, flattedResponse]

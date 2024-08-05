@@ -27,6 +27,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: boolean;
   [NodeInputKeyEnum.datasetSearchExtensionModel]: string;
   [NodeInputKeyEnum.datasetSearchExtensionBg]: string;
+  [NodeInputKeyEnum.collectionFilterMatch]: string;
 }>;
 export type DatasetSearchResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
@@ -49,7 +50,8 @@ export async function dispatchDatasetSearch(
 
       datasetSearchUsingExtensionQuery,
       datasetSearchExtensionModel,
-      datasetSearchExtensionBg
+      datasetSearchExtensionBg,
+      collectionFilterMatch
     }
   } = props as DatasetSearchProps;
 
@@ -99,7 +101,8 @@ export async function dispatchDatasetSearch(
     limit,
     datasetIds: datasets.map((item) => item.datasetId),
     searchMode,
-    usingReRank: usingReRank && (await checkTeamReRankPermission(teamId))
+    usingReRank: usingReRank && (await checkTeamReRankPermission(teamId)),
+    collectionFilterMatch
   });
 
   // count bill results

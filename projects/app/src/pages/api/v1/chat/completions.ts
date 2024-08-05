@@ -201,7 +201,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               type: ChatItemValueTypeEnum.text,
               text: {
                 content: getPluginRunContent({
-                  pluginInputs: getPluginInputsFromStoreNodes(app.modules)
+                  pluginInputs: getPluginInputsFromStoreNodes(app.modules),
+                  variables
                 })
               }
             }
