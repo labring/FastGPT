@@ -38,12 +38,12 @@ export const useSendCode = () => {
   const sendCodeText = useMemo(() => {
     if (codeSending) return t('common:support.user.auth.Sending Code');
     if (codeCountDown >= 10) {
-      return `${codeCountDown}s后重新获取`;
+      return `${codeCountDown}${t('user:password.get_code_again')}`;
     }
     if (codeCountDown > 0) {
-      return `0${codeCountDown}s后重新获取`;
+      return `0${codeCountDown}${t('user:password.get_code_again')}`;
     }
-    return '获取验证码';
+    return t('user:password.get_code');
   }, [codeCountDown, codeSending, t]);
 
   return {

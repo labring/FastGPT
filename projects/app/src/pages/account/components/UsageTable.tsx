@@ -174,7 +174,7 @@ const UsageTable = () => {
                 <Td>{formatNumber(item.totalPoints) || 0}</Td>
                 <Td>
                   <Button size={'sm'} variant={'whitePrimary'} onClick={() => setUsageDetail(item)}>
-                    详情
+                    {t('common:common.Detail')}
                   </Button>
                 </Td>
               </Tr>
@@ -183,7 +183,9 @@ const UsageTable = () => {
         </Table>
       </TableContainer>
 
-      {!isLoading && usages.length === 0 && <EmptyTip text="无使用记录~"></EmptyTip>}
+      {!isLoading && usages.length === 0 && (
+        <EmptyTip text={t('common:user.no_usage_records')}></EmptyTip>
+      )}
 
       <Loading loading={isLoading} fixed={false} />
       {!!usageDetail && (

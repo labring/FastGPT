@@ -31,7 +31,7 @@ const CustomPluginRunBox = (props: PluginRunBoxProps) => {
           <LightRowTabs<PluginRunBoxTabEnum>
             list={[
               { label: t('common:common.Output'), value: PluginRunBoxTabEnum.output },
-              { label: '完整结果', value: PluginRunBoxTabEnum.detail }
+              { label: t('common:common.all_result'), value: PluginRunBoxTabEnum.detail }
             ]}
             value={tab}
             onChange={setTab}
@@ -52,7 +52,7 @@ const CustomPluginRunBox = (props: PluginRunBoxProps) => {
         list={[
           { label: t('common:common.Input'), value: PluginRunBoxTabEnum.input },
           { label: t('common:common.Output'), value: PluginRunBoxTabEnum.output },
-          { label: '完整结果', value: PluginRunBoxTabEnum.detail }
+          { label: t('common:common.all_result'), value: PluginRunBoxTabEnum.detail }
         ]}
         value={tab}
         onChange={setTab}

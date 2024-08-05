@@ -6,7 +6,9 @@
     "Reset template confirm": "Are you sure to restore the code template? All input and output to template values will be reset, please be careful to save the current code."
   },
   "confirm_delete_field_tip": "Confirm to delete the field?",
+  "create_link_error": "Create link exception",
   "custom_input": "Custom input",
+  "delete_api": "Are you sure you want to delete this API key? \nAfter deletion, the key will become invalid immediately and the corresponding conversation log will not be deleted. Please confirm!",
   "edit_input": "Edit input",
   "field_description": "Field description",
   "field_description_placeholder": "Describes the functionality of this input field, which affects the quality of model generation if the parameter is called for a tool",
@@ -28,5 +30,6 @@
     "Error": "Error"
   },
   "tool_input": "Tool",
+  "update_link_error": "Update link exception",
   "variable_picker_tips": "enter node name or variable name to search"
 }

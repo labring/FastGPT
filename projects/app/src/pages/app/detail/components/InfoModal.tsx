@@ -146,7 +146,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     () => resumeInheritPer(appDetail._id),
     // () => putAppById(appDetail._id, { inheritPermission: true }),
     {
-      errorToast: '恢复失败',
+      errorToast: t('common:resume_failed'),
       onSuccess: () => {
         reloadApp();
       }

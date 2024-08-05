@@ -23,12 +23,13 @@ import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import Loading from '@fastgpt/web/components/common/MyLoading';
-
+import { useTranslation } from 'next-i18next';
 export type ManageModalProps = {
   onClose: () => void;
 };
 
 function ManageModal({ onClose }: ManageModalProps) {
+  const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const { permission, collaboratorList, onUpdateCollaborators, onDelOneCollaborator } =
     useContextSelector(CollaboratorContext, (v) => v);
@@ -44,23 +45,29 @@ function ManageModal({ onClose }: ManageModalProps) {
         permission: per
       });
     },
-    successToast: '更新成功',
+    successToast: t('common.Update Success'),
     errorToast: 'Error'
   });
 
   const loading = isDeleting || isUpdating;
 
   return (
-    <MyModal isOpen onClose={onClose} minW="600px" title="管理协作者" iconSrc="common/settingLight">
+    <MyModal
+      isOpen
+      onClose={onClose}
+      minW="600px"
+      title={t('user:team.manage_collaborators')}
+      iconSrc="common/settingLight"
+    >
       <ModalBody>
         <TableContainer borderRadius="md" minH="400px">
           <Table>
             <Thead bg="myGray.100">
               <Tr>
-                <Th border="none">名称</Th>
-                <Th border="none">权限</Th>
+                <Th border="none">{t('user:name')}</Th>
+                <Th border="none">{t('user:permissions')}</Th>
                 <Th border="none" w={'40px'}>
-                  操作
+                  {t('user:operations')}
                 </Th>
               </Tr>
             </Thead>
@@ -109,7 +116,7 @@ function ManageModal({ onClose }: ManageModalProps) {
               })}
             </Tbody>
           </Table>
-          {collaboratorList?.length === 0 && <EmptyTip text={'暂无协作者'} />}
+          {collaboratorList?.length === 0 && <EmptyTip text={t('user:team.no_collaborators')} />}
         </TableContainer>
         {loading && <Loading fixed={false} />}
       </ModalBody>

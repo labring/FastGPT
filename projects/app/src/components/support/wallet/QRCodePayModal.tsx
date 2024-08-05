@@ -1,6 +1,7 @@
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
+import { useI18n } from '@/web/context/I18n';
 import { Box, ModalBody, ModalFooter } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { checkBalancePayResult } from '@/web/support/wallet/bill/api';
@@ -22,6 +23,7 @@ const QRCodePayModal = ({
 }: QRPayProps & { onSuccess?: () => any }) => {
   const router = useRouter();
   const { t } = useTranslation();
+  const { commonT } = useI18n();
   const { toast } = useToast();
   const dom = document.getElementById('payQRCode');
 
@@ -73,7 +75,7 @@ const QRCodePayModal = ({
   return (
     <MyModal isOpen title={t('common:user.Pay')} iconSrc="/imgs/modal/pay.svg">
       <ModalBody textAlign={'center'}>
-        <Box mb={3}>请微信扫码支付: {readPrice}元，请勿关闭页面</Box>
+        <Box mb={3}>{commonT('common:pay.wechat', { price: readPrice })}</Box>
         <Box id={'payQRCode'} display={'inline-block'} h={'128px'}></Box>
       </ModalBody>
       <ModalFooter />

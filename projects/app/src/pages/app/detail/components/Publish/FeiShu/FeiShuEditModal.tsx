@@ -123,8 +123,7 @@ const FeiShuEditModal = ({
         </Flex>
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
-            默认回复
-            {/* TODO: i18n */}
+            {t('common:default_reply')}
           </Flex>
           <Input
             placeholder={publishT('default_response') || 'link_name'}
@@ -136,8 +135,7 @@ const FeiShuEditModal = ({
         </Flex>
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
-            立即回复
-            {/* TODO: i18n */}
+            {t('common:reply_now')}
           </Flex>
           <Input
             placeholder={publishT('default_response') || 'link_name'}

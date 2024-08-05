@@ -135,7 +135,9 @@ const AIChatSettingsModal = ({
             <QuestionTip ml={1} label={t('common:core.module.template.AI support tool tip')} />
           </Box>
           <Box flex={1} ml={'10px'}>
-            {selectedModel?.toolChoice || selectedModel?.functionCall ? '支持' : '不支持'}
+            {selectedModel?.toolChoice || selectedModel?.functionCall
+              ? t('common:common.support')
+              : t('common:common.not_support')}
           </Box>
         </Flex>
         <Flex mt={8}>

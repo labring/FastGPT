@@ -13,6 +13,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 
+import { useI18n } from '@/web/context/I18n';
 const QuoteModal = dynamic(() => import('./QuoteModal'));
 const ContextModal = dynamic(() => import('./ContextModal'));
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
@@ -28,6 +29,7 @@ const ResponseTags = ({
 }) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
+  const { chatT } = useI18n();
   const quoteListRef = React.useRef<HTMLDivElement>(null);
   const dataId = historyItem.dataId;
   const {
@@ -175,28 +177,28 @@ const ResponseTags = ({
       {showDetail && (
         <Flex alignItems={'center'} mt={3} flexWrap={'wrap'} gap={2}>
           {quoteList.length > 0 && (
-            <MyTooltip label="查看引用">
+            <MyTooltip label={t('chat:view_citations')}>
               <MyTag
                 colorSchema="blue"
                 type="borderSolid"
                 cursor={'pointer'}
                 onClick={() => setQuoteModalData({ rawSearch: quoteList })}
               >
-                {quoteList.length}条引用
+                {chatT('chat:citations', { num: quoteList.length })}
               </MyTag>
             </MyTooltip>
           )}
           {llmModuleAccount === 1 && (
             <>
               {historyPreviewLength > 0 && (
-                <MyTooltip label={'点击查看上下文预览'}>
+                <MyTooltip label={t('chat:click_contextual_preview')}>
                   <MyTag
                     colorSchema="green"
                     cursor={'pointer'}
                     type="borderSolid"
                     onClick={onOpenContextModal}
                   >
-                    {historyPreviewLength}条上下文
+                    {chatT('chat:contextual', { num: historyPreviewLength })}
                   </MyTag>
                 </MyTooltip>
               )}
@@ -204,12 +206,12 @@ const ResponseTags = ({
           )}
           {llmModuleAccount > 1 && (
             <MyTag type="borderSolid" colorSchema="blue">
-              多组 AI 对话
+              {t('chat:multiple_AI_conversations')}
             </MyTag>
           )}
 
           {isPc && runningTime > 0 && (
-            <MyTooltip label={'模块运行时间和'}>
+            <MyTooltip label={t('chat:module_runtime_and')}>
               <MyTag colorSchema="purple" type="borderSolid" cursor={'default'}>
                 {runningTime}s
               </MyTag>

@@ -1,0 +1,33 @@
+{
+  "app_error": {
+    "not_exist": "App does not exist",
+    "un_auth": "No permission to operate this application"
+  },
+  "chat_error": {
+    "un_auth": "No permission to operate this conversation record"
+  },
+  "error_code": {
+    "400": "Request failed",
+    "401": "No access",
+    "403": "Nervous visit",
+    "404": "Request does not exist",
+    "405": "Request method error",
+    "406": "Request is in the wrong format",
+    "410": "Resource deleted",
+    "422": "Validation error",
+    "500": "Server error occurred",
+    "502": "Gateway error",
+    "503": "The server is temporarily overloaded or undergoing maintenance",
+    "504": "Gateway timeout"
+  },
+  "error_message": {
+    "403": "Credential error",
+    "510": "Insufficient account balance",
+    "511": "No permission to operate this model",
+    "513": "Don't have permission to read the file",
+    "514": "API Key is illegal"
+  },
+  "token_error_code": {
+    "403": "Login status is invalid, please log in again"
+  }
+}

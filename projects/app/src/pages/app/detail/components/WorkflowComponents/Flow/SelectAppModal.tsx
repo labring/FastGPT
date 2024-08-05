@@ -47,7 +47,7 @@ const SelectAppModal = ({
   return (
     <MyModal
       isOpen
-      title={`选择应用`}
+      title={t('common:core.module.Select app')}
       iconSrc="/imgs/workflow/ai.svg"
       onClose={onClose}
       position={'relative'}

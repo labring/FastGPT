@@ -435,7 +435,7 @@ const PlanUsage = () => {
                   <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>
                 </Flex>
                 <Box mt="2" color={'#485264'} fontSize="sm">
-                  免费版用户30天无任何使用记录时，系统会自动清理账号知识库。
+                  {t('common:info.free_plan')}
                 </Box>
               </>
             ) : (
@@ -470,9 +470,9 @@ const PlanUsage = () => {
       >
         <Flex>
           <Flex flex={'1 0 0'} alignItems={'flex-end'}>
-            <Box fontSize={'md'}>资源用量</Box>
+            <Box fontSize={'md'}>{t('common:info.resource')}</Box>
             <Box fontSize={'xs'} color={'myGray.500'}>
-              (包含标准套餐与额外资源包)
+              {t('common:info.include')}
             </Box>
           </Flex>
           <Link
@@ -484,7 +484,7 @@ const PlanUsage = () => {
             cursor={'pointer'}
             fontSize={'sm'}
           >
-            购买额外套餐
+            {t('common:info.buy_extra')}
             <MyIcon ml={1} name={'common/rightArrowLight'} w={'12px'} />
           </Link>
         </Flex>
@@ -567,7 +567,7 @@ const Other = () => {
       });
       reset(data);
       toast({
-        title: '更新数据成功',
+        title: t('common:dataset.data.Update Success Tip'),
         status: 'success'
       });
     },
@@ -637,7 +637,7 @@ const Other = () => {
           >
             <Image src="/imgs/workflow/laf.png" w={'18px'} alt="laf" />
             <Box ml={2} flex={1}>
-              laf 账号
+              {'laf' + t('common:navbar.Account')}
             </Box>
             <Box
               w={'9px'}
@@ -664,7 +664,7 @@ const Other = () => {
           >
             <MyIcon name={'common/openai'} w={'18px'} color={'myGray.600'} />
             <Box ml={2} flex={1}>
-              OpenAI/OneAPI 账号
+              {'OpenAI / OneAPI' + t('common:navbar.Account')}
             </Box>
             <Box
               w={'9px'}

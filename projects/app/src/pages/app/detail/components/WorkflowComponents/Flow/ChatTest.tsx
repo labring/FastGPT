@@ -77,7 +77,7 @@ const ChatTest = ({
                 ...(chatRecords.length > 0
                   ? [
                       { label: t('common:common.Output'), value: PluginRunBoxTabEnum.output },
-                      { label: '完整结果', value: PluginRunBoxTabEnum.detail }
+                      { label: t('common:common.all_result'), value: PluginRunBoxTabEnum.detail }
                     ]
                   : [])
               ]}

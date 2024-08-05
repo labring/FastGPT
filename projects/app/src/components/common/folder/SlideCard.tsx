@@ -78,7 +78,7 @@ const FolderSlideCard = ({
           />
         </HStack>
         <Box mt={3} fontSize={'sm'} color={'myGray.500'} cursor={'pointer'} onClick={onEdit}>
-          {intro || '暂无介绍'}
+          {intro || t('common:not_yet_introduced')}
         </Box>
       </Box>
 

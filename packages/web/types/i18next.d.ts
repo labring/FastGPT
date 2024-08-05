@@ -7,7 +7,7 @@ import publish from '../i18n/zh/publish.json';
 import workflow from '../i18n/zh/workflow.json';
 import user from '../i18n/zh/user.json';
 import chat from '../i18n/zh/chat.json';
-
+import error from '../i18n/zh/error.json';
 export interface I18nNamespaces {
   common: typeof common;
   dataset: typeof dataset;
@@ -17,6 +17,7 @@ export interface I18nNamespaces {
   workflow: typeof workflow;
   user: typeof user;
   chat: typeof chat;
+  error: typeof error;
 }
 
 export type I18nNsType = (keyof I18nNamespaces)[];
@@ -28,6 +29,7 @@ export type I18nPublishKey = NestedKeyOf<I18nNamespaces['publish']>;
 export type I18nWorkflowKey = NestedKeyOf<I18nNamespaces['workflow']>;
 export type I18nUserKey = NestedKeyOf<I18nNamespaces['user']>;
 export type I18nChatKey = NestedKeyOf<I18nNamespaces['chat']>;
+export type I18nErrorKey = NestedKeyOf<I18nNamespaces['error']>;
 
 export type NestedKeyOf<ObjectType extends object> = {
   [Key in keyof ObjectType & (string | number)]: ObjectType[Key] extends object
@@ -46,7 +48,7 @@ export type I18nKeyFunction = {
 declare module 'i18next' {
   interface CustomTypeOptions {
     returnNull: false;
-    defaultNS: ['common', 'dataset', 'app', 'file', 'publish', 'workflow', 'user', 'chat'];
+    defaultNS: ['common', 'dataset', 'app', 'file', 'publish', 'workflow', 'user', 'chat', 'error'];
     resources: I18nNamespaces;
   }
 }

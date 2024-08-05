@@ -4,8 +4,9 @@ import { useCallback } from 'react';
 import { htmlTemplate } from '@/web/core/chat/constants';
 import { fileDownload } from '@/web/common/file/utils';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
-
+import { useTranslation } from 'next-i18next';
 export const useChatBox = () => {
+  const { t } = useTranslation();
   const onExportChat = useCallback(
     ({ type, history }: { type: ExportChatType; history: ChatItemType[] }) => {
       const getHistoryHtml = () => {
@@ -74,7 +75,7 @@ ${JSON.stringify(item.tools, null, 2)}
             fileDownload({
               text: html,
               type: 'text/html',
-              filename: '聊天记录.html'
+              filename: `${t('chat:chat_history')}.html`
             });
         },
         pdf: () => {
@@ -84,7 +85,7 @@ ${JSON.stringify(item.tools, null, 2)}
             // @ts-ignore
             html2pdf(html, {
               margin: 0,
-              filename: `聊天记录.pdf`
+              filename: `${t('chat:chat_history')}.pdf`
             });
         }
       };

@@ -119,7 +119,7 @@ const WholeResponseModal = ({
       title={
         <Flex alignItems={'center'}>
           {t('common:core.chat.response.Complete Response')}
-          <QuestionTip ml={2} label={'从上到下，为各个模块的响应顺序'}></QuestionTip>
+          <QuestionTip ml={2} label={t('chat:question_tip')}></QuestionTip>
         </Flex>
       }
     >

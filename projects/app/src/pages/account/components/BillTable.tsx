@@ -134,7 +134,7 @@ const BillTable = () => {
                 <Td>
                   {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                 </Td>
-                <Td>{formatStorePrice2Read(item.price)}元</Td>
+                <Td>{formatStorePrice2Read(item.price) + t('common:pay.yuan')}</Td>
                 <Td>{t(billStatusMap[item.status]?.label as any)}</Td>
                 <Td>
                   {item.status === 'NOTPAY' && (
@@ -211,7 +211,7 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
         )}
         <Flex alignItems={'center'} pb={4}>
           <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.Amount')}:</FormLabel>
-          <Box>{formatStorePrice2Read(bill.price)}元</Box>
+          <Box>{formatStorePrice2Read(bill.price) + t('common:pay.yuan')}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.Type')}:</FormLabel>

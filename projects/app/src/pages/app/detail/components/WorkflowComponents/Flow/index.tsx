@@ -25,6 +25,7 @@ import { connectionLineStyle, defaultEdgeOptions } from '../constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
 import { useWorkflow } from './hooks/useWorkflow';
+import { t } from 'i18next';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const nodeTypes: Record<FlowNodeTypeEnum, any> = {
@@ -171,7 +172,7 @@ const FlowController = React.memo(function FlowController() {
           showInteractive={false}
           showFitView={false}
         >
-          <MyTooltip label={'页面居中'}>
+          <MyTooltip label={t('common:common.page_center')}>
             <ControlButton className="custom-workflow-fix_view" onClick={() => fitView()}>
               <MyIcon name={'core/modules/fixview'} w={'14px'} />
             </ControlButton>
