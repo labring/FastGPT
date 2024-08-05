@@ -20,11 +20,10 @@ import type { MultipleSelectProps } from '@fastgpt/web/components/common/MySelec
 import { cronParser2Fields } from '@fastgpt/global/common/string/time';
 import TimezoneSelect from '@fastgpt/web/components/common/MySelect/TimezoneSelect';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-
 const MultipleRowSelect = dynamic(
   () => import('@fastgpt/web/components/common/MySelect/MultipleRowSelect')
 );
-
+import { i18nT } from '@fastgpt/web/i18n/utils';
 // options type:
 enum CronJobTypeEnum {
   month = 'month',
@@ -40,17 +39,32 @@ const get24HoursOptions = () => {
     value: i
   }));
 };
+
+const getRoute = (i: number) => {
+  switch (i) {
+    case 0:
+      return 'app:week.Sunday';
+    case 1:
+      return 'app:week.Monday';
+    case 2:
+      return 'app:week.Tuesday';
+    case 3:
+      return 'app:week.Wednesday';
+    case 4:
+      return 'app:week.Thursday';
+    case 5:
+      return 'app:week.Friday';
+    case 6:
+      return 'app:week.Saturday';
+    default:
+      return 'app:week.Sunday';
+  }
+};
+
 const getWeekOptions = () => {
   return Array.from({ length: 7 }, (_, i) => {
-    if (i === 0) {
-      return {
-        label: '星期日',
-        value: i,
-        children: get24HoursOptions()
-      };
-    }
     return {
-      label: `星期${i}`,
+      label: i18nT(getRoute(i)),
       value: i,
       children: get24HoursOptions()
     };
@@ -58,7 +72,7 @@ const getWeekOptions = () => {
 };
 const getMonthOptions = () => {
   return Array.from({ length: 28 }, (_, i) => ({
-    label: `${i + 1}号`,
+    label: `${i + 1}` + i18nT('app:month.unit'),
     value: i,
     children: get24HoursOptions()
   }));
@@ -67,27 +81,27 @@ const getInterValOptions = () => {
   // 每n小时
   return [
     {
-      label: `每小时`,
+      label: i18nT('app:interval.per_hour'),
       value: 1
     },
     {
-      label: `每2小时`,
+      label: i18nT('app:interval.2_hours'),
       value: 2
     },
     {
-      label: `每3小时`,
+      label: i18nT('app:interval.3_hours'),
       value: 3
     },
     {
-      label: `每4小时`,
+      label: i18nT('app:interval.4_hours'),
       value: 4
     },
     {
-      label: `每6小时`,
+      label: i18nT('app:interval.6_hours'),
       value: 6
     },
     {
-      label: `每12小时`,
+      label: i18nT('app:interval.12_hours'),
       value: 12
     }
   ];
@@ -113,22 +127,22 @@ const ScheduledTriggerConfig = ({
 
   const cronSelectList = useRef<MultipleSelectProps['list']>([
     {
-      label: '每天执行',
+      label: t('app:cron.every_day'),
       value: CronJobTypeEnum.day,
       children: get24HoursOptions()
     },
     {
-      label: '每周执行',
+      label: t('app:cron.every_week'),
       value: CronJobTypeEnum.week,
       children: getWeekOptions()
     },
     {
-      label: '每月执行',
+      label: t('app:cron.every_month'),
       value: CronJobTypeEnum.month,
       children: getMonthOptions()
     },
     {
-      label: '间隔执行',
+      label: t('app:cron.interval'),
       value: CronJobTypeEnum.interval,
       children: getInterValOptions()
     }
@@ -224,7 +238,7 @@ const ScheduledTriggerConfig = ({
     }
     if (cronField[0] === 'week') {
       return t('core.app.schedule.Every week', {
-        day: cronField[1] === 0 ? '日' : cronField[1],
+        day: cronField[1] === 0 ? t('app:day') : cronField[1],
         hour: cronField[2]
       });
     }
@@ -279,10 +293,7 @@ const ScheduledTriggerConfig = ({
         >
           <ModalBody>
             <Flex justifyContent={'space-between'} alignItems={'center'}>
-              <FormLabel flex={'0 0 80px'}>
-                {' '}
-                {t('common:core.app.schedule.Open schedule')}
-              </FormLabel>
+              <FormLabel flex={'0 0 80px'}>{t('common:core.app.schedule.Open schedule')}</FormLabel>
               <Switch
                 isChecked={isOpenSchedule}
                 onChange={(e) => {
@@ -297,7 +308,7 @@ const ScheduledTriggerConfig = ({
             {isOpenSchedule && (
               <>
                 <Flex alignItems={'center'} mt={5}>
-                  <FormLabel flex={'0 0 80px'}>执行时间</FormLabel>
+                  <FormLabel flex={'0 0 80px'}>{t('app:execute_time')}</FormLabel>
                   <Box flex={'1 0 0'}>
                     <MultipleRowSelect
                       label={formatLabel}
@@ -310,7 +321,7 @@ const ScheduledTriggerConfig = ({
                   </Box>
                 </Flex>
                 <Flex alignItems={'center'} mt={5}>
-                  <FormLabel flex={'0 0 80px'}>时区</FormLabel>
+                  <FormLabel flex={'0 0 80px'}>{t('app:time_zone')}</FormLabel>
                   <Box flex={'1 0 0'}>
                     <TimezoneSelect
                       value={timezone}

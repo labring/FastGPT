@@ -104,7 +104,7 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
   ];
 
   const { openConfirm, ConfirmModal } = useConfirm({
-    content: '确认退出登录？'
+    content: t('common:support.user.logout.confirm')
   });
 
   const router = useRouter();

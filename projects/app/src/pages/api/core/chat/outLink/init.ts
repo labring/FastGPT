@@ -18,6 +18,7 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
@@ -69,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       data: {
         chatId,
         appId: app._id,
-        title: chat?.title || '新对话',
+        title: chat?.title || i18nT('chat:new_chat'),
         //@ts-ignore
         userAvatar: tmb?.userId?.avatar,
         variables: chat?.variables || {},

@@ -1,19 +1,160 @@
 {
   "App": "应用",
+  "click_to_resume": "点击恢复",
+  "code_editor": "代码编辑",
   "Export": "导出",
   "Folder": "文件夹",
   "Login": "登录",
+  "chosen": "已选",
+  "chose_condition": "选择条件",
+  "confirm_choice": "确认选择",
   "Move": "移动",
   "Name": "名称",
+  "create": "去创建",
+  "required": "必须",
+  "extraction_results": "提取结果",
+  "item_description": "字段描述",
+  "item_name": "字段名",
+  "tool_field": "工具字段参数配置",
+  "classification": "分类",
+  "get_laf_failed": "获取Laf函数列表失败",
+  "no_laf_env": "系统未配置Laf环境",
+  "get_app_failed": "获取应用失败",
   "Rename": "重命名",
   "Resume": "恢复",
+  "resume_failed": "恢复失败",
   "Running": "运行中",
   "UnKnow": "未知",
   "Warning": "提示",
+  "default_reply": "默认回复",
+  "reply_now": "立即回复",
   "add_new": "新增",
-  "click_to_resume": "点击恢复",
-  "code_editor": "代码编辑",
+  "verification": "验证",
+  "key_repetition": "key 重复",
+  "has_verification": "已验证，点击取消绑定",
+  "undefined_var": "引用了未定义的变量，是否自动添加？",
+  "not_yet_introduced": "暂无介绍",
+  "get_QR_failed": "获取二维码失败",
+  "unit": {
+    "character": "字符",
+    "minute": "分钟"
+  },
+  "FAQ": {
+    "auto_renew_q": "订阅套餐会自动续费么？",
+    "auto_renew_a": "当前套餐过期后，系统会自动根据“未来套餐”进行续费，系统会尝试从账户余额进行扣费，如果您需要自动续费，请在账户余额中预留额度。",
+    "change_package_q": "能否切换订阅套餐？",
+    "change_package_a": "当前套餐价格大于新套餐时，无法立即切换，将会在当前套餐过期后以“续费”形式进行切换。\n当前套餐价格小于新套餐时，系统会自动计算当前套餐剩余余额，您可支付差价进行套餐切换。",
+    "ai_point_q": "什么是AI积分？",
+    "ai_point_a": "每次调用AI模型时，都会消耗一定的AI积分。具体的计算标准可参考上方的“AI 积分计算标准”。\nToken计算采用GPT3.5相同公式，1Token≈0.7中文字符≈0.9英文单词，连续出现的字符可能被认为是1个Tokens。",
+    "ai_point_expire_q": "AI积分会过期么？",
+    "ai_point_expire_a": "会过期。当前套餐过期后，AI积分将会清空，并更新为新套餐的AI积分。年度套餐的AI积分时长为1年，而不是每个月。",
+    "dataset_compute_q": "知识库存储怎么计算？",
+    "dataset_compute_a": "1条知识库存储等于1条知识库索引。一条知识库数据可以包含1条或多条知识库索引。增强训练中，1条数据会生成5条索引。",
+    "dataset_index_q": "知识库索引超出会删除么？",
+    "dataset_index_a": "不会。但知识库索引超出时，无法插入和更新知识库内容。",
+    "package_overlay_q": "额外资源包可以叠加么？",
+    "package_overlay_a": "可以的。每次购买的资源包都是独立的，在其有效期内将会叠加使用。AI积分会优先扣除最先过期的资源包。",
+    "free_user_clean_q": "免费版数据会清除么？",
+    "free_user_clean_a": "免费版用户（免费版且未购买额外套餐）30天无使用记录后，系统会自动清除账号下所有知识库内容。"
+  },
+  "code_error": {
+    "app_error": {
+      "not_exist": "应用不存在",
+      "un_auth_app": "无权操作该应用"
+    },
+    "chat_error": {
+      "un_auth": "没有权限操作此对话记录"
+    },
+    "error_code": {
+      "400": "请求失败",
+      "401": "无访问权限",
+      "403": "紧张访问",
+      "404": "请求不存在",
+      "405": "请求方法错误",
+      "406": "请求格式错误",
+      "410": "资源已删除",
+      "422": "验证错误",
+      "500": "服务器发生错误",
+      "502": "网关错误",
+      "503": "服务器暂时过载或正在维护",
+      "504": "网关超时"
+    },
+    "error_message": {
+      "403": "凭证错误",
+      "510": "账户余额不足",
+      "511": "没有权限操作此模型",
+      "513": "没有权限读取该文件",
+      "514": "Api Key 不合法"
+    },
+    "token_error_code": {
+      "403": "登录状态无效，请重新登录"
+    },
+    "openapi_error": {
+      "api_key_not_exist": "Api Key 不存在",
+      "un_auth": "无权操作该 Api Key",
+      "exceed_limit": "最多 10 组 API 密钥"
+    },
+    "outlink_error": {
+      "link_not_exist": "分享链接不存在",
+      "invalid_link": "分享链接无效",
+      "un_auth_user": "身份校验失败"
+    },
+    "plugin_error": {
+      "not_exist": "插件不存在",
+      "un_auth": "无权操作该插件"
+    },
+    "system_error": {
+      "community_version_num_limit": "超出开源版数量限制，请升级商业版: https://fastgpt.in"
+    },
+    "team_error": {
+      "over_size": "error.team.overSize",
+      "un_auth": "无权操作该团队",
+      "ai_points_not_enough": "",
+      "dataset_size_not_enough": "知识库容量不足，请先扩容~",
+      "dataset_amount_not_enough": "知识库数量已达上限~",
+      "app_amount_not_enough": "应用数量已达上限~",
+      "plugin_amount_not_enough": "插件数量已达上限~",
+      "website_sync_not_enough": "无权使用Web站点同步~",
+      "re_rank_not_enough": "无权使用检索重排~"
+    },
+    "user_error": {
+      "un_auth_user": "找不到该用户",
+      "bin_visitor": "您的身份校验未通过",
+      "bin_visitor_guest": "您当前身份为游客，无权操作",
+      "balance_not_enough": "账号余额不足~"
+    }
+  },
+  "pay": {
+    "wechat": "请微信扫码支付: {{price}}元，请勿关闭页面",
+    "yuan": "{{amount}}元",
+    "notice": "请勿关闭页面",
+    "get_pay_QR": "获取充值二维码",
+    "other": "其他金额，请取整数",
+    "amount": "金额",
+    "new_package_price": "新套餐价格",
+    "old_package_price": "旧套餐价格",
+    "need_pay": "需支付",
+    "balance": "账号余额",
+    "confirm_pay": "确认支付",
+    "balance_notice": "账号余额不足",
+    "to_recharge": "余额不足，去充值"
+  },
+  "info": {
+    "free_plan": "免费版用户30天无任何使用记录时，系统会自动清理账号知识库。",
+    "resource": "资源用量",
+    "include": "包含标准套餐与额外资源包",
+    "buy_extra": "购买额外套餐",
+    "open_api_notice": "可以填写 OpenAI/OneAPI的相关秘钥。如果你填写了该内容，在线上平台使用【AI对话】、【问题分类】和【内容提取】将会走你填写的Key，不会计费。请注意你的Key 是否有访问对应模型的权限。GPT模型可以选择 FastAI。",
+    "open_api_placeholder": "请求地址，默认为 openai 官方。可填中转地址，未自动补全 \"v1\"",
+    "old_version_attention": "检测到您的高级编排为旧版，系统将为您自动格式化成新版工作流。\n\n由于版本差异较大，会导致一些工作流无法正常排布，请重新手动连接工作流。如仍异常，可尝试删除对应节点后重新添加。\n\n你可以直接点击调试进行工作流测试，调试完毕后点击发布。直到你点击发布，新工作流才会真正保存生效。\n\n在你发布新工作流前，自动保存不会生效。",
+    "node_info": "调整该模块会对工具调用时机有影响。\n你可以通过精确的描述该模块功能，引导模型进行工具调用。",
+    "felid_message": "字段key必须是纯英文字母或数字，并且不能以数字开头。",
+    "csv_message": "读取 CSV 文件第一列进行批量测试，单次最多支持 100 组数据。",
+    "csv_download": "点击下载批量测试模板"
+  },
   "common": {
+    "support": "支持",
+    "not_support": "不支持",
     "Action": "操作",
     "Add": "添加",
     "Add New": "新增",
@@ -58,12 +199,14 @@
     "Input folder description": "文件夹描述",
     "Input name": "取个名字",
     "Intro": "介绍",
+    "no_intro": "暂无介绍",
     "Last Step": "上一步",
     "Last use time": "最后使用时间",
     "Load Failed": "加载失败",
     "Loading": "加载中...",
     "More": "更多",
     "Move": "移动",
+    "page_center": "页面居中",
     "MultipleRowSelect": {
       "No data": "没有可选值"
     },
@@ -76,6 +219,7 @@
     "Operation": "操作",
     "Other": "其他",
     "Output": "输出",
+    "all_result": "完整结果",
     "Params": "参数",
     "Password inconsistency": "两次密码不一致",
     "Permission": "权限",
@@ -85,13 +229,16 @@
     "Remove": "移除",
     "Rename": "重命名",
     "Request Error": "请求异常",
+    "is_requesting": "请求中……",
+    "request_end": "已加载全部",
+    "request_more": "点击加载更多",
     "Require Input": "必填",
     "Restart": "重新开始",
     "Role": "权限",
     "Root folder": "根目录",
     "Run": "运行",
     "Save": "保存",
-    "Save Failed": "保存失败",
+    "Save Failed": "保存异常",
     "Save Success": "保存成功",
     "Search": "搜索",
     "Select File Failed": "选择文件异常",
@@ -102,6 +249,7 @@
     "Status": "状态",
     "Submit failed": "提交失败",
     "Success": "成功",
+    "failed": "失败",
     "Sync success": "同步成功",
     "Team": "团队",
     "Team Tags Set": "标签",
@@ -142,6 +290,7 @@
       "Move to": "移动到",
       "No Folder": "没有子目录了，就放这里吧",
       "Open folder": "打开文件夹",
+      "open_dataset": "打开知识库",
       "Root Path": "根目录",
       "empty": "这个目录已经没东西可选了~"
     },
@@ -173,6 +322,7 @@
   },
   "core": {
     "Chat": "对话",
+    "view_chat_detail": "查看对话详情",
     "Max Token": "单条数据上限",
     "ai": {
       "AI settings": "AI 配置",
@@ -184,11 +334,15 @@
       "Support tool": "函数调用",
       "model": {
         "Dataset Agent Model": "文件处理模型",
-        "Vector Model": "索引模型"
+        "Vector Model": "索引模型",
+        "doc_index_and_dialog": "文档索引 & 对话索引"
       }
     },
     "app": {
       "Ai response": "返回 AI 内容",
+      "loading": "加载中",
+      "no_app": "还没有应用，快去创建一个吧！",
+      "edit_content": "应用信息编辑",
       "Api request": "API 访问",
       "Api request desc": "通过 API 接入到已有系统中，或企微、飞书等",
       "App intro": "应用介绍",
@@ -204,6 +358,8 @@
       "Name and avatar": "头像 & 名称",
       "Onclick to save": "点击保存",
       "Publish": "发布",
+      "have_publish": "已发布",
+      "not_published": "未发布",
       "Publish Confirm": "确认发布应用？会立即更新所有发布渠道的应用状态。",
       "Publish app tip": "发布应用后，所有发布渠道将会立即使用该版本",
       "Question Guide": "猜你想问",
@@ -232,6 +388,11 @@
         "Parameter setting": "输入参数",
         "System": "系统",
         "Team": "团队"
+      },
+      "tool_label": {
+        "github": "GitHub地址",
+        "doc": "使用文档",
+        "price": "计费说明"
       },
       "Welcome Text": "对话开场白",
       "Whisper": "语音输入",
@@ -359,6 +520,7 @@
       "You need to a chat app": "你没有可用的应用",
       "error": {
         "Chat error": "对话出现异常",
+        "data_error": "获取数据异常",
         "Messages empty": "接口内容为空，可能文本超长了~",
         "Select dataset empty": "你没有选择知识库",
         "User input empty": "传入的用户问题为空"
@@ -484,8 +646,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -501,20 +662,21 @@
         "Search data placeholder": "搜索相关数据",
         "Too Long": "总长度超长了",
         "Total Amount": "{{total}} 组",
-        "unit": "条"
+        "unit": "条",
+        "group": "组"
       },
       "embedding model tip": "索引模型可以将自然语言转成向量，用于进行语义检索。\n注意，不同索引模型无法一起使用，选择完索引模型后将无法修改。",
       "error": {
         "Data not found": "数据不存在或已被删除",
         "Start Sync Failed": "开始同步失败",
         "Template does not exist": "模板不存在",
-        "invalidVectorModelOrQAModel": "VectorModel 或 QA 模型错误",
         "unAuthDataset": "无权操作该知识库",
         "unAuthDatasetCollection": "无权操作该数据集",
         "unAuthDatasetData": "无权操作该数据",
         "unAuthDatasetFile": "无权操作该文件",
         "unCreateCollection": "无权操作该数据",
-        "unLinkCollection": "不是网络链接集合"
+        "unLinkCollection": "不是网络链接集合",
+        "invalidVectorModelOrQAModel": "VectorModel 或 QA 模型错误"
       },
       "externalFile": "外部文件库",
       "file": "文件",
@@ -649,6 +811,7 @@
       "Confirm Delete Node": "确认删除该节点？",
       "Data Type": "数据类型",
       "Dataset quote": {
+        "select": "选择知识库引用",
         "label": "知识库引用"
       },
       "Default Value": "默认值",
@@ -673,6 +836,8 @@
       "Setting quote prompt": "配置引用提示词",
       "Variable": "全局变量",
       "Variable Setting": "变量设置",
+      "variable_update": "变量更新",
+      "variable_update_info": "可以更新指定节点的输出值或更新全局变量",
       "edit": {
         "Field Name Cannot Be Empty": "字段名不能为空"
       },
@@ -934,6 +1099,7 @@
   "plugin": {
     "App": "选择应用",
     "Currentapp": "当前应用",
+    "contribute": "贡献插件",
     "Description": "描述",
     "Edit Http Plugin": "编辑 HTTP 插件",
     "Enter PAT": "请输入访问凭证（PAT）",
@@ -995,8 +1161,6 @@
       }
     },
     "user": {
-      "Email Or Phone": "邮箱/手机号",
-      "Verify Code": "验证码",
       "Avatar": "头像",
       "Go laf env": "点击前往 {{env}} 获取 PAT 凭证。",
       "Laf account course": "查看绑定 laf 账号教程。",
@@ -1009,6 +1173,9 @@
       },
       "inform": {
         "System message": "系统消息"
+      },
+      "logout": {
+        "confirm": "确认退出登录?"
       },
       "login": {
         "And": "和",
@@ -1029,7 +1196,10 @@
         "Terms": "服务协议",
         "Username": "用户名",
         "Wechat": "微信登录",
-        "wx_qr_login": "微信扫码登录"
+        "wx_qr_login": "微信扫码登录",
+        "error": "登录异常",
+        "can_not_login": "无法登录，点击联系",
+        "security_failed": "安全校验失败"
       },
       "team": {
         "Dataset usage": "知识库容量",
@@ -1042,6 +1212,8 @@
       "Amount": "金额",
       "Bills": "账单",
       "Buy": "购买",
+      "buy_resource": "购买资源包",
+      "amount_0": "购买数量不能为0",
       "Confirm pay": "支付确认",
       "Not sufficient": "您的 AI 积分不足，请先升级套餐或购买额外 AI 积分后继续使用。",
       "Plan expired time": "套餐到期时间",
@@ -1070,7 +1242,9 @@
       },
       "noBill": "无账单记录~",
       "subscription": {
+        "point": "积分",
         "AI points": "AI 积分",
+        "ai_model": "AI语言模型",
         "AI points click to read tip": "每次调用 AI 模型时，都会消耗一定的 AI 积分（类似于 token）。点击可查看详细计算规则。",
         "AI points usage": "AI 积分使用量",
         "AI points usage tip": "每次调用 AI 模型时，都会消耗一定的 AI 积分。具体的计算标准可参考上方的“计费标准”",
@@ -1082,6 +1256,7 @@
         "Extra plan": "额外资源包",
         "Extra plan tip": "标准套餐不够时，您可以购买额外资源包继续使用",
         "FAQ": "常见问题",
+        "token_compute": "点击查看在线 Tokens 计算器",
         "Month amount": "月数",
         "Next plan": "未来套餐",
         "Nonsupport": "无法切换",
@@ -1095,6 +1270,7 @@
         "Update extra ai points": "额外 AI 积分",
         "Update extra dataset size": "额外存储量",
         "Upgrade plan": "升级套餐",
+
         "function": {
           "History store": "{{amount}} 天对话记录保留",
           "Max app": "{{amount}} 个应用&插件",
@@ -1165,16 +1341,22 @@
     "Copy invite url": "复制邀请链接",
     "Edit name": "点击修改昵称",
     "Invite Url": "邀请链接",
+    "no_invite_records": "暂无邀请记录",
     "Invite url tip": "通过该链接注册的好友将永久与你绑定，其充值时你会获得一定余额奖励。\n此外，好友使用手机号注册时，你将立即获得 5 元奖励。\n奖励会发送到您的默认团队中。",
     "Laf Account Setting": "laf 账号配置",
     "Language": "语言",
     "Member Name": "昵称",
     "Notice": "通知",
     "Notification Receive": "通知接收",
-    "Notification Receive Bind": "请绑定通知接收途径",
+    "Notification Receive Bind": "请先绑定通知接收途径",
+    "no_notice": "暂无通知",
     "Old password is error": "旧密码错误",
     "OpenAI Account Setting": "OpenAI 账号配置",
     "Password": "密码",
+    "new_password": "新密码",
+    "old_password": "旧密码",
+    "confirm_password": "确认密码",
+    "password_message": "密码最少 4 位最多 60 位",
     "Pay": "充值",
     "Personal Information": "个人信息",
     "Promotion": "促销",
@@ -1186,11 +1368,13 @@
     "Sign Out": "登出",
     "Team": "团队",
     "Time": "时间",
+    "type": "类型",
     "Timezone": "时区",
     "Update Password": "修改密码",
     "Update password failed": "修改密码异常",
     "Update password successful": "修改密码成功",
     "Usage Record": "使用记录",
+    "no_usage_records": "暂无使用记录",
     "apikey": {
       "key": "API 秘钥"
     },

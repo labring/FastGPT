@@ -90,7 +90,7 @@ const SelectMarkCollection = ({
                 })()
               )}
             </Grid>
-            {datasets.length === 0 && <EmptyTip text={'这个目录已经没东西可选了~'}></EmptyTip>}
+            {datasets.length === 0 && <EmptyTip text={t('chat:empty_directory')}></EmptyTip>}
           </ModalBody>
         </DatasetSelectModal>
       )}

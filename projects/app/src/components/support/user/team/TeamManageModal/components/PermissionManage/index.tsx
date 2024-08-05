@@ -31,8 +31,8 @@ function PermissionManage() {
     mutationFn: async (memberId: string) => {
       return delMemberPermission(memberId);
     },
-    successToast: '删除管理员成功',
-    errorToast: '删除管理员异常',
+    successToast: t('user:delete.admin_success'),
+    errorToast: t('user:delete.admin_failed'),
     onSuccess: () => {
       refetchMembers();
     }
@@ -75,7 +75,7 @@ function PermissionManage() {
               onOpenAddManager();
             }}
           >
-            添加管理员
+            {t('user:team.Add manager')}
           </Button>
         )}
       </Flex>

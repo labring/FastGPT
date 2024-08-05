@@ -17,9 +17,17 @@
   "confirm_delete_folder_tip": "Are you sure to delete this folder? All the following applications and corresponding chat records will be deleted, please confirm!",
   "copy_one_app": "Copy",
   "create_copy_success": "Create copy success",
+  "cron": {
+    "every_day": "Executed every day",
+    "every_month": "Executed monthly",
+    "every_week": "Executed every week",
+    "interval": "interval execution"
+  },
   "current_settings": "Current settings",
+  "day": "day",
   "edit_app": "Edit app",
   "edit_info": "Edit info",
+  "execute_time": "execution time",
   "export_config_successful": "Config copied, please check for important data",
   "export_configs": "Export Configs",
   "feedback_count": "User Feedback",
@@ -27,6 +35,15 @@
   "go_to_run": "Run",
   "import_configs": "Import Configs",
   "import_configs_failed": "Failed to import configs, please ensure configs are valid!",
+  "interval": {
+    "12_hours": "every 12 hours",
+    "2_hours": "every 2 hours",
+    "3_hours": "every 3 hours",
+    "4_hours": "every 4 hours",
+    "6_hours": "every 6 hours",
+    "per_hour": "per hour"
+  },
+  "intro": "It is a large model application orchestration system that provides out-of-the-box data processing, model calling and other capabilities. It can quickly build a knowledge base and perform workflow orchestration through Flow visualization to realize complex knowledge base scenarios!",
   "logs_empty": "No logs yet~",
   "logs_message_total": "Total Messages",
   "logs_title": "Title",
@@ -39,6 +56,9 @@
   },
   "modules": {
     "Title is required": "Module name cannot be empty"
+  },
+  "month": {
+    "unit": "Number"
   },
   "move_app": "Move app",
   "paste_config": "Paste Config",
@@ -53,6 +73,7 @@
   "template": {
     "simple_robot": "Simple Robot"
   },
+  "time_zone": "Time zone",
   "tool_input_param_tip": "Configure related information before the plugin runs properly",
   "transition_to_workflow": "Transition to workflow",
   "transition_to_workflow_create_new_placeholder": "Create a new application instead of modifying the current one",
@@ -73,6 +94,15 @@
   },
   "version": {
     "Revert success": "Revert success"
+  },
+  "week": {
+    "Friday": "Friday",
+    "Monday": "Monday",
+    "Saturday": "Saturday",
+    "Sunday": "Sunday",
+    "Thursday": "Thursday",
+    "Tuesday": "Tuesday",
+    "Wednesday": "Wednesday"
   },
   "workflow": {
     "Input guide": "Input guide",

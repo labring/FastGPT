@@ -64,7 +64,7 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     />
                   </MyTooltip>
                   <Box flex={1} color={'myGray.600'} fontWeight={'medium'}>
-                    分类{i + 1}
+                    {t('common:classification') + (i + 1)}
                   </Box>
                 </Flex>
                 <Box position={'relative'}>

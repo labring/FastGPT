@@ -372,7 +372,7 @@ const ChatBox = (
           if (!onStartChat) return;
           if (isChatting) {
             toast({
-              title: '正在聊天中...请等待结束',
+              title: t('chat:is_chatting'),
               status: 'warning'
             });
             return;
@@ -384,7 +384,7 @@ const ChatBox = (
 
           if (!text && files.length === 0) {
             toast({
-              title: '内容为空',
+              title: t('chat:content_empty'),
               status: 'warning'
             });
             return;

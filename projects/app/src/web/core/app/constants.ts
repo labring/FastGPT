@@ -3,10 +3,10 @@ import { AppDetailType } from '@fastgpt/global/core/app/type.d';
 import type { FeishuType, OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { NullPermission } from '@fastgpt/global/support/permission/constant';
-
+import { i18nT } from '@fastgpt/web/i18n/utils';
 export const defaultApp: AppDetailType = {
   _id: '',
-  name: '应用加载中',
+  name: i18nT('common:core.app.loading'),
   type: AppTypeEnum.simple,
   avatar: '/icon/logo.svg',
   intro: '',

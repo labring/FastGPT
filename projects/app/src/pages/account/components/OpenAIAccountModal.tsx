@@ -37,9 +37,7 @@ const OpenAIAccountModal = ({
     >
       <ModalBody>
         <Box fontSize={'sm'} color={'myGray.500'}>
-          可以填写 OpenAI/OneAPI
-          的相关秘钥。如果你填写了该内容，在线上平台使用【AI对话】、【问题分类】和【内容提取】将会走你填写的Key，不会计费。请注意你的
-          Key 是否有访问对应模型的权限。GPT模型可以选择 FastAI。
+          {t('common:info.open_api_notice')}
         </Box>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 65px'}>API Key:</Box>
@@ -50,16 +48,16 @@ const OpenAIAccountModal = ({
           <Input
             flex={1}
             {...register('baseUrl')}
-            placeholder={'请求地址，默认为 openai 官方。可填中转地址，未自动补全 "v1"'}
+            placeholder={t('common:info.open_api_placeholder')}
           ></Input>
         </Flex>
       </ModalBody>
       <ModalFooter>
         <Button mr={3} variant={'whiteBase'} onClick={onClose}>
-          取消
+          {t('common:common.Cancel')}
         </Button>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data))}>
-          确认
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

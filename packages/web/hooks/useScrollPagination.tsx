@@ -85,7 +85,7 @@ export function useScrollPagination<
       }
     } catch (error: any) {
       toast({
-        title: getErrText(error, '获取数据异常'),
+        title: getErrText(error, t('common:core.chat.error.data_error')),
         status: 'error'
       });
       console.log(error);

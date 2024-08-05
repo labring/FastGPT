@@ -47,8 +47,8 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       refetchMembers();
       onSuccess();
     },
-    successToast: '成功',
-    errorToast: '失败'
+    successToast: t('common:common.Success'),
+    errorToast: t('common:common.failed')
   });
 
   const filterMembers = useMemo(() => {
@@ -83,7 +83,7 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 <MyIcon name="common/searchLight" w="16px" color={'myGray.500'} />
               </InputLeftElement>
               <Input
-                placeholder="搜索用户名"
+                placeholder={t('user:search_user')}
                 fontSize="sm"
                 bg={'myGray.50'}
                 onChange={(e) => {
@@ -120,7 +120,7 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             </Flex>
           </Flex>
           <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4">
-            <Box mt={3}>已选: {selected.length} 个</Box>
+            <Box mt={3}>{t('common:chosen') + ': ' + selected.length} </Box>
             <Box mt={5}>
               {selected.map((member) => {
                 return (

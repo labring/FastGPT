@@ -8,24 +8,25 @@ import teamErr from './code/team';
 import userErr from './code/user';
 import commonErr from './code/common';
 import SystemErrEnum from './code/system';
+import { i18nT } from '../../../web/i18n/utils';
 
 export const ERROR_CODE: { [key: number]: string } = {
-  400: '请求失败',
-  401: '无权访问',
-  403: '紧张访问',
-  404: '请求不存在',
-  405: '请求方法错误',
-  406: '请求的格式错误',
-  410: '资源已删除',
-  422: '验证错误',
-  500: '服务器发生错误',
-  502: '网关错误',
-  503: '服务器暂时过载或维护',
-  504: '网关超时'
+  400: i18nT('common:code_error.error_code.400'),
+  401: i18nT('common:code_error.error_code.401'),
+  403: i18nT('common:code_error.error_code.403'),
+  404: i18nT('common:code_error.error_code.404'),
+  405: i18nT('common:code_error.error_code.405'),
+  406: i18nT('common:code_error.error_code.406'),
+  410: i18nT('common:code_error.error_code.410'),
+  422: i18nT('common:code_error.error_code.422'),
+  500: i18nT('common:code_error.error_code.500'),
+  502: i18nT('common:code_error.error_code.502'),
+  503: i18nT('common:code_error.error_code.503'),
+  504: i18nT('common:code_error.error_code.504')
 };
 
 export const TOKEN_ERROR_CODE: Record<number, string> = {
-  403: '登录状态无效,请重新登录'
+  403: i18nT('common:code_error.token_error_code.403')
 };
 
 export const proxyError: Record<string, boolean> = {
@@ -63,32 +64,31 @@ export const ERROR_RESPONSE: Record<
   [ERROR_ENUM.unAuthorization]: {
     code: 403,
     statusText: ERROR_ENUM.unAuthorization,
-    message: '凭证错误',
+    message: i18nT('common:code_error.error_message.403'),
     data: null
   },
   [ERROR_ENUM.insufficientQuota]: {
     code: 510,
     statusText: ERROR_ENUM.insufficientQuota,
-    message: '账号余额不足',
+    message: i18nT('common:code_error.error_message.510'),
     data: null
   },
   [ERROR_ENUM.unAuthModel]: {
     code: 511,
     statusText: ERROR_ENUM.unAuthModel,
-    message: '无权操作该模型',
+    message: i18nT('common:code_error.error_message.511'),
     data: null
   },
-
   [ERROR_ENUM.unAuthFile]: {
     code: 513,
     statusText: ERROR_ENUM.unAuthFile,
-    message: '无权阅读该文件',
+    message: i18nT('common:code_error.error_message.513'),
     data: null
   },
   [ERROR_ENUM.unAuthApiKey]: {
     code: 514,
     statusText: ERROR_ENUM.unAuthApiKey,
-    message: 'Api Key 不合法',
+    message: i18nT('common:code_error.error_message.514'),
     data: null
   },
   ...appErr,

@@ -392,7 +392,7 @@ const ConditionSelect = ({
       list={filterQuiredConditionList}
       value={condition}
       onchange={onSelect}
-      placeholder="选择条件"
+      placeholder={t('common:chose_condition')}
     />
   );
 };

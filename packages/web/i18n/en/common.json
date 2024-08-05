@@ -1,6 +1,24 @@
 {
   "App": "App",
   "Export": "Export",
+  "FAQ": {
+    "ai_point_a": "Every time the AI ​​model is called, a certain amount of AI points will be consumed. \nFor specific calculation standards, please refer to the \"AI Points Calculation Standards\" above.\n\nToken calculation uses the same formula as GPT3.5, 1Token≈0.7 Chinese characters≈0.9 English words. Continuous characters may be considered as 1 Tokens.",
+    "ai_point_expire_a": "will expire. \nAfter the current package expires, the AI ​​points will be cleared and updated to the AI ​​points of the new package. \nThe AI ​​points for the annual package last for 1 year, not every month.",
+    "ai_point_expire_q": "Will AI points expire?",
+    "ai_point_q": "What are AI points?",
+    "auto_renew_a": "After the current package expires, the system will automatically renew according to the \"future package\" and the system will try to deduct the fee from the account balance. If you need to automatically renew, please reserve a quota in the account balance.",
+    "auto_renew_q": "Will the subscription package automatically renew?",
+    "change_package_a": "When the current package price is greater than the new package, you cannot switch immediately. You will be switched in the form of \"renewal\" after the current package expires.\n\nWhen the current package price is lower than the new package, the system will automatically calculate the remaining balance of the current package, and you can pay the price difference to switch packages.",
+    "change_package_q": "Can I switch subscription plans?",
+    "dataset_compute_a": "1 knowledge base storage is equal to 1 knowledge base index. \nA piece of knowledge base data can contain one or more knowledge base indexes. \nDuring enhanced training, 1 piece of data will generate 5 indexes.",
+    "dataset_compute_q": "How to calculate knowledge base storage?",
+    "dataset_index_a": "Won't. \nHowever, when the knowledge base index exceeds, knowledge base content cannot be inserted and updated.",
+    "dataset_index_q": "Will the knowledge base index be deleted if it exceeds the limit?",
+    "free_user_clean_a": "After free version users (free version without purchasing additional packages) have no usage records for 30 days, the system will automatically clear all knowledge base content under the account.",
+    "free_user_clean_q": "Will the data in the free version be cleared?",
+    "package_overlay_a": "OK. \nEach resource package purchased is independent and will be used stacked within its validity period. \nAI points will be deducted from the resource package that expires first.",
+    "package_overlay_q": "Can additional resource packs be stacked?"
+  },
   "Folder": "Folder",
   "Login": "Login",
   "Move": "Move",
@@ -11,8 +29,78 @@
   "UnKnow": "Unknown",
   "Warning": "Warning",
   "add_new": "Add new",
+  "chose_condition": "Selection criteria",
+  "chosen": "selected",
+  "classification": "Classification",
   "click_to_resume": "Resume",
   "code_editor": "Code edit",
+  "code_error": {
+    "app_error": {
+      "not_exist": "App does not exist",
+      "un_auth_app": "No permission to operate this application"
+    },
+    "chat_error": {
+      "un_auth": "No permission to operate this conversation record"
+    },
+    "error_code": {
+      "400": "Request failed",
+      "401": "No access",
+      "403": "Nervous visit",
+      "404": "Request does not exist",
+      "405": "Request method error",
+      "406": "Request format error",
+      "410": "Resource deleted",
+      "422": "Validation error",
+      "500": "Server error occurred",
+      "502": "Gateway error",
+      "503": "The server is temporarily overloaded or under maintenance",
+      "504": "Gateway timeout"
+    },
+    "error_message": {
+      "403": "Credential error",
+      "510": "Insufficient account balance",
+      "511": "No permission to operate this model",
+      "513": "No permission to read the file",
+      "514": "Api Key is illegal"
+    },
+    "openapi_error": {
+      "api_key_not_exist": "API Key does not exist",
+      "exceed_limit": "Up to 10 sets of API keys",
+      "un_auth": "No permission to operate this API Key"
+    },
+    "outlink_error": {
+      "invalid_link": "Sharing link is invalid",
+      "link_not_exist": "Sharing link does not exist",
+      "un_auth_user": "Identity verification failed"
+    },
+    "plugin_error": {
+      "not_exist": "Plugin does not exist",
+      "un_auth": "No permission to operate this plug-in"
+    },
+    "system_error": {
+      "community_version_num_limit": "If the number limit of the open source version is exceeded, please upgrade to the commercial version: https://fastgpt.in"
+    },
+    "team_error": {
+      "ai_points_not_enough": "",
+      "app_amount_not_enough": "The number of applications has reached the upper limit~",
+      "dataset_amount_not_enough": "The number of knowledge bases has reached the upper limit~",
+      "dataset_size_not_enough": "The capacity of the knowledge base is insufficient, please expand it first~",
+      "over_size": "error.team.overSize",
+      "plugin_amount_not_enough": "The number of plug-ins has reached the upper limit~",
+      "re_rank_not_enough": "Not authorized to use search rearrangement~",
+      "un_auth": "No permission to operate this team",
+      "website_sync_not_enough": "No permission to use Web site synchronization~"
+    },
+    "token_error_code": {
+      "403": "Invalid login status, please log in again"
+    },
+    "user_error": {
+      "balance_not_enough": "Account balance is insufficient~",
+      "bin_visitor": "Your identity verification failed",
+      "bin_visitor_guest": "You are currently a visitor and do not have permission to operate",
+      "un_auth_user": "The user cannot be found"
+    }
+  },
   "common": {
     "Action": "Action",
     "Add": "Add",
@@ -70,7 +158,7 @@
     "Name": "Name",
     "Next Step": "Next Step",
     "No more data": "No more data~",
-    "Not open": "Not open",
+    "Not open": "Unopened",
     "OK": "OK",
     "Open": "Open",
     "Operation": "Operation",
@@ -118,6 +206,7 @@
     "Waiting": "Waiting",
     "Warning": "Warning",
     "Website": "Website",
+    "all_result": "full results",
     "avatar": {
       "Select Avatar": "Click to select avatar",
       "Select Failed": "Select avatar failed"
@@ -136,6 +225,7 @@
       "Select avatar failed": "Avatar selection failed",
       "unKnow": "An unexpected error occurred~"
     },
+    "failed": "fail",
     "folder": {
       "Drag Tip": "Drag me",
       "Move Success": "Move successful",
@@ -143,11 +233,13 @@
       "No Folder": "No subdirectories, place here",
       "Open folder": "Open folder",
       "Root Path": "Root directory",
-      "empty": "This directory has nothing selectable~"
+      "empty": "This directory has nothing selectable~",
+      "open_dataset": "Open knowledge base"
     },
     "input": {
       "Repeat Value": "Duplicate value"
     },
+    "is_requesting": "Requesting...",
     "jsonEditor": {
       "Parse error": "JSON may be incorrect, please check carefully"
     },
@@ -156,10 +248,16 @@
     },
     "month": "Month",
     "name_is_empty": "Name cannot be empty",
+    "no_intro": "No introduction yet",
+    "not_support": "not support",
+    "page_center": "Center the page",
+    "request_end": "All loaded",
+    "request_more": "Click to load more",
     "speech": {
       "error tip": "Speech to text failed",
       "not support": "Your browser does not support speech input"
     },
+    "support": "support",
     "system": {
       "Commercial version function": "Commercial version feature",
       "Help Chatbot": "Chatbot assistant",
@@ -171,6 +269,7 @@
       }
     }
   },
+  "confirm_choice": "Confirm selection",
   "core": {
     "Chat": "Chat",
     "Max Token": "Max token per data",
@@ -184,7 +283,8 @@
       "Support tool": "Function call",
       "model": {
         "Dataset Agent Model": "File processing model",
-        "Vector Model": "Index model"
+        "Vector Model": "Index model",
+        "doc_index_and_dialog": "Document index"
       }
     },
     "app": {
@@ -242,6 +342,7 @@
         "Query extension background prompt": "Conversation background description",
         "Query extension background tip": "Describe the scope of the current conversation to help the AI complete and expand the current question. The content filled in is usually for the assistant"
       },
+      "edit_content": "Application information editing",
       "error": {
         "App name can not be empty": "App name cannot be empty",
         "Get app failed": "Failed to get app"
@@ -250,9 +351,13 @@
         "Custom feedback": "Custom feedback",
         "close custom feedback": "Close feedback"
       },
+      "have_publish": "Published",
+      "loading": "loading",
       "logs": {
         "Source And Time": "Source & Time"
       },
+      "no_app": "There is no application yet, go and create one!",
+      "not_published": "Unpublished",
       "outLink": {
         "Can Drag": "Icon draggable",
         "Default open": "Open by default",
@@ -294,6 +399,11 @@
         "chatNodeSystemPromptTip": "The model has a fixed guide word. By adjusting this content, you can guide the model in the chat direction. \nThe content will be anchored at the beginning of the context. \nVariables can be selected via input/insert\n\nIf a knowledge base is associated, you can also use appropriate descriptions to guide the model when to call the knowledge base search. \nFor example:\n\nYou are an assistant in the movie \"Interstellar\". When users ask about content related to \"Interstellar\", please search the knowledge base and answer based on the search results.",
         "variableTip": "You can ask the user to fill in some content as specific variables for this round of conversation before the conversation starts. This module is located after the opening guide.\nVariables can be injected into other module string type inputs through the form of {{variable key}}, such as: prompt words, limiting words, etc.",
         "welcomeTextTip": "Send an initial content before each conversation starts. Supports standard Markdown syntax, additional tags available:\n[Shortcut key]: User can click to send the question directly"
+      },
+      "tool_label": {
+        "doc": "Use documentation",
+        "github": "GitHub address",
+        "price": "Billing instructions"
       },
       "tts": {
         "Close": "Do not use",
@@ -361,7 +471,8 @@
         "Chat error": "Chat error",
         "Messages empty": "API content is empty, text may be too long~",
         "Select dataset empty": "You did not select a dataset",
-        "User input empty": "User question input is empty"
+        "User input empty": "User question input is empty",
+        "data_error": "Exception in getting data"
       },
       "feedback": {
         "Close User Like": "User expressed approval\nClick to close this mark",
@@ -501,6 +612,7 @@
         "Search data placeholder": "Search related data",
         "Too Long": "Total length too long",
         "Total Amount": "{{total}} sets",
+        "group": "Group",
         "unit": "items"
       },
       "embedding model tip": "The index model can convert natural language into vectors for semantic retrieval.\nNote, different index models cannot be used together, once you select an index model, it cannot be changed.",
@@ -649,7 +761,8 @@
       "Confirm Delete Node": "Confirm delete node?",
       "Data Type": "Data type",
       "Dataset quote": {
-        "label": "Knowledge base quote"
+        "label": "Knowledge base quote",
+        "select": "Select knowledge base reference"
       },
       "Default Value": "Default value",
       "Default value": "Default value",
@@ -772,7 +885,9 @@
         "variable option is value is required": "Option content cannot be empty",
         "variable options": "Options"
       },
-      "variable add option": "Add option"
+      "variable add option": "Add option",
+      "variable_update": "variable update",
+      "variable_update_info": "You can update the output value of the specified node or update global variables"
     },
     "plugin": {
       "Custom headers": "Custom headers",
@@ -781,6 +896,7 @@
       "Http plugin intro placeholder": "For display only, no actual effect",
       "cost": "Plugin cost: "
     },
+    "view_chat_detail": "View conversation details",
     "workflow": {
       "Can not delete node": "This node cannot be deleted",
       "Change input type tip": "Changing the input type will clear the filled values, please confirm!",
@@ -840,6 +956,7 @@
       "variable": "Variable"
     }
   },
+  "create": "to create",
   "dataset": {
     "Confirm move the folder": "Confirm moving to the folder",
     "Confirm to delete the data": "Confirm to delete the data?",
@@ -892,6 +1009,7 @@
       "noResult": "No results found"
     }
   },
+  "default_reply": "Default reply",
   "error": {
     "Create failed": "Create failed",
     "fileNotFound": "File not found~",
@@ -901,9 +1019,30 @@
       "overSize": "Team members exceed the limit"
     }
   },
+  "extraction_results": "Extract results",
   "field_name": "Name",
+  "get_QR_failed": "Failed to obtain QR code",
+  "get_app_failed": "Failed to get app",
+  "get_laf_failed": "Failed to get Laf function list",
+  "has_verification": "Verified, click to cancel binding",
+  "info": {
+    "buy_extra": "Purchase additional packages",
+    "csv_download": "Click to download batch test template",
+    "csv_message": "Read the first column of the CSV file for batch testing, supporting up to 100 sets of data at a time.",
+    "felid_message": "The field key must be pure English letters or numbers, and cannot start with a number.",
+    "free_plan": "When free version users have no usage records for 30 days, the system will automatically clean up the account knowledge base.",
+    "include": "Includes standard package and additional resource package",
+    "node_info": "Adjusting this module will have an impact on the timing of tool calls.\n\nYou can guide the model to make tool calls by accurately describing the function of the module.",
+    "old_version_attention": "If it is detected that your advanced arrangement is an old version, the system will automatically format it into a new version of the workflow for you.\n\n\nDue to large version differences, some workflows may not be arranged normally. Please reconnect the workflows manually. \nIf the error persists, try deleting the corresponding node and adding it again.\n\n\nYou can directly click Debug to perform workflow testing, and click Publish after debugging is completed. \nThe new workflow will not actually save and take effect until you click Publish.\n\n\nAutosave will not take effect until you publish the new workflow.",
+    "open_api_notice": "You can fill in the relevant secret key of OpenAI/OneAPI. \nIf you fill in this content, the online platform will use [AI Dialogue], [Problem Classification] and [Content Extraction] to retrieve the Key you filled in, and no charges will be made. \nPlease pay attention to whether your Key has permission to access the corresponding model. \nThe GPT model can choose FastAI.",
+    "open_api_placeholder": "Request address, default is openai official. \nThe forwarding address can be filled in, but \"v1\" is not automatically completed.",
+    "resource": "Resource usage"
+  },
   "invalid_variable": "Invalid variable",
   "is_open": "Opened",
+  "item_description": "Field description",
+  "item_name": "Field name",
+  "key_repetition": "key duplicate",
   "navbar": {
     "Account": "Account",
     "Chat": "Chat",
@@ -913,6 +1052,23 @@
   },
   "new_create": "Create New",
   "no_data": "No data",
+  "no_laf_env": "The system is not configured with Laf environment",
+  "not_yet_introduced": "No introduction yet",
+  "pay": {
+    "amount": "Amount",
+    "balance": "Account balance",
+    "balance_notice": "Insufficient account balance",
+    "confirm_pay": "confirm payment",
+    "get_pay_QR": "Get the recharge QR code",
+    "need_pay": "Need to pay",
+    "new_package_price": "New package price",
+    "notice": "Do not close the page",
+    "old_package_price": "Old package price",
+    "other": "For other amounts, please round up the whole number",
+    "to_recharge": "Insufficient balance, please recharge",
+    "wechat": "Please scan the QR code on WeChat to pay:",
+    "yuan": "Yuan"
+  },
   "permission": {
     "Collaborator": "collaborator",
     "Default permission": "Default permission",
@@ -950,9 +1106,13 @@
     "Plugin List": "Plugin list",
     "Search plugin": "Search plugin",
     "Set Name": "Name the plugin",
+    "contribute": "Contribute plugins",
     "go to laf": "Go to write",
     "path": "Path"
   },
+  "reply_now": "Reply immediately",
+  "required": "must",
+  "resume_failed": "Recovery failed",
   "select_reference_variable": "Select Reference Variable",
   "share_link": "Share Link",
   "support": {
@@ -1027,7 +1187,13 @@
         "Terms": "Terms of service",
         "Username": "Username",
         "Wechat": "Login with Wechat",
+        "can_not_login": "Unable to log in, click to contact",
+        "error": "Login exception",
+        "security_failed": "Security check failed",
         "wx_qr_login": "Wechat QR code login"
+      },
+      "logout": {
+        "confirm": "Confirm to log out?"
       },
       "team": {
         "Dataset usage": "Knowledge base capacity",
@@ -1046,6 +1212,7 @@
       "Plan reset time": "Plan reset time",
       "Standard Plan Detail": "Plan details",
       "To read plan": "View plan",
+      "amount_0": "The purchase quantity cannot be 0",
       "bill": {
         "Number": "Order number",
         "Status": "Status",
@@ -1062,6 +1229,7 @@
           "success": "Payment successful"
         }
       },
+      "buy_resource": "Purchase resource pack",
       "moduleName": {
         "index": "Index generation",
         "qa": "QA split"
@@ -1093,6 +1261,7 @@
         "Update extra ai points": "Extra AI points",
         "Update extra dataset size": "Extra storage",
         "Upgrade plan": "Upgrade plan",
+        "ai_model": "AI language model",
         "function": {
           "History store": "{{amount}} days of conversation history retention",
           "Max app": "{{amount}} apps",
@@ -1107,6 +1276,7 @@
           "Year": "Yearly",
           "Year sale": "Two months free"
         },
+        "point": "integral",
         "standardSubLevel": {
           "enterprise": "Enterprise edition",
           "experience": "Experience edition",
@@ -1114,6 +1284,7 @@
           "free desc": "Basic functions can be used for free every month, and the knowledge base will be cleared if there is no usage record for 30 days",
           "team": "Team edition"
         },
+        "token_compute": "Click to view the online Tokens calculator",
         "type": {
           "balance": "Balance recharge",
           "extraDatasetSize": "Knowledge base expansion",
@@ -1152,6 +1323,12 @@
     "Quote Prompt Tip": "You can use {{quote}} to insert the quote content template, and use {{question}} to insert the question. Here are the default values:\n{{default}}"
   },
   "textarea_variable_picker_tip": "Input / to select variables",
+  "tool_field": "Tool field parameter configuration",
+  "undefined_var": "An undefined variable is referenced. Is it automatically added?",
+  "unit": {
+    "character": "character",
+    "minute": "minute"
+  },
   "unusable_variable": "no usable variable",
   "user": {
     "Account": "Account",
@@ -1192,6 +1369,13 @@
     "apikey": {
       "key": "API key"
     },
+    "confirm_password": "Confirm Password",
+    "new_password": "New Password",
+    "no_invite_records": "No invitation record yet",
+    "no_notice": "No notification yet",
+    "no_usage_records": "No usage record yet",
+    "old_password": "Old Password",
+    "password_message": "Password must be at least 4 characters and at most 60 characters",
     "team": {
       "Balance": "Team Balance",
       "Check Team": "Switch",
@@ -1239,6 +1423,8 @@
         "Owner": "Owner",
         "Visitor": "Visitor"
       }
-    }
-  }
+    },
+    "type": "type"
+  },
+  "verification": "verify"
 }

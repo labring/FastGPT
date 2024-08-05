@@ -43,12 +43,12 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           })
         );
         toast({
-          title: '登录成功',
+          title: t('user:login.success'),
           status: 'success'
         });
       } catch (error: any) {
         toast({
-          title: error.message || '登录异常',
+          title: error.message || t('user:login.error'),
           status: 'error'
         });
       }
@@ -101,7 +101,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
               required: true,
               maxLength: {
                 value: 60,
-                message: '密码最多 60 位'
+                message: t('user:login.password_condition')
               }
             })}
           ></Input>

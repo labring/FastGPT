@@ -79,10 +79,10 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
                 <Thead>
                   <Tr>
                     <Th bg={'myGray.50'} borderRadius={'none !important'}>
-                      字段名
+                      {t('common:item_name')}
                     </Th>
-                    <Th bg={'myGray.50'}>字段描述</Th>
-                    <Th bg={'myGray.50'}>必须</Th>
+                    <Th bg={'myGray.50'}>{t('common:item_description')}</Th>
+                    <Th bg={'myGray.50'}>{t('common:required')}</Th>
                     <Th bg={'myGray.50'} borderRadius={'none !important'}></Th>
                   </Tr>
                 </Thead>
@@ -197,7 +197,7 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
             const newOutput: FlowNodeOutputItemType = {
               id: getNanoid(),
               key: data.key,
-              label: `提取结果-${data.desc}`,
+              label: `${t('common:extraction_results')}-${data.desc}`,
               valueType: WorkflowIOValueTypeEnum.string,
               type: FlowNodeOutputTypeEnum.static
             };
@@ -215,7 +215,7 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
                   key: data.key,
                   value: {
                     ...output,
-                    label: `提取结果-${data.desc}`
+                    label: `${t('common:extraction_results')}-${data.desc}`
                   }
                 });
               } else {

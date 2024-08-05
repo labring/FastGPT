@@ -1,5 +1,5 @@
 import { ErrType } from '../errorCode';
-
+import { i18nT } from '../../../../web/i18n/utils';
 /* dataset: 504000 */
 export enum ChatErrEnum {
   unAuthChat = 'unAuthChat'
@@ -7,7 +7,7 @@ export enum ChatErrEnum {
 const errList = [
   {
     statusText: ChatErrEnum.unAuthChat,
-    message: '无权操作该对话记录'
+    message: i18nT('common:code_error.chat_error.un_auth')
   }
 ];
 export default errList.reduce((acc, cur, index) => {

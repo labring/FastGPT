@@ -7,7 +7,6 @@ import publish from '../i18n/zh/publish.json';
 import workflow from '../i18n/zh/workflow.json';
 import user from '../i18n/zh/user.json';
 import chat from '../i18n/zh/chat.json';
-
 export interface I18nNamespaces {
   common: typeof common;
   dataset: typeof dataset;

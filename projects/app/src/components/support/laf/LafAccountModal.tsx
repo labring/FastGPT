@@ -73,7 +73,7 @@ const LafAccountModal = ({
       onError: (err) => {
         onResetForm();
         toast({
-          title: getErrText(err, '获取应用列表失败'),
+          title: getErrText(err, t('common:get_app_failed')),
           status: 'error'
         });
       }
@@ -132,7 +132,7 @@ const LafAccountModal = ({
                 }}
                 isLoading={isPatLoading}
               >
-                验证
+                {t('common:verification')}
               </Button>
             </>
           ) : (
@@ -145,7 +145,7 @@ const LafAccountModal = ({
                 });
               }}
             >
-              已验证，点击取消绑定
+              {t('common:has_verification')}
             </Button>
           )}
         </Flex>
