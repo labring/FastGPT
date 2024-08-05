@@ -118,9 +118,11 @@ const Header = ({
                         : publishStatusStyle.unPublish.colorSchema
                     }
                   >
-                    {isPublished
-                      ? publishStatusStyle.published.text
-                      : publishStatusStyle.unPublish.text}
+                    {t(
+                      isPublished
+                        ? publishStatusStyle.published.text
+                        : publishStatusStyle.unPublish.text
+                    )}
                   </MyTag>
                 )}
 

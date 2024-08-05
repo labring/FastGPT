@@ -94,7 +94,9 @@
     "read_files_tip": "解析对话中上传的文档，返回对应文档内容",
     "template": {
       "communication": "通信"
-    }
+    },
+    "user_file_input": "文件链接",
+    "user_file_input_desc": "用户上传的文档和图片链接"
   },
   "interval": {
     "per_hour": "每小时",
