@@ -172,6 +172,7 @@
     "input": {
       "Repeat Value": "Duplicate value"
     },
+    "is_requesting": "Requesting...",
     "jsonEditor": {
       "Parse error": "JSON may be incorrect, please check carefully"
     },
@@ -183,6 +184,8 @@
     "no_intro": "No introduction yet",
     "not_support": "not support",
     "page_center": "Center the page",
+    "request_end": "All loaded",
+    "request_more": "Click to load more",
     "speech": {
       "error tip": "Speech to text failed",
       "not support": "Your browser does not support speech input"
@@ -401,7 +404,8 @@
         "Chat error": "Chat error",
         "Messages empty": "API content is empty, text may be too long~",
         "Select dataset empty": "You did not select a dataset",
-        "User input empty": "User question input is empty"
+        "User input empty": "User question input is empty",
+        "data_error": "Exception in getting data"
       },
       "feedback": {
         "Close User Like": "User expressed approval\nClick to close this mark",
@@ -524,7 +528,8 @@
             "success": "Start syncing"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",
@@ -813,7 +818,9 @@
         "variable option is value is required": "Option content cannot be empty",
         "variable options": "Options"
       },
-      "variable add option": "Add option"
+      "variable add option": "Add option",
+      "variable_update": "variable update",
+      "variable_update_info": "You can update the output value of the specified node or update global variables"
     },
     "plugin": {
       "Custom headers": "Custom headers",
@@ -1250,6 +1257,7 @@
   },
   "textarea_variable_picker_tip": "Input / to select variables",
   "tool_field": "Tool field parameter configuration",
+  "undefined_var": "An undefined variable is referenced. Is it automatically added?",
   "unit": {
     "character": "character",
     "minute": "minute"

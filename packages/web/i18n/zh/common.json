@@ -32,6 +32,7 @@
   "verification": "验证",
   "key_repetition": "key 重复",
   "has_verification": "已验证，点击取消绑定",
+  "undefined_var": "引用了未定义的变量，是否自动添加？",
   "not_yet_introduced": "暂无介绍",
   "get_QR_failed": "获取二维码失败",
   "unit": {
@@ -161,12 +162,17 @@
     "Remove": "移除",
     "Rename": "重命名",
     "Request Error": "请求异常",
+    "is_requesting": "请求中……",
+    "request_end": "已加载全部",
+    "request_more": "点击加载更多",
     "Require Input": "必填",
     "Restart": "重新开始",
     "Role": "权限",
     "Root folder": "根目录",
     "Run": "运行",
     "Save": "保存",
+    "Save Failed": "保存异常",
+    "Save Success": "保存成功",
     "Search": "搜索",
     "Select File Failed": "选择文件异常",
     "Select template": "选择模板",
@@ -447,6 +453,7 @@
       "You need to a chat app": "你没有可用的应用",
       "error": {
         "Chat error": "对话出现异常",
+        "data_error": "获取数据异常",
         "Messages empty": "接口内容为空，可能文本超长了~",
         "Select dataset empty": "你没有选择知识库",
         "User input empty": "传入的用户问题为空"
@@ -762,6 +769,8 @@
       "Setting quote prompt": "配置引用提示词",
       "Variable": "全局变量",
       "Variable Setting": "变量设置",
+      "variable_update": "变量更新",
+      "variable_update_info": "可以更新指定节点的输出值或更新全局变量",
       "edit": {
         "Field Name Cannot Be Empty": "字段名不能为空"
       },
@@ -1271,6 +1280,8 @@
     "Language": "语言",
     "Member Name": "昵称",
     "Notice": "通知",
+    "Notification Receive": "通知接收",
+    "Notification Receive Bind": "请先绑定通知接收途径",
     "no_notice": "暂无通知",
     "Old password is error": "旧密码错误",
     "OpenAI Account Setting": "OpenAI 账号配置",

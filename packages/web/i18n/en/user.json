@@ -16,6 +16,9 @@
     "to_register": "If you don’t have an account, please register."
   },
   "name": "name",
+  "notification": {
+    "Bind Notification Pipe Hint": "Bind the email address or mobile phone number for receiving notifications to ensure that you receive important system notifications in a timely manner."
+  },
   "operations": "operate",
   "password": {
     "change_error": "Exception when changing password",

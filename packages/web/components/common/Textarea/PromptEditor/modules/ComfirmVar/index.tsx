@@ -1,5 +1,5 @@
 import { Box, Button, Image } from '@chakra-ui/react';
-
+import { useTranslation } from 'next-i18next';
 export default function ComfirmVar({
   newVariables,
   onCancel,
@@ -9,6 +9,7 @@ export default function ComfirmVar({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       <Box
@@ -50,7 +51,7 @@ export default function ComfirmVar({
           >
             <Image alt={''} src={'/imgs/workflow/variable.png'} objectFit={'contain'} w={'20px'} />
           </Box>
-          <Box>引用了未定义的变量，是否自动添加？</Box>
+          <Box>{t('common:undefined_var')}</Box>
         </Box>
         <Box
           ml={16}
@@ -83,10 +84,10 @@ export default function ComfirmVar({
         <Box>
           <Box display={'flex'} justifyContent={'flex-end'} mt={4} mr={4}>
             <Button size={'sm'} variant={'ghost'} onClick={onCancel}>
-              取消
+              {t('common:common.Cancel')}
             </Button>
             <Button size={'sm'} variant={'primary'} ml={4} onClick={onConfirm}>
-              确定
+              {t('common:common.Confirm')}
             </Button>
           </Box>
         </Box>
