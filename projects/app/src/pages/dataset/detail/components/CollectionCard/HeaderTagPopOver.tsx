@@ -59,13 +59,19 @@ const HeaderTagPopOver = () => {
   } = useDisclosure();
 
   const checkTags = (tag: DatasetTagType) => {
+    let currentCheckedTags = [];
     if (checkedTags.includes(tag._id)) {
-      setCheckedTags(checkedTags.filter((t) => t !== tag._id));
+      currentCheckedTags = checkedTags.filter((t) => t !== tag._id);
+      setCheckedTags(currentCheckedTags);
       setCheckedDatasetTag(checkedDatasetTag.filter((t) => t._id !== tag._id));
     } else {
+      currentCheckedTags = [...checkedTags, tag._id];
       setCheckedTags([...checkedTags, tag._id]);
       setCheckedDatasetTag([...checkedDatasetTag, tag]);
     }
+    if (isEqual(currentCheckedTags, filterTags)) return;
+    setFilterTags(currentCheckedTags);
+    debounceRefetch();
   };
 
   return (
@@ -75,19 +81,19 @@ const HeaderTagPopOver = () => {
         hasArrow={false}
         offset={[2, 2]}
         w={'180px'}
-        trigger={'hover'}
+        trigger={'click'}
         Trigger={
           <Flex
             alignItems={'center'}
             px={3}
             py={2}
-            w={'180px'}
+            w={['140px', '180px']}
             borderRadius={'md'}
             border={'1px solid'}
             borderColor={'myGray.250'}
             cursor={'pointer'}
             overflow={'hidden'}
-            h={['36px', '36px']}
+            h={['28px', '36px']}
             fontSize={'sm'}
           >
             <Flex flex={'1 0 0'}>
@@ -103,13 +109,8 @@ const HeaderTagPopOver = () => {
             <MyIcon name={'core/chat/chevronDown'} w={'14px'} />
           </Flex>
         }
-        onCloseFunc={() => {
-          if (isEqual(checkedTags, filterTags)) return;
-          setFilterTags(checkedTags);
-          debounceRefetch();
-        }}
       >
-        {({ onClose }) => (
+        {({}) => (
           <MyBox isLoading={isCreateCollectionTagLoading} onClick={(e) => e.stopPropagation()}>
             <Box px={1.5} pt={1.5}>
               <Input

@@ -153,7 +153,7 @@ const Header = ({}: {}) => {
 
       {/* search input */}
       {isPc && (
-        <Flex alignItems={'center'} mr={4} gap={3}>
+        <Flex alignItems={'center'} mr={4}>
           <MyInput
             w={['100%', '250px']}
             size={'sm'}
@@ -183,13 +183,14 @@ const Header = ({}: {}) => {
               }
             }}
           />
-          {feConfigs?.isPlus && <HeaderTagPopOver />}
         </Flex>
       )}
 
       {/* diff collection button */}
       {datasetDetail.permission.hasWritePer && (
-        <>
+        <Flex gap={3}>
+          {feConfigs?.isPlus && <HeaderTagPopOver />}
+
           {datasetDetail?.type === DatasetTypeEnum.dataset && (
             <MyMenu
               offset={[0, 5]}
@@ -370,7 +371,7 @@ const Header = ({}: {}) => {
               ]}
             />
           )}
-        </>
+        </Flex>
       )}
 
       {/* modal */}

@@ -16,14 +16,12 @@ import {
   postCreateDatasetCollectionTag,
   updateDatasetCollectionTag
 } from '@/web/core/dataset/api';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { debounce } from 'lodash';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyInput from '@/components/MyInput';
 import { DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useQuery } from '@tanstack/react-query';
-import EmptyCollectionTip from './EmptyCollectionTip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
@@ -32,7 +30,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const loadDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadDatasetTags);
   const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
-  const { collections, getData } = useContextSelector(CollectionPageContext, (v) => v);
+  const { getData } = useContextSelector(CollectionPageContext, (v) => v);
 
   const tagInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -105,6 +103,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     },
     onSuccess() {
       fetchData(1);
+      loadDatasetTags({ id: datasetDetail._id, searchKey: '' });
+      loadAllDatasetTags({ id: datasetDetail._id });
     }
   });
 
@@ -155,11 +155,9 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   });
 
-  const { data: tagUsages } = useQuery(
-    [datasetDetail._id, collections],
-    () => getTagUsage(datasetDetail._id),
-    {}
-  );
+  const { data: tagUsages } = useRequest2(() => getTagUsage(datasetDetail._id), {
+    manual: false
+  });
 
   return (
     <MyModal
@@ -227,8 +225,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
             {list.map((listItem) => {
               const item = listItem.data;
               const tagUsage = tagUsages?.find((tagUsage) => tagUsage.tagId === item._id);
-              const usage = tagUsage?.usage || 0;
               const collections = tagUsage?.collections || [];
+              const usage = collections.length;
 
               return (
                 <Flex
@@ -271,7 +269,9 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                       ) : (
                         <Input
                           placeholder={t('dataset:tag.Edit_tag')}
-                          value={currentEditTagContent || item.tag}
+                          value={
+                            currentEditTagContent !== undefined ? currentEditTagContent : item.tag
+                          }
                           onChange={(e) => setCurrentEditTagContent(e.target.value)}
                           ref={editInputRef}
                           w={'200px'}
@@ -491,6 +491,7 @@ const AddTagToCollections = ({
               alignItems={'center'}
               borderRadius={'4px'}
               key={collection.id}
+              cursor={'pointer'}
               onClick={() => {
                 setSelectedCollections((prev) => {
                   if (prev.includes(collection.id)) {

@@ -25,13 +25,18 @@ const TagsPopOver = ({
   const allDatasetTags = useContextSelector(DatasetPageContext, (v) => v.allDatasetTags);
   const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
 
-  const [collectionTags, setCollectionTags] = useState<string[]>(currentCollection.tags || []);
+  const [collectionTags, setCollectionTags] = useState<string[]>([]);
   const [searchTag, setSearchTag] = useState('');
   const [checkedTags, setCheckedTags] = useState<DatasetTagType[]>([]);
 
   const [showTagManage, setShowTagManage] = useState(false);
   const [isFocusInput, setIsFocusInput] = useState(false);
   const [isUpdateLoading, setIsUpdateLoading] = useState(false);
+
+  useEffect(() => {
+    if (!currentCollection.tags) return;
+    setCollectionTags(currentCollection.tags);
+  }, [currentCollection]);
 
   const tagList = useMemo(
     () =>
@@ -41,8 +46,10 @@ const TagsPopOver = ({
           return tagObject ? { _id: tagObject._id, tag: tagObject.tag } : null;
         })
         .filter((tag) => tag !== null) || [],
-    [collectionTags, allDatasetTags]
+    [collectionTags, allDatasetTags, currentCollection.tags]
   );
+
+  console.log(tagList);
 
   useEffect(() => {
     if (!isFocusInput) return;
@@ -140,6 +147,7 @@ const TagsPopOver = ({
             e.stopPropagation();
             setShowTagManage(true);
           }}
+          cursor={'pointer'}
         >
           <Flex>
             {visibleTags.map((item, index) => (
