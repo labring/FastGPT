@@ -213,6 +213,7 @@ export const createOrGetCollectionTags = async ({
   teamId: string;
   session?: ClientSession;
 }): Promise<string[]> => {
+  if (!tags.length) return [];
   const existingTags = await MongoDatasetCollectionTags.find({
     teamId,
     datasetId,
@@ -222,20 +223,14 @@ export const createOrGetCollectionTags = async ({
   const existingTagContents = existingTags.map((tag) => tag.tag);
   const newTagContents = tags.filter((tag) => !existingTagContents.includes(tag));
 
-  const newTags = await Promise.all(
-    newTagContents.map((tagContent) =>
-      MongoDatasetCollectionTags.create(
-        [
-          {
-            teamId,
-            datasetId,
-            tag: tagContent
-          }
-        ],
-        { session }
-      )
-    )
+  const newTags = await MongoDatasetCollectionTags.insertMany(
+    newTagContents.map((tagContent) => ({
+      teamId,
+      datasetId,
+      tag: tagContent
+    })),
+    { session }
   );
 
-  return [...existingTags.map((tag) => tag._id), ...newTags.map((tag) => tag[0]._id)];
+  return [...existingTags.map((tag) => tag._id), ...newTags.map((tag) => tag._id)];
 };
