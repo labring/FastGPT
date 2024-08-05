@@ -8,7 +8,6 @@ import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
-import { useI18n } from '@/web/context/I18n';
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
   loginSuccess: (e: ResLogin) => void;
@@ -24,7 +23,6 @@ interface RegisterType {
 const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { userT } = useI18n();
   const { feConfigs } = useSystemStore();
   const {
     register,
@@ -78,7 +76,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   return (
     <>
       <Box fontWeight={'bold'} fontSize={'2xl'} textAlign={'center'}>
-        {userT('password.retrieved_account', { account: feConfigs?.systemTitle })}
+        {t('user:password.retrieved_account', { account: feConfigs?.systemTitle })}
       </Box>
       <Box
         mt={'42px'}

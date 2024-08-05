@@ -13,7 +13,6 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 
-import { useI18n } from '@/web/context/I18n';
 const QuoteModal = dynamic(() => import('./QuoteModal'));
 const ContextModal = dynamic(() => import('./ContextModal'));
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
@@ -29,7 +28,6 @@ const ResponseTags = ({
 }) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
-  const { chatT } = useI18n();
   const quoteListRef = React.useRef<HTMLDivElement>(null);
   const dataId = historyItem.dataId;
   const {
@@ -184,7 +182,7 @@ const ResponseTags = ({
                 cursor={'pointer'}
                 onClick={() => setQuoteModalData({ rawSearch: quoteList })}
               >
-                {chatT('chat:citations', { num: quoteList.length })}
+                {t('chat:citations', { num: quoteList.length })}
               </MyTag>
             </MyTooltip>
           )}
@@ -198,7 +196,7 @@ const ResponseTags = ({
                     type="borderSolid"
                     onClick={onOpenContextModal}
                   >
-                    {chatT('chat:contextual', { num: historyPreviewLength })}
+                    {t('chat:contextual', { num: historyPreviewLength })}
                   </MyTag>
                 </MyTooltip>
               )}

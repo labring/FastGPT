@@ -14,7 +14,6 @@ import CollaboratorContextProvider, {
 } from '../../support/permission/MemberManager/context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useI18n } from '@/web/context/I18n';
 import ResumeInherit from '@/components/support/permission/ResumeInheritText';
 
 const FolderSlideCard = ({
@@ -55,7 +54,6 @@ const FolderSlideCard = ({
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const { commonT } = useI18n();
   const { toast } = useToast();
 
   const { ConfirmModal, openConfirm } = useConfirm({

@@ -5,8 +5,7 @@ import type { PermissionValueType } from '@fastgpt/global/support/permission/typ
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useI18n } from '@/web/context/I18n';
-import { t } from 'i18next';
+import { useTranslation } from 'react-i18next';
 
 export enum defaultPermissionEnum {
   private = 'private',
@@ -35,8 +34,7 @@ const DefaultPermissionList = ({
   ...styles
 }: Props) => {
   const { ConfirmModal, openConfirm } = useConfirm({});
-  const { commonT } = useI18n();
-
+  const { t } = useTranslation();
   const defaultPermissionSelectList = [
     { label: t('user:permission.only_collaborators'), value: defaultPer },
     { label: t('user:permission.team_read'), value: readPer },
@@ -59,7 +57,7 @@ const DefaultPermissionList = ({
               openConfirm(
                 () => onRequestChange(per),
                 undefined,
-                commonT('permission.Remove InheritPermission Confirm')
+                t('common:permission.Remove InheritPermission Confirm')
               )();
             } else {
               return onRequestChange(per);

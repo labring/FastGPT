@@ -1,12 +1,10 @@
 import React from 'react';
 import { Box, Flex, Grid, Link } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useI18n } from '@/web/context/I18n';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const Points = () => {
   const { t } = useTranslation();
-  const { commonT } = useI18n();
   const { llmModelList, audioSpeechModelList, vectorModelList, whisperModel } = useSystemStore();
 
   return (

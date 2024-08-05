@@ -10,7 +10,6 @@ import { postCreateApp } from '@/web/core/app/api';
 import { defaultAppTemplates } from '@/web/core/app/templates';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
-import { useI18n } from '@/web/context/I18n';
 interface Props {
   loginSuccess: (e: ResLogin) => void;
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
@@ -26,7 +25,7 @@ interface RegisterType {
 const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { userT } = useI18n();
+
   const { feConfigs } = useSystemStore();
   const {
     register,
@@ -93,7 +92,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   return (
     <>
       <Box fontWeight={'bold'} fontSize={'2xl'} textAlign={'center'}>
-        {userT('register.register_account', { account: feConfigs?.systemTitle })}
+        {t('user:register.register_account', { account: feConfigs?.systemTitle })}
       </Box>
       <Box
         mt={'42px'}

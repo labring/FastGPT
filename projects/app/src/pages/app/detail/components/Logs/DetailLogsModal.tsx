@@ -17,7 +17,6 @@ import CloseIcon from '@fastgpt/web/components/common/Icon/close';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useQuery } from '@tanstack/react-query';
-import { useI18n } from '@/web/context/I18n';
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
 const DetailLogsModal = ({
@@ -32,7 +31,6 @@ const DetailLogsModal = ({
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const theme = useTheme();
-  const { commonT } = useI18n();
   const {
     ChatBoxRef,
     chatRecords,
@@ -134,7 +132,7 @@ const DetailLogsModal = ({
                     <MyTag colorSchema="blue">
                       <MyIcon name={'history'} w={'14px'} />
                       <Box ml={1}>
-                        {commonT('core.chat.History Amount', { amount: chatRecords.length })}
+                        {t('common:core.chat.History Amount', { amount: chatRecords.length })}
                       </Box>
                     </MyTag>
                     {!!chatModels && (

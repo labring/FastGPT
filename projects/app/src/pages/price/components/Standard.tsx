@@ -18,7 +18,7 @@ import { getWxPayQRCode } from '@/web/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
 import { useRouter } from 'next/router';
-import { useI18n } from '@/web/context/I18n';
+
 type ConfirmPayModalProps = {
   teamBalance: number;
   totalPrice: number;
@@ -309,7 +309,7 @@ const ConfirmPayModal = ({
   onConfirmPay
 }: ConfirmPayModalProps & { onClose: () => void; onConfirmPay: () => void }) => {
   const { t } = useTranslation();
-  const { commonT } = useI18n();
+
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
 
   const formatPayPrice = Math.ceil(formatStorePrice2Read(payPrice));
@@ -342,12 +342,12 @@ const ConfirmPayModal = ({
       <ModalBody py={5} px={9}>
         <Flex>
           <Box flex={'0 0 100px'}>{t('common:pay.new_package_price')}</Box>
-          <Box>{commonT('common:pay.yuan', { amount: formatStorePrice2Read(totalPrice) })}</Box>
+          <Box>{t('common:pay.yuan', { amount: formatStorePrice2Read(totalPrice) })}</Box>
         </Flex>
         <Flex mt={6}>
           <Box flex={'0 0 100px'}>{t('common:pay.old_package_price')}</Box>
           <Box>
-            {commonT('common:pay.yuan', {
+            {t('common:pay.yuan', {
               amount: Math.floor(formatStorePrice2Read(totalPrice - payPrice))
             })}
           </Box>
@@ -355,7 +355,7 @@ const ConfirmPayModal = ({
         <Flex mt={6}>
           <Box flex={'0 0 100px'}>{t('common:pay.balance_notice')}</Box>
           <Box>
-            {commonT('common:pay.yuan', {
+            {t('common:pay.yuan', {
               amount: formatPayPrice
             })}
           </Box>
@@ -370,7 +370,7 @@ const ConfirmPayModal = ({
       >
         <Box>{t('common:pay.balance') + ': '}</Box>
         <Box ml={2} flex={1}>
-          {commonT('common:pay.yuan', {
+          {t('common:pay.yuan', {
             amount: formatTeamBalance
           })}
         </Box>
