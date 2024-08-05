@@ -12,7 +12,7 @@ import {
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { addHours } from 'date-fns';
+import { addDays } from 'date-fns';
 
 /* 
   check dataset.files data. If there is no match in dataset.collections, delete it
@@ -71,7 +71,7 @@ export const removeExpiredChatFiles = async () => {
   let deleteFileAmount = 0;
   const collection = getGFSCollection(BucketNameEnum.chat);
   const where = {
-    uploadDate: { $lte: addHours(new Date(), -7) }
+    uploadDate: { $lte: addDays(new Date(), -7) }
   };
 
   // get all file _id

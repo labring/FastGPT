@@ -34,7 +34,7 @@ const clearInvalidDataCron = () => {
       })
     ) {
       await checkInvalidDatasetFiles(addHours(new Date(), -6), addHours(new Date(), -2));
-      await removeExpiredChatFiles();
+      removeExpiredChatFiles();
     }
   });
 

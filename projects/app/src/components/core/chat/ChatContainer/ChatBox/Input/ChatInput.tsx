@@ -21,6 +21,7 @@ import { documentFileType } from '@fastgpt/global/common/file/constants';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { clone } from 'lodash';
+import { formatFileSize } from '@fastgpt/global/common/file/tools';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -49,6 +50,7 @@ const ChatInput = ({
   const { isPc } = useSystem();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
 
   const { setValue, watch, control } = chatForm;
   const inputValue = watch('input');
@@ -79,6 +81,7 @@ const ChatInput = ({
   const showSelectFile = fileSelectConfig.canSelectFile;
   const showSelectImg = fileSelectConfig.canSelectImg;
   const maxSelectFiles = fileSelectConfig.maxFiles ?? 10;
+  const maxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024; // nkb
   const { icon: selectFileIcon, tooltip: selectFileTip } = useMemo(() => {
     if (showSelectFile) {
       return {
@@ -152,8 +155,16 @@ const ChatInput = ({
         });
       }
 
+      const filterFilesByMaxSize = files.filter((file) => file.size <= maxSize);
+      if (filterFilesByMaxSize.length < files.length) {
+        toast({
+          status: 'warning',
+          title: t('file:some_file_size_exceeds_limit', { maxSize: formatFileSize(maxSize) })
+        });
+      }
+
       const loadFiles = await Promise.all(
-        files.map(
+        filterFilesByMaxSize.map(
           (file) =>
             new Promise<UserInputFileItemType>((resolve, reject) => {
               if (file.type.includes('image')) {

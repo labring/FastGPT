@@ -52,9 +52,9 @@ export const getMultiplePrompt = (obj: {
   imgCount: number;
   question: string;
 }) => {
-  const prompt = `Files input：
-Document：{{fileCount}}.
-Image：{{imgCount}}.
+  const prompt = `Number of session file inputs：
+Document：{{fileCount}}
+Image：{{imgCount}}
 ------
 {{question}}`;
   return replaceVariable(prompt, obj);
