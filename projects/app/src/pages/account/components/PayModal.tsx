@@ -7,7 +7,6 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
-
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { EXTRA_PLAN_CARD_ROUTE } from '@/web/support/wallet/sub/constants';
@@ -27,7 +26,6 @@ const PayModal = ({
   const [inputVal, setInputVal] = useState<number | undefined>(defaultValue);
   const [loading, setLoading] = useState(false);
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
-
   const handleClickPay = useCallback(async () => {
     if (!inputVal || inputVal <= 0 || isNaN(+inputVal)) return;
     setLoading(true);
@@ -79,7 +77,7 @@ const PayModal = ({
               variant={item === inputVal ? 'solid' : 'outline'}
               onClick={() => setInputVal(item)}
             >
-              {item}元
+              {t('common:pay.yuan', { amount: item })}
             </Button>
           ))}
         </Grid>
@@ -88,7 +86,7 @@ const PayModal = ({
             value={inputVal}
             type={'number'}
             step={1}
-            placeholder={'其他金额，请取整数'}
+            placeholder={t('common:pay.other')}
             onChange={(e) => {
               setInputVal(Math.floor(+e.target.value));
             }}
@@ -106,7 +104,7 @@ const PayModal = ({
           isDisabled={!inputVal || inputVal === 0}
           onClick={handleClickPay}
         >
-          获取充值二维码
+          {t('common:pay.get_pay_QR')}
         </Button>
       </ModalFooter>
 

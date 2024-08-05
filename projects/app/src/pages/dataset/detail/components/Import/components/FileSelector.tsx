@@ -287,7 +287,7 @@ const FileSelector = ({
       {isMaxSelected ? (
         <>
           <Box color={'myGray.500'} fontSize={'xs'}>
-            已达到最大文件数量
+            {t('file:reached_max_file_count')}
           </Box>
         </>
       ) : (

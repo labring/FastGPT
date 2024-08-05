@@ -215,7 +215,7 @@ const ListItem = () => {
                   fontSize={'xs'}
                   color={'myGray.500'}
                 >
-                  <Box className={'textEllipsis2'}>{app.intro || '还没写介绍~'}</Box>
+                  <Box className={'textEllipsis2'}>{app.intro || t('common:common.no_intro')}</Box>
                 </Box>
                 <Flex
                   h={'24px'}
@@ -295,7 +295,7 @@ const ListItem = () => {
                               children: [
                                 {
                                   icon: 'edit',
-                                  label: '编辑信息',
+                                  label: t('common:dataset.Edit Info'),
                                   onClick: () => {
                                     if (app.type === AppTypeEnum.httpPlugin) {
                                       setEditHttpPlugin({
@@ -383,14 +383,14 @@ const ListItem = () => {
         })}
       </Grid>
 
-      {myApps.length === 0 && <EmptyTip text={'还没有应用，快去创建一个吧！'} pt={'30vh'} />}
+      {myApps.length === 0 && <EmptyTip text={t('common:core.app.no_app')} pt={'30vh'} />}
 
       <DelConfirmModal />
       <ConfirmCopyModal />
       {!!editedApp && (
         <EditResourceModal
           {...editedApp}
-          title="应用信息编辑"
+          title={t('common:core.app.edit_content')}
           onClose={() => {
             setEditedApp(undefined);
           }}

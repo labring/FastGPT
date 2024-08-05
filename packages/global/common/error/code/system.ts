@@ -1,15 +1,17 @@
 import { ErrType } from '../errorCode';
-
+import { i18nT } from '../../../../web/i18n/utils';
 /* dataset: 509000 */
 export enum SystemErrEnum {
   communityVersionNumLimit = 'communityVersionNumLimit'
 }
+
 const systemErr = [
   {
     statusText: SystemErrEnum.communityVersionNumLimit,
-    message: '超出开源版数量限制，请升级商业版: https://fastgpt.in'
+    message: i18nT('common:code_error.system_error.community_version_num_limit')
   }
 ];
+
 export default systemErr.reduce((acc, cur, index) => {
   return {
     ...acc,

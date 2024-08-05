@@ -81,7 +81,9 @@ const InformTable = () => {
             )}
           </Box>
         ))}
-        {!isLoading && informs.length === 0 && <EmptyTip text={'暂无通知~'}></EmptyTip>}
+        {!isLoading && informs.length === 0 && (
+          <EmptyTip text={t('common:user.no_notice')}></EmptyTip>
+        )}
       </Box>
 
       {total > pageSize && (

@@ -77,10 +77,12 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
                         {currentSubLevel &&
                           `(${t(standardSubLevelMap[currentSubLevel]?.label as any)})`}
                       </Td>
-                      <Td>{datasetSize ? `${datasetSize}组` : '-'}</Td>
+                      <Td>
+                        {datasetSize ? `${datasetSize + t('common:core.dataset.data.group')}` : '-'}
+                      </Td>
                       <Td>
                         {totalPoints
-                          ? `${Math.round(totalPoints - surplusPoints)} / ${totalPoints} 积分`
+                          ? `${Math.round(totalPoints - surplusPoints)} / ${totalPoints} ${t('common:support.wallet.subscription.point')}`
                           : '-'}
                       </Td>
                       <Td>{formatTime2YMDHM(startTime)}</Td>

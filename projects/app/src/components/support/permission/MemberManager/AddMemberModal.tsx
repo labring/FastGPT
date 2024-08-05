@@ -79,7 +79,13 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
   });
 
   return (
-    <MyModal isOpen onClose={onClose} iconSrc="modal/AddClb" title="添加协作者" minW="800px">
+    <MyModal
+      isOpen
+      onClose={onClose}
+      iconSrc="modal/AddClb"
+      title={t('user:team.add_collaborator')}
+      minW="800px"
+    >
       <ModalBody>
         <MyBox
           isLoading={loadingMembers}
@@ -103,7 +109,7 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
                 <MyIcon name="common/searchLight" w="16px" color={'myGray.500'} />
               </InputLeftElement>
               <Input
-                placeholder="搜索用户名"
+                placeholder={t('user:search_user')}
                 bgColor="myGray.50"
                 onChange={(e) => setSearchText(e.target.value)}
               />
@@ -156,7 +162,9 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
             </Flex>
           </Flex>
           <Flex p="4" flexDirection="column">
-            <Box>已选: {selectedMemberIdList.length}</Box>
+            <Box>
+              {t('user:has_chosen') + ': '}+ {selectedMemberIdList.length}
+            </Box>
             <Flex flexDirection="column" mt="2">
               {selectedMemberIdList.map((tmbId) => {
                 const member = filterMembers.find((v) => v.tmbId === tmbId);
@@ -211,7 +219,7 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
           onChange={(v) => setSelectedPermission(v)}
         />
         <Button isLoading={isUpdating} ml="4" h={'32px'} onClick={onConfirm}>
-          确认
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

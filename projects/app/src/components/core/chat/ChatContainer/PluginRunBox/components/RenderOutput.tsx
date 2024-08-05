@@ -5,10 +5,10 @@ import { PluginRunContext } from '../context';
 import Markdown from '@/components/Markdown';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import AIResponseBox from '../../../components/AIResponseBox';
-
+import { useTranslation } from 'next-i18next';
 const RenderOutput = () => {
   const { histories, isChatting } = useContextSelector(PluginRunContext, (v) => v);
-
+  const { t } = useTranslation();
   const pluginOutputs = useMemo(() => {
     const pluginOutputs = histories?.[1]?.responseData?.find(
       (item) => item.moduleType === FlowNodeTypeEnum.pluginOutput
@@ -22,7 +22,7 @@ const RenderOutput = () => {
       <Box border={'base'} rounded={'md'} bg={'myGray.25'}>
         <Box p={4} color={'myGray.900'}>
           <Box color={'myGray.900'} fontWeight={'bold'}>
-            流输出
+            {t('chat:stream_output')}
           </Box>
           {histories.length > 0 && histories[1]?.value.length > 0 ? (
             <Box mt={2}>
@@ -46,7 +46,7 @@ const RenderOutput = () => {
       </Box>
       <Box border={'base'} mt={4} rounded={'md'} bg={'myGray.25'}>
         <Box p={4} color={'myGray.900'} fontWeight={'bold'}>
-          <Box>插件输出</Box>
+          <Box>{t('chat:plugins_output')}</Box>
           {histories.length > 0 && histories[1].responseData ? (
             <Markdown source={`~~~json\n${pluginOutputs}`} />
           ) : null}

@@ -64,9 +64,9 @@ const RenderToolInput = ({
           <Table bg={'white'}>
             <Thead>
               <Tr>
-                <Th>字段名</Th>
-                <Th>字段描述</Th>
-                <Th>必须</Th>
+                <Th>{t('common:item_name')}</Th>
+                <Th>{t('common:item_description')}</Th>
+                <Th>{t('common:required')}</Th>
                 {dynamicInput && <Th></Th>}
               </Tr>
             </Thead>

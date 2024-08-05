@@ -11,5 +11,6 @@
   "support_file_type": "支持 {{fileType}} 类型文件",
   "support_max_count": "最多支持 {{maxCount}} 个文件",
   "support_max_size": "单个文件最大 {{maxSize}}",
-  "upload_failed": "上传异常"
+  "upload_failed": "上传异常",
+  "reached_max_file_count": "已达到最大文件数量"
 }

@@ -122,7 +122,7 @@ const Logs = () => {
                   key={item._id}
                   _hover={{ bg: 'myWhite.600' }}
                   cursor={'pointer'}
-                  title={'点击查看对话详情'}
+                  title={t('common:core.view_chat_detail')}
                   onClick={() => setDetailLogsId(item.id)}
                 >
                   <Td>
