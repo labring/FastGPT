@@ -22,6 +22,7 @@ import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection
 import { Types } from '../../../common/mongo';
 import json5 from 'json5';
 import { MongoDatasetCollectionTags } from '../tag/schema';
+import { readFromSecondary } from '../../../common/mongo/utils';
 
 type SearchDatasetDataProps = {
   teamId: string;
@@ -38,7 +39,7 @@ type SearchDatasetDataProps = {
     {
       tags: {
         $and: ["str1","str2"],
-        $or: ["str1","str2"]
+        $or: ["str1","str2",null] null means no tags
       },
       createTime: {
         $gte: 'xx',
@@ -104,102 +105,106 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       forbidCollectionIdList: collections.map((item) => String(item._id))
     };
   };
-  // Collection metadata filter
+  /* 
+    Collection metadata filter
+    标签过滤：
+    1. and 先生效
+    2. and 标签和 null 不能共存，否则返回空数组
+  */
   const filterCollectionByMetadata = async (): Promise<string[] | undefined> => {
     if (!collectionFilterMatch) return;
 
+    let tagCollectionIdList: string[] | undefined = undefined;
+    let createTimeCollectionIdList: string[] | undefined = undefined;
+
     try {
       const jsonMatch = json5.parse(collectionFilterMatch);
-      // Tag
-      const andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
-      const orTags = jsonMatch?.tags?.$or as (string | null)[] | undefined;
 
-      let andTagIds: string[] = [];
-      let orTagIds: string[] = [];
+      // Tag
+      let andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
+      let orTags = jsonMatch?.tags?.$or as (string | null)[] | undefined;
 
       // get andTagIds
-      if (andTags) {
-        if (!andTags.includes(null)) {
-          // If andTags doesn't include null, find the corresponding tagIds from MongoDatasetCollectionTags
-          const andTagArray = await MongoDatasetCollectionTags.find(
+      if (andTags && andTags.length > 0) {
+        // tag 去重
+        andTags = Array.from(new Set(andTags));
+
+        if (andTags.includes(null) && andTags.some((tag) => typeof tag === 'string')) {
+          return [];
+        }
+
+        if (andTags.every((tag) => typeof tag === 'string')) {
+          // Get tagId by tag string
+          const andTagIdList = await MongoDatasetCollectionTags.find(
             {
               teamId,
               datasetId: { $in: datasetIds },
               tag: { $in: andTags }
             },
-            '_id'
-          );
-          andTagIds = andTagArray.map((item) => item._id);
-          // If any of the tags are not found, return an empty array
-          if (andTagIds.length !== andTags.length) {
-            return [];
-          }
-        } else {
-          // If andTags includes both null & string , return an empty array
-          if (andTags.some((tag) => typeof tag === 'string')) {
-            return [];
-          } else {
-            // If andTags only includes null, find the collections that don't have tags
-            const collections = await MongoDatasetCollection.find(
-              {
-                teamId,
-                datasetId: { $in: datasetIds },
-                tags: { $size: 0 }
-              },
-              '_id'
-            );
-            return collections.map((item) => String(item._id));
-          }
+            '_id',
+            {
+              ...readFromSecondary
+            }
+          ).lean();
+
+          // If you enter a tag that does not exist, none will be found
+          if (andTagIdList.length !== andTags.length) return [];
+
+          // Get collectionId by tagId
+          const collections = await MongoDatasetCollection.find(
+            {
+              teamId,
+              datasetId: { $in: datasetIds },
+              tags: { $all: andTagIdList.map((item) => String(item._id)) }
+            },
+            '_id',
+            {
+              ...readFromSecondary
+            }
+          ).lean();
+          tagCollectionIdList = collections.map((item) => String(item._id));
+        } else if (andTags.every((tag) => tag === null)) {
+          const collections = await MongoDatasetCollection.find(
+            {
+              teamId,
+              datasetId: { $in: datasetIds },
+              $or: [{ tags: { $size: 0 } }, { tags: { $exists: false } }]
+            },
+            '_id',
+            {
+              ...readFromSecondary
+            }
+          ).lean();
+          tagCollectionIdList = collections.map((item) => String(item._id));
         }
-      }
-
-      // If andTagIds is not empty, find collections that contain all andTagIds
-      if (andTagIds.length > 0) {
-        const collections = await MongoDatasetCollection.find(
-          {
-            teamId,
-            datasetId: { $in: datasetIds },
-            tags: { $all: andTagIds }
-          },
-          '_id'
-        );
-        return collections.map((item) => String(item._id));
-      }
-
-      if (orTags) {
+      } else if (orTags && orTags.length > 0) {
+        // Get tagId by tag string
         const orTagArray = await MongoDatasetCollectionTags.find(
           {
             teamId,
             datasetId: { $in: datasetIds },
             tag: { $in: orTags.filter((tag) => tag !== null) }
           },
-          '_id'
-        );
-        orTagIds = orTagArray.map((item) => item._id);
+          '_id',
+          { ...readFromSecondary }
+        ).lean();
+        const orTagIds = orTagArray.map((item) => String(item._id));
 
-        if (orTags.includes(null)) {
-          // If orTags includes null, find collections that contain orTagIds or have no tags
-          const collections = await MongoDatasetCollection.find(
-            {
-              teamId,
-              datasetId: { $in: datasetIds },
-              $or: [{ tags: { $in: orTagIds } }, { tags: { $size: 0 } }]
-            },
-            '_id'
-          );
-          return collections.map((item) => String(item._id));
-        } else {
-          // If orTags doesn't include null, find collections that contain orTagIds
-          const collections = await MongoDatasetCollection.find(
-            {
-              teamId,
-              datasetId: { $in: datasetIds },
-              tags: { $in: orTagIds }
-            },
-            '_id'
-          );
-          return collections.map((item) => String(item._id));
-        }
+        // Get collections by tagId
+        const collections = await MongoDatasetCollection.find(
+          {
+            teamId,
+            datasetId: { $in: datasetIds },
+            $or: [
+              { tags: { $in: orTagIds } },
+              ...(orTags.includes(null) ? [{ tags: { $size: 0 } }] : [])
+            ]
+          },
+          '_id',
+          { ...readFromSecondary }
+        ).lean();
+
+        tagCollectionIdList = collections.map((item) => String(item._id));
       }
 
       // time
@@ -219,7 +224,16 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
           },
           '_id'
         );
-        return collections.map((item) => String(item._id));
+        createTimeCollectionIdList = collections.map((item) => String(item._id));
+      }
+
+      // Concat tag and time
+      if (tagCollectionIdList && createTimeCollectionIdList) {
+        return tagCollectionIdList.filter((id) => createTimeCollectionIdList!.includes(id));
+      } else if (tagCollectionIdList) {
+        return tagCollectionIdList;
+      } else if (createTimeCollectionIdList) {
+        return createTimeCollectionIdList;
       }
     } catch (error) {}
   };

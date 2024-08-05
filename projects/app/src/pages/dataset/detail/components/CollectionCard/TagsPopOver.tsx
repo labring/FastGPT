@@ -40,21 +40,22 @@ const TagsPopOver = ({
 
   const tagList = useMemo(
     () =>
-      collectionTags
+      (collectionTags
         ?.map((tagId) => {
           const tagObject = allDatasetTags.find((tag) => tag._id === tagId);
           return tagObject ? { _id: tagObject._id, tag: tagObject.tag } : null;
         })
-        .filter((tag) => tag !== null) || [],
-    [collectionTags, allDatasetTags, currentCollection.tags]
+        .filter((tag) => tag !== null) as {
+        _id: string;
+        tag: string;
+      }[]) || [],
+    [collectionTags, allDatasetTags]
   );
-
-  console.log(tagList);
 
   useEffect(() => {
     if (!isFocusInput) return;
     loadDatasetTags({ id: datasetDetail._id, searchKey: searchTag });
-  }, [searchTag]);
+  }, [datasetDetail._id, isFocusInput, loadDatasetTags, searchTag]);
 
   const [visibleTags, setVisibleTags] = useState<DatasetTagType[]>(tagList);
   const [overflowTags, setOverflowTags] = useState<DatasetTagType[]>([]);

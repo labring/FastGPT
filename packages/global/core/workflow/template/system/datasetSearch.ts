@@ -94,9 +94,10 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
     {
       key: NodeInputKeyEnum.collectionFilterMatch,
       renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference],
-      label: '集合过滤',
+      label: '集合元数据过滤',
       valueType: WorkflowIOValueTypeEnum.object,
-      description: `// 可通过一个 json 规则来指定标签或时间过滤
+      isPro: true,
+      description: `目前支持标签和创建时间过滤，需按照以下格式填写：
 {
   "tags": {
     "$and": ["标签 1","标签 2"],
@@ -107,17 +108,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       "$lte": "YYYY-MM-DD HH:mm 格式即可，集合的创建时间小于该时间,可和 $gte 共同使用"
   }
 }
-      `,
-      value: {
-        tags: {
-          $and: [],
-          $or: []
-        },
-        createTime: {
-          $gte: '',
-          $lte: ''
-        }
-      }
+      `
     }
   ],
   outputs: [
