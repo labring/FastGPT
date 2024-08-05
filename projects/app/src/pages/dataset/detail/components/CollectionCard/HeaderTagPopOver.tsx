@@ -6,7 +6,7 @@ import { postCreateDatasetCollectionTag } from '@/web/core/dataset/api';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useTranslation } from 'react-i18next';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { CollectionPageContext } from './Context';
 import { debounce, isEqual } from 'lodash';
@@ -81,6 +81,7 @@ const HeaderTagPopOver = () => {
         hasArrow={false}
         offset={[2, 2]}
         w={'180px'}
+        closeOnBlur={true}
         trigger={'click'}
         Trigger={
           <Flex
@@ -110,7 +111,7 @@ const HeaderTagPopOver = () => {
           </Flex>
         }
       >
-        {({}) => (
+        {({ onClose }) => (
           <MyBox isLoading={isCreateCollectionTagLoading} onClick={(e) => e.stopPropagation()}>
             <Box px={1.5} pt={1.5}>
               <Input
@@ -186,7 +187,12 @@ const HeaderTagPopOver = () => {
                 _hover={{ bg: '#1118240D', color: 'primary.700' }}
                 borderRadius={'none'}
                 variant={'unstyled'}
-                onClick={() => setCheckedTags([])}
+                onClick={() => {
+                  setCheckedTags([]);
+                  setFilterTags([]);
+                  debounceRefetch();
+                  onClose();
+                }}
               >
                 {t('dataset:tag.cancel')}
               </Button>

@@ -174,6 +174,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
         isUpdateCollectionTagLoading ||
         isSaveCollectionTagLoading
       }
+      closeOnOverlayClick={false}
     >
       {currentAddTag === undefined ? (
         <>
