@@ -47,9 +47,18 @@ export function ChangeOwnerModal({
   } = useDisclosure();
   const [selectedMember, setSelectedMember] = useState<TeamMemberItemType | null>(null);
 
-  const { runAsync: onConfirm, loading } = useRequest2(onChangeOwner, {
-    onSuccess: onClose
+  const { runAsync, loading } = useRequest2(onChangeOwner, {
+    onSuccess: onClose,
+    successToast: t('common:permission.change_owner_success'),
+    errorToast: t('common:permission.change_owner_failed')
   });
+
+  const onConfirm = async () => {
+    if (!selectedMember) {
+      return;
+    }
+    await runAsync(selectedMember.tmbId);
+  };
 
   return (
     <MyModal

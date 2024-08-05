@@ -1101,7 +1101,9 @@
     "change_owner": "转移所有权",
     "change_owner_to": "转移给",
     "change_owner_placeholder": "输入用户名查找账号",
-    "change_owner_tip": "转移后将保留您的管理员权限"
+    "change_owner_tip": "转移后将保留您的管理员权限",
+    "change_owner_success": "成功转移所有权",
+    "change_owner_failed": "转移所有权失败"
   },
   "plugin": {
     "App": "选择应用",
