@@ -220,7 +220,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"url\": \"{{url}}\",\n  \"img_correction\": \"{{img_correction}}\",\n  \"formula\": \"{{img_correction}}\"\n}",
+            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"url\": \"{{url}}\",\n  \"img_correction\": {{img_correction}},\n  \"formula\": {{formula}}\n}",
             "label": "",
             "required": false
           },

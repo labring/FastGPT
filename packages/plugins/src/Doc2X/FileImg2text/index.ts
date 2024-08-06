@@ -57,7 +57,7 @@ const main = async ({ apikey, files, img_correction, formula }: Props): Response
     }
 
     const contentType = imageResponse.headers.get('content-type');
-    const fileName = url.match(/read\?filename=([^&]+)/)?.[1] || 'unknown.pdf';
+    const fileName = url.match(/read\?filename=([^&]+)/)?.[1] || 'unknown.png';
     if (!contentType || !contentType.startsWith('image/')) {
       fail_reason += `\n---\nFile:${url} \n<Content>\nThe provided URL does not point to an image: ${contentType}\n</Content>\n`;
       flag = true;

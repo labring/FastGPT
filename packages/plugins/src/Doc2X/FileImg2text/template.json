@@ -113,7 +113,7 @@
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1662.400657042358,
+          "x": 1661.4708279314577,
           "y": 23.877720915480012
         },
         "version": "481",
@@ -229,7 +229,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"files\": {{files}},\n  \"img_correction\": \"{{img_correction}}\",\n  \"formula\": \"{{img_correction}}\"\n}",
+            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"files\": {{files}},\n  \"img_correction\": {{img_correction}},\n  \"formula\": {{formula}}\n}",
             "label": "",
             "required": false
           },

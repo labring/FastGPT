@@ -201,7 +201,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"url\": \"{{url}}\",\n  \"ocr\": \"{{ocr}}\"\n}",
+            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"url\": \"{{url}}\",\n  \"ocr\": {{ocr}}\n}",
             "label": "",
             "required": false
           },
