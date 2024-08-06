@@ -52,7 +52,7 @@ const main = async ({ apikey, files, ocr }: Props): Response => {
     //Fetch the pdf and check its contene type
     const PDFResponse = await fetch(url);
     if (!PDFResponse.ok) {
-      fail_reason += `==========\nFailed to fetch PDF from URL: ${url}\n`;
+      fail_reason += `\n---\nFile:${url} \n<Content>\nFailed to fetch PDF from URL\n</Content>\n`;
       flag = true;
       continue;
     }
@@ -60,7 +60,7 @@ const main = async ({ apikey, files, ocr }: Props): Response => {
     const contentType = PDFResponse.headers.get('content-type');
     const file_name = url.match(/read\?filename=([^&]+)/)?.[1] || 'unknown.pdf';
     if (!contentType || !contentType.startsWith('application/pdf')) {
-      fail_reason += `==========\n${file_name}\n\nThe provided file does not point to a PDF: ${contentType}\n`;
+      fail_reason += `\n---\nFile:${file_name}\n<Content>\nThe provided file does not point to a PDF: ${contentType}\n</Content>\n`;
       flag = true;
       continue;
     }
@@ -91,7 +91,7 @@ const main = async ({ apikey, files, ocr }: Props): Response => {
           await delay(10000);
           continue;
         }
-        fail_reason += `==========\n${file_name}\n\nFailed to upload file: ${await upload_response.text()}\n`;
+        fail_reason += `\n---\nFile:${file_name}\n<Content>\nFailed to upload file: ${await upload_response.text()}\n</Content>\n`;
         flag = true;
         upload_flag = false;
       }
@@ -119,7 +119,7 @@ const main = async ({ apikey, files, ocr }: Props): Response => {
         }
       });
       if (!result_response.ok) {
-        fail_reason += `==========\n${file_name}\n\nFailed to get result: ${await result_response.text()}\n`;
+        fail_reason += `\n---\nFile:${file_name}\n<Content>\nFailed to get result: ${await result_response.text()}\n</Content>\n`;
         flag = true;
         break;
       }
@@ -127,7 +127,7 @@ const main = async ({ apikey, files, ocr }: Props): Response => {
       if (['ready', 'processing'].includes(result_data.data.status)) {
         await delay(1000);
       } else if (result_data.data.status === 'pages limit exceeded') {
-        fail_reason += `==========\n${file_name}\n\nPages limit exceeded\n`;
+        fail_reason += `\n---\nFile:${file_name}\n<Content>\nPages limit exceeded\n</Content>\n`;
         flag = true;
         break;
       } else if (result_data.data.status === 'success') {
@@ -135,10 +135,10 @@ const main = async ({ apikey, files, ocr }: Props): Response => {
           result_data.data.result.pages.map((page: { md: any }) => page.md)
         ).then((pages) => pages.join('\n'));
         result = result.replace(/\\[\(\)]/g, '$').replace(/\\[\[\]]/g, '$$');
-        final_result += `==========\n${file_name}\n\n${result}\n`;
+        final_result += `\n---\nFile:${file_name}\n<Content>\n${result}\n</Content>\n`;
         break;
       } else {
-        fail_reason += `==========\n${file_name}\n\nFailed to get result: ${result_data.data.status}\n`;
+        fail_reason += `\n---\nFile:${file_name}\n<Content>\nFailed to get result: ${result_data.data.status}\n</Content>\n`;
         flag = true;
         break;
       }
