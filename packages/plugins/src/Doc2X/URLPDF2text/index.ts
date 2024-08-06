@@ -41,7 +41,15 @@ const main = async ({ apikey, url, ocr }: Props): Response => {
   }
 
   //Fetch the pdf and check its contene type
-  const PDFResponse = await fetch(url);
+  let PDFResponse;
+  try {
+    PDFResponse = await fetch(url);
+  } catch (e) {
+    return {
+      result: `Failed to fetch PDF from URL: ${url} with error: ${e}`,
+      success: false
+    };
+  }
   if (!PDFResponse.ok) {
     return {
       result: `Failed to fetch PDF from URL: ${url}`,

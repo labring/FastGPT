@@ -3,7 +3,7 @@
   "version": "488",
   "name": "Doc2X 图像(文件)识别",
   "avatar": "plugins/doc2x",
-  "intro": "将传入的图片文件发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
+  "intro": "将上传的图片文件发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
   "inputExplanationUrl": "https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview",
   "showStatus": true,
   "weight": 10,
@@ -133,7 +133,7 @@
             "canEdit": true,
             "key": "failreason",
             "label": "failreason",
-            "description": "",
+            "description": "文件处理失败原因，由文件名以及报错组成，多个文件之间由横线分隔开",
             "value": ["zHG5jJBkXmjB", "jbv4nVZvmFXm"]
           },
           {
@@ -142,7 +142,7 @@
             "canEdit": true,
             "key": "success",
             "label": "success",
-            "description": "",
+            "description": "是否全部文件都处理成功，如有没有处理成功的文件，失败原因将会输出在failreason中",
             "value": ["zHG5jJBkXmjB", "k46cjNulVk5Y"]
           }
         ],

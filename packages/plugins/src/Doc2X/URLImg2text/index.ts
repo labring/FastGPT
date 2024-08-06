@@ -40,8 +40,17 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
     real_api_key = data.data.token;
   }
 
+  let imageResponse;
   // Fetch the image and check its content type
-  const imageResponse = await fetch(url);
+  try {
+    imageResponse = await fetch(url);
+  } catch (e) {
+    return {
+      result: `Failed to fetch image from URL: ${url} with error: ${e}`,
+      success: false
+    };
+  }
+
   if (!imageResponse.ok) {
     return {
       result: `Failed to fetch image from URL: ${url}`,
