@@ -154,7 +154,7 @@ const CollectionCard = () => {
   useQuery(
     ['refreshCollection'],
     () => {
-      getData(1);
+      getData(pageNum);
       if (datasetDetail.status === DatasetStatusEnum.syncing) {
         loadDatasetDetail(datasetDetail._id);
       }
