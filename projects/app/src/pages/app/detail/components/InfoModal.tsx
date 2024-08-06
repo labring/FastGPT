@@ -7,7 +7,8 @@ import {
   Input,
   Textarea,
   ModalFooter,
-  ModalBody
+  ModalBody,
+  useDisclosure
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
@@ -35,10 +36,10 @@ import {
 import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { resumeInheritPer } from '@/web/core/app/api';
+import { changeOwner, resumeInheritPer } from '@/web/core/app/api';
 import { useI18n } from '@/web/context/I18n';
 import ResumeInherit from '@/components/support/permission/ResumeInheritText';
+import { ChangeOwnerModal } from '@/components/support/permission/ChangeOwnerModal';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -61,6 +62,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     defaultValues: appDetail
   });
   const avatar = getValues('avatar');
+  const name = getValues('name');
 
   // submit config
   const { runAsync: saveSubmitSuccess, loading: btnLoading } = useRequest2(
@@ -135,6 +137,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
       appId: appDetail._id
     });
   };
+
   const onDelCollaborator = async (tmbId: string) => {
     await deleteAppCollaborators({
       appId: appDetail._id,
@@ -152,6 +155,22 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
       }
     }
   );
+
+  const {
+    isOpen: isChangeOwnerModalOpen,
+    onOpen: onOpenChangeOwnerModal,
+    onClose: onCloseChangeOwnerModal
+  } = useDisclosure();
+
+  const onChangeOwner = async (tmbId: string) => {
+    return changeOwner({
+      appId: appDetail._id,
+      ownerId: tmbId
+    }).then(() => {
+      onCloseChangeOwnerModal();
+      reloadApp();
+    });
+  };
 
   return (
     <MyModal
@@ -261,6 +280,18 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                   );
                 }}
               </CollaboratorContextProvider>
+              <Box mt={4}>
+                <Button
+                  size="md"
+                  variant="whitePrimary"
+                  onClick={onOpenChangeOwnerModal}
+                  w="full"
+                  borderRadius="md"
+                  leftIcon={<MyIcon w="4" name="common/lineChange" />}
+                >
+                  {t('common:permission.change_owner')}
+                </Button>
+              </Box>
             </Box>
           </>
         )}
@@ -276,6 +307,14 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
       </ModalFooter>
 
       <File onSelect={onSelectFile} />
+      {isChangeOwnerModalOpen && (
+        <ChangeOwnerModal
+          onClose={onCloseChangeOwnerModal}
+          avatar={avatar}
+          name={name}
+          onChangeOwner={onChangeOwner}
+        />
+      )}
     </MyModal>
   );
 };
