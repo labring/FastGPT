@@ -1,16 +1,15 @@
 import React, { useMemo } from 'react';
 import { Flex, Box, Button, ModalFooter, ModalBody, Input } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { FeishuType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
-import { useRequest } from '@/web/common/hooks/useRequest';
 import dayjs from 'dayjs';
 import { createShareChat, updateShareChat } from '@/web/support/outLink/api';
 import { useI18n } from '@/web/context/I18n';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const FeiShuEditModal = ({
   appId,
@@ -37,22 +36,23 @@ const FeiShuEditModal = ({
 
   const isEdit = useMemo(() => !!defaultData?._id, [defaultData]);
 
-  const { mutate: onclickCreate, isLoading: creating } = useRequest({
-    mutationFn: async (e: OutLinkEditType<FeishuType>) => {
+  const { runAsync: onclickCreate, loading: creating } = useRequest2(
+    (e) =>
       createShareChat({
         ...e,
         appId,
         type: PublishChannelEnum.feishu
-      });
-    },
-    errorToast: t('common:common.Create Failed'),
-    onSuccess: onCreate
-  });
-  const { mutate: onclickUpdate, isLoading: updating } = useRequest({
-    mutationFn: (e: OutLinkEditType<FeishuType>) => {
-      return updateShareChat(e);
-    },
+      }),
+    {
+      errorToast: t('common:common.Create Failed'),
+      successToast: t('common:common.Create Success'),
+      onSuccess: onCreate
+    }
+  );
+
+  const { runAsync: onclickUpdate, loading: updating } = useRequest2((e) => updateShareChat(e), {
     errorToast: t('common:common.Update Failed'),
+    successToast: t('common:common.Update Success'),
     onSuccess: onEdit
   });
 

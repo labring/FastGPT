@@ -13,20 +13,18 @@ import {
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
-import { useQuery } from '@tanstack/react-query';
 import { getShareChatList, delShareChatById } from '@/web/support/outLink/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
-import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { defaultFeishuOutLinkForm } from '@/web/core/app/constants';
 import type { FeishuType, OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const FeiShuEditModal = dynamic(() => import('./FeiShuEditModal'));
 
@@ -34,16 +32,14 @@ const FeiShu = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { Loading, setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
-  const { copyData } = useCopyData();
   const [editFeiShuLinkData, setEditFeiShuLinkData] = useState<OutLinkEditType<FeishuType>>();
-  const { toast } = useToast();
   const {
-    isFetching,
     data: shareChatList = [],
-    refetch: refetchShareChatList
-  } = useQuery(['initShareChatList', appId], () =>
-    getShareChatList<FeishuType>({ appId, type: PublishChannelEnum.feishu })
-  );
+    loading: isFetching,
+    runAsync: refetchShareChatList
+  } = useRequest2(() => getShareChatList<FeishuType>({ appId, type: PublishChannelEnum.feishu }), {
+    manual: false
+  });
 
   return (
     <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
@@ -167,20 +163,9 @@ const FeiShu = ({ appId }: { appId: string }) => {
       {editFeiShuLinkData && (
         <FeiShuEditModal
           appId={appId}
-          // type={'feishu' as PublishChannelEnum}
           defaultData={editFeiShuLinkData}
-          onCreate={(id) => {
-            refetchShareChatList();
-            setEditFeiShuLinkData(undefined);
-          }}
-          onEdit={() => {
-            toast({
-              status: 'success',
-              title: t('common:common.Update Successful')
-            });
-            refetchShareChatList();
-            setEditFeiShuLinkData(undefined);
-          }}
+          onCreate={() => Promise.all([refetchShareChatList(), setEditFeiShuLinkData(undefined)])}
+          onEdit={() => Promise.all([refetchShareChatList(), setEditFeiShuLinkData(undefined)])}
           onClose={() => setEditFeiShuLinkData(undefined)}
         />
       )}
