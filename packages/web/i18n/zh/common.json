@@ -60,7 +60,9 @@
   "code_error": {
     "app_error": {
       "not_exist": "应用不存在",
-      "un_auth_app": "无权操作该应用"
+      "un_auth_app": "无权操作该应用",
+      "invalid_owner": "非法的应用所有者",
+      "invalid_app_type": "错误的应用类型"
     },
     "chat_error": {
       "un_auth": "没有权限操作此对话记录"
@@ -1095,7 +1097,13 @@
     "Remove InheritPermission Confirm": "此操作会导致权限继承失效，是否进行？",
     "Resume InheritPermission Confirm": "是否恢复为继承父级文件夹的权限？",
     "Resume InheritPermission Failed": "恢复失败",
-    "Resume InheritPermission Success": "恢复成功"
+    "Resume InheritPermission Success": "恢复成功",
+    "change_owner": "转移所有权",
+    "change_owner_to": "转移给",
+    "change_owner_placeholder": "输入用户名查找账号",
+    "change_owner_tip": "转移后将保留您的管理员权限",
+    "change_owner_success": "成功转移所有权",
+    "change_owner_failed": "转移所有权失败"
   },
   "plugin": {
     "App": "选择应用",
