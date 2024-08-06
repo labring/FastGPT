@@ -15,10 +15,12 @@ import {
   Input_Template_Dataset_Quote,
   Input_Template_History,
   Input_Template_System_Prompt,
-  Input_Template_UserChatInput
+  Input_Template_UserChatInput,
+  Input_Template_Text_Quote
 } from '../input';
 import { chatNodeSystemPromptTip } from '../tip';
 import { getHandleConfig } from '../utils';
+import { i18nT } from '../../../../../web/i18n/utils';
 
 export const AiChatModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.chatNode,
@@ -27,8 +29,8 @@ export const AiChatModule: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/aiChat',
-  name: 'AI 对话',
-  intro: 'AI 大模型对话',
+  name: i18nT('workflow:template.ai_chat'),
+  intro: i18nT('workflow:template.ai_chat_intro'),
   showStatus: true,
   isTool: true,
   version: '481',
@@ -40,20 +42,14 @@ export const AiChatModule: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
       label: '',
       value: 0,
-      valueType: WorkflowIOValueTypeEnum.number,
-      min: 0,
-      max: 10,
-      step: 1
+      valueType: WorkflowIOValueTypeEnum.number
     },
     {
       key: NodeInputKeyEnum.aiChatMaxToken,
       renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
       label: '',
       value: 2000,
-      valueType: WorkflowIOValueTypeEnum.number,
-      min: 100,
-      max: 4000,
-      step: 50
+      valueType: WorkflowIOValueTypeEnum.number
     },
     {
       key: NodeInputKeyEnum.aiChatIsResponseText,
@@ -74,6 +70,13 @@ export const AiChatModule: FlowNodeTemplateType = {
       label: '',
       valueType: WorkflowIOValueTypeEnum.string
     },
+    {
+      key: NodeInputKeyEnum.aiChatVision,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      value: true
+    },
     // settings modal ---
     {
       ...Input_Template_System_Prompt,
@@ -82,8 +85,9 @@ export const AiChatModule: FlowNodeTemplateType = {
       placeholder: chatNodeSystemPromptTip
     },
     Input_Template_History,
-    { ...Input_Template_UserChatInput, toolDescription: '用户问题' },
-    Input_Template_Dataset_Quote
+    Input_Template_Dataset_Quote,
+    Input_Template_Text_Quote,
+    { ...Input_Template_UserChatInput, toolDescription: '用户问题' }
   ],
   outputs: [
     {

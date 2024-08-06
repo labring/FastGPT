@@ -9,7 +9,8 @@ enum FnTypeEnum {
   nextQuestion = 'nextQuestion',
   tts = 'tts',
   variable = 'variable',
-  welcome = 'welcome'
+  welcome = 'welcome',
+  file = 'file'
 }
 
 const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
@@ -46,6 +47,12 @@ const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
       title: t('common:core.app.Welcome Text'),
       desc: t('common:core.app.tip.welcomeTextTip'),
       imgUrl: '/imgs/app/welcome.svg'
+    },
+    [FnTypeEnum.file]: {
+      icon: '/imgs/app/welcome-icon.svg',
+      title: t('app:file_upload'),
+      desc: t('app:file_upload_tip'),
+      imgUrl: '/imgs/app/fileUploadPlaceholder.svg'
     }
   });
   const data = map.current[type];

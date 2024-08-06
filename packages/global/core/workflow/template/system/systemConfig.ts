@@ -2,6 +2,7 @@ import { FlowNodeTypeEnum } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type/node.d';
 import { FlowNodeTemplateTypeEnum } from '../../constants';
 import { getHandleConfig } from '../utils';
+import { i18nT } from '../../../../../web/i18n/utils';
 
 export const SystemConfigNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.systemConfig,
@@ -10,8 +11,8 @@ export const SystemConfigNode: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(false, false, false, false),
   targetHandle: getHandleConfig(false, false, false, false),
   avatar: 'core/workflow/template/systemConfig',
-  name: '系统配置',
-  intro: '可以配置应用的系统参数。',
+  name: i18nT('workflow:template.system_config'),
+  intro: '',
   unique: true,
   forbidDelete: true,
   version: '481',

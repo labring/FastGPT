@@ -56,16 +56,21 @@ export const chats2GPTMessages = ({
               text: item.text?.content || ''
             };
           }
-          if (
-            item.type === ChatItemValueTypeEnum.file &&
-            item.file?.type === ChatFileTypeEnum.image
-          ) {
-            return {
-              type: 'image_url',
-              image_url: {
+          if (item.type === ChatItemValueTypeEnum.file) {
+            if (item.file?.type === ChatFileTypeEnum.image) {
+              return {
+                type: 'image_url',
+                image_url: {
+                  url: item.file?.url || ''
+                }
+              };
+            } else if (item.file?.type === ChatFileTypeEnum.file) {
+              return {
+                type: 'file_url',
+                name: item.file?.name || '',
                 url: item.file?.url || ''
-              }
-            };
+              };
+            }
           }
         })
         .filter(Boolean) as ChatCompletionContentPart[];
@@ -173,6 +178,16 @@ export const GPTMessages2Chats = (
                   type: ChatFileTypeEnum.image,
                   name: '',
                   url: item.image_url.url
+                }
+              });
+            } else if (item.type === 'file_url') {
+              value.push({
+                // @ts-ignore
+                type: ChatItemValueTypeEnum.file,
+                file: {
+                  type: ChatFileTypeEnum.file,
+                  name: item.name,
+                  url: item.url
                 }
               });
             }

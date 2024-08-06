@@ -82,6 +82,8 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
     chatInputGuide
   };
 };
+
+// Get app chat config: db > nodes
 export const getAppChatConfig = ({
   chatConfig,
   systemConfigNode,

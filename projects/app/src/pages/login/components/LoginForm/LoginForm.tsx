@@ -54,7 +54,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
       }
       setRequesting(false);
     },
-    [loginSuccess, toast]
+    [loginSuccess, t, toast]
   );
 
   const isCommunityVersion = feConfigs?.show_register === false && !feConfigs?.isPlus;

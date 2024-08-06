@@ -84,6 +84,8 @@ const InputLabel = ({ nodeId, input }: Props) => {
     );
   }, [
     description,
+    input.renderTypeList,
+    input.selectedTypeIndex,
     label,
     onChangeRenderType,
     renderTypeList,

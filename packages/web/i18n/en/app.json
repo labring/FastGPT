@@ -12,6 +12,7 @@
   "chat_debug": "Chat Debug",
   "chat_logs": "Chat Logs",
   "chat_logs_tips": "Logs will record online, shared and API (chatId required) conversation records for this app",
+  "config_file_upload": "Click to configure file upload rules",
   "confirm_copy_app_tip": "The system will create an application with the same configuration for you, but the permission will not be copied, please confirm!",
   "confirm_del_app_tip": "Confirm to delete this app and all its chat records?",
   "confirm_delete_folder_tip": "Are you sure to delete this folder? All the following applications and corresponding chat records will be deleted, please confirm!",
@@ -25,14 +26,21 @@
   },
   "current_settings": "Current settings",
   "day": "day",
+  "document_quote": "Document quote",
+  "document_quote_tip": "It is usually used to accept document content uploaded by users (which requires document parsing), and can also be used to reference other string data.",
+  "document_upload": "Document upload",
   "edit_app": "Edit app",
   "edit_info": "Edit info",
   "execute_time": "execution time",
   "export_config_successful": "Config copied, please check for important data",
   "export_configs": "Export Configs",
   "feedback_count": "User Feedback",
+  "file_upload": "file_upload",
+  "file_upload_tip": "After it is enabled, you can upload documents/pictures. Documents are kept for 7 days and pictures for 15 days. Use of this feature may incur additional charges. To ensure the user experience, select an AI model with a large context length when using this function.",
   "go_to_chat": "To chat",
   "go_to_run": "Run",
+  "image_upload": "Image upload",
+  "image_upload_tip": "Be sure to select a visual model that can handle the picture",
   "import_configs": "Import Configs",
   "import_configs_failed": "Failed to import configs, please ensure configs are valid!",
   "interval": {
@@ -44,6 +52,9 @@
     "per_hour": "per hour"
   },
   "intro": "It is a large model application orchestration system that provides out-of-the-box data processing, model calling and other capabilities. It can quickly build a knowledge base and perform workflow orchestration through Flow visualization to realize complex knowledge base scenarios!",
+  "llm_not_support_vision": "This model does not support image recognition",
+  "llm_use_vision": "Enable vision",
+  "llm_use_vision_tip": "When image recognition is enabled, the model automatically receives images from Dialog Uploads, as well as image links from User Questions.",
   "logs_empty": "No logs yet~",
   "logs_message_total": "Total Messages",
   "logs_title": "Title",
@@ -92,6 +103,7 @@
     "Simple bot": "Simple bot",
     "Workflow bot": "Workflow"
   },
+  "upload_file_max_amount": "Maximum number of files to be uploaded in a single round",
   "version": {
     "Revert success": "Revert success"
   },
@@ -106,8 +118,15 @@
   },
   "workflow": {
     "Input guide": "Input guide",
+    "file_url": "Url",
+    "read_files": "Documents parse",
+    "read_files_result": "Document parsing results",
+    "read_files_result_desc": "The original text of the document consists of the file name and the document content. Multiple files are separated by horizontal lines.",
+    "read_files_tip": "Parse the document link passed in the conversation and return the corresponding document content",
     "template": {
       "communication": "Communication"
-    }
+    },
+    "user_file_input": "Files url",
+    "user_file_input_desc": "Links to documents and images uploaded by users"
   }
 }

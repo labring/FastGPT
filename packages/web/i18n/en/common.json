@@ -508,7 +508,7 @@
         "module cq result": "Classification result",
         "module extract description": "Extract requirement description",
         "module extract result": "Extraction result",
-        "module historyPreview": "Complete record",
+        "module historyPreview": "Record preview (only part of the content is displayed)",
         "module http result": "response body",
         "module if else Result": "Determinator result",
         "module limit": "Single search limit",
@@ -670,7 +670,7 @@
         "Total files": "A total of {{total}} files",
         "Training mode": "Training mode",
         "Upload data": "Upload data",
-        "Upload file progress": "File upload progress",
+        "Upload file progress": "file_upload progress",
         "Upload status": "Status",
         "Web link": "Web link",
         "Web link desc": "Read static web page content as a dataset"
@@ -1330,6 +1330,7 @@
     "minute": "minute"
   },
   "unusable_variable": "no usable variable",
+  "upload_file_error": "Upload file error",
   "user": {
     "Account": "Account",
     "Amount of earnings": "Earnings (¥)",

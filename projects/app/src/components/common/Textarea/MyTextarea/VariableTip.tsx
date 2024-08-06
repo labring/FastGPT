@@ -6,8 +6,8 @@ import { useTranslation } from 'next-i18next';
 const VariableTip = (props: StackProps) => {
   const { t } = useTranslation();
   return (
-    <HStack fontSize={'xs'} spacing={1} {...props}>
-      <MyIcon name={'common/info'} w={'0.9rem'} transform={'translateY(1px)'} />
+    <HStack fontSize={'11px'} spacing={1} {...props}>
+      <MyIcon name={'common/info'} w={'0.8rem'} />
       <Box>{t('common:textarea_variable_picker_tip')}</Box>
     </HStack>
   );

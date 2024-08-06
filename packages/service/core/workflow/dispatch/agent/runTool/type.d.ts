@@ -11,9 +11,13 @@ import { AIChatItemValueItemType, ChatItemValueItemType } from '@fastgpt/global/
 
 export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
+  [NodeInputKeyEnum.userChatInput]: string;
+
   [NodeInputKeyEnum.aiModel]: string;
   [NodeInputKeyEnum.aiSystemPrompt]: string;
-  [NodeInputKeyEnum.userChatInput]: string;
+  [NodeInputKeyEnum.aiChatTemperature]: number;
+  [NodeInputKeyEnum.aiChatMaxToken]: number;
+  [NodeInputKeyEnum.aiChatVision]?: boolean;
 }>;
 
 export type RunToolResponse = {

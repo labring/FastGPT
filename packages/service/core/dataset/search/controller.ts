@@ -493,7 +493,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       getForbidData(),
       filterCollectionByMetadata()
     ]);
-    console.log(filterCollectionIdList, '===');
+
     await Promise.all(
       queries.map(async (query) => {
         const [{ tokens, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([

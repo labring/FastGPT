@@ -559,7 +559,7 @@
         "module cq result": "分类结果",
         "module extract description": "提取背景描述",
         "module extract result": "提取结果",
-        "module historyPreview": "完整记录",
+        "module historyPreview": "记录预览(仅展示部分内容)",
         "module http result": "响应体",
         "module if else Result": "判断器结果",
         "module limit": "单次搜索上限",
@@ -646,7 +646,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -857,7 +858,7 @@
         "AppSecret": "AppSecret",
         "ChatId": "当前对话 ID",
         "Current time": "当前时间",
-        "Histories": "最近 10 条聊天记录",
+        "Histories": "历史记录",
         "Key already exists": "Key 已经存在",
         "Key cannot be empty": "参数名不能为空",
         "Props name": "参数名",
@@ -1331,6 +1332,7 @@
   },
   "textarea_variable_picker_tip": "输入 / 可选择变量",
   "unusable_variable": "无可用变量",
+  "upload_file_error": "上传文件失败",
   "user": {
     "Account": "账号",
     "Amount of earnings": "收益（￥）",
