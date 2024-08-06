@@ -1,5 +1,5 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { filterGPTMessageByMaxTokens } from '../../../chat/utils';
+import { filterGPTMessageByMaxTokens, loadRequestMessages } from '../../../chat/utils';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import {
   countMessagesTokens,
@@ -173,6 +173,10 @@ ${description ? `- ${description}` : ''}
     messages: adaptMessages,
     maxTokens: extractModel.maxContext
   });
+  const requestMessages = await loadRequestMessages({
+    messages: filterMessages,
+    useVision: false
+  });
 
   const properties: Record<
     string,
@@ -200,7 +204,7 @@ ${description ? `- ${description}` : ''}
   };
 
   return {
-    filterMessages,
+    filterMessages: requestMessages,
     agentFunction
   };
 };
@@ -338,6 +342,10 @@ Human: ${content}`
       ]
     }
   ];
+  const requestMessages = await loadRequestMessages({
+    messages: chats2GPTMessages({ messages, reserveId: false }),
+    useVision: false
+  });
 
   const ai = getAIApi({
     userKey: user.openaiAccount,
@@ -346,7 +354,7 @@ Human: ${content}`
   const data = await ai.chat.completions.create({
     model: extractModel.model,
     temperature: 0.01,
-    messages: chats2GPTMessages({ messages, reserveId: false }),
+    messages: requestMessages,
     stream: false
   });
   const answer = data.choices?.[0].message?.content || '';

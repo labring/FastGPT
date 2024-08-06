@@ -13,9 +13,9 @@ import {
 import { Input_Template_UserChatInput } from '../input';
 import { DatasetSearchModeEnum } from '../../../dataset/constants';
 import { getHandleConfig } from '../utils';
+import { i18nT } from '../../../../../web/i18n/utils';
 
-export const Dataset_SEARCH_DESC =
-  '调用“语义检索”和“全文检索”能力，从“知识库”中查找可能与问题相关的参考内容';
+export const Dataset_SEARCH_DESC = i18nT('workflow:template.dataset_search_intro');
 
 export const DatasetSearchModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.datasetSearchNode,
@@ -24,7 +24,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/datasetSearch',
-  name: '知识库搜索',
+  name: i18nT('workflow:template.dataset_search'),
   intro: Dataset_SEARCH_DESC,
   showStatus: true,
   isTool: true,

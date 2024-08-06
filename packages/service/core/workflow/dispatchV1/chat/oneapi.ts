@@ -1,10 +1,6 @@
 // @ts-nocheck
 import type { NextApiResponse } from 'next';
-import {
-  filterGPTMessageByMaxTokens,
-  formatGPTMessagesInRequestBefore,
-  loadChatImgToBase64
-} from '../../../chat/utils';
+import { filterGPTMessageByMaxTokens, loadRequestMessages } from '../../../chat/utils';
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -146,25 +142,17 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
           }
         ]
       : []),
-    ...formatGPTMessagesInRequestBefore(filterMessages)
+    ...filterMessages
   ] as ChatCompletionMessageParam[];
 
   if (concatMessages.length === 0) {
     return Promise.reject('core.chat.error.Messages empty');
   }
 
-  const loadMessages = await Promise.all(
-    concatMessages.map(async (item) => {
-      if (item.role === ChatCompletionRequestMessageRoleEnum.User) {
-        return {
-          ...item,
-          content: await loadChatImgToBase64(item.content)
-        };
-      } else {
-        return item;
-      }
-    })
-  );
+  const loadMessages = await loadRequestMessages({
+    messages: concatMessages,
+    useVision: false
+  });
 
   const response = await ai.chat.completions.create(
     {

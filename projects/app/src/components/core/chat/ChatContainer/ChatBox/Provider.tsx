@@ -3,6 +3,7 @@ import { useAudioPlay } from '@/web/common/utils/voice';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import {
   AppChatConfigType,
+  AppFileSelectConfigType,
   AppTTSConfigType,
   AppWhisperConfigType,
   ChatInputGuideConfigType,
@@ -10,6 +11,7 @@ import {
 } from '@fastgpt/global/core/app/type';
 import { ChatHistoryItemResType, ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import {
+  defaultAppSelectFileConfig,
   defaultChatInputGuideConfig,
   defaultTTSConfig,
   defaultWhisperConfig
@@ -64,6 +66,7 @@ type useChatStoreType = OutLinkChatAuthProps &
     chatInputGuide: ChatInputGuideConfigType;
     outLinkAuthData: OutLinkChatAuthProps;
     getHistoryResponseData: ({ dataId }: { dataId: string }) => Promise<ChatHistoryItemResType[]>;
+    fileSelectConfig: AppFileSelectConfigType;
   };
 
 export const ChatBoxContext = createContext<useChatStoreType>({
@@ -146,7 +149,8 @@ const Provider = ({
     questionGuide = false,
     ttsConfig = defaultTTSConfig,
     whisperConfig = defaultWhisperConfig,
-    chatInputGuide = defaultChatInputGuideConfig
+    chatInputGuide = defaultChatInputGuideConfig,
+    fileSelectConfig = defaultAppSelectFileConfig
   } = useMemo(() => chatConfig, [chatConfig]);
 
   const outLinkAuthData = useMemo(
@@ -215,6 +219,7 @@ const Provider = ({
     allVariableList: variables,
     questionGuide,
     ttsConfig,
+    fileSelectConfig,
     whisperConfig,
     autoTTSResponse,
     startSegmentedAudio,

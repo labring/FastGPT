@@ -36,6 +36,7 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.systemConfig]: dynamic(() => import('./nodes/NodeSystemConfig')),
   [FlowNodeTypeEnum.workflowStart]: dynamic(() => import('./nodes/NodeWorkflowStart')),
   [FlowNodeTypeEnum.chatNode]: NodeSimple,
+  [FlowNodeTypeEnum.readFiles]: NodeSimple,
   [FlowNodeTypeEnum.datasetSearchNode]: NodeSimple,
   [FlowNodeTypeEnum.datasetConcatNode]: dynamic(() => import('./nodes/NodeDatasetConcat')),
   [FlowNodeTypeEnum.answerNode]: dynamic(() => import('./nodes/NodeAnswer')),

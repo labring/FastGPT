@@ -15,6 +15,7 @@ import {
 import { findAppAndAllChildren } from '@fastgpt/service/core/app/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { ClientSession } from '@fastgpt/service/common/mongo';
+import { deleteChatFiles } from '@fastgpt/service/core/chat/controller';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -53,6 +54,7 @@ export const onDelOneApp = async ({
     for await (const app of apps) {
       const appId = app._id;
       // Chats
+      await deleteChatFiles({ appId });
       await MongoChatItem.deleteMany(
         {
           appId

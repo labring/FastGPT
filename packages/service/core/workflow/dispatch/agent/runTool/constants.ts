@@ -1,3 +1,5 @@
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
+
 export const Prompt_Tool_Call = `<Instruction>
 你是一个智能机器人，除了可以回答用户问题外，你还掌握工具的使用能力。有时候，你可以依赖工具的运行结果，来更准确的回答用户。
 
@@ -32,6 +34,8 @@ TOOL_RESPONSE: """
 ANSWER: 0: 今天杭州是晴天，适合去西湖、灵隐寺、千岛湖等地玩。
 </Instruction>
 
+------
+
 现在，我们开始吧！下面是你本次可以使用的工具：
 
 """
@@ -42,3 +46,16 @@ ANSWER: 0: 今天杭州是晴天，适合去西湖、灵隐寺、千岛湖等地
 
 USER: {{question}}
 ANSWER: `;
+
+export const getMultiplePrompt = (obj: {
+  fileCount: number;
+  imgCount: number;
+  question: string;
+}) => {
+  const prompt = `Number of session file inputs：
+Document：{{fileCount}}
+Image：{{imgCount}}
+------
+{{question}}`;
+  return replaceVariable(prompt, obj);
+};

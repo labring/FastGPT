@@ -73,12 +73,11 @@ const ChatItem = ({
   const ContentCard = useMemo(() => {
     if (type === 'Human') {
       const { text, files = [] } = formatChatValue2InputType(chat.value);
-
       return (
-        <>
+        <Flex flexDirection={'column'} gap={4}>
           {files.length > 0 && <FilesBlock files={files} />}
-          <Markdown source={text} />
-        </>
+          {text && <Markdown source={text} />}
+        </Flex>
       );
     }
 

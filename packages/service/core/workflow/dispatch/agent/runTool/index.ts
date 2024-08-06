@@ -8,7 +8,7 @@ import { ModelTypeEnum, getLLMModel } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getHistories } from '../../utils';
 import { runToolWithToolChoice } from './toolChoice';
 import { DispatchToolModuleProps, ToolNodeItemType } from './type.d';
-import { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   GPTMessages2Chats,
@@ -22,11 +22,45 @@ import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { runToolWithFunctionCall } from './functionCall';
 import { runToolWithPromptCall } from './promptCall';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { Prompt_Tool_Call } from './constants';
+import { getMultiplePrompt, Prompt_Tool_Call } from './constants';
+import { filterToolResponseToPreview } from './utils';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
 }>;
+
+/* 
+  Tool call， auth add file prompt to question。
+  Guide the LLM to call tool.
+*/
+export const toolCallMessagesAdapt = ({
+  userInput
+}: {
+  userInput: UserChatItemValueItemType[];
+}) => {
+  const files = userInput.filter((item) => item.type === 'file');
+
+  if (files.length > 0) {
+    return userInput.map((item) => {
+      if (item.type === 'text') {
+        const filesCount = files.filter((file) => file.file?.type === 'file').length;
+        const imgCount = files.filter((file) => file.file?.type === 'image').length;
+        const text = item.text?.content || '';
+
+        return {
+          ...item,
+          text: {
+            content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: text })
+          }
+        };
+      }
+
+      return item;
+    });
+  }
+
+  return userInput;
+};
 
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
@@ -62,15 +96,30 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
   const messages: ChatItemType[] = [
     ...getSystemPrompt(systemPrompt),
-    ...chatHistories,
+    // Add file input prompt to histories
+    ...chatHistories.map((item) => {
+      if (item.obj === ChatRoleEnum.Human) {
+        return {
+          ...item,
+          value: toolCallMessagesAdapt({
+            userInput: item.value
+          })
+        };
+      }
+      return item;
+    }),
     {
       obj: ChatRoleEnum.Human,
-      value: runtimePrompt2ChatsValue({
-        text: userChatInput,
-        files: chatValue2RuntimePrompt(query).files
+      value: toolCallMessagesAdapt({
+        userInput: runtimePrompt2ChatsValue({
+          text: userChatInput,
+          files: chatValue2RuntimePrompt(query).files
+        })
       })
     }
   ];
+
+  // console.log(JSON.stringify(messages, null, 2));
 
   const {
     dispatchFlowResponse, // tool flow response
@@ -98,13 +147,23 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     }
 
     const lastMessage = adaptMessages[adaptMessages.length - 1];
-    if (typeof lastMessage.content !== 'string') {
-      return Promise.reject('暂时只支持纯文本');
+    if (typeof lastMessage.content === 'string') {
+      lastMessage.content = replaceVariable(Prompt_Tool_Call, {
+        question: lastMessage.content
+      });
+    } else if (Array.isArray(lastMessage.content)) {
+      // array, replace last element
+      const lastText = lastMessage.content[lastMessage.content.length - 1];
+      if (lastText.type === 'text') {
+        lastMessage.content = replaceVariable(Prompt_Tool_Call, {
+          question: lastText.text
+        });
+      } else {
+        return Promise.reject('Prompt call invalid input');
+      }
+    } else {
+      return Promise.reject('Prompt call invalid input');
     }
-
-    lastMessage.content = replaceVariable(Prompt_Tool_Call, {
-      question: userChatInput
-    });
 
     return runToolWithPromptCall({
       ...props,
@@ -132,12 +191,14 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     }, 0);
   const flatUsages = dispatchFlowResponse.map((item) => item.flowUsages).flat();
 
+  const previewAssistantResponses = filterToolResponseToPreview(assistantResponses);
+
   return {
-    [NodeOutputKeyEnum.answerText]: assistantResponses
+    [NodeOutputKeyEnum.answerText]: previewAssistantResponses
       .filter((item) => item.text?.content)
       .map((item) => item.text?.content || '')
       .join(''),
-    [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
+    [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: totalPointsUsage,
       toolCallTokens: totalTokens,

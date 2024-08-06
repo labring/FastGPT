@@ -105,18 +105,18 @@ ${JSON.stringify(questionGuides)}`;
                   overflowY={'auto'}
                 >
                   {toolParams && toolParams !== '{}' && (
-                    <Markdown
-                      source={`~~~json#Input
-${toolParams}`}
-                    />
-                  )}
-                  {toolResponse && (
-                    <Box mt={3}>
+                    <Box mb={3}>
                       <Markdown
-                        source={`~~~json#Response
-${toolResponse}`}
+                        source={`~~~json#Input
+${toolParams}`}
                       />
                     </Box>
+                  )}
+                  {toolResponse && (
+                    <Markdown
+                      source={`~~~json#Response
+${toolResponse}`}
+                    />
                   )}
                 </AccordionPanel>
               </AccordionItem>

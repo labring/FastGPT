@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Flex, BoxProps, useDisclosure } from '@chakra-ui/react';
+import { Box, Flex, BoxProps, useDisclosure, HStack } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useTranslation } from 'next-i18next';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
@@ -16,6 +16,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getFileIcon } from '@fastgpt/global/common/file/icon';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -34,7 +35,7 @@ function RowRender({
 }: { children: React.ReactNode; label: string } & BoxProps) {
   return (
     <Box mb={3}>
-      <Box fontSize={'sm'} mb={mb} flex={'0 0 90px'}>
+      <Box fontSize={'sm'} mb={mb} color={'myGray.800'} flex={'0 0 90px'}>
         {label}:
       </Box>
       <Box borderRadius={'sm'} fontSize={['xs', 'sm']} bg={'myGray.50'} {...props}>
@@ -435,9 +436,50 @@ export const WholeResponseContent = ({
             value={activeModule?.textOutput}
           />
           {/* code */}
-          <Row label={workflowT('response.Custom outputs')} value={activeModule?.customOutputs} />
-          <Row label={workflowT('response.Custom inputs')} value={activeModule?.customInputs} />
-          <Row label={workflowT('response.Code log')} value={activeModule?.codeLog} />
+          <>
+            <Row
+              label={t('workflow:response.Custom outputs')}
+              value={activeModule?.customOutputs}
+            />
+            <Row label={t('workflow:response.Custom inputs')} value={activeModule?.customInputs} />
+            <Row label={t('workflow:response.Code log')} value={activeModule?.codeLog} />
+          </>
+
+          {/* read files */}
+          <>
+            {activeModule?.readFiles && activeModule?.readFiles.length > 0 && (
+              <Row
+                label={t('workflow:response.read files')}
+                rawDom={
+                  <Flex flexWrap={'wrap'} gap={3} px={4} py={2}>
+                    {activeModule?.readFiles.map((file, i) => (
+                      <HStack
+                        key={i}
+                        bg={'white'}
+                        boxShadow={'base'}
+                        borderRadius={'sm'}
+                        py={1}
+                        px={2}
+                        {...(file.url
+                          ? {
+                              cursor: 'pointer',
+                              onClick: () => window.open(file.url)
+                            }
+                          : {})}
+                      >
+                        <MyIcon name={getFileIcon(file.name) as any} w={'1rem'} />
+                        <Box>{file.name}</Box>
+                      </HStack>
+                    ))}
+                  </Flex>
+                }
+              />
+            )}
+            <Row
+              label={t('workflow:response.Read file result')}
+              value={activeModule?.readFilesResult}
+            />
+          </>
         </Box>
       )}
     </>

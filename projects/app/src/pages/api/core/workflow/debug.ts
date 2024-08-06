@@ -41,6 +41,7 @@ async function handler(
   /* start process */
   const { flowUsages, flowResponses, debugResponse } = await dispatchWorkFlow({
     res,
+    requestOrigin: req.headers.origin,
     mode: 'debug',
     teamId,
     tmbId,
@@ -50,6 +51,7 @@ async function handler(
     runtimeEdges: edges,
     variables,
     query: [],
+    chatConfig: defaultApp.chatConfig,
     histories: [],
     stream: false,
     detail: true,

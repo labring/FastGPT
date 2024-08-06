@@ -7,6 +7,7 @@
   "csv_input_lexicon_tip": "仅支持 CSV 批量导入，点击下载模板",
   "custom_input_guide_url": "自定义词库地址",
   "delete_all_input_guide_confirm": "确定要清空输入引导词库吗？",
+  "file_amount_over": "超出最大文件数量 {{max}}",
   "input_guide": "输入引导",
   "input_guide_lexicon": "词库",
   "input_guide_tip": "可以配置一些预设的问题。在用户输入问题时，会从这些预设问题中获取相关问题进行提示。",
@@ -30,5 +31,7 @@
   "question_tip": "从上到下，为各个模块的响应顺序",
   "rearrangement": "检索结果重排",
   "web_site_sync": "Web站点同步",
-  "new_chat": "新对话"
+  "new_chat": "新对话",
+  "select_file": "选择文件",
+  "select_img": "选择图片"
 }

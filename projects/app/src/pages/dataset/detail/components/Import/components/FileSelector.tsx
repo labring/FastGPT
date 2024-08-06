@@ -89,7 +89,7 @@ const FileSelector = ({
           // upload file
           await Promise.all(
             files.map(async ({ fileId, file }) => {
-              const uploadFileId = await uploadFile2DB({
+              const { fileId: uploadFileId } = await uploadFile2DB({
                 file,
                 bucketName: BucketNameEnum.dataset,
                 percentListen: (e) => {
@@ -230,7 +230,7 @@ const FileSelector = ({
       let isErr = files.some((item) => item.type === '');
       if (isErr) {
         return toast({
-          title: fileT('upload_error_description'),
+          title: t('file:upload_error_description'),
           status: 'error'
         });
       }

@@ -75,7 +75,6 @@ type Props = OutLinkChatAuthProps &
     showVoiceIcon?: boolean;
     showEmptyIntro?: boolean;
     userAvatar?: string;
-    showFileSelector?: boolean;
     active?: boolean; // can use
     appId: string;
 
@@ -105,7 +104,6 @@ const ChatBox = (
     showEmptyIntro = false,
     appAvatar,
     userAvatar,
-    showFileSelector,
     active = true,
     appId,
     chatId,
@@ -378,7 +376,9 @@ const ChatBox = (
             return;
           }
 
+          // Abort the previous request
           abortRequest();
+          questionGuideController.current?.abort('stop');
 
           text = text.trim();
 
@@ -390,14 +390,13 @@ const ChatBox = (
             return;
           }
 
-          // delete invalid variables， 只保留在 variableList 中的变量
+          // Only declared variables are kept
           const requestVariables: Record<string, any> = {};
           allVariableList?.forEach((item) => {
             requestVariables[item.key] = variables[item.key] || '';
           });
 
           const responseChatId = getNanoid(24);
-          questionGuideController.current?.abort('stop');
 
           // set auto audio playing
           if (autoTTSResponse) {
@@ -980,7 +979,6 @@ const ChatBox = (
           onStop={() => chatController.current?.abort('stop')}
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
-          showFileSelector={showFileSelector}
           chatForm={chatForm}
           appId={appId}
         />

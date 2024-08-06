@@ -18,7 +18,17 @@ export const guessBase64ImageType = (str: string) => {
     i: 'image/png',
     R: 'image/gif',
     U: 'image/webp',
-    Q: 'image/bmp'
+    Q: 'image/bmp',
+    P: 'image/svg+xml',
+    T: 'image/tiff',
+    J: 'image/jp2',
+    S: 'image/x-tga',
+    I: 'image/ief',
+    V: 'image/vnd.microsoft.icon',
+    W: 'image/vnd.wap.wbmp',
+    X: 'image/x-xbitmap',
+    Z: 'image/x-xpixmap',
+    Y: 'image/x-xwindowdump'
   };
 
   const defaultType = 'image/jpeg';
@@ -28,6 +38,11 @@ export const guessBase64ImageType = (str: string) => {
 
   const firstChar = str.charAt(0);
   return imageTypeMap[firstChar] || defaultType;
+};
+
+export const getFileContentTypeFromHeader = (header: string): string | undefined => {
+  const contentType = header.split(';')[0];
+  return contentType;
 };
 
 export const clearDirFiles = (dirPath: string) => {

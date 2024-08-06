@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     })();
 
     res.setHeader('Content-Type', `${file.contentType}; charset=${encoding}`);
-    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.filename)}"`);
 
     stream.pipe(res);

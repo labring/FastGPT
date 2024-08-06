@@ -1,4 +1,5 @@
 import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
+import { defaultApp } from '@/web/core/app/constants';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { delay } from '@fastgpt/global/common/system/utils';
@@ -46,6 +47,7 @@ export const getScheduleTriggerApp = async () => {
               }
             }
           ],
+          chatConfig: defaultApp.chatConfig,
           histories: [],
           stream: false,
           detail: false,

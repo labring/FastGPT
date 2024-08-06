@@ -51,7 +51,8 @@ export const useChatTest = ({
           edges: initWorkflowEdgeStatus(edges),
           variables,
           appId: appDetail._id,
-          appName: `调试-${appDetail.name}`
+          appName: `调试-${appDetail.name}`,
+          chatConfig
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -99,7 +100,6 @@ export const useChatTest = ({
         userAvatar={userInfo?.avatar}
         showMarkIcon
         chatConfig={chatConfig}
-        showFileSelector={checkChatSupportSelectFileByModules(nodes)}
         onStartChat={startChat}
         onDelMessage={() => {}}
       />

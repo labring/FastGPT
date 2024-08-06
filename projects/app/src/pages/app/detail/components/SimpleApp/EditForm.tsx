@@ -47,6 +47,7 @@ const ScheduledTriggerConfig = dynamic(
   () => import('@/components/core/app/ScheduledTriggerConfig')
 );
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
+const FileSelectConfig = dynamic(() => import('@/components/core/app/FileSelect'));
 
 const BoxStyles: BoxProps = {
   px: [4, 6],
@@ -120,11 +121,11 @@ const EditForm = ({
     [appForm.chatConfig.variables, t]
   );
 
+  const selectedModel =
+    llmModelList.find((item) => item.model === appForm.aiSettings.model) ?? llmModelList[0];
   const tokenLimit = useMemo(() => {
-    return (
-      llmModelList.find((item) => item.model === appForm.aiSettings.model)?.quoteMaxToken || 3000
-    );
-  }, [llmModelList, appForm.aiSettings.model]);
+    return selectedModel.quoteMaxToken || 3000;
+  }, [selectedModel.quoteMaxToken]);
 
   return (
     <>
@@ -336,6 +337,23 @@ const EditForm = ({
               </MyTooltip>
             ))}
           </Grid>
+        </Box>
+
+        {/* File select */}
+        <Box {...BoxStyles}>
+          <FileSelectConfig
+            forbidVision={!selectedModel.vision}
+            value={appForm.chatConfig.fileSelectConfig}
+            onChange={(e) => {
+              setAppForm((state) => ({
+                ...state,
+                chatConfig: {
+                  ...state.chatConfig,
+                  fileSelectConfig: e
+                }
+              }));
+            }}
+          />
         </Box>
 
         {/* variable */}

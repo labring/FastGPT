@@ -5,4 +5,5 @@ export type FileTokenQuery = {
   teamId: string;
   tmbId: string;
   fileId: string;
+  expiredTime?: number;
 };

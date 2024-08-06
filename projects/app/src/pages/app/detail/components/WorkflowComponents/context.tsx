@@ -523,7 +523,7 @@ const WorkflowContextProvider = ({
         version: 'v2'
       });
       setSaveLabel(
-        t('core.app.Saved time', {
+        t('common:core.app.Saved time', {
           time: formatTime2HM()
         })
       );

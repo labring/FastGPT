@@ -12,7 +12,6 @@ import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConf
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { form2AppWorkflow } from '@/web/core/app/utils';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { TabEnum } from '../context';
 import PublishHistoriesSlider, { type InitProps } from '../PublishHistoriesSlider';
 import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
@@ -52,7 +51,7 @@ const Header = ({
   );
 
   const isPublished = useMemo(() => {
-    const data = form2AppWorkflow(appForm);
+    const data = form2AppWorkflow(appForm, t);
 
     return compareWorkflow(
       {
@@ -66,11 +65,11 @@ const Header = ({
         chatConfig: data.chatConfig
       }
     );
-  }, [appDetail.chatConfig, appDetail.modules, appForm]);
+  }, [appDetail.chatConfig, appDetail.modules, appForm, t]);
 
   const onSubmitPublish = useCallback(
     async (data: AppSimpleEditFormType) => {
-      const { nodes, edges } = form2AppWorkflow(data);
+      const { nodes, edges } = form2AppWorkflow(data, t);
       await onPublish({
         nodes,
         edges,
@@ -78,7 +77,7 @@ const Header = ({
         type: AppTypeEnum.simple
       });
     },
-    [onPublish]
+    [onPublish, t]
   );
 
   const [historiesDefaultData, setHistoriesDefaultData] = useState<InitProps>();
@@ -119,9 +118,11 @@ const Header = ({
                         : publishStatusStyle.unPublish.colorSchema
                     }
                   >
-                    {isPublished
-                      ? publishStatusStyle.published.text
-                      : publishStatusStyle.unPublish.text}
+                    {t(
+                      isPublished
+                        ? publishStatusStyle.published.text
+                        : publishStatusStyle.unPublish.text
+                    )}
                   </MyTag>
                 )}
 
@@ -133,7 +134,7 @@ const Header = ({
                   w={'30px'}
                   variant={'whitePrimary'}
                   onClick={() => {
-                    const { nodes, edges } = form2AppWorkflow(appForm);
+                    const { nodes, edges } = form2AppWorkflow(appForm, t);
                     setHistoriesDefaultData({
                       nodes,
                       edges,

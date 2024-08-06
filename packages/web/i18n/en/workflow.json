@@ -27,7 +27,19 @@
     "Code log": "Log",
     "Custom inputs": "Custom inputs",
     "Custom outputs": "Custom outputs",
-    "Error": "Error"
+    "Error": "Error",
+    "Read file result": "Document parsing result preview",
+    "read files": "parsed document"
+  },
+  "template": {
+    "ai_chat": "LLM chat",
+    "ai_chat_intro": "Call the AI model for a conversation",
+    "dataset_search": "Dataset search",
+    "dataset_search_intro": "Call the \"Semantic Search\" and \"Full-text Search\" capabilities to find reference content that may be related to the problem from the \"Knowledge Base\"",
+    "system_config": "System Configuration",
+    "tool_call": "Tool call",
+    "tool_call_intro": "One or more function blocks are automatically selected for calling through the AI ​​model, and plug-ins can also be called.",
+    "workflow_start": "Process starts"
   },
   "tool_input": "Tool",
   "update_link_error": "Update link exception",
