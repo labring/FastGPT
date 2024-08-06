@@ -36,10 +36,9 @@ import {
 import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
-import { changeOwner, resumeInheritPer } from '@/web/core/app/api';
+import { resumeInheritPer } from '@/web/core/app/api';
 import { useI18n } from '@/web/context/I18n';
 import ResumeInherit from '@/components/support/permission/ResumeInheritText';
-import { ChangeOwnerModal } from '@/components/support/permission/ChangeOwnerModal';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -156,22 +155,6 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const {
-    isOpen: isChangeOwnerModalOpen,
-    onOpen: onOpenChangeOwnerModal,
-    onClose: onCloseChangeOwnerModal
-  } = useDisclosure();
-
-  const onChangeOwner = async (tmbId: string) => {
-    return changeOwner({
-      appId: appDetail._id,
-      ownerId: tmbId
-    }).then(() => {
-      onCloseChangeOwnerModal();
-      reloadApp();
-    });
-  };
-
   return (
     <MyModal
       isOpen={true}
@@ -280,18 +263,6 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                   );
                 }}
               </CollaboratorContextProvider>
-              <Box mt={4}>
-                <Button
-                  size="md"
-                  variant="whitePrimary"
-                  onClick={onOpenChangeOwnerModal}
-                  w="full"
-                  borderRadius="md"
-                  leftIcon={<MyIcon w="4" name="common/lineChange" />}
-                >
-                  {t('common:permission.change_owner')}
-                </Button>
-              </Box>
             </Box>
           </>
         )}
@@ -307,14 +278,6 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
       </ModalFooter>
 
       <File onSelect={onSelectFile} />
-      {isChangeOwnerModalOpen && (
-        <ChangeOwnerModal
-          onClose={onCloseChangeOwnerModal}
-          avatar={avatar}
-          name={name}
-          onChangeOwner={onChangeOwner}
-        />
-      )}
     </MyModal>
   );
 };
