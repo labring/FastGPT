@@ -19,7 +19,7 @@ export const ReadFilesNodes: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.readFiles,
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
-  avatar: 'core/app/simpleMode/file',
+  avatar: 'core/workflow/template/readFiles',
   name: i18nT('app:workflow.read_files'),
   intro: i18nT('app:workflow.read_files_tip'),
   showStatus: true,
