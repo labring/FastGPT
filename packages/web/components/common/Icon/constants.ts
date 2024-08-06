@@ -242,6 +242,7 @@ export const iconPaths = {
   menu: () => import('./icons/menu.svg'),
   minus: () => import('./icons/minus.svg'),
   'modal/AddClb': () => import('./icons/modal/AddClb.svg'),
+  'modal/changePer': () => import('./icons/modal/changePer.svg'),
   'modal/concat': () => import('./icons/modal/concat.svg'),
   'modal/confirmPay': () => import('./icons/modal/confirmPay.svg'),
   'modal/edit': () => import('./icons/modal/edit.svg'),

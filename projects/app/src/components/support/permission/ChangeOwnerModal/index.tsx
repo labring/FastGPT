@@ -63,7 +63,7 @@ export function ChangeOwnerModal({
   return (
     <MyModal
       isOpen
-      iconSrc="common/lineChange"
+      iconSrc="modal/changePer"
       onClose={onClose}
       title={t('common:permission.change_owner')}
       isLoading={loading}
@@ -77,14 +77,14 @@ export function ChangeOwnerModal({
           <Box fontSize="14px" fontWeight="500" color="myGray.900">
             {t('common:permission.change_owner_to')}
           </Box>
-          <Flex mt="4" alignItems="center">
+          <Flex mt="4" alignItems="center" position={'relative'}>
             {selectedMember && (
               <Avatar
                 src={selectedMember.avatar}
                 w={'20px'}
                 borderRadius={'md'}
                 position="absolute"
-                left="40px"
+                left={3}
               />
             )}
             <Input
@@ -98,20 +98,37 @@ export function ChangeOwnerModal({
                 onOpenMemberListMenu();
                 setSelectedMember(null);
               }}
-              {...(selectedMember && { pl: '40px' })}
+              // onBlur={() => {
+              //   setTimeout(() => {
+              //     onCloseMemberListMenu();
+              //   }, 10);
+              // }}
+              {...(selectedMember && { pl: '10' })}
             />
           </Flex>
           {isOpenMemberListMenu && memberList.length > 0 && (
-            <Box mt="2" boxShadow="lg" bg="white" borderRadius="md">
+            <Flex
+              mt={2}
+              w={'100%'}
+              flexDirection={'column'}
+              gap={2}
+              p={1}
+              boxShadow="lg"
+              bg="white"
+              borderRadius="md"
+              zIndex={10}
+              maxH={'300px'}
+              overflow={'auto'}
+            >
               {memberList.map((item) => (
                 <Box
                   key={item.tmbId}
                   p="2"
                   _hover={{ bg: 'myGray.100' }}
                   mx="1"
-                  mt="1"
                   borderRadius="md"
-                  onClick={() => {
+                  cursor={'pointer'}
+                  onClickCapture={() => {
                     setInputValue(item.memberName);
                     setSelectedMember(item);
                     onCloseMemberListMenu();
@@ -123,8 +140,9 @@ export function ChangeOwnerModal({
                   </Flex>
                 </Box>
               ))}
-            </Box>
+            </Flex>
           )}
+
           <MyTag mt="4" colorSchema="blue">
             <Icon name="common/info" w="1rem" />
             <Box ml="2">{t('common:permission.change_owner_tip')}</Box>
