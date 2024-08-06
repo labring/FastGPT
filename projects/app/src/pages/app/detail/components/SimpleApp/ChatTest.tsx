@@ -27,9 +27,10 @@ const ChatTest = ({ appForm }: { appForm: AppSimpleEditFormType }) => {
   });
 
   useEffect(() => {
-    const { nodes, edges } = form2AppWorkflow(appForm);
+    const { nodes, edges } = form2AppWorkflow(appForm, t);
+    // console.log(form2AppWorkflow(appForm, t));
     setWorkflowData({ nodes, edges });
-  }, [appForm, setWorkflowData, allDatasets]);
+  }, [appForm, setWorkflowData, allDatasets, t]);
 
   const { restartChat, ChatContainer } = useChatTest({
     ...workflowData,

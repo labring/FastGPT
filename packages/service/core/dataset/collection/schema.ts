@@ -106,8 +106,10 @@ try {
     updateTime: -1
   });
 
-  // get forbid
-  // DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, forbid: 1 });
+  // Tag filter
+  DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, tags: 1 });
+  // create time filter
+  DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, createTime: 1 });
 } catch (error) {
   console.log(error);
 }

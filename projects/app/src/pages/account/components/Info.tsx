@@ -50,6 +50,7 @@ const StandDetailModal = dynamic(() => import('./standardDetailModal'));
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
 const PayModal = dynamic(() => import('./PayModal'));
 const UpdatePswModal = dynamic(() => import('./UpdatePswModal'));
+const UpdateNotification = dynamic(() => import('./UpdateNotificationModal'));
 const OpenAIAccountModal = dynamic(() => import('./OpenAIAccountModal'));
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
@@ -112,6 +113,11 @@ const MyInfo = () => {
     isOpen: isOpenUpdatePsw,
     onClose: onCloseUpdatePsw,
     onOpen: onOpenUpdatePsw
+  } = useDisclosure();
+  const {
+    isOpen: isOpenUpdateNotification,
+    onClose: onCloseUpdateNotification,
+    onOpen: onOpenUpdateNotification
   } = useDisclosure();
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
@@ -225,7 +231,7 @@ const MyInfo = () => {
             </Flex>
           </Flex>
         )}
-        {feConfigs.isPlus && (
+        {feConfigs?.isPlus && (
           <Flex mt={[0, 4]} alignItems={'center'}>
             <Box {...labelStyles}>{t('common:user.Member Name')}:&nbsp;</Box>
             <Input
@@ -249,7 +255,7 @@ const MyInfo = () => {
           <Box {...labelStyles}>{t('common:user.Account')}:&nbsp;</Box>
           <Box flex={1}>{userInfo?.username}</Box>
         </Flex>
-        {feConfigs.isPlus && (
+        {feConfigs?.isPlus && (
           <Flex mt={6} alignItems={'center'}>
             <Box {...labelStyles}>{t('common:user.Password')}:&nbsp;</Box>
             <Box flex={1}>*****</Box>
@@ -258,13 +264,27 @@ const MyInfo = () => {
             </Button>
           </Flex>
         )}
+        {feConfigs?.isPlus && (
+          <Flex mt={6} alignItems={'center'}>
+            <Box {...labelStyles}>{t('common:user.Notification Receive')}:&nbsp;</Box>
+            <Box flex={1} {...(userInfo?.team.notificationAccount ? {} : { color: 'red.600' })}>
+              {userInfo?.team.notificationAccount || t('common:user.Notification Receive Bind')}
+            </Box>
+
+            {userInfo?.permission.isOwner && (
+              <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdateNotification}>
+                {t('common:user.Change')}
+              </Button>
+            )}
+          </Flex>
+        )}
         <Flex mt={6} alignItems={'center'}>
           <Box {...labelStyles}>{t('common:user.Team')}:&nbsp;</Box>
           <Box flex={1}>
             <TeamMenu />
           </Box>
         </Flex>
-        {feConfigs.isPlus && (
+        {feConfigs?.isPlus && (
           <Box mt={6} whiteSpace={'nowrap'}>
             <Flex alignItems={'center'}>
               <Box {...labelStyles}>{t('common:user.team.Balance')}:&nbsp;</Box>
@@ -282,6 +302,7 @@ const MyInfo = () => {
       </Box>
       {isOpenPayModal && <PayModal onClose={onClosePayModal} />}
       {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
+      {isOpenUpdateNotification && <UpdateNotification onClose={onCloseUpdateNotification} />}
       <File onSelect={onSelectFile} />
     </Box>
   );
@@ -414,7 +435,7 @@ const PlanUsage = () => {
                   <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>
                 </Flex>
                 <Box mt="2" color={'#485264'} fontSize="sm">
-                  免费版用户30天无任何使用记录时，系统会自动清理账号知识库。
+                  {t('common:info.free_plan')}
                 </Box>
               </>
             ) : (
@@ -449,9 +470,9 @@ const PlanUsage = () => {
       >
         <Flex>
           <Flex flex={'1 0 0'} alignItems={'flex-end'}>
-            <Box fontSize={'md'}>资源用量</Box>
+            <Box fontSize={'md'}>{t('common:info.resource')}</Box>
             <Box fontSize={'xs'} color={'myGray.500'}>
-              (包含标准套餐与额外资源包)
+              {t('common:info.include')}
             </Box>
           </Flex>
           <Link
@@ -463,7 +484,7 @@ const PlanUsage = () => {
             cursor={'pointer'}
             fontSize={'sm'}
           >
-            购买额外套餐
+            {t('common:info.buy_extra')}
             <MyIcon ml={1} name={'common/rightArrowLight'} w={'12px'} />
           </Link>
         </Flex>
@@ -546,7 +567,7 @@ const Other = () => {
       });
       reset(data);
       toast({
-        title: '更新数据成功',
+        title: t('common:dataset.data.Update Success Tip'),
         status: 'success'
       });
     },
@@ -579,7 +600,7 @@ const Other = () => {
         )}
         {feConfigs?.chatbotUrl && (
           <Link
-            href={feConfigs.chatbotUrl}
+            href={feConfigs?.chatbotUrl}
             target="_blank"
             display={'flex'}
             py={3}
@@ -616,7 +637,7 @@ const Other = () => {
           >
             <Image src="/imgs/workflow/laf.png" w={'18px'} alt="laf" />
             <Box ml={2} flex={1}>
-              laf 账号
+              {'laf' + t('common:navbar.Account')}
             </Box>
             <Box
               w={'9px'}
@@ -643,7 +664,7 @@ const Other = () => {
           >
             <MyIcon name={'common/openai'} w={'18px'} color={'myGray.600'} />
             <Box ml={2} flex={1}>
-              OpenAI/OneAPI 账号
+              {'OpenAI / OneAPI' + t('common:navbar.Account')}
             </Box>
             <Box
               w={'9px'}

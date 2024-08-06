@@ -9,7 +9,7 @@ import {
   ChatCompletionMessageFunctionCall,
   ChatCompletionFunctionMessageParam,
   ChatCompletionAssistantMessageParam
-} from '@fastgpt/global/core/ai/type';
+} from '@fastgpt/global/core/ai/type.d';
 import { NextApiResponse } from 'next';
 import {
   responseWrite,
@@ -24,10 +24,11 @@ import { DispatchToolModuleProps, RunToolResponse, ToolNodeItemType } from './ty
 import json5 from 'json5';
 import { DispatchFlowResponse } from '../../type';
 import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { updateToolInputValue } from './utils';
+import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
 
 type FunctionRunResponseType = {
   toolRunResponse: DispatchFlowResponse;
@@ -42,7 +43,18 @@ export const runToolWithFunctionCall = async (
   },
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
-  const { toolModel, toolNodes, messages, res, runtimeNodes, detail = false, node, stream } = props;
+  const {
+    toolModel,
+    toolNodes,
+    messages,
+    res,
+    requestOrigin,
+    runtimeNodes,
+    detail = false,
+    node,
+    stream,
+    params: { temperature = 0, maxToken = 4000, aiChatVision }
+  } = props;
   const assistantResponses = response?.assistantResponses || [];
 
   const functions: ChatCompletionCreateParams.Function[] = toolNodes.map((item) => {
@@ -72,44 +84,60 @@ export const runToolWithFunctionCall = async (
     };
   });
 
-  const filterMessages = await filterGPTMessageByMaxTokens({
-    messages,
-    maxTokens: toolModel.maxContext - 500 // filter token. not response maxToken
-  });
-  const formativeMessages = filterMessages.map((item) => {
+  const filterMessages = (
+    await filterGPTMessageByMaxTokens({
+      messages,
+      maxTokens: toolModel.maxContext - 300 // filter token. not response maxToken
+    })
+  ).map((item) => {
     if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant && item.function_call) {
       return {
         ...item,
         function_call: {
           name: item.function_call?.name,
           arguments: item.function_call?.arguments
-        }
+        },
+        content: ''
       };
     }
     return item;
   });
-  const requestMessages = await loadRequestMessages(formativeMessages);
+  const [requestMessages, max_tokens] = await Promise.all([
+    loadRequestMessages({
+      messages: filterMessages,
+      useVision: toolModel.vision && aiChatVision,
+      origin: requestOrigin
+    }),
+    computedMaxToken({
+      model: toolModel,
+      maxToken,
+      filterMessages
+    })
+  ]);
+  const requestBody: any = {
+    ...toolModel?.defaultConfig,
+    model: toolModel.model,
+    temperature: computedTemperature({
+      model: toolModel,
+      temperature
+    }),
+    max_tokens,
+    stream,
+    messages: requestMessages,
+    functions,
+    function_call: 'auto'
+  };
 
+  // console.log(JSON.stringify(requestBody, null, 2));
   /* Run llm */
   const ai = getAIApi({
     timeout: 480000
   });
-  const aiResponse = await ai.chat.completions.create(
-    {
-      ...toolModel?.defaultConfig,
-      model: toolModel.model,
-      temperature: 0,
-      stream,
-      messages: requestMessages,
-      functions,
-      function_call: 'auto'
-    },
-    {
-      headers: {
-        Accept: 'application/json, text/plain, */*'
-      }
+  const aiResponse = await ai.chat.completions.create(requestBody, {
+    headers: {
+      Accept: 'application/json, text/plain, */*'
     }
-  );
+  });
 
   const { answer, functionCalls } = await (async () => {
     if (res && stream) {
@@ -198,7 +226,7 @@ export const runToolWithFunctionCall = async (
                 toolName: '',
                 toolAvatar: '',
                 params: '',
-                response: stringToolResponse
+                response: sliceStrStartEnd(stringToolResponse, 300, 300)
               }
             })
           });
@@ -222,7 +250,7 @@ export const runToolWithFunctionCall = async (
       function_call: functionCall
     };
     const concatToolMessages = [
-      ...filterMessages,
+      ...requestMessages,
       assistantToolMsgParams
     ] as ChatCompletionMessageParam[];
     const tokens = await countGptMessagesTokens(concatToolMessages, undefined, functions);

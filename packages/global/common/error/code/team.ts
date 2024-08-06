@@ -1,5 +1,5 @@
 import { ErrType } from '../errorCode';
-
+import { i18nT } from '../../../../web/i18n/utils';
 /* team: 500000 */
 export enum TeamErrEnum {
   teamOverSize = 'teamOverSize',
@@ -12,17 +12,43 @@ export enum TeamErrEnum {
   websiteSyncNotEnough = 'websiteSyncNotEnough',
   reRankNotEnough = 'reRankNotEnough'
 }
+
 const teamErr = [
-  { statusText: TeamErrEnum.teamOverSize, message: 'error.team.overSize' },
-  { statusText: TeamErrEnum.unAuthTeam, message: '无权操作该团队' },
-  { statusText: TeamErrEnum.aiPointsNotEnough, message: '' },
-  { statusText: TeamErrEnum.datasetSizeNotEnough, message: '知识库容量不足，请先扩容~' },
-  { statusText: TeamErrEnum.datasetAmountNotEnough, message: '知识库数量已达上限~' },
-  { statusText: TeamErrEnum.appAmountNotEnough, message: '应用数量已达上限~' },
-  { statusText: TeamErrEnum.pluginAmountNotEnough, message: '插件数量已达上限~' },
-  { statusText: TeamErrEnum.websiteSyncNotEnough, message: '无权使用Web站点同步~' },
-  { statusText: TeamErrEnum.reRankNotEnough, message: '无权使用检索重排~' }
+  {
+    statusText: TeamErrEnum.teamOverSize,
+    message: i18nT('common:code_error.team_error.over_size')
+  },
+  { statusText: TeamErrEnum.unAuthTeam, message: i18nT('common:code_error.team_error.un_auth') },
+  {
+    statusText: TeamErrEnum.aiPointsNotEnough,
+    message: i18nT('common:code_error.team_error.ai_points_not_enough')
+  }, // 需要定义或留空
+  {
+    statusText: TeamErrEnum.datasetSizeNotEnough,
+    message: i18nT('common:code_error.team_error.dataset_size_not_enough')
+  },
+  {
+    statusText: TeamErrEnum.datasetAmountNotEnough,
+    message: i18nT('common:code_error.team_error.dataset_amount_not_enough')
+  },
+  {
+    statusText: TeamErrEnum.appAmountNotEnough,
+    message: i18nT('common:code_error.team_error.app_amount_not_enough')
+  },
+  {
+    statusText: TeamErrEnum.pluginAmountNotEnough,
+    message: i18nT('common:code_error.team_error.plugin_amount_not_enough')
+  },
+  {
+    statusText: TeamErrEnum.websiteSyncNotEnough,
+    message: i18nT('common:code_error.team_error.website_sync_not_enough')
+  },
+  {
+    statusText: TeamErrEnum.reRankNotEnough,
+    message: i18nT('common:code_error.team_error.re_rank_not_enough')
+  }
 ];
+
 export default teamErr.reduce((acc, cur, index) => {
   return {
     ...acc,

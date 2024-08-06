@@ -263,7 +263,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                     onClick={() => router.push('/app/list')}
                     gap={1}
                   >
-                    <Box>去创建</Box>
+                    <Box>{t('common:create')}</Box>
                     <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
                   </Flex>
                 )}
@@ -279,7 +279,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                       onClick={() => window.open(feConfigs.systemPluginCourseUrl)}
                       gap={1}
                     >
-                      <Box>贡献插件</Box>
+                      <Box>{t('common:plugin.contribute')}</Box>
                       <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} />
                     </Flex>
                   )}

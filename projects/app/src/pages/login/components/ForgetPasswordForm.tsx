@@ -7,7 +7,7 @@ import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-
+import { useTranslation } from 'next-i18next';
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
   loginSuccess: (e: ResLogin) => void;
@@ -22,6 +22,7 @@ interface RegisterType {
 
 const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const {
     register,
@@ -58,12 +59,12 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           })
         );
         toast({
-          title: `密码已找回`,
+          title: t('user:password.retrieved'),
           status: 'success'
         });
       } catch (error: any) {
         toast({
-          title: error.message || '修改密码异常',
+          title: error.message || t('user:password.change_error'),
           status: 'error'
         });
       }
@@ -75,7 +76,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   return (
     <>
       <Box fontWeight={'bold'} fontSize={'2xl'} textAlign={'center'}>
-        找回 {feConfigs?.systemTitle} 账号
+        {t('user:password.retrieved_account', { account: feConfigs?.systemTitle })}
       </Box>
       <Box
         mt={'42px'}
@@ -88,13 +89,13 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         <FormControl isInvalid={!!errors.username}>
           <Input
             bg={'myGray.50'}
-            placeholder="邮箱/手机号"
+            placeholder={t('user:password.email_phone')}
             {...register('username', {
-              required: '邮箱/手机号不能为空',
+              required: t('user:password.email_phone_void'),
               pattern: {
                 value:
                   /(^1[3456789]\d{9}$)|(^[A-Za-z0-9]+([_\.][A-Za-z0-9]+)*@([A-Za-z0-9\-]+\.)+[A-Za-z]{2,6}$)/,
-                message: '邮箱/手机号格式错误'
+                message: t('user:password.email_phone_error')
               }
             })}
           ></Input>
@@ -110,9 +111,9 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             bg={'myGray.50'}
             flex={1}
             maxLength={8}
-            placeholder="验证码"
+            placeholder={t('user:password.verification_code')}
             {...register('code', {
-              required: '验证码不能为空'
+              required: t('user:password.code_required')
             })}
           ></Input>
           <Box
@@ -137,16 +138,16 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           <Input
             bg={'myGray.50'}
             type={'password'}
-            placeholder="新密码(4~20位)"
+            placeholder={t('user:password.new_password')}
             {...register('password', {
-              required: '密码不能为空',
+              required: t('user:password.password_required'),
               minLength: {
                 value: 4,
-                message: '密码最少 4 位最多 20 位'
+                message: t('user:password.password_condition')
               },
               maxLength: {
                 value: 20,
-                message: '密码最少 4 位最多 20 位'
+                message: t('user:password.password_condition')
               }
             })}
           ></Input>
@@ -155,9 +156,10 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           <Input
             bg={'myGray.50'}
             type={'password'}
-            placeholder="确认密码"
+            placeholder={t('user:password.confirm')}
             {...register('password2', {
-              validate: (val) => (getValues('password') === val ? true : '两次密码不一致')
+              validate: (val) =>
+                getValues('password') === val ? true : t('user:password.not_match')
             })}
           ></Input>
         </FormControl>
@@ -171,7 +173,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           isLoading={requesting}
           onClick={handleSubmit(onclickFindPassword)}
         >
-          找回密码
+          {t('user:password.retrieve')}
         </Button>
         <Box
           float={'right'}
@@ -183,7 +185,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           _hover={{ textDecoration: 'underline' }}
           onClick={() => setPageType(LoginPageTypeEnum.passwordLogin)}
         >
-          去登录
+          {t('user:password.to_login')}
         </Box>
       </Box>
     </>

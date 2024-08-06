@@ -46,7 +46,7 @@ const ExtraPlan = () => {
         if (datasetSizePayAmount === 0) {
           return toast({
             status: 'warning',
-            title: '购买数量不能为0'
+            title: t('common:support.wallet.amount_0')
           });
         }
         setLoading(true);
@@ -91,7 +91,7 @@ const ExtraPlan = () => {
         if (payAmount === 0) {
           return toast({
             status: 'warning',
-            title: '购买数量不能为0'
+            title: t('common:support.wallet.amount_0')
           });
         }
         setLoading(true);
@@ -147,7 +147,7 @@ const ExtraPlan = () => {
                 {t('common:support.wallet.subscription.Extra dataset size')}
               </Box>
               <Box mt={3} fontSize={['28px', '32px']} fontWeight={'bold'}>
-                ￥{extraDatasetPrice}/1000组{' '}
+                {`￥${extraDatasetPrice}/1000` + t('common:core.dataset.data.group')}
                 <Box ml={1} as={'span'} fontSize={'md'} color={'myGray.600'} fontWeight={'normal'}>
                   /{t('common:common.month')}
                 </Box>
@@ -164,7 +164,7 @@ const ExtraPlan = () => {
           <Box h={'120px'} w={'100%'}>
             <Flex mt={4}>
               <MyIcon mr={2} name={'support/bill/shoppingCart'} w={'16px'} color={'primary.600'} />
-              购买资源包
+              {t('common:support.wallet.buy_resource')}
             </Flex>
             <Flex mt={4} alignItems={'center'}>
               <Box flex={['0 0 100px', '1 0 0']}>
@@ -252,7 +252,7 @@ const ExtraPlan = () => {
                 {t('common:support.wallet.subscription.Extra ai points')}
               </Box>
               <Box mt={3} fontSize={['28px', '32px']} fontWeight={'bold'}>
-                ￥{extraPointsPrice}/1000积分{' '}
+                {`￥${extraDatasetPrice}/1000` + t('common:support.wallet.subscription.point')}
                 <Box ml={1} as={'span'} fontSize={'md'} color={'myGray.600'} fontWeight={'normal'}>
                   /{t('common:common.month')}
                 </Box>
@@ -269,7 +269,7 @@ const ExtraPlan = () => {
           <Box h={'120px'} w={'100%'}>
             <Flex mt={4}>
               <MyIcon mr={2} name={'support/bill/shoppingCart'} w={'16px'} color={'primary.600'} />
-              购买资源包
+              {t('common:support.wallet.buy_resource')}
             </Flex>
             {/* <Flex mt={4} alignItems={'center'}>
               <Box flex={['0 0 100px', '1 0 0']}>
@@ -325,7 +325,7 @@ const ExtraPlan = () => {
                   </NumberInputStepper>
                 </NumberInput>
                 <Box position={'absolute'} right={'20px'} color={'myGray.500'} fontSize={'xs'}>
-                  000积分
+                  {'000' + t('common:support.wallet.subscription.point')}
                 </Box>
               </Flex>
             </Flex>

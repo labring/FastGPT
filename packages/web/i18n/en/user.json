@@ -1,13 +1,76 @@
 {
+  "bind_inform_account_error": "Abnormal binding notification account",
+  "bind_inform_account_success": "Binding notification account successful",
+  "delete": {
+    "admin_failed": "Failed to delete administrator",
+    "admin_success": "Administrator deleted successfully"
+  },
+  "has_chosen": "chosen",
+  "login": {
+    "error": "Login exception",
+    "failed": "Login failed",
+    "login_account": "Login to {{account}} account",
+    "login_error": "wrong user name or password",
+    "password_condition": "Password maximum 60 characters",
+    "success": "login successful",
+    "to_register": "If you don’t have an account, please register."
+  },
+  "name": "name",
+  "notification": {
+    "Bind Notification Pipe Hint": "Bind the email address or mobile phone number for receiving notifications to ensure that you receive important system notifications in a timely manner."
+  },
+  "operations": "operate",
+  "password": {
+    "change_error": "Exception when changing password",
+    "code_required": "verification code must be filled",
+    "code_send_error": "Verification code sending exception",
+    "code_sended": "Verification code sent",
+    "confirm": "Confirm Password",
+    "email_phone": "Email/Mobile phone number",
+    "email_phone_error": "Email/mobile phone number format error",
+    "email_phone_void": "Email/mobile phone number cannot be empty",
+    "get_code": "get verification code",
+    "get_code_again": "Reacquire after s",
+    "new_password": "New password (4~20 digits)",
+    "not_match": "Two passwords are inconsistent",
+    "password_condition": "Password must be at least 4 characters and at most 20 characters",
+    "password_required": "password can not be blank",
+    "retrieve": "Retrieve password",
+    "retrieved": "Password has been retrieved",
+    "retrieved_account": "Retrieve {{account}} account",
+    "to_login": "Go to login",
+    "verification_code": "Verification code"
+  },
   "permission": {
     "Manage": "administrator",
     "Manage tip": "Team administrator, with full permissions",
     "Read": "Read only",
     "Read desc": "Members can only read related resources and cannot create new resources.",
     "Write": "Write",
-    "Write tip": "In addition to readable resources, you can also create new resources"
+    "Write tip": "In addition to readable resources, you can also create new resources",
+    "only_collaborators": "Collaborator access only",
+    "team_read": "Team accessible",
+    "team_write": "Team editable"
+  },
+  "permissions": "Permissions",
+  "register": {
+    "confirm": "Confirm registration",
+    "error": "Registration exception",
+    "failed": "registration failed",
+    "register_account": "Register {{account}} account",
+    "success": "registration success",
+    "to_login": "Already have an account? Log in"
+  },
+  "search_user": "Search username",
+  "synchronization": {
+    "button": "Sync now",
+    "placeholder": "Please enter sync label",
+    "title": "Fill in the tag synchronization link and click the sync button to synchronize"
   },
   "team": {
-    "Add manager": "Add manager"
+    "Add manager": "Add manager",
+    "add_collaborator": "Add collaborators",
+    "manage_collaborators": "Manage collaborators",
+    "no_collaborators": "No collaborators yet"
   }
 }

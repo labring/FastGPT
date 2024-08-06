@@ -69,6 +69,13 @@ export type DatasetCollectionSchemaType = {
   };
 };
 
+export type DatasetCollectionTagsSchemaType = {
+  _id: string;
+  teamId: string;
+  datasetId: string;
+  tag: string;
+};
+
 export type DatasetDataIndexItemType = {
   defaultIndex: boolean;
   dataId: string; // pg data id
@@ -142,6 +149,17 @@ export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentMode
   vectorModel: VectorModelItemType;
   agentModel: LLMModelItemType;
   permission: DatasetPermission;
+};
+
+/* ================= tag ===================== */
+export type DatasetTagType = {
+  _id: string;
+  tag: string;
+};
+
+export type TagUsageType = {
+  tagId: string;
+  collections: string[];
 };
 
 /* ================= collection ===================== */

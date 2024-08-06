@@ -309,6 +309,7 @@ const ConfirmPayModal = ({
   onConfirmPay
 }: ConfirmPayModalProps & { onClose: () => void; onConfirmPay: () => void }) => {
   const { t } = useTranslation();
+
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
 
   const formatPayPrice = Math.ceil(formatStorePrice2Read(payPrice));
@@ -340,16 +341,24 @@ const ConfirmPayModal = ({
     >
       <ModalBody py={5} px={9}>
         <Flex>
-          <Box flex={'0 0 100px'}>新套餐价格</Box>
-          <Box>{formatStorePrice2Read(totalPrice)}元</Box>
+          <Box flex={'0 0 100px'}>{t('common:pay.new_package_price')}</Box>
+          <Box>{t('common:pay.yuan', { amount: formatStorePrice2Read(totalPrice) })}</Box>
         </Flex>
         <Flex mt={6}>
-          <Box flex={'0 0 100px'}>旧套餐余额</Box>
-          <Box>{Math.floor(formatStorePrice2Read(totalPrice - payPrice))}元</Box>
+          <Box flex={'0 0 100px'}>{t('common:pay.old_package_price')}</Box>
+          <Box>
+            {t('common:pay.yuan', {
+              amount: Math.floor(formatStorePrice2Read(totalPrice - payPrice))
+            })}
+          </Box>
         </Flex>
         <Flex mt={6}>
-          <Box flex={'0 0 100px'}>需支付</Box>
-          <Box>{formatPayPrice}元</Box>
+          <Box flex={'0 0 100px'}>{t('common:pay.balance_notice')}</Box>
+          <Box>
+            {t('common:pay.yuan', {
+              amount: formatPayPrice
+            })}
+          </Box>
         </Flex>
       </ModalBody>
       <ModalFooter
@@ -359,13 +368,15 @@ const ConfirmPayModal = ({
         justifyContent={'flex-start'}
         px={0}
       >
-        <Box>账号余额: </Box>
+        <Box>{t('common:pay.balance') + ': '}</Box>
         <Box ml={2} flex={1}>
-          {formatTeamBalance}元
+          {t('common:pay.yuan', {
+            amount: formatTeamBalance
+          })}
         </Box>
         {teamBalance >= payPrice ? (
           <Button size={'sm'} onClick={onConfirmPay}>
-            确认支付
+            {t('common:pay.confirm_pay')}
           </Button>
         ) : (
           <Button
@@ -375,7 +386,7 @@ const ConfirmPayModal = ({
               handleClickPay(Math.ceil(formatStorePrice2Read(payPrice - teamBalance)));
             }}
           >
-            余额不足，去充值
+            {t('common:pay.to_recharge')}
           </Button>
         )}
       </ModalFooter>

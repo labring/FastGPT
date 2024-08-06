@@ -19,6 +19,7 @@ import {
 import { chatNodeSystemPromptTip } from '../tip';
 import { LLMModelTypeEnum } from '../../../ai/constants';
 import { getHandleConfig } from '../utils';
+import { i18nT } from '../../../../../web/i18n/utils';
 
 export const ToolModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.tools,
@@ -27,8 +28,8 @@ export const ToolModule: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(true, true, false, true),
   targetHandle: getHandleConfig(true, true, false, true),
   avatar: 'core/workflow/template/toolCall',
-  name: '工具调用',
-  intro: '通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。',
+  name: i18nT('workflow:template.tool_call'),
+  intro: i18nT('workflow:template.tool_call_intro'),
   showStatus: true,
   version: '481',
   inputs: [
@@ -41,21 +42,23 @@ export const ToolModule: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
       label: '',
       value: 0,
-      valueType: WorkflowIOValueTypeEnum.number,
-      min: 0,
-      max: 10,
-      step: 1
+      valueType: WorkflowIOValueTypeEnum.number
     },
     {
       key: NodeInputKeyEnum.aiChatMaxToken,
       renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
       label: '',
       value: 2000,
-      valueType: WorkflowIOValueTypeEnum.number,
-      min: 100,
-      max: 4000,
-      step: 50
+      valueType: WorkflowIOValueTypeEnum.number
     },
+    {
+      key: NodeInputKeyEnum.aiChatVision,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      value: true
+    },
+
     {
       ...Input_Template_System_Prompt,
       label: 'core.ai.Prompt',

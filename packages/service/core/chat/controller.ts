@@ -2,6 +2,9 @@ import type { ChatItemType, ChatItemValueItemType } from '@fastgpt/global/core/c
 import { MongoChatItem } from './chatItemSchema';
 import { addLog } from '../../common/system/log';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { delFileByFileIdList, getGFSCollection } from '../../common/file/gridfs/controller';
+import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { MongoChat } from './chatSchema';
 
 export async function getChatItems({
   appId,
@@ -74,4 +77,41 @@ export const addCustomFeedbacks = async ({
   } catch (error) {
     addLog.error('addCustomFeedbacks error', error);
   }
+};
+
+/* 
+  Delete chat files
+  1. ChatId: Delete one chat files
+  2. AppId: Delete all the app's chat files
+*/
+export const deleteChatFiles = async ({
+  chatIdList,
+  appId
+}: {
+  chatIdList?: string[];
+  appId?: string;
+}) => {
+  if (!appId && !chatIdList) return Promise.reject('appId or chatIdList is required');
+
+  const appChatIdList = await (async () => {
+    if (appId) {
+      const appChatIdList = await MongoChat.find({ appId }, { chatId: 1 });
+      return appChatIdList.map((item) => String(item.chatId));
+    } else if (chatIdList) {
+      return chatIdList;
+    }
+    return [];
+  })();
+
+  const collection = getGFSCollection(BucketNameEnum.chat);
+  const where = {
+    'metadata.chatId': { $in: appChatIdList }
+  };
+
+  const files = await collection.find(where, { projection: { _id: 1 } }).toArray();
+
+  await delFileByFileIdList({
+    bucketName: BucketNameEnum.chat,
+    fileIdList: files.map((item) => String(item._id))
+  });
 };

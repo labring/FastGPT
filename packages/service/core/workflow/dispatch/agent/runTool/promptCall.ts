@@ -20,10 +20,16 @@ import { dispatchWorkFlow } from '../../index';
 import { DispatchToolModuleProps, RunToolResponse, ToolNodeItemType } from './type.d';
 import json5 from 'json5';
 import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
-import { getNanoid, replaceVariable, sliceJsonStr } from '@fastgpt/global/common/string/tools';
+import {
+  getNanoid,
+  replaceVariable,
+  sliceJsonStr,
+  sliceStrStartEnd
+} from '@fastgpt/global/common/string/tools';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { updateToolInputValue } from './utils';
+import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
 
 type FunctionCallCompletion = {
   id: string;
@@ -43,7 +49,18 @@ export const runToolWithPromptCall = async (
   },
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
-  const { toolModel, toolNodes, messages, res, runtimeNodes, detail = false, node, stream } = props;
+  const {
+    toolModel,
+    toolNodes,
+    messages,
+    res,
+    requestOrigin,
+    runtimeNodes,
+    detail = false,
+    node,
+    stream,
+    params: { temperature = 0, maxToken = 4000, aiChatVision }
+  } = props;
   const assistantResponses = response?.assistantResponses || [];
 
   const toolsPrompt = JSON.stringify(
@@ -77,7 +94,7 @@ export const runToolWithPromptCall = async (
 
   const lastMessage = messages[messages.length - 1];
   if (typeof lastMessage.content !== 'string') {
-    return Promise.reject('暂时只支持纯文本');
+    return Promise.reject('Prompt call invalid input');
   }
   lastMessage.content = replaceVariable(lastMessage.content, {
     toolsPrompt
@@ -87,27 +104,40 @@ export const runToolWithPromptCall = async (
     messages,
     maxTokens: toolModel.maxContext - 500 // filter token. not response maxToken
   });
-  const requestMessages = await loadRequestMessages(filterMessages);
+  const [requestMessages, max_tokens] = await Promise.all([
+    loadRequestMessages({
+      messages: filterMessages,
+      useVision: toolModel.vision && aiChatVision,
+      origin: requestOrigin
+    }),
+    computedMaxToken({
+      model: toolModel,
+      maxToken,
+      filterMessages
+    })
+  ]);
+  const requestBody = {
+    ...toolModel?.defaultConfig,
+    model: toolModel.model,
+    temperature: computedTemperature({
+      model: toolModel,
+      temperature
+    }),
+    max_tokens,
+    stream,
+    messages: requestMessages
+  };
 
-  // console.log(JSON.stringify(filterMessages, null, 2));
+  // console.log(JSON.stringify(requestBody, null, 2));
   /* Run llm */
   const ai = getAIApi({
     timeout: 480000
   });
-  const aiResponse = await ai.chat.completions.create(
-    {
-      ...toolModel?.defaultConfig,
-      model: toolModel.model,
-      temperature: 0,
-      stream,
-      messages: requestMessages
-    },
-    {
-      headers: {
-        Accept: 'application/json, text/plain, */*'
-      }
+  const aiResponse = await ai.chat.completions.create(requestBody, {
+    headers: {
+      Accept: 'application/json, text/plain, */*'
     }
-  );
+  });
 
   const answer = await (async () => {
     if (res && stream) {
@@ -225,7 +255,7 @@ export const runToolWithPromptCall = async (
             toolName: '',
             toolAvatar: '',
             params: '',
-            response: stringToolResponse
+            response: sliceStrStartEnd(stringToolResponse, 300, 300)
           }
         })
       });
@@ -250,7 +280,7 @@ export const runToolWithPromptCall = async (
     function_call: toolJson
   };
   const concatToolMessages = [
-    ...filterMessages,
+    ...requestMessages,
     assistantToolMsgParams
   ] as ChatCompletionMessageParam[];
   const tokens = await countGptMessagesTokens(concatToolMessages, undefined);

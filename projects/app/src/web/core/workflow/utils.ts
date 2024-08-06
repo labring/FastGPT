@@ -450,7 +450,8 @@ export const compareWorkflow = (workflow1: WorkflowType, workflow2: WorkflowType
         ttsConfig: clone1.chatConfig?.ttsConfig || undefined,
         whisperConfig: clone1.chatConfig?.whisperConfig || undefined,
         scheduledTriggerConfig: clone1.chatConfig?.scheduledTriggerConfig || undefined,
-        chatInputGuide: clone1.chatConfig?.chatInputGuide || undefined
+        chatInputGuide: clone1.chatConfig?.chatInputGuide || undefined,
+        fileSelectConfig: clone1.chatConfig?.fileSelectConfig || undefined
       },
       {
         welcomeText: clone2.chatConfig?.welcomeText || '',
@@ -459,7 +460,8 @@ export const compareWorkflow = (workflow1: WorkflowType, workflow2: WorkflowType
         ttsConfig: clone2.chatConfig?.ttsConfig || undefined,
         whisperConfig: clone2.chatConfig?.whisperConfig || undefined,
         scheduledTriggerConfig: clone2.chatConfig?.scheduledTriggerConfig || undefined,
-        chatInputGuide: clone2.chatConfig?.chatInputGuide || undefined
+        chatInputGuide: clone2.chatConfig?.chatInputGuide || undefined,
+        fileSelectConfig: clone2.chatConfig?.fileSelectConfig || undefined
       }
     )
   ) {

@@ -8,28 +8,6 @@ import fs from 'fs';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
 
-// match md img text and upload to db
-export const matchMdImgTextAndUpload = ({
-  teamId,
-  md,
-  metadata
-}: {
-  md: string;
-  teamId: string;
-  metadata?: Record<string, any>;
-}) =>
-  markdownProcess({
-    rawText: md,
-    uploadImgController: (base64Img) =>
-      uploadMongoImg({
-        type: MongoImageTypeEnum.collectionImage,
-        base64Img,
-        teamId,
-        metadata,
-        expiredTime: addHours(new Date(), 2)
-      })
-  });
-
 export type readRawTextByLocalFileParams = {
   teamId: string;
   path: string;
@@ -72,6 +50,28 @@ export const readRawContentByFileBuffer = async ({
   encoding: string;
   metadata?: Record<string, any>;
 }) => {
+  // Upload image in markdown
+  const matchMdImgTextAndUpload = ({
+    teamId,
+    md,
+    metadata
+  }: {
+    md: string;
+    teamId: string;
+    metadata?: Record<string, any>;
+  }) =>
+    markdownProcess({
+      rawText: md,
+      uploadImgController: (base64Img) =>
+        uploadMongoImg({
+          type: MongoImageTypeEnum.collectionImage,
+          base64Img,
+          teamId,
+          metadata,
+          expiredTime: addHours(new Date(), 1)
+        })
+    });
+
   let { rawText, formatText } = await runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
     extension,
     encoding,

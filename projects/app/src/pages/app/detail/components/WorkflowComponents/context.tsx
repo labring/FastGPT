@@ -387,7 +387,7 @@ const WorkflowContextProvider = ({
           if (input) {
             toast({
               status: 'warning',
-              title: 'key 重复'
+              title: t('common:key_repetition')
             });
           } else {
             updateObj.inputs.push(props.value);
@@ -408,7 +408,7 @@ const WorkflowContextProvider = ({
           if (output) {
             toast({
               status: 'warning',
-              title: 'key 重复'
+              title: t('common:key_repetition')
             });
             updateObj.outputs = node.data.outputs;
           } else {
@@ -523,7 +523,7 @@ const WorkflowContextProvider = ({
         version: 'v2'
       });
       setSaveLabel(
-        t('core.app.Saved time', {
+        t('common:core.app.Saved time', {
           time: formatTime2HM()
         })
       );

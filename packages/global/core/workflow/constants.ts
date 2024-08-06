@@ -75,6 +75,8 @@ export enum NodeInputKeyEnum {
   aiChatQuoteTemplate = 'quoteTemplate',
   aiChatQuotePrompt = 'quotePrompt',
   aiChatDatasetQuote = 'quoteQA',
+  aiChatVision = 'aiChatVision',
+  stringQuoteText = 'stringQuoteText',
 
   // dataset
   datasetSelectList = 'datasets',
@@ -85,6 +87,7 @@ export enum NodeInputKeyEnum {
   datasetSearchUsingExtensionQuery = 'datasetSearchUsingExtensionQuery',
   datasetSearchExtensionModel = 'datasetSearchExtensionModel',
   datasetSearchExtensionBg = 'datasetSearchExtensionBg',
+  collectionFilterMatch = 'collectionFilterMatch',
 
   // concat dataset
   datasetQuoteList = 'system_datasetQuoteList',
@@ -117,7 +120,10 @@ export enum NodeInputKeyEnum {
 
   // code
   code = 'code',
-  codeType = 'codeType' // js|py
+  codeType = 'codeType', // js|py
+
+  // read files
+  fileUrlList = 'fileUrlList'
 }
 
 export enum NodeOutputKeyEnum {
@@ -131,6 +137,9 @@ export enum NodeOutputKeyEnum {
   text = 'system_text',
   addOutputParam = 'system_addOutputParam',
   rawResponse = 'system_rawResponse',
+
+  // start
+  userFiles = 'userFiles',
 
   // dataset
   datasetQuoteQA = 'quoteQA',

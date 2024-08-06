@@ -15,14 +15,14 @@ const Tools = () => {
   const list = [
     {
       icon: 'core/dataset/datasetLight',
-      label: '我的知识库',
+      label: t('common:core.dataset.My Dataset'),
       link: '/dataset/list'
     },
     ...(feConfigs?.show_git
       ? [
           {
             icon: 'common/gitLight',
-            label: 'GitHub 地址',
+            label: t('common:core.app.tool_label.github'),
             link: 'https://github.com/labring/FastGPT'
           }
         ]
@@ -31,7 +31,7 @@ const Tools = () => {
       ? [
           {
             icon: 'common/courseLight',
-            label: '使用文档',
+            label: t('common:core.app.tool_label.doc'),
             link: getDocPath('/docs/intro')
           }
         ]
@@ -40,7 +40,7 @@ const Tools = () => {
       ? [
           {
             icon: 'support/bill/priceLight',
-            label: '计费说明',
+            label: t('common:core.app.tool_label.price'),
             link: '/price'
           }
         ]

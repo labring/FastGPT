@@ -6,18 +6,23 @@ import type {
 import type {
   DatasetItemType,
   DatasetListItemType,
-  DatasetSimpleItemType
+  DatasetSimpleItemType,
+  DatasetTagType,
+  TagUsageType
 } from '@fastgpt/global/core/dataset/type.d';
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq.d';
 import type {
+  AddTagsToCollectionsParams,
   CreateDatasetCollectionParams,
+  CreateDatasetCollectionTagParams,
   CsvTableCreateDatasetCollectionParams,
   DatasetUpdateBody,
   ExternalFileCreateDatasetCollectionParams,
   FileIdCreateDatasetCollectionParams,
   LinkCreateDatasetCollectionParams,
   PostWebsiteSyncParams,
-  TextCreateDatasetCollectionParams
+  TextCreateDatasetCollectionParams,
+  UpdateDatasetCollectionTagParams
 } from '@fastgpt/global/core/dataset/api.d';
 import type {
   GetTrainingQueueProps,
@@ -43,6 +48,8 @@ import type { UpdateDatasetCollectionParams } from '@/pages/api/core/dataset/col
 import type { GetDatasetDataListProps } from '@/pages/api/core/dataset/data/list';
 import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
 import type { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
+import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { GetScrollCollectionsProps } from '@/pages/api/core/dataset/collection/scrollList';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -116,6 +123,32 @@ export const postLinkCollectionSync = (collectionId: string) =>
   POST<`${DatasetCollectionSyncResultEnum}`>(`/core/dataset/collection/sync/link`, {
     collectionId
   });
+
+/* =============================== tag ==================================== */
+
+export const postCreateDatasetCollectionTag = (data: CreateDatasetCollectionTagParams) =>
+  POST(`/proApi/core/dataset/tag/create`, data);
+export const postAddTagsToCollections = (data: AddTagsToCollectionsParams) =>
+  POST(`/proApi/core/dataset/tag/addToCollections`, data);
+export const delDatasetCollectionTag = (data: { id: string; datasetId: string }) =>
+  DELETE(`/proApi/core/dataset/tag/delete`, data);
+export const updateDatasetCollectionTag = (data: UpdateDatasetCollectionTagParams) =>
+  POST(`/proApi/core/dataset/tag/update`, data);
+export const getDatasetCollectionTags = (
+  data: PaginationProps<{
+    datasetId: string;
+    searchText?: string;
+  }>
+) => GET<PaginationResponse<DatasetTagType>>(`/proApi/core/dataset/tag/list`, data);
+export const getTagUsage = (datasetId: string) =>
+  GET<TagUsageType[]>(`/proApi/core/dataset/tag/tagUsage?datasetId=${datasetId}`);
+export const getAllTags = (datasetId: string) =>
+  GET<{ list: DatasetTagType[] }>(`/proApi/core/dataset/tag/getAllTags?datasetId=${datasetId}`);
+export const getScrollCollectionList = (data: GetScrollCollectionsProps) =>
+  GET<PaginationResponse<DatasetCollectionsListItemType>>(
+    `/core/dataset/collection/scrollList`,
+    data
+  );
 
 /* =============================== data ==================================== */
 /* get dataset list */

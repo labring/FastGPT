@@ -243,7 +243,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                   </Box>
                 </Flex>
                 <Box mt={3} fontSize={'sm'}>
-                  读取 CSV 文件第一列进行批量测试，单次最多支持 100 组数据。
+                  {t('common:info.csv_message')}
                   <Box
                     as={'span'}
                     color={'primary.600'}
@@ -256,7 +256,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                       });
                     }}
                   >
-                    点击下载批量测试模板
+                    {t('common:info.csv_download')}
                   </Box>
                 </Box>
               </Box>

@@ -9,7 +9,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-
+import { useTranslation } from 'next-i18next';
 const FastLogin = ({
   code,
   token,
@@ -23,7 +23,7 @@ const FastLogin = ({
   const { setUserInfo } = useUserStore();
   const router = useRouter();
   const { toast } = useToast();
-
+  const { t } = useTranslation();
   const loginSuccess = useCallback(
     (res: ResLogin) => {
       setToken(res.token);
@@ -50,7 +50,7 @@ const FastLogin = ({
         if (!res) {
           toast({
             status: 'warning',
-            title: '登录异常'
+            title: t('common:support.user.login.error')
           });
           return setTimeout(() => {
             router.replace('/login');
@@ -60,7 +60,7 @@ const FastLogin = ({
       } catch (error) {
         toast({
           status: 'warning',
-          title: getErrText(error, '登录异常')
+          title: getErrText(error, t('common:support.user.login.error'))
         });
         setTimeout(() => {
           router.replace('/login');

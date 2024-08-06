@@ -443,7 +443,7 @@ const NodeIntro = React.memo(function NodeIntro({
   // edit intro
   const { onOpenModal: onOpenIntroModal, EditModal: EditIntroModal } = useEditTextarea({
     title: t('common:core.module.Edit intro'),
-    tip: '调整该模块会对工具调用时机有影响。\n你可以通过精确的描述该模块功能，引导模型进行工具调用。',
+    tip: t('common:info.node_info'),
     canEmpty: false
   });
 

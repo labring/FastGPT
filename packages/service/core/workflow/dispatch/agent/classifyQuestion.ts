@@ -16,6 +16,7 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { loadRequestMessages } from '../../../chat/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
@@ -113,6 +114,10 @@ const completions = async ({
       ]
     }
   ];
+  const requestMessages = await loadRequestMessages({
+    messages: chats2GPTMessages({ messages, reserveId: false }),
+    useVision: false
+  });
 
   const ai = getAIApi({
     userKey: user.openaiAccount,
@@ -122,7 +127,7 @@ const completions = async ({
   const data = await ai.chat.completions.create({
     model: cqModel.model,
     temperature: 0.01,
-    messages: chats2GPTMessages({ messages, reserveId: false }),
+    messages: requestMessages,
     stream: false
   });
   const answer = data.choices?.[0].message?.content || '';

@@ -1,5 +1,5 @@
 import { BoxProps, FlexProps } from '@chakra-ui/react';
-
+import { i18nT } from '@fastgpt/web/i18n/utils';
 export const cardStyles: BoxProps = {
   borderRadius: 'lg',
   // overflow: 'hidden',
@@ -20,11 +20,11 @@ export const workflowBoxStyles: FlexProps = {
 export const publishStatusStyle = {
   unPublish: {
     colorSchema: 'adora' as any,
-    text: '未发布'
+    text: i18nT('common:core.app.have_publish')
   },
   published: {
     colorSchema: 'green' as any,
-    text: '已发布'
+    text: i18nT('common:core.app.not_published')
   }
 };
 

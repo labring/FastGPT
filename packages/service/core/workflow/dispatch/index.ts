@@ -55,6 +55,7 @@ import { surrenderProcess } from '../../../common/system/tools';
 import { dispatchRunCode } from './code/run';
 import { dispatchTextEditor } from './tools/textEditor';
 import { dispatchCustomFeedback } from './tools/customFeedback';
+import { dispatchReadFiles } from './tools/readFiles';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -78,6 +79,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.code]: dispatchRunCode,
   [FlowNodeTypeEnum.textEditor]: dispatchTextEditor,
   [FlowNodeTypeEnum.customFeedback]: dispatchCustomFeedback,
+  [FlowNodeTypeEnum.readFiles]: dispatchReadFiles,
 
   // none
   [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,

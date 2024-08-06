@@ -25,8 +25,23 @@
     "Code log": "Log 日志",
     "Custom inputs": "自定义输入",
     "Custom outputs": "自定义输出",
-    "Error": "错误信息"
+    "Error": "错误信息",
+    "Read file result": "文档解析结果预览",
+    "read files": "解析的文档"
+  },
+  "template": {
+    "ai_chat": "AI 对话",
+    "ai_chat_intro": "AI 大模型对话",
+    "dataset_search": "知识库搜索",
+    "dataset_search_intro": "调用“语义检索”和“全文检索”能力，从“知识库”中查找可能与问题相关的参考内容",
+    "system_config": "系统配置",
+    "tool_call": "工具调用",
+    "tool_call_intro": "通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。",
+    "workflow_start": "流程开始"
   },
   "tool_input": "工具参数",
-  "variable_picker_tips": "可输入节点名或变量名搜索"
+  "variable_picker_tips": "可输入节点名或变量名搜索",
+  "delete_api": "确认删除该API密钥？删除后该密钥立即失效，对应的对话日志不会删除，请确认！",
+  "create_link_error": "创建链接异常",
+  "update_link_error": "更新链接异常"
 }

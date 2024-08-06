@@ -45,11 +45,11 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
     >
       <ModalBody>
         <Flex alignItems={'center'}>
-          <Box flex={'0 0 70px'}>旧密码:</Box>
+          <Box flex={'0 0 70px'}>{t('common:user.old_password') + ':'}</Box>
           <Input flex={1} type={'password'} {...register('oldPsw', { required: true })}></Input>
         </Flex>
         <Flex alignItems={'center'} mt={5}>
-          <Box flex={'0 0 70px'}>新密码:</Box>
+          <Box flex={'0 0 70px'}>{t('common:user.new_password') + ':'}</Box>
           <Input
             flex={1}
             type={'password'}
@@ -57,13 +57,13 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
               required: true,
               maxLength: {
                 value: 60,
-                message: '密码最少 4 位最多 60 位'
+                message: t('common:user.password_message')
               }
             })}
           ></Input>
         </Flex>
         <Flex alignItems={'center'} mt={5}>
-          <Box flex={'0 0 70px'}>确认密码:</Box>
+          <Box flex={'0 0 70px'}>{t('common:user.confirm_password') + ':'}</Box>
           <Input
             flex={1}
             type={'password'}
@@ -71,7 +71,7 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
               required: true,
               maxLength: {
                 value: 60,
-                message: '密码最少 4 位最多 60 位'
+                message: t('common:user.password_message')
               }
             })}
           ></Input>
@@ -79,10 +79,10 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
       </ModalBody>
       <ModalFooter>
         <Button mr={3} variant={'whiteBase'} onClick={onClose}>
-          取消
+          {t('common:common.Cancel')}
         </Button>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data))}>
-          确认
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

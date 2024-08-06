@@ -85,7 +85,7 @@ const EditFieldModal = ({
   );
 
   return (
-    <MyModal isOpen iconSrc="modal/edit" title={'工具字段参数配置'} onClose={onClose}>
+    <MyModal isOpen iconSrc="modal/edit" title={t('common:tool_field')} onClose={onClose}>
       <ModalBody>
         <Flex alignItems={'center'} mb={5}>
           <Box flex={'0 0 80px'}>{t('common:common.Require Input')}</Box>
@@ -111,7 +111,7 @@ const EditFieldModal = ({
               required: true,
               pattern: {
                 value: /^[a-zA-Z]+[0-9]*$/,
-                message: '字段key必须是纯英文字母或数字，并且不能以数字开头。'
+                message: t('common:info.felid_message')
               }
             })}
           />

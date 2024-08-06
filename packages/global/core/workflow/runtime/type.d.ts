@@ -16,10 +16,12 @@ import { UserModelSchema } from '../../../support/user/type';
 import { AppDetailType, AppSchema } from '../../app/type';
 import { RuntimeNodeItemType } from '../runtime/type';
 import { RuntimeEdgeItemType } from './edge';
+import { ReadFileNodeResponse } from '../template/system/readFiles/type';
 
 /* workflow props */
 export type ChatDispatchProps = {
   res?: NextApiResponse;
+  requestOrigin?: string;
   mode: 'test' | 'chat' | 'debug';
   teamId: string;
   tmbId: string;
@@ -30,6 +32,7 @@ export type ChatDispatchProps = {
   histories: ChatItemType[];
   variables: Record<string, any>; // global variable
   query: UserChatItemValueItemType[]; // trigger query
+  chatConfig: AppSchema['chatConfig'];
   stream: boolean;
   detail: boolean; // response detail
   maxRunTimes: number;
@@ -146,6 +149,10 @@ export type DispatchNodeResponseType = {
 
   // plugin
   pluginOutput?: Record<string, any>;
+
+  // read files
+  readFilesResult?: string;
+  readFiles?: ReadFileNodeResponse;
 };
 
 export type DispatchNodeResultType<T> = {
@@ -166,4 +173,6 @@ export type AIChatNodeProps = {
   [NodeInputKeyEnum.aiChatIsResponseText]: boolean;
   [NodeInputKeyEnum.aiChatQuoteTemplate]?: string;
   [NodeInputKeyEnum.aiChatQuotePrompt]?: string;
+  [NodeInputKeyEnum.aiChatVision]?: boolean;
+  [NodeInputKeyEnum.stringQuoteText]?: string;
 };
