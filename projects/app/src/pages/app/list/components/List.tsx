@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Grid, Flex, IconButton, HStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { delAppById, putAppById, resumeInheritPer } from '@/web/core/app/api';
+import { delAppById, putAppById, resumeInheritPer, changeOwner } from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -399,6 +399,12 @@ const ListItem = () => {
       )}
       {!!editPerApp && (
         <ConfigPerModal
+          onChangeOwner={(tmbId: string) =>
+            changeOwner({
+              appId: editPerApp._id,
+              ownerId: tmbId
+            }).then(() => loadMyApps())
+          }
           refetchResource={loadMyApps}
           hasParent={Boolean(parentId)}
           resumeInheritPermission={onResumeInheritPermission}
