@@ -98,7 +98,9 @@ const FileSelector = ({
                       item.id === fileId
                         ? {
                             ...item,
-                            uploadedFileRate: e
+                            uploadedFileRate: item.uploadedFileRate
+                              ? Math.max(e, item.uploadedFileRate)
+                              : e
                           }
                         : item
                     )
