@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Flex,
   Box,
@@ -9,14 +9,19 @@ import {
   Tr,
   Th,
   Td,
-  Tbody
+  Tbody,
+  useDisclosure
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { getShareChatList, delShareChatById } from '@/web/support/outLink/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { defaultFeishuOutLinkForm } from '@/web/core/app/constants';
-import type { FeishuType, OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
+import type {
+  FeishuType,
+  OutLinkEditType,
+  OutLinkSchema
+} from '@fastgpt/global/support/outLink/type.d';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -25,14 +30,22 @@ import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useCopyData } from '@/web/common/hooks/useCopyData';
 
 const FeiShuEditModal = dynamic(() => import('./FeiShuEditModal'));
+const ShowShareLinkModal = dynamic(() => import('../components/showShareLinkModal'));
 
 const FeiShu = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { Loading, setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
   const [editFeiShuLinkData, setEditFeiShuLinkData] = useState<OutLinkEditType<FeishuType>>();
+
+  const baseUrl = useMemo(
+    () => feConfigs?.customApiDomain || `${location.origin}/api`,
+    [feConfigs?.customApiDomain]
+  );
+
   const {
     data: shareChatList = [],
     loading: isFetching,
@@ -40,6 +53,13 @@ const FeiShu = ({ appId }: { appId: string }) => {
   } = useRequest2(() => getShareChatList<FeishuType>({ appId, type: PublishChannelEnum.feishu }), {
     manual: false
   });
+  const { copyData } = useCopyData();
+  const {
+    onOpen: openShowShareLinkModal,
+    isOpen: showShareLinkModalOpen,
+    onClose: closeShowShareLinkModal
+  } = useDisclosure();
+  const [showShareLink, setShowShareLink] = useState<string | null>(null);
 
   return (
     <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
@@ -47,20 +67,40 @@ const FeiShu = ({ appId }: { appId: string }) => {
         <Box fontWeight={'bold'} fontSize={['md', 'lg']}>
           {t('common:core.app.publish.Fei shu bot publish')}
         </Box>
-        <Button
-          variant={'whitePrimary'}
-          colorScheme={'blue'}
-          size={['sm', 'md']}
-          {...(shareChatList.length >= 10
-            ? {
-                isDisabled: true,
-                title: t('common:core.app.share.Amount limit tip')
-              }
-            : {})}
-          onClick={() => setEditFeiShuLinkData(defaultFeishuOutLinkForm)}
-        >
-          {t('common:core.app.share.Create link')}
-        </Button>
+        <Flex flexDirection="row">
+          <Flex
+            mt={[2, 0]}
+            bg={'myGray.100'}
+            py={2}
+            px={4}
+            borderRadius={'md'}
+            cursor={'pointer'}
+            userSelect={'none'}
+            onClick={() => copyData(baseUrl, t('common:support.openapi.Copy success'))}
+          >
+            <Box border="md" px={2} borderRadius={'md'} fontSize={'xs'}>
+              {t('common:support.openapi.Api baseurl')}
+            </Box>
+            <Box ml={2} fontSize={'sm'}>
+              {baseUrl}
+            </Box>
+          </Flex>
+          <Button
+            variant={'whitePrimary'}
+            colorScheme={'blue'}
+            size={['sm', 'md']}
+            ml={3}
+            {...(shareChatList.length >= 10
+              ? {
+                  isDisabled: true,
+                  title: t('common:core.app.share.Amount limit tip')
+                }
+              : {})}
+            onClick={() => setEditFeiShuLinkData(defaultFeishuOutLinkForm)}
+          >
+            {t('common:core.app.share.Create link')}
+          </Button>
+        </Flex>
       </Flex>
       <TableContainer mt={3}>
         <Table variant={'simple'} w={'100%'} overflowX={'auto'} fontSize={'sm'}>
@@ -108,11 +148,22 @@ const FeiShu = ({ appId }: { appId: string }) => {
                     : t('common:common.Un used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
+                  <Button
+                    onClick={() => {
+                      setShowShareLink(`${baseUrl}/support/outLink/feishu/${item._id}`);
+                      openShowShareLinkModal();
+                    }}
+                    size={'sm'}
+                    mr={3}
+                    variant={'whitePrimary'}
+                  >
+                    {t('common:core.app.outLink.Select Mode')}
+                  </Button>
                   <MyMenu
                     Button={
                       <MyIcon
                         name={'more'}
-                        _hover={{ bg: 'myGray.100  ' }}
+                        _hover={{ bg: 'myGray.100' }}
                         cursor={'pointer'}
                         borderRadius={'md'}
                         w={'14px'}
@@ -173,6 +224,9 @@ const FeiShu = ({ appId }: { appId: string }) => {
         <EmptyTip text={t('common:core.app.share.Not share link')}></EmptyTip>
       )}
       <Loading loading={isFetching} fixed={false} />
+      {showShareLinkModalOpen && (
+        <ShowShareLinkModal shareLink={showShareLink ?? ''} onClose={closeShowShareLinkModal} />
+      )}
     </Box>
   );
 };
