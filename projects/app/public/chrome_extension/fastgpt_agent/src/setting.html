@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配置项管理器</title>
+    <style>
+        body, html {
+            height: 585px;
+            width: 800px;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+
+        #startChatButton {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: 95px;
+            height: 30px;
+            background-color: #1890ff;
+            border: none;
+            cursor: pointer;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            clip-path: polygon(10% 0%, 100% 0%, 100% 100%, 10% 100%, 0% 50%);
+            border-top-left-radius: 10px;
+            border-bottom-left-radius: 10px;
+            overflow: hidden;
+        }
+
+        table, form {
+            margin-bottom: 10px;
+        }
+
+        h1, h2 {
+            text-align: center;
+            margin-top: 0;
+        }
+
+        #configTable th:nth-child(1),
+        #configTable td:nth-child(1) {
+            width: 150px; /* 设置第1列的宽度 */
+        }
+
+        #configTable th:nth-child(3),
+        #configTable td:nth-child(3) {
+            width: 70px; /* 设置第3列的宽度 */
+        }
+
+        #configTable th:nth-child(4),
+        #configTable td:nth-child(4) {
+            width: 50px; /* 设置第4列的宽度 */
+            text-align: center;
+        }
+
+        table {
+            width: 800px;
+            border-collapse: collapse;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            position: relative;
+            word-break: break-word;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        form {
+            max-width: 600px;
+            margin: auto;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"], input[type="number"] {
+            width: calc(100% - 10px);
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            vertical-align: middle;
+            display: inline-block;
+            transform: translateY(15%);
+        }
+
+        button {
+            background-color: #1890ff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #addConfigButton {
+            left: 10px;
+            width: 60px;
+            height: 30px;
+            border: none;
+            cursor: pointer;
+            color: white;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+
+        .editName, .editUrl {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .editButton[disabled] {
+            color: #666; /* Gray text color */
+            cursor: not-allowed; /* Change cursor to not-allowed */
+        }
+
+        .editButton, .deleteButton {
+            background-color: transparent; /* Remove background color */
+            border: none;
+            padding: 0;
+            text-align: center;
+            cursor: pointer;
+            font-size: 14px;
+            color: #1890ff;
+            position: relative;
+        }
+
+        .button-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .button-group button {
+            margin-right: 5px; /* Add space between buttons */
+        }
+
+        .editButton:hover {
+            background-color: transparent;
+            color: #4CAF50; /* Green color on hover */
+        }
+
+        .deleteButton:hover {
+            background-color: transparent;
+            color: #f44336; /* Red color on hover */
+        }
+
+        .editButton + div {
+            display: flex;
+            flex-direction: column;
+            position: absolute;
+            left: -20px; /* 调整位置以适应左侧显示 */
+            top: 0; /* 确保与编辑按钮对齐 */
+        }
+
+        .editButton + div span {
+            cursor: pointer;
+            margin: 5px 0; /* 上下间距 */
+        }
+
+        .icon-hover {
+            transition: transform 0.3s ease; /* 添加过渡效果 */
+        }
+
+        .icon-hover:hover {
+            transform: scale(2); /* 鼠标悬停时放大1.2倍 */
+        }
+
+        .custom-radio {
+            position: relative;
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .custom-radio input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+        }
+
+        .custom-radio .radio-mark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 16px;
+            width: 16px;
+            background-color: #f1f1f1;
+            border-radius: 50%;
+            border: 1px solid #d9d9d9;
+            z-index: 1;
+            transition: all 0.3s ease;
+        }
+
+        .custom-radio:hover input ~ .radio-mark {
+            background-color: #ccc;
+        }
+
+        .custom-radio input:checked ~ .radio-mark {
+            background-color: #1890ff;
+            border-color: #1890ff;
+        }
+
+        .custom-radio .radio-mark:after {
+            content: "";
+            position: absolute;
+            display: none;
+            top: 50%;
+            left: 50%;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: white;
+            transform: translate(-50%, -50%);
+        }
+
+        .custom-radio input:checked ~ .radio-mark:after {
+            display: block;
+        }
+
+        .custom-radio .radio-mark:active {
+            transform: scale(0.9);
+        }
+
+        .custom-radio .radio-mark:active:after {
+            transform: scale(1.1);
+        }
+
+        .custom-radio .radio-mark:hover {
+            transform: scale(1.1);
+        }
+
+        .custom-radio .radio-mark:hover:after {
+            transform: scale(1.1);
+        }
+
+        #errorMsg {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 10px 15px;
+            border-radius: 5px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        /* 为确认和取消按钮添加伪元素 */
+        .confirmButton::before,
+        .cancelButton::before {
+            content: ""; /* 初始时，伪元素的内容为空 */
+        }
+
+        /* 当鼠标悬停在按钮上时，显示文字 */
+        .confirmButton:hover::before {
+            content: "确认";
+        }
+
+        .cancelButton:hover::before {
+            content: "取消";
+        }
+
+        .confirmButton::before,
+        .cancelButton::before {
+            position: absolute;
+            left: 20px;
+            transform: translate(-50%, -50%);
+            font-size: 8px;
+            color: darkgray;
+            white-space: nowrap;
+            transition: content 0.3s;
+        }
+
+        .confirmButton::before {
+            top: 10%;
+        }
+
+        .cancelButton::before {
+            top: 80%;
+        }
+
+        .config-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            justify-content: center;
+        }
+
+        .config-item label {
+            margin-right: 10px;
+            width: 120px;
+            text-align: right;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .config-item input[type="number"] {
+            width: 80px;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+    </style>
+    <script src="setting.js" defer></script>
+</head>
+<body>
+<button id="startChatButton">开始聊天</button>
+<div id="errorMsg"></div>
+<h1>ChatBot配置</h1>
+<h3>页面机器人：</h3>
+<div style="display: flex">
+    <div class="config-item">
+        <label for="showChatBotSwitch">显示：</label>
+        <input type="checkbox" id="showChatBotSwitch">
+    </div>
+
+    <div class="config-item">
+        <label for="chatBotWidthInput">宽度(px)：</label>
+        <input type="number" id="chatBotWidthInput" min="1">
+    </div>
+
+    <div class="config-item">
+        <label for="chatBotHeightInput">高度(px)：</label>
+        <input type="number" id="chatBotHeightInput" min="1">
+    </div>
+</div>
+
+<h3>机器人地址：</h3>
+<table id="configTable">
+    <thead>
+    <tr>
+        <th>名称</th>
+        <th>地址</th>
+        <th>操作</th>
+        <th>选择BOT</th>
+    </tr>
+    </thead>
+    <tbody id="configList"> <!-- Table rows will be dynamically added using JavaScript --> </tbody>
+</table>
+<button id="addConfigButton">添 加</button>
+</body>
+</html>

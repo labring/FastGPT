@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "ChatBot Extension",
+  "version": "1.1",
+  "description": "A ChatBot",
+  "permissions": [
+    "storage",
+    "notifications",
+    "tabs",
+    "activeTab",
+    "scripting",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "img/favicon32.png",
+      "48": "img/favicon32.png",
+      "128": "img/favicon32.png"
+    }
+  },
+  "icons": {
+    "16": "img/favicon32.png",
+    "32": "img/favicon32.png",
+    "48": "img/favicon32.png",
+    "128": "img/favicon32.png"
+  },
+  "content_scripts": [
+    {
+      "js": [
+        "src/content.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
