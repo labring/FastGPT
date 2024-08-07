@@ -223,8 +223,8 @@
     },
     "error": {
       "Select avatar failed": "Avatar selection failed",
-      "unKnow": "An unexpected error occurred~",
-      "too_many_request": "Too many requests, please try again later."
+      "too_many_request": "Too many requests, please try again later.",
+      "unKnow": "An unexpected error occurred~"
     },
     "failed": "fail",
     "folder": {
@@ -596,7 +596,8 @@
             "success": "Start syncing"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",
@@ -650,7 +651,7 @@
         "Down load csv template": "Click to download CSV template",
         "Embedding Estimated Price Tips": "Only using the index model, consumes a small amount of AI points: {{price}} points/1k Tokens",
         "Ideal chunk length": "Ideal chunk length",
-        "Ideal chunk length Tips": "Segment by end symbols. We recommend that your document should reasonably use punctuation to ensure that each complete sentence does not exceed this value\nChinese documents recommend 400~1000\nEnglish documents recommend 600~1200",
+        "Ideal chunk length Tips": "Segment according to the end symbol, and combine the segments into a block. This value determines the estimated size of the block.",
         "Import success": "Import successful, please wait for training",
         "Link name": "Network link",
         "Link name placeholder": "Only supports static links, if the data is empty after upload, the link may not be readable\nOne per line, up to 10 links at a time",

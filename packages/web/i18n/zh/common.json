@@ -225,8 +225,8 @@
     },
     "error": {
       "Select avatar failed": "头像选择异常",
-      "unKnow": "出现了点意外~",
-      "too_many_request": "请求太频繁了，请稍后重试。"
+      "too_many_request": "请求太频繁了，请稍后重试。",
+      "unKnow": "出现了点意外~"
     },
     "failed": "失败",
     "folder": {
@@ -598,7 +598,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -652,7 +653,7 @@
         "Down load csv template": "点击下载 CSV 模板",
         "Embedding Estimated Price Tips": "仅使用索引模型，消耗少量 AI 积分：{{price}} 积分/1K tokens",
         "Ideal chunk length": "理想分块长度",
-        "Ideal chunk length Tips": "按结束符号进行分段。我们建议您的文档应合理的使用标点符号，以确保每个完整的句子长度不要超过该值\n中文文档建议 400~1000\n英文文档建议 600~1200",
+        "Ideal chunk length Tips": "按结束符号进行分段，并将多个分段组成一个分块，该值决定了分块的预估大小。",
         "Import success": "导入成功，请等待训练",
         "Link name": "网络链接",
         "Link name placeholder": "仅支持静态链接，如果上传后数据为空，可能该链接无法被读取\n每行一个，每次最多 10 个链接",
