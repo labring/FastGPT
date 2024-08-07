@@ -223,7 +223,8 @@
     },
     "error": {
       "Select avatar failed": "Avatar selection failed",
-      "unKnow": "An unexpected error occurred~"
+      "unKnow": "An unexpected error occurred~",
+      "too_many_request": "Too many requests, please try again later."
     },
     "failed": "fail",
     "folder": {
@@ -595,8 +596,7 @@
             "success": "Start syncing"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",
@@ -1017,7 +1017,8 @@
     "missingParams": "Insufficient parameters",
     "team": {
       "overSize": "Team members exceed the limit"
-    }
+    },
+    "upload_file_error_filename": "{{name}} upload failed"
   },
   "extraction_results": "Extract results",
   "field_name": "Name",

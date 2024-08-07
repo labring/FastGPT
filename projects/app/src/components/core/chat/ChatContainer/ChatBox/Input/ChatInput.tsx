@@ -22,6 +22,8 @@ import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { clone } from 'lodash';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -111,6 +113,7 @@ const ChatInput = ({
       if (filterFiles.length === 0) return;
 
       replaceFiles(fileList.map((item) => ({ ...item, status: 1 })));
+      let errorFileIndex: number[] = [];
 
       for (const file of filterFiles) {
         if (!file.rawFile) continue;
@@ -130,11 +133,16 @@ const ChatInput = ({
             url: `${location.origin}${previewUrl}`
           });
         } catch (error) {
-          removeFiles(fileList.findIndex((item) => item.id === file.id)!);
-          console.log(error);
-          return Promise.reject(error);
+          errorFileIndex.push(fileList.findIndex((item) => item.id === file.id)!);
+          toast({
+            status: 'warning',
+            title: t(
+              getErrText(error, t('common:error.upload_file_error_filename', { name: file.name }))
+            )
+          });
         }
       }
+      removeFiles(errorFileIndex);
     },
     {
       manual: false,
@@ -340,7 +348,7 @@ const ChatInput = ({
           mb={fileList.length > 0 ? 2 : 0}
         >
           {fileList.map((item, index) => (
-            <Box
+            <MyBox
               key={item.id}
               border={'1px solid #E8EBF0'}
               boxShadow={
@@ -349,26 +357,10 @@ const ChatInput = ({
               rounded={'md'}
               position={'relative'}
               _hover={{
-                '.close-icon': { display: item.url ? 'block' : 'none' }
+                '.close-icon': { display: 'block' }
               }}
+              isLoading={!item.url}
             >
-              {/* uploading */}
-              {!item.url && (
-                <Flex
-                  position={'absolute'}
-                  alignItems={'center'}
-                  justifyContent={'center'}
-                  rounded={'md'}
-                  color={'primary.500'}
-                  top={0}
-                  left={0}
-                  bottom={0}
-                  right={0}
-                  bg={'rgba(255,255,255,0.8)'}
-                >
-                  <Spinner />
-                </Flex>
-              )}
               <MyIcon
                 name={'closeSolid'}
                 w={'16px'}
@@ -385,6 +377,7 @@ const ChatInput = ({
                 }}
                 className="close-icon"
                 display={['', 'none']}
+                zIndex={10}
               />
               {item.type === ChatFileTypeEnum.image && (
                 <Image
@@ -404,7 +397,7 @@ const ChatInput = ({
                   </Box>
                 </HStack>
               )}
-            </Box>
+            </MyBox>
           ))}
         </Flex>
 

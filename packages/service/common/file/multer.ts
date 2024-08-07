@@ -3,7 +3,6 @@ import multer from 'multer';
 import path from 'path';
 import { BucketNameEnum, bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { tmpFileDirPath } from './constants';
 
 type FileType = {
   fieldname: string;
