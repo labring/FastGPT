@@ -1032,7 +1032,7 @@
     "csv_download": "Click to download batch test template",
     "csv_message": "Read the first column of the CSV file for batch testing, supporting up to 100 sets of data at a time.",
     "felid_message": "The field key must be pure English letters or numbers, and cannot start with a number.",
-    "free_plan": "When free version users have no usage records for 30 days, the system will automatically clean up the account knowledge base.",
+    "free_plan": "When a free version user does not log in to the system for 30 consecutive days, the system will automatically clean up the account knowledge base.",
     "include": "Includes standard package and additional resource package",
     "node_info": "Adjusting this module will have an impact on the timing of tool calls.\n\nYou can guide the model to make tool calls by accurately describing the function of the module.",
     "old_version_attention": "If it is detected that your advanced arrangement is an old version, the system will automatically format it into a new version of the workflow for you.\n\n\nDue to large version differences, some workflows may not be arranged normally. Please reconnect the workflows manually. \nIf the error persists, try deleting the corresponding node and adding it again.\n\n\nYou can directly click Debug to perform workflow testing, and click Publish after debugging is completed. \nThe new workflow will not actually save and take effect until you click Publish.\n\n\nAutosave will not take effect until you publish the new workflow.",

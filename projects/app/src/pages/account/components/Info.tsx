@@ -430,10 +430,6 @@ const PlanUsage = () => {
 
             {isFreeTeam ? (
               <>
-                <Flex mt="2" color={'#485264'} fontSize="sm">
-                  <Box>{t('common:support.wallet.Plan reset time')}:</Box>
-                  <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>
-                </Flex>
                 <Box mt="2" color={'#485264'} fontSize="sm">
                   {t('common:info.free_plan')}
                 </Box>
