@@ -17,11 +17,7 @@ import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { getShareChatList, delShareChatById } from '@/web/support/outLink/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { defaultFeishuOutLinkForm } from '@/web/core/app/constants';
-import type {
-  FeishuType,
-  OutLinkEditType,
-  OutLinkSchema
-} from '@fastgpt/global/support/outLink/type.d';
+import type { FeishuAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -39,7 +35,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { Loading, setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
-  const [editFeiShuLinkData, setEditFeiShuLinkData] = useState<OutLinkEditType<FeishuType>>();
+  const [editFeiShuLinkData, setEditFeiShuLinkData] = useState<OutLinkEditType<FeishuAppType>>();
 
   const baseUrl = useMemo(
     () => feConfigs?.customApiDomain || `${location.origin}/api`,
@@ -50,9 +46,12 @@ const FeiShu = ({ appId }: { appId: string }) => {
     data: shareChatList = [],
     loading: isFetching,
     runAsync: refetchShareChatList
-  } = useRequest2(() => getShareChatList<FeishuType>({ appId, type: PublishChannelEnum.feishu }), {
-    manual: false
-  });
+  } = useRequest2(
+    () => getShareChatList<FeishuAppType>({ appId, type: PublishChannelEnum.feishu }),
+    {
+      manual: false
+    }
+  );
   const { copyData } = useCopyData();
   const {
     onOpen: openShowShareLinkModal,
@@ -150,7 +149,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
                 <Td display={'flex'} alignItems={'center'}>
                   <Button
                     onClick={() => {
-                      setShowShareLink(`${baseUrl}/support/outLink/feishu/${item._id}`);
+                      setShowShareLink(`${baseUrl}/support/outLink/feishu/${item.shareId}`);
                       openShowShareLinkModal();
                     }}
                     size={'sm'}

@@ -1,6 +1,6 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppDetailType } from '@fastgpt/global/core/app/type.d';
-import type { FeishuType, OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
+import type { FeishuAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { NullPermission } from '@fastgpt/global/support/permission/constant';
 import { i18nT } from '@fastgpt/web/i18n/utils';
@@ -49,7 +49,7 @@ export const defaultOutLinkForm: OutLinkEditType = {
 //   }
 // };
 
-export const defaultFeishuOutLinkForm: OutLinkEditType<FeishuType> = {
+export const defaultFeishuOutLinkForm: OutLinkEditType<FeishuAppType> = {
   name: '',
   limit: {
     QPM: 100,

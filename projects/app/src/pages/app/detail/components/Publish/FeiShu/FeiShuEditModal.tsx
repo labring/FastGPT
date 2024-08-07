@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Flex, Box, Button, ModalFooter, ModalBody, Input } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import type { FeishuType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
+import type { FeishuAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import dayjs from 'dayjs';
@@ -19,7 +19,7 @@ const FeiShuEditModal = ({
   onEdit
 }: {
   appId: string;
-  defaultData: OutLinkEditType<FeishuType>;
+  defaultData: OutLinkEditType<FeishuAppType>;
   onClose: () => void;
   onCreate: (id: string) => void;
   onEdit: () => void;
@@ -121,32 +121,32 @@ const FeiShuEditModal = ({
             }}
           />
         </Flex>
+        {/* <Flex alignItems={'center'} mt={4}> */}
+        {/*   <Flex flex={'0 0 90px'} alignItems={'center'}> */}
+        {/*     {t('common:default_reply')} */}
+        {/*   </Flex> */}
+        {/*   <Input */}
+        {/*     placeholder={publishT('default_response') || 'link_name'} */}
+        {/*     maxLength={20} */}
+        {/*     {...register('defaultResponse', { */}
+        {/*       required: true */}
+        {/*     })} */}
+        {/*   /> */}
+        {/* </Flex> */}
+        {/* <Flex alignItems={'center'} mt={4}> */}
+        {/*   <Flex flex={'0 0 90px'} alignItems={'center'}> */}
+        {/*     {t('common:reply_now')} */}
+        {/*   </Flex> */}
+        {/*   <Input */}
+        {/*     placeholder={publishT('default_response') || 'link_name'} */}
+        {/*     maxLength={20} */}
+        {/*     {...register('immediateResponse', { */}
+        {/*       required: true */}
+        {/*     })} */}
+        {/*   /> */}
+        {/* </Flex> */}
         <Flex alignItems={'center'} mt={4}>
-          <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('common:default_reply')}
-          </Flex>
-          <Input
-            placeholder={publishT('default_response') || 'link_name'}
-            maxLength={20}
-            {...register('defaultResponse', {
-              required: true
-            })}
-          />
-        </Flex>
-        <Flex alignItems={'center'} mt={4}>
-          <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('common:reply_now')}
-          </Flex>
-          <Input
-            placeholder={publishT('default_response') || 'link_name'}
-            maxLength={20}
-            {...register('immediateResponse', {
-              required: true
-            })}
-          />
-        </Flex>
-        <Flex alignItems={'center'} mt={4}>
-          <Box flex={'0 0 90px'}>{t('common:core.module.http.AppId')}</Box>
+          <Box flex={'0 0 90px'}>App ID</Box>
           <Input
             placeholder={t('common:core.module.http.AppId') || 'link_name'}
             // maxLength={20}
@@ -156,7 +156,7 @@ const FeiShuEditModal = ({
           />
         </Flex>
         <Flex alignItems={'center'} mt={4}>
-          <Box flex={'0 0 90px'}>{t('common:core.module.http.AppSecret' as any)}</Box>
+          <Box flex={'0 0 90px'}>App Secret</Box>
           <Input
             placeholder={'App Secret'}
             // maxLength={20}
@@ -171,20 +171,20 @@ const FeiShuEditModal = ({
             placeholder="Encrypt Key"
             // maxLength={20}
             {...register('app.encryptKey', {
-              required: t('common:common.name_is_empty') || 'name_is_empty'
+              // required: t('common:common.name_is_empty') || 'name_is_empty'
             })}
           />
         </Flex>
-        <Flex alignItems={'center'} mt={4}>
-          <Box flex={'0 0 90px'}>Verification Token</Box>
-          <Input
-            placeholder="Verification Token"
-            // maxLength={20}
-            {...register('app.verificationToken', {
-              required: t('common:common.name_is_empty') || 'name_is_empty'
-            })}
-          />
-        </Flex>
+        {/* <Flex alignItems={'center'} mt={4}> */}
+        {/*   <Box flex={'0 0 90px'}>Verification Token</Box> */}
+        {/*   <Input */}
+        {/*     placeholder="Verification Token" */}
+        {/*     // maxLength={20} */}
+        {/*     {...register('app.verificationToken', { */}
+        {/*       // required: t('common:common.name_is_empty') || 'name_is_empty' */}
+        {/*     })} */}
+        {/*   /> */}
+        {/* </Flex> */}
         {/* <Flex alignItems={'center'} mt={4}> */}
         {/*   <Flex flex={'0 0 90px'} alignItems={'center'}> */}
         {/*     限制回复 */}
