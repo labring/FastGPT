@@ -19,6 +19,7 @@ const DatasetTypeTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & Fle
       py={'6px'}
       borderRadius={'md'}
       fontSize={'xs'}
+      alignItems={'center'}
       {...props}
     >
       <MyIcon name={item.icon as any} w={'16px'} mr={2} color={'myGray.400'} />
