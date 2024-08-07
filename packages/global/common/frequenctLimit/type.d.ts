@@ -1,5 +1,5 @@
 export type AuthFrequencyLimitProps = {
   eventId: string;
-  maxAccount: number;
+  maxAmount: number;
   expiredTime: Date;
 };

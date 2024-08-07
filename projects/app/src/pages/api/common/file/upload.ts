@@ -13,10 +13,9 @@ import { addSeconds } from 'date-fns';
 
 const authUploadLimit = (tmbId: string) => {
   if (!global.feConfigs.uploadFileMaxAmount) return;
-
   return authFrequencyLimit({
     eventId: `${tmbId}-uploadfile`,
-    maxAccount: global.feConfigs.uploadFileMaxAmount * 2,
+    maxAmount: global.feConfigs.uploadFileMaxAmount * 2,
     expiredTime: addSeconds(new Date(), 30) // 30s
   });
 };
