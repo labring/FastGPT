@@ -3,13 +3,12 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import CollaboratorContextProvider, { MemberManagerInputPropsType } from '../MemberManager/context';
-import { Box, Button, Flex, HStack, ModalBody } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, ModalBody, useDisclosure } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import DefaultPermissionList from '../DefaultPerList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useI18n } from '@/web/context/I18n';
 import ResumeInherit from '../ResumeInheritText';
+import { ChangeOwnerModal } from '../ChangeOwnerModal';
 
 export type ConfigPerModalProps = {
   avatar?: string;
@@ -25,6 +24,7 @@ export type ConfigPerModalProps = {
   resumeInheritPermission?: () => void;
   hasParent?: boolean;
   refetchResource?: () => void;
+  onChangeOwner?: (tmbId: string) => Promise<unknown>;
 };
 
 const ConfigPerModal = ({
@@ -36,11 +36,17 @@ const ConfigPerModal = ({
   resumeInheritPermission,
   hasParent,
   onClose,
-  refetchResource
+  refetchResource,
+  onChangeOwner
 }: ConfigPerModalProps & {
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
+  const {
+    isOpen: isChangeOwnerModalOpen,
+    onOpen: onOpenChangeOwnerModal,
+    onClose: onCloseChangeOwnerModal
+  } = useDisclosure();
 
   return (
     <>
@@ -113,8 +119,30 @@ const ConfigPerModal = ({
               }}
             </CollaboratorContextProvider>
           </Box>
+          {onChangeOwner && (
+            <Box mt={4}>
+              <Button
+                size="md"
+                variant="whitePrimary"
+                onClick={onOpenChangeOwnerModal}
+                w="full"
+                borderRadius="md"
+                leftIcon={<MyIcon w="4" name="common/lineChange" />}
+              >
+                {t('common:permission.change_owner')}
+              </Button>
+            </Box>
+          )}
         </ModalBody>
       </MyModal>
+      {isChangeOwnerModalOpen && onChangeOwner && (
+        <ChangeOwnerModal
+          onClose={onCloseChangeOwnerModal}
+          avatar={avatar}
+          name={name}
+          onChangeOwner={onChangeOwner}
+        />
+      )}
     </>
   );
 };

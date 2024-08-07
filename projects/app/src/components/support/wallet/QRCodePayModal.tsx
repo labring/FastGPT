@@ -73,7 +73,7 @@ const QRCodePayModal = ({
   return (
     <MyModal isOpen title={t('common:user.Pay')} iconSrc="/imgs/modal/pay.svg">
       <ModalBody textAlign={'center'}>
-        <Box mb={3}>请微信扫码支付: {readPrice}元，请勿关闭页面</Box>
+        <Box mb={3}>{t('common:pay.wechat', { price: readPrice })}</Box>
         <Box id={'payQRCode'} display={'inline-block'} h={'128px'}></Box>
       </ModalBody>
       <ModalFooter />

@@ -5,11 +5,7 @@ import {
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import {
-  NodeOutputKeyEnum,
-  RuntimeEdgeStatusEnum,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -49,11 +45,7 @@ import { useDisclosure } from '@chakra-ui/react';
 import { uiWorkflow2StoreWorkflow } from './utils';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import {
-  formatTime2HM,
-  formatTime2YMDHM,
-  formatTime2YMDHMW
-} from '@fastgpt/global/common/string/time';
+import { formatTime2HM, formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import type { InitProps } from '@/pages/app/detail/components/PublishHistoriesSlider';
 import { cloneDeep } from 'lodash';
 
@@ -395,7 +387,7 @@ const WorkflowContextProvider = ({
           if (input) {
             toast({
               status: 'warning',
-              title: 'key 重复'
+              title: t('common:key_repetition')
             });
           } else {
             updateObj.inputs.push(props.value);
@@ -416,7 +408,7 @@ const WorkflowContextProvider = ({
           if (output) {
             toast({
               status: 'warning',
-              title: 'key 重复'
+              title: t('common:key_repetition')
             });
             updateObj.outputs = node.data.outputs;
           } else {
@@ -531,7 +523,7 @@ const WorkflowContextProvider = ({
         version: 'v2'
       });
       setSaveLabel(
-        t('core.app.Saved time', {
+        t('common:core.app.Saved time', {
           time: formatTime2HM()
         })
       );

@@ -12,7 +12,9 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-
+import { transformPreviewHistories } from '@/global/core/chat/utils';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -60,10 +62,10 @@ async function handler(
   return {
     chatId,
     appId,
-    title: chat?.title || '新对话',
+    title: chat?.title || i18nT('chat:new_chat'),
     userAvatar: undefined,
     variables: chat?.variables || {},
-    history: histories,
+    history: app.type === AppTypeEnum.plugin ? histories : transformPreviewHistories(histories),
     app: {
       chatConfig: getAppChatConfig({
         chatConfig: app.chatConfig,

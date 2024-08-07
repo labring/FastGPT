@@ -5,7 +5,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
 import { useI18n } from '@/web/context/I18n';
-
+import { useTranslation } from 'next-i18next';
 type Props = {
   onClose: () => void;
 };
@@ -15,7 +15,7 @@ const ImportSettings = ({ onClose }: Props) => {
   const { toast } = useToast();
   const initData = useContextSelector(WorkflowContext, (v) => v.initData);
   const [value, setValue] = useState('');
-
+  const { t } = useTranslation();
   return (
     <MyModal
       isOpen
@@ -50,7 +50,7 @@ const ImportSettings = ({ onClose }: Props) => {
             }
           }}
         >
-          确认
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

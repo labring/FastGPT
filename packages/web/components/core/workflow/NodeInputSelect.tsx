@@ -1,10 +1,10 @@
 import React, { useMemo, useRef } from 'react';
-import MyMenu, { type Props as MyMenuProps } from '../../common/MyMenu';
+import MyMenu from '../../common/MyMenu';
 import {
   FlowNodeInputMap,
   FlowNodeInputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { Box, Button, Flex, useTheme } from '@chakra-ui/react';
+import { Box, Button, useTheme } from '@chakra-ui/react';
 import MyIcon from '../../common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '../../../hooks/useConfirm';
@@ -142,11 +142,13 @@ const NodeInputSelect = ({
 
   return (
     <MyMenu
-      offset={[-0.5, -0.5]}
+      offset={[-0.5, 0.5]}
+      trigger="click"
       Button={
         <Button
           size={'xs'}
-          leftIcon={<MyIcon name={renderTypeData.icon as any} w={'14px'} />}
+          leftIcon={<MyIcon name={renderTypeData.icon as any} w={'0.8rem'} />}
+          rightIcon={<MyIcon name={'common/select'} w={'0.8rem'} color={'myGray.500'} />}
           variant={'grayBase'}
           border={theme.borders.base}
           borderRadius={'xs'}

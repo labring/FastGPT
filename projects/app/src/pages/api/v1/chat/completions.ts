@@ -201,7 +201,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               type: ChatItemValueTypeEnum.text,
               text: {
                 content: getPluginRunContent({
-                  pluginInputs: getPluginInputsFromStoreNodes(app.modules)
+                  pluginInputs: getPluginInputsFromStoreNodes(app.modules),
+                  variables
                 })
               }
             }
@@ -248,6 +249,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (app.version === 'v2') {
         return dispatchWorkFlow({
           res,
+          requestOrigin: req.headers.origin,
           mode: 'chat',
           user,
           teamId: String(teamId),
@@ -259,6 +261,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           runtimeEdges: initWorkflowEdgeStatus(edges),
           variables: runtimeVariables,
           query: removeEmptyUserInput(userQuestion.value),
+          chatConfig,
           histories: newHistories,
           stream,
           detail,

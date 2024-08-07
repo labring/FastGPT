@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Skeleton } from '@chakra-ui/react';
+import { ImageProps, Skeleton } from '@chakra-ui/react';
 import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
 import { useBoolean } from 'ahooks';
 
-const MdImage = ({ src }: { src?: string }) => {
+const MdImage = ({ src, ...props }: { src?: string } & ImageProps) => {
   const [isLoaded, { setTrue }] = useBoolean(false);
 
   const [renderSrc, setRenderSrc] = useState(src);
@@ -31,6 +31,7 @@ const MdImage = ({ src }: { src?: string }) => {
           setRenderSrc('/imgs/errImg.png');
           setTrue();
         }}
+        {...props}
       />
     </Skeleton>
   );

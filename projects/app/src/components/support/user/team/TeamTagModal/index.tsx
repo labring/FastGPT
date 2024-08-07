@@ -95,7 +95,7 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
           <Box>
             <Box>{teamInfo?.teamName}</Box>
             <Box color={'myGray.500'} fontSize={'xs'} fontWeight={'normal'}>
-              {'填写标签同步链接，点击同步按钮即可同步'}
+              {t('user:synchronization.title')}
             </Box>
           </Box>
         }
@@ -110,7 +110,7 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
               ml={4}
               autoFocus
               bg={'myWhite.600'}
-              placeholder="请输入同步标签"
+              placeholder={t('user:synchronization.placeholder')}
               {...register('teamDomain', {
                 required: true
               })}
@@ -181,7 +181,7 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
               leftIcon={<RepeatIcon />}
               onClick={handleSubmit((data) => onclickTagAsync(data))}
             >
-              立即同步
+              {t('user:synchronization.button')}
             </Button>
           </Flex>
         </ModalBody>

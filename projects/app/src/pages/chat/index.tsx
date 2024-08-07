@@ -3,7 +3,6 @@ import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { delChatRecordById, getChatHistories, getInitChatInfo } from '@/web/core/chat/api';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useChatStore } from '@/web/core/chat/context/storeChat';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -256,7 +255,6 @@ const Chat = ({
                   appAvatar={chatData.app.avatar}
                   userAvatar={userInfo?.avatar}
                   chatConfig={chatData.app?.chatConfig}
-                  showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                   feedbackType={'user'}
                   onStartChat={onStartChat}
                   onDelMessage={({ contentId }) => delChatRecordById({ contentId, appId, chatId })}
@@ -340,7 +338,7 @@ export async function getServerSideProps(context: any) {
     props: {
       appId: context?.query?.appId || '',
       chatId: context?.query?.chatId || '',
-      ...(await serviceSideProps(context, ['file', 'app']))
+      ...(await serviceSideProps(context, ['file', 'app', 'chat']))
     }
   };
 }

@@ -1,23 +1,41 @@
 import React from 'react';
-import { ModalBody, Box, useTheme } from '@chakra-ui/react';
+import { ModalBody, Box } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { DispatchNodeResponseType } from '@fastgpt/global/core/workflow/runtime/type.d';
+import { useContextSelector } from 'use-context-selector';
+import { ChatBoxContext } from '../Provider';
+import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useTranslation } from 'next-i18next';
+const isLLMNode = (item: ChatHistoryItemResType) =>
+  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.tools;
 
-const ContextModal = ({
-  context = [],
-  onClose
-}: {
-  context: DispatchNodeResponseType['historyPreview'];
-  onClose: () => void;
-}) => {
-  const theme = useTheme();
-
+const ContextModal = ({ onClose, dataId }: { onClose: () => void; dataId: string }) => {
+  const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
+  const { t } = useTranslation();
+  const { loading: isLoading, data: contextModalData } = useRequest2(
+    () =>
+      getHistoryResponseData({ dataId }).then((res) => {
+        const flatResData: ChatHistoryItemResType[] =
+          res
+            ?.map((item) => {
+              if (item.pluginDetail || item.toolDetail) {
+                return [item, ...(item.pluginDetail || []), ...(item.toolDetail || [])];
+              }
+              return item;
+            })
+            .flat() || [];
+        return flatResData.find(isLLMNode)?.historyPreview || [];
+      }),
+    { manual: false }
+  );
   return (
     <MyModal
       isOpen={true}
       onClose={onClose}
+      isLoading={isLoading}
       iconSrc="/imgs/modal/chatHistory.svg"
-      title={`上下文预览(${context.length}条)`}
+      title={t('chat:contextual_preview', { num: contextModalData?.length || 0 })}
       h={['90vh', '80vh']}
       minW={['90vw', '600px']}
       isCentered
@@ -28,12 +46,12 @@ const ContextModal = ({
         wordBreak={'break-all'}
         fontSize={'sm'}
       >
-        {context.map((item, i) => (
+        {contextModalData?.map((item, i) => (
           <Box
             key={i}
             p={2}
             borderRadius={'md'}
-            border={theme.borders.base}
+            border={'base'}
             _notLast={{ mb: 2 }}
             position={'relative'}
           >

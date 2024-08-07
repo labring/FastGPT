@@ -33,9 +33,10 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-
+import { useI18n } from '@/web/context/I18n';
 const BillTable = () => {
   const { t } = useTranslation();
+  const { commonT } = useI18n();
   const { toast } = useToast();
   const [billType, setBillType] = useState<BillTypeEnum | ''>('');
   const [billDetail, setBillDetail] = useState<BillSchemaType>();
@@ -134,7 +135,7 @@ const BillTable = () => {
                 <Td>
                   {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                 </Td>
-                <Td>{formatStorePrice2Read(item.price)}元</Td>
+                <Td>{commonT('common:pay.yuan', { amount: formatStorePrice2Read(item.price) })}</Td>
                 <Td>{t(billStatusMap[item.status]?.label as any)}</Td>
                 <Td>
                   {item.status === 'NOTPAY' && (
@@ -181,7 +182,7 @@ export default BillTable;
 
 function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () => void }) {
   const { t } = useTranslation();
-
+  const { commonT } = useI18n();
   return (
     <MyModal
       isOpen={true}
@@ -211,7 +212,7 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
         )}
         <Flex alignItems={'center'} pb={4}>
           <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.Amount')}:</FormLabel>
-          <Box>{formatStorePrice2Read(bill.price)}元</Box>
+          <Box>{commonT('common:pay.yuan', { amount: formatStorePrice2Read(bill.price) })}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.Type')}:</FormLabel>

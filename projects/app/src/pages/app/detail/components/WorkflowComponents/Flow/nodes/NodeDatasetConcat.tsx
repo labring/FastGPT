@@ -203,7 +203,10 @@ function Reference({
         />
       </Flex>
       <ReferSelector
-        placeholder={t((inputChildren.referencePlaceholder as any) || '选择知识库引用')}
+        placeholder={t(
+          (inputChildren.referencePlaceholder as any) ||
+            t('common:core.module.Dataset quote.select')
+        )}
         list={referenceList}
         value={formatValue}
         onSelect={onSelect}

@@ -1,7 +1,8 @@
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import {
   DatasetCollectionSchemaType,
-  DatasetDataSchemaType
+  DatasetDataSchemaType,
+  DatasetTagType
 } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
@@ -18,6 +19,7 @@ export type DatasetCollectionsListItemType = {
   updateTime: DatasetCollectionSchemaType['updateTime'];
   forbid?: DatasetCollectionSchemaType['forbid'];
   trainingType?: DatasetCollectionSchemaType['trainingType'];
+  tags?: string[];
 
   fileId?: string;
   rawLink?: string;

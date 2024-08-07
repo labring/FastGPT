@@ -1,7 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useShareChatStore } from '@/web/core/chat/storeShareChat';
 import SideBar from '@/components/SideBar';
@@ -319,7 +318,6 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
                   appAvatar={chatData.app.avatar}
                   userAvatar={chatData.userAvatar}
                   chatConfig={chatData.app?.chatConfig}
-                  showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                   feedbackType={'user'}
                   onStartChat={startChat}
                   onDelMessage={({ contentId }) =>
@@ -396,7 +394,7 @@ export async function getServerSideProps(context: any) {
       appIntro: app?.appId?.intro ?? 'intro',
       shareId: shareId ?? '',
       authToken: authToken ?? '',
-      ...(await serviceSideProps(context, ['file', 'app']))
+      ...(await serviceSideProps(context, ['file', 'app', 'chat']))
     }
   };
 }

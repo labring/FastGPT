@@ -1,4 +1,3 @@
-import { TimerIdEnum } from './constants';
 import { MongoTimerLock } from './schema';
 import { addMinutes } from 'date-fns';
 
@@ -9,7 +8,7 @@ export const checkTimerLock = async ({
   timerId,
   lockMinuted
 }: {
-  timerId: TimerIdEnum;
+  timerId: string;
   lockMinuted: number;
 }) => {
   try {

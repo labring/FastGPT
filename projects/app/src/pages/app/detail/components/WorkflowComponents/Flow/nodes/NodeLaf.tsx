@@ -92,7 +92,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
       onError(err) {
         toast({
           status: 'error',
-          title: getErrText(err, '获取Laf函数列表失败')
+          title: getErrText(err, t('common:get_laf_failed'))
         });
       }
     }
@@ -298,7 +298,7 @@ const ConfigLaf = () => {
       )}
     </Center>
   ) : (
-    <Box>系统未配置Laf环境</Box>
+    <Box>{t('common:no_laf_env')}</Box>
   );
 };
 

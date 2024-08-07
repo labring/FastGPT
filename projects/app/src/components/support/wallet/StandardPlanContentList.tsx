@@ -112,13 +112,13 @@ const StandardPlanContentList = ({
       {!!planContent.permissionReRank && (
         <Flex alignItems={'center'}>
           <MyIcon name={'price/right'} w={'16px'} mr={3} />
-          <Box color={'myGray.600'}>检索结果重排</Box>
+          <Box color={'myGray.600'}>{t('chat:rearrangement')}</Box>
         </Flex>
       )}
       {!!planContent.permissionWebsiteSync && (
         <Flex alignItems={'center'}>
           <MyIcon name={'price/right'} w={'16px'} mr={3} />
-          <Box color={'myGray.600'}>Web站点同步</Box>
+          <Box color={'myGray.600'}>{t('chat:web_site_sync')}</Box>
         </Flex>
       )}
     </Grid>

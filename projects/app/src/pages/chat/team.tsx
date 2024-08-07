@@ -4,7 +4,6 @@ import { delChatRecordById, getChatHistories, getTeamChatInfo } from '@/web/core
 import { useRouter } from 'next/router';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SideBar from '@/components/SideBar';
 import PageContainer from '@/components/PageContainer';
 import { getMyTokensApps } from '@/web/core/chat/api';
@@ -253,7 +252,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                   appAvatar={chatData.app.avatar}
                   userAvatar={chatData.userAvatar}
                   chatConfig={chatData.app?.chatConfig}
-                  showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                   feedbackType={'user'}
                   onStartChat={startChat}
                   onDelMessage={({ contentId }) =>
@@ -339,7 +337,7 @@ export async function getServerSideProps(context: any) {
       chatId: context?.query?.chatId || '',
       teamId: context?.query?.teamId || '',
       teamToken: context?.query?.teamToken || '',
-      ...(await serviceSideProps(context, ['file', 'app']))
+      ...(await serviceSideProps(context, ['file', 'app', 'chat']))
     }
   };
 }

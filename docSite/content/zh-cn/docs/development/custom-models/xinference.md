@@ -124,53 +124,36 @@ curl --location --request POST 'https://<oneapi_url>/v1/chat/completions' \
 
 ## 将本地模型接入 FastGPT
 
-修改 FastGPT 的 `config.json` 配置文件，其中 chatModels（对话模型）用于聊天对话，cqModels（问题分类模型）用来对问题进行分类，extractModels（内容提取模型）则用来进行工具选择。我们分别在 chatModels、cqModels 和 extractModels 中加入 qwen-chat 模型：
+修改 FastGPT 的 `config.json` 配置文件的 llmModels 部分加入 qwen-chat 模型：
 
 ```json
-{
-  "chatModels": [
-      ...
-      {
-        "model": "qwen-chat",
-        "name": "Qwen",
-        "maxContext": 2048,
-        "maxResponse": 2048, 
-        "quoteMaxToken": 2000,
-        "maxTemperature": 1, 
-        "vision": false, 
-        "defaultSystemChatPrompt": "" 
-      }
-      ...
+...
+  "llmModels": [
+    {
+      "model": "qwen-chat", // 模型名(对应OneAPI中渠道的模型名)
+      "name": "Qwen", // 模型别名
+      "avatar": "/imgs/model/Qwen.svg", // 模型的logo
+      "maxContext": 125000, // 最大上下文
+      "maxResponse": 4000, // 最大回复
+      "quoteMaxToken": 120000, // 最大引用内容
+      "maxTemperature": 1.2, // 最大温度
+      "charsPointsPrice": 0, // n积分/1k token（商业版）
+      "censor": false, // 是否开启敏感校验（商业版）
+      "vision": true, // 是否支持图片输入
+      "datasetProcess": true, // 是否设置为知识库处理模型（QA），务必保证至少有一个为true，否则知识库会报错
+      "usedInClassify": true, // 是否用于问题分类（务必保证至少有一个为true）
+      "usedInExtractFields": true, // 是否用于内容提取（务必保证至少有一个为true）
+      "usedInToolCall": true, // 是否用于工具调用（务必保证至少有一个为true）
+      "usedInQueryExtension": true, // 是否用于问题优化（务必保证至少有一个为true）
+      "toolChoice": true, // 是否支持工具选择（分类，内容提取，工具调用会用到。目前只有gpt支持）
+      "functionCall": false, // 是否支持函数调用（分类，内容提取，工具调用会用到。会优先使用 toolChoice，如果为false，则使用 functionCall，如果仍为 false，则使用提示词模式）
+      "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型
+      "customExtractPrompt": "", // 自定义内容提取提示词
+      "defaultSystemChatPrompt": "", // 对话默认携带的系统提示词
+      "defaultConfig": {} // 请求API时，挟带一些默认配置（比如 GLM4 的 top_p）
+    }
   ],
-  "cqModels": [
-      ...
-      {
-        "model": "qwen-chat",
-        "name": "Qwen",
-        "maxContext": 2048,
-        "maxResponse": 2048,
-        "inputPrice": 0,
-        "outputPrice": 0,
-        "toolChoice": true,
-        "functionPrompt": ""
-      }
-      ...
-  ],    
-  "extractModels": [
-      ...
-      {
-        "model": "qwen-chat",
-        "name": "Qwen",
-        "maxContext": 2048,
-        "maxResponse": 2048,
-        "inputPrice": 0,
-        "outputPrice": 0,
-        "toolChoice": true,
-        "functionPrompt": ""
-      }
-      ...
-  ]
-}
+...
 ```
 
 然后重启 FastGPT 就可以在应用配置中选择 Qwen 模型进行对话：

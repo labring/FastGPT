@@ -28,6 +28,8 @@ import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/in
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { updateToolInputValue } from './utils';
+import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
+import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 
 type ToolRunResponseType = {
   toolRunResponse: DispatchFlowResponse;
@@ -49,7 +51,18 @@ export const runToolWithToolChoice = async (
   },
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
-  const { toolModel, toolNodes, messages, res, runtimeNodes, detail = false, node, stream } = props;
+  const {
+    toolModel,
+    toolNodes,
+    messages,
+    res,
+    requestOrigin,
+    runtimeNodes,
+    detail = false,
+    node,
+    stream,
+    params: { temperature = 0, maxToken = 4000, aiChatVision }
+  } = props;
   const assistantResponses = response?.assistantResponses || [];
 
   const tools: ChatCompletionTool[] = toolNodes.map((item) => {
@@ -81,12 +94,13 @@ export const runToolWithToolChoice = async (
       }
     };
   });
-
-  const filterMessages = await filterGPTMessageByMaxTokens({
-    messages,
-    maxTokens: toolModel.maxContext - 300 // filter token. not response maxToken
-  });
-  const formativeMessages = filterMessages.map((item) => {
+  // Filter histories by maxToken
+  const filterMessages = (
+    await filterGPTMessageByMaxTokens({
+      messages,
+      maxTokens: toolModel.maxContext - 300 // filter token. not response maxToken
+    })
+  ).map((item) => {
     if (item.role === 'assistant' && item.tool_calls) {
       return {
         ...item,
@@ -99,43 +113,43 @@ export const runToolWithToolChoice = async (
     }
     return item;
   });
-  const requestMessages = await loadRequestMessages(formativeMessages);
 
-  // console.log(
-  //   JSON.stringify(
-  //     {
-  //       ...toolModel?.defaultConfig,
-  //       model: toolModel.model,
-  //       temperature: 0,
-  //       stream,
-  //       messages: requestMessages,
-  //       tools,
-  //       tool_choice: 'auto'
-  //     },
-  //     null,
-  //     2
-  //   )
-  // );
+  const [requestMessages, max_tokens] = await Promise.all([
+    loadRequestMessages({
+      messages: filterMessages,
+      useVision: toolModel.vision && aiChatVision,
+      origin: requestOrigin
+    }),
+    computedMaxToken({
+      model: toolModel,
+      maxToken,
+      filterMessages
+    })
+  ]);
+  const requestBody: any = {
+    ...toolModel?.defaultConfig,
+    model: toolModel.model,
+    temperature: computedTemperature({
+      model: toolModel,
+      temperature
+    }),
+    max_tokens,
+    stream,
+    messages: requestMessages,
+    tools,
+    tool_choice: 'auto'
+  };
+
+  // console.log(JSON.stringify(requestBody, null, 2));
   /* Run llm */
   const ai = getAIApi({
     timeout: 480000
   });
-  const aiResponse = await ai.chat.completions.create(
-    {
-      ...toolModel?.defaultConfig,
-      model: toolModel.model,
-      temperature: 0,
-      stream,
-      messages: requestMessages,
-      tools,
-      tool_choice: 'auto'
-    },
-    {
-      headers: {
-        Accept: 'application/json, text/plain, */*'
-      }
+  const aiResponse = await ai.chat.completions.create(requestBody, {
+    headers: {
+      Accept: 'application/json, text/plain, */*'
     }
-  );
+  });
 
   const { answer, toolCalls } = await (async () => {
     if (res && stream) {
@@ -221,7 +235,7 @@ export const runToolWithToolChoice = async (
                 toolName: '',
                 toolAvatar: '',
                 params: '',
-                response: stringToolResponse
+                response: sliceStrStartEnd(stringToolResponse, 300, 300)
               }
             })
           });
@@ -243,7 +257,7 @@ export const runToolWithToolChoice = async (
       tool_calls: toolCalls
     };
     const concatToolMessages = [
-      ...filterMessages,
+      ...requestMessages,
       assistantToolMsgParams
     ] as ChatCompletionMessageParam[];
     const tokens = await countGptMessagesTokens(concatToolMessages, tools);

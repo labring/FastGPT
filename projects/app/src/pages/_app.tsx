@@ -8,13 +8,13 @@ import QueryClientContext from '@/web/context/QueryClient';
 import ChakraUIContext from '@/web/context/ChakraUI';
 import I18nContextProvider from '@/web/context/I18n';
 import { useInitApp } from '@/web/context/useInitApp';
-
+import { useTranslation } from 'next-i18next';
 import '@/web/styles/reset.scss';
 import NextHead from '@/components/common/NextHead';
 
 function App({ Component, pageProps }: AppProps) {
   const { feConfigs, scripts, title } = useInitApp();
-
+  const { t } = useTranslation();
   return (
     <>
       <NextHead
@@ -22,7 +22,7 @@ function App({ Component, pageProps }: AppProps) {
         desc={
           feConfigs?.systemDescription ||
           process.env.SYSTEM_DESCRIPTION ||
-          `${title} 是一个大模型应用编排系统，提供开箱即用的数据处理、模型调用等能力，可以快速的构建知识库并通过 Flow 可视化进行工作流编排，实现复杂的知识库场景！`
+          `${title}${t('app:intro')}`
         }
         icon={feConfigs?.favicon || process.env.SYSTEM_FAVICON}
       />

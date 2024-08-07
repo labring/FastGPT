@@ -82,6 +82,8 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
     chatInputGuide
   };
 };
+
+// Get app chat config: db > nodes
 export const getAppChatConfig = ({
   chatConfig,
   systemConfigNode,
@@ -125,6 +127,7 @@ export const getAppChatConfig = ({
 
 export const getOrInitModuleInputValue = (input: FlowNodeInputItemType) => {
   if (input.value !== undefined || !input.valueType) return input.value;
+  if (input.defaultValue !== undefined) return input.defaultValue;
 
   const map: Record<string, any> = {
     [WorkflowIOValueTypeEnum.boolean]: false,

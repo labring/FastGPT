@@ -19,10 +19,10 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 import { Box } from '@chakra-ui/react';
-import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
+const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
 
 export const useChatTest = ({
   nodes,
@@ -51,7 +51,8 @@ export const useChatTest = ({
           edges: initWorkflowEdgeStatus(edges),
           variables,
           appId: appDetail._id,
-          appName: `调试-${appDetail.name}`
+          appName: `调试-${appDetail.name}`,
+          chatConfig
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -99,7 +100,6 @@ export const useChatTest = ({
         userAvatar={userInfo?.avatar}
         showMarkIcon
         chatConfig={chatConfig}
-        showFileSelector={checkChatSupportSelectFileByModules(nodes)}
         onStartChat={startChat}
         onDelMessage={() => {}}
       />

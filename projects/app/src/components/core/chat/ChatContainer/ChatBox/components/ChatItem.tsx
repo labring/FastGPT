@@ -1,5 +1,5 @@
 import { Box, BoxProps, Card, Flex } from '@chakra-ui/react';
-import React, { useMemo, useTransition } from 'react';
+import React, { useMemo } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
@@ -73,12 +73,11 @@ const ChatItem = ({
   const ContentCard = useMemo(() => {
     if (type === 'Human') {
       const { text, files = [] } = formatChatValue2InputType(chat.value);
-
       return (
-        <>
+        <Flex flexDirection={'column'} gap={4}>
           {files.length > 0 && <FilesBlock files={files} />}
-          <Markdown source={text} />
-        </>
+          {text && <Markdown source={text} />}
+        </Flex>
       );
     }
 

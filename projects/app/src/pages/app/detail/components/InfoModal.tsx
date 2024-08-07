@@ -7,7 +7,8 @@ import {
   Input,
   Textarea,
   ModalFooter,
-  ModalBody
+  ModalBody,
+  useDisclosure
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
@@ -15,7 +16,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -35,7 +36,6 @@ import {
 import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { resumeInheritPer } from '@/web/core/app/api';
 import { useI18n } from '@/web/context/I18n';
 import ResumeInherit from '@/components/support/permission/ResumeInheritText';
@@ -61,6 +61,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     defaultValues: appDetail
   });
   const avatar = getValues('avatar');
+  const name = getValues('name');
 
   // submit config
   const { runAsync: saveSubmitSuccess, loading: btnLoading } = useRequest2(
@@ -135,6 +136,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
       appId: appDetail._id
     });
   };
+
   const onDelCollaborator = async (tmbId: string) => {
     await deleteAppCollaborators({
       appId: appDetail._id,
@@ -146,7 +148,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     () => resumeInheritPer(appDetail._id),
     // () => putAppById(appDetail._id, { inheritPermission: true }),
     {
-      errorToast: '恢复失败',
+      errorToast: t('common:resume_failed'),
       onSuccess: () => {
         reloadApp();
       }

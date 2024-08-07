@@ -1,6 +1,6 @@
 import React, { Dispatch, useMemo, useTransition } from 'react';
 import { NodeProps } from 'reactflow';
-import { Box, useTheme } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 
 import QGSwitch from '@/components/core/app/QGSwitch';
@@ -19,6 +19,7 @@ import { useMemoizedFn } from 'ahooks';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import { AppContext } from '@/pages/app/detail/components/context';
 import WelcomeTextConfig from '@/components/core/app/WelcomeTextConfig';
+import FileSelect from '@/components/core/app/FileSelect';
 
 type ComponentProps = {
   chatConfig: AppChatConfigType;
@@ -26,7 +27,6 @@ type ComponentProps = {
 };
 
 const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
-  const theme = useTheme();
   const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
 
   const chatConfig = useMemo<AppChatConfigType>(() => {
@@ -63,19 +63,22 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           <Box pt={4}>
             <ChatStartVariable {...componentsProps} />
           </Box>
-          <Box mt={3} pt={3} borderTop={theme.borders.base}>
+          <Box mt={3} pt={3} borderTop={'base'}>
+            <FileSelectConfig {...componentsProps} />
+          </Box>
+          <Box mt={3} pt={3} borderTop={'base'}>
             <TTSGuide {...componentsProps} />
           </Box>
-          <Box mt={3} pt={3} borderTop={theme.borders.base}>
+          <Box mt={3} pt={3} borderTop={'base'}>
             <WhisperGuide {...componentsProps} />
           </Box>
-          <Box mt={3} pt={3} borderTop={theme.borders.base}>
+          <Box mt={3} pt={3} borderTop={'base'}>
             <QuestionGuide {...componentsProps} />
           </Box>
-          <Box mt={3} pt={3} borderTop={theme.borders.base}>
+          <Box mt={3} pt={3} borderTop={'base'}>
             <ScheduledTrigger {...componentsProps} />
           </Box>
-          <Box mt={3} pt={3} borderTop={theme.borders.base}>
+          <Box mt={3} pt={3} borderTop={'base'}>
             <QuestionInputGuide {...componentsProps} />
           </Box>
         </Box>
@@ -218,4 +221,21 @@ function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: Co
       }}
     />
   ) : null;
+}
+
+function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: ComponentProps) {
+  return (
+    <FileSelect
+      value={fileSelectConfig}
+      onChange={(e) => {
+        setAppDetail((state) => ({
+          ...state,
+          chatConfig: {
+            ...state.chatConfig,
+            fileSelectConfig: e
+          }
+        }));
+      }}
+    />
+  );
 }

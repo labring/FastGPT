@@ -89,7 +89,7 @@ const FileSelector = ({
           // upload file
           await Promise.all(
             files.map(async ({ fileId, file }) => {
-              const uploadFileId = await uploadFile2DB({
+              const { fileId: uploadFileId } = await uploadFile2DB({
                 file,
                 bucketName: BucketNameEnum.dataset,
                 percentListen: (e) => {
@@ -98,7 +98,9 @@ const FileSelector = ({
                       item.id === fileId
                         ? {
                             ...item,
-                            uploadedFileRate: e
+                            uploadedFileRate: item.uploadedFileRate
+                              ? Math.max(e, item.uploadedFileRate)
+                              : e
                           }
                         : item
                     )
@@ -230,7 +232,7 @@ const FileSelector = ({
       let isErr = files.some((item) => item.type === '');
       if (isErr) {
         return toast({
-          title: fileT('upload_error_description'),
+          title: t('file:upload_error_description'),
           status: 'error'
         });
       }
@@ -287,7 +289,7 @@ const FileSelector = ({
       {isMaxSelected ? (
         <>
           <Box color={'myGray.500'} fontSize={'xs'}>
-            已达到最大文件数量
+            {t('file:reached_max_file_count')}
           </Box>
         </>
       ) : (

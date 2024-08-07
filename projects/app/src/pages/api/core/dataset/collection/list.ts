@@ -20,6 +20,7 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
     parentId = null,
     searchText = '',
     selectFolder = false,
+    filterTags = [],
     simple = false
   } = req.body as GetDatasetCollectionsProps;
   searchText = searchText?.replace(/'/g, '');
@@ -43,7 +44,8 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
       ? {
           name: new RegExp(searchText, 'i')
         }
-      : {})
+      : {}),
+    ...(filterTags.length ? { tags: { $in: filterTags } } : {})
   };
 
   const selectField = {
@@ -57,7 +59,8 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
     updateTime: 1,
     trainingType: 1,
     fileId: 1,
-    rawLink: 1
+    rawLink: 1,
+    tags: 1
   };
 
   // not count data amount
@@ -68,6 +71,7 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
         updateTime: -1
       })
       .lean();
+
     return {
       pageNum,
       pageSize,

@@ -21,6 +21,7 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -29,6 +30,7 @@ export type Props = {
   variables: Record<string, any>;
   appId: string;
   appName: string;
+  chatConfig: AppChatConfigType;
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -40,7 +42,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.end();
   });
 
-  let { nodes = [], edges = [], messages = [], variables = {}, appName, appId } = req.body as Props;
+  let {
+    nodes = [],
+    edges = [],
+    messages = [],
+    variables = {},
+    appName,
+    appId,
+    chatConfig
+  } = req.body as Props;
   try {
     // [histories, user]
     const chatMessages = GPTMessages2Chats(messages);
@@ -79,6 +89,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     /* start process */
     const { flowResponses, flowUsages } = await dispatchWorkFlow({
       res,
+      requestOrigin: req.headers.origin,
       mode: 'test',
       teamId,
       tmbId,
@@ -88,6 +99,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       runtimeEdges: edges,
       variables,
       query: removeEmptyUserInput(userInput),
+      chatConfig,
       histories: chatMessages,
       stream: true,
       detail: true,

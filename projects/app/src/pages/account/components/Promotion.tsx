@@ -105,9 +105,9 @@ const Promotion = () => {
           <Table>
             <Thead>
               <Tr>
-                <Th>时间</Th>
-                <Th>类型</Th>
-                <Th>金额(￥)</Th>
+                <Th>{t('common:user.Time')}</Th>
+                <Th>{t('common:user.type')}</Th>
+                <Th>{t('common:pay.amount')}</Th>
               </Tr>
             </Thead>
             <Tbody fontSize={'sm'}>
@@ -124,7 +124,9 @@ const Promotion = () => {
           </Table>
         </TableContainer>
 
-        {!isLoading && promotionRecords.length === 0 && <EmptyTip text="无邀请记录~"></EmptyTip>}
+        {!isLoading && promotionRecords.length === 0 && (
+          <EmptyTip text={t('common:user.no_invite_records')}></EmptyTip>
+        )}
         {total > pageSize && (
           <Flex mt={4} justifyContent={'flex-end'}>
             <Pagination />

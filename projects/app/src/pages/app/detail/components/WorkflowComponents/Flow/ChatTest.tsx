@@ -1,7 +1,7 @@
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import React from 'react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
-import { Box, Flex, HStack, IconButton } from '@chakra-ui/react';
+import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
@@ -77,7 +77,7 @@ const ChatTest = ({
                 ...(chatRecords.length > 0
                   ? [
                       { label: t('common:common.Output'), value: PluginRunBoxTabEnum.output },
-                      { label: '完整结果', value: PluginRunBoxTabEnum.detail }
+                      { label: t('common:common.all_result'), value: PluginRunBoxTabEnum.detail }
                     ]
                   : [])
               ]}

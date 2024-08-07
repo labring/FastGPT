@@ -24,7 +24,7 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
     onError(err) {
       toast({
         status: 'warning',
-        title: getErrText(err, '获取二维码失败')
+        title: getErrText(err, t('common:get_QR_failed'))
       });
     }
   });

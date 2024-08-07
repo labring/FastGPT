@@ -57,7 +57,7 @@ const provider = () => {
         if (!res) {
           toast({
             status: 'warning',
-            title: '登录异常'
+            title: t('common:support.user.login.error')
           });
           return setTimeout(() => {
             router.replace('/login');
@@ -67,7 +67,7 @@ const provider = () => {
       } catch (error) {
         toast({
           status: 'warning',
-          title: getErrText(error, '登录异常')
+          title: getErrText(error, t('common:support.user.login.error'))
         });
         setTimeout(() => {
           router.replace('/login');
@@ -95,7 +95,7 @@ const provider = () => {
     if (state !== loginStore?.state) {
       toast({
         status: 'warning',
-        title: '安全校验失败'
+        title: t('common:support.user.login.security_failed')
       });
       setTimeout(() => {
         router.replace('/login');

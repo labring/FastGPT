@@ -11,6 +11,7 @@ import {
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { ClientSession } from '../../../common/mongo';
 import { PushDatasetDataResponse } from '@fastgpt/global/core/dataset/api';
+import { MongoDatasetCollectionTags } from '../tag/schema';
 
 /**
  * get all collection by top collectionId
@@ -199,4 +200,37 @@ export const reloadCollectionChunks = async ({
   return {
     insertLen: result.length
   };
+};
+
+export const createOrGetCollectionTags = async ({
+  tags = [],
+  datasetId,
+  teamId,
+  session
+}: {
+  tags?: string[];
+  datasetId: string;
+  teamId: string;
+  session?: ClientSession;
+}): Promise<string[]> => {
+  if (!tags.length) return [];
+  const existingTags = await MongoDatasetCollectionTags.find({
+    teamId,
+    datasetId,
+    $expr: { $in: ['$tag', tags] }
+  });
+
+  const existingTagContents = existingTags.map((tag) => tag.tag);
+  const newTagContents = tags.filter((tag) => !existingTagContents.includes(tag));
+
+  const newTags = await MongoDatasetCollectionTags.insertMany(
+    newTagContents.map((tagContent) => ({
+      teamId,
+      datasetId,
+      tag: tagContent
+    })),
+    { session }
+  );
+
+  return [...existingTags.map((tag) => tag._id), ...newTags.map((tag) => tag._id)];
 };

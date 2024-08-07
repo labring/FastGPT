@@ -11,7 +11,7 @@ import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/c
 import { generatingMessageProps } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getPluginRunContent } from '@fastgpt/global/core/app/plugin/utils';
-
+import { useTranslation } from 'next-i18next';
 type PluginRunContextType = PluginRunBoxProps & {
   isChatting: boolean;
   onSubmit: (e: FieldValues) => Promise<any>;
@@ -44,14 +44,14 @@ const PluginRunContextProvider = ({
 
   const { toast } = useToast();
   const chatController = useRef(new AbortController());
-
+  const { t } = useTranslation();
   /* Abort chat completions, questionGuide */
   const abortRequest = useCallback(() => {
     chatController.current?.abort('stop');
   }, []);
 
   const generatingMessage = useCallback(
-    ({ event, text = '', status, name, tool, variables }: generatingMessageProps) => {
+    ({ event, text = '', status, name, tool }: generatingMessageProps) => {
       setHistories((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1 || item.obj !== ChatRoleEnum.AI) return item;
@@ -148,7 +148,7 @@ const PluginRunContextProvider = ({
     if (!onStartChat) return;
     if (isChatting) {
       toast({
-        title: '正在聊天中...请等待结束',
+        title: t('chat:is_chatting'),
         status: 'warning'
       });
       return;
@@ -170,7 +170,8 @@ const PluginRunContextProvider = ({
             type: ChatItemValueTypeEnum.text,
             text: {
               content: getPluginRunContent({
-                pluginInputs
+                pluginInputs,
+                variables: e
               })
             }
           }

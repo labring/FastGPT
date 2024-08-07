@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Grid, Flex, IconButton, HStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { delAppById, putAppById, resumeInheritPer } from '@/web/core/app/api';
+import { delAppById, putAppById, resumeInheritPer, changeOwner } from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -39,6 +39,7 @@ import { getTeamMembers } from '@/web/support/user/team/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useChatStore } from '@/web/core/chat/context/storeChat';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
@@ -47,6 +48,7 @@ const ListItem = () => {
   const router = useRouter();
   const { parentId = null } = router.query;
   const { isPc } = useSystem();
+  const { lastChatAppId, setLastChatAppId } = useChatStore();
 
   const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail } = useContextSelector(
     AppListContext,
@@ -83,6 +85,9 @@ const ListItem = () => {
   });
   const { runAsync: onclickDelApp } = useRequest2(
     (id: string) => {
+      if (id === lastChatAppId) {
+        setLastChatAppId('');
+      }
       return delAppById(id);
     },
     {
@@ -210,7 +215,7 @@ const ListItem = () => {
                   fontSize={'xs'}
                   color={'myGray.500'}
                 >
-                  <Box className={'textEllipsis2'}>{app.intro || '还没写介绍~'}</Box>
+                  <Box className={'textEllipsis2'}>{app.intro || t('common:common.no_intro')}</Box>
                 </Box>
                 <Flex
                   h={'24px'}
@@ -290,7 +295,7 @@ const ListItem = () => {
                               children: [
                                 {
                                   icon: 'edit',
-                                  label: '编辑信息',
+                                  label: t('common:dataset.Edit Info'),
                                   onClick: () => {
                                     if (app.type === AppTypeEnum.httpPlugin) {
                                       setEditHttpPlugin({
@@ -378,14 +383,14 @@ const ListItem = () => {
         })}
       </Grid>
 
-      {myApps.length === 0 && <EmptyTip text={'还没有应用，快去创建一个吧！'} pt={'30vh'} />}
+      {myApps.length === 0 && <EmptyTip text={t('common:core.app.no_app')} pt={'30vh'} />}
 
       <DelConfirmModal />
       <ConfirmCopyModal />
       {!!editedApp && (
         <EditResourceModal
           {...editedApp}
-          title="应用信息编辑"
+          title={t('common:core.app.edit_content')}
           onClose={() => {
             setEditedApp(undefined);
           }}
@@ -394,6 +399,12 @@ const ListItem = () => {
       )}
       {!!editPerApp && (
         <ConfigPerModal
+          onChangeOwner={(tmbId: string) =>
+            changeOwner({
+              appId: editPerApp._id,
+              ownerId: tmbId
+            }).then(() => loadMyApps())
+          }
           refetchResource={loadMyApps}
           hasParent={Boolean(parentId)}
           resumeInheritPermission={onResumeInheritPermission}

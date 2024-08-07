@@ -7,7 +7,6 @@ import {
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import {
   FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -18,32 +17,45 @@ import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textare
 import { TFunction } from 'next-i18next';
 import { ToolModule } from '@fastgpt/global/core/workflow/template/system/tools';
 import { useDatasetStore } from '../dataset/store/dataset';
+import {
+  WorkflowStart,
+  userFilesInput
+} from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { SystemConfigNode } from '@fastgpt/global/core/workflow/template/system/systemConfig';
+import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
+import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
+import { ReadFilesNodes } from '@fastgpt/global/core/workflow/template/system/readFiles';
 
 type WorkflowType = {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
 };
-export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
+export function form2AppWorkflow(
+  data: AppSimpleEditFormType,
+  t: any // i18nT
+): WorkflowType & {
   chatConfig: AppChatConfigType;
 } {
   const workflowStartNodeId = 'workflowStartNodeId';
+  const datasetNodeId = 'iKBoX2vIzETU';
+  const aiChatNodeId = '7BdojPlukIQw';
 
   const allDatasets = useDatasetStore.getState().allDatasets;
   const selectedDatasets = data.dataset.datasets.filter((item) =>
     allDatasets.some((ds) => ds._id === item.datasetId)
   );
 
-  function systemConfigTemplate(formData: AppSimpleEditFormType): StoreNodeItemType {
+  function systemConfigTemplate(): StoreNodeItemType {
     return {
-      nodeId: 'userGuide',
-      name: '系统配置',
-      intro: '可以配置应用的系统参数',
-      flowNodeType: FlowNodeTypeEnum.systemConfig,
+      nodeId: SystemConfigNode.id,
+      name: t(SystemConfigNode.name),
+      intro: '',
+      flowNodeType: SystemConfigNode.flowNodeType,
       position: {
         x: 531.2422736065552,
         y: -486.7611729549753
       },
-      version: '481',
+      version: SystemConfigNode.version,
       inputs: [],
       outputs: []
     };
@@ -51,509 +63,259 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
   function workflowStartTemplate(): StoreNodeItemType {
     return {
       nodeId: workflowStartNodeId,
-      name: '流程开始',
+      name: t(WorkflowStart.name),
       intro: '',
-      avatar: '/imgs/workflow/userChatInput.svg',
-      flowNodeType: FlowNodeTypeEnum.workflowStart,
+      avatar: WorkflowStart.avatar,
+      flowNodeType: WorkflowStart.flowNodeType,
       position: {
         x: 558.4082376415505,
         y: 123.72387429194112
       },
-      version: '481',
+      version: WorkflowStart.version,
+      inputs: WorkflowStart.inputs,
+      outputs: [...WorkflowStart.outputs, userFilesInput]
+    };
+  }
+  function aiChatTemplate(formData: AppSimpleEditFormType): StoreNodeItemType {
+    return {
+      nodeId: aiChatNodeId,
+      name: t(AiChatModule.name),
+      intro: t(AiChatModule.intro),
+      avatar: AiChatModule.avatar,
+      flowNodeType: AiChatModule.flowNodeType,
+      showStatus: true,
+      position: {
+        x: 1106.3238387960757,
+        y: -350.6030674683474
+      },
+      version: AiChatModule.version,
       inputs: [
+        {
+          key: 'model',
+          renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel, FlowNodeInputTypeEnum.reference],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.aiSettings.model
+        },
+        {
+          key: 'temperature',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          value: formData.aiSettings.temperature,
+          valueType: WorkflowIOValueTypeEnum.number,
+          min: 0,
+          max: 10,
+          step: 1
+        },
+        {
+          key: 'maxToken',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          value: formData.aiSettings.maxToken,
+          valueType: WorkflowIOValueTypeEnum.number,
+          min: 100,
+          max: 4000,
+          step: 50
+        },
+        {
+          key: 'isResponseAnswerText',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          value: true,
+          valueType: WorkflowIOValueTypeEnum.boolean
+        },
+        {
+          key: 'quoteTemplate',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string
+        },
+        {
+          key: 'quotePrompt',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string
+        },
+        {
+          key: 'systemPrompt',
+          renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+          max: 3000,
+          valueType: WorkflowIOValueTypeEnum.string,
+          label: 'core.ai.Prompt',
+          description: 'core.app.tip.chatNodeSystemPromptTip',
+          placeholder: 'core.app.tip.chatNodeSystemPromptTip',
+          value: formData.aiSettings.systemPrompt
+        },
+        {
+          key: 'history',
+          renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
+          valueType: WorkflowIOValueTypeEnum.chatHistory,
+          label: 'core.module.input.label.chat history',
+          required: true,
+          min: 0,
+          max: 30,
+          value: formData.aiSettings.maxHistories
+        },
         {
           key: 'userChatInput',
           renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
           valueType: WorkflowIOValueTypeEnum.string,
           label: '用户问题',
           required: true,
-          toolDescription: '用户问题'
+          toolDescription: '用户问题',
+          value: [workflowStartNodeId, 'userChatInput']
+        },
+        {
+          key: 'quoteQA',
+          renderTypeList: [FlowNodeInputTypeEnum.settingDatasetQuotePrompt],
+          label: '',
+          debugLabel: '知识库引用',
+          description: '',
+          valueType: WorkflowIOValueTypeEnum.datasetQuote,
+          value: selectedDatasets ? [datasetNodeId, 'quoteQA'] : undefined
+        },
+        {
+          key: NodeInputKeyEnum.aiChatVision,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.boolean,
+          value: true
         }
       ],
-      outputs: [
+      outputs: AiChatModule.outputs
+    };
+  }
+  function datasetNodeTemplate(formData: AppSimpleEditFormType, question: any): StoreNodeItemType {
+    return {
+      nodeId: datasetNodeId,
+      name: t(DatasetSearchModule.name),
+      intro: t(DatasetSearchModule.intro),
+      avatar: DatasetSearchModule.avatar,
+      flowNodeType: DatasetSearchModule.flowNodeType,
+      showStatus: true,
+      position: {
+        x: 918.5901682164496,
+        y: -227.11542247619582
+      },
+      version: '481',
+      inputs: [
         {
-          id: 'userChatInput',
-          key: 'userChatInput',
-          label: 'core.module.input.label.user question',
+          key: 'datasets',
+          renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+          label: 'core.module.input.label.Select dataset',
+          value: selectedDatasets,
+          valueType: WorkflowIOValueTypeEnum.selectDataset,
+          list: [],
+          required: true
+        },
+        {
+          key: 'similarity',
+          renderTypeList: [FlowNodeInputTypeEnum.selectDatasetParamsModal],
+          label: '',
+          value: formData.dataset.similarity,
+          valueType: WorkflowIOValueTypeEnum.number
+        },
+        {
+          key: 'limit',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          value: formData.dataset.limit,
+          valueType: WorkflowIOValueTypeEnum.number
+        },
+        {
+          key: 'searchMode',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
           valueType: WorkflowIOValueTypeEnum.string,
-          type: FlowNodeOutputTypeEnum.static
+          value: formData.dataset.searchMode
+        },
+        {
+          key: 'usingReRank',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.boolean,
+          value: formData.dataset.usingReRank
+        },
+        {
+          key: 'datasetSearchUsingExtensionQuery',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.boolean,
+          value: formData.dataset.datasetSearchUsingExtensionQuery
+        },
+        {
+          key: 'datasetSearchExtensionModel',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.dataset.datasetSearchExtensionModel
+        },
+        {
+          key: 'datasetSearchExtensionBg',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.dataset.datasetSearchExtensionBg
+        },
+        {
+          key: 'userChatInput',
+          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
+          valueType: WorkflowIOValueTypeEnum.string,
+          label: '用户问题',
+          required: true,
+          toolDescription: '需要检索的内容',
+          value: question
         }
-      ]
+      ],
+      outputs: DatasetSearchModule.outputs
     };
   }
 
+  // Start, AiChat
   function simpleChatTemplate(formData: AppSimpleEditFormType): WorkflowType {
     return {
-      nodes: [
-        {
-          nodeId: '7BdojPlukIQw',
-          name: 'AI 对话',
-          intro: 'AI 大模型对话',
-          avatar: '/imgs/workflow/AI.png',
-          flowNodeType: FlowNodeTypeEnum.chatNode,
-          showStatus: true,
-          position: {
-            x: 1106.3238387960757,
-            y: -350.6030674683474
-          },
-          version: '481',
-          inputs: [
-            {
-              key: 'model',
-              renderTypeList: [
-                FlowNodeInputTypeEnum.settingLLMModel,
-                FlowNodeInputTypeEnum.reference
-              ],
-              label: 'core.module.input.label.aiModel',
-              valueType: WorkflowIOValueTypeEnum.string,
-              value: formData.aiSettings.model
-            },
-            {
-              key: 'temperature',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              value: formData.aiSettings.temperature,
-              valueType: WorkflowIOValueTypeEnum.number,
-              min: 0,
-              max: 10,
-              step: 1
-            },
-            {
-              key: 'maxToken',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              value: formData.aiSettings.maxToken,
-              valueType: WorkflowIOValueTypeEnum.number,
-              min: 100,
-              max: 4000,
-              step: 50
-            },
-            {
-              key: 'isResponseAnswerText',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              value: true,
-              valueType: WorkflowIOValueTypeEnum.boolean
-            },
-            {
-              key: 'quoteTemplate',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.string
-            },
-            {
-              key: 'quotePrompt',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.string
-            },
-            {
-              key: 'systemPrompt',
-              renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
-              max: 3000,
-              valueType: WorkflowIOValueTypeEnum.string,
-              label: 'core.ai.Prompt',
-              description: 'core.app.tip.chatNodeSystemPromptTip',
-              placeholder: 'core.app.tip.chatNodeSystemPromptTip',
-              value: formData.aiSettings.systemPrompt
-            },
-            {
-              key: 'history',
-              renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
-              valueType: WorkflowIOValueTypeEnum.chatHistory,
-              label: 'core.module.input.label.chat history',
-              required: true,
-              min: 0,
-              max: 30,
-              value: formData.aiSettings.maxHistories
-            },
-            {
-              key: 'userChatInput',
-              renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-              valueType: WorkflowIOValueTypeEnum.string,
-              label: '用户问题',
-              required: true,
-              toolDescription: '用户问题',
-              value: [workflowStartNodeId, 'userChatInput']
-            },
-            {
-              key: 'quoteQA',
-              renderTypeList: [FlowNodeInputTypeEnum.settingDatasetQuotePrompt],
-              label: '',
-              debugLabel: '知识库引用',
-              description: '',
-              valueType: WorkflowIOValueTypeEnum.datasetQuote
-            }
-          ],
-          outputs: [
-            {
-              id: 'history',
-              key: 'history',
-              label: 'core.module.output.label.New context',
-              description: 'core.module.output.description.New context',
-              valueType: WorkflowIOValueTypeEnum.chatHistory,
-              type: FlowNodeOutputTypeEnum.static
-            },
-            {
-              id: 'answerText',
-              key: 'answerText',
-              label: 'core.module.output.label.Ai response content',
-              description: 'core.module.output.description.Ai response content',
-              valueType: WorkflowIOValueTypeEnum.string,
-              type: FlowNodeOutputTypeEnum.static
-            }
-          ]
-        }
-      ],
+      nodes: [aiChatTemplate(formData)],
       edges: [
         {
           source: workflowStartNodeId,
-          target: '7BdojPlukIQw',
+          target: aiChatNodeId,
           sourceHandle: `${workflowStartNodeId}-source-right`,
-          targetHandle: '7BdojPlukIQw-target-left'
+          targetHandle: `${aiChatNodeId}-target-left`
         }
       ]
     };
   }
+  // Start, Dataset search, AiChat
   function datasetTemplate(formData: AppSimpleEditFormType): WorkflowType {
     return {
       nodes: [
-        {
-          nodeId: '7BdojPlukIQw',
-          name: 'AI 对话',
-          intro: 'AI 大模型对话',
-          avatar: '/imgs/workflow/AI.png',
-          flowNodeType: FlowNodeTypeEnum.chatNode,
-          showStatus: true,
-          position: {
-            x: 1638.509551404687,
-            y: -341.0428450861567
-          },
-          version: '481', // [FlowNodeTypeEnum.chatNode]
-          inputs: [
-            {
-              key: 'model',
-              renderTypeList: [
-                FlowNodeInputTypeEnum.settingLLMModel,
-                FlowNodeInputTypeEnum.reference
-              ],
-              label: 'core.module.input.label.aiModel',
-              valueType: WorkflowIOValueTypeEnum.string,
-              value: formData.aiSettings.model
-            },
-            {
-              key: 'temperature',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              value: formData.aiSettings.temperature,
-              valueType: WorkflowIOValueTypeEnum.number,
-              min: 0,
-              max: 10,
-              step: 1
-            },
-            {
-              key: 'maxToken',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              value: formData.aiSettings.maxToken,
-              valueType: WorkflowIOValueTypeEnum.number,
-              min: 100,
-              max: 4000,
-              step: 50
-            },
-            {
-              key: 'isResponseAnswerText',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              value: true,
-              valueType: WorkflowIOValueTypeEnum.boolean
-            },
-            {
-              key: 'quoteTemplate',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.string
-            },
-            {
-              key: 'quotePrompt',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.string
-            },
-            {
-              key: 'systemPrompt',
-              renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
-              max: 3000,
-              valueType: WorkflowIOValueTypeEnum.string,
-              label: 'core.ai.Prompt',
-              description: 'core.app.tip.chatNodeSystemPromptTip',
-              placeholder: 'core.app.tip.chatNodeSystemPromptTip',
-              value: formData.aiSettings.systemPrompt
-            },
-            {
-              key: 'history',
-              renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
-              valueType: WorkflowIOValueTypeEnum.chatHistory,
-              label: 'core.module.input.label.chat history',
-              required: true,
-              min: 0,
-              max: 30,
-              value: formData.aiSettings.maxHistories
-            },
-            {
-              key: 'userChatInput',
-              renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-              valueType: WorkflowIOValueTypeEnum.string,
-              label: '用户问题',
-              required: true,
-              toolDescription: '用户问题',
-              value: [workflowStartNodeId, 'userChatInput']
-            },
-            {
-              key: 'quoteQA',
-              renderTypeList: [FlowNodeInputTypeEnum.settingDatasetQuotePrompt],
-              label: '',
-              debugLabel: '知识库引用',
-              description: '',
-              valueType: WorkflowIOValueTypeEnum.datasetQuote,
-              value: ['iKBoX2vIzETU', 'quoteQA']
-            }
-          ],
-          outputs: [
-            {
-              id: 'history',
-              key: 'history',
-              label: 'core.module.output.label.New context',
-              description: 'core.module.output.description.New context',
-              valueType: WorkflowIOValueTypeEnum.chatHistory,
-              type: FlowNodeOutputTypeEnum.static
-            },
-            {
-              id: 'answerText',
-              key: 'answerText',
-              label: 'core.module.output.label.Ai response content',
-              description: 'core.module.output.description.Ai response content',
-              valueType: WorkflowIOValueTypeEnum.string,
-              type: FlowNodeOutputTypeEnum.static
-            }
-          ]
-        },
-        {
-          nodeId: 'iKBoX2vIzETU',
-          name: '知识库搜索',
-          intro: '调用“语义检索”和“全文检索”能力，从“知识库”中查找可能与问题相关的参考内容',
-          avatar: '/imgs/workflow/db.png',
-          flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-          showStatus: true,
-          position: {
-            x: 918.5901682164496,
-            y: -227.11542247619582
-          },
-          version: '481',
-          inputs: [
-            {
-              key: 'datasets',
-              renderTypeList: [
-                FlowNodeInputTypeEnum.selectDataset,
-                FlowNodeInputTypeEnum.reference
-              ],
-              label: 'core.module.input.label.Select dataset',
-              value: selectedDatasets,
-              valueType: WorkflowIOValueTypeEnum.selectDataset,
-              list: [],
-              required: true
-            },
-            {
-              key: 'similarity',
-              renderTypeList: [FlowNodeInputTypeEnum.selectDatasetParamsModal],
-              label: '',
-              value: formData.dataset.similarity,
-              valueType: WorkflowIOValueTypeEnum.number
-            },
-            {
-              key: 'limit',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              value: formData.dataset.limit,
-              valueType: WorkflowIOValueTypeEnum.number
-            },
-            {
-              key: 'searchMode',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.string,
-              value: formData.dataset.searchMode
-            },
-            {
-              key: 'usingReRank',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.boolean,
-              value: formData.dataset.usingReRank
-            },
-            {
-              key: 'datasetSearchUsingExtensionQuery',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.boolean,
-              value: formData.dataset.datasetSearchUsingExtensionQuery
-            },
-            {
-              key: 'datasetSearchExtensionModel',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.string,
-              value: formData.dataset.datasetSearchExtensionModel
-            },
-            {
-              key: 'datasetSearchExtensionBg',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: '',
-              valueType: WorkflowIOValueTypeEnum.string,
-              value: formData.dataset.datasetSearchExtensionBg
-            },
-            {
-              key: 'userChatInput',
-              renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-              valueType: WorkflowIOValueTypeEnum.string,
-              label: '用户问题',
-              required: true,
-              toolDescription: '需要检索的内容',
-              value: [workflowStartNodeId, 'userChatInput']
-            }
-          ],
-          outputs: [
-            {
-              id: 'quoteQA',
-              key: 'quoteQA',
-              label: 'core.module.Dataset quote.label',
-              type: FlowNodeOutputTypeEnum.static,
-              valueType: WorkflowIOValueTypeEnum.datasetQuote
-            }
-          ]
-        }
+        aiChatTemplate(formData),
+        datasetNodeTemplate(formData, [workflowStartNodeId, 'userChatInput'])
       ],
       edges: [
         {
           source: workflowStartNodeId,
-          target: 'iKBoX2vIzETU',
+          target: datasetNodeId,
           sourceHandle: `${workflowStartNodeId}-source-right`,
-          targetHandle: 'iKBoX2vIzETU-target-left'
+          targetHandle: `${datasetNodeId}-target-left`
         },
         {
-          source: 'iKBoX2vIzETU',
-          target: '7BdojPlukIQw',
-          sourceHandle: 'iKBoX2vIzETU-source-right',
-          targetHandle: '7BdojPlukIQw-target-left'
+          source: datasetNodeId,
+          target: aiChatNodeId,
+          sourceHandle: `${datasetNodeId}-source-right`,
+          targetHandle: `${aiChatNodeId}-target-left`
         }
       ]
     };
   }
   function toolTemplates(formData: AppSimpleEditFormType): WorkflowType {
     const toolNodeId = getNanoid(6);
-    const datasetNodeId = getNanoid(6);
 
+    // Dataset tool config
     const datasetTool: WorkflowType | null =
       selectedDatasets.length > 0
         ? {
-            nodes: [
-              {
-                nodeId: datasetNodeId,
-                name: '知识库搜索',
-                intro: '调用“语义检索”和“全文检索”能力，从“知识库”中查找可能与问题相关的参考内容',
-                avatar: '/imgs/workflow/db.png',
-                flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-                showStatus: true,
-                position: {
-                  x: 500,
-                  y: 545
-                },
-                version: '481',
-                inputs: [
-                  {
-                    key: 'datasets',
-                    renderTypeList: [
-                      FlowNodeInputTypeEnum.selectDataset,
-                      FlowNodeInputTypeEnum.reference
-                    ],
-                    label: 'core.module.input.label.Select dataset',
-                    value: selectedDatasets,
-                    valueType: WorkflowIOValueTypeEnum.selectDataset,
-                    list: [],
-                    required: true
-                  },
-                  {
-                    key: 'similarity',
-                    renderTypeList: [FlowNodeInputTypeEnum.selectDatasetParamsModal],
-                    label: '',
-                    value: formData.dataset.similarity,
-                    valueType: WorkflowIOValueTypeEnum.number
-                  },
-                  {
-                    key: 'limit',
-                    renderTypeList: [FlowNodeInputTypeEnum.hidden],
-                    label: '',
-                    value: formData.dataset.limit,
-                    valueType: WorkflowIOValueTypeEnum.number
-                  },
-                  {
-                    key: 'searchMode',
-                    renderTypeList: [FlowNodeInputTypeEnum.hidden],
-                    label: '',
-                    valueType: WorkflowIOValueTypeEnum.string,
-                    value: formData.dataset.searchMode
-                  },
-                  {
-                    key: 'usingReRank',
-                    renderTypeList: [FlowNodeInputTypeEnum.hidden],
-                    label: '',
-                    valueType: WorkflowIOValueTypeEnum.boolean,
-                    value: formData.dataset.usingReRank
-                  },
-                  {
-                    key: 'datasetSearchUsingExtensionQuery',
-                    renderTypeList: [FlowNodeInputTypeEnum.hidden],
-                    label: '',
-                    valueType: WorkflowIOValueTypeEnum.boolean,
-                    value: formData.dataset.datasetSearchUsingExtensionQuery
-                  },
-                  {
-                    key: 'datasetSearchExtensionModel',
-                    renderTypeList: [FlowNodeInputTypeEnum.hidden],
-                    label: '',
-                    valueType: WorkflowIOValueTypeEnum.string,
-                    value: formData.dataset.datasetSearchExtensionModel
-                  },
-                  {
-                    key: 'datasetSearchExtensionBg',
-                    renderTypeList: [FlowNodeInputTypeEnum.hidden],
-                    label: '',
-                    valueType: WorkflowIOValueTypeEnum.string,
-                    value: formData.dataset.datasetSearchExtensionBg
-                  },
-                  {
-                    key: 'userChatInput',
-                    renderTypeList: [
-                      FlowNodeInputTypeEnum.reference,
-                      FlowNodeInputTypeEnum.textarea
-                    ],
-                    valueType: WorkflowIOValueTypeEnum.string,
-                    label: '用户问题',
-                    required: true,
-                    toolDescription: '需要检索的内容'
-                  }
-                ],
-                outputs: [
-                  {
-                    id: 'quoteQA',
-                    key: 'quoteQA',
-                    label: 'core.module.Dataset quote.label',
-                    type: FlowNodeOutputTypeEnum.static,
-                    valueType: WorkflowIOValueTypeEnum.datasetQuote
-                  }
-                ]
-              }
-            ],
+            nodes: [datasetNodeTemplate(formData, '')],
             edges: [
               {
                 source: toolNodeId,
@@ -564,7 +326,46 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
             ]
           }
         : null;
+    // Read file tool config
+    const readFileTool: WorkflowType | null = data.chatConfig.fileSelectConfig?.canSelectFile
+      ? {
+          nodes: [
+            {
+              nodeId: ReadFilesNodes.id,
+              name: t(ReadFilesNodes.name),
+              intro: t(ReadFilesNodes.intro),
+              avatar: ReadFilesNodes.avatar,
+              flowNodeType: ReadFilesNodes.flowNodeType,
+              showStatus: true,
+              position: {
+                x: 974.6209854328943,
+                y: 587.6378828744465
+              },
+              version: '489',
+              inputs: [
+                {
+                  key: NodeInputKeyEnum.fileUrlList,
+                  renderTypeList: [FlowNodeInputTypeEnum.reference],
+                  valueType: WorkflowIOValueTypeEnum.arrayString,
+                  label: t('app:workflow.file_url'),
+                  value: [workflowStartNodeId, 'userFiles']
+                }
+              ],
+              outputs: ReadFilesNodes.outputs
+            }
+          ],
+          edges: [
+            {
+              source: toolNodeId,
+              target: ReadFilesNodes.id,
+              sourceHandle: 'selectedTools',
+              targetHandle: 'selectedTools'
+            }
+          ]
+        }
+      : null;
 
+    // Computed tools config
     const pluginTool: WorkflowType[] = formData.selectedTools.map((tool, i) => {
       const nodeId = getNanoid(6);
       return {
@@ -602,16 +403,16 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
       nodes: [
         {
           nodeId: toolNodeId,
-          name: '工具调用',
-          intro: '通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。',
-          avatar: '/imgs/workflow/tool.svg',
-          flowNodeType: FlowNodeTypeEnum.tools,
+          name: ToolModule.name,
+          intro: ToolModule.intro,
+          avatar: ToolModule.avatar,
+          flowNodeType: ToolModule.flowNodeType,
           showStatus: true,
           position: {
             x: 1062.1738942532802,
             y: -223.65033022650476
           },
-          version: '481',
+          version: ToolModule.version,
           inputs: [
             {
               key: 'model',
@@ -671,12 +472,20 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
               label: '用户问题',
               required: true,
               value: [workflowStartNodeId, 'userChatInput']
+            },
+            {
+              key: NodeInputKeyEnum.aiChatVision,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.boolean,
+              value: true
             }
           ],
           outputs: ToolModule.outputs
         },
         // tool nodes
         ...(datasetTool ? datasetTool.nodes : []),
+        ...(readFileTool ? readFileTool.nodes : []),
         ...pluginTool.map((tool) => tool.nodes).flat()
       ],
       edges: [
@@ -688,6 +497,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
         },
         // tool edges
         ...(datasetTool ? datasetTool.edges : []),
+        ...(readFileTool ? readFileTool.edges : []),
         ...pluginTool.map((tool) => tool.edges).flat()
       ]
     };
@@ -696,13 +506,14 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
   }
 
   const workflow = (() => {
-    if (data.selectedTools.length > 0) return toolTemplates(data);
+    if (data.selectedTools.length > 0 || data.chatConfig.fileSelectConfig?.canSelectFile)
+      return toolTemplates(data);
     if (selectedDatasets.length > 0) return datasetTemplate(data);
     return simpleChatTemplate(data);
   })();
 
   return {
-    nodes: [systemConfigTemplate(data), workflowStartTemplate(), ...workflow.nodes],
+    nodes: [systemConfigTemplate(), workflowStartTemplate(), ...workflow.nodes],
     edges: workflow.edges,
     chatConfig: data.chatConfig
   };

@@ -13,6 +13,7 @@ export type UserInputFileItemType = {
   type: `${ChatFileTypeEnum}`;
   name: string;
   icon: string; // img is base64
+  status: 0 | 1; // 0: uploading, 1: success
   url?: string;
 };
 
