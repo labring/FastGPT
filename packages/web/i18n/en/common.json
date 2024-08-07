@@ -958,6 +958,7 @@
     }
   },
   "create": "to create",
+  "cron_job_run_app": "Cron job",
   "dataset": {
     "Confirm move the folder": "Confirm moving to the folder",
     "Confirm to delete the data": "Confirm to delete the data?",

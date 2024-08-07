@@ -598,7 +598,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -959,6 +960,7 @@
     }
   },
   "create": "去创建",
+  "cron_job_run_app": "定时任务",
   "dataset": {
     "Confirm move the folder": "确认移动到该目录",
     "Confirm to delete the data": "确认删除该数据？",
