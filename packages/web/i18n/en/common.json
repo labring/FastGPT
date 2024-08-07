@@ -258,6 +258,7 @@
       "error tip": "Speech to text failed",
       "not support": "Your browser does not support speech input"
     },
+    "submit_success": "Submitted successfully",
     "support": "support",
     "system": {
       "Commercial version function": "Commercial version feature",
