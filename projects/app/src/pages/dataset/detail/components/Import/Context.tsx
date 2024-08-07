@@ -201,12 +201,13 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       uploadRate: 150
     },
     [TrainingModeEnum.qa]: {
+      chunkSizeField: 'embeddingChunkSize' as ChunkSizeFieldType,
       chunkOverlapRatio: 0,
-      maxChunkSize: 8000,
-      minChunkSize: 3000,
+      maxChunkSize: 4096,
+      minChunkSize: 512,
       autoChunkSize: agentModel.maxContext * 0.55 || 6000,
-      chunkSize: agentModel.maxContext * 0.55 || 6000,
-      showChunkInput: false,
+      chunkSize: embeddingChunkSize || agentModel.maxContext * 0.55 || 6000,
+      showChunkInput: true,
       showPromptInput: true,
       charsPointsPrice: agentModel.charsPointsPrice,
       priceTip: t('core.dataset.import.QA Estimated Price Tips', {
