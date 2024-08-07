@@ -140,7 +140,7 @@ export const runToolWithToolChoice = async (
     tool_choice: 'auto'
   };
 
-  console.log(JSON.stringify(requestBody, null, 2));
+  // console.log(JSON.stringify(requestBody, null, 2));
   /* Run llm */
   const ai = getAIApi({
     timeout: 480000
