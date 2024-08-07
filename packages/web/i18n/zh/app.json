@@ -124,7 +124,7 @@
     "read_files": "文档解析",
     "read_files_result": "文档解析结果",
     "read_files_result_desc": "文档原文，由文件名和文档内容组成，多个文件之间通过横线隔开。",
-    "read_files_tip": "解析对话中上传的文档，返回对应文档内容",
+    "read_files_tip": "解析对话中所有上传的文档，并返回对应文档内容",
     "template": {
       "communication": "通信"
     },
