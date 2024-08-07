@@ -103,6 +103,7 @@ const ChatInput = ({
     multiple: true,
     maxCount: maxSelectFiles
   });
+  // Upload files
   useRequest2(
     async () => {
       const filterFiles = fileList.filter((item) => item.status === 0);
@@ -115,7 +116,7 @@ const ChatInput = ({
         if (!file.rawFile) continue;
 
         try {
-          const { fileId, previewUrl } = await uploadFile2DB({
+          const { previewUrl } = await uploadFile2DB({
             file: file.rawFile,
             bucketName: 'chat',
             metadata: {

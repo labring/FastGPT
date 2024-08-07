@@ -7,10 +7,12 @@ export enum BucketNameEnum {
 }
 export const bucketNameMap = {
   [BucketNameEnum.dataset]: {
-    label: i18nT('file:bucket_file')
+    label: i18nT('file:bucket_file'),
+    previewExpireMinutes: 30 // 30 minutes
   },
   [BucketNameEnum.chat]: {
-    label: i18nT('file:bucket_chat')
+    label: i18nT('file:bucket_chat'),
+    previewExpireMinutes: 7 * 24 * 60 // 7 days
   }
 };
 

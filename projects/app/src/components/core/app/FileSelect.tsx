@@ -20,6 +20,7 @@ import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useMount } from 'ahooks';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const FileSelect = ({
   forbidVision = false,
@@ -31,7 +32,9 @@ const FileSelect = ({
   onChange: (e: AppFileSelectConfigType) => void;
 }) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 30);
 
   const formLabel = useMemo(
     () =>
@@ -117,11 +120,11 @@ const FileSelect = ({
               <MySlider
                 markList={[
                   { label: '1', value: 1 },
-                  { label: '20', value: 20 }
+                  { label: `${maxSelectFiles}`, value: maxSelectFiles }
                 ]}
                 width={'100%'}
                 min={1}
-                max={20}
+                max={maxSelectFiles}
                 step={1}
                 value={value.maxFiles ?? 5}
                 onChange={(e) => {
