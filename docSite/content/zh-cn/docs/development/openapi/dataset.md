@@ -531,6 +531,8 @@ data 为集合的 ID。
 {{< tab tabName="请求示例" >}}
 {{< markdownify >}}
 
+使用代码上传时，请注意中文 filename 需要进行 encode 处理，否则容易乱码。
+
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/create/localFile' \
 --header 'Authorization: Bearer {{authorization}}' \
