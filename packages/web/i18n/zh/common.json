@@ -3,6 +3,8 @@
   "click_to_resume": "点击恢复",
   "code_editor": "代码编辑",
   "Export": "导出",
+  "yes": "是",
+  "no": "否",
   "Folder": "文件夹",
   "Login": "登录",
   "chosen": "已选",
@@ -249,6 +251,7 @@
     "Set Name": "取个名字",
     "Setting": "设置",
     "Status": "状态",
+    "submit_success": "提交成功",
     "Submit failed": "提交失败",
     "Success": "成功",
     "failed": "失败",
@@ -648,8 +651,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1219,7 +1221,8 @@
     "wallet": {
       "Ai point every thousand tokens": "{{points}} 积分/1K tokens",
       "Amount": "金额",
-      "Bills": "账单",
+      "Bills": "账单与开票",
+      "invoicing": "开票",
       "Buy": "购买",
       "buy_resource": "购买资源包",
       "amount_0": "购买数量不能为0",
@@ -1229,6 +1232,22 @@
       "Plan reset time": "套餐重置时间",
       "Standard Plan Detail": "套餐详情",
       "To read plan": "查看套餐",
+      "bill_tag": {
+        "bill": "账单记录",
+        "invoice": "开票记录",
+        "default_header": "默认抬头"
+      },
+      "invoice_data": {
+        "organization_name": "组织名称",
+        "unit_code": "同一信用代码",
+        "company_address": "公司地址",
+        "company_phone": "公司电话",
+        "bank": "开户银行",
+        "bank_account": "开户账号",
+        "need_special_invoice": "是否需要专票",
+        "email": "邮箱地址",
+        "in_valid": "存在空字段或邮箱格式错误"
+      },
       "bill": {
         "Number": "订单号",
         "Status": "状态",
