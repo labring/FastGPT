@@ -21,6 +21,7 @@ import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useMount } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const FileSelect = ({
   forbidVision = false,
@@ -109,13 +110,18 @@ const FileSelect = ({
             )}
           </HStack>
           {!forbidVision && (
-            <Box mt={2} color={'myGray.500'} fontSize={'xs'}>
-              {t('app:image_upload_tip')}
-            </Box>
+            <Flex mt={2} color={'myGray.500'}>
+              <Box fontSize={'xs'}>{t('app:image_upload_tip')}</Box>
+              <ChatFunctionTip type="visionModel" />
+            </Flex>
           )}
 
           <Box mt={6}>
-            <FormLabel>{t('app:upload_file_max_amount')}</FormLabel>
+            <HStack spacing={1}>
+              <FormLabel>{t('app:upload_file_max_amount')}</FormLabel>
+              <QuestionTip label={t('app:upload_file_max_amount_tip')} />
+            </HStack>
+
             <Box mt={5}>
               <MySlider
                 markList={[

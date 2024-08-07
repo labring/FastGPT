@@ -49,7 +49,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     chatConfig,
     params: { fileUrlList = [] }
   } = props;
-  const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 0;
+  const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
 
   // Get files from histories
   const filesFromHistories = histories
