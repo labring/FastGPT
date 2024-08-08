@@ -2,7 +2,8 @@
   "bind_inform_account_error": "绑定通知账号异常",
   "bind_inform_account_success": "绑定通知账号成功",
   "notification": {
-    "Bind Notification Pipe Hint": "绑定接收通知的邮箱或手机号，以确保您能及时接收到重要的系统通知。"
+    "Bind Notification Pipe Hint": "绑定接收通知的邮箱或手机号，以确保您能及时接收到重要的系统通知。",
+    "remind_owner_bind": "请提醒创建者绑定通知账号"
   },
   "permission": {
     "Manage": "管理员",
