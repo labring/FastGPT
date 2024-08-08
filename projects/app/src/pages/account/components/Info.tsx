@@ -273,9 +273,11 @@ const MyInfo = () => {
                 ? { color: 'red.600' }
                 : {})}
             >
-              {userInfo?.team.notificationAccount || userInfo?.permission.isOwner
-                ? t('common:user.Notification Receive Bind')
-                : t('user:notification.remind_owner_bind')}
+              {userInfo?.team.notificationAccount
+                ? userInfo?.team.notificationAccount
+                : userInfo?.permission.isOwner
+                  ? t('common:user.Notification Receive Bind')
+                  : t('user:notification.remind_owner_bind')}
             </Box>
 
             {userInfo?.permission.isOwner && (
