@@ -3,7 +3,8 @@ import {
   ChatItemType,
   UserChatItemValueItemType,
   ChatItemValueItemType,
-  ToolRunResponseItemType
+  ToolRunResponseItemType,
+  NodeOutputItemType
 } from '../../chat/type';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io.d';
 import { StoreNodeItemType } from '../type/node';
@@ -17,6 +18,7 @@ import { AppDetailType, AppSchema } from '../../app/type';
 import { RuntimeNodeItemType } from '../runtime/type';
 import { RuntimeEdgeItemType } from './edge';
 import { ReadFileNodeResponse } from '../template/system/readFiles/type';
+import { UserSelectOptionType } from '../template/system/userSelect/type';
 
 /* workflow props */
 export type ChatDispatchProps = {
@@ -81,7 +83,7 @@ export type PluginRuntimeType = {
 };
 
 export type RuntimeEdgeItemType = StoreEdgeItemType & {
-  status: 'waiting' | 'active' | 'skipped';
+  status: 'waiting' | 'active' | 'skipped' | 'end';
 };
 
 export type DispatchNodeResponseType = {
@@ -153,9 +155,17 @@ export type DispatchNodeResponseType = {
   // read files
   readFilesResult?: string;
   readFiles?: ReadFileNodeResponse;
+
+  // user select
+  description?: string;
+  userSelectOptions?: UserSelectOptionType[];
+  userSeletedIndex?: number | null;
+  currentNodeId?: string;
+  nodeOutputs?: NodeOutputItemType[];
 };
 
 export type DispatchNodeResultType<T> = {
+  [DispatchNodeResponseKeyEnum.endHandleId]?: string[]; // end handle id
   [DispatchNodeResponseKeyEnum.skipHandleId]?: string[]; // skip some edge handle id
   [DispatchNodeResponseKeyEnum.nodeResponse]?: DispatchNodeResponseType; // The node response detail
   [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[]; //

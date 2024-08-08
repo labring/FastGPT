@@ -45,7 +45,7 @@ import { AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { UserChatItemType } from '@fastgpt/global/core/chat/type';
+import { AIChatItemValueItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import { dispatchWorkFlowV1 } from '@fastgpt/service/core/workflow/dispatchV1';
@@ -225,19 +225,35 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         appId: app._id,
         chatId,
         limit,
-        field: `dataId obj value`
+        field: `dataId obj value nodeOutputs`
       }),
       getAppLatestVersion(app._id, app)
     ]);
     const newHistories = concatHistories(histories, chatMessages);
 
+    const parsedJson = (() => {
+      try {
+        const lastAIMessage = newHistories[newHistories.length - 1]
+          ?.value as AIChatItemValueItemType[];
+        const interactiveContent = lastAIMessage.find(
+          (item) => item.type === ChatItemValueTypeEnum.interactive
+        )?.interactive;
+        if (!interactiveContent) return { nodeId: undefined };
+        return interactiveContent;
+      } catch (error) {
+        return { nodeId: undefined };
+      }
+    })();
+
     // Get runtimeNodes
-    const runtimeNodes = isPlugin
-      ? updatePluginInputByVariables(
-          storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
-          variables
-        )
-      : storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes));
+    let runtimeNodes = !parsedJson.nodeId
+      ? storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes))
+      : storeNodes2RuntimeNodes(nodes, [parsedJson.nodeId]);
+    runtimeNodes = isPlugin ? updatePluginInputByVariables(runtimeNodes, variables) : runtimeNodes;
+
+    const runtimeEdges = !parsedJson.nodeId
+      ? initWorkflowEdgeStatus(edges)
+      : initWorkflowEdgeStatus(edges).filter((edge) => edge.target !== parsedJson.nodeId);
 
     const runtimeVariables = removePluginInputVariables(
       variables,
@@ -258,7 +274,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           chatId,
           responseChatItemId,
           runtimeNodes,
-          runtimeEdges: initWorkflowEdgeStatus(edges),
+          runtimeEdges,
           variables: runtimeVariables,
           query: removeEmptyUserInput(userQuestion.value),
           chatConfig,

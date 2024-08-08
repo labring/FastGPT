@@ -10,10 +10,13 @@ export enum SseResponseEventEnum {
   toolParams = 'toolParams', // tool params return
   toolResponse = 'toolResponse', // tool response return
   flowResponses = 'flowResponses', // sse response request
-  updateVariables = 'updateVariables'
+  updateVariables = 'updateVariables',
+
+  userSelect = 'userSelect' // user select
 }
 
 export enum DispatchNodeResponseKeyEnum {
+  endHandleId = 'endHandleId', // end handle id
   skipHandleId = 'skipHandleId', // skip handle id
   nodeResponse = 'responseData', // run node response
   nodeDispatchUsages = 'nodeDispatchUsages', // the node bill.

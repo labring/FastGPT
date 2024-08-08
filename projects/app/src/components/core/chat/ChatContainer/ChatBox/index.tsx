@@ -41,7 +41,7 @@ import ChatBoxDivider from '../../Divider';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { formatChatValue2InputType } from './utils';
+import { formatChatValue2InputType, setUserSelectedIndex } from './utils';
 import { textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext, ChatProviderProps } from './Provider';
@@ -151,6 +151,16 @@ const ChatBox = (
     isChatting
   } = useContextSelector(ChatBoxContext, (v) => v);
 
+  const isInteractive = useMemo(() => {
+    const lastAIHistory = chatHistories[chatHistories.length - 1];
+    if (!lastAIHistory) return false;
+    const lastAIMessage = lastAIHistory.value as AIChatItemValueItemType[];
+    const interactiveContent = lastAIMessage?.find(
+      (item) => item.type === ChatItemValueTypeEnum.interactive
+    )?.interactive;
+    return !!interactiveContent;
+  }, [chatHistories]);
+
   // compute variable input is finish.
   const chatForm = useForm<ChatBoxInputFormType>({
     defaultValues: {
@@ -201,6 +211,7 @@ const ChatBox = (
       status,
       name,
       tool,
+      interactive,
       autoTTSResponse,
       variables
     }: generatingMessageProps & { autoTTSResponse?: boolean }) => {
@@ -287,6 +298,16 @@ const ChatBox = (
             };
           } else if (event === SseResponseEventEnum.updateVariables && variables) {
             variablesForm.reset(variables);
+          } else if (event === SseResponseEventEnum.userSelect) {
+            const val: AIChatItemValueItemType = {
+              type: ChatItemValueTypeEnum.interactive,
+              interactive
+            };
+
+            return {
+              ...item,
+              value: item.value.concat(val)
+            };
           }
 
           return item;
@@ -405,7 +426,7 @@ const ChatBox = (
           }
 
           const newChatList: ChatSiteItemType[] = [
-            ...history,
+            ...setUserSelectedIndex(history, text),
             {
               dataId: getNanoid(24),
               obj: ChatRoleEnum.Human,
@@ -907,7 +928,8 @@ const ChatBox = (
                       avatar={appAvatar}
                       chat={item}
                       isLastChild={index === chatHistories.length - 1}
-                      {...(item.obj === ChatRoleEnum.AI && {
+                      onSendMessage={sendPrompt}
+                      {...{
                         showVoiceIcon,
                         shareId,
                         outLinkUid,
@@ -923,7 +945,7 @@ const ChatBox = (
                         onCloseUserLike: onCloseUserLike(item),
                         onAddUserDislike: onAddUserDislike(item),
                         onReadUserDislike: onReadUserDislike(item)
-                      })}
+                      }}
                     >
                       <ResponseTags
                         showTags={index !== chatHistories.length - 1 || !isChatting}
@@ -973,7 +995,7 @@ const ChatBox = (
         </Box>
       </Box>
       {/* message input */}
-      {onStartChat && chatStarted && active && appId && (
+      {onStartChat && chatStarted && active && appId && !isInteractive && (
         <ChatInput
           onSendMessage={sendPrompt}
           onStop={() => chatController.current?.abort('stop')}

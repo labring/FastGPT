@@ -1,6 +1,10 @@
 import { StreamResponseType } from '@/web/common/api/fetch';
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
-import { ChatSiteItemType, ToolModuleResponseItemType } from '@fastgpt/global/core/chat/type';
+import {
+  ChatSiteItemType,
+  InteractiveModuleResponseItemType,
+  ToolModuleResponseItemType
+} from '@fastgpt/global/core/chat/type';
 
 export type generatingMessageProps = {
   event: SseResponseEventEnum;
@@ -8,6 +12,7 @@ export type generatingMessageProps = {
   name?: string;
   status?: 'running' | 'finish';
   tool?: ToolModuleResponseItemType;
+  interactive?: InteractiveModuleResponseItemType;
   variables?: Record<string, any>;
 };
 

@@ -15,6 +15,7 @@ import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { DispatchNodeResponseType } from '../workflow/runtime/type.d';
 import { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
+import { UserSelectOptionType } from 'core/workflow/template/system/userSelect/type';
 
 export type ChatSchema = {
   _id: string;
@@ -67,11 +68,12 @@ export type SystemChatItemType = {
   value: SystemChatItemValueItemType[];
 };
 export type AIChatItemValueItemType = {
-  type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.tool;
+  type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.tool | ChatItemValueTypeEnum.interactive;
   text?: {
     content: string;
   };
   tools?: ToolModuleResponseItemType[];
+  interactive?: InteractiveModuleResponseItemType;
 };
 export type AIChatItemType = {
   obj: ChatRoleEnum.AI;
@@ -81,6 +83,7 @@ export type AIChatItemType = {
   customFeedbacks?: string[];
   adminFeedback?: AdminFbkType;
   [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType[];
+  nodeOutputs?: NodeOutputItemType[];
 };
 export type ChatItemValueItemType =
   | UserChatItemValueItemType
@@ -153,6 +156,13 @@ export type ChatHistoryItemResType = DispatchNodeResponseType & {
   moduleName: string;
 };
 
+/* ---------- node outputs ------------ */
+export type NodeOutputItemType = {
+  nodeId: string;
+  key: NodeOutputKeyEnum;
+  value: any;
+};
+
 /* One tool run response  */
 export type ToolRunResponseItemType = any;
 /* tool module response */
@@ -163,6 +173,15 @@ export type ToolModuleResponseItemType = {
   params: string; // tool params
   response: string;
   functionName: string;
+};
+export type InteractiveModuleResponseItemType = {
+  nodeId: string;
+  params: {
+    description?: string;
+    userSelectOptions?: UserSelectOptionType[];
+    userSeletedIndex?: number | null;
+    nodeOutputs?: NodeOutputItemType[];
+  };
 };
 
 /* dispatch run time */

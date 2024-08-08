@@ -124,7 +124,7 @@ const WholeResponseModal = ({
         </Flex>
       }
     >
-      {response?.length && <ResponseBox response={response} showDetail={showDetail} />}
+      {!!response?.length && <ResponseBox response={response} showDetail={showDetail} />}
     </MyModal>
   );
 };
@@ -478,6 +478,26 @@ export const WholeResponseContent = ({
             <Row
               label={t('workflow:response.Read file result')}
               value={activeModule?.readFilesResult}
+            />
+          </>
+
+          {/* user select */}
+          <>
+            <Row
+              label={t('workflow:response.User_select_description')}
+              value={activeModule?.description}
+            />
+            <Row
+              label={t('workflow:response.User_select_result')}
+              value={(() => {
+                const selectOptions = activeModule?.userSelectOptions;
+                if (
+                  activeModule?.userSeletedIndex === null ||
+                  activeModule?.userSeletedIndex === undefined
+                )
+                  return undefined;
+                return selectOptions?.[activeModule?.userSeletedIndex]?.value;
+              })()}
             />
           </>
         </Box>

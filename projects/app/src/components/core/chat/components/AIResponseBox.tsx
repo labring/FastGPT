@@ -6,7 +6,9 @@ import {
   AccordionIcon,
   AccordionItem,
   AccordionPanel,
-  Box
+  Box,
+  Button,
+  Flex
 } from '@chakra-ui/react';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
@@ -17,6 +19,7 @@ import {
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import { ChatBoxInputType } from '../ChatContainer/ChatBox/type';
 
 type props = {
   value: UserChatItemValueItemType | AIChatItemValueItemType;
@@ -25,9 +28,18 @@ type props = {
   isLastChild: boolean;
   isChatting: boolean;
   questionGuides: string[];
+  onSendMessage?: (val: ChatBoxInputType & { autoTTSResponse?: boolean }) => void;
 };
 
-const AIResponseBox = ({ value, index, chat, isLastChild, isChatting, questionGuides }: props) => {
+const AIResponseBox = ({
+  value,
+  index,
+  chat,
+  isLastChild,
+  isChatting,
+  questionGuides,
+  onSendMessage
+}: props) => {
   if (value.text) {
     let source = (value.text?.content || '').trim();
 
@@ -123,6 +135,39 @@ ${toolResponse}`}
             </Accordion>
           );
         })}
+      </Box>
+    );
+  }
+  if (value.type === ChatItemValueTypeEnum.interactive && value.interactive) {
+    const description = value.interactive.params.description;
+    return (
+      <Box>
+        <Markdown source={description} />
+        <Flex mt={!!description ? 3 : 0} flexDirection={'column'} gap={2} minW={'240px'}>
+          {value.interactive.params.userSelectOptions?.map((option, index) => (
+            <Button
+              key={index}
+              w={'full'}
+              variant={'whitePrimary'}
+              isDisabled={!isLastChild}
+              // _disabled={{ opacity: 0.7 }}
+              onClick={() => {
+                onSendMessage &&
+                  onSendMessage({
+                    text: option.value
+                  });
+              }}
+              {...(index === value.interactive?.params.userSeletedIndex &&
+                !isLastChild && {
+                  color: 'primary.600',
+                  background: 'primary.1',
+                  borderColor: 'primary.300'
+                })}
+            >
+              {option.value}
+            </Button>
+          ))}
+        </Flex>
       </Box>
     );
   }
