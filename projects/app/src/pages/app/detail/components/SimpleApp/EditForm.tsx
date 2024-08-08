@@ -35,6 +35,7 @@ import { AppContext } from '@/pages/app/detail/components/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
+import { getWebLLMModel } from '@/web/common/system/utils';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -121,8 +122,7 @@ const EditForm = ({
     [appForm.chatConfig.variables, t]
   );
 
-  const selectedModel =
-    llmModelList.find((item) => item.model === appForm.aiSettings.model) ?? llmModelList[0];
+  const selectedModel = getWebLLMModel(appForm.aiSettings.model);
   const tokenLimit = useMemo(() => {
     return selectedModel?.quoteMaxToken || 3000;
   }, [selectedModel.quoteMaxToken]);
