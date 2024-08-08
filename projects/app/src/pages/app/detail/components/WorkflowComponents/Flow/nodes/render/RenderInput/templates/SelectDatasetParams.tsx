@@ -11,6 +11,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
+import { getWebLLMModel } from '@/web/common/system/utils';
 
 const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
@@ -36,8 +37,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
       if (item.flowNodeType === FlowNodeTypeEnum.chatNode) {
         const model =
           item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
-        const quoteMaxToken =
-          llmModelList.find((item) => item.model === model)?.quoteMaxToken || 3000;
+        const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 3000;
 
         maxTokens = Math.max(maxTokens, quoteMaxToken);
       }

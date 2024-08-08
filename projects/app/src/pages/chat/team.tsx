@@ -337,7 +337,7 @@ export async function getServerSideProps(context: any) {
       chatId: context?.query?.chatId || '',
       teamId: context?.query?.teamId || '',
       teamToken: context?.query?.teamToken || '',
-      ...(await serviceSideProps(context, ['file', 'app', 'chat']))
+      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))
     }
   };
 }

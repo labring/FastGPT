@@ -394,7 +394,7 @@ export async function getServerSideProps(context: any) {
       appIntro: app?.appId?.intro ?? 'intro',
       shareId: shareId ?? '',
       authToken: authToken ?? '',
-      ...(await serviceSideProps(context, ['file', 'app', 'chat']))
+      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))
     }
   };
 }
