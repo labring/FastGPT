@@ -91,7 +91,7 @@ export type LafAccountType = {
   pat: string;
 };
 
-export type TeamInvoiceHeaderInfoType = {
+export type TeamInvoiceHeaderType = {
   teamName: string;
   unifiedCreditCode: string;
   companyAddress: string;
@@ -100,4 +100,8 @@ export type TeamInvoiceHeaderInfoType = {
   bankAccount: string;
   needInvoice: boolean;
   emailAddress: string;
+};
+
+export type TeamInvoiceHeaderInfoSchemaType = TeamInvoiceHeaderType & {
+  _id: string;
 };

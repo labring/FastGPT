@@ -1,7 +1,7 @@
 import Divider from '@/pages/app/detail/components/WorkflowComponents/Flow/components/Divider';
 import { getTeamInvoiceHeader, updateTeamInvoiceHeader } from '@/web/support/user/team/api';
 import { Box, Button, Flex, Input, Radio, RadioGroup, Stack } from '@chakra-ui/react';
-import { TeamInvoiceHeaderInfoType } from '@fastgpt/global/support/user/team/type';
+import { TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useCallback, useState } from 'react';
@@ -30,7 +30,7 @@ const InputItem = ({
   );
 };
 const InvoiceHeaderForm = () => {
-  const [formData, setFormData] = useState<TeamInvoiceHeaderInfoType>({
+  const [formData, setFormData] = useState<TeamInvoiceHeaderType>({
     teamName: '',
     unifiedCreditCode: '',
     companyAddress: '',
@@ -55,7 +55,7 @@ const InvoiceHeaderForm = () => {
   const handleRatiosChange = useCallback((v: string) => {
     setFormData((prev) => ({ ...prev, needInvoice: v === 'true' }));
   }, []);
-  const isValid = useCallback((v: TeamInvoiceHeaderInfoType) => {
+  const isValid = useCallback((v: TeamInvoiceHeaderType) => {
     const emailRegex = /\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*/;
     for (const [key, value] of Object.entries(v)) {
       if (typeof value === 'string' && value.trim() === '') {
@@ -64,7 +64,15 @@ const InvoiceHeaderForm = () => {
     }
     return emailRegex.test(v.emailAddress);
   }, []);
-  const handleSubmit = useCallback(async () => {
+  const { loading: isSubmitting, run: handleSubmit } = useRequest2(
+    () => updateTeamInvoiceHeader(formData),
+    {
+      manual: true,
+      successToast: t('common:common.submit_success'),
+      errorToast: t('common:common.Submit failed')
+    }
+  );
+  const onSubmit = useCallback(() => {
     if (!isValid(formData)) {
       toast({
         title: t('common:support.wallet.invoice_data.in_valid'),
@@ -72,20 +80,8 @@ const InvoiceHeaderForm = () => {
       });
       return;
     }
-    try {
-      await updateTeamInvoiceHeader(formData);
-      toast({
-        title: t('common:common.submit_success'),
-        status: 'success'
-      });
-    } catch (error: any) {
-      toast({
-        title: t('common:common.Submit failed'),
-        description: error?.message,
-        status: 'warning'
-      });
-    }
-  }, [formData, isValid, t, toast]);
+    handleSubmit();
+  }, [handleSubmit, formData, isValid, toast, t]);
   return (
     <>
       <MyBox isLoading={isLoading} pt="3.5rem">
@@ -157,10 +153,10 @@ const InvoiceHeaderForm = () => {
             />
           </Flex>
           <Flex w={'100%'} justify={'center'} mt={'3rem'}>
-            <Button variant={'primary'} px="0" onClick={handleSubmit}>
+            <Button variant={'primary'} px="0" onClick={onSubmit} isDisabled={isSubmitting}>
               <Flex alignItems={'center'} px={'20px'}>
                 <Box px={'1.25rem'} py={'0.5rem'}>
-                  {t('common:common.Save')}
+                  {isSubmitting ? t('common:common.submitting') : t('common:common.Save')}
                 </Box>
               </Flex>
             </Button>
