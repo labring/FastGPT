@@ -156,7 +156,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
                     mr={3}
                     variant={'whitePrimary'}
                   >
-                    {t('common:core.app.outLink.Select Mode')}
+                    {t('publish:request_address')}
                   </Button>
                   <MyMenu
                     Button={

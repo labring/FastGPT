@@ -14,5 +14,8 @@
   "token_auth": "身份验证",
   "token_auth_tips": "身份校验服务器地址，如填写该值，每次对话前都会向指定服务器发送一个请求，进行身份校验",
   "token_auth_use_cases": "查看身份验证使用说明",
-  "show_share_link_modal_title": "开始使用"
+  "show_share_link_modal_title": "开始使用",
+  "request_address": "请求地址",
+  "basic_info": "基本信息",
+  "feishu_api": "飞书接口"
 }
