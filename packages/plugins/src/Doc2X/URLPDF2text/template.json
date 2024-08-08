@@ -3,7 +3,7 @@
   "version": "488",
   "name": "Doc2X PDF文件(URL)识别",
   "avatar": "plugins/doc2x",
-  "intro": "将传入的PDF文件(URL)发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
+  "intro": "从URL下载PDF文件，并发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
   "inputExplanationUrl": "https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview",
   "showStatus": true,
   "weight": 10,
@@ -201,7 +201,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"url\": \"{{url}}\",\n  \"ocr\": \"{{ocr}}\"\n}",
+            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"url\": \"{{url}}\",\n  \"ocr\": {{ocr}}\n}",
             "label": "",
             "required": false
           },

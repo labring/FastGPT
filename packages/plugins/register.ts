@@ -13,6 +13,8 @@ const staticPluginList = [
   'Doc2X',
   'Doc2X/URLPDF2text',
   'Doc2X/URLImg2text',
+  `Doc2X/FilePDF2text`,
+  `Doc2X/FileImg2text`,
   'feishu'
 ];
 // Run in worker thread (Have npm packages)
