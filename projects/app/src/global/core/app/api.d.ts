@@ -29,3 +29,8 @@ export type PostRevertAppProps = {
   editEdges: AppSchema['edges'];
   editChatConfig: AppSchema['chatConfig'];
 };
+
+export type AppChangeOwnerBody = {
+  appId: string;
+  ownerId: string;
+};

@@ -124,7 +124,7 @@ const EditForm = ({
   const selectedModel =
     llmModelList.find((item) => item.model === appForm.aiSettings.model) ?? llmModelList[0];
   const tokenLimit = useMemo(() => {
-    return selectedModel.quoteMaxToken || 3000;
+    return selectedModel?.quoteMaxToken || 3000;
   }, [selectedModel.quoteMaxToken]);
 
   return (

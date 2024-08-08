@@ -53,7 +53,7 @@ const Provider = () => {
 export async function getServerSideProps(context: any) {
   return {
     props: {
-      ...(await serviceSideProps(context, ['app', 'chat', 'file', 'publish', 'workflow']))
+      ...(await serviceSideProps(context, ['app', 'chat', 'user', 'file', 'publish', 'workflow']))
     }
   };
 }

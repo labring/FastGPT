@@ -13,6 +13,7 @@ import {
 import { defaultDatasetDetail } from '../constants';
 import { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
 import { DatasetItemType, DatasetTagType } from '@fastgpt/global/core/dataset/type';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type DatasetPageContextType = {
   datasetId: string;
@@ -83,6 +84,7 @@ export const DatasetPageContextProvider = ({
   datasetId: string;
 }) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
 
   // dataset detail
   const [datasetDetail, setDatasetDetail] = useState(defaultDatasetDetail);
@@ -123,6 +125,8 @@ export const DatasetPageContextProvider = ({
   const [allDatasetTags, setAllDatasetTags] = useState<DatasetTagType[]>([]);
 
   const loadAllDatasetTags = async ({ id }: { id: string }) => {
+    if (!feConfigs?.isPlus) return;
+
     const { list } = await getAllTags(id);
     setAllDatasetTags(list);
   };

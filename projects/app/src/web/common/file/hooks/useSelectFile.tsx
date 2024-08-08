@@ -26,6 +26,7 @@ export const useSelectFile = (props?: {
           multiple={multiple}
           onChange={(e) => {
             const files = e.target.files;
+
             if (!files || files?.length === 0) return;
 
             let fileList = Array.from(files);
@@ -37,6 +38,8 @@ export const useSelectFile = (props?: {
               fileList = fileList.slice(0, maxCount);
             }
             onSelect(fileList, openSign.current);
+
+            e.target.value = '';
           }}
         />
       </Box>

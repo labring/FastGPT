@@ -97,12 +97,8 @@ const TTSSelect = ({
         </Button>
       </MyTooltip>
       <MyModal
-        title={
-          <>
-            <MyIcon name={'core/app/simpleMode/tts'} mr={2} w={'20px'} />
-            {t('common:core.app.TTS')}
-          </>
-        }
+        iconSrc="core/app/simpleMode/tts"
+        title={t('common:core.app.TTS')}
         isOpen={isOpen}
         onClose={onCloseTTSModal}
         w={'500px'}

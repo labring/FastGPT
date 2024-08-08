@@ -14,7 +14,7 @@
       "name": "gpt-4o-mini", // 模型别名
       "avatar": "/imgs/model/openai.svg", // 模型的logo
       "maxContext": 125000, // 最大上下文
-      "maxResponse": 4000, // 最大回复
+      "maxResponse": 16000, // 最大回复
       "quoteMaxToken": 120000, // 最大引用内容
       "maxTemperature": 1.2, // 最大温度
       "charsPointsPrice": 0, // n积分/1k token（商业版）

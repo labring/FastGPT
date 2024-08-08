@@ -14,7 +14,7 @@
     "dataset_compute_q": "知识库存储怎么计算？",
     "dataset_index_a": "不会。但知识库索引超出时，无法插入和更新知识库内容。",
     "dataset_index_q": "知识库索引超出会删除么？",
-    "free_user_clean_a": "免费版用户（免费版且未购买额外套餐）30天无使用记录后，系统会自动清除账号下所有知识库内容。",
+    "free_user_clean_a": "免费版团队（免费版且未购买额外套餐）连续 30 天未登录系统，系统会自动清除该团队下所有知识库内容。",
     "free_user_clean_q": "免费版数据会清除么？",
     "package_overlay_a": "可以的。每次购买的资源包都是独立的，在其有效期内将会叠加使用。AI积分会优先扣除最先过期的资源包。",
     "package_overlay_q": "额外资源包可以叠加么？"
@@ -36,6 +36,8 @@
   "code_editor": "代码编辑",
   "code_error": {
     "app_error": {
+      "invalid_app_type": "错误的应用类型",
+      "invalid_owner": "非法的应用所有者",
       "not_exist": "应用不存在",
       "un_auth_app": "无权操作该应用"
     },
@@ -223,6 +225,7 @@
     },
     "error": {
       "Select avatar failed": "头像选择异常",
+      "too_many_request": "请求太频繁了，请稍后重试。",
       "unKnow": "出现了点意外~"
     },
     "failed": "失败",
@@ -595,8 +598,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -650,7 +652,7 @@
         "Down load csv template": "点击下载 CSV 模板",
         "Embedding Estimated Price Tips": "仅使用索引模型，消耗少量 AI 积分：{{price}} 积分/1K tokens",
         "Ideal chunk length": "理想分块长度",
-        "Ideal chunk length Tips": "按结束符号进行分段。我们建议您的文档应合理的使用标点符号，以确保每个完整的句子长度不要超过该值\n中文文档建议 400~1000\n英文文档建议 600~1200",
+        "Ideal chunk length Tips": "按结束符号进行分段，并将多个分段组成一个分块，该值决定了分块的预估大小。",
         "Import success": "导入成功，请等待训练",
         "Link name": "网络链接",
         "Link name placeholder": "仅支持静态链接，如果上传后数据为空，可能该链接无法被读取\n每行一个，每次最多 10 个链接",
@@ -960,6 +962,7 @@
     }
   },
   "create": "去创建",
+  "cron_job_run_app": "定时任务",
   "dataset": {
     "Confirm move the folder": "确认移动到该目录",
     "Confirm to delete the data": "确认删除该数据？",
@@ -1020,7 +1023,8 @@
     "missingParams": "参数缺失",
     "team": {
       "overSize": "团队成员超出上限"
-    }
+    },
+    "upload_file_error_filename": "{{name}} 上传失败"
   },
   "extraction_results": "提取结果",
   "field_name": "字段名",
@@ -1033,7 +1037,7 @@
     "csv_download": "点击下载批量测试模板",
     "csv_message": "读取 CSV 文件第一列进行批量测试，单次最多支持 100 组数据。",
     "felid_message": "字段key必须是纯英文字母或数字，并且不能以数字开头。",
-    "free_plan": "免费版用户30天无任何使用记录时，系统会自动清理账号知识库。",
+    "free_plan": "免费版团队连续30天未登录系统时，系统会自动清理账号知识库。",
     "include": "包含标准套餐与额外资源包",
     "node_info": "调整该模块会对工具调用时机有影响。\n你可以通过精确的描述该模块功能，引导模型进行工具调用。",
     "old_version_attention": "检测到您的高级编排为旧版，系统将为您自动格式化成新版工作流。\n\n由于版本差异较大，会导致一些工作流无法正常排布，请重新手动连接工作流。如仍异常，可尝试删除对应节点后重新添加。\n\n你可以直接点击调试进行工作流测试，调试完毕后点击发布。直到你点击发布，新工作流才会真正保存生效。\n\n在你发布新工作流前，自动保存不会生效。",
@@ -1089,7 +1093,13 @@
     "Remove InheritPermission Confirm": "此操作会导致权限继承失效，是否进行？",
     "Resume InheritPermission Confirm": "是否恢复为继承父级文件夹的权限？",
     "Resume InheritPermission Failed": "恢复失败",
-    "Resume InheritPermission Success": "恢复成功"
+    "Resume InheritPermission Success": "恢复成功",
+    "change_owner": "转移所有权",
+    "change_owner_failed": "转移所有权失败",
+    "change_owner_placeholder": "输入用户名查找账号",
+    "change_owner_success": "成功转移所有权",
+    "change_owner_tip": "转移后将保留您的管理员权限",
+    "change_owner_to": "转移给"
   },
   "plugin": {
     "App": "选择应用",
@@ -1285,7 +1295,7 @@
           "enterprise": "企业版",
           "experience": "体验版",
           "free": "免费版",
-          "free desc": "每月均可免费使用基础功能，30 天无使用记录时，将会清除知识库",
+          "free desc": "每月均可免费使用基础功能，连续 30 天未登录系统，将会自动清除知识库",
           "team": "团队版"
         },
         "token_compute": "点击查看在线 Tokens 计算器",
