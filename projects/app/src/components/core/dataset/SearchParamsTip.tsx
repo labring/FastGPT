@@ -7,6 +7,7 @@ import {
 import { useTranslation } from 'next-i18next';
 import React, { useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { getWebLLMModel } from '@/web/common/system/utils';
 
 const SearchParamsTip = ({
   searchMode,
@@ -34,11 +35,8 @@ const SearchParamsTip = ({
 
   const extensionModelName = useMemo(
     () =>
-      datasetSearchUsingExtensionQuery
-        ? llmModelList.find((item) => item.model === queryExtensionModel)?.name ??
-          llmModelList[0]?.name
-        : undefined,
-    [datasetSearchUsingExtensionQuery, llmModelList, queryExtensionModel]
+      datasetSearchUsingExtensionQuery ? getWebLLMModel(queryExtensionModel)?.name : undefined,
+    [datasetSearchUsingExtensionQuery, queryExtensionModel, llmModelList]
   );
 
   return (

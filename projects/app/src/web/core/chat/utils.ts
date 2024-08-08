@@ -2,12 +2,11 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { getWebLLMModel } from '@/web/common/system/utils';
 
 export function checkChatSupportSelectFileByChatModels(models: string[] = []) {
-  const llmModelList = useSystemStore.getState().llmModelList;
-
   for (const model of models) {
-    const modelData = llmModelList.find((item) => item.model === model || item.name === model);
+    const modelData = getWebLLMModel(model);
     if (modelData?.vision) {
       return true;
     }

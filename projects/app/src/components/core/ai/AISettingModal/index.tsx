@@ -20,6 +20,7 @@ import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { getWebLLMModel } from '@/web/common/system/utils';
 
 const AIChatSettingsModal = ({
   onClose,
@@ -44,18 +45,18 @@ const AIChatSettingsModal = ({
   const showVisionSwitch = watch(NodeInputKeyEnum.aiChatVision) !== undefined;
   const showMaxHistoriesSlider = watch('maxHistories') !== undefined;
   const useVision = watch('aiChatVision');
-  const selectedModel = llmModelList.find((item) => item.model === model) || llmModelList[0];
+  const selectedModel = getWebLLMModel(model);
   const llmSupportVision = !!selectedModel?.vision;
 
   const tokenLimit = useMemo(() => {
-    return llmModelList.find((item) => item.model === model)?.maxResponse || 4096;
-  }, [llmModelList, model]);
+    return selectedModel?.maxResponse || 4096;
+  }, [selectedModel?.maxResponse]);
 
   const onChangeModel = (e: string) => {
     setValue('model', e);
 
     // update max tokens
-    const modelData = llmModelList.find((item) => item.model === e);
+    const modelData = getWebLLMModel(e);
     if (modelData) {
       setValue('maxToken', modelData.maxResponse / 2);
     }

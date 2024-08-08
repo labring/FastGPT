@@ -103,7 +103,15 @@ export async function authChatCrud({
   3. share page (body: shareId outLinkUid)
   4. team chat page (body: teamId teamToken)
 */
-export async function authChatCert(props: AuthModeType) {
+export async function authChatCert(props: AuthModeType): Promise<{
+  teamId: string;
+  tmbId: string;
+  authType: AuthUserTypeEnum;
+  apikey: string;
+  isOwner: boolean;
+  canWrite: boolean;
+  outLinkUid?: string;
+}> {
   const { teamId, teamToken, shareId, outLinkUid } = props.req.body as OutLinkChatAuthProps;
 
   if (shareId && outLinkUid) {

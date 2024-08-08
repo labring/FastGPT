@@ -95,7 +95,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     })
     .filter(Boolean)
     .slice(0, maxFiles);
-  console.log(parseUrlList);
+
   const readFilesResult = await Promise.all(
     parseUrlList
       .map(async (url) => {
