@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Box, Button, Card, Flex } from '@chakra-ui/react';
+import { Box, Button, Card, Flex, Image } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -200,6 +200,30 @@ const NodeCard = (props: Props) => {
                   <Box>{appT('app.modules.has new version')}</Box>
                   <QuestionOutlineIcon ml={1} />
                 </Button>
+              </MyTooltip>
+            )}
+            {!!nodeTemplate?.diagram && (
+              <MyTooltip
+                label={
+                  <Box>
+                    <Image
+                      src={nodeTemplate?.diagram}
+                      w={'100%'}
+                      minH={['auto', '200px']}
+                      alt={''}
+                    />
+                  </Box>
+                }
+              >
+                <Box
+                  fontSize={'sm'}
+                  color={'primary.700'}
+                  p={1}
+                  rounded={'sm'}
+                  _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
+                >
+                  {t('common:core.module.Diagram')}
+                </Box>
               </MyTooltip>
             )}
           </Flex>

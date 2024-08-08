@@ -142,6 +142,14 @@ export const checkNodeRunStatus = ({
     return 'skip';
   }
 
+  // check end
+  if (commonEdges.every((item) => item.status === 'end')) {
+    return 'end';
+  }
+  if (recursiveEdges.length > 0 && recursiveEdges.every((item) => item.status === 'end')) {
+    return 'end';
+  }
+
   // check active
   if (commonEdges.every((item) => item.status !== 'waiting')) {
     return 'run';

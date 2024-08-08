@@ -124,6 +124,13 @@ export const chats2GPTMessages = ({
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
             content: value.text.content
           });
+        } else if (value.type === ChatItemValueTypeEnum.interactive) {
+          results = results.concat({
+            dataId,
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            interactive: value.interactive,
+            content: ''
+          });
         }
       });
     }
@@ -254,6 +261,12 @@ export const GPTMessages2Chats = (
               ]
             });
           }
+        } else if (item.interactive) {
+          value.push({
+            //@ts-ignore
+            type: ChatItemValueTypeEnum.interactive,
+            interactive: item.interactive
+          });
         }
       }
 

@@ -15,6 +15,7 @@ import { useCopyData } from '@/web/common/hooks/useCopyData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
+import { ChatBoxInputType } from '../type';
 const colorMap = {
   [ChatStatusEnum.loading]: {
     bg: 'myGray.100',
@@ -37,6 +38,7 @@ const ChatItem = ({
   children,
   isLastChild,
   questionGuides = [],
+  onSendMessage,
   ...chatControllerProps
 }: {
   type: ChatRoleEnum.Human | ChatRoleEnum.AI;
@@ -47,6 +49,7 @@ const ChatItem = ({
   };
   questionGuides?: string[];
   children?: React.ReactNode;
+  onSendMessage?: (val: ChatBoxInputType & { autoTTSResponse?: boolean }) => void;
 } & ChatControllerProps) => {
   const styleMap: BoxProps =
     type === ChatRoleEnum.Human
@@ -96,6 +99,7 @@ const ChatItem = ({
               isLastChild={isLastChild}
               isChatting={isChatting}
               questionGuides={questionGuides}
+              onSendMessage={onSendMessage}
             />
           );
         })}

@@ -29,6 +29,8 @@
     "Custom outputs": "Custom outputs",
     "Error": "Error",
     "Read file result": "Document parsing result preview",
+    "User_select_description": "User select description",
+    "User_select_result": "User select result",
     "read files": "parsed document"
   },
   "template": {

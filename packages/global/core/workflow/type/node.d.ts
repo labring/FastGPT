@@ -66,6 +66,8 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
   // action
   forbidDelete?: boolean; // forbid delete
   unique?: boolean;
+
+  diagram?: string; // diagram url
 };
 
 export type NodeTemplateListItemType = {

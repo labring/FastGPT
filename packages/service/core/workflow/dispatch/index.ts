@@ -10,6 +10,8 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
+  ChatItemType,
+  NodeOutputItemType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type.d';
 import {
@@ -56,6 +58,8 @@ import { dispatchRunCode } from './code/run';
 import { dispatchTextEditor } from './tools/textEditor';
 import { dispatchCustomFeedback } from './tools/customFeedback';
 import { dispatchReadFiles } from './tools/readFiles';
+import { dispatchUserSelect } from './interactive/userSelect';
+import { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -80,6 +84,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.textEditor]: dispatchTextEditor,
   [FlowNodeTypeEnum.customFeedback]: dispatchCustomFeedback,
   [FlowNodeTypeEnum.readFiles]: dispatchReadFiles,
+  [FlowNodeTypeEnum.userSelect]: dispatchUserSelect,
 
   // none
   [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,
@@ -145,6 +150,21 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     if (responseData) {
       chatResponses.push(responseData);
     }
+
+    if (responseData?.currentNodeId) {
+      chatAssistantResponse.push({
+        type: ChatItemValueTypeEnum.interactive,
+        interactive: {
+          nodeId: responseData.currentNodeId,
+          params: {
+            description: responseData.description,
+            userSelectOptions: responseData.userSelectOptions,
+            userSeletedIndex: responseData.userSeletedIndex,
+            nodeOutputs: responseData.nodeOutputs
+          }
+        }
+      });
+    }
     if (nodeDispatchUsages) {
       chatNodeUsages = chatNodeUsages.concat(nodeDispatchUsages);
     }
@@ -187,6 +207,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
     // Get next source edges and update status
     const skipHandleId = (result[DispatchNodeResponseKeyEnum.skipHandleId] || []) as string[];
+    const endHandleId = (result[DispatchNodeResponseKeyEnum.endHandleId] || []) as string[];
     const targetEdges = filterWorkflowEdges(runtimeEdges).filter(
       (item) => item.source === node.nodeId
     );
@@ -195,10 +216,16 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     targetEdges.forEach((edge) => {
       if (skipHandleId.includes(edge.sourceHandle)) {
         edge.status = 'skipped';
+      } else if (endHandleId.includes(edge.sourceHandle)) {
+        edge.status = 'end';
       } else {
         edge.status = 'active';
       }
     });
+
+    if (result[DispatchNodeResponseKeyEnum.endHandleId]) {
+      return [];
+    }
 
     const nextStepNodes = runtimeNodes.filter((node) => {
       return targetEdges.some((item) => item.target === node.nodeId);
@@ -233,6 +260,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
           addLog.debug(`[dispatchWorkFlow] nodeRunWithSkip: ${node.name}`);
           return nodeRunWithSkip(node);
         }
+        if (status === 'end') {
+          addLog.debug(`[dispatchWorkFlow] nodeRunEnd: ${node.name}`);
+          return { endNode: true };
+        }
 
         return;
       })
@@ -241,6 +272,11 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         node: RuntimeNodeItemType;
         result: Record<string, any>;
       }[];
+
+      if (flat.some((item) => item.result.endNode)) {
+        return;
+      }
+
       if (flat.length === 0) return;
 
       // Update the node output at the end of the run and get the next nodes
@@ -290,7 +326,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       // replace {{$xx.xx$}} variables
       value = replaceVariableLabel({
         text: value,
-        nodes: runtimeNodes,
+        nodes: processHistoryAndNodes(histories, runtimeNodes),
         variables,
         runningNode: node
       });
@@ -298,7 +334,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       // replace reference variables
       value = getReferenceVariableValue({
         value,
-        nodes: runtimeNodes,
+        nodes: processHistoryAndNodes(histories, runtimeNodes),
         variables
       });
 
@@ -476,3 +512,30 @@ export const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemTy
 
   return result;
 };
+
+function processHistoryAndNodes(history: ChatItemType[], runtimeNodes: RuntimeNodeItemType[]) {
+  const lastHistory = history[history.length - 1];
+  if (
+    !lastHistory ||
+    lastHistory.value[0].type !== ChatItemValueTypeEnum.interactive ||
+    !lastHistory.value[0].interactive?.params.nodeOutputs
+  ) {
+    return runtimeNodes;
+  }
+
+  return runtimeNodes.map((node) => {
+    if (!node.outputs || node.outputs.length === 0) {
+      return node;
+    }
+
+    const updatedOutputs = node.outputs.map((output: FlowNodeOutputItemType) => {
+      // @ts-ignore
+      const historyOutput = lastHistory.value[0].interactive?.params.nodeOutputs?.find(
+        (item: NodeOutputItemType) => item.nodeId === node.nodeId && item.key === output.key
+      );
+      return historyOutput ? { ...output, value: historyOutput.value } : output;
+    });
+
+    return { ...node, outputs: updatedOutputs };
+  });
+}
