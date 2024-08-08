@@ -12,6 +12,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
+import { useSize } from 'ahooks';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'));
 const ContextModal = dynamic(() => import('./ContextModal'));
@@ -55,6 +56,7 @@ const ResponseTags = ({
     onOpen: onOpenContextModal,
     onClose: onCloseContextModal
   } = useDisclosure();
+  useSize(quoteListRef);
   const quoteIsOverflow = quoteListRef.current
     ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55)
     : true;
@@ -84,7 +86,7 @@ const ResponseTags = ({
         <>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
             <Box width={'100%'}>
-              <ChatBoxDivider icon="core/chat/quoteFill" text={t('common:core.chat.Quote')} />{' '}
+              <ChatBoxDivider icon="core/chat/quoteFill" text={t('common:core.chat.Quote')} />
             </Box>
             {quoteFolded && quoteIsOverflow && (
               <MyIcon
