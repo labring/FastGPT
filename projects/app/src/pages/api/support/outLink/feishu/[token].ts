@@ -14,8 +14,6 @@ async function handler(
   const result = await POST<any>(`support/outLink/feishu/${token}`, req.body, {
     headers: req.headers as any
   });
-  console.debug('req.body', req.body);
-  console.debug('result', result);
   res.json(result);
 }
 
