@@ -267,8 +267,15 @@ const MyInfo = () => {
         {feConfigs?.isPlus && (
           <Flex mt={6} alignItems={'center'}>
             <Box {...labelStyles}>{t('common:user.Notification Receive')}:&nbsp;</Box>
-            <Box flex={1} {...(userInfo?.team.notificationAccount ? {} : { color: 'red.600' })}>
-              {userInfo?.team.notificationAccount || t('common:user.Notification Receive Bind')}
+            <Box
+              flex={1}
+              {...(!userInfo?.team.notificationAccount && userInfo?.permission.isOwner
+                ? { color: 'red.600' }
+                : {})}
+            >
+              {userInfo?.team.notificationAccount || userInfo?.permission.isOwner
+                ? t('common:user.Notification Receive Bind')
+                : t('user:notification.remind_owner_bind')}
             </Box>
 
             {userInfo?.permission.isOwner && (
