@@ -50,7 +50,7 @@
     "verification_code": "验证码",
     "confirm": "确认密码",
     "not_match": "两次密码不一致",
-    "to_login": "去登陆",
+    "to_login": "去登录",
     "get_code": "获取验证码",
     "get_code_again": "s后重新获取",
     "code_sended": "验证码已发送",

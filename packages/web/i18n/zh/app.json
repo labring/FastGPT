@@ -8,7 +8,6 @@
       "has new version": "有新版本"
     }
   },
-  "intro": "是一个大模型应用编排系统，提供开箱即用的数据处理、模型调用等能力，可以快速的构建知识库并通过 Flow 可视化进行工作流编排，实现复杂的知识库场景！",
   "app_detail": "应用详情",
   "chat_debug": "调试预览",
   "chat_logs": "对话日志",
@@ -19,10 +18,20 @@
   "confirm_delete_folder_tip": "确认删除该文件夹？将会删除它下面所有应用及对应的聊天记录，请确认！",
   "copy_one_app": "创建副本",
   "create_copy_success": "创建副本成功",
+  "cron": {
+    "every_day": "每天执行",
+    "every_month": "每月执行",
+    "every_week": "每周执行",
+    "interval": "间隔执行"
+  },
   "current_settings": "当前配置",
+  "day": "日",
+  "document_quote": "文档引用",
+  "document_quote_tip": "通常用于接受用户上传的文档内容(这需要文档解析)，也可以用于引用其他字符串数据。",
   "document_upload": "文档上传",
   "edit_app": "编辑应用",
   "edit_info": "编辑信息",
+  "execute_time": "执行时间",
   "export_config_successful": "已复制配置，自动过滤部分敏感信息，请注意检查是否仍有敏感数据",
   "export_configs": "导出配置",
   "feedback_count": "用户反馈",
@@ -34,6 +43,15 @@
   "image_upload_tip": "请确保选择可处理图片的视觉模型",
   "import_configs": "导入配置",
   "import_configs_failed": "导入配置失败，请确保配置正常！",
+  "interval": {
+    "12_hours": "每12小时",
+    "2_hours": "每2小时",
+    "3_hours": "每3小时",
+    "4_hours": "每4小时",
+    "6_hours": "每6小时",
+    "per_hour": "每小时"
+  },
+  "intro": "是一个大模型应用编排系统，提供开箱即用的数据处理、模型调用等能力，可以快速的构建知识库并通过 Flow 可视化进行工作流编排，实现复杂的知识库场景！",
   "llm_not_support_vision": "该模型不支持图片识别",
   "llm_use_vision": "启用图片识别",
   "llm_use_vision_tip": "启用图片识别后，该模型会自动接收来自“对话框上传”的图片，以及“用户问题”中的图片链接。",
@@ -50,6 +68,9 @@
   "modules": {
     "Title is required": "模块名不能为空"
   },
+  "month": {
+    "unit": "号"
+  },
   "move_app": "移动应用",
   "paste_config": "粘贴配置",
   "plugin_cost_per_times": "{{cost}}/次",
@@ -63,6 +84,7 @@
   "template": {
     "simple_robot": "简易机器人"
   },
+  "time_zone": "时区",
   "tool_input_param_tip": "该插件正常运行需要配置相关信息",
   "transition_to_workflow": "转成工作流",
   "transition_to_workflow_create_new_placeholder": "创建一个新的应用，而不是修改当前应用",
@@ -81,9 +103,20 @@
     "Simple bot": "简易应用",
     "Workflow bot": "工作流"
   },
-  "upload_file_max_amount": "单轮最大文件上传数量",
+  "upload_file_max_amount": "最大文件数量",
+  "upload_file_max_amount_tip": "1.单次上传文件的最大数量。\n2.对话窗口记忆的最大文件数量：每轮对话会自动获取历史中的文件，超出范围的文件会被遗忘。",
   "version": {
     "Revert success": "回滚成功"
+  },
+  "vision_model_title": "启用图片识别",
+  "week": {
+    "Friday": "星期五",
+    "Monday": "星期一",
+    "Saturday": "星期六",
+    "Sunday": "星期日",
+    "Thursday": "星期四",
+    "Tuesday": "星期二",
+    "Wednesday": "星期三"
   },
   "workflow": {
     "Input guide": "填写说明",
@@ -91,42 +124,11 @@
     "read_files": "文档解析",
     "read_files_result": "文档解析结果",
     "read_files_result_desc": "文档原文，由文件名和文档内容组成，多个文件之间通过横线隔开。",
-    "read_files_tip": "解析对话中上传的文档，返回对应文档内容",
+    "read_files_tip": "解析对话中所有上传的文档，并返回对应文档内容",
     "template": {
       "communication": "通信"
     },
     "user_file_input": "文件链接",
     "user_file_input_desc": "用户上传的文档和图片链接"
-  },
-  "interval": {
-    "per_hour": "每小时",
-    "2_hours": "每2小时",
-    "3_hours": "每3小时",
-    "4_hours": "每4小时",
-    "6_hours": "每6小时",
-    "12_hours": "每12小时"
-  },
-  "week": {
-    "Monday": "星期一",
-    "Tuesday": "星期二",
-    "Wednesday": "星期三",
-    "Thursday": "星期四",
-    "Friday": "星期五",
-    "Saturday": "星期六",
-    "Sunday": "星期日"
-  },
-  "month": {
-    "unit": "号"
-  },
-  "cron": {
-    "every_day": "每天执行",
-    "every_month": "每月执行",
-    "every_week": "每周执行",
-    "interval": "间隔执行"
-  },
-  "day": "日",
-  "execute_time": "执行时间",
-  "time_zone": "时区",
-  "document_quote": "文档引用",
-  "document_quote_tip": "通常用于接受用户上传的文档内容(这需要文档解析)，也可以用于引用其他字符串数据。"
+  }
 }

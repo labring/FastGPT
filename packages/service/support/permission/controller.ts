@@ -10,6 +10,8 @@ import { MongoResourcePermission } from './schema';
 import { ClientSession } from 'mongoose';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
+import { bucketNameMap } from '@fastgpt/global/common/file/constants';
+import { addMinutes } from 'date-fns';
 
 export const getResourcePermission = async ({
   resourceType,
@@ -250,15 +252,15 @@ export const clearCookie = (res: NextApiResponse) => {
 };
 
 /* file permission */
-export const createFileToken = ({
-  expiredTime = Math.floor(Date.now() / 1000) + 60 * 30,
-  ...data
-}: FileTokenQuery) => {
+export const createFileToken = (data: FileTokenQuery) => {
   if (!process.env.FILE_TOKEN_KEY) {
     return Promise.reject('System unset FILE_TOKEN_KEY');
   }
 
-  const key = process.env.FILE_TOKEN_KEY as string;
+  const expireMinutes = bucketNameMap[data.bucketName].previewExpireMinutes;
+  const expiredTime = Math.floor(addMinutes(new Date(), expireMinutes).getTime() / 1000);
+
+  const key = (process.env.FILE_TOKEN_KEY as string) ?? 'filetoken';
   const token = jwt.sign(
     {
       ...data,
@@ -274,7 +276,7 @@ export const authFileToken = (token?: string) =>
     if (!token) {
       return reject(ERROR_ENUM.unAuthFile);
     }
-    const key = process.env.FILE_TOKEN_KEY as string;
+    const key = (process.env.FILE_TOKEN_KEY as string) ?? 'filetoken';
 
     jwt.verify(token, key, function (err, decoded: any) {
       if (err || !decoded.bucketName || !decoded?.teamId || !decoded?.tmbId || !decoded?.fileId) {

@@ -49,7 +49,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     chatConfig,
     params: { fileUrlList = [] }
   } = props;
-  const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 0;
+  const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
 
   // Get files from histories
   const filesFromHistories = histories
@@ -70,29 +70,35 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     })
     .flat();
 
-  const parseUrlList = [...fileUrlList, ...filesFromHistories].slice(0, maxFiles);
-
-  const readFilesResult = await Promise.all(
-    parseUrlList
-      .map(async (url) => {
-        // System file
-        if (url.startsWith('/') || (requestOrigin && url.startsWith(requestOrigin))) {
-          // Parse url, get filename query. Keep only documents that can be parsed
-          const parseUrl = new URL(url);
-          const filenameQuery = parseUrl.searchParams.get('filename');
-          if (filenameQuery) {
-            const extensionQuery = filenameQuery.split('.').pop()?.toLowerCase() || '';
-            if (!documentFileType.includes(extensionQuery)) {
-              return;
-            }
-          }
-
-          //  Remove the origin(Make intranet requests directly)
-          if (requestOrigin && url.startsWith(requestOrigin)) {
-            url = url.replace(requestOrigin, '');
+  // Concat fileUrlList and filesFromHistories; remove not supported files
+  const parseUrlList = [...fileUrlList, ...filesFromHistories]
+    .map((url) => {
+      // System file
+      if (url.startsWith('/') || (requestOrigin && url.startsWith(requestOrigin))) {
+        // Parse url, get filename query. Keep only documents that can be parsed
+        const parseUrl = new URL(url);
+        const filenameQuery = parseUrl.searchParams.get('filename');
+        if (filenameQuery) {
+          const extensionQuery = filenameQuery.split('.').pop()?.toLowerCase() || '';
+          if (!documentFileType.includes(extensionQuery)) {
+            return '';
           }
         }
 
+        //  Remove the origin(Make intranet requests directly)
+        if (requestOrigin && url.startsWith(requestOrigin)) {
+          url = url.replace(requestOrigin, '');
+        }
+      }
+
+      return url;
+    })
+    .filter(Boolean)
+    .slice(0, maxFiles);
+  console.log(parseUrlList);
+  const readFilesResult = await Promise.all(
+    parseUrlList
+      .map(async (url) => {
         // Get from buffer
         const fileBuffer = await MongoRawTextBuffer.findOne({ sourceId: url }, undefined, {
           ...readFromSecondary

@@ -223,6 +223,7 @@
     },
     "error": {
       "Select avatar failed": "Avatar selection failed",
+      "too_many_request": "Too many requests, please try again later.",
       "unKnow": "An unexpected error occurred~"
     },
     "failed": "fail",
@@ -650,7 +651,7 @@
         "Down load csv template": "Click to download CSV template",
         "Embedding Estimated Price Tips": "Only using the index model, consumes a small amount of AI points: {{price}} points/1k Tokens",
         "Ideal chunk length": "Ideal chunk length",
-        "Ideal chunk length Tips": "Segment by end symbols. We recommend that your document should reasonably use punctuation to ensure that each complete sentence does not exceed this value\nChinese documents recommend 400~1000\nEnglish documents recommend 600~1200",
+        "Ideal chunk length Tips": "Segment according to the end symbol, and combine the segments into a block. This value determines the estimated size of the block.",
         "Import success": "Import successful, please wait for training",
         "Link name": "Network link",
         "Link name placeholder": "Only supports static links, if the data is empty after upload, the link may not be readable\nOne per line, up to 10 links at a time",
@@ -957,6 +958,7 @@
     }
   },
   "create": "to create",
+  "cron_job_run_app": "Cron job",
   "dataset": {
     "Confirm move the folder": "Confirm moving to the folder",
     "Confirm to delete the data": "Confirm to delete the data?",
@@ -1017,7 +1019,8 @@
     "missingParams": "Insufficient parameters",
     "team": {
       "overSize": "Team members exceed the limit"
-    }
+    },
+    "upload_file_error_filename": "{{name}} upload failed"
   },
   "extraction_results": "Extract results",
   "field_name": "Name",
@@ -1030,7 +1033,7 @@
     "csv_download": "Click to download batch test template",
     "csv_message": "Read the first column of the CSV file for batch testing, supporting up to 100 sets of data at a time.",
     "felid_message": "The field key must be pure English letters or numbers, and cannot start with a number.",
-    "free_plan": "When free version users have no usage records for 30 days, the system will automatically clean up the account knowledge base.",
+    "free_plan": "When a free version user does not log in to the system for 30 consecutive days, the system will automatically clean up the account knowledge base.",
     "include": "Includes standard package and additional resource package",
     "node_info": "Adjusting this module will have an impact on the timing of tool calls.\n\nYou can guide the model to make tool calls by accurately describing the function of the module.",
     "old_version_attention": "If it is detected that your advanced arrangement is an old version, the system will automatically format it into a new version of the workflow for you.\n\n\nDue to large version differences, some workflows may not be arranged normally. Please reconnect the workflows manually. \nIf the error persists, try deleting the corresponding node and adding it again.\n\n\nYou can directly click Debug to perform workflow testing, and click Publish after debugging is completed. \nThe new workflow will not actually save and take effect until you click Publish.\n\n\nAutosave will not take effect until you publish the new workflow.",

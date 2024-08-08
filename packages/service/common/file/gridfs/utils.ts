@@ -45,7 +45,7 @@ export const stream2Encoding = async (stream: NodeJS.ReadableStream) => {
   })();
 
   const enc = detectFileEncoding(buffer);
-  console.log('Get encoding time', Date.now() - start, enc);
+
   return {
     encoding: enc,
     stream: copyStream

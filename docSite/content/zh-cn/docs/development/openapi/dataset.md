@@ -531,6 +531,8 @@ data 为集合的 ID。
 {{< tab tabName="请求示例" >}}
 {{< markdownify >}}
 
+使用代码上传时，请注意中文 filename 需要进行 encode 处理，否则容易乱码。
+
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/create/localFile' \
 --header 'Authorization: Bearer {{authorization}}' \
@@ -1173,7 +1175,7 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/updat
 --header 'Authorization: Bearer {{authorization}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "id":"65abd4b29d1448617cba61db",
+    "dataId":"65abd4b29d1448617cba61db",
     "q":"测试111",
     "a":"sss",
     "indexes":[
@@ -1196,7 +1198,7 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/updat
 {{< markdownify >}}
 
 {{% alert icon=" " context="success" %}}
-- id: 数据的id
+- dataId: 数据的id
 - q: 主要数据（选填）
 - a: 辅助数据（选填）
 - indexes: 自定义索引（选填），类型参考`为集合批量添加添加数据`。如果创建时候有自定义索引，

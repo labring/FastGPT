@@ -103,10 +103,12 @@
     "Simple bot": "Simple bot",
     "Workflow bot": "Workflow"
   },
-  "upload_file_max_amount": "Maximum number of files to be uploaded in a single round",
+  "upload_file_max_amount": "Max files",
+  "upload_file_max_amount_tip": "1. The maximum number of files to be uploaded at a time.\n2. The maximum number of files that can be remembered in the dialog window: Files in the history are automatically retrieved for each round of conversation, and files that are out of range are forgotten.",
   "version": {
     "Revert success": "Revert success"
   },
+  "vision_model_title": "Enable image recognition",
   "week": {
     "Friday": "Friday",
     "Monday": "Monday",
@@ -122,7 +124,7 @@
     "read_files": "Documents parse",
     "read_files_result": "Document parsing results",
     "read_files_result_desc": "The original text of the document consists of the file name and the document content. Multiple files are separated by horizontal lines.",
-    "read_files_tip": "Parse the document link passed in the conversation and return the corresponding document content",
+    "read_files_tip": "Parse all uploaded documents in the conversation and return the corresponding document content",
     "template": {
       "communication": "Communication"
     },
