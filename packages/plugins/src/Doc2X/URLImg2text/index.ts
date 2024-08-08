@@ -8,7 +8,6 @@ type Props = {
   formula: boolean;
 };
 
-// Response type same as HTTP outputs
 type Response = Promise<{
   result: string;
   success: boolean;
@@ -41,36 +40,36 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
     real_api_key = data.data.token;
   }
 
-  //Get the image binary from the URL
-  const extension = url.split('.').pop()?.toLowerCase();
-  const name = url.split('/').pop()?.split('.').shift();
-  let mini = '';
-  switch (extension) {
-    case 'jpg':
-    case 'jpeg':
-      mini = 'image/jpeg';
-      break;
-    case 'png':
-      mini = 'image/png';
-      break;
-    default:
-      return {
-        result: `Not supported image format, only support jpg/jpeg/png`,
-        success: false
-      };
+  let imageResponse;
+  // Fetch the image and check its content type
+  try {
+    imageResponse = await fetch(url);
+  } catch (e) {
+    return {
+      result: `Failed to fetch image from URL: ${url} with error: ${e}`,
+      success: false
+    };
   }
 
-  const response = await fetch(url);
-  if (!response.ok) {
+  if (!imageResponse.ok) {
     return {
       result: `Failed to fetch image from URL: ${url}`,
       success: false
     };
   }
 
-  const blob = await response.blob();
+  const contentType = imageResponse.headers.get('content-type');
+  if (!contentType || !contentType.startsWith('image/')) {
+    return {
+      result: `The provided URL does not point to an image: ${contentType}`,
+      success: false
+    };
+  }
+
+  const blob = await imageResponse.blob();
   const formData = new FormData();
-  formData.append('file', new Blob([blob], { type: mini }), name + '.' + extension);
+  const fileName = url.split('/').pop()?.split('?')[0] || 'image';
+  formData.append('file', blob, fileName);
   formData.append('img_correction', img_correction ? '1' : '0');
   formData.append('equation', formula ? '1' : '0');
 
@@ -135,8 +134,17 @@ const main = async ({ apikey, url, img_correction, formula }: Props): Response =
         success: false
       };
     } else if (result_data.data.status === 'success') {
-      let result = result_data.data.result.pages[0].md;
-      result = result.replace(/\\[\(\)]/g, '$').replace(/\\[\[\]]/g, '$$');
+      let result;
+      try {
+        result = result_data.data.result.pages[0].md;
+        result = result.replace(/\\[\(\)]/g, '$').replace(/\\[\[\]]/g, '$$');
+      } catch {
+        // no pages
+        return {
+          result: '',
+          success: true
+        };
+      }
       return {
         result: result,
         success: true

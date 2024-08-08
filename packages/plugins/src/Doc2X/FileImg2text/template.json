@@ -1,9 +1,9 @@
 {
   "author": "Menghuan1918",
   "version": "488",
-  "name": "Doc2X 图像(URL)识别",
+  "name": "Doc2X 图像(文件)识别",
   "avatar": "plugins/doc2x",
-  "intro": "从URL下载图片并发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
+  "intro": "将上传的图片文件发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
   "inputExplanationUrl": "https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview",
   "showStatus": true,
   "weight": 10,
@@ -21,8 +21,8 @@
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 388.243055058894,
-          "y": -75.09744210499466
+          "x": 362.9862638626885,
+          "y": 6.16353826540589
         },
         "version": "481",
         "inputs": [
@@ -41,13 +41,13 @@
           {
             "renderTypeList": ["reference"],
             "selectedTypeIndex": 0,
-            "valueType": "string",
+            "valueType": "arrayString",
             "canEdit": true,
-            "key": "url",
-            "label": "url",
-            "description": "待处理图片的URL",
+            "key": "files",
+            "label": "files",
+            "description": "待处理图片文件",
             "required": true,
-            "toolDescription": "待处理图片的URL"
+            "toolDescription": "待处理图片文件"
           },
           {
             "renderTypeList": ["switch"],
@@ -84,9 +84,9 @@
           },
           {
             "id": "url",
-            "valueType": "string",
-            "key": "url",
-            "label": "url",
+            "valueType": "arrayString",
+            "key": "files",
+            "label": "files",
             "type": "hidden"
           },
           {
@@ -113,8 +113,8 @@
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1654.8021754314786,
-          "y": -22.243376051504086
+          "x": 1661.4708279314577,
+          "y": 23.877720915480012
         },
         "version": "481",
         "inputs": [
@@ -129,12 +129,21 @@
           },
           {
             "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "failreason",
+            "label": "failreason",
+            "description": "文件处理失败原因，由文件名以及报错组成，多个文件之间由横线分隔开",
+            "value": ["zHG5jJBkXmjB", "jbv4nVZvmFXm"]
+          },
+          {
+            "renderTypeList": ["reference"],
             "valueType": "boolean",
             "canEdit": true,
             "key": "success",
             "label": "success",
-            "description": "是否处理成功",
-            "value": ["zHG5jJBkXmjB", "m6CJJj7GFud5"]
+            "description": "是否全部文件都处理成功，如有没有处理成功的文件，失败原因将会输出在failreason中",
+            "value": ["zHG5jJBkXmjB", "k46cjNulVk5Y"]
           }
         ],
         "outputs": []
@@ -196,7 +205,7 @@
             "description": "core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "Doc2X/URLImg2text"
+            "value": "Doc2X/FileImg2text"
           },
           {
             "key": "system_httpHeader",
@@ -220,7 +229,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"url\": \"{{url}}\",\n  \"img_correction\": {{img_correction}},\n  \"formula\": {{formula}}\n}",
+            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"files\": {{files}},\n  \"img_correction\": {{img_correction}},\n  \"formula\": {{formula}}\n}",
             "label": "",
             "required": false
           },
@@ -255,10 +264,10 @@
           },
           {
             "renderTypeList": ["reference"],
-            "valueType": "string",
+            "valueType": "arrayString",
             "canEdit": true,
-            "key": "url",
-            "label": "url",
+            "key": "files",
+            "label": "files",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -394,7 +403,14 @@
             "label": "result"
           },
           {
-            "id": "m6CJJj7GFud5",
+            "id": "jbv4nVZvmFXm",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "failreason",
+            "label": "failreason"
+          },
+          {
+            "id": "k46cjNulVk5Y",
             "valueType": "boolean",
             "type": "dynamic",
             "key": "success",
