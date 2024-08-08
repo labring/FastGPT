@@ -82,9 +82,18 @@
   "setting_app": "应用配置",
   "setting_plugin": "插件配置",
   "template": {
+    "Search template": "搜索模板",
+    "Use": "使用",
     "simple_robot": "简易机器人",
     "templateMarket": "模板市场",
-    "Search template": "搜索模板"
+    "type": {
+      "Image_generation": "图片生成",
+      "Office_services": "办公服务",
+      "Recommendation": "推荐",
+      "Roleplay": "角色扮演",
+      "Web_search": "联网搜索",
+      "Writing": "文本创作"
+    }
   },
   "time_zone": "时区",
   "tool_input_param_tip": "该插件正常运行需要配置相关信息",

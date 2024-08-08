@@ -22,8 +22,6 @@ export interface MyModalProps extends ModalContentProps {
   isOpen: boolean;
   onClose?: () => void;
   closeOnOverlayClick?: boolean;
-  customModalHeader?: ReactElement;
-  headerColor?: string;
 }
 
 const MyModal = ({
@@ -37,8 +35,6 @@ const MyModal = ({
   w = 'auto',
   maxW = ['90vw', '600px'],
   closeOnOverlayClick = true,
-  customModalHeader,
-  headerColor,
   ...props
 }: MyModalProps) => {
   const isPc = useSystem();
@@ -62,13 +58,12 @@ const MyModal = ({
         boxShadow={'7'}
         {...props}
       >
-        {!!customModalHeader && customModalHeader}
-        {!customModalHeader && !title && onClose && <ModalCloseButton zIndex={1} />}
-        {!customModalHeader && !!title && (
+        {!title && onClose && <ModalCloseButton zIndex={1} />}
+        {!!title && (
           <ModalHeader
             display={'flex'}
             alignItems={'center'}
-            background={headerColor || '#FBFBFC'}
+            background={'#FBFBFC'}
             borderBottom={'1px solid #F4F6F8'}
             roundedTop={'lg'}
             py={'10px'}

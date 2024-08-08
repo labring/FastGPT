@@ -9,9 +9,12 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
+  Modal,
   ModalBody,
   ModalCloseButton,
+  ModalContent,
   ModalHeader,
+  ModalOverlay,
   Spinner
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -35,44 +38,44 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { debounce, throttle } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { useI18n } from '@/web/context/I18n';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-
-const templateTypes = [
-  {
-    id: 'recommendation',
-    label: '推荐'
-  },
-  {
-    id: 'writing',
-    label: '文本创作'
-  },
-  {
-    id: 'image-generation',
-    label: '图片生成'
-  },
-  {
-    id: 'web-search',
-    label: '联网搜索'
-  },
-  {
-    id: 'roleplay',
-    label: '角色扮演'
-  },
-  {
-    id: 'office-services',
-    label: '办公服务'
-  }
-];
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { AppTemplateTypeEnum } from './constants';
 
 const TemplateMarketModal = ({ onClose }: { onClose: () => void }) => {
+  const { t } = useTranslation();
+  const templateTypes = [
+    {
+      id: AppTemplateTypeEnum.recommendation,
+      label: t('app:template.type.Recommendation')
+    },
+    {
+      id: AppTemplateTypeEnum.writing,
+      label: t('app:template.type.Writing')
+    },
+    {
+      id: AppTemplateTypeEnum.imageGeneration,
+      label: t('app:template.type.Image_generation')
+    },
+    {
+      id: AppTemplateTypeEnum.webSearch,
+      label: t('app:template.type.Web_search')
+    },
+    {
+      id: AppTemplateTypeEnum.roleplay,
+      label: t('app:template.type.Roleplay')
+    },
+    {
+      id: AppTemplateTypeEnum.officeServices,
+      label: t('app:template.type.Office_services')
+    }
+  ];
   const [currentType, setCurrentType] = useState(templateTypes[0].id);
   const [currentAppType, setCurrentAppType] = useState<AppTypeEnum | 'all'>('all');
   const [currentSearch, setCurrentSearch] = useState('');
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
-  const { t } = useTranslation();
   const { appT } = useI18n();
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
 
   const { data: templateData, loading: isLoadingTemplates } = useRequest2(
     async () => {
@@ -129,10 +132,21 @@ const TemplateMarketModal = ({ onClose }: { onClose: () => void }) => {
   }, 100);
 
   return (
-    <MyModal
-      isOpen
-      onClose={onClose}
-      customModalHeader={
+    <Modal
+      isOpen={true}
+      onClose={() => onClose && onClose()}
+      autoFocus={false}
+      blockScrollOnMount={false}
+      closeOnOverlayClick={false}
+    >
+      <ModalOverlay />
+      <ModalContent
+        w={['90vw', '75vw']}
+        maxW={['90vw', '75vw']}
+        position={'relative'}
+        h={['90vh', '80vh']}
+        boxShadow={'7'}
+      >
         <ModalHeader
           display={'flex'}
           alignItems={'center'}
@@ -181,105 +195,106 @@ const TemplateMarketModal = ({ onClose }: { onClose: () => void }) => {
             </Flex>
           </HStack>
         </ModalHeader>
-      }
-      w={['90vw', '75vw']}
-      maxW={['90vw', '75vw']}
-      h={['90vh', '80vh']}
-      position={'relative'}
-    >
-      <ModalBody
-        flex={'1 0 0'}
-        bg={'myWhite.600'}
-        overflow={'auto'}
-        roundedBottom={'md'}
-        onScroll={handleScroll}
-      >
-        <Flex h={'full'}>
-          <Box position={'absolute'}>
-            {isPc &&
-              templateTypes.map((item) => {
-                if (
-                  templateData
-                    ?.filter((template) => template.tags?.map((tag) => tag.id).includes(item.id))
-                    .filter((templateData) => {
-                      if (currentAppType === 'all') return true;
-                      return templateData.type === currentAppType;
-                    })
-                    .filter((template) => template.name.includes(currentSearch)).length === 0
-                )
-                  return null;
-                return (
-                  <Box
-                    key={item.id}
-                    cursor={'pointer'}
-                    bg={item.id === currentType ? '#3370FF1A' : 'myWhite.600'}
-                    color={item.id === currentType ? 'blue.600' : 'myGray.800'}
-                    _hover={{ bg: '#3370FF1A', color: 'blue.600' }}
-                    w={'150px'}
-                    px={4}
-                    py={2}
-                    my={3}
-                    rounded={'md'}
-                    fontSize={'sm'}
-                    onClick={() => {
-                      setCurrentType(item.id);
-                      const anchor = document.getElementById(item.id);
-                      if (anchor) {
-                        anchor.scrollIntoView({ behavior: 'auto', block: 'start' });
-                      }
-                    }}
-                  >
-                    {item.label}
-                  </Box>
-                );
-              })}
-          </Box>
-          <Box ml={isPc ? '178px' : 0} w={'full'}>
-            {isLoadingTemplates || creating ? (
-              <Center flex={'1 0 0'} h={'full'}>
-                <Spinner size={'lg'} />
-              </Center>
-            ) : (
-              <Box>
-                {templateTypes.map((item) => {
-                  const currentTemplates = templateData
-                    ?.filter((template) => template.tags?.map((tag) => tag.id).includes(item.id))
-                    .filter((template) => {
-                      if (currentAppType === 'all') return true;
-                      return template.type === currentAppType;
-                    })
-                    .filter((template) => template.name.includes(currentSearch));
-                  if (!currentTemplates || currentTemplates.length === 0) return null;
+        <ModalBody
+          flex={'1 0 0'}
+          bg={'myWhite.600'}
+          overflow={'auto'}
+          roundedBottom={'md'}
+          onScroll={handleScroll}
+        >
+          <Flex h={'full'}>
+            <Box position={'absolute'}>
+              {isPc &&
+                templateTypes.map((item) => {
+                  if (
+                    templateData
+                      ?.filter((template) => template.tags?.map((tag) => tag.id).includes(item.id))
+                      .filter((templateData) => {
+                        if (currentAppType === 'all') return true;
+                        return templateData.type === currentAppType;
+                      })
+                      .filter((template) => template.name.includes(currentSearch)).length === 0
+                  )
+                    return null;
                   return (
-                    <>
-                      <Box key={item.id} id={item.id} fontSize={'18px'} color={'myGray.900'} mb={4}>
-                        {item.label}
-                      </Box>
-                      <Grid
-                        gridTemplateColumns={[
-                          '1fr',
-                          'repeat(2,1fr)',
-                          'repeat(3,1fr)',
-                          'repeat(3,1fr)',
-                          'repeat(4,1fr)'
-                        ]}
-                        gridGap={4}
-                        alignItems={'stretch'}
-                        pb={5}
-                      >
-                        {currentTemplates.map((item) => (
-                          <TemplateCard key={item.id} item={item} onUseTemplate={onUseTemplate} />
-                        ))}
-                      </Grid>
-                    </>
+                    <Box
+                      key={item.id}
+                      cursor={'pointer'}
+                      bg={item.id === currentType ? '#3370FF1A' : 'myWhite.600'}
+                      color={item.id === currentType ? 'blue.600' : 'myGray.800'}
+                      _hover={{ bg: '#3370FF1A', color: 'blue.600' }}
+                      w={'150px'}
+                      px={4}
+                      py={2}
+                      my={3}
+                      rounded={'md'}
+                      fontSize={'sm'}
+                      onClick={() => {
+                        setCurrentType(item.id);
+                        const anchor = document.getElementById(item.id);
+                        if (anchor) {
+                          anchor.scrollIntoView({ behavior: 'auto', block: 'start' });
+                        }
+                      }}
+                    >
+                      {item.label}
+                    </Box>
                   );
                 })}
-              </Box>
-            )}
-          </Box>
-        </Flex>
-      </ModalBody>
-    </MyModal>
+            </Box>
+            <Box ml={isPc ? '178px' : 0} w={'full'}>
+              {isLoadingTemplates || creating ? (
+                <Center flex={'1 0 0'} h={'full'}>
+                  <Spinner size={'lg'} />
+                </Center>
+              ) : (
+                <Box>
+                  {templateTypes.map((item) => {
+                    const currentTemplates = templateData
+                      ?.filter((template) => template.tags?.map((tag) => tag.id).includes(item.id))
+                      .filter((template) => {
+                        if (currentAppType === 'all') return true;
+                        return template.type === currentAppType;
+                      })
+                      .filter((template) => template.name.includes(currentSearch));
+                    if (!currentTemplates || currentTemplates.length === 0) return null;
+                    return (
+                      <>
+                        <Box
+                          key={item.id}
+                          id={item.id}
+                          fontSize={'18px'}
+                          color={'myGray.900'}
+                          mb={4}
+                        >
+                          {item.label}
+                        </Box>
+                        <Grid
+                          gridTemplateColumns={[
+                            '1fr',
+                            'repeat(2,1fr)',
+                            'repeat(3,1fr)',
+                            'repeat(3,1fr)',
+                            'repeat(4,1fr)'
+                          ]}
+                          gridGap={4}
+                          alignItems={'stretch'}
+                          pb={5}
+                        >
+                          {currentTemplates.map((item) => (
+                            <TemplateCard key={item.id} item={item} onUseTemplate={onUseTemplate} />
+                          ))}
+                        </Grid>
+                      </>
+                    );
+                  })}
+                </Box>
+              )}
+            </Box>
+          </Flex>
+        </ModalBody>
+      </ModalContent>
+    </Modal>
   );
 };
 
@@ -290,7 +305,7 @@ export const TemplateCard = ({
   item: TemplateMarketListItemType;
   onUseTemplate: (data: any) => void;
 }) => {
-  const { appT } = useI18n();
+  const { t } = useTranslation();
 
   return (
     <MyBox
@@ -359,7 +374,7 @@ export const TemplateCard = ({
             h={'full'}
           >
             <Button variant={'whiteBase'} h={'full'} onClick={() => onUseTemplate(item)}>
-              {appT('Create bot')}
+              {t('app:template.Use')}
             </Button>
           </Flex>
         </HStack>

@@ -135,7 +135,6 @@ const CreateModal = ({
       isOpen
       onClose={onClose}
       isCentered={!isPc}
-      headerColor="white"
     >
       <ModalBody>
         <Box color={'myGray.800'} fontWeight={'bold'}>
@@ -222,7 +221,7 @@ const CreateModal = ({
         </Grid>
       </ModalBody>
 
-      <ModalFooter bg={'myWhite.600'} roundedBottom={'md'}>
+      <ModalFooter roundedBottom={'md'}>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common:common.Close')}
         </Button>

@@ -54,9 +54,9 @@ export type TemplateMarketItemType = WorkflowTemplateType & {
 export type TemplateMarketListItemType = {
   id: string;
   name: string;
-  intro?: string;
-  author?: string;
-  tags?: { id: string; label: string }[];
+  intro: string;
+  author: string;
+  tags: { id: string; label: string }[];
   type: AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
   avatar: string;
   authorAvatar?: string;
