@@ -1012,6 +1012,110 @@ export const simpleBotTemplates: TemplateType = [
 
 export const workflowTemplates: TemplateType = [
   {
+    id: 'workflow-default',
+    avatar: 'core/app/type/workflowFill',
+    name: '空白工作流',
+    intro: '从零开始构建工作流',
+    type: AppTypeEnum.workflow,
+    modules: [
+      {
+        nodeId: 'userGuide',
+        name: '系统配置',
+        intro: '可以配置应用的系统参数',
+        avatar: 'core/workflow/template/systemConfig',
+        flowNodeType: 'userGuide',
+        position: {
+          x: 262.2732338817093,
+          y: -476.00241136598146
+        },
+        version: '481',
+        inputs: [
+          {
+            key: 'welcomeText',
+            renderTypeList: ['hidden'],
+            valueType: 'string',
+            label: 'core.app.Welcome Text',
+            value: ''
+          },
+          {
+            key: 'variables',
+            renderTypeList: ['hidden'],
+            valueType: 'any',
+            label: 'core.app.Chat Variable',
+            value: []
+          },
+          {
+            key: 'questionGuide',
+            valueType: 'boolean',
+            renderTypeList: ['hidden'],
+            label: 'core.app.Question Guide',
+            value: false
+          },
+          {
+            key: 'tts',
+            renderTypeList: ['hidden'],
+            valueType: 'any',
+            label: '',
+            value: {
+              type: 'web'
+            }
+          },
+          {
+            key: 'whisper',
+            renderTypeList: ['hidden'],
+            valueType: 'any',
+            label: '',
+            value: {
+              open: false,
+              autoSend: false,
+              autoTTSResponse: false
+            }
+          },
+          {
+            key: 'scheduleTrigger',
+            renderTypeList: ['hidden'],
+            valueType: 'any',
+            label: '',
+            value: null
+          }
+        ],
+        outputs: []
+      },
+      {
+        nodeId: '448745',
+        name: '流程开始',
+        intro: '',
+        avatar: 'core/workflow/template/workflowStart',
+        flowNodeType: 'workflowStart',
+        position: {
+          x: 632.368838596004,
+          y: -347.7446492944009
+        },
+        version: '481',
+        inputs: [
+          {
+            key: 'userChatInput',
+            renderTypeList: ['reference', 'textarea'],
+            valueType: 'string',
+            label: '用户问题',
+            required: true,
+            toolDescription: '用户问题'
+          }
+        ],
+        outputs: [
+          {
+            id: 'userChatInput',
+            key: 'userChatInput',
+            label: 'common:core.module.input.label.user question',
+            type: 'static',
+            valueType: 'string'
+          }
+        ]
+      }
+    ],
+    edges: []
+  },
+  {
     id: 'TranslateRobot',
     avatar: '/imgs/app/templates/translate.svg',
     name: '多轮翻译机器人',
@@ -2023,409 +2127,6 @@ export const workflowTemplates: TemplateType = [
     ]
   },
   {
-    id: 'dalle',
-    avatar: '/imgs/app/templates/dalle.svg',
-    name: 'Dalle3绘图',
-    intro: '通过请求Dalle3接口绘图，需要有 api key',
-    type: AppTypeEnum.workflow,
-    modules: [
-      {
-        nodeId: 'userGuide',
-        name: '系统配置',
-        intro: '可以配置应用的系统参数',
-        avatar: 'core/workflow/template/systemConfig',
-        flowNodeType: 'userGuide',
-        position: {
-          x: 531.2422736065552,
-          y: -486.7611729549753
-        },
-        version: '481',
-        inputs: [
-          {
-            key: 'welcomeText',
-            renderTypeList: ['hidden'],
-            valueType: 'string',
-            label: 'core.app.Welcome Text',
-            value: ''
-          },
-          {
-            key: 'variables',
-            renderTypeList: ['hidden'],
-            valueType: 'any',
-            label: 'core.app.Chat Variable',
-            value: []
-          },
-          {
-            key: 'questionGuide',
-            valueType: 'boolean',
-            renderTypeList: ['hidden'],
-            label: 'core.app.Question Guide',
-            value: false
-          },
-          {
-            key: 'tts',
-            renderTypeList: ['hidden'],
-            valueType: 'any',
-            label: '',
-            value: {
-              type: 'web'
-            }
-          },
-          {
-            key: 'whisper',
-            renderTypeList: ['hidden'],
-            valueType: 'any',
-            label: '',
-            value: {
-              open: false,
-              autoSend: false,
-              autoTTSResponse: false
-            }
-          },
-          {
-            key: 'scheduleTrigger',
-            renderTypeList: ['hidden'],
-            valueType: 'any',
-            label: '',
-            value: null
-          }
-        ],
-        outputs: []
-      },
-      {
-        nodeId: '448745',
-        name: '流程开始',
-        intro: '',
-        avatar: 'core/workflow/template/workflowStart',
-        flowNodeType: 'workflowStart',
-        position: {
-          x: 532.1275542407774,
-          y: 46.03775600322817
-        },
-        version: '481',
-        inputs: [
-          {
-            key: 'userChatInput',
-            renderTypeList: ['reference', 'textarea'],
-            valueType: 'string',
-            label: '用户问题',
-            required: true,
-            toolDescription: '用户问题'
-          }
-        ],
-        outputs: [
-          {
-            id: 'userChatInput',
-            key: 'userChatInput',
-            label: 'core.module.input.label.user question',
-            type: 'static',
-            valueType: 'string'
-          }
-        ]
-      },
-      {
-        nodeId: 'tMyUnRL5jIrC',
-        name: 'HTTP 请求',
-        intro: '可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
-        avatar: 'core/workflow/template/httpRequest',
-        flowNodeType: 'httpRequest468',
-        showStatus: true,
-        position: {
-          x: 931.6784209157559,
-          y: -162.36850541742047
-        },
-        version: '486',
-        inputs: [
-          {
-            key: 'system_addInputParam',
-            renderTypeList: ['addInputParam'],
-            valueType: 'dynamic',
-            label: '',
-            required: false,
-            description: 'core.module.input.description.HTTP Dynamic Input',
-            editField: {
-              key: true,
-              valueType: true
-            },
-            customInputConfig: {
-              selectValueTypeList: [
-                'string',
-                'number',
-                'boolean',
-                'object',
-                'arrayString',
-                'arrayNumber',
-                'arrayBoolean',
-                'arrayObject',
-                'any',
-                'chatHistory',
-                'datasetQuote',
-                'dynamic',
-                'selectApp',
-                'selectDataset'
-              ],
-              showDescription: false,
-              showDefaultValue: true
-            }
-          },
-          {
-            key: 'system_httpMethod',
-            renderTypeList: ['custom'],
-            valueType: 'string',
-            label: '',
-            value: 'POST',
-            required: true
-          },
-          {
-            key: 'system_httpReqUrl',
-            renderTypeList: ['hidden'],
-            valueType: 'string',
-            label: '',
-            description: 'core.module.input.description.Http Request Url',
-            placeholder: 'https://api.ai.com/getInventory',
-            required: false,
-            value: 'https://api.openai.com/v1/images/generations'
-          },
-          {
-            key: 'system_httpHeader',
-            renderTypeList: ['custom'],
-            valueType: 'any',
-            value: [
-              {
-                key: 'Authorization',
-                type: 'string',
-                value: 'Bearer '
-              }
-            ],
-            label: '',
-            description: 'core.module.input.description.Http Request Header',
-            placeholder: 'core.module.input.description.Http Request Header',
-            required: false
-          },
-          {
-            key: 'system_httpParams',
-            renderTypeList: ['hidden'],
-            valueType: 'any',
-            value: [],
-            label: '',
-            required: false
-          },
-          {
-            key: 'system_httpJsonBody',
-            renderTypeList: ['hidden'],
-            valueType: 'any',
-            value:
-              '{\n  "model": "dall-e-3",\n  "prompt": "{{prompt}}",\n  "n": 1,\n  "size": "1024x1024"\n}',
-            label: '',
-            required: false
-          },
-          {
-            key: 'prompt',
-            valueType: 'string',
-            label: 'prompt',
-            renderTypeList: ['reference'],
-            description: '',
-            canEdit: true,
-            editField: {
-              key: true,
-              valueType: true
-            },
-            value: ['448745', 'userChatInput']
-          }
-        ],
-        outputs: [
-          {
-            id: 'system_addOutputParam',
-            key: 'system_addOutputParam',
-            type: 'dynamic',
-            valueType: 'dynamic',
-            label: '',
-            customFieldConfig: {
-              selectValueTypeList: [
-                'string',
-                'number',
-                'boolean',
-                'object',
-                'arrayString',
-                'arrayNumber',
-                'arrayBoolean',
-                'arrayObject',
-                'any',
-                'chatHistory',
-                'datasetQuote',
-                'dynamic',
-                'selectApp',
-                'selectDataset'
-              ],
-              showDescription: false,
-              showDefaultValue: true
-            }
-          },
-          {
-            id: 'error',
-            key: 'error',
-            label: '请求错误',
-            description: 'HTTP请求错误信息，成功时返回空',
-            valueType: 'object',
-            type: 'static'
-          },
-          {
-            id: 'httpRawResponse',
-            key: 'httpRawResponse',
-            label: '原始响应',
-            required: true,
-            description: 'HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。',
-            valueType: 'any',
-            type: 'static'
-          },
-          {
-            id: 'DeKGGioBwaMf',
-            type: 'dynamic',
-            key: 'data[0].url',
-            valueType: 'string',
-            label: 'data[0].url'
-          }
-        ]
-      },
-      {
-        nodeId: '7mapnCgHfKW6',
-        name: '指定回复',
-        intro:
-          '该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。',
-        avatar: 'core/workflow/template/reply',
-        flowNodeType: 'answerNode',
-        position: {
-          x: 2204.4609372615846,
-          y: 163.11883652393863
-        },
-        version: '481',
-        inputs: [
-          {
-            key: 'text',
-            renderTypeList: ['textarea', 'reference'],
-            valueType: 'any',
-            label: 'core.module.input.label.Response content',
-            description: 'core.module.input.description.Response content',
-            placeholder: 'core.module.input.description.Response content',
-            selectedTypeIndex: 1,
-            value: ['vEXJF8pQ8eOv', 'system_text'],
-            required: true
-          }
-        ],
-        outputs: []
-      },
-      {
-        nodeId: 'vEXJF8pQ8eOv',
-        name: '文本拼接',
-        intro: '可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。',
-        avatar: 'core/workflow/template/textConcat',
-        flowNodeType: 'textEditor',
-        position: {
-          x: 1544.8821308368042,
-          y: -27.22950739442814
-        },
-        version: '486',
-        inputs: [
-          {
-            key: 'system_addInputParam',
-            renderTypeList: ['addInputParam'],
-            valueType: 'dynamic',
-            label: '',
-            required: false,
-            description: '可以引用其他节点的输出，作为文本拼接的变量，通过 {{字段名}} 来引用变量',
-            customInputConfig: {
-              selectValueTypeList: [
-                'string',
-                'number',
-                'boolean',
-                'object',
-                'arrayString',
-                'arrayNumber',
-                'arrayBoolean',
-                'arrayObject',
-                'any',
-                'chatHistory',
-                'datasetQuote',
-                'dynamic',
-                'selectApp',
-                'selectDataset'
-              ],
-              showDescription: false,
-              showDefaultValue: false
-            }
-          },
-          {
-            key: 'system_textareaInput',
-            renderTypeList: ['textarea'],
-            valueType: 'string',
-            required: true,
-            label: '拼接文本',
-            placeholder: '可通过 {{字段名}} 来引用变量',
-            value: '![]({{url}})'
-          },
-          {
-            renderTypeList: ['reference'],
-            valueType: 'string',
-            canEdit: true,
-            key: 'url',
-            label: 'url',
-            customInputConfig: {
-              selectValueTypeList: [
-                'string',
-                'number',
-                'boolean',
-                'object',
-                'arrayString',
-                'arrayNumber',
-                'arrayBoolean',
-                'arrayObject',
-                'any',
-                'chatHistory',
-                'datasetQuote',
-                'dynamic',
-                'selectApp',
-                'selectDataset'
-              ],
-              showDescription: false,
-              showDefaultValue: false
-            },
-            required: true,
-            value: ['tMyUnRL5jIrC', 'DeKGGioBwaMf']
-          }
-        ],
-        outputs: [
-          {
-            id: 'system_text',
-            key: 'system_text',
-            label: '拼接结果',
-            type: 'static',
-            valueType: 'string'
-          }
-        ]
-      }
-    ],
-    edges: [
-      {
-        source: '448745',
-        target: 'tMyUnRL5jIrC',
-        sourceHandle: '448745-source-right',
-        targetHandle: 'tMyUnRL5jIrC-target-left'
-      },
-      {
-        source: 'tMyUnRL5jIrC',
-        target: 'vEXJF8pQ8eOv',
-        sourceHandle: 'tMyUnRL5jIrC-source-right',
-        targetHandle: 'vEXJF8pQ8eOv-target-left'
-      },
-      {
-        source: 'vEXJF8pQ8eOv',
-        target: '7mapnCgHfKW6',
-        sourceHandle: 'vEXJF8pQ8eOv-source-right',
-        targetHandle: '7mapnCgHfKW6-target-left'
-      }
-    ]
-  },
-  {
     id: 'CQ',
     avatar: 'core/workflow/template/questionClassify',
     name: '问题分类 + 知识库',
@@ -3148,6 +2849,542 @@ export const pluginTemplates: TemplateType = [
         source: 'rKBYGQuYefae',
         target: 'pluginOutput',
         sourceHandle: 'rKBYGQuYefae-source-right',
+        targetHandle: 'pluginOutput-target-left'
+      }
+    ]
+  },
+  {
+    id: 'dalle',
+    avatar: '/imgs/model/openai.svg',
+    name: 'Dalle3绘图',
+    intro: '通过请求Dalle3接口绘图，需要有 api key',
+    type: AppTypeEnum.plugin,
+    modules: [
+      {
+        nodeId: 'pluginInput',
+        name: '自定义插件输入',
+        intro: '可以配置插件需要哪些输入，利用这些输入来运行插件',
+        avatar: 'core/workflow/template/workflowStart',
+        flowNodeType: 'pluginInput',
+        showStatus: false,
+        position: {
+          x: 412.7756423516722,
+          y: -99.80686112290361
+        },
+        version: '481',
+        inputs: [
+          {
+            renderTypeList: ['reference'],
+            selectedTypeIndex: 0,
+            valueType: 'string',
+            canEdit: true,
+            key: '绘图提示词',
+            label: '绘图提示词',
+            description: '绘图提示词',
+            required: true,
+            toolDescription: '绘图提示词'
+          }
+        ],
+        outputs: [
+          {
+            id: '绘图提示词',
+            valueType: 'string',
+            key: '绘图提示词',
+            label: '绘图提示词',
+            type: 'hidden'
+          }
+        ]
+      },
+      {
+        nodeId: 'pluginOutput',
+        name: '自定义插件输出',
+        intro: '自定义配置外部输出，使用插件时，仅暴露自定义配置的输出',
+        avatar: 'core/workflow/template/pluginOutput',
+        flowNodeType: 'pluginOutput',
+        showStatus: false,
+        position: {
+          x: 1822.7195641525896,
+          y: -193.54601587659562
+        },
+        version: '481',
+        inputs: [
+          {
+            renderTypeList: ['reference'],
+            valueType: 'string',
+            canEdit: true,
+            key: '图片访问链接',
+            label: '图片访问链接',
+            description: '',
+            value: ['tMvel910bnrJ', 'pJXgWoTpPoMy']
+          },
+          {
+            renderTypeList: ['reference'],
+            valueType: 'object',
+            canEdit: true,
+            key: 'error',
+            label: '错误信息',
+            description: '',
+            value: ['tMvel910bnrJ', 'error']
+          }
+        ],
+        outputs: []
+      },
+      {
+        nodeId: 'tMvel910bnrJ',
+        name: 'HTTP 请求',
+        intro: '可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
+        avatar: 'core/workflow/template/httpRequest',
+        flowNodeType: 'httpRequest468',
+        showStatus: true,
+        position: {
+          x: 1044.8838211811253,
+          y: -414.7785530936485
+        },
+        version: '481',
+        inputs: [
+          {
+            key: 'system_addInputParam',
+            renderTypeList: ['addInputParam'],
+            valueType: 'dynamic',
+            label: '',
+            required: false,
+            description: 'core.module.input.description.HTTP Dynamic Input',
+            customInputConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: true
+            }
+          },
+          {
+            key: 'system_httpMethod',
+            renderTypeList: ['custom'],
+            valueType: 'string',
+            label: '',
+            value: 'POST',
+            required: true
+          },
+          {
+            key: 'system_httpReqUrl',
+            renderTypeList: ['hidden'],
+            valueType: 'string',
+            label: '',
+            description: 'core.module.input.description.Http Request Url',
+            placeholder: 'https://api.ai.com/getInventory',
+            required: false,
+            value: '{{url}}/v1/images/generations'
+          },
+          {
+            key: 'system_httpHeader',
+            renderTypeList: ['custom'],
+            valueType: 'any',
+            value: [
+              {
+                key: 'Authorization',
+                type: 'string',
+                value: 'Bearer {{authorization}}'
+              }
+            ],
+            label: '',
+            description: 'core.module.input.description.Http Request Header',
+            placeholder: 'core.module.input.description.Http Request Header',
+            required: false
+          },
+          {
+            key: 'system_httpParams',
+            renderTypeList: ['hidden'],
+            valueType: 'any',
+            value: [],
+            label: '',
+            required: false
+          },
+          {
+            key: 'system_httpJsonBody',
+            renderTypeList: ['hidden'],
+            valueType: 'any',
+            value:
+              '{\n  "model": "dall-e-3",\n  "prompt": "{{prompt}}",\n  "n": 1,\n  "size": "1024x1024"\n}',
+            label: '',
+            required: false
+          },
+          {
+            renderTypeList: ['reference'],
+            valueType: 'string',
+            canEdit: true,
+            key: 'prompt',
+            label: 'prompt',
+            customInputConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: true
+            },
+            required: true,
+            value: ['pluginInput', '绘图提示词']
+          }
+        ],
+        outputs: [
+          {
+            id: 'error',
+            key: 'error',
+            label: '请求错误',
+            description: 'HTTP请求错误信息，成功时返回空',
+            valueType: 'object',
+            type: 'static'
+          },
+          {
+            id: 'httpRawResponse',
+            key: 'httpRawResponse',
+            label: '原始响应',
+            required: true,
+            description: 'HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。',
+            valueType: 'any',
+            type: 'static'
+          },
+          {
+            id: 'system_addOutputParam',
+            key: 'system_addOutputParam',
+            type: 'dynamic',
+            valueType: 'dynamic',
+            label: '',
+            customFieldConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: false
+            }
+          },
+          {
+            id: 'pJXgWoTpPoMy',
+            valueType: 'string',
+            type: 'dynamic',
+            key: 'data[0].url',
+            label: 'data[0].url'
+          }
+        ]
+      }
+    ],
+    edges: [
+      {
+        source: 'pluginInput',
+        target: 'tMvel910bnrJ',
+        sourceHandle: 'pluginInput-source-right',
+        targetHandle: 'tMvel910bnrJ-target-left'
+      },
+      {
+        source: 'tMvel910bnrJ',
+        target: 'pluginOutput',
+        sourceHandle: 'tMvel910bnrJ-source-right',
+        targetHandle: 'pluginOutput-target-left'
+      }
+    ]
+  },
+  {
+    id: 'flux',
+    avatar: '/imgs/app/templates/flux.svg',
+    name: 'Flux 绘图',
+    intro: '通过请求 Flux 接口绘图，需要有 api key',
+    type: AppTypeEnum.plugin,
+    modules: [
+      {
+        nodeId: 'pluginInput',
+        name: '自定义插件输入',
+        intro: '可以配置插件需要哪些输入，利用这些输入来运行插件',
+        avatar: 'core/workflow/template/workflowStart',
+        flowNodeType: 'pluginInput',
+        showStatus: false,
+        position: {
+          x: 351.2046235980429,
+          y: -77.41739975794749
+        },
+        version: '481',
+        inputs: [
+          {
+            renderTypeList: ['reference'],
+            selectedTypeIndex: 0,
+            valueType: 'string',
+            canEdit: true,
+            key: '绘图提示词',
+            label: '绘图提示词',
+            description: '绘图提示词',
+            required: true,
+            toolDescription: '绘图提示词'
+          }
+        ],
+        outputs: [
+          {
+            id: '绘图提示词',
+            valueType: 'string',
+            key: '绘图提示词',
+            label: '绘图提示词',
+            type: 'hidden'
+          }
+        ]
+      },
+      {
+        nodeId: 'pluginOutput',
+        name: '自定义插件输出',
+        intro: '自定义配置外部输出，使用插件时，仅暴露自定义配置的输出',
+        avatar: 'core/workflow/template/pluginOutput',
+        flowNodeType: 'pluginOutput',
+        showStatus: false,
+        position: {
+          x: 1983.6911708285384,
+          y: -95.86447885674228
+        },
+        version: '481',
+        inputs: [
+          {
+            renderTypeList: ['reference'],
+            valueType: 'string',
+            canEdit: true,
+            key: '图片访问链接',
+            label: '图片访问链接',
+            description: '',
+            value: ['tMvel910bnrJ', 'pJXgWoTpPoMy']
+          },
+          {
+            renderTypeList: ['reference'],
+            valueType: 'object',
+            canEdit: true,
+            key: 'error',
+            label: '错误信息',
+            description: '',
+            value: ['tMvel910bnrJ', 'error']
+          }
+        ],
+        outputs: []
+      },
+      {
+        nodeId: 'tMvel910bnrJ',
+        name: 'HTTP 请求',
+        intro: '可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
+        avatar: 'core/workflow/template/httpRequest',
+        flowNodeType: 'httpRequest468',
+        showStatus: true,
+        position: {
+          x: 1138.1732435351091,
+          y: -416.6443415407282
+        },
+        version: '481',
+        inputs: [
+          {
+            key: 'system_addInputParam',
+            renderTypeList: ['addInputParam'],
+            valueType: 'dynamic',
+            label: '',
+            required: false,
+            description: 'core.module.input.description.HTTP Dynamic Input',
+            customInputConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: true
+            }
+          },
+          {
+            key: 'system_httpMethod',
+            renderTypeList: ['custom'],
+            valueType: 'string',
+            label: '',
+            value: 'POST',
+            required: true
+          },
+          {
+            key: 'system_httpReqUrl',
+            renderTypeList: ['hidden'],
+            valueType: 'string',
+            label: '',
+            description: 'core.module.input.description.Http Request Url',
+            placeholder: 'https://api.ai.com/getInventory',
+            required: false,
+            value: 'https://fal.run/fal-ai/flux-pro'
+          },
+          {
+            key: 'system_httpHeader',
+            renderTypeList: ['custom'],
+            valueType: 'any',
+            value: [
+              {
+                key: 'Authorization',
+                type: 'string',
+                value: 'Key {{apikey}}'
+              }
+            ],
+            label: '',
+            description: 'core.module.input.description.Http Request Header',
+            placeholder: 'core.module.input.description.Http Request Header',
+            required: false
+          },
+          {
+            key: 'system_httpParams',
+            renderTypeList: ['hidden'],
+            valueType: 'any',
+            value: [],
+            label: '',
+            required: false
+          },
+          {
+            key: 'system_httpJsonBody',
+            renderTypeList: ['hidden'],
+            valueType: 'any',
+            value:
+              '{\n  "prompt": "{{prompt}}",\n  "image_size": "landscape_4_3",\n  "num_inference_steps": 28,\n  "guidance_scale": 3.5\n}',
+            label: '',
+            required: false
+          },
+          {
+            renderTypeList: ['reference'],
+            valueType: 'string',
+            canEdit: true,
+            key: 'prompt',
+            label: 'prompt',
+            customInputConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: true
+            },
+            required: true,
+            value: ['pluginInput', '绘图提示词']
+          }
+        ],
+        outputs: [
+          {
+            id: 'error',
+            key: 'error',
+            label: '请求错误',
+            description: 'HTTP请求错误信息，成功时返回空',
+            valueType: 'object',
+            type: 'static'
+          },
+          {
+            id: 'httpRawResponse',
+            key: 'httpRawResponse',
+            label: '原始响应',
+            required: true,
+            description: 'HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。',
+            valueType: 'any',
+            type: 'static'
+          },
+          {
+            id: 'system_addOutputParam',
+            key: 'system_addOutputParam',
+            type: 'dynamic',
+            valueType: 'dynamic',
+            label: '',
+            customFieldConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: false
+            }
+          },
+          {
+            id: 'pJXgWoTpPoMy',
+            valueType: 'string',
+            type: 'dynamic',
+            key: 'images[0].url',
+            label: 'images[0].url'
+          }
+        ]
+      }
+    ],
+    edges: [
+      {
+        source: 'pluginInput',
+        target: 'tMvel910bnrJ',
+        sourceHandle: 'pluginInput-source-right',
+        targetHandle: 'tMvel910bnrJ-target-left'
+      },
+      {
+        source: 'tMvel910bnrJ',
+        target: 'pluginOutput',
+        sourceHandle: 'tMvel910bnrJ-source-right',
         targetHandle: 'pluginOutput-target-left'
       }
     ]
