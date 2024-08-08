@@ -137,6 +137,7 @@ const ChatInput = ({
             const { previewUrl } = await uploadFile2DB({
               file: copyFile.rawFile,
               bucketName: 'chat',
+              outLinkAuthData,
               metadata: {
                 chatId
               },
@@ -168,7 +169,7 @@ const ChatInput = ({
     {
       manual: false,
       errorToast: t('common:upload_file_error'),
-      refreshDeps: [fileList]
+      refreshDeps: [fileList, outLinkAuthData, chatId]
     }
   );
   const onSelectFile = useCallback(
