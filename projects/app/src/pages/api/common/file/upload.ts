@@ -15,14 +15,13 @@ const authUploadLimit = (tmbId: string) => {
   if (!global.feConfigs.uploadFileMaxAmount) return;
   return authFrequencyLimit({
     eventId: `${tmbId}-uploadfile`,
-    maxAmount: 2,
+    maxAmount: global.feConfigs.uploadFileMaxAmount * 2,
     expiredTime: addSeconds(new Date(), 30) // 30s
   });
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const filePaths: string[] = [];
-
   try {
     const start = Date.now();
     /* Creates the multer uploader */
