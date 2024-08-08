@@ -42,7 +42,8 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
     showChunkInput,
     showPromptInput,
     maxChunkSize,
-    priceTip
+    priceTip,
+    chunkSize
   } = useContextSelector(DatasetImportContext, (v) => v);
   const { getValues, setValue, register, watch } = processParamsForm;
   const { toast } = useToast();
@@ -74,8 +75,15 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
   );
 
   return (
-    <Box h={'100%'} display={['block', 'flex']} gap={5} fontSize={'sm'}>
-      <Box flex={'1 0 0'} minW={['auto', '540px']} maxW={'600px'}>
+    <Box h={'100%'} display={['block', 'flex']} fontSize={'sm'}>
+      <Box
+        flex={'1 0 0'}
+        minW={['auto', '540px']}
+        maxW={'600px'}
+        h={['auto', '100%']}
+        overflow={'auto'}
+        pr={[0, 3]}
+      >
         <Flex alignItems={'center'}>
           <MyIcon name={'common/settingLight'} w={'20px'} />
           <Box fontSize={'md'}>{t('common:core.dataset.import.Data process params')}</Box>
@@ -138,7 +146,7 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
                           }}
                         >
                           <MyTooltip
-                            label={t('core.dataset.import.Chunk Range', {
+                            label={t('common:core.dataset.import.Chunk Range', {
                               min: minChunkSize,
                               max: maxChunkSize
                             })}
@@ -148,6 +156,7 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
                               step={100}
                               min={minChunkSize}
                               max={maxChunkSize}
+                              value={chunkSize}
                               onChange={(e) => {
                                 setValue(chunkSizeField, +e);
                               }}
@@ -279,7 +288,7 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
           </Button>
         </Flex>
       </Box>
-      <Box flex={'1 0 0'} w={['auto', '0']}>
+      <Box flex={'1 0 0'} w={['auto', '0']} h={['auto', '100%']} overflow={'auto'} pl={[0, 3]}>
         <Preview showPreviewChunks={showPreviewChunks} />
       </Box>
 

@@ -1,4 +1,5 @@
 import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
+import { pushChatUsage } from '@/service/support/wallet/usage/push';
 import { defaultApp } from '@/web/core/app/constants';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -9,6 +10,7 @@ import {
   initWorkflowEdgeStatus,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
@@ -29,7 +31,7 @@ export const getScheduleTriggerApp = async () => {
       const { user } = await getUserChatInfoAndAuthTeamPoints(app.tmbId);
 
       try {
-        await dispatchWorkFlow({
+        const { flowUsages } = await dispatchWorkFlow({
           chatId: getNanoid(),
           user,
           mode: 'chat',
@@ -52,6 +54,14 @@ export const getScheduleTriggerApp = async () => {
           stream: false,
           detail: false,
           maxRunTimes: 200
+        });
+        pushChatUsage({
+          appName: app.name,
+          appId: app._id,
+          teamId: String(app.teamId),
+          tmbId: String(app.tmbId),
+          source: UsageSourceEnum.cronJob,
+          flowUsages
         });
       } catch (error) {
         addLog.error('Schedule trigger error', error);
