@@ -1,10 +1,10 @@
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoApp } from '../app/schema';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { addLog } from '@fastgpt/service/common/system/log';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { MongoChatItem } from './chatItemSchema';
+import { MongoChat } from './chatSchema';
+import { addLog } from '../../common/system/log';
+import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';

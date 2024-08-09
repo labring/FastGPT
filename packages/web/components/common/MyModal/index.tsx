@@ -6,8 +6,7 @@ import {
   ModalHeader,
   ModalCloseButton,
   ModalContentProps,
-  Box,
-  Image
+  Box
 } from '@chakra-ui/react';
 import MyBox from '../MyBox';
 import { useSystem } from '../../../hooks/useSystem';
@@ -18,13 +17,13 @@ export interface MyModalProps extends ModalContentProps {
   title?: any;
   isCentered?: boolean;
   isLoading?: boolean;
-  isOpen: boolean;
+  isOpen?: boolean;
   onClose?: () => void;
   closeOnOverlayClick?: boolean;
 }
 
 const MyModal = ({
-  isOpen,
+  isOpen = true,
   onClose,
   iconSrc,
   title,
