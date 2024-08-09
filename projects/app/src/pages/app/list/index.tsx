@@ -224,7 +224,7 @@ const MyApps = () => {
                     {
                       children: [
                         {
-                          icon: 'core/app/type/templateFill',
+                          icon: '/imgs/app/templateFill.svg',
                           label: t('app:template_market'),
                           description: t('app:template_market_description'),
                           onClick: () => setTemplateModalType('all')
