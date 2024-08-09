@@ -7,8 +7,8 @@ import {
   ModalBody,
   Input,
   Grid,
-  useTheme,
-  Card
+  Card,
+  useDisclosure
 } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
@@ -29,6 +29,8 @@ import { AppListContext } from './context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useI18n } from '@/web/context/I18n';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { ChevronRightIcon } from '@chakra-ui/icons';
+import TemplateMarketModal from './TemplateMarketModal';
 
 type FormType = {
   avatar: string;
@@ -45,6 +47,11 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
   const router = useRouter();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const { isPc } = useSystem();
+  const {
+    isOpen: isOpenTemplateModal,
+    onOpen: onOpenTemplateModal,
+    onClose: onCloseTemplateModal
+  } = useDisclosure();
 
   const typeMap = useRef({
     [AppTypeEnum.simple]: {
@@ -146,8 +153,8 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
             <Avatar
               flexShrink={0}
               src={avatar}
-              w={['28px', '32px']}
-              h={['28px', '32px']}
+              w={['28px', '36px']}
+              h={['28px', '36px']}
               cursor={'pointer'}
               borderRadius={'md'}
               onClick={onOpenSelectFile}
@@ -155,7 +162,8 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
           </MyTooltip>
           <Input
             flex={1}
-            ml={4}
+            ml={3}
+            height={['24px', '32px']}
             autoFocus
             bg={'myWhite.600'}
             {...register('name', {
@@ -163,9 +171,23 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
             })}
           />
         </Flex>
-        <Box mt={[4, 7]} mb={[0, 3]} color={'myGray.800'} fontWeight={'bold'}>
-          {t('common:core.app.Select app from template')}
-        </Box>
+        <Flex mt={[4, 7]} mb={[0, 3]}>
+          <Box color={'myGray.900'} fontWeight={'bold'} fontSize={'sm'}>
+            {t('common:core.app.Select app from template')}
+          </Box>
+          <Box flex={1} />
+          <Flex
+            onClick={onOpenTemplateModal}
+            alignItems={'center'}
+            cursor={'pointer'}
+            color={'myGray.600'}
+            fontSize={'xs'}
+            _hover={{ color: 'blue.700' }}
+          >
+            {t('core.app.more')}
+            <ChevronRightIcon w={4} h={4} />
+          </Flex>
+        </Flex>
         <Grid
           userSelect={'none'}
           gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)']}
@@ -207,7 +229,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
         </Grid>
       </ModalBody>
 
-      <ModalFooter>
+      <ModalFooter roundedBottom={'md'}>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common:common.Close')}
         </Button>
@@ -217,6 +239,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
       </ModalFooter>
 
       <File onSelect={onSelectFile} />
+      {isOpenTemplateModal && <TemplateMarketModal onClose={onCloseTemplateModal} />}
     </MyModal>
   );
 };

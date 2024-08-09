@@ -42,6 +42,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import TemplateMarketModal from './components/TemplateMarketModal';
 
 const CreateModal = dynamic(() => import('./components/CreateModal'));
 const EditFolderModal = dynamic(

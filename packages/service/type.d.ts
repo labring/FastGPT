@@ -25,4 +25,5 @@ declare global {
   var systemLoadedGlobalConfig: boolean;
 
   var workerPoll: Record<WorkerNameEnum, WorkerPool>;
+  var appTemplateMarketTemplates: TemplateMarketItemType[];
 }

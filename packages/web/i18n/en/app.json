@@ -84,6 +84,19 @@
   "template": {
     "simple_robot": "Simple Robot"
   },
+  "templateMarket": {
+    "Search_template": "Search template",
+    "Template_market": "Template market",
+    "no_intro": "No intro~",
+    "Use": "Use",
+    "templateTypes": {
+      "Image_generation": "Image generation",
+      "Office_services": "Office searvices",
+      "Roleplay": "Roleplay",
+      "Web_search": "Web search",
+      "Writing": "Writing"
+    }
+  },
   "time_zone": "Time zone",
   "tool_input_param_tip": "Configure related information before the plugin runs properly",
   "transition_to_workflow": "Transition to workflow",
@@ -91,7 +104,7 @@
   "transition_to_workflow_create_new_tip": "After converting to workflow, it will not be able to convert back to simple mode, please confirm!",
   "type": {
     "All": "All",
-    "Create http plugin tip": "Create plug-ins in batches using OpenAPI schema, compatible with GPTs format.",
+    "Create http plugin tip": "Create plug-ins in batches using OpenAPI schema, compatible with GPTs format",
     "Create one plugin tip": "The input and output workflows can be customized",
     "Create plugin bot": "Create plugin bot",
     "Create simple bot": "Create simple bot",
@@ -101,6 +114,7 @@
     "Http plugin": "Http plugin",
     "Plugin": "Plugin",
     "Simple bot": "Simple bot",
+    "Template": "Create by template",
     "Workflow bot": "Workflow"
   },
   "upload_file_max_amount": "Max files",
