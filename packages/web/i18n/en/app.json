@@ -87,8 +87,8 @@
   "templateMarket": {
     "Search_template": "Search template",
     "Template_market": "Template market",
-    "no_intro": "No intro~",
     "Use": "Use",
+    "no_intro": "No intro~",
     "templateTags": {
       "Image_generation": "Image generation",
       "Office_services": "Office searvices",
@@ -97,6 +97,9 @@
       "Writing": "Writing"
     }
   },
+  "template_market": "Templates",
+  "template_market_description": "Explore more ways to play in the template market, configuration tutorials and usage guides will help you understand and get started with various applications.",
+  "template_market_empty_data": "No suitable template found",
   "time_zone": "Time zone",
   "tool_input_param_tip": "Configure related information before the plugin runs properly",
   "transition_to_workflow": "Transition to workflow",
