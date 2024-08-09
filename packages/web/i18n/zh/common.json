@@ -359,8 +359,6 @@
       "logs": {
         "Source And Time": "来源 & 时间"
       },
-      "no_app": "还没有应用，快去创建一个吧！",
-      "not_published": "未发布",
       "more": "查看更多",
       "navbar": {
         "External": "外部使用",
@@ -369,6 +367,8 @@
         "Publish app": "发布应用",
         "Simple mode": "简易配置"
       },
+      "no_app": "还没有应用，快去创建一个吧！",
+      "not_published": "未发布",
       "outLink": {
         "Can Drag": "图标可拖拽",
         "Default open": "默认打开",
@@ -606,7 +606,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1445,5 +1446,6 @@
     },
     "type": "类型"
   },
-  "verification": "验证"
+  "verification": "验证",
+  "xx_search_result": "{{key}} 的搜索结果"
 }

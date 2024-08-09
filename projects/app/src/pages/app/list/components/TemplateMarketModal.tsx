@@ -16,7 +16,7 @@ import {
   ModalOverlay
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import AppTypeTag from './TypeTag';
 import { AppTemplateTypeEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -34,6 +34,7 @@ import { SearchIcon } from '@chakra-ui/icons';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useTranslation } from 'next-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 type TemplateAppType = AppTypeEnum | 'all';
 
@@ -79,7 +80,7 @@ const TemplateMarketModal = ({
   const [currentAppType, setCurrentAppType] = useState<TemplateAppType>(defaultType);
   const [currentSearch, setCurrentSearch] = useState('');
 
-  const { data: templateData = [], loading: isLoadingTemplates } = useRequest2(
+  const { data: templateList = [], loading: isLoadingTemplates } = useRequest2(
     getTemplateMarketItemList,
     {
       manual: false
@@ -137,6 +138,91 @@ const TemplateMarketModal = ({
     {
       throttleWait: 100
     }
+  );
+
+  const TemplateCard = useCallback(
+    ({ item }: { item: TemplateMarketListItemType }) => {
+      const { t } = useTranslation();
+
+      return (
+        <MyBox
+          key={item.id}
+          lineHeight={1.5}
+          h="100%"
+          pt={5}
+          pb={3}
+          px={5}
+          border={'base'}
+          boxShadow={'2'}
+          bg={'white'}
+          borderRadius={'lg'}
+          position={'relative'}
+          display={'flex'}
+          flexDirection={'column'}
+          _hover={{
+            borderColor: 'primary.300',
+            boxShadow: '1.5',
+            '& .buttons': {
+              display: 'flex'
+            }
+          }}
+          onClick={() => {}}
+        >
+          <HStack>
+            <Avatar src={item.avatar} borderRadius={'sm'} w={'1.5rem'} h={'1.5rem'} />
+            <Box flex={'1 0 0'} color={'myGray.900'}>
+              {item.name}
+            </Box>
+            <Box mr={'-1.25rem'}>
+              <AppTypeTag type={item.type} />
+            </Box>
+          </HStack>
+          <Box
+            flex={['1 0 48px', '1 0 56px']}
+            mt={3}
+            pr={8}
+            textAlign={'justify'}
+            wordBreak={'break-all'}
+            fontSize={'xs'}
+            color={'myGray.500'}
+          >
+            <Box className={'textEllipsis2'}>{item.intro || t('app:templateMarket.no_intro')}</Box>
+          </Box>
+
+          <Box w={'full'} fontSize={'mini'}>
+            <Box ml={1.5} color={'myGray.500'}>
+              By {item.author}
+            </Box>
+            <Box
+              className="buttons"
+              display={'none'}
+              justifyContent={'center'}
+              alignItems={'center'}
+              position={'absolute'}
+              borderRadius={'lg'}
+              w={'full'}
+              h={'full'}
+              left={0}
+              right={0}
+              bottom={0}
+              height={'40px'}
+              bg={'white'}
+              zIndex={1}
+            >
+              <Button
+                variant={'whiteBase'}
+                h={'1.5rem'}
+                w={'40%'}
+                onClick={() => onUseTemplate(item.id)}
+              >
+                {t('app:templateMarket.Use')}
+              </Button>
+            </Box>
+          </Box>
+        </MyBox>
+      );
+    },
+    [onUseTemplate]
   );
 
   return (
@@ -225,9 +311,15 @@ const TemplateMarketModal = ({
                     <Box
                       key={item.id}
                       cursor={'pointer'}
-                      bg={item.id === currentTag ? 'primary.1' : ''}
-                      color={item.id === currentTag ? 'primary.600' : 'myGray.600'}
-                      _hover={{ bg: 'primary.1', color: 'primary.600' }}
+                      {...(item.id === currentTag && !currentSearch
+                        ? {
+                            bg: 'primary.1',
+                            color: 'primary.600'
+                          }
+                        : {
+                            _hover: { bg: 'primary.1' },
+                            color: 'myGray.600'
+                          })}
                       w={'9.5rem'}
                       px={4}
                       py={2}
@@ -249,136 +341,84 @@ const TemplateMarketModal = ({
             )}
 
             <Box pl={[3, 0]} pr={[3, 5]} flex={'1'} h={'100%'} overflow={'auto'}>
-              {templateTags.map((item) => {
-                const currentTemplates = templateData
-                  ?.filter((template) => template.tags.includes(item.id))
-                  .filter((template) => {
-                    if (currentAppType === 'all') return true;
-                    return template.type === currentAppType;
-                  })
-                  .filter(
-                    (template) =>
-                      !currentSearch || `${template.name}${template.intro}`.includes(currentSearch)
-                  );
-                if (currentTemplates.length === 0) return null;
-
-                return (
-                  <Box key={item.id}>
-                    <Box id={item.id} fontSize={'lg'} color={'myGray.900'} mb={4}>
-                      {item.label}
-                    </Box>
-                    <Grid
-                      gridTemplateColumns={[
-                        '1fr',
-                        'repeat(2,1fr)',
-                        'repeat(3,1fr)',
-                        'repeat(3,1fr)',
-                        'repeat(4,1fr)'
-                      ]}
-                      gridGap={4}
-                      alignItems={'stretch'}
-                      pb={5}
-                    >
-                      {currentTemplates.map((item) => (
-                        <TemplateCard key={item.id} item={item} onUseTemplate={onUseTemplate} />
-                      ))}
-                    </Grid>
+              {currentSearch ? (
+                <>
+                  <Box fontSize={'lg'} color={'myGray.900'} mb={4}>
+                    {t('common:xx_search_result', { key: currentSearch })}
                   </Box>
-                );
-              })}
+                  {(() => {
+                    const templates = templateList.filter((template) =>
+                      `${template.name}${template.intro}`.includes(currentSearch)
+                    );
+
+                    if (templates.length > 0) {
+                      return (
+                        <Grid
+                          gridTemplateColumns={[
+                            '1fr',
+                            'repeat(2,1fr)',
+                            'repeat(3,1fr)',
+                            'repeat(3,1fr)',
+                            'repeat(4,1fr)'
+                          ]}
+                          gridGap={4}
+                          alignItems={'stretch'}
+                          pb={5}
+                        >
+                          {templates.map((item) => (
+                            <TemplateCard key={item.id} item={item} />
+                          ))}
+                        </Grid>
+                      );
+                    }
+
+                    return <EmptyTip text={t('app:template_market_empty_data')} />;
+                  })()}
+                </>
+              ) : (
+                <>
+                  {' '}
+                  {templateTags.map((item) => {
+                    const currentTemplates = templateList
+                      ?.filter((template) => template.tags.includes(item.id))
+                      .filter((template) => {
+                        if (currentAppType === 'all') return true;
+                        return template.type === currentAppType;
+                      });
+
+                    if (currentTemplates.length === 0) return null;
+
+                    return (
+                      <Box key={item.id}>
+                        <Box id={item.id} fontSize={'lg'} color={'myGray.900'} mb={4}>
+                          {item.label}
+                        </Box>
+                        <Grid
+                          gridTemplateColumns={[
+                            '1fr',
+                            'repeat(2,1fr)',
+                            'repeat(3,1fr)',
+                            'repeat(3,1fr)',
+                            'repeat(4,1fr)'
+                          ]}
+                          gridGap={4}
+                          alignItems={'stretch'}
+                          pb={5}
+                        >
+                          {currentTemplates.map((item) => (
+                            <TemplateCard key={item.id} item={item} />
+                          ))}
+                        </Grid>
+                      </Box>
+                    );
+                  })}
+                </>
+              )}
             </Box>
           </ModalBody>
         </MyBox>
       </ModalContent>
     </Modal>
-  );
-};
-
-export const TemplateCard = ({
-  item,
-  onUseTemplate
-}: {
-  item: TemplateMarketListItemType;
-  onUseTemplate: (id: string) => void;
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <MyBox
-      key={item.id}
-      lineHeight={1.5}
-      h="100%"
-      pt={5}
-      pb={3}
-      px={5}
-      border={'base'}
-      boxShadow={'2'}
-      bg={'white'}
-      borderRadius={'lg'}
-      position={'relative'}
-      display={'flex'}
-      flexDirection={'column'}
-      _hover={{
-        borderColor: 'primary.300',
-        boxShadow: '1.5',
-        '& .buttons': {
-          display: 'flex'
-        }
-      }}
-      onClick={() => {}}
-    >
-      <HStack>
-        <Avatar src={item.avatar} borderRadius={'sm'} w={'1.5rem'} h={'1.5rem'} />
-        <Box flex={'1 0 0'} color={'myGray.900'}>
-          {item.name}
-        </Box>
-        <Box mr={'-1.25rem'}>
-          <AppTypeTag type={item.type} />
-        </Box>
-      </HStack>
-      <Box
-        flex={['1 0 48px', '1 0 56px']}
-        mt={3}
-        pr={8}
-        textAlign={'justify'}
-        wordBreak={'break-all'}
-        fontSize={'xs'}
-        color={'myGray.500'}
-      >
-        <Box className={'textEllipsis2'}>{item.intro || t('app:templateMarket.no_intro')}</Box>
-      </Box>
-
-      <Box w={'full'} fontSize={'mini'}>
-        <Box ml={1.5} color={'myGray.500'}>
-          By {item.author}
-        </Box>
-        <Box
-          className="buttons"
-          display={'none'}
-          justifyContent={'center'}
-          alignItems={'center'}
-          position={'absolute'}
-          borderRadius={'lg'}
-          w={'full'}
-          h={'full'}
-          left={0}
-          right={0}
-          bottom={0}
-          height={'40px'}
-          bg={'white'}
-          zIndex={1}
-        >
-          <Button
-            variant={'whiteBase'}
-            h={'1.5rem'}
-            w={'40%'}
-            onClick={() => onUseTemplate(item.id)}
-          >
-            {t('app:templateMarket.Use')}
-          </Button>
-        </Box>
-      </Box>
-    </MyBox>
   );
 };
 

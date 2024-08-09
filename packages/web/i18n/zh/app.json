@@ -85,9 +85,9 @@
     "simple_robot": "简易机器人"
   },
   "templateMarket": {
-    "Use": "使用",
     "Search_template": "搜索模板",
     "Template_market": "模板市场",
+    "Use": "使用",
     "no_intro": "还没有介绍～",
     "templateTags": {
       "Image_generation": "图片生成",
@@ -98,6 +98,9 @@
       "Writing": "文本创作"
     }
   },
+  "template_market": "模板市场",
+  "template_market_description": "在模板市场探索更多玩法，配置教程与使用引导，带你理解并上手各种应用",
+  "template_market_empty_data": "找不到合适的模板",
   "time_zone": "时区",
   "tool_input_param_tip": "该插件正常运行需要配置相关信息",
   "transition_to_workflow": "转成工作流",

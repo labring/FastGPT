@@ -596,7 +596,8 @@
             "success": "Start syncing"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",
@@ -1430,5 +1431,6 @@
     },
     "type": "type"
   },
-  "verification": "verify"
+  "verification": "verify",
+  "xx_search_result": "{{key}} Search results"
 }

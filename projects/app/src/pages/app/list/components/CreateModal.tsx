@@ -153,7 +153,6 @@ const CreateModal = ({
           <Input
             flex={1}
             ml={3}
-            height={['24px', '32px']}
             autoFocus
             bg={'myWhite.600'}
             {...register('name', {
