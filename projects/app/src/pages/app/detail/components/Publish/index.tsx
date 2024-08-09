@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Box, Flex, useTheme } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import dynamic from 'next/dynamic';
@@ -11,13 +11,12 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { cardStyles } from '../constants';
 
-import Link from './Link';
+const Link = dynamic(() => import('./Link'));
 const API = dynamic(() => import('./API'));
 const FeiShu = dynamic(() => import('./FeiShu'));
 
 const OutLink = () => {
   const { t } = useTranslation();
-  const theme = useTheme();
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
@@ -33,13 +32,13 @@ const OutLink = () => {
       title: t('common:core.app.Api request'),
       desc: t('common:core.app.Api request desc'),
       value: PublishChannelEnum.apikey
+    },
+    {
+      icon: 'core/app/publish/lark',
+      title: t('publish:feishu_bot'),
+      desc: t('publish:feishu_bot_desc'),
+      value: PublishChannelEnum.feishu
     }
-    // {
-    //   icon: 'core/app/publish/lark',
-    //   title: t('common:core.app.publish.Fei shu bot'),
-    //   desc: t('common:core.app.publish.Fei Shu Bot Desc'),
-    //   value: PublishChannelEnum.feishu
-    // }
   ]);
 
   const [linkType, setLinkType] = useState<PublishChannelEnum>(PublishChannelEnum.share);
