@@ -1,6 +1,6 @@
 {
   "abandon": true,
-  "author": "FastGPT Team",
+  "author": "FastGPT",
   "templateType": "tools",
   "name": "判断器",
   "avatar": "/imgs/module/tfSwitch.svg",
