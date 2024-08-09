@@ -2,7 +2,7 @@ import { AppSchema } from 'core/app/type';
 import { PublishChannelEnum } from './constant';
 
 // Feishu Config interface
-export interface FeishuType {
+export interface FeishuAppType {
   appId: string;
   appSecret: string;
   // Encrypt config
@@ -10,21 +10,18 @@ export interface FeishuType {
   encryptKey?: string; // no secret if null
   // Token Verification
   // refer to: https://open.feishu.cn/document/server-docs/event-subscription-guide/event-subscription-configure-/encrypt-key-encryption-configuration-case
-  verificationToken: string;
+  verificationToken?: string;
 }
 
 // TODO: Unused
-export interface WecomType {
-  ReplyLimit: Boolean;
-  defaultResponse: string;
-  immediateResponse: boolean;
-  WXWORK_TOKEN: string;
-  WXWORK_AESKEY: string;
-  WXWORK_SECRET: string;
-  WXWORD_ID: string;
+export interface WecomAppType {
+  SuiteId: string;
+  SuiteSecret: string;
 }
 
-export type OutLinkSchema<T = void> = {
+export type OutlinkAppType = FeishuAppType | WecomAppType | undefined;
+
+export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   _id: string;
   shareId: string;
   teamId: string;
@@ -55,7 +52,7 @@ export type OutLinkSchema<T = void> = {
     hookUrl?: string;
   };
 
-  app?: T;
+  app: T;
 };
 
 // to handle MongoDB querying
@@ -64,7 +61,7 @@ export type OutLinkWithAppType = Omit<OutLinkSchema, 'appId'> & {
 };
 
 // Edit the Outlink
-export type OutLinkEditType<T = void> = {
+export type OutLinkEditType<T = undefined> = {
   _id?: string;
   name: string;
   responseDetail: OutLinkSchema<T>['responseDetail'];
