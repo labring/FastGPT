@@ -4,6 +4,7 @@ import { useTranslation } from 'next-i18next';
 
 const FAQ = () => {
   const { t } = useTranslation();
+  
   const faqs = [
     {
       title: t('common:FAQ.auto_renew_q'),
