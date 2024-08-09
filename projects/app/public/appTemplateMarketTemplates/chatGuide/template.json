@@ -250,6 +250,14 @@
         "sourceHandle": "448745-source-right",
         "targetHandle": "loOvhld2ZTKa-target-left"
       }
-    ]
+    ],
+    "chatConfig": {
+      "welcomeText": "safsadfadf",
+      "scheduledTriggerConfig": {
+        "cronString": "",
+        "timezone": "Asia/Shanghai",
+        "defaultPrompt": ""
+      }
+    }
   }
 }

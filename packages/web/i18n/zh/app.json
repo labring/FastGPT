@@ -89,7 +89,7 @@
     "Search_template": "搜索模板",
     "Template_market": "模板市场",
     "no_intro": "还没有介绍～",
-    "templateTypes": {
+    "templateTags": {
       "Image_generation": "图片生成",
       "Office_services": "办公服务",
       "Recommendation": "推荐",

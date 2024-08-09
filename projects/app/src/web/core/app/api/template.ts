@@ -1,8 +1,11 @@
 import { GET } from '@/web/common/api/request';
-import { TemplateMarketItemType, TemplateMarketListType } from '@fastgpt/global/core/workflow/type';
+import {
+  TemplateMarketItemType,
+  TemplateMarketListItemType
+} from '@fastgpt/global/core/workflow/type';
 
 export const getTemplateMarketItemList = () =>
-  GET<TemplateMarketListType>('/core/app/template/getTemplateMarketList');
+  GET<TemplateMarketListItemType[]>('/core/app/template/list');
 
 export const getTemplateMarketItemDetail = (data: { templateId: string }) =>
-  GET<TemplateMarketItemType>(`/core/app/template/getTemplateMarketItemDetail`, data);
+  GET<TemplateMarketItemType>(`/core/app/template/detail`, data);

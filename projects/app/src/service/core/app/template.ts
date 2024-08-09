@@ -1,26 +1,25 @@
 import { isProduction } from '@fastgpt/service/common/system/constants';
-import { promises as fs } from 'fs';
+import { readdirSync, readFileSync } from 'fs';
 import path from 'path';
 
+// Get template from memory or file system
 export const getTemplateMarketItems = async () => {
   if (isProduction && global.appTemplateMarketTemplates) return global.appTemplateMarketTemplates;
 
   const templatesDir = path.join(process.cwd(), 'public', 'appTemplateMarketTemplates');
-  const templateNames = await fs.readdir(templatesDir);
+  const templateNames = readdirSync(templatesDir);
 
-  global.appTemplateMarketTemplates = await Promise.all(
-    templateNames.map(async (name) => {
-      try {
-        const filePath = path.join(templatesDir, name, 'template.json');
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const data = JSON.parse(fileContent);
-        return data;
-      } catch (error) {
-        console.error(`Error fetching template ${name}:`, error);
-        return null;
-      }
-    })
-  );
+  global.appTemplateMarketTemplates = templateNames.map((name) => {
+    try {
+      const filePath = path.join(templatesDir, name, 'template.json');
+      const fileContent = readFileSync(filePath, 'utf-8');
+      const data = JSON.parse(fileContent);
+      return data;
+    } catch (error) {
+      console.error(`Error fetching template ${name}:`, error);
+      return null;
+    }
+  });
 
   return global.appTemplateMarketTemplates;
 };
