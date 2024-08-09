@@ -11,21 +11,12 @@ export interface FeishuAppType {
   // Token Verification
   // refer to: https://open.feishu.cn/document/server-docs/event-subscription-guide/event-subscription-configure-/encrypt-key-encryption-configuration-case
   verificationToken?: string;
-  // we need this token to recieve message.
-  // user could not config this. We need to update this token automatically.
-  tenant_access_token?: string;
-  tenant_access_token_expire_at: Date; // it should be refreshed in 30 mins before expiration.
 }
 
 // TODO: Unused
 export interface WecomAppType {
-  ReplyLimit: Boolean;
-  defaultResponse: string;
-  immediateResponse: boolean;
-  WXWORK_TOKEN: string;
-  WXWORK_AESKEY: string;
-  WXWORK_SECRET: string;
-  WXWORD_ID: string;
+  SuiteId: string;
+  SuiteSecret: string;
 }
 
 export type OutlinkAppType = FeishuAppType | WecomAppType | undefined;
