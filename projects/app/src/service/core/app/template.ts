@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from 'fs';
 import path from 'path';
 
 // Get template from memory or file system
-export const getTemplateMarketItems = async () => {
+const loadTemplateMarketItems = async () => {
   if (isProduction && global.appMarketTemplates) return global.appMarketTemplates;
 
   const templatesDir = path.join(process.cwd(), 'public', 'appMarketTemplates');
@@ -25,12 +25,12 @@ export const getTemplateMarketItems = async () => {
 };
 
 export const getTemplateMarketItemDetail = async (id: string) => {
-  const templateMarketItems = await getTemplateMarketItems();
+  const templateMarketItems = await loadTemplateMarketItems();
   return templateMarketItems.find((item) => item.id === id);
 };
 
 export const getTemplateMarketItemList = async () => {
-  const templateMarketItems = await getTemplateMarketItems();
+  const templateMarketItems = await loadTemplateMarketItems();
   return templateMarketItems.map((item) => ({
     id: item.id,
     name: item.name,

@@ -18,6 +18,9 @@
   "confirm_delete_folder_tip": "Are you sure to delete this folder? All the following applications and corresponding chat records will be deleted, please confirm!",
   "copy_one_app": "Copy",
   "create_copy_success": "Create copy success",
+  "create_empty_app": "Create default app",
+  "create_empty_plugin": "Create default plugin",
+  "create_empty_workflow": "Create default workflow",
   "cron": {
     "every_day": "Executed every day",
     "every_month": "Executed monthly",
