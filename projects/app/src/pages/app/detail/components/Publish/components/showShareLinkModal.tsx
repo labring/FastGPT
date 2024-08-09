@@ -1,20 +1,21 @@
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import { useI18n } from '@/web/context/I18n';
-import { Box, Flex, ModalBody } from '@chakra-ui/react';
+import { Box, Image, Flex, ModalBody } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useTranslation } from 'react-i18next';
 
 export type ShowShareLinkModalProps = {
   shareLink: string;
   onClose: () => void;
+  img: string;
 };
 
-function ShowShareLinkModal({ shareLink, onClose }: ShowShareLinkModalProps) {
-  const { publishT, commonT } = useI18n();
+function ShowShareLinkModal({ shareLink, onClose, img }: ShowShareLinkModalProps) {
   const { copyData } = useCopyData();
+  const { t } = useTranslation();
 
   return (
-    <MyModal onClose={onClose} title={publishT('show_share_link_modal_title')}>
+    <MyModal onClose={onClose} title={t('publish:show_share_link_modal_title')}>
       <ModalBody>
         <Box borderRadius={'md'} bg={'myGray.100'} overflow={'hidden'} fontSize={'sm'}>
           <Flex
@@ -24,7 +25,7 @@ function ShowShareLinkModal({ shareLink, onClose }: ShowShareLinkModalProps) {
             borderTopLeftRadius={'md'}
             borderTopRightRadius={'md'}
           >
-            <Box flex={1}>将下面链接复制并填入对应位置</Box>
+            <Box flex={1}>{t('publish:copy_link_hint')}</Box>
             <MyIcon
               name={'copy'}
               w={'16px'}
@@ -37,6 +38,9 @@ function ShowShareLinkModal({ shareLink, onClose }: ShowShareLinkModalProps) {
           <Box whiteSpace={'pre'} p={3} overflowX={'auto'}>
             {shareLink}
           </Box>
+        </Box>
+        <Box mt="4" borderRadius="0.5rem" border="1px" borderStyle="solid" borderColor="myGray.200">
+          <Image src={img} borderRadius="0.5rem" alt="" />
         </Box>
       </ModalBody>
     </MyModal>

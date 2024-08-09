@@ -17,8 +17,8 @@ function BasicInfo({
 }) {
   const { t } = useTranslation();
   return (
-    <Flex flexDirection="column">
-      <Box>{t('publish:basic_info')}</Box>
+    <Flex flexDirection="column" color="myGray.900">
+      <Box color="myGray.600">{t('publish:basic_info')}</Box>
       <Flex alignItems={'center'} mt="4">
         <Box flex={'0 0 90px'}>{t('common:Name')}</Box>
         <Input

@@ -35,8 +35,8 @@ const OutLink = () => {
     },
     {
       icon: 'core/app/publish/lark',
-      title: t('common:core.app.publish.Fei shu bot'),
-      desc: t('common:core.app.publish.Fei Shu Bot Desc'),
+      title: t('publish:feishu_bot'),
+      desc: t('publish:feishu_bot_desc'),
       value: PublishChannelEnum.feishu
     }
   ]);

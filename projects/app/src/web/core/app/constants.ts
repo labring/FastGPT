@@ -32,23 +32,6 @@ export const defaultOutLinkForm: OutLinkEditType = {
   }
 };
 
-// export const defaultWecomOutLinkForm: OutLinkConfigEditType = {
-//   name: '',
-//   wecomConfig: {
-//     ReplyLimit: false,
-//     defaultResponse: '',
-//     immediateResponse: false,
-//     WXWORK_TOKEN: '',
-//     WXWORK_AESKEY: '',
-//     WXWORK_SECRET: '',
-//     WXWORD_ID: ''
-//   },
-//   limit: {
-//     QPM: 100,
-//     maxUsagePoints: -1
-//   }
-// };
-
 export const defaultFeishuOutLinkForm: OutLinkEditType<FeishuAppType> = {
   name: '',
   limit: {

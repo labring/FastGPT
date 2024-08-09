@@ -26,7 +26,6 @@ import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useCopyData } from '@/web/common/hooks/useCopyData';
 
 const FeiShuEditModal = dynamic(() => import('./FeiShuEditModal'));
 const ShowShareLinkModal = dynamic(() => import('../components/showShareLinkModal'));
@@ -36,6 +35,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
   const { Loading, setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
   const [editFeiShuLinkData, setEditFeiShuLinkData] = useState<OutLinkEditType<FeishuAppType>>();
+  const [isEdit, setIsEdit] = useState<boolean>(false);
 
   const baseUrl = useMemo(
     () => feConfigs?.customApiDomain || `${location.origin}/api`,
@@ -52,54 +52,40 @@ const FeiShu = ({ appId }: { appId: string }) => {
       manual: false
     }
   );
-  const { copyData } = useCopyData();
+
   const {
     onOpen: openShowShareLinkModal,
     isOpen: showShareLinkModalOpen,
     onClose: closeShowShareLinkModal
   } = useDisclosure();
+
   const [showShareLink, setShowShareLink] = useState<string | null>(null);
 
   return (
     <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
-      <Flex justifyContent={'space-between'}>
+      <Flex justifyContent={'space-between'} flexDirection="row">
         <Box fontWeight={'bold'} fontSize={['md', 'lg']}>
           {t('common:core.app.publish.Fei shu bot publish')}
         </Box>
-        <Flex flexDirection="row">
-          <Flex
-            mt={[2, 0]}
-            bg={'myGray.100'}
-            py={2}
-            px={4}
-            borderRadius={'md'}
-            cursor={'pointer'}
-            userSelect={'none'}
-            onClick={() => copyData(baseUrl, t('common:support.openapi.Copy success'))}
-          >
-            <Box border="md" px={2} borderRadius={'md'} fontSize={'xs'}>
-              {t('common:support.openapi.Api baseurl')}
-            </Box>
-            <Box ml={2} fontSize={'sm'}>
-              {baseUrl}
-            </Box>
-          </Flex>
-          <Button
-            variant={'whitePrimary'}
-            colorScheme={'blue'}
-            size={['sm', 'md']}
-            ml={3}
-            {...(shareChatList.length >= 10
-              ? {
-                  isDisabled: true,
-                  title: t('common:core.app.share.Amount limit tip')
-                }
-              : {})}
-            onClick={() => setEditFeiShuLinkData(defaultFeishuOutLinkForm)}
-          >
-            {t('common:core.app.share.Create link')}
-          </Button>
-        </Flex>
+        <Button
+          variant={'primary'}
+          colorScheme={'blue'}
+          size={['sm', 'md']}
+          leftIcon={<MyIcon name={'common/addLight'} w="1.25rem" color="white" />}
+          ml={3}
+          {...(shareChatList.length >= 10
+            ? {
+                isDisabled: true,
+                title: t('common:core.app.share.Amount limit tip')
+              }
+            : {})}
+          onClick={() => {
+            setEditFeiShuLinkData(defaultFeishuOutLinkForm);
+            setIsEdit(false);
+          }}
+        >
+          {t('common:add_new')}
+        </Button>
       </Flex>
       <TableContainer mt={3}>
         <Table variant={'simple'} w={'100%'} overflowX={'auto'} fontSize={'sm'}>
@@ -175,7 +161,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
                           {
                             label: t('common:common.Edit'),
                             icon: 'edit',
-                            onClick: () =>
+                            onClick: () => {
                               setEditFeiShuLinkData({
                                 _id: item._id,
                                 name: item.name,
@@ -184,7 +170,9 @@ const FeiShu = ({ appId }: { appId: string }) => {
                                 responseDetail: item.responseDetail,
                                 defaultResponse: item.defaultResponse,
                                 immediateResponse: item.immediateResponse
-                              })
+                              });
+                              setIsEdit(true);
+                            }
                           },
                           {
                             label: t('common:common.Delete'),
@@ -217,6 +205,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
           onCreate={() => Promise.all([refetchShareChatList(), setEditFeiShuLinkData(undefined)])}
           onEdit={() => Promise.all([refetchShareChatList(), setEditFeiShuLinkData(undefined)])}
           onClose={() => setEditFeiShuLinkData(undefined)}
+          isEdit={isEdit}
         />
       )}
       {shareChatList.length === 0 && !isFetching && (
@@ -224,7 +213,11 @@ const FeiShu = ({ appId }: { appId: string }) => {
       )}
       <Loading loading={isFetching} fixed={false} />
       {showShareLinkModalOpen && (
-        <ShowShareLinkModal shareLink={showShareLink ?? ''} onClose={closeShowShareLinkModal} />
+        <ShowShareLinkModal
+          shareLink={showShareLink ?? ''}
+          onClose={closeShowShareLinkModal}
+          img="/imgs/outlink/feishu-copylink-instruction.png"
+        />
       )}
     </Box>
   );
