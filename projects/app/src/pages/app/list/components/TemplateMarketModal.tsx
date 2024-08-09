@@ -2,7 +2,6 @@ import {
   Avatar,
   Box,
   Button,
-  Center,
   Flex,
   Grid,
   HStack,
@@ -14,16 +13,14 @@ import {
   ModalCloseButton,
   ModalContent,
   ModalHeader,
-  ModalOverlay,
-  Spinner
+  ModalOverlay
 } from '@chakra-ui/react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useState } from 'react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import AppTypeTag from './TypeTag';
 import { AppTemplateTypeEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   getTemplateMarketItemDetail,
   getTemplateMarketItemList
@@ -35,99 +32,112 @@ import { AppListContext } from './context';
 import { useRouter } from 'next/router';
 import { SearchIcon } from '@chakra-ui/icons';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { debounce, throttle } from 'lodash';
-import { useTranslation } from 'react-i18next';
-import { useI18n } from '@/web/context/I18n';
+import { useTranslation } from 'next-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
-const TemplateMarketModal = ({ onClose }: { onClose: () => void }) => {
+type TemplateAppType = AppTypeEnum | 'all';
+
+const TemplateMarketModal = ({
+  defaultType = 'all',
+  onClose
+}: {
+  defaultType?: TemplateAppType;
+  onClose: () => void;
+}) => {
   const { t } = useTranslation();
-  const templateTypes = [
+  const templateTags = [
     {
       id: AppTemplateTypeEnum.recommendation,
-      label: t('app:templateMarket.templateTypes.Recommendation')
+      label: t('app:templateMarket.templateTags.Recommendation')
     },
     {
       id: AppTemplateTypeEnum.writing,
-      label: t('app:templateMarket.templateTypes.Writing')
+      label: t('app:templateMarket.templateTags.Writing')
     },
     {
       id: AppTemplateTypeEnum.imageGeneration,
-      label: t('app:templateMarket.templateTypes.Image_generation')
+      label: t('app:templateMarket.templateTags.Image_generation')
     },
     {
       id: AppTemplateTypeEnum.webSearch,
-      label: t('app:templateMarket.templateTypes.Web_search')
+      label: t('app:templateMarket.templateTags.Web_search')
     },
     {
       id: AppTemplateTypeEnum.roleplay,
-      label: t('app:templateMarket.templateTypes.Roleplay')
+      label: t('app:templateMarket.templateTags.Roleplay')
     },
     {
       id: AppTemplateTypeEnum.officeServices,
-      label: t('app:templateMarket.templateTypes.Office_services')
+      label: t('app:templateMarket.templateTags.Office_services')
     }
   ];
-  const [currentType, setCurrentType] = useState(templateTypes[0].id);
-  const [currentAppType, setCurrentAppType] = useState<AppTypeEnum | 'all'>('all');
-  const [currentSearch, setCurrentSearch] = useState('');
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
   const { isPc } = useSystem();
 
-  const { data: templateData, loading: isLoadingTemplates } = useRequest2(
-    async () => {
-      return getTemplateMarketItemList();
-    },
+  const [currentTag, setCurrentTag] = useState(templateTags[0].id);
+  const [currentAppType, setCurrentAppType] = useState<TemplateAppType>(defaultType);
+  const [currentSearch, setCurrentSearch] = useState('');
+
+  const { data: templateData = [], loading: isLoadingTemplates } = useRequest2(
+    getTemplateMarketItemList,
     {
       manual: false
     }
   );
 
-  const { mutate: onUseTemplate, isLoading: creating } = useRequest({
-    mutationFn: async (data) => {
-      const templateDetail = await getTemplateMarketItemDetail({ templateId: data.id });
+  const { runAsync: onUseTemplate, loading: isCreating } = useRequest2(
+    async (id: string) => {
+      const templateDetail = await getTemplateMarketItemDetail({ templateId: id });
       return postCreateApp({
         parentId,
         avatar: templateDetail.avatar,
         name: templateDetail.name,
         type: templateDetail.type,
         modules: templateDetail.workflow.nodes || [],
-        edges: templateDetail.workflow.edges || []
+        edges: templateDetail.workflow.edges || [],
+        chatConfig: templateDetail.workflow.chatConfig
       });
     },
-    onSuccess(id: string) {
-      router.push(`/app/detail?appId=${id}`);
-      loadMyApps();
-    },
-    successToast: t('common:common.Create Success'),
-    errorToast: t('common:common.Create Failed')
-  });
-
-  const handleScroll = throttle(() => {
-    let firstVisibleTitle: any = null;
-
-    templateTypes
-      .map((type) => type.id)
-      .forEach((type: string) => {
-        const element = document.getElementById(type);
-        if (!element) return;
-
-        const elementRect = element.getBoundingClientRect();
-        if (elementRect.top <= window.innerHeight && elementRect.bottom >= 0) {
-          if (
-            !firstVisibleTitle ||
-            elementRect.top < firstVisibleTitle.getBoundingClientRect().top
-          ) {
-            firstVisibleTitle = element;
-          }
-        }
-      });
-
-    if (firstVisibleTitle) {
-      setCurrentType(firstVisibleTitle.id);
+    {
+      onSuccess(id: string) {
+        onClose();
+        router.push(`/app/detail?appId=${id}`);
+      },
+      successToast: t('common:common.Create Success'),
+      errorToast: t('common:common.Create Failed')
     }
-  }, 100);
+  );
+
+  const { run: handleScroll } = useRequest2(
+    async () => {
+      let firstVisibleTitle: any = null;
+
+      templateTags
+        .map((type) => type.id)
+        .forEach((type: string) => {
+          const element = document.getElementById(type);
+          if (!element) return;
+
+          const elementRect = element.getBoundingClientRect();
+          if (elementRect.top <= window.innerHeight && elementRect.bottom >= 0) {
+            if (
+              !firstVisibleTitle ||
+              elementRect.top < firstVisibleTitle.getBoundingClientRect().top
+            ) {
+              firstVisibleTitle = element;
+            }
+          }
+        });
+
+      if (firstVisibleTitle) {
+        setCurrentTag(firstVisibleTitle.id);
+      }
+    },
+    {
+      throttleWait: 100
+    }
+  );
 
   return (
     <Modal
@@ -136,99 +146,95 @@ const TemplateMarketModal = ({ onClose }: { onClose: () => void }) => {
       autoFocus={false}
       blockScrollOnMount={false}
       closeOnOverlayClick={false}
+      isCentered
     >
       <ModalOverlay />
       <ModalContent
         w={['90vw', '75vw']}
-        maxW={['90vw', '75vw']}
+        maxW={'90vw'}
         position={'relative'}
         h={['90vh', '80vh']}
         boxShadow={'7'}
+        overflow={'hidden'}
       >
         <ModalHeader
           display={'flex'}
           alignItems={'center'}
-          roundedTop={'lg'}
           py={'10px'}
           fontSize={'md'}
           fontWeight={'bold'}
+          gap={3}
+          position={'relative'}
         >
-          <HStack w={'full'} justifyContent={'space-between'} display={'flex'}>
-            <Box>
-              <MyIcon mr={3} name={'core/app/type/templateFill'} w={'20px'} />
-              {t('app:templateMarket.Template_market')}
-            </Box>
-            {isPc && (
-              <InputGroup width="300px" ml={12}>
-                <InputLeftElement pointerEvents="none" fontSize={'sm'} top={'-1'}>
-                  <SearchIcon color="gray.300" />
-                </InputLeftElement>
-                <Input
-                  w={56}
-                  h={8}
-                  placeholder={t('app:templateMarket.Search_template')}
-                  onChange={debounce((e) => {
-                    setCurrentSearch(e.target.value);
-                  }, 200)}
-                  bg={'myGray.100'}
-                />
-              </InputGroup>
-            )}
-            <Flex gap={4}>
-              <MySelect
-                h={8}
-                value={currentAppType}
-                onchange={(value) => {
-                  setCurrentAppType(value as AppTypeEnum | 'all');
-                }}
+          <MyIcon name={'core/app/type/templateFill'} w={'20px'} />
+          <Box>{t('app:templateMarket.Template_market')}</Box>
+
+          <Box flex={'1'} />
+
+          <MySelect
+            h={'8'}
+            value={currentAppType}
+            onchange={(value) => {
+              setCurrentAppType(value as AppTypeEnum | 'all');
+            }}
+            bg={'myGray.100'}
+            minW={'7rem'}
+            list={[
+              { label: t('app:type.All'), value: 'all' },
+              { label: t('app:type.Simple bot'), value: AppTypeEnum.simple },
+              { label: t('app:type.Workflow bot'), value: AppTypeEnum.workflow },
+              { label: t('app:type.Plugin'), value: AppTypeEnum.plugin }
+            ]}
+          />
+          <ModalCloseButton position={'relative'} fontSize={'xs'} top={0} right={0} />
+
+          {isPc && (
+            <InputGroup
+              width="15rem"
+              position={'absolute'}
+              top={'50%'}
+              left={'50%'}
+              transform={'translate(-50%,-50%)'}
+              h={8}
+            >
+              <InputLeftElement pointerEvents="none" fontSize={'sm'} top={'-1'}>
+                <SearchIcon color="gray.500" />
+              </InputLeftElement>
+              <Input
+                placeholder={t('app:templateMarket.Search_template')}
+                onChange={(e) => setCurrentSearch(e.target.value)}
                 bg={'myGray.100'}
-                list={[
-                  { label: t('app:type.All'), value: 'all' },
-                  { label: t('app:type.Simple bot'), value: AppTypeEnum.simple },
-                  { label: t('app:type.Workflow bot'), value: AppTypeEnum.workflow },
-                  { label: t('app:type.Plugin'), value: AppTypeEnum.plugin }
-                ]}
               />
-              <ModalCloseButton position={'relative'} fontSize={'xs'} top={0} right={0} />
-            </Flex>
-          </HStack>
+            </InputGroup>
+          )}
         </ModalHeader>
-        <ModalBody
-          flex={'1 0 0'}
-          bg={'myWhite.600'}
-          overflow={'auto'}
-          roundedBottom={'md'}
-          onScroll={handleScroll}
-        >
-          <Flex h={'full'}>
-            <Box position={'absolute'}>
-              {isPc &&
-                templateTypes.map((item) => {
-                  if (
-                    templateData
-                      ?.filter((template) => template.tags.includes(item.id))
-                      .filter((templateData) => {
-                        if (currentAppType === 'all') return true;
-                        return templateData.type === currentAppType;
-                      })
-                      .filter((template) => template.name.includes(currentSearch)).length === 0
-                  )
-                    return null;
+        <MyBox isLoading={isCreating || isLoadingTemplates} flex={'1 0 0'} overflow={'overlay'}>
+          <ModalBody
+            h={'100%'}
+            display={'flex'}
+            bg={'myGray.100'}
+            overflow={'auto'}
+            gap={2}
+            onScroll={handleScroll}
+            px={0}
+          >
+            {isPc && (
+              <Flex pl={5} flexDirection={'column'} gap={3}>
+                {templateTags.map((item) => {
                   return (
                     <Box
                       key={item.id}
                       cursor={'pointer'}
-                      bg={item.id === currentType ? '#3370FF1A' : 'myWhite.600'}
-                      color={item.id === currentType ? 'blue.600' : 'myGray.800'}
-                      _hover={{ bg: '#3370FF1A', color: 'blue.600' }}
-                      w={'150px'}
+                      bg={item.id === currentTag ? 'primary.1' : ''}
+                      color={item.id === currentTag ? 'primary.600' : 'myGray.600'}
+                      _hover={{ bg: 'primary.1', color: 'primary.600' }}
+                      w={'9.5rem'}
                       px={4}
                       py={2}
-                      my={3}
                       rounded={'md'}
                       fontSize={'sm'}
                       onClick={() => {
-                        setCurrentType(item.id);
+                        setCurrentTag(item.id);
                         const anchor = document.getElementById(item.id);
                         if (anchor) {
                           anchor.scrollIntoView({ behavior: 'auto', block: 'start' });
@@ -239,58 +245,50 @@ const TemplateMarketModal = ({ onClose }: { onClose: () => void }) => {
                     </Box>
                   );
                 })}
+              </Flex>
+            )}
+
+            <Box pl={[3, 0]} pr={[3, 5]} flex={'1'} h={'100%'} overflow={'auto'}>
+              {templateTags.map((item) => {
+                const currentTemplates = templateData
+                  ?.filter((template) => template.tags.includes(item.id))
+                  .filter((template) => {
+                    if (currentAppType === 'all') return true;
+                    return template.type === currentAppType;
+                  })
+                  .filter(
+                    (template) =>
+                      !currentSearch || `${template.name}${template.intro}`.includes(currentSearch)
+                  );
+                if (currentTemplates.length === 0) return null;
+
+                return (
+                  <Box key={item.id}>
+                    <Box id={item.id} fontSize={'lg'} color={'myGray.900'} mb={4}>
+                      {item.label}
+                    </Box>
+                    <Grid
+                      gridTemplateColumns={[
+                        '1fr',
+                        'repeat(2,1fr)',
+                        'repeat(3,1fr)',
+                        'repeat(3,1fr)',
+                        'repeat(4,1fr)'
+                      ]}
+                      gridGap={4}
+                      alignItems={'stretch'}
+                      pb={5}
+                    >
+                      {currentTemplates.map((item) => (
+                        <TemplateCard key={item.id} item={item} onUseTemplate={onUseTemplate} />
+                      ))}
+                    </Grid>
+                  </Box>
+                );
+              })}
             </Box>
-            <Box ml={isPc ? '178px' : 0} w={'full'}>
-              {isLoadingTemplates || creating ? (
-                <Center flex={'1 0 0'} h={'full'}>
-                  <Spinner size={'lg'} />
-                </Center>
-              ) : (
-                <Box>
-                  {templateTypes.map((item) => {
-                    const currentTemplates = templateData
-                      ?.filter((template) => template.tags.includes(item.id))
-                      .filter((template) => {
-                        if (currentAppType === 'all') return true;
-                        return template.type === currentAppType;
-                      })
-                      .filter((template) => template.name.includes(currentSearch));
-                    if (!currentTemplates || currentTemplates.length === 0) return null;
-                    return (
-                      <>
-                        <Box
-                          key={item.id}
-                          id={item.id}
-                          fontSize={'18px'}
-                          color={'myGray.900'}
-                          mb={4}
-                        >
-                          {item.label}
-                        </Box>
-                        <Grid
-                          gridTemplateColumns={[
-                            '1fr',
-                            'repeat(2,1fr)',
-                            'repeat(3,1fr)',
-                            'repeat(3,1fr)',
-                            'repeat(4,1fr)'
-                          ]}
-                          gridGap={4}
-                          alignItems={'stretch'}
-                          pb={5}
-                        >
-                          {currentTemplates.map((item) => (
-                            <TemplateCard key={item.id} item={item} onUseTemplate={onUseTemplate} />
-                          ))}
-                        </Grid>
-                      </>
-                    );
-                  })}
-                </Box>
-              )}
-            </Box>
-          </Flex>
-        </ModalBody>
+          </ModalBody>
+        </MyBox>
       </ModalContent>
     </Modal>
   );
@@ -301,7 +299,7 @@ export const TemplateCard = ({
   onUseTemplate
 }: {
   item: TemplateMarketListItemType;
-  onUseTemplate: (data: any) => void;
+  onUseTemplate: (id: string) => void;
 }) => {
   const { t } = useTranslation();
 
@@ -323,9 +321,6 @@ export const TemplateCard = ({
       _hover={{
         borderColor: 'primary.300',
         boxShadow: '1.5',
-        '& .author': {
-          display: 'none'
-        },
         '& .buttons': {
           display: 'flex'
         }
@@ -352,31 +347,37 @@ export const TemplateCard = ({
       >
         <Box className={'textEllipsis2'}>{item.intro || t('app:templateMarket.no_intro')}</Box>
       </Box>
-      <Flex
-        alignItems={'center'}
-        justifyContent={'space-between'}
-        fontSize={'mini'}
-        color={'myGray.500'}
-      >
-        <HStack w={'full'} h={'24px'}>
-          <Flex className="author">
-            <Avatar src={item.authorAvatar} borderRadius={'sm'} w={'1rem'} h={'1.25rem'} />
-            <Box ml={1.5}>{item.author}</Box>
-          </Flex>
-          <Flex
-            className="buttons"
-            display={'none'}
-            justifyContent={'center'}
-            w={'full'}
-            gap={2}
-            h={'full'}
+
+      <Box w={'full'} fontSize={'mini'}>
+        <Box ml={1.5} color={'myGray.500'}>
+          By {item.author}
+        </Box>
+        <Box
+          className="buttons"
+          display={'none'}
+          justifyContent={'center'}
+          alignItems={'center'}
+          position={'absolute'}
+          borderRadius={'lg'}
+          w={'full'}
+          h={'full'}
+          left={0}
+          right={0}
+          bottom={0}
+          height={'40px'}
+          bg={'white'}
+          zIndex={1}
+        >
+          <Button
+            variant={'whiteBase'}
+            h={'1.5rem'}
+            w={'40%'}
+            onClick={() => onUseTemplate(item.id)}
           >
-            <Button variant={'whiteBase'} h={'full'} onClick={() => onUseTemplate(item)}>
-              {t('app:templateMarket.Use')}
-            </Button>
-          </Flex>
-        </HStack>
-      </Flex>
+            {t('app:templateMarket.Use')}
+          </Button>
+        </Box>
+      </Box>
     </MyBox>
   );
 };

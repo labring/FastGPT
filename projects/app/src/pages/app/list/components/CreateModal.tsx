@@ -1,15 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import {
-  Box,
-  Flex,
-  Button,
-  ModalFooter,
-  ModalBody,
-  Input,
-  Grid,
-  Card,
-  useDisclosure
-} from '@chakra-ui/react';
+import { Box, Flex, Button, ModalFooter, ModalBody, Input, Grid, Card } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
@@ -27,10 +17,8 @@ import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants'
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useI18n } from '@/web/context/I18n';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChevronRightIcon } from '@chakra-ui/icons';
-import TemplateMarketModal from './TemplateMarketModal';
 
 type FormType = {
   avatar: string;
@@ -40,36 +28,38 @@ type FormType = {
 
 export type CreateAppType = AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
 
-const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => void }) => {
+const CreateModal = ({
+  onClose,
+  type,
+  onOpenTemplateModal
+}: {
+  type: CreateAppType;
+  onClose: () => void;
+  onOpenTemplateModal: (type: AppTypeEnum) => void;
+}) => {
   const { t } = useTranslation();
-  const { appT } = useI18n();
   const { toast } = useToast();
   const router = useRouter();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const { isPc } = useSystem();
-  const {
-    isOpen: isOpenTemplateModal,
-    onOpen: onOpenTemplateModal,
-    onClose: onCloseTemplateModal
-  } = useDisclosure();
 
   const typeMap = useRef({
     [AppTypeEnum.simple]: {
       icon: 'core/app/simpleBot',
-      title: appT('type.Create simple bot'),
+      title: t('app:type.Create simple bot'),
       avatar: '/imgs/app/avatar/simple.svg',
       templates: simpleBotTemplates
     },
     [AppTypeEnum.workflow]: {
       icon: 'core/app/type/workflowFill',
       avatar: '/imgs/app/avatar/workflow.svg',
-      title: appT('type.Create workflow bot'),
+      title: t('app:type.Create workflow bot'),
       templates: workflowTemplates
     },
     [AppTypeEnum.plugin]: {
       icon: 'core/app/type/pluginFill',
       avatar: '/imgs/app/avatar/plugin.svg',
-      title: appT('type.Create plugin bot'),
+      title: t('app:type.Create plugin bot'),
       templates: pluginTemplates
     }
   });
@@ -177,14 +167,14 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
           </Box>
           <Box flex={1} />
           <Flex
-            onClick={onOpenTemplateModal}
+            onClick={() => onOpenTemplateModal(type)}
             alignItems={'center'}
             cursor={'pointer'}
             color={'myGray.600'}
             fontSize={'xs'}
             _hover={{ color: 'blue.700' }}
           >
-            {t('core.app.more')}
+            {t('common:core.app.more')}
             <ChevronRightIcon w={4} h={4} />
           </Flex>
         </Flex>
@@ -239,7 +229,6 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
       </ModalFooter>
 
       <File onSelect={onSelectFile} />
-      {isOpenTemplateModal && <TemplateMarketModal onClose={onCloseTemplateModal} />}
     </MyModal>
   );
 };
