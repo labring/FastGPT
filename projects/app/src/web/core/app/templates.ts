@@ -3394,22 +3394,19 @@ export const pluginTemplates: TemplateType = [
   }
 ];
 
-export const defaultAppTemplates = [
-  simpleBotTemplates[0],
-  simpleBotTemplates[1],
-  workflowTemplates[0],
-  workflowTemplates[1]
-];
-
 export const emptyTemplates: Record<
   AppTypeEnum.simple | AppTypeEnum.plugin | AppTypeEnum.workflow,
   {
+    name: string;
+    avatar: string;
     nodes: AppSchema['modules'];
     edges: AppSchema['edges'];
     chatConfig: AppSchema['chatConfig'];
   }
 > = {
   [AppTypeEnum.simple]: {
+    avatar: 'core/workflow/template/aiChat',
+    name: i18nT('app:template.simple_robot'),
     nodes: [
       {
         nodeId: 'userGuide',
@@ -3635,6 +3632,8 @@ export const emptyTemplates: Record<
     ]
   },
   [AppTypeEnum.workflow]: {
+    avatar: 'core/app/type/workflowFill',
+    name: '空白工作流',
     nodes: [
       {
         nodeId: 'userGuide',
@@ -3734,6 +3733,8 @@ export const emptyTemplates: Record<
     edges: []
   },
   [AppTypeEnum.plugin]: {
+    avatar: 'core/app/type/pluginFill',
+    name: '空白插件',
     nodes: [
       {
         nodeId: 'pluginInput',
