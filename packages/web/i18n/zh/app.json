@@ -82,11 +82,14 @@
   "setting_app": "应用配置",
   "setting_plugin": "插件配置",
   "template": {
-    "Search template": "搜索模板",
+    "simple_robot": "简易机器人"
+  },
+  "templateMarket": {
     "Use": "使用",
-    "simple_robot": "简易机器人",
-    "templateMarket": "模板市场",
-    "type": {
+    "Search_template": "搜索模板",
+    "Template_market": "模板市场",
+    "no_intro": "还没有介绍～",
+    "templateTypes": {
       "Image_generation": "图片生成",
       "Office_services": "办公服务",
       "Recommendation": "推荐",

@@ -45,27 +45,27 @@ const TemplateMarketModal = ({ onClose }: { onClose: () => void }) => {
   const templateTypes = [
     {
       id: AppTemplateTypeEnum.recommendation,
-      label: t('app:template.type.Recommendation')
+      label: t('app:templateMarket.templateTypes.Recommendation')
     },
     {
       id: AppTemplateTypeEnum.writing,
-      label: t('app:template.type.Writing')
+      label: t('app:templateMarket.templateTypes.Writing')
     },
     {
       id: AppTemplateTypeEnum.imageGeneration,
-      label: t('app:template.type.Image_generation')
+      label: t('app:templateMarket.templateTypes.Image_generation')
     },
     {
       id: AppTemplateTypeEnum.webSearch,
-      label: t('app:template.type.Web_search')
+      label: t('app:templateMarket.templateTypes.Web_search')
     },
     {
       id: AppTemplateTypeEnum.roleplay,
-      label: t('app:template.type.Roleplay')
+      label: t('app:templateMarket.templateTypes.Roleplay')
     },
     {
       id: AppTemplateTypeEnum.officeServices,
-      label: t('app:template.type.Office_services')
+      label: t('app:templateMarket.templateTypes.Office_services')
     }
   ];
   const [currentType, setCurrentType] = useState(templateTypes[0].id);
@@ -73,7 +73,6 @@ const TemplateMarketModal = ({ onClose }: { onClose: () => void }) => {
   const [currentSearch, setCurrentSearch] = useState('');
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
-  const { appT } = useI18n();
   const { isPc } = useSystem();
 
   const { data: templateData, loading: isLoadingTemplates } = useRequest2(
@@ -101,8 +100,8 @@ const TemplateMarketModal = ({ onClose }: { onClose: () => void }) => {
       router.push(`/app/detail?appId=${id}`);
       loadMyApps();
     },
-    successToast: t('common.Create Success'),
-    errorToast: t('common.Create Failed')
+    successToast: t('common:common.Create Success'),
+    errorToast: t('common:common.Create Failed')
   });
 
   const handleScroll = throttle(() => {
@@ -157,7 +156,7 @@ const TemplateMarketModal = ({ onClose }: { onClose: () => void }) => {
           <HStack w={'full'} justifyContent={'space-between'} display={'flex'}>
             <Box>
               <MyIcon mr={3} name={'core/app/type/templateFill'} w={'20px'} />
-              {appT('template.templateMarket')}
+              {t('app:templateMarket.Template_market')}
             </Box>
             {isPc && (
               <InputGroup width="300px" ml={12}>
@@ -167,7 +166,7 @@ const TemplateMarketModal = ({ onClose }: { onClose: () => void }) => {
                 <Input
                   w={56}
                   h={8}
-                  placeholder={appT('template.Search template')}
+                  placeholder={t('app:templateMarket.Search_template')}
                   onChange={debounce((e) => {
                     setCurrentSearch(e.target.value);
                   }, 200)}
@@ -184,10 +183,10 @@ const TemplateMarketModal = ({ onClose }: { onClose: () => void }) => {
                 }}
                 bg={'myGray.100'}
                 list={[
-                  { label: appT('type.All'), value: 'all' },
-                  { label: appT('type.Simple bot'), value: AppTypeEnum.simple },
-                  { label: appT('type.Workflow bot'), value: AppTypeEnum.workflow },
-                  { label: appT('type.Plugin'), value: AppTypeEnum.plugin }
+                  { label: t('app:type.All'), value: 'all' },
+                  { label: t('app:type.Simple bot'), value: AppTypeEnum.simple },
+                  { label: t('app:type.Workflow bot'), value: AppTypeEnum.workflow },
+                  { label: t('app:type.Plugin'), value: AppTypeEnum.plugin }
                 ]}
               />
               <ModalCloseButton position={'relative'} fontSize={'xs'} top={0} right={0} />
@@ -351,7 +350,7 @@ export const TemplateCard = ({
         fontSize={'xs'}
         color={'myGray.500'}
       >
-        <Box className={'textEllipsis2'}>{item.intro || '还没写介绍~'}</Box>
+        <Box className={'textEllipsis2'}>{item.intro || t('app:templateMarket.no_intro')}</Box>
       </Box>
       <Flex
         alignItems={'center'}
@@ -373,7 +372,7 @@ export const TemplateCard = ({
             h={'full'}
           >
             <Button variant={'whiteBase'} h={'full'} onClick={() => onUseTemplate(item)}>
-              {t('app:template.Use')}
+              {t('app:templateMarket.Use')}
             </Button>
           </Flex>
         </HStack>

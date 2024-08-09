@@ -2,13 +2,19 @@ import { isProduction } from '@fastgpt/service/common/system/constants';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-let appTemplateIdList = ['TranslateRobot', 'dalle', 'chatGuide', 'toolChat', 'google'];
+let appTemplateMarketTemplatesIdList = [
+  'TranslateRobot',
+  'dalle',
+  'chatGuide',
+  'toolChat',
+  'google'
+];
 
 export const getTemplateMarketItems = async () => {
   if (isProduction && global.appTemplateMarketTemplates) return global.appTemplateMarketTemplates;
 
   global.appTemplateMarketTemplates = await Promise.all(
-    appTemplateIdList.map(async (name) => {
+    appTemplateMarketTemplatesIdList.map(async (name) => {
       try {
         const filePath = path.join(
           process.cwd(),

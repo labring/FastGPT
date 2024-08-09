@@ -82,11 +82,14 @@
   "setting_app": "Settings",
   "setting_plugin": "Setting plugin",
   "template": {
-    "Search template": "Search template",
+    "simple_robot": "Simple Robot"
+  },
+  "templateMarket": {
+    "Search_template": "Search template",
+    "Template_market": "Template market",
+    "no_intro": "No intro~",
     "Use": "Use",
-    "simple_robot": "Simple Robot",
-    "templateMarket": "Template market",
-    "type": {
+    "templateTypes": {
       "Image_generation": "Image generation",
       "Office_services": "Office searvices",
       "Roleplay": "Roleplay",
