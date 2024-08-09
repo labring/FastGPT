@@ -166,7 +166,7 @@ const TemplateMarketModal = ({
         >
           <HStack>
             <Avatar src={item.avatar} borderRadius={'sm'} w={'1.5rem'} h={'1.5rem'} />
-            <Box flex={'1 0 0'} color={'myGray.900'} fontWeight={'bold'}>
+            <Box flex={'1 0 0'} color={'myGray.900'} fontWeight={500}>
               {item.name}
             </Box>
             <Box mr={'-1rem'}>
@@ -186,9 +186,7 @@ const TemplateMarketModal = ({
           </Box>
 
           <Box w={'full'} fontSize={'mini'}>
-            <Box ml={1.5} color={'myGray.500'}>
-              By {item.author}
-            </Box>
+            <Box color={'myGray.500'}>By {item.author}</Box>
             <Box
               className="buttons"
               display={'none'}
@@ -245,7 +243,7 @@ const TemplateMarketModal = ({
           alignItems={'center'}
           py={'10px'}
           fontSize={'md'}
-          fontWeight={'bold'}
+          fontWeight={'600'}
           gap={2}
           position={'relative'}
         >
@@ -395,7 +393,7 @@ const TemplateMarketModal = ({
                           fontSize={'lg'}
                           color={'myGray.900'}
                           mb={4}
-                          fontWeight={'bold'}
+                          fontWeight={500}
                         >
                           {item.label}
                         </Box>

@@ -18,6 +18,9 @@
   "confirm_delete_folder_tip": "确认删除该文件夹？将会删除它下面所有应用及对应的聊天记录，请确认！",
   "copy_one_app": "创建副本",
   "create_copy_success": "创建副本成功",
+  "create_empty_app": "创建空白应用",
+  "create_empty_plugin": "创建空白插件",
+  "create_empty_workflow": "创建空白工作流",
   "cron": {
     "every_day": "每天执行",
     "every_month": "每月执行",
