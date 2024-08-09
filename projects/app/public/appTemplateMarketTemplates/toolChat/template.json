@@ -3,12 +3,9 @@
   "name": "知道时间的机器人",
   "intro": "通过挂载时间插件，让模型获取当前最新时间",
   "author": "Fastgpt Team",
-  "avatar": "/appTemplates/toolChat/avatar.png",
+  "avatar": "/appTemplateMarketTemplates/toolChat/avatar.png",
   "authorAvatar": "/icon/logo.svg",
-  "tags": [
-    { "id": "recommendation", "label": "推荐" },
-    { "id": "roleplay", "label": "角色扮演" }
-  ],
+  "tags": ["recommendation", "roleplay"],
   "type": "simple",
   "workflow": {
     "nodes": [

@@ -222,12 +222,6 @@ const MyApps = () => {
                           label: appT('type.Http plugin'),
                           description: appT('type.Create http plugin tip'),
                           onClick: onOpenCreateHttpPlugin
-                        },
-                        {
-                          icon: 'core/app/type/templateFill',
-                          label: appT('type.Template'),
-                          description: appT('type.Create template tip'),
-                          onClick: onOpenTemplateModal
                         }
                       ]
                     },

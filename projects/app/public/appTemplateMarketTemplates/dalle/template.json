@@ -3,13 +3,10 @@
   "name": "Dalle3绘图",
   "intro": "通过请求Dalle3接口绘图，需要有 api key",
   "author": "Fastgpt Team",
-  "avatar": "/appTemplates/dalle/avatar.svg",
+  "avatar": "/appTemplateMarketTemplates/dalle/avatar.svg",
   "authorAvatar": "/icon/logo.svg",
   "type": "advanced",
-  "tags": [
-    { "id": "recommendation", "label": "推荐" },
-    { "id": "image", "label": "图片生成" }
-  ],
+  "tags": ["recommendation", "image"],
   "workflow": {
     "nodes": [
       {

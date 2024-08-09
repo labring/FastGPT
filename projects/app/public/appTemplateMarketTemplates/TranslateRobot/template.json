@@ -3,12 +3,9 @@
   "name": "多轮翻译机器人",
   "intro": "通过 4 轮翻译，提高翻译英文的质量",
   "author": "Fastgpt Team",
-  "avatar": "/appTemplates/TranslateRobot/avatar.svg",
+  "avatar": "/appTemplateMarketTemplates/TranslateRobot/avatar.svg",
   "authorAvatar": "/icon/logo.svg",
-  "tags": [
-    { "id": "recommendation", "label": "推荐" },
-    { "id": "office-services", "label": "办公服务" }
-  ],
+  "tags": ["recommendation", "office-services"],
   "type": "advanced",
   "workflow": {
     "nodes": [

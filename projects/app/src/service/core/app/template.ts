@@ -5,12 +5,18 @@ import path from 'path';
 let appTemplateIdList = ['TranslateRobot', 'dalle', 'chatGuide', 'toolChat', 'google'];
 
 export const getTemplateMarketItems = async () => {
-  if (isProduction && global.appTemplates) return global.appTemplates;
+  if (isProduction && global.appTemplateMarketTemplates) return global.appTemplateMarketTemplates;
 
-  global.appTemplates = await Promise.all(
+  global.appTemplateMarketTemplates = await Promise.all(
     appTemplateIdList.map(async (name) => {
       try {
-        const filePath = path.join(process.cwd(), 'public', 'appTemplates', name, 'template.json');
+        const filePath = path.join(
+          process.cwd(),
+          'public',
+          'appTemplateMarketTemplates',
+          name,
+          'template.json'
+        );
         const fileContent = await fs.readFile(filePath, 'utf-8');
         const data = JSON.parse(fileContent);
         return data;
@@ -21,7 +27,7 @@ export const getTemplateMarketItems = async () => {
     })
   );
 
-  return global.appTemplates;
+  return global.appTemplateMarketTemplates;
 };
 
 export const getTemplateMarketItemDetail = async (id: string) => {

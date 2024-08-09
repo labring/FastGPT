@@ -22,7 +22,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useState } from 'react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import AppTypeTag from './TypeTag';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTemplateTypeEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   getTemplateMarketItemDetail,
@@ -39,7 +39,6 @@ import { debounce, throttle } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { useI18n } from '@/web/context/I18n';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { AppTemplateTypeEnum } from './constants';
 
 const TemplateMarketModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -208,7 +207,7 @@ const TemplateMarketModal = ({ onClose }: { onClose: () => void }) => {
                 templateTypes.map((item) => {
                   if (
                     templateData
-                      ?.filter((template) => template.tags?.map((tag) => tag.id).includes(item.id))
+                      ?.filter((template) => template.tags.includes(item.id))
                       .filter((templateData) => {
                         if (currentAppType === 'all') return true;
                         return templateData.type === currentAppType;
@@ -251,7 +250,7 @@ const TemplateMarketModal = ({ onClose }: { onClose: () => void }) => {
                 <Box>
                   {templateTypes.map((item) => {
                     const currentTemplates = templateData
-                      ?.filter((template) => template.tags?.map((tag) => tag.id).includes(item.id))
+                      ?.filter((template) => template.tags.includes(item.id))
                       .filter((template) => {
                         if (currentAppType === 'all') return true;
                         return template.type === currentAppType;
