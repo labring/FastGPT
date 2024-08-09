@@ -77,11 +77,6 @@ const MyApps = () => {
     onOpen: onOpenCreateHttpPlugin,
     onClose: onCloseCreateHttpPlugin
   } = useDisclosure();
-  const {
-    isOpen: isOpenTemplateModal,
-    onOpen: onOpenTemplateModal,
-    onClose: onCloseTemplateModal
-  } = useDisclosure();
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
 
   const { runAsync: onCreateFolder } = useRequest2(postCreateAppFolder, {
@@ -312,14 +307,9 @@ const MyApps = () => {
         />
       )}
       {!!createAppType && (
-        <CreateModal
-          type={createAppType}
-          onClose={() => setCreateAppType(undefined)}
-          onOpenTemplateModal={onOpenTemplateModal}
-        />
+        <CreateModal type={createAppType} onClose={() => setCreateAppType(undefined)} />
       )}
       {isOpenCreateHttpPlugin && <HttpEditModal onClose={onCloseCreateHttpPlugin} />}
-      {isOpenTemplateModal && <TemplateMarketModal onClose={onCloseTemplateModal} />}
     </Flex>
   );
 };

@@ -1,5 +1,15 @@
 import React, { useCallback, useRef } from 'react';
-import { Box, Flex, Button, ModalFooter, ModalBody, Input, Grid, Card } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  Button,
+  ModalFooter,
+  ModalBody,
+  Input,
+  Grid,
+  Card,
+  useDisclosure
+} from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
@@ -20,6 +30,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useI18n } from '@/web/context/I18n';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChevronRightIcon } from '@chakra-ui/icons';
+import TemplateMarketModal from './TemplateMarketModal';
 
 type FormType = {
   avatar: string;
@@ -29,21 +40,18 @@ type FormType = {
 
 export type CreateAppType = AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
 
-const CreateModal = ({
-  onClose,
-  type,
-  onOpenTemplateModal
-}: {
-  type: CreateAppType;
-  onClose: () => void;
-  onOpenTemplateModal: () => void;
-}) => {
+const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => void }) => {
   const { t } = useTranslation();
   const { appT } = useI18n();
   const { toast } = useToast();
   const router = useRouter();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const { isPc } = useSystem();
+  const {
+    isOpen: isOpenTemplateModal,
+    onOpen: onOpenTemplateModal,
+    onClose: onCloseTemplateModal
+  } = useDisclosure();
 
   const typeMap = useRef({
     [AppTypeEnum.simple]: {
@@ -231,6 +239,7 @@ const CreateModal = ({
       </ModalFooter>
 
       <File onSelect={onSelectFile} />
+      {isOpenTemplateModal && <TemplateMarketModal onClose={onCloseTemplateModal} />}
     </MyModal>
   );
 };
