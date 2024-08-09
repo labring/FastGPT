@@ -14,7 +14,7 @@
         "name": "系统配置",
         "intro": "可以配置应用的系统参数",
         "avatar": "/imgs/workflow/userGuide.png",
-        "flowNodeType": "FlowNodeTypeEnum.systemConfig",
+        "flowNodeType": "userGuide",
         "position": {
           "x": 496.57560693988853,
           "y": -490.7611729549753
@@ -94,7 +94,7 @@
         "name": "流程开始",
         "intro": "",
         "avatar": "/imgs/workflow/userChatInput.svg",
-        "flowNodeType": "FlowNodeTypeEnum.workflowStart",
+        "flowNodeType": "workflowStart",
         "position": {
           "x": 558.4082376415505,
           "y": 123.72387429194112
@@ -125,7 +125,7 @@
         "name": "AI 对话",
         "intro": "AI 大模型对话",
         "avatar": "/imgs/workflow/AI.png",
-        "flowNodeType": "FlowNodeTypeEnum.chatNode",
+        "flowNodeType": "chatNode",
         "showStatus": true,
         "position": {
           "x": 1097.7317280958762,

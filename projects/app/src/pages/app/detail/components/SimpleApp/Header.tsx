@@ -52,7 +52,6 @@ const Header = ({
 
   const isPublished = useMemo(() => {
     const data = form2AppWorkflow(appForm, t);
-
     return compareWorkflow(
       {
         nodes: appDetail.modules,
