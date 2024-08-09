@@ -4,12 +4,12 @@ import path from 'path';
 
 // Get template from memory or file system
 export const getTemplateMarketItems = async () => {
-  if (isProduction && global.appTemplateMarketTemplates) return global.appTemplateMarketTemplates;
+  if (isProduction && global.appMarketTemplates) return global.appMarketTemplates;
 
-  const templatesDir = path.join(process.cwd(), 'public', 'appTemplateMarketTemplates');
+  const templatesDir = path.join(process.cwd(), 'public', 'appMarketTemplates');
   const templateNames = readdirSync(templatesDir);
 
-  global.appTemplateMarketTemplates = templateNames.map((name) => {
+  global.appMarketTemplates = templateNames.map((name) => {
     try {
       const filePath = path.join(templatesDir, name, 'template.json');
       const fileContent = readFileSync(filePath, 'utf-8');
@@ -21,7 +21,7 @@ export const getTemplateMarketItems = async () => {
     }
   });
 
-  return global.appTemplateMarketTemplates;
+  return global.appMarketTemplates;
 };
 
 export const getTemplateMarketItemDetail = async (id: string) => {
