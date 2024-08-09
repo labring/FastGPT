@@ -1,5 +1,5 @@
 {
-  "author": "FastGPT Team",
+  "author": "FastGPT",
   "templateType": "tools",
   "name": "获取当前时间",
   "avatar": "/imgs/module/getCurrentTime.svg",

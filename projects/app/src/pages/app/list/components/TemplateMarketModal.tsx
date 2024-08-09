@@ -1,13 +1,9 @@
 import {
-  Avatar,
   Box,
   Button,
   Flex,
   Grid,
   HStack,
-  Input,
-  InputGroup,
-  InputLeftElement,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -15,7 +11,7 @@ import {
   ModalHeader,
   ModalOverlay
 } from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useCallback, useState } from 'react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import AppTypeTag from './TypeTag';
@@ -35,6 +31,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useTranslation } from 'next-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import SearchInput from '../../../../../../../packages/web/components/common/Input/SearchInput/index';
 
 type TemplateAppType = AppTypeEnum | 'all';
 
@@ -149,13 +146,13 @@ const TemplateMarketModal = ({
           key={item.id}
           lineHeight={1.5}
           h="100%"
-          pt={5}
+          pt={4}
           pb={3}
-          px={5}
+          px={4}
           border={'base'}
           boxShadow={'2'}
           bg={'white'}
-          borderRadius={'lg'}
+          borderRadius={'10px'}
           position={'relative'}
           display={'flex'}
           flexDirection={'column'}
@@ -166,14 +163,13 @@ const TemplateMarketModal = ({
               display: 'flex'
             }
           }}
-          onClick={() => {}}
         >
           <HStack>
             <Avatar src={item.avatar} borderRadius={'sm'} w={'1.5rem'} h={'1.5rem'} />
-            <Box flex={'1 0 0'} color={'myGray.900'}>
+            <Box flex={'1 0 0'} color={'myGray.900'} fontWeight={'bold'}>
               {item.name}
             </Box>
-            <Box mr={'-1.25rem'}>
+            <Box mr={'-1rem'}>
               <AppTypeTag type={item.type} />
             </Box>
           </HStack>
@@ -211,7 +207,8 @@ const TemplateMarketModal = ({
             >
               <Button
                 variant={'whiteBase'}
-                h={'1.5rem'}
+                h={'1.75rem'}
+                borderRadius={'xl'}
                 w={'40%'}
                 onClick={() => onUseTemplate(item.id)}
               >
@@ -236,10 +233,10 @@ const TemplateMarketModal = ({
     >
       <ModalOverlay />
       <ModalContent
-        w={['90vw', '75vw']}
+        w={['90vw', '80vw']}
         maxW={'90vw'}
         position={'relative'}
-        h={['90vh', '80vh']}
+        h={['90vh']}
         boxShadow={'7'}
         overflow={'hidden'}
       >
@@ -249,11 +246,11 @@ const TemplateMarketModal = ({
           py={'10px'}
           fontSize={'md'}
           fontWeight={'bold'}
-          gap={3}
+          gap={2}
           position={'relative'}
         >
-          <MyIcon name={'core/app/type/templateFill'} w={'20px'} />
-          <Box>{t('app:templateMarket.Template_market')}</Box>
+          <Avatar src={'/imgs/app/templateFill.svg'} w={'2rem'} objectFit={'fill'} />
+          <Box color={'myGray.900'}>{t('app:templateMarket.Template_market')}</Box>
 
           <Box flex={'1'} />
 
@@ -265,6 +262,7 @@ const TemplateMarketModal = ({
             }}
             bg={'myGray.100'}
             minW={'7rem'}
+            borderRadius={'sm'}
             list={[
               { label: t('app:type.All'), value: 'all' },
               { label: t('app:type.Simple bot'), value: AppTypeEnum.simple },
@@ -275,23 +273,24 @@ const TemplateMarketModal = ({
           <ModalCloseButton position={'relative'} fontSize={'xs'} top={0} right={0} />
 
           {isPc && (
-            <InputGroup
+            <Box
               width="15rem"
               position={'absolute'}
               top={'50%'}
               left={'50%'}
               transform={'translate(-50%,-50%)'}
-              h={8}
             >
-              <InputLeftElement pointerEvents="none" fontSize={'sm'} top={'-1'}>
-                <SearchIcon color="gray.500" />
-              </InputLeftElement>
-              <Input
+              <SearchInput
+                pl={7}
                 placeholder={t('app:templateMarket.Search_template')}
+                value={currentSearch}
                 onChange={(e) => setCurrentSearch(e.target.value)}
-                bg={'myGray.100'}
+                h={8}
+                bg={'myGray.50'}
+                maxLength={20}
+                borderRadius={'sm'}
               />
-            </InputGroup>
+            </Box>
           )}
         </ModalHeader>
         <MyBox isLoading={isCreating || isLoadingTemplates} flex={'1 0 0'} overflow={'overlay'}>
@@ -300,9 +299,10 @@ const TemplateMarketModal = ({
             display={'flex'}
             bg={'myGray.100'}
             overflow={'auto'}
-            gap={2}
+            gap={5}
             onScroll={handleScroll}
             px={0}
+            pt={5}
           >
             {isPc && (
               <Flex pl={5} flexDirection={'column'} gap={3}>
@@ -323,8 +323,9 @@ const TemplateMarketModal = ({
                       w={'9.5rem'}
                       px={4}
                       py={2}
-                      rounded={'md'}
+                      rounded={'sm'}
                       fontSize={'sm'}
+                      fontWeight={500}
                       onClick={() => {
                         setCurrentTag(item.id);
                         const anchor = document.getElementById(item.id);
@@ -340,7 +341,7 @@ const TemplateMarketModal = ({
               </Flex>
             )}
 
-            <Box pl={[3, 0]} pr={[3, 5]} flex={'1'} h={'100%'} overflow={'auto'}>
+            <Box pl={[3, 0]} pr={[3, 5]} pt={1} flex={'1'} h={'100%'} overflow={'auto'}>
               {currentSearch ? (
                 <>
                   <Box fontSize={'lg'} color={'myGray.900'} mb={4}>
@@ -377,7 +378,6 @@ const TemplateMarketModal = ({
                 </>
               ) : (
                 <>
-                  {' '}
                   {templateTags.map((item) => {
                     const currentTemplates = templateList
                       ?.filter((template) => template.tags.includes(item.id))
@@ -390,7 +390,13 @@ const TemplateMarketModal = ({
 
                     return (
                       <Box key={item.id}>
-                        <Box id={item.id} fontSize={'lg'} color={'myGray.900'} mb={4}>
+                        <Box
+                          id={item.id}
+                          fontSize={'lg'}
+                          color={'myGray.900'}
+                          mb={4}
+                          fontWeight={'bold'}
+                        >
                           {item.label}
                         </Box>
                         <Grid
