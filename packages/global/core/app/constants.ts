@@ -29,3 +29,12 @@ export const defaultAppSelectFileConfig: AppFileSelectConfigType = {
   canSelectImg: false,
   maxFiles: 10
 };
+
+export enum AppTemplateTypeEnum {
+  recommendation = 'recommendation',
+  writing = 'writing',
+  imageGeneration = 'image-generation',
+  webSearch = 'web-search',
+  roleplay = 'roleplay',
+  officeServices = 'office-services'
+}

@@ -9,7 +9,6 @@ import {
   Box,
   Image
 } from '@chakra-ui/react';
-import MyIcon from '../Icon';
 import MyBox from '../MyBox';
 import { useSystem } from '../../../hooks/useSystem';
 import Avatar from '../Avatar';
