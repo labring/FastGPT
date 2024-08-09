@@ -252,7 +252,7 @@ const ExtraPlan = () => {
                 {t('common:support.wallet.subscription.Extra ai points')}
               </Box>
               <Box mt={3} fontSize={['28px', '32px']} fontWeight={'bold'}>
-                {`￥${extraDatasetPrice}/1000` + t('common:support.wallet.subscription.point')}
+                {`￥${extraPointsPrice}/1000` + t('common:support.wallet.subscription.point')}
                 <Box ml={1} as={'span'} fontSize={'md'} color={'myGray.600'} fontWeight={'normal'}>
                   /{t('common:common.month')}
                 </Box>
