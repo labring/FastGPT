@@ -484,8 +484,10 @@
       },
       "logs": {
         "api": "API call",
+        "feishu": "Lark",
         "online": "Online use",
         "share": "External link call",
+        "team": "Team chat",
         "test": "Test"
       },
       "markdown": {

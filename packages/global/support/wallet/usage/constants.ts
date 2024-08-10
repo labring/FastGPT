@@ -5,7 +5,8 @@ export enum UsageSourceEnum {
   api = 'api',
   shareLink = 'shareLink',
   training = 'training',
-  cronJob = 'cronJob'
+  cronJob = 'cronJob',
+  feishu = 'feishu'
 }
 
 export const UsageSourceMap = {
@@ -23,5 +24,8 @@ export const UsageSourceMap = {
   },
   [UsageSourceEnum.cronJob]: {
     label: i18nT('common:cron_job_run_app')
+  },
+  [UsageSourceEnum.feishu]: {
+    label: i18nT('user:usage.feishu')
   }
 };
