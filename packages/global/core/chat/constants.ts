@@ -1,3 +1,5 @@
+import { i18nT } from '../../../web/i18n/utils';
+
 export enum ChatRoleEnum {
   System = 'System',
   Human = 'Human',
@@ -34,19 +36,19 @@ export enum ChatSourceEnum {
 }
 export const ChatSourceMap = {
   [ChatSourceEnum.test]: {
-    name: 'core.chat.logs.test'
+    name: i18nT('common:core.chat.logs.test')
   },
   [ChatSourceEnum.online]: {
-    name: 'core.chat.logs.online'
+    name: i18nT('common:core.chat.logs.online')
   },
   [ChatSourceEnum.share]: {
-    name: 'core.chat.logs.share'
+    name: i18nT('common:core.chat.logs.share')
   },
   [ChatSourceEnum.api]: {
-    name: 'core.chat.logs.api'
+    name: i18nT('common:core.chat.logs.api')
   },
   [ChatSourceEnum.team]: {
-    name: 'core.chat.logs.team'
+    name: i18nT('common:core.chat.logs.team')
   }
 };
 
