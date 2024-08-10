@@ -1,70 +1,85 @@
 ---
-title: " 接入飞书(社区文章)"
+title: "教程 - 接入飞书机器人"
 description: "FastGPT 接入飞书机器人"
 icon: "chat"
 draft: false
 toc: true
-weight: 503
+weight: 507
 ---
+## 1. 申请飞书应用
 
-# FastGPT 一分钟接入飞书
+开一个免费的测试企业更方便进行调试。
 
-[Feishu OpenAI GitHub 地址](https://github.com/ConnectAI-E/Feishu-OpenAI)
+1. 在[飞书开放平台](https://open.feishu.cn/app)的开发者后台申请企业自建应用。
 
-[查看视频教程](https://www.bilibili.com/video/BV1Su4y1r7R3/?spm_id_from=333.999.list.card_archive.click)
+![图片](/imgs/feishu-bot-1.png)
 
-由于 FastGPT 的 API 接口和 OpenAI 的规范一致，可以无需变更第三方应用即可使用 FastGPT 上编排好的应用。API 使用可参考 [这篇文章](/docs/use-cases/openapi/)。编排示例，可参考 [高级编排介绍](/docs/workflow/intro)
+添加一个**机器人**应用。
 
-## 1. 获取 FastGPT 的 OpenAPI 秘钥
+## 2. 在 FastGPT 新建发布渠道
 
-依次选择应用 -> 「API 访问」，然后点击「API 密钥」来创建密钥。 [参考这篇文章](/docs/use-cases/openapi/)
+在fastgpt中选择想要接入的应用，在 发布渠道 页面，新建一个接入飞书机器人的发布渠道，填写好基础信息。
+   
+![图片](/imgs/feishu-bot-2.png)
 
-![](/imgs/fastgpt-api.png)
+## 3. 获取应用的 App ID, App Secret 两个凭证
 
-## 2. 部署飞书服务
+在飞书开放平台开发者后台，刚刚创建的企业自建应用中，找到 App ID 和 App Secret，填入 FastGPT 新建发布渠道的对话框里面。
+   
+![图片](/imgs/feishu-bot-3.png)
 
-推荐使用 Railway 一键部署
+填入两个参数到 FastGPT 配置弹窗中。
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/10D-TF?referralCode=oMcVS2)
+![图片](/imgs/feishu-bot-4.png)
 
-参考环境变量配置：
+（可选）在飞书开放平台开发者后台，点击事件与回调 -> 加密策略 获取 Encrypt Key，并填入飞书机器人接入的对话框里面
 
-![](/imgs/feishu-env.png)
+![图片](/imgs/feishu-bot-5.png)
 
-FastGPT 集成**重点参数：**
+Encrypt Key 用于加密飞书服务器与 FastGPT 之间通信。
+建议如果使用 Https 协议，则不需要 Encrypt Key。如果使用 Http 协议通信，则建议使用 Encrypt Key
+Verification Token 默认生成的这个 Token 用于校验来源。但我们使用飞书官方推荐的另一种更为安全的校验方式，因此可以忽略这个配置项。
+## 4. 配置回调地址
 
-```bash
-#上一步FastGPT的OpenAPI 秘钥
-OPENAI_KEY=fastgpt-z51pkjqm9nrk03a1rx2funoy
-#调用OpenAI的BaseUrl要换成FastGPT的
-API_URL=https://api.fastgpt.in/api/openapi
-```
+新建好发布渠道后，点击**请求地址**，复制对应的请求地址。
 
-## 3. 创建飞书机器人
+在飞书控制台，点击左侧的 `事件与回调` ，点击`配置订阅方式`旁边的编辑 icon，粘贴刚刚复制的请求地址到输入框中。
+   
+| | | |
+| --- | --- | --- |
+| ![图片](/imgs/feishu-bot-10.jpg) | ![图片](/imgs/feishu-bot-11.jpg) | ![图片](/imgs/feishu-bot-6.png) |
 
-1. 前往 [开发者平台](https://open.feishu.cn/app?lang=zh-CN) 创建应用 , 并获取到 APPID 和 Secret
-2. 前往`应用功能-机器人`, 创建机器人
-3. 从 cpolar、serverless 或 Railway 获得公网地址，在飞书机器人后台的 `事件订阅` 板块填写。例如，
-   - `http://xxxx.r6.cpolar.top` 为 cpolar 暴露的公网地址
-   - `/webhook/event` 为统一的应用路由
-   - 最终的回调地址为 `http://xxxx.r6.cpolar.top/webhook/event`
-4. 在飞书机器人后台的 `机器人` 板块，填写消息卡片请求网址。例如，
-   - `http://xxxx.r6.cpolar.top` 为 cpolar 暴露的公网地址
-   - `/webhook/card` 为统一的应用路由
-   - 最终的消息卡片请求网址为 `http://xxxx.r6.cpolar.top/webhook/card`
-5. 在事件订阅板块，搜索三个词`机器人进群`、 `接收消息`、 `消息已读`, 把他们后面所有的权限全部勾选。 进入权限管理界面，搜索`图片`, 勾选`获取与上传图片或文件资源`。 最终会添加下列回调事件
-   - im:resource(获取与上传图片或文件资源)
-   - im:message
-   - im:message.group_at_msg(获取群组中所有消息)
-   - im:message.group_at_msg:readonly(接收群聊中 @ 机器人消息事件)
-   - im:message.p2p_msg(获取用户发给机器人的单聊消息)
-   - im:message.p2p_msg:readonly(读取用户发给机器人的单聊消息)
-   - im:message:send_as_bot(获取用户在群组中 @ 机器人的消息)
-   - im:chat:readonly(获取群组信息)
-   - im:chat(获取与更新群组信息)
+## 5. 配置机器人回调事件和权限
 
-## 4. 测试飞书机器人
+* 添加 `接收消息` 事件
+   
+在`事件与回调`页面，点击`添加事件`。
 
-私聊机器人，或者群里艾特它，就可以基于 FastGPT 的应用进行回答啦
+搜索`接收消息`，或者直接搜索 `im.message.receive_v1` ，找到`接收消息 v2.0`的时间，勾选上并点击`确认添加`。
 
-![](/imgs/feishu-res.png)
+添加事件后，增加两个权限：点击对应权限，会有弹窗提示添加权限，添加上图两个权限。
+
+| | |
+| --- | --- |
+| ![图片](/imgs/feishu-bot-7.png) | ![图片](/imgs/feishu-bot-8.png) |
+
+不推荐启用上图中的两个“历史版本”，而是使用新版本的权限。
+- 若开启 “读取用户发给机器人的单聊消息”， 则单聊发送给机器人的消息将被送到 FastGPT
+- 若开启 “接收群聊中@机器人消息事件”， 则群聊中@机器人的消息将被送到 FastGPT
+- 若开启（不推荐开启）“获取群组中所有消息”，则群聊中所有消息都将被送到 FastGPT
+
+## 6. 配置回复消息权限
+
+在飞书控制台，点击左侧的 `权限管理` ，搜索框中输入`发消息`，找到`以应用的身份发消息`的权限，点击开通权限。
+
+![](/imgs/feishu-bot-13.jpg)
+
+## 6. 发布机器人
+
+点击飞书控制台左侧的`版本管理与发布`，即可发布机器人。
+
+![](/imgs/feishu-bot-12.jpg)
+
+然后就可以在工作台里找到你的机器人啦。接下来就是把机器人拉进群组，或者单独与它对话。
+
+![图片](/imgs/feishu-bot-9.png)

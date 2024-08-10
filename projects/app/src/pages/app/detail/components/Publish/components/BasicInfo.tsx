@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import { UseFormRegister, UseFormSetValue } from 'react-hook-form';
 import { OutLinkEditType } from '@fastgpt/global/support/outLink/type';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 function BasicInfo({
   register,
@@ -17,10 +18,12 @@ function BasicInfo({
 }) {
   const { t } = useTranslation();
   return (
-    <Flex flexDirection="column" color="myGray.900">
+    <Flex flexDirection="column" gap={6}>
       <Box color="myGray.600">{t('publish:basic_info')}</Box>
-      <Flex alignItems={'center'} mt="4">
-        <Box flex={'0 0 90px'}>{t('common:Name')}</Box>
+      <Flex alignItems={'center'}>
+        <FormLabel required flex={'0 0 6.25rem'}>
+          {t('common:Name')}
+        </FormLabel>
         <Input
           placeholder={t('publish:feishu_name')}
           maxLength={20}
@@ -29,11 +32,11 @@ function BasicInfo({
           })}
         />
       </Flex>
-      <Flex alignItems={'center'} mt={4}>
-        <Flex flex={'0 0 90px'} alignItems={'center'}>
+      <Flex alignItems={'center'}>
+        <FormLabel flex={'0 0 6.25rem'} alignItems={'center'}>
           QPM
           <QuestionTip ml={1} label={t('publish:qpm_tips')}></QuestionTip>
-        </Flex>
+        </FormLabel>
         <Input
           max={1000}
           {...register('limit.QPM', {
@@ -44,14 +47,14 @@ function BasicInfo({
           })}
         />
       </Flex>
-      <Flex alignItems={'center'} mt={4}>
-        <Flex flex={'0 0 90px'} alignItems={'center'}>
+      <Flex alignItems={'center'}>
+        <FormLabel flex={'0 0 6.25rem'} alignItems={'center'}>
           {t('common:support.outlink.Max usage points')}
           <QuestionTip
             ml={1}
             label={t('common:support.outlink.Max usage points tip')}
           ></QuestionTip>
-        </Flex>
+        </FormLabel>
         <Input
           {...register('limit.maxUsagePoints', {
             min: -1,
@@ -61,10 +64,10 @@ function BasicInfo({
           })}
         />
       </Flex>
-      <Flex alignItems={'center'} mt={4}>
-        <Flex flex={'0 0 90px'} alignItems={'center'}>
+      <Flex alignItems={'center'}>
+        <FormLabel flex={'0 0 6.25rem'} alignItems={'center'}>
           {t('common:common.Expired Time')}
-        </Flex>
+        </FormLabel>
         <Input
           type="datetime-local"
           defaultValue={

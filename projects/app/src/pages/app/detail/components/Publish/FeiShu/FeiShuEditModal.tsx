@@ -12,6 +12,7 @@ import { getDocPath } from '@/web/common/system/doc';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const FeiShuEditModal = ({
   appId,
@@ -64,71 +65,74 @@ const FeiShuEditModal = ({
     <MyModal
       iconSrc="/imgs/modal/shareFill.svg"
       title={isEdit ? t('publish:edit_feishu_bot') : t('publish:new_feishu_bot')}
-      minW={isPc ? '900px' : ''}
+      minW={['auto', '60rem']}
     >
-      <ModalBody minH={'400px'}>
-        <Grid {...(isPc ? { gridTemplateColumns: '1fr 1fr' } : {})} fontSize={'14px'}>
-          <Box pr="8">
-            <BasicInfo register={register} setValue={setValue} defaultData={defaultData} />
-          </Box>
-          <Flex
-            flexDirection="column"
-            {...(isPc ? { borderLeft: 'sm', pl: '8' } : { mt: '8', borderTop: 'sm', pt: '8' })}
-            color="myGray.900"
-          >
-            <Flex alignItems="center">
-              <Box color="myGray.600">{t('publish:feishu_api')}</Box>
-              {feConfigs?.docUrl && (
-                <Link
-                  href={feConfigs.openAPIDocUrl || getDocPath('/docs/use-cases/feishu-bot')}
-                  target={'_blank'}
-                  ml={2}
-                  color={'primary.500'}
-                  fontSize={'sm'}
-                >
-                  <Flex alignItems={'center'}>
-                    <MyIcon name="book" mr="1" />
-                    {t('common:common.Read document')}
-                  </Flex>
-                </Link>
-              )}
-            </Flex>
-            <Flex alignItems={'center'} mt={4}>
-              <Box flex={'0 0 100px'}>App ID</Box>
-              <Input
-                placeholder={t('common:core.module.http.AppId')}
-                {...register('app.appId', {
-                  required: true
-                })}
-              />
-            </Flex>
-            <Flex alignItems={'center'} mt={4}>
-              <Box flex={'0 0 100px'}>App Secret</Box>
-              <Input
-                placeholder={'App Secret'}
-                {...register('app.appSecret', {
-                  required: t('common:common.name_is_empty')
-                })}
-              />
-            </Flex>
-            <Flex alignItems={'center'} mt={4}>
-              <Box flex={'0 0 100px'}>Encrypt Key</Box>
-              <Input placeholder="Encrypt Key" {...register('app.encryptKey')} />
-            </Flex>
+      <ModalBody display={'grid'} gridTemplateColumns={['1fr', '1fr 1fr']} fontSize={'14px'} p={0}>
+        <Box p={8} h={['auto', '400px']} borderRight={'base'}>
+          <BasicInfo register={register} setValue={setValue} defaultData={defaultData} />
+        </Box>
+        <Flex p={8} h={['auto', '400px']} flexDirection="column" gap={6}>
+          <Flex alignItems="center">
+            <Box color="myGray.600">{t('publish:feishu_api')}</Box>
+            {feConfigs?.docUrl && (
+              <Link
+                href={feConfigs.openAPIDocUrl || getDocPath('/docs/use-cases/feishu-bot')}
+                target={'_blank'}
+                ml={2}
+                color={'primary.500'}
+                fontSize={'sm'}
+              >
+                <Flex alignItems={'center'}>
+                  <MyIcon name="book" mr="1" />
+                  {t('common:common.Read document')}
+                </Flex>
+              </Link>
+            )}
           </Flex>
-        </Grid>
+          <Flex alignItems={'center'}>
+            <FormLabel flex={'0 0 6.25rem'} required>
+              App ID
+            </FormLabel>
+            <Input
+              placeholder={t('common:core.module.http.AppId')}
+              {...register('app.appId', {
+                required: true
+              })}
+            />
+          </Flex>
+          <Flex alignItems={'center'}>
+            <FormLabel flex={'0 0 6.25rem'} required>
+              App Secret
+            </FormLabel>
+            <Input
+              placeholder={'App Secret'}
+              {...register('app.appSecret', {
+                required: true
+              })}
+            />
+          </Flex>
+          <Flex alignItems={'center'}>
+            <FormLabel flex={'0 0 6.25rem'}>Encrypt Key</FormLabel>
+            <Input placeholder="Encrypt Key" {...register('app.encryptKey')} />
+          </Flex>
+
+          <Box flex={1}></Box>
+
+          <Flex justifyContent={'end'}>
+            <Button variant={'whiteBase'} mr={3} onClick={onClose}>
+              {t('common:common.Close')}
+            </Button>
+            <Button
+              isLoading={creating || updating}
+              onClick={submitShareChat((data) =>
+                isEdit ? onclickUpdate(data) : onclickCreate(data)
+              )}
+            >
+              {t('common:common.Confirm')}
+            </Button>
+          </Flex>
+        </Flex>
       </ModalBody>
-      <ModalFooter>
-        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:common.Close')}
-        </Button>
-        <Button
-          isLoading={creating || updating}
-          onClick={submitShareChat((data) => (isEdit ? onclickUpdate(data) : onclickCreate(data)))}
-        >
-          {t('common:common.Confirm')}
-        </Button>
-      </ModalFooter>
     </MyModal>
   );
 };

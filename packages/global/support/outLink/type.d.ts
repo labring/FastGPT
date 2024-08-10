@@ -64,7 +64,7 @@ export type OutLinkWithAppType = Omit<OutLinkSchema, 'appId'> & {
 export type OutLinkEditType<T = undefined> = {
   _id?: string;
   name: string;
-  responseDetail: OutLinkSchema<T>['responseDetail'];
+  responseDetail?: OutLinkSchema<T>['responseDetail'];
   // response when request
   immediateResponse?: string;
   // response when error or other situation
