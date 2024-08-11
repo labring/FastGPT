@@ -58,14 +58,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   } = req.body as Props;
   try {
     const chatMessages = GPTMessages2Chats(messages);
-    const parsedJson = (() => {
-      try {
-        // @ts-ignore
-        return chatMessages[chatMessages.length - 2].value[0].interactive || { nodeId: undefined };
-      } catch (error) {
-        return { nodeId: undefined };
-      }
-    })();
 
     const userInput = chatMessages.pop()?.value as UserChatItemValueItemType[] | undefined;
 
@@ -86,12 +78,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new Error('Edges is not array');
     }
 
-    let runtimeNodes = !parsedJson.nodeId
-      ? storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes))
-      : storeNodes2RuntimeNodes(nodes, [parsedJson.nodeId]);
-    let runtimeEdges = !parsedJson.nodeId
-      ? initWorkflowEdgeStatus(edges)
-      : initWorkflowEdgeStatus(edges).filter((edge) => edge.target !== parsedJson.nodeId);
+    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes, chatMessages));
+
+    const runtimeEdges = initWorkflowEdgeStatus(edges, chatMessages);
 
     // Plugin need to replace inputs
     if (isPlugin) {

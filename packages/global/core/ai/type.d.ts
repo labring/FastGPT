@@ -9,7 +9,7 @@ import type {
   ChatCompletionUserMessageParam as SdkChatCompletionUserMessageParam
 } from 'openai/resources';
 import { ChatMessageTypeEnum } from './constants';
-import { InteractiveModuleResponseItemType } from 'core/chat/type';
+import { InteractiveModuleResponseItemType } from '../../core/chat/type';
 
 export * from 'openai/resources';
 

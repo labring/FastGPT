@@ -15,6 +15,7 @@ import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { AIChatItemValueItemType, NodeOutputItemType } from '@fastgpt/global/core/chat/type';
 import { updateUserSelectedIndex } from '../../../chat/controller';
 import { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.description]: string;
@@ -22,6 +23,7 @@ type Props = ModuleDispatchProps<{
 }>;
 type UserSelectResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.selectResult]?: string;
+  [DispatchNodeResponseKeyEnum.INTERACTIVE]?: boolean;
 }>;
 
 const defaultParseJson = {
@@ -48,7 +50,7 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
         (item) => item.type === ChatItemValueTypeEnum.interactive
       )?.interactive;
       if (!interactiveContent) return defaultParseJson;
-      const selectedIndex = interactiveContent.params.userSelectOptions?.findIndex(
+      const selectedIndex = interactiveContent.params?.userSelectOptions.findIndex(
         (item) => item.value === query[0].text?.content
       );
       if (selectedIndex !== undefined && selectedIndex >= 0) {
@@ -73,53 +75,47 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     }
   })();
 
-  const nodeOutputs = getNodeOutputs(runtimeNodes).concat(parsedJson.params.nodeOutputs || []);
+  const entryNodeIds = getLastInteractiveValue(histories)?.entryNodeIds;
+  const nodeOutputs = getNodeOutputs(runtimeNodes).concat(parsedJson.params?.nodeOutputs || []);
 
-  if (parsedJson.nodeId !== nodeId) {
-    responseWrite({
-      res,
-      event: SseResponseEventEnum.userSelect,
-      data: JSON.stringify({
-        interactive: {
-          nodeId,
-          params: {
-            description,
-            userSelectOptions,
-            userSeletedIndex: null,
-            nodeOutputs
+  console.log(entryNodeIds);
+
+  if (!entryNodeIds || !entryNodeIds.includes(nodeId)) {
+    return {
+      [DispatchNodeResponseKeyEnum.INTERACTIVE]: true,
+      [DispatchNodeResponseKeyEnum.assistantResponses]: [
+        {
+          type: ChatItemValueTypeEnum.interactive,
+          interactive: {
+            params: {
+              description,
+              userSelectOptions,
+              userSeletedIndex: null,
+              nodeOutputs
+            }
           }
         }
-      })
-    });
-
-    return {
-      [DispatchNodeResponseKeyEnum.endHandleId]: userSelectOptions.map((item: any) =>
-        getHandleId(nodeId, 'source', item.key)
-      ),
+      ],
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         description: description,
         userSelectOptions: userSelectOptions,
-        userSeletedIndex: null,
-        currentNodeId: nodeId,
-        nodeOutputs
+        userSeletedIndex: null
       }
     };
   }
 
   return {
     [DispatchNodeResponseKeyEnum.skipHandleId]: userSelectOptions
-      .filter((item: any, index: number) => index !== parsedJson.params.userSeletedIndex)
+      .filter((item: any, index: number) => index !== parsedJson.params?.userSeletedIndex)
       .map((item: any) => getHandleId(nodeId, 'source', item.key)),
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      description: parsedJson.params.description,
-      userSelectOptions: parsedJson.params.userSelectOptions,
-      userSeletedIndex: parsedJson.params.userSeletedIndex,
-      currentNodeId: undefined,
-      nodeOutputs
+      description: parsedJson.params?.description,
+      userSelectOptions: parsedJson.params?.userSelectOptions,
+      userSeletedIndex: parsedJson.params?.userSeletedIndex
     },
     [NodeOutputKeyEnum.selectResult]:
-      parsedJson.params.userSeletedIndex === null ||
-      parsedJson.params.userSeletedIndex === undefined
+      parsedJson.params?.userSeletedIndex === null ||
+      parsedJson.params?.userSeletedIndex === undefined
         ? undefined
         : userSelectOptions[parsedJson.params.userSeletedIndex].value
   };

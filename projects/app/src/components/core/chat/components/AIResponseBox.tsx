@@ -40,6 +40,7 @@ const AIResponseBox = ({
   questionGuides,
   onSendMessage
 }: props) => {
+  console.log(value);
   if (value.text) {
     let source = (value.text?.content || '').trim();
 
@@ -138,7 +139,7 @@ ${toolResponse}`}
       </Box>
     );
   }
-  if (value.type === ChatItemValueTypeEnum.interactive && value.interactive) {
+  if (value.type === ChatItemValueTypeEnum.interactive && value.interactive?.params) {
     const description = value.interactive.params.description;
     return (
       <Box>
@@ -157,7 +158,7 @@ ${toolResponse}`}
                     text: option.value
                   });
               }}
-              {...(index === value.interactive?.params.userSeletedIndex &&
+              {...(index === value.interactive?.params?.userSeletedIndex &&
                 !isLastChild && {
                   color: 'primary.600',
                   background: 'primary.1',

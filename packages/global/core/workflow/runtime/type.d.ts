@@ -165,7 +165,6 @@ export type DispatchNodeResponseType = {
 };
 
 export type DispatchNodeResultType<T> = {
-  [DispatchNodeResponseKeyEnum.endHandleId]?: string[]; // end handle id
   [DispatchNodeResponseKeyEnum.skipHandleId]?: string[]; // skip some edge handle id
   [DispatchNodeResponseKeyEnum.nodeResponse]?: DispatchNodeResponseType; // The node response detail
   [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[]; //

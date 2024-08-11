@@ -44,11 +44,15 @@ export const setUserSelectedIndex = (history: ChatSiteItemType[], text: string) 
   const interactiveItem = lastItem.value[lastItem.value.length - 1];
 
   if (interactiveItem && interactiveItem.type === 'interactive') {
-    const userSelectOptions = interactiveItem.interactive?.params.userSelectOptions;
+    const userSelectOptions = interactiveItem.interactive?.params?.userSelectOptions;
 
     const selectedIndex = userSelectOptions?.findIndex((option) => option.value === text);
 
-    if (selectedIndex !== -1 && selectedIndex !== undefined && interactiveItem.interactive) {
+    if (
+      selectedIndex !== -1 &&
+      selectedIndex !== undefined &&
+      interactiveItem.interactive?.params
+    ) {
       interactiveItem.interactive.params.userSeletedIndex = selectedIndex;
       return history;
     }

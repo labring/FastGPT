@@ -231,33 +231,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     ]);
     const newHistories = concatHistories(histories, chatMessages);
 
-    const parsedJson = (() => {
-      try {
-        const lastAIMessage = newHistories[newHistories.length - 1]
-          ?.value as AIChatItemValueItemType[];
-        const interactiveContent = lastAIMessage.find(
-          (item) => item.type === ChatItemValueTypeEnum.interactive
-        )?.interactive;
-        if (!interactiveContent) return { nodeId: undefined };
-        return interactiveContent;
-      } catch (error) {
-        return { nodeId: undefined };
-      }
-    })();
-
     // Get runtimeNodes
-    let runtimeNodes = !parsedJson.nodeId
-      ? storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes))
-      : storeNodes2RuntimeNodes(nodes, [parsedJson.nodeId]);
+    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes, newHistories));
     runtimeNodes = isPlugin ? updatePluginInputByVariables(runtimeNodes, variables) : runtimeNodes;
 
-    const runtimeEdges = !parsedJson.nodeId
-      ? initWorkflowEdgeStatus(edges)
-      : initWorkflowEdgeStatus(edges).filter((edge) => edge.target !== parsedJson.nodeId);
+    const runtimeEdges = initWorkflowEdgeStatus(edges, newHistories);
 
     const runtimeVariables = removePluginInputVariables(
       variables,
-      storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes))
+      storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes, newHistories))
     );
 
     /* start flow controller */

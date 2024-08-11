@@ -79,6 +79,9 @@ export const addCustomFeedbacks = async ({
   }
 };
 
+/*
+  Update the user selected index of the interactive module
+*/
 export const updateUserSelectedIndex = async ({
   appId,
   chatId,

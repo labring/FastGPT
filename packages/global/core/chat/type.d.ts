@@ -175,12 +175,13 @@ export type ToolModuleResponseItemType = {
   functionName: string;
 };
 export type InteractiveModuleResponseItemType = {
-  nodeId: string;
-  params: {
-    description?: string;
-    userSelectOptions?: UserSelectOptionType[];
-    userSeletedIndex?: number | null;
-    nodeOutputs?: NodeOutputItemType[];
+  entryNodeIds?: string[];
+  memoryEdges?: FlowNodeOutputItemType[];
+  params?: {
+    description: string;
+    userSelectOptions: UserSelectOptionType[];
+    userSeletedIndex: number | null;
+    nodeOutputs: NodeOutputItemType[];
   };
 };
 

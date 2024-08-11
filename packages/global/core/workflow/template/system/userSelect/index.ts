@@ -1,3 +1,4 @@
+import { i18nT } from '../../../../../../web/i18n/utils';
 import {
   FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum,
@@ -20,16 +21,16 @@ export const UserSelectNode: FlowNodeTemplateType = {
   targetHandle: getHandleConfig(true, false, true, true),
   avatar: 'core/workflow/template/userSelect',
   diagram: '/imgs/app/userSelect.svg',
-  name: '用户选择',
-  intro: `该模块可配置多个选项，以供对话时选择。不同选项可导向不同工作流支线`,
+  name: i18nT('app:workflow.user_select'),
+  intro: i18nT(`app:workflow.user_select_tip`),
   showStatus: true,
   version: '489',
   inputs: [
     {
       key: NodeInputKeyEnum.description,
-      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
+      renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.string,
-      label: '说明文字'
+      label: i18nT('app:workflow.select_description')
     },
     {
       key: NodeInputKeyEnum.userSelectOptions,
@@ -38,11 +39,11 @@ export const UserSelectNode: FlowNodeTemplateType = {
       label: '',
       value: [
         {
-          value: '选项1',
+          value: i18nT('app:workflow.option1'),
           key: 'option1'
         },
         {
-          value: '选项2',
+          value: i18nT('app:workflow.option2'),
           key: 'option2'
         }
       ]
@@ -53,7 +54,7 @@ export const UserSelectNode: FlowNodeTemplateType = {
       id: NodeOutputKeyEnum.selectResult,
       key: NodeOutputKeyEnum.selectResult,
       required: true,
-      label: '选择结果',
+      label: i18nT('app:workflow.select_result'),
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     }

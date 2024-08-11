@@ -11,7 +11,6 @@ import React, {
 import Script from 'next/script';
 import type {
   AIChatItemValueItemType,
-  ChatHistoryItemResType,
   ChatSiteItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type.d';
@@ -157,7 +156,7 @@ const ChatBox = (
     const lastAIMessage = lastAIHistory.value as AIChatItemValueItemType[];
     const interactiveContent = lastAIMessage?.find(
       (item) => item.type === ChatItemValueTypeEnum.interactive
-    )?.interactive;
+    )?.interactive?.params;
     return !!interactiveContent;
   }, [chatHistories]);
 
