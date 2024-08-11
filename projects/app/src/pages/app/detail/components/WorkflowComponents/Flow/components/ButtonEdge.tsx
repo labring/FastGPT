@@ -98,8 +98,7 @@ const ButtonEdge = (props: EdgeProps) => {
     const colorMap = {
       [RuntimeEdgeStatusEnum.active]: '#39CC83',
       [RuntimeEdgeStatusEnum.waiting]: '#5E8FFF',
-      [RuntimeEdgeStatusEnum.skipped]: '#8A95A7',
-      [RuntimeEdgeStatusEnum.end]: '#585B64'
+      [RuntimeEdgeStatusEnum.skipped]: '#8A95A7'
     };
     return colorMap[targetEdge.status];
   }, [highlightEdge, sourceHandleId, targetHandleId, workflowDebugData?.runtimeEdges]);

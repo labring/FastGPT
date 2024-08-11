@@ -83,7 +83,7 @@ export type PluginRuntimeType = {
 };
 
 export type RuntimeEdgeItemType = StoreEdgeItemType & {
-  status: 'waiting' | 'active' | 'skipped' | 'end';
+  status: 'waiting' | 'active' | 'skipped';
 };
 
 export type DispatchNodeResponseType = {
@@ -160,7 +160,6 @@ export type DispatchNodeResponseType = {
   description?: string;
   userSelectOptions?: UserSelectOptionType[];
   userSeletedIndex?: number | null;
-  currentNodeId?: string;
   nodeOutputs?: NodeOutputItemType[];
 };
 

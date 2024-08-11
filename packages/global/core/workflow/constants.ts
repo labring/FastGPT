@@ -205,8 +205,7 @@ export const variableMap = {
 export enum RuntimeEdgeStatusEnum {
   'waiting' = 'waiting',
   'active' = 'active',
-  'skipped' = 'skipped',
-  'end' = 'end'
+  'skipped' = 'skipped'
 }
 
 export const VARIABLE_NODE_ID = 'VARIABLE_NODE_ID';

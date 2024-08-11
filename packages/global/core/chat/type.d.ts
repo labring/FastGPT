@@ -83,7 +83,6 @@ export type AIChatItemType = {
   customFeedbacks?: string[];
   adminFeedback?: AdminFbkType;
   [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType[];
-  nodeOutputs?: NodeOutputItemType[];
 };
 export type ChatItemValueItemType =
   | UserChatItemValueItemType
