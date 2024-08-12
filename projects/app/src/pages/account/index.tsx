@@ -53,7 +53,8 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
           }
         ]
       : []),
-    ...(feConfigs?.show_pay && userInfo?.team?.permission.hasWritePer
+    // ...(feConfigs?.show_pay && userInfo?.team?.permission.hasWritePer
+    ...(feConfigs?.show_pay || userInfo?.team?.permission.hasWritePer
       ? [
           {
             icon: 'support/bill/payRecordLight',

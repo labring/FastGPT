@@ -98,10 +98,11 @@ export type TeamInvoiceHeaderType = {
   companyPhone: string;
   bankName: string;
   bankAccount: string;
-  needInvoice: boolean;
+  needSpecialInvoice: boolean;
   emailAddress: string;
 };
 
 export type TeamInvoiceHeaderInfoSchemaType = TeamInvoiceHeaderType & {
   _id: string;
+  teamId: string;
 };

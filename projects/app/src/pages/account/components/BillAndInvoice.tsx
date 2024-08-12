@@ -3,6 +3,7 @@ import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import ApplyInvoiceModal from './ApplyInvoiceModal';
 
 const TabEnum = {
   bill: 'bill',
@@ -11,8 +12,11 @@ const TabEnum = {
 };
 const BillTable = dynamic(() => import('./BillTable'));
 const InvoiceHeaderForm = dynamic(() => import('./InvoiceHeaderForm'));
+const InvoiceTable = dynamic(() => import('./InvoiceTable'));
 const BillAndInvoice = () => {
   const [currentTab, setCurrentTab] = useState(TabEnum.bill);
+  const [isOpenInvoiceModal, setIsOpenInvoiceModal] = useState(false);
+
   const { t } = useTranslation();
   return (
     <>
@@ -31,7 +35,7 @@ const BillAndInvoice = () => {
             onChange={setCurrentTab}
           ></FillRowTabs>
           {currentTab !== TabEnum.invoiceHeader && (
-            <Button variant={'primary'} px="0">
+            <Button variant={'primary'} px="0" onClick={() => setIsOpenInvoiceModal(true)}>
               <Flex alignItems={'center'} px={'20px'}>
                 <Box px={'1.25rem'} py={'0.5rem'}>
                   {t('common:support.wallet.invoicing')}
@@ -42,8 +46,10 @@ const BillAndInvoice = () => {
         </Flex>
         <Box h={'100%'}>
           {currentTab === TabEnum.bill && <BillTable />}
+          {currentTab === TabEnum.invoice && <InvoiceTable />}
           {currentTab === TabEnum.invoiceHeader && <InvoiceHeaderForm />}
         </Box>
+        {isOpenInvoiceModal && <ApplyInvoiceModal onClose={() => setIsOpenInvoiceModal(false)} />}
       </Box>
     </>
   );
