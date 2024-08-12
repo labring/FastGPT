@@ -22,5 +22,13 @@
   "feishu_api": "飞书接口",
   "feishu_bot": "飞书机器人",
   "feishu_bot_desc": "通过 API 直接接入飞书机器人",
-  "copy_link_hint": "将下面链接复制到指定位置"
+  "copy_link_hint": "将下面链接复制到指定位置",
+  "wecom": {
+    "title": "发布到企业微信机器人",
+    "bot": "企业微信机器人",
+    "bot_desc": "通过 API 直接接入企业微信机器人",
+    "edit_modal_title": "编辑企微机器人",
+    "create_modal_title": "创建企微机器人",
+    "api": "企微api"
+  }
 }
