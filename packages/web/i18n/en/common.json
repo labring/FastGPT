@@ -271,6 +271,7 @@
     }
   },
   "confirm_choice": "Confirm selection",
+  "contribute_app_template": "Contribution template",
   "core": {
     "Chat": "Chat",
     "Max Token": "Max token per data",
@@ -1431,5 +1432,6 @@
     },
     "type": "type"
   },
-  "verification": "verify"
+  "verification": "verify",
+  "xx_search_result": "{{key}} Search results"
 }

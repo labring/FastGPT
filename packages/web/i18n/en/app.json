@@ -18,6 +18,9 @@
   "confirm_delete_folder_tip": "Are you sure to delete this folder? All the following applications and corresponding chat records will be deleted, please confirm!",
   "copy_one_app": "Copy",
   "create_copy_success": "Create copy success",
+  "create_empty_app": "Create default app",
+  "create_empty_plugin": "Create default plugin",
+  "create_empty_workflow": "Create default workflow",
   "cron": {
     "every_day": "Executed every day",
     "every_month": "Executed monthly",
@@ -84,6 +87,22 @@
   "template": {
     "simple_robot": "Simple Robot"
   },
+  "templateMarket": {
+    "Search_template": "Search template",
+    "Template_market": "Template market",
+    "Use": "Use",
+    "no_intro": "No intro~",
+    "templateTags": {
+      "Image_generation": "Image generation",
+      "Office_services": "Office searvices",
+      "Roleplay": "Roleplay",
+      "Web_search": "Web search",
+      "Writing": "Writing"
+    }
+  },
+  "template_market": "Templates",
+  "template_market_description": "Explore more ways to play in the template market, configuration tutorials and usage guides will help you understand and get started with various applications.",
+  "template_market_empty_data": "No suitable template found",
   "time_zone": "Time zone",
   "tool_input_param_tip": "Configure related information before the plugin runs properly",
   "transition_to_workflow": "Transition to workflow",
@@ -91,7 +110,7 @@
   "transition_to_workflow_create_new_tip": "After converting to workflow, it will not be able to convert back to simple mode, please confirm!",
   "type": {
     "All": "All",
-    "Create http plugin tip": "Create plug-ins in batches using OpenAPI schema, compatible with GPTs format.",
+    "Create http plugin tip": "Create plug-ins in batches using OpenAPI schema, compatible with GPTs format",
     "Create one plugin tip": "The input and output workflows can be customized",
     "Create plugin bot": "Create plugin bot",
     "Create simple bot": "Create simple bot",
@@ -101,6 +120,7 @@
     "Http plugin": "Http plugin",
     "Plugin": "Plugin",
     "Simple bot": "Simple bot",
+    "Template": "Create by template",
     "Workflow bot": "Workflow"
   },
   "upload_file_max_amount": "Max files",
