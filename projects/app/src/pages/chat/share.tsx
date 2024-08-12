@@ -15,7 +15,6 @@ import PageContainer from '@/components/PageContainer';
 import ChatHeader from './components/ChatHeader';
 import ChatHistorySlider from './components/ChatHistorySlider';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
 import { useTranslation } from 'next-i18next';
 import { delChatRecordById, getChatHistories, getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -97,7 +96,13 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
   } = useChat();
 
   const startChat = useCallback(
-    async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
+    async ({
+      messages,
+      controller,
+      generatingMessage,
+      variables,
+      responseChatItemId
+    }: StartChatFnProps) => {
       const completionChatId = chatId || getNanoid();
       const histories = messages.slice(-1);
 
@@ -119,6 +124,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
             ...variables,
             ...customVariables
           },
+          responseChatItemId,
           shareId,
           chatId: completionChatId,
           appType: chatData.app.type,

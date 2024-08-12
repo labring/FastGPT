@@ -79,7 +79,13 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   } = useChat();
 
   const startChat = useCallback(
-    async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
+    async ({
+      messages,
+      controller,
+      generatingMessage,
+      variables,
+      responseChatItemId
+    }: StartChatFnProps) => {
       const completionChatId = chatId || getNanoid();
       // Just send a user prompt
       const histories = messages.slice(-1);
@@ -91,6 +97,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
             ...variables,
             ...customVariables
           },
+          responseChatItemId,
           appId,
           teamId,
           teamToken,
