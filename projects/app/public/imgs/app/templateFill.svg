@@ -1,0 +1,41 @@
+<svg  viewBox="0 0 24 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_6458_21426)">
+<rect width="16.9863" height="7.72395" rx="2.5" transform="matrix(0.960903 -0.276886 0.36577 0.930705 2.47949 5.24646)" fill="#E1EAFF"/>
+</g>
+<g clip-path="url(#clip1_6458_21426)">
+<rect width="19.1584" height="7.56066" rx="2.5" transform="matrix(0.992604 -0.121398 0.175115 0.984548 1.91479 4.55225)" fill="#C5D7FF"/>
+</g>
+<g filter="url(#filter0_dd_6458_21426)">
+<rect x="2" y="4.22711" width="20" height="15" rx="2.5" fill="url(#paint0_linear_6458_21426)"/>
+<rect x="4.5" y="6.62494" width="3.125" height="3.125" rx="1" fill="white" fill-opacity="0.8"/>
+<rect x="4.5" y="11.3469" width="15.625" height="1.25" rx="0.625" fill="white" fill-opacity="0.8"/>
+<rect x="4.5" y="13.704" width="7.5" height="1.25" rx="0.625" fill="white" fill-opacity="0.8"/>
+</g>
+<defs>
+<filter id="filter0_dd_6458_21426" x="0.75" y="3.60211" width="22.5" height="17.5" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset/>
+<feGaussianBlur stdDeviation="0.3125"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0.0745098 0 0 0 0 0.2 0 0 0 0 0.419608 0 0 0 0.08 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_6458_21426"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="0.625"/>
+<feGaussianBlur stdDeviation="0.625"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0.0745098 0 0 0 0 0.2 0 0 0 0 0.419608 0 0 0 0.05 0"/>
+<feBlend mode="normal" in2="effect1_dropShadow_6458_21426" result="effect2_dropShadow_6458_21426"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect2_dropShadow_6458_21426" result="shape"/>
+</filter>
+<linearGradient id="paint0_linear_6458_21426" x1="22" y1="4.93495" x2="2" y2="19.2271" gradientUnits="userSpaceOnUse">
+<stop stop-color="#94B5FF"/>
+<stop offset="1" stop-color="#3370FF"/>
+</linearGradient>
+<clipPath id="clip0_6458_21426">
+<rect width="16.9863" height="7.72395" rx="2.5" transform="matrix(0.960903 -0.276886 0.36577 0.930705 2.47949 5.24646)" fill="white"/>
+</clipPath>
+<clipPath id="clip1_6458_21426">
+<rect width="19.1584" height="7.56066" rx="2.5" transform="matrix(0.992604 -0.121398 0.175115 0.984548 1.91479 4.55225)" fill="white"/>
+</clipPath>
+</defs>
+</svg>

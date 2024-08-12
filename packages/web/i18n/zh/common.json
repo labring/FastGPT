@@ -273,6 +273,7 @@
     }
   },
   "confirm_choice": "确认选择",
+  "contribute_app_template": "贡献模板",
   "core": {
     "Chat": "对话",
     "Max Token": "单条数据上限",
@@ -358,6 +359,14 @@
       "loading": "加载中",
       "logs": {
         "Source And Time": "来源 & 时间"
+      },
+      "more": "查看更多",
+      "navbar": {
+        "External": "外部使用",
+        "Flow mode": "高级编排",
+        "Publish": "发布",
+        "Publish app": "发布应用",
+        "Simple mode": "简易配置"
       },
       "no_app": "还没有应用，快去创建一个吧！",
       "not_published": "未发布",
@@ -598,7 +607,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1437,5 +1447,6 @@
     },
     "type": "类型"
   },
-  "verification": "验证"
+  "verification": "验证",
+  "xx_search_result": "{{key}} 的搜索结果"
 }

@@ -7,9 +7,10 @@ import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import type { ResLogin } from '@/global/support/api/userRes';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { postCreateApp } from '@/web/core/app/api';
-import { defaultAppTemplates } from '@/web/core/app/templates';
+import { emptyTemplates } from '@/web/core/app/templates';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 interface Props {
   loginSuccess: (e: ResLogin) => void;
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
@@ -68,13 +69,13 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         });
         // auto register template app
         setTimeout(() => {
-          defaultAppTemplates.forEach((template) => {
+          Object.entries(emptyTemplates).map(([type, emptyTemplate]) => {
             postCreateApp({
-              avatar: template.avatar,
-              name: t(template.name as any),
-              modules: template.modules,
-              edges: template.edges,
-              type: template.type
+              avatar: emptyTemplate.avatar,
+              name: t(emptyTemplate.name as any),
+              modules: emptyTemplate.nodes,
+              edges: emptyTemplate.edges,
+              type: type as AppTypeEnum
             });
           });
         }, 100);

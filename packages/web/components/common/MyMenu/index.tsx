@@ -8,10 +8,10 @@ import {
   MenuButton,
   MenuItemProps
 } from '@chakra-ui/react';
-import MyIcon from '../Icon';
 import MyDivider from '../MyDivider';
 import type { IconNameType } from '../Icon/type';
 import { useSystem } from '../../../hooks/useSystem';
+import Avatar from '../Avatar';
 
 export type MenuItemType = 'primary' | 'danger';
 
@@ -172,7 +172,7 @@ const MyMenu = ({
                     _notLast={{ mb: 0.5 }}
                     {...typeMapStyle[child.type || 'primary']}
                   >
-                    {!!child.icon && <MyIcon name={child.icon as any} w={iconSize} mr={3} />}
+                    {!!child.icon && <Avatar src={child.icon as any} w={iconSize} mr={3} />}
                     <Box>
                       <Box color={child.description ? 'myGray.900' : 'inherit'} fontSize={'sm'}>
                         {child.label}

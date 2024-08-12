@@ -135,13 +135,14 @@ const EditForm = ({
           <Flex alignItems={'center'}>
             <MyIcon name={'core/app/simpleMode/ai'} w={'20px'} />
             <FormLabel ml={2} flex={1}>
-              {appT('ai_settings')}
+              {t('app:ai_settings')}
             </FormLabel>
           </Flex>
           <Flex alignItems={'center'} mt={5}>
             <Box {...LabelStyles}>{t('common:core.ai.Model')}</Box>
             <Box flex={'1 0 0'}>
               <SettingLLMModel
+                bg="myGray.50"
                 llmModelType={'all'}
                 defaultData={{
                   model: appForm.aiSettings.model,
@@ -176,6 +177,7 @@ const EditForm = ({
             <Box mt={1}>
               <PromptEditor
                 value={appForm.aiSettings.systemPrompt}
+                bg={'myGray.50'}
                 onChange={(text) => {
                   startTst(() => {
                     setAppForm((state) => ({

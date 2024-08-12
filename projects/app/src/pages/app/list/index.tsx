@@ -42,6 +42,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import TemplateMarketModal from './components/TemplateMarketModal';
 
 const CreateModal = dynamic(() => import('./components/CreateModal'));
 const EditFolderModal = dynamic(
@@ -77,6 +78,7 @@ const MyApps = () => {
     onClose: onCloseCreateHttpPlugin
   } = useDisclosure();
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
+  const [templateModalType, setTemplateModalType] = useState<AppTypeEnum | 'all'>();
 
   const { runAsync: onCreateFolder } = useRequest2(postCreateAppFolder, {
     onSuccess() {
@@ -145,19 +147,19 @@ const MyApps = () => {
             <LightRowTabs
               list={[
                 {
-                  label: appT('type.All'),
+                  label: t('app:type.All'),
                   value: 'ALL'
                 },
                 {
-                  label: appT('type.Simple bot'),
+                  label: t('app:type.Simple bot'),
                   value: AppTypeEnum.simple
                 },
                 {
-                  label: appT('type.Workflow bot'),
+                  label: t('app:type.Workflow bot'),
                   value: AppTypeEnum.workflow
                 },
                 {
-                  label: appT('type.Plugin'),
+                  label: t('app:type.Plugin'),
                   value: AppTypeEnum.plugin
                 }
               ]}
@@ -195,27 +197,37 @@ const MyApps = () => {
                       children: [
                         {
                           icon: 'core/app/simpleBot',
-                          label: appT('type.Simple bot'),
-                          description: appT('type.Create simple bot tip'),
+                          label: t('app:type.Simple bot'),
+                          description: t('app:type.Create simple bot tip'),
                           onClick: () => setCreateAppType(AppTypeEnum.simple)
                         },
                         {
                           icon: 'core/app/type/workflowFill',
-                          label: appT('type.Workflow bot'),
-                          description: appT('type.Create workflow tip'),
+                          label: t('app:type.Workflow bot'),
+                          description: t('app:type.Create workflow tip'),
                           onClick: () => setCreateAppType(AppTypeEnum.workflow)
                         },
                         {
                           icon: 'core/app/type/pluginFill',
-                          label: appT('type.Plugin'),
-                          description: appT('type.Create one plugin tip'),
+                          label: t('app:type.Plugin'),
+                          description: t('app:type.Create one plugin tip'),
                           onClick: () => setCreateAppType(AppTypeEnum.plugin)
                         },
                         {
                           icon: 'core/app/type/httpPluginFill',
-                          label: appT('type.Http plugin'),
-                          description: appT('type.Create http plugin tip'),
+                          label: t('app:type.Http plugin'),
+                          description: t('app:type.Create http plugin tip'),
                           onClick: onOpenCreateHttpPlugin
+                        }
+                      ]
+                    },
+                    {
+                      children: [
+                        {
+                          icon: '/imgs/app/templateFill.svg',
+                          label: t('app:template_market'),
+                          description: t('app:template_market_description'),
+                          onClick: () => setTemplateModalType('all')
                         }
                       ]
                     },
@@ -306,9 +318,19 @@ const MyApps = () => {
         />
       )}
       {!!createAppType && (
-        <CreateModal type={createAppType} onClose={() => setCreateAppType(undefined)} />
+        <CreateModal
+          type={createAppType}
+          onClose={() => setCreateAppType(undefined)}
+          onOpenTemplateModal={setTemplateModalType}
+        />
       )}
       {isOpenCreateHttpPlugin && <HttpEditModal onClose={onCloseCreateHttpPlugin} />}
+      {!!templateModalType && (
+        <TemplateMarketModal
+          onClose={() => setTemplateModalType(undefined)}
+          defaultType={templateModalType}
+        />
+      )}
     </Flex>
   );
 };
