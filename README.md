@@ -100,11 +100,9 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 - **⚡ 快速部署**
 
-  > [Sealos](https://sealos.io) 的服务器在国外，不需要额外处理网络问题，无需服务器、无需魔法、无需域名，支持高并发 & 动态伸缩。点击以下按钮即可一键部署 👇
+  > 使用 [Sealos](https://sealos.io) 服务，无需采购服务器、无需域名，支持高并发 & 动态伸缩，并且数据库应用采用 kubeblocks 的数据库，在 IO 性能方面，远超于简单的 Docker 容器部署。
 
-  [![](https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
-
-  由于需要部署数据库，部署完后需要等待 2~4 分钟才能正常访问。默认用了最低配置，首次访问时会有些慢。相关使用教程可查看：[Sealos 部署 FastGPT](https://doc.fastgpt.in/docs/development/sealos/)
+  [点击查看 Sealos 一键部署 FastGPT 教材](https://doc.fastgpt.in/docs/development/sealos/)
 
 * [快速开始本地开发](https://doc.fastgpt.in/docs/development/intro/)
 * [部署 FastGPT](https://doc.fastgpt.in/docs/development/sealos)
