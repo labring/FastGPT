@@ -11,7 +11,7 @@ import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 */
 
 const defaultPrompt = `作为一个向量检索助手，你的任务是结合历史记录，从不同角度，为“原问题”生成个不同版本的“检索词”，从而提高向量检索的语义丰富度，提高向量检索的精度。生成的问题要求指向对象清晰明确，并与“原问题语言相同”。
-下面的 <Example></Example> 标签对中的示例仅供你学习，请勿在无历史记录的情况下，引用示例中的词。
+参考 <Example></Example> 标中的示例来完成任务。
 
 <Example>
 历史记录: 
@@ -92,7 +92,7 @@ A: Laf 是一个云函数开发平台。
 </Example>
 
 ----------------
-我们开始吧!
+下面是正式的任务：
 
 历史记录:
 """

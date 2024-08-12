@@ -94,7 +94,11 @@ export const sliceJsonStr = (str: string) => {
 
 export const sliceStrStartEnd = (str: string, start: number, end: number) => {
   const overSize = str.length > start + end;
+
+  if (!overSize) return str;
+
   const startContent = str.slice(0, start);
   const endContent = overSize ? str.slice(-end) : '';
-  return startContent + (overSize ? ` ...... ` : '') + endContent;
+
+  return `${startContent}${overSize ? `\n\n...[hide ${str.length - start - end} chars]...\n\n` : ''}${endContent}`;
 };
