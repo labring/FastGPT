@@ -245,7 +245,7 @@
           },
           {
             "renderTypeList": ["reference"],
-            "valueType": "any",
+            "valueType": "string",
             "canEdit": true,
             "key": "files",
             "label": "files",
@@ -270,7 +270,7 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": ["pluginInput", "url"]
+            "value": ["pMBi7J7vcsqB", "system_text"]
           },
           {
             "renderTypeList": ["reference"],
