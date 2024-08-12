@@ -28,13 +28,15 @@ export const getChatTitleFromChatMessage = (message?: ChatItemType, defaultValue
 
 // Keep the first n and last n characters
 export const getHistoryPreview = (
-  completeMessages: ChatItemType[]
+  completeMessages: ChatItemType[],
+  size = 100
 ): {
   obj: `${ChatRoleEnum}`;
   value: string;
 }[] => {
   return completeMessages.map((item, i) => {
-    const n = item.obj === ChatRoleEnum.System || i >= completeMessages.length - 2 ? 80 : 40;
+    const n =
+      (item.obj === ChatRoleEnum.System && i === 0) || i >= completeMessages.length - 2 ? size : 50;
 
     // Get message text content
     const rawText = (() => {
@@ -65,13 +67,9 @@ export const getHistoryPreview = (
       return '';
     })();
 
-    const startContent = rawText.slice(0, n);
-    const endContent = rawText.length > 2 * n ? rawText.slice(-n) : '';
-    const content = startContent + (rawText.length > n ? ` ...... ` : '') + endContent;
-
     return {
       obj: item.obj,
-      value: sliceStrStartEnd(content, 80, 80)
+      value: sliceStrStartEnd(rawText, n, n)
     };
   });
 };

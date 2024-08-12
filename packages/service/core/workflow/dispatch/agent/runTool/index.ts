@@ -204,7 +204,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       toolCallTokens: totalTokens,
       model: modelName,
       query: userChatInput,
-      historyPreview: getHistoryPreview(GPTMessages2Chats(completeMessages, false)),
+      historyPreview: getHistoryPreview(GPTMessages2Chats(completeMessages, false), 10000),
       toolDetail: childToolResponse
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [

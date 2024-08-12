@@ -226,7 +226,7 @@ export const runToolWithFunctionCall = async (
                 toolName: '',
                 toolAvatar: '',
                 params: '',
-                response: sliceStrStartEnd(stringToolResponse, 300, 300)
+                response: sliceStrStartEnd(stringToolResponse, 500, 500)
               }
             })
           });
