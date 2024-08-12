@@ -4,7 +4,6 @@
   "intro": "通过 4 轮翻译，提高翻译英文的质量",
   "author": "Fastgpt Team",
   "avatar": "/appMarketTemplates/TranslateRobot/avatar.svg",
-  "authorAvatar": "/icon/logo.svg",
   "tags": ["recommendation", "office-services"],
   "type": "advanced",
   "workflow": {

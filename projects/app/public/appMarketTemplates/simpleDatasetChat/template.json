@@ -1,22 +1,22 @@
 {
-  "id": "chatGuide",
-  "name": "对话引导 + 变量",
-  "intro": "可以在对话开始发送一段提示，或者让用户填写一些内容，作为本次对话的变量",
+  "id": "simpleDatasetChat",
+  "name": "知识库+对话引导",
+  "intro": "每次提问时进行一次知识库搜索，将搜索结果注入 LLM 模型进行参考回答",
   "author": "Fastgpt Team",
-  "avatar": "/appMarketTemplates/chatGuide/avatar.png",
-  "tags": ["office-services"],
+  "avatar": "/appMarketTemplates/simpleDatasetChat/avatar.svg",
   "type": "simple",
+  "tags": ["office-services"],
   "workflow": {
     "nodes": [
       {
         "nodeId": "userGuide",
         "name": "系统配置",
         "intro": "可以配置应用的系统参数",
-        "avatar": "/imgs/workflow/userGuide.png",
-        "flowNodeType": "userGuide",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "FlowNodeTypeEnum.systemConfig",
         "position": {
-          "x": 496.57560693988853,
-          "y": -490.7611729549753
+          "x": 531.2422736065552,
+          "y": -486.7611729549753
         },
         "version": "481",
         "inputs": [
@@ -25,31 +25,14 @@
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
             "valueType": "WorkflowIOValueTypeEnum.string",
             "label": "core.app.Welcome Text",
-            "value": "你好，我可以为你翻译各种语言，请告诉我你需要翻译成什么语言？"
+            "value": "你好，我是知识库助手，请不要忘记选择知识库噢~\n[你是谁]\n[如何使用]"
           },
           {
             "key": "variables",
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
             "valueType": "WorkflowIOValueTypeEnum.any",
             "label": "core.app.Chat Variable",
-            "value": [
-              {
-                "id": "myb3xk",
-                "key": "language",
-                "label": "目标语言",
-                "type": "select",
-                "required": true,
-                "maxLen": 50,
-                "enums": [
-                  {
-                    "value": "中文"
-                  },
-                  {
-                    "value": "英文"
-                  }
-                ]
-              }
-            ]
+            "value": []
           },
           {
             "key": "questionGuide",
@@ -89,11 +72,11 @@
         "outputs": []
       },
       {
-        "nodeId": "448745",
+        "nodeId": "workflowStartNodeId",
         "name": "流程开始",
         "intro": "",
-        "avatar": "/imgs/workflow/userChatInput.svg",
-        "flowNodeType": "workflowStart",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "FlowNodeTypeEnum.workflowStart",
         "position": {
           "x": 558.4082376415505,
           "y": 123.72387429194112
@@ -120,15 +103,15 @@
         ]
       },
       {
-        "nodeId": "loOvhld2ZTKa",
+        "nodeId": "7BdojPlukIQw",
         "name": "AI 对话",
         "intro": "AI 大模型对话",
-        "avatar": "/imgs/workflow/AI.png",
-        "flowNodeType": "chatNode",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "FlowNodeTypeEnum.chatNode",
         "showStatus": true,
         "position": {
-          "x": 1097.7317280958762,
-          "y": -244.16014496351386
+          "x": 1638.509551404687,
+          "y": -341.0428450861567
         },
         "version": "481",
         "inputs": [
@@ -140,13 +123,13 @@
             ],
             "label": "core.module.input.label.aiModel",
             "valueType": "WorkflowIOValueTypeEnum.string",
-            "value": "gpt-3.5-turbo"
+            "value": "gpt-4o-mini"
           },
           {
             "key": "temperature",
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
             "label": "",
-            "value": 0,
+            "value": 3,
             "valueType": "WorkflowIOValueTypeEnum.number",
             "min": 0,
             "max": 10,
@@ -156,7 +139,7 @@
             "key": "maxToken",
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
             "label": "",
-            "value": 2000,
+            "value": 1950,
             "valueType": "WorkflowIOValueTypeEnum.number",
             "min": 100,
             "max": 4000,
@@ -189,7 +172,7 @@
             "label": "core.ai.Prompt",
             "description": "core.app.tip.chatNodeSystemPromptTip",
             "placeholder": "core.app.tip.chatNodeSystemPromptTip",
-            "value": "请直接将我的问题翻译成{{language}}，不需要回答问题。"
+            "value": ""
           },
           {
             "key": "history",
@@ -211,7 +194,7 @@
             "label": "用户问题",
             "required": true,
             "toolDescription": "用户问题",
-            "value": ["448745", "userChatInput"]
+            "value": ["workflowStartNodeId", "userChatInput"]
           },
           {
             "key": "quoteQA",
@@ -219,7 +202,8 @@
             "label": "",
             "debugLabel": "知识库引用",
             "description": "",
-            "valueType": "WorkflowIOValueTypeEnum.datasetQuote"
+            "valueType": "WorkflowIOValueTypeEnum.datasetQuote",
+            "value": ["iKBoX2vIzETU", "quoteQA"]
           }
         ],
         "outputs": [
@@ -240,23 +224,115 @@
             "type": "FlowNodeOutputTypeEnum.static"
           }
         ]
+      },
+      {
+        "nodeId": "iKBoX2vIzETU",
+        "name": "知识库搜索",
+        "intro": "调用\"语义检索\"和\"全文检索\"能力，从\"知识库\"中查找可能与问题相关的参考内容",
+        "avatar": "core/workflow/template/datasetSearch",
+        "flowNodeType": "FlowNodeTypeEnum.datasetSearchNode",
+        "showStatus": true,
+        "position": {
+          "x": 918.5901682164496,
+          "y": -227.11542247619582
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "datasets",
+            "renderTypeList": [
+              "FlowNodeInputTypeEnum.selectDataset",
+              "FlowNodeInputTypeEnum.reference"
+            ],
+            "label": "core.module.input.label.Select dataset",
+            "value": [],
+            "valueType": "WorkflowIOValueTypeEnum.selectDataset",
+            "list": [],
+            "required": true
+          },
+          {
+            "key": "similarity",
+            "renderTypeList": ["FlowNodeInputTypeEnum.selectDatasetParamsModal"],
+            "label": "",
+            "value": 0.4,
+            "valueType": "WorkflowIOValueTypeEnum.number"
+          },
+          {
+            "key": "limit",
+            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "label": "",
+            "value": 1500,
+            "valueType": "WorkflowIOValueTypeEnum.number"
+          },
+          {
+            "key": "searchMode",
+            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "label": "",
+            "valueType": "WorkflowIOValueTypeEnum.string",
+            "value": "embedding"
+          },
+          {
+            "key": "usingReRank",
+            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "label": "",
+            "valueType": "WorkflowIOValueTypeEnum.boolean",
+            "value": false
+          },
+          {
+            "key": "datasetSearchUsingExtensionQuery",
+            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "label": "",
+            "valueType": "WorkflowIOValueTypeEnum.boolean",
+            "value": true
+          },
+          {
+            "key": "datasetSearchExtensionModel",
+            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "label": "",
+            "valueType": "WorkflowIOValueTypeEnum.string"
+          },
+          {
+            "key": "datasetSearchExtensionBg",
+            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "label": "",
+            "valueType": "WorkflowIOValueTypeEnum.string",
+            "value": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": ["FlowNodeInputTypeEnum.reference", "FlowNodeInputTypeEnum.textarea"],
+            "valueType": "WorkflowIOValueTypeEnum.string",
+            "label": "用户问题",
+            "required": true,
+            "toolDescription": "需要检索的内容",
+            "value": ["workflowStartNodeId", "userChatInput"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "quoteQA",
+            "key": "quoteQA",
+            "label": "core.module.Dataset quote.label",
+            "type": "FlowNodeOutputTypeEnum.static",
+            "valueType": "WorkflowIOValueTypeEnum.datasetQuote",
+            "description": "特殊数组格式，搜索结果为空时，返回空数组。"
+          }
+        ]
       }
     ],
     "edges": [
       {
-        "source": "448745",
-        "target": "loOvhld2ZTKa",
-        "sourceHandle": "448745-source-right",
-        "targetHandle": "loOvhld2ZTKa-target-left"
+        "source": "workflowStartNodeId",
+        "target": "iKBoX2vIzETU",
+        "sourceHandle": "workflowStartNodeId-source-right",
+        "targetHandle": "iKBoX2vIzETU-target-left"
+      },
+      {
+        "source": "iKBoX2vIzETU",
+        "target": "7BdojPlukIQw",
+        "sourceHandle": "iKBoX2vIzETU-source-right",
+        "targetHandle": "7BdojPlukIQw-target-left"
       }
-    ],
-    "chatConfig": {
-      "welcomeText": "你好，我可以为你翻译各种语言，请告诉我你需要翻译成什么语言？",
-      "scheduledTriggerConfig": {
-        "cronString": "",
-        "timezone": "Asia/Shanghai",
-        "defaultPrompt": ""
-      }
-    }
+    ]
   }
 }
