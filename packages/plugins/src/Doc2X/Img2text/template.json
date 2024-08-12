@@ -1,9 +1,9 @@
 {
   "author": "Menghuan1918",
   "version": "488",
-  "name": "Doc2X PDF文件(文件)识别",
+  "name": "Doc2X 图像识别",
   "avatar": "plugins/doc2x",
-  "intro": "将上传的PDF文件发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
+  "intro": "将图片发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本，支持传入String类型的URL或者流程输出中的文件链接变量",
   "inputExplanationUrl": "https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview",
   "showStatus": true,
   "weight": 10,
@@ -21,8 +21,8 @@
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 388.243055058894,
-          "y": -75.09744210499466
+          "x": 361.8411735944442,
+          "y": 6.163538265405862
         },
         "version": "481",
         "inputs": [
@@ -41,25 +41,37 @@
           {
             "renderTypeList": ["reference"],
             "selectedTypeIndex": 0,
-            "valueType": "arrayString",
+            "valueType": "any",
             "canEdit": true,
             "key": "files",
             "label": "files",
-            "description": "待处理的PDF文件",
+            "description": "待处理图片文件或URL",
             "required": true,
-            "toolDescription": "待处理的PDF文件"
+            "toolDescription": "待处理图片文件或URL"
           },
           {
             "renderTypeList": ["switch"],
             "selectedTypeIndex": 0,
             "valueType": "boolean",
             "canEdit": true,
-            "key": "ocr",
-            "label": "ocr",
-            "description": "是否开启对PDF文件内图片的OCR识别，建议开启",
+            "key": "img_correction",
+            "label": "img_correction",
+            "description": "是否启用图形矫正功能",
             "required": true,
             "toolDescription": "",
-            "defaultValue": true
+            "defaultValue": false
+          },
+          {
+            "renderTypeList": ["switch"],
+            "selectedTypeIndex": 0,
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "formula",
+            "label": "formula",
+            "description": "是否开启纯公式识别(仅适用于图片内容仅有公式时)",
+            "required": true,
+            "toolDescription": "",
+            "defaultValue": false
           }
         ],
         "outputs": [
@@ -72,16 +84,23 @@
           },
           {
             "id": "url",
-            "valueType": "arrayString",
+            "valueType": "any",
             "key": "files",
             "label": "files",
             "type": "hidden"
           },
           {
+            "id": "img_correction",
+            "valueType": "boolean",
+            "key": "img_correction",
+            "label": "img_correction",
+            "type": "hidden"
+          },
+          {
             "id": "formula",
             "valueType": "boolean",
-            "key": "ocr",
-            "label": "ocr",
+            "key": "formula",
+            "label": "formula",
             "type": "hidden"
           }
         ]
@@ -94,8 +113,8 @@
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1649.7796447278438,
-          "y": -96.05331527115042
+          "x": 2310.6027133602956,
+          "y": 35.5288060385617
         },
         "version": "481",
         "inputs": [
@@ -105,7 +124,7 @@
             "canEdit": true,
             "key": "result",
             "label": "result",
-            "description": "处理结果，由文件名以及文档内容组成，多个文件之间由横线分隔开",
+            "description": "处理结果",
             "value": ["zHG5jJBkXmjB", "xWQuEf50F3mr"]
           },
           {
@@ -114,8 +133,8 @@
             "canEdit": true,
             "key": "failreason",
             "label": "failreason",
-            "description": "文件处理失败原因，由文件名以及报错组成，多个文件之间由横线分隔开",
-            "value": ["zHG5jJBkXmjB", "yDxzW5CFalGw"]
+            "description": "文件处理失败原因，由文件名以及报错组成，多个文件之间由横线分隔开，如没有文件处理失败则为空",
+            "value": ["zHG5jJBkXmjB", "jbv4nVZvmFXm"]
           },
           {
             "renderTypeList": ["reference"],
@@ -124,7 +143,7 @@
             "key": "success",
             "label": "success",
             "description": "是否全部文件都处理成功，如有没有处理成功的文件，失败原因将会输出在failreason中",
-            "value": ["zHG5jJBkXmjB", "m6CJJj7GFud5"]
+            "value": ["zHG5jJBkXmjB", "k46cjNulVk5Y"]
           }
         ],
         "outputs": []
@@ -137,8 +156,8 @@
         "flowNodeType": "httpRequest468",
         "showStatus": true,
         "position": {
-          "x": 1077.7986740892777,
-          "y": -496.9521622173004
+          "x": 1627.5819643323605,
+          "y": -411.4492350666603
         },
         "version": "481",
         "inputs": [
@@ -186,7 +205,7 @@
             "description": "core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "Doc2X/FilePDF2text"
+            "value": "Doc2X/Img2text"
           },
           {
             "key": "system_httpHeader",
@@ -210,7 +229,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"files\": {{files}},\n  \"ocr\": {{ocr}}\n}",
+            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"files\": \"{{files}}\",\n  \"img_correction\": {{img_correction}},\n  \"formula\": {{formula}}\n}",
             "label": "",
             "required": false
           },
@@ -245,7 +264,7 @@
           },
           {
             "renderTypeList": ["reference"],
-            "valueType": "arrayString",
+            "valueType": "any",
             "canEdit": true,
             "key": "files",
             "label": "files",
@@ -270,14 +289,43 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": ["pluginInput", "url"]
+            "value": ["bW6JPV4tLh2C", "system_text"]
           },
           {
             "renderTypeList": ["reference"],
             "valueType": "boolean",
             "canEdit": true,
-            "key": "ocr",
-            "label": "ocr",
+            "key": "img_correction",
+            "label": "img_correction",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["pluginInput", "img_correction"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "formula",
+            "label": "formula",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -355,34 +403,129 @@
             "label": "result"
           },
           {
-            "id": "m6CJJj7GFud5",
-            "valueType": "boolean",
-            "type": "dynamic",
-            "key": "success",
-            "label": "success"
-          },
-          {
-            "id": "yDxzW5CFalGw",
+            "id": "jbv4nVZvmFXm",
             "valueType": "string",
             "type": "dynamic",
             "key": "failreason",
             "label": "failreason"
+          },
+          {
+            "id": "k46cjNulVk5Y",
+            "valueType": "boolean",
+            "type": "dynamic",
+            "key": "success",
+            "label": "success"
+          }
+        ]
+      },
+      {
+        "nodeId": "bW6JPV4tLh2C",
+        "name": "文本拼接",
+        "intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。",
+        "avatar": "core/workflow/template/textConcat",
+        "flowNodeType": "textEditor",
+        "position": {
+          "x": 1018.4040614736407,
+          "y": -41.70221452706835
+        },
+        "version": "486",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "可以引用其他节点的输出，作为文本拼接的变量，通过 {{字段名}} 来引用变量",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            }
+          },
+          {
+            "key": "system_textareaInput",
+            "renderTypeList": ["textarea"],
+            "valueType": "string",
+            "required": true,
+            "label": "拼接文本",
+            "placeholder": "可通过 {{字段名}} 来引用变量",
+            "value": "{{files}}"
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "any",
+            "canEdit": true,
+            "key": "files",
+            "label": "files",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "required": true,
+            "value": ["pluginInput", "url"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_text",
+            "key": "system_text",
+            "label": "拼接结果",
+            "type": "static",
+            "valueType": "string"
           }
         ]
       }
     ],
     "edges": [
       {
-        "source": "pluginInput",
-        "target": "zHG5jJBkXmjB",
-        "sourceHandle": "pluginInput-source-right",
-        "targetHandle": "zHG5jJBkXmjB-target-left"
-      },
-      {
         "source": "zHG5jJBkXmjB",
         "target": "pluginOutput",
         "sourceHandle": "zHG5jJBkXmjB-source-right",
         "targetHandle": "pluginOutput-target-left"
+      },
+      {
+        "source": "bW6JPV4tLh2C",
+        "target": "zHG5jJBkXmjB",
+        "sourceHandle": "bW6JPV4tLh2C-source-right",
+        "targetHandle": "zHG5jJBkXmjB-target-left"
+      },
+      {
+        "source": "pluginInput",
+        "target": "bW6JPV4tLh2C",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "bW6JPV4tLh2C-target-left"
       }
     ]
   }

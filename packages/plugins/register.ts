@@ -11,8 +11,8 @@ const staticPluginList = [
   'getTime',
   'fetchUrl',
   'Doc2X',
-  'Doc2X/URLPDF2text',
-  'Doc2X/URLImg2text',
+  'Doc2X/PDF2text',
+  'Doc2X/Img2text',
   'feishu'
 ];
 // Run in worker thread (Have npm packages)

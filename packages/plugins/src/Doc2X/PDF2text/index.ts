@@ -4,7 +4,7 @@ import { result } from 'lodash';
 
 type Props = {
   apikey: string;
-  files: Array<string>;
+  files: any;
   ocr: boolean;
 };
 
@@ -47,10 +47,31 @@ const main = async ({ apikey, files, ocr }: Props): Response => {
   let final_result = '';
   let fail_reason = '';
   let flag = false;
+  //Convert the String to Array<String> or String
+  let All_URL: Array<string>;
+  try {
+    const parsed = JSON.parse(files);
+    if (Array.isArray(parsed)) {
+      All_URL = parsed;
+    } else {
+      All_URL = [String(parsed)];
+    }
+  } catch (e) {
+    // Set it as String
+    All_URL = [String(files)];
+  }
+
   //Process each file one by one
-  for await (const url of files) {
+  for await (const url of All_URL) {
     //Fetch the pdf and check its contene type
-    const PDFResponse = await fetch(url);
+    let PDFResponse;
+    try {
+      PDFResponse = await fetch(url);
+    } catch (e) {
+      fail_reason += `\n---\nFile:${url} \n<Content>\nFailed to fetch image from URL: ${e}\n</Content>\n`;
+      flag = true;
+      continue;
+    }
     if (!PDFResponse.ok) {
       fail_reason += `\n---\nFile:${url} \n<Content>\nFailed to fetch PDF from URL\n</Content>\n`;
       flag = true;
