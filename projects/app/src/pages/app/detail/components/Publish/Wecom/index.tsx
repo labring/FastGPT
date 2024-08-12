@@ -62,7 +62,7 @@ const Wecom = ({ appId }: { appId: string }) => {
     <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
       <Flex justifyContent={'space-between'} flexDirection="row">
         <Box fontWeight={'bold'} fontSize={['md', 'lg']}>
-          {t('pubish:wecom.title')}
+          {t('publish:wecom.title')}
         </Box>
         <Button
           variant={'primary'}

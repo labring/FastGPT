@@ -94,10 +94,19 @@ const WecomEditModal = ({
               )}
             </Flex>
             <Flex alignItems={'center'} mt={4}>
-              <Box flex={'0 0 100px'}>App ID</Box>
+              <Box flex={'0 0 100px'}>Corp ID</Box>
               <Input
-                placeholder={t('common:core.module.http.AppId')}
-                {...register('app.SuiteId', {
+                placeholder={'Corp ID'}
+                {...register('app.CorpId', {
+                  required: true
+                })}
+              />
+            </Flex>
+            <Flex alignItems={'center'} mt={4}>
+              <Box flex={'0 0 100px'}>Agent ID</Box>
+              <Input
+                placeholder="Agent ID"
+                {...register('app.AgentId', {
                   required: true
                 })}
               />
@@ -112,12 +121,12 @@ const WecomEditModal = ({
               />
             </Flex>
             <Flex alignItems={'center'} mt={4}>
-              <Box flex={'0 0 100px'}>Encrypt Key</Box>
-              <Input placeholder="Encrypt Key" {...register('app.CallbackToken')} />
+              <Box flex={'0 0 100px'}>Token</Box>
+              <Input placeholder="Token" {...register('app.CallbackToken')} />
             </Flex>
             <Flex alignItems={'center'} mt={4}>
-              <Box flex={'0 0 100px'}>Encrypt Key</Box>
-              <Input placeholder="Encrypt Key" {...register('app.CallbackEncodingAesKey')} />
+              <Box flex={'0 0 100px'}>AES Key</Box>
+              <Input placeholder="AES Key" {...register('app.CallbackEncodingAesKey')} />
             </Flex>
           </Flex>
         </Grid>

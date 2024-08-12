@@ -1,4 +1,5 @@
 {
+  "publish_name": "名称",
   "create_api_key": "创建新 key",
   "create_link": "创建链接",
   "default_response": "默认回复",
