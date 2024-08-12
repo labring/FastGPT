@@ -1,11 +1,10 @@
 {
-  "id": "plugin-dalle",
   "name": "Dalle3 绘图",
   "intro": "通过请求 Dalle3 接口绘图，需要有 api key",
-  "author": "Fastgpt Team",
+  "author": "Fastgpt",
   "avatar": "/appMarketTemplates/plugin-dalle/avatar.svg",
   "type": "plugin",
-  "tags": ["image-generation"],
+  "tags": ["recommendation", "image-generation"],
   "workflow": {
     "nodes": [
       {
@@ -134,7 +133,7 @@
             "description": "core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "{{url}}/v1/images/generations"
+            "value": "https://api.openai.com/v1/images/generations"
           },
           {
             "key": "system_httpHeader",

@@ -14,12 +14,17 @@ const loadTemplateMarketItems = async () => {
       const filePath = path.join(templatesDir, name, 'template.json');
       const fileContent = readFileSync(filePath, 'utf-8');
       const data = JSON.parse(fileContent);
-      return data;
+      return {
+        id: name,
+        ...data
+      };
     } catch (error) {
       console.error(`Error fetching template ${name}:`, error);
       return null;
     }
   });
+
+  global.appMarketTemplates.sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0));
 
   return global.appMarketTemplates;
 };
@@ -37,7 +42,6 @@ export const getTemplateMarketItemList = async () => {
     avatar: item.avatar,
     intro: item.intro,
     author: item.author,
-    authorAvatar: item.authorAvatar,
     tags: item.tags,
     type: item.type
   }));

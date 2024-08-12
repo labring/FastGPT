@@ -1,8 +1,7 @@
 {
-  "id": "google",
   "name": "谷歌搜索",
   "intro": "通过请求谷歌搜索，查询相关内容作为模型的参考。",
-  "author": "Fastgpt Team",
+  "author": "Fastgpt",
   "avatar": "/appMarketTemplates/google/avatar.svg",
   "tags": ["recommendation", "web-search"],
   "type": "advanced",

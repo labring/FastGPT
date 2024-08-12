@@ -1,11 +1,11 @@
 {
-  "id": "toolChat",
   "name": "知道时间的机器人",
   "intro": "通过挂载时间插件，让模型获取当前最新时间",
-  "author": "Fastgpt Team",
+  "author": "Fastgpt",
   "avatar": "core/workflow/template/getTime",
   "tags": ["recommendation", "roleplay"],
   "type": "simple",
+  "weight": 1,
   "workflow": {
     "nodes": [
       {

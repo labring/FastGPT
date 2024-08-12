@@ -273,6 +273,7 @@
     }
   },
   "confirm_choice": "确认选择",
+  "contribute_app_template": "贡献模板",
   "core": {
     "Chat": "对话",
     "Max Token": "单条数据上限",

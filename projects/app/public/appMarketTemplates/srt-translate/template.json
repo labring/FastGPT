@@ -1,9 +1,8 @@
 {
-  "id": "srt-translate",
   "name": "长字幕反思翻译机器人",
   "intro": "利用 AI 自我反思提升翻译质量，同时循环迭代执行 AI 工作流来突破 LLM tokens 限制，实现一个高效的长字幕翻译机器人",
-  "author": "Fastgpt Team",
-  "avatar": "/appMarketTemplates/srt-translate/avatar.svg",
+  "author": "Fastgpt",
+  "avatar": "/appMarketTemplates/TranslateRobot/avatar.svg",
   "tags": ["office-services"],
   "type": "advanced",
   "workflow": {

@@ -26,12 +26,13 @@ import { postCreateApp } from '@/web/core/app/api';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
 import { useRouter } from 'next/router';
-import { SearchIcon } from '@chakra-ui/icons';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useTranslation } from 'next-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import SearchInput from '../../../../../../../packages/web/components/common/Input/SearchInput/index';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type TemplateAppType = AppTypeEnum | 'all';
 
@@ -43,6 +44,7 @@ const TemplateMarketModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const templateTags = [
     {
       id: AppTemplateTypeEnum.recommendation,
@@ -69,7 +71,8 @@ const TemplateMarketModal = ({
       label: t('app:templateMarket.templateTags.Office_services')
     }
   ];
-  const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
+
+  const { parentId } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
   const { isPc } = useSystem();
 
@@ -336,6 +339,26 @@ const TemplateMarketModal = ({
                     </Box>
                   );
                 })}
+                <Box flex={1} />
+
+                {feConfigs?.appTemplateCourse && (
+                  <Flex
+                    alignItems={'center'}
+                    cursor={'pointer'}
+                    _hover={{
+                      color: 'primary.600'
+                    }}
+                    py={2}
+                    fontWeight={500}
+                    rounded={'sm'}
+                    fontSize={'sm'}
+                    onClick={() => window.open(feConfigs.appTemplateCourse)}
+                    gap={1}
+                  >
+                    <MyIcon name={'common/upRightArrowLight'} w={'1rem'} />
+                    <Box>{t('common:contribute_app_template')}</Box>
+                  </Flex>
+                )}
               </Flex>
             )}
 
@@ -390,7 +413,7 @@ const TemplateMarketModal = ({
                       <Box key={item.id}>
                         <Box
                           id={item.id}
-                          fontSize={'lg'}
+                          fontSize={['md', 'lg']}
                           color={'myGray.900'}
                           mb={4}
                           fontWeight={500}

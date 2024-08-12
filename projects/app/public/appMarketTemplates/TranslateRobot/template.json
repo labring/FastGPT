@@ -1,10 +1,9 @@
 {
-  "id": "TranslateRobot",
   "name": "多轮翻译机器人",
   "intro": "通过 4 轮翻译，提高翻译英文的质量",
-  "author": "Fastgpt Team",
+  "author": "Fastgpt",
   "avatar": "/appMarketTemplates/TranslateRobot/avatar.svg",
-  "tags": ["recommendation", "office-services"],
+  "tags": ["office-services"],
   "type": "advanced",
   "workflow": {
     "nodes": [
@@ -120,7 +119,7 @@
             "renderTypeList": ["settingLLMModel", "reference"],
             "label": "core.module.input.label.aiModel",
             "valueType": "string",
-            "value": "gpt-4o"
+            "value": "claude-3-5-sonnet-20240620"
           },
           {
             "key": "temperature",
