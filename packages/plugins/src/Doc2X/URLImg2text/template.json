@@ -1,9 +1,9 @@
 {
   "author": "Menghuan1918",
   "version": "488",
-  "name": "Doc2X 图像(URL)识别",
+  "name": "Doc2X 图像识别",
   "avatar": "plugins/doc2x",
-  "intro": "从URL下载图片并发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
+  "intro": "将图片发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本，支持传入String类型的URL或者流程输出中的文件链接变量",
   "inputExplanationUrl": "https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview",
   "showStatus": true,
   "weight": 10,
@@ -21,8 +21,8 @@
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 388.243055058894,
-          "y": -75.09744210499466
+          "x": 361.8411735944442,
+          "y": 6.163538265405862
         },
         "version": "481",
         "inputs": [
@@ -41,13 +41,13 @@
           {
             "renderTypeList": ["reference"],
             "selectedTypeIndex": 0,
-            "valueType": "string",
+            "valueType": "any",
             "canEdit": true,
-            "key": "url",
-            "label": "url",
-            "description": "待处理图片的URL",
+            "key": "files",
+            "label": "files",
+            "description": "待处理图片文件或URL",
             "required": true,
-            "toolDescription": "待处理图片的URL"
+            "toolDescription": "待处理图片文件或URL"
           },
           {
             "renderTypeList": ["switch"],
@@ -84,9 +84,9 @@
           },
           {
             "id": "url",
-            "valueType": "string",
-            "key": "url",
-            "label": "url",
+            "valueType": "any",
+            "key": "files",
+            "label": "files",
             "type": "hidden"
           },
           {
@@ -113,8 +113,8 @@
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1654.8021754314786,
-          "y": -22.243376051504086
+          "x": 2310.6027133602956,
+          "y": 35.5288060385617
         },
         "version": "481",
         "inputs": [
@@ -124,8 +124,17 @@
             "canEdit": true,
             "key": "result",
             "label": "result",
-            "description": "处理结果(或者是报错信息)",
+            "description": "处理结果",
             "value": ["zHG5jJBkXmjB", "xWQuEf50F3mr"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "failreason",
+            "label": "failreason",
+            "description": "文件处理失败原因，由文件名以及报错组成，多个文件之间由横线分隔开，如没有文件处理失败则为空",
+            "value": ["zHG5jJBkXmjB", "jbv4nVZvmFXm"]
           },
           {
             "renderTypeList": ["reference"],
@@ -133,8 +142,8 @@
             "canEdit": true,
             "key": "success",
             "label": "success",
-            "description": "是否处理成功",
-            "value": ["zHG5jJBkXmjB", "m6CJJj7GFud5"]
+            "description": "是否全部文件都处理成功，如有没有处理成功的文件，失败原因将会输出在failreason中",
+            "value": ["zHG5jJBkXmjB", "k46cjNulVk5Y"]
           }
         ],
         "outputs": []
@@ -147,8 +156,8 @@
         "flowNodeType": "httpRequest468",
         "showStatus": true,
         "position": {
-          "x": 1081.967607938733,
-          "y": -426.08028677656125
+          "x": 1627.5819643323605,
+          "y": -411.4492350666603
         },
         "version": "481",
         "inputs": [
@@ -220,7 +229,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"url\": \"{{url}}\",\n  \"img_correction\": {{img_correction}},\n  \"formula\": {{formula}}\n}",
+            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"files\": \"{{files}}\",\n  \"img_correction\": {{img_correction}},\n  \"formula\": {{formula}}\n}",
             "label": "",
             "required": false
           },
@@ -255,10 +264,10 @@
           },
           {
             "renderTypeList": ["reference"],
-            "valueType": "string",
+            "valueType": "any",
             "canEdit": true,
-            "key": "url",
-            "label": "url",
+            "key": "files",
+            "label": "files",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -280,7 +289,7 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": ["pluginInput", "url"]
+            "value": ["bW6JPV4tLh2C", "system_text"]
           },
           {
             "renderTypeList": ["reference"],
@@ -394,27 +403,129 @@
             "label": "result"
           },
           {
-            "id": "m6CJJj7GFud5",
+            "id": "jbv4nVZvmFXm",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "failreason",
+            "label": "failreason"
+          },
+          {
+            "id": "k46cjNulVk5Y",
             "valueType": "boolean",
             "type": "dynamic",
             "key": "success",
             "label": "success"
           }
         ]
+      },
+      {
+        "nodeId": "bW6JPV4tLh2C",
+        "name": "文本拼接",
+        "intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。",
+        "avatar": "core/workflow/template/textConcat",
+        "flowNodeType": "textEditor",
+        "position": {
+          "x": 1018.4040614736407,
+          "y": -41.70221452706835
+        },
+        "version": "486",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "可以引用其他节点的输出，作为文本拼接的变量，通过 {{字段名}} 来引用变量",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            }
+          },
+          {
+            "key": "system_textareaInput",
+            "renderTypeList": ["textarea"],
+            "valueType": "string",
+            "required": true,
+            "label": "拼接文本",
+            "placeholder": "可通过 {{字段名}} 来引用变量",
+            "value": "{{files}}"
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "any",
+            "canEdit": true,
+            "key": "files",
+            "label": "files",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "required": true,
+            "value": ["pluginInput", "url"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_text",
+            "key": "system_text",
+            "label": "拼接结果",
+            "type": "static",
+            "valueType": "string"
+          }
+        ]
       }
     ],
     "edges": [
-      {
-        "source": "pluginInput",
-        "target": "zHG5jJBkXmjB",
-        "sourceHandle": "pluginInput-source-right",
-        "targetHandle": "zHG5jJBkXmjB-target-left"
-      },
       {
         "source": "zHG5jJBkXmjB",
         "target": "pluginOutput",
         "sourceHandle": "zHG5jJBkXmjB-source-right",
         "targetHandle": "pluginOutput-target-left"
+      },
+      {
+        "source": "bW6JPV4tLh2C",
+        "target": "zHG5jJBkXmjB",
+        "sourceHandle": "bW6JPV4tLh2C-source-right",
+        "targetHandle": "zHG5jJBkXmjB-target-left"
+      },
+      {
+        "source": "pluginInput",
+        "target": "bW6JPV4tLh2C",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "bW6JPV4tLh2C-target-left"
       }
     ]
   }

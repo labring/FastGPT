@@ -1,9 +1,9 @@
 {
   "author": "Menghuan1918",
   "version": "488",
-  "name": "Doc2X PDF文件(URL)识别",
+  "name": "Doc2X PDF文件(文件)识别",
   "avatar": "plugins/doc2x",
-  "intro": "从URL下载PDF文件，并发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
+  "intro": "将上传的PDF文件发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
   "inputExplanationUrl": "https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview",
   "showStatus": true,
   "weight": 10,
@@ -41,13 +41,13 @@
           {
             "renderTypeList": ["reference"],
             "selectedTypeIndex": 0,
-            "valueType": "string",
+            "valueType": "arrayString",
             "canEdit": true,
-            "key": "url",
-            "label": "url",
-            "description": "待处理PDF文件的URL",
+            "key": "files",
+            "label": "files",
+            "description": "待处理的PDF文件",
             "required": true,
-            "toolDescription": "待处理PDF文件的URL"
+            "toolDescription": "待处理的PDF文件"
           },
           {
             "renderTypeList": ["switch"],
@@ -72,9 +72,9 @@
           },
           {
             "id": "url",
-            "valueType": "string",
-            "key": "url",
-            "label": "url",
+            "valueType": "arrayString",
+            "key": "files",
+            "label": "files",
             "type": "hidden"
           },
           {
@@ -94,8 +94,8 @@
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1654.8021754314786,
-          "y": -22.243376051504086
+          "x": 1649.7796447278438,
+          "y": -96.05331527115042
         },
         "version": "481",
         "inputs": [
@@ -105,8 +105,17 @@
             "canEdit": true,
             "key": "result",
             "label": "result",
-            "description": "处理结果(或者是报错信息)",
+            "description": "处理结果，由文件名以及文档内容组成，多个文件之间由横线分隔开",
             "value": ["zHG5jJBkXmjB", "xWQuEf50F3mr"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "failreason",
+            "label": "failreason",
+            "description": "文件处理失败原因，由文件名以及报错组成，多个文件之间由横线分隔开",
+            "value": ["zHG5jJBkXmjB", "yDxzW5CFalGw"]
           },
           {
             "renderTypeList": ["reference"],
@@ -114,7 +123,7 @@
             "canEdit": true,
             "key": "success",
             "label": "success",
-            "description": "是否处理成功",
+            "description": "是否全部文件都处理成功，如有没有处理成功的文件，失败原因将会输出在failreason中",
             "value": ["zHG5jJBkXmjB", "m6CJJj7GFud5"]
           }
         ],
@@ -128,8 +137,8 @@
         "flowNodeType": "httpRequest468",
         "showStatus": true,
         "position": {
-          "x": 1081.967607938733,
-          "y": -426.08028677656125
+          "x": 1077.7986740892777,
+          "y": -496.9521622173004
         },
         "version": "481",
         "inputs": [
@@ -177,7 +186,7 @@
             "description": "core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "Doc2X/URLPDF2text"
+            "value": "Doc2X/FilePDF2text"
           },
           {
             "key": "system_httpHeader",
@@ -201,7 +210,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"url\": \"{{url}}\",\n  \"ocr\": {{ocr}}\n}",
+            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"files\": {{files}},\n  \"ocr\": {{ocr}}\n}",
             "label": "",
             "required": false
           },
@@ -236,10 +245,10 @@
           },
           {
             "renderTypeList": ["reference"],
-            "valueType": "string",
+            "valueType": "arrayString",
             "canEdit": true,
-            "key": "url",
-            "label": "url",
+            "key": "files",
+            "label": "files",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -351,6 +360,13 @@
             "type": "dynamic",
             "key": "success",
             "label": "success"
+          },
+          {
+            "id": "yDxzW5CFalGw",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "failreason",
+            "label": "failreason"
           }
         ]
       }
