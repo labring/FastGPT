@@ -79,8 +79,8 @@ services:
     restart: always
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.8.8-fix2 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.8-fix2 # 阿里云
+    image: ghcr.io/labring/fastgpt:v4.8.9 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.9 # 阿里云
     ports:
       - 3000:3000
     networks:
