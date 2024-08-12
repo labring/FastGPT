@@ -119,9 +119,9 @@ const CreateModal = ({
           avatar: data.avatar,
           name: data.name,
           type,
-          modules: emptyTemplates?.[type].nodes,
-          edges: emptyTemplates?.[type].edges,
-          chatConfig: emptyTemplates?.[type].chatConfig
+          modules: emptyTemplates[type].nodes,
+          edges: emptyTemplates[type].edges,
+          chatConfig: emptyTemplates[type].chatConfig
         });
       }
 
