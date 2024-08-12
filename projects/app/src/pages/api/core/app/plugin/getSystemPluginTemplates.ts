@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { NextAPI } from '@/service/middleware/entry';
-import { getSystemPluginTemplates } from '@fastgpt/plugins/register';
+import { getSystemPlugins } from '@/service/core/app/plugin';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
@@ -24,7 +24,7 @@ async function handler(
 
   const formatParentId = parentId || null;
 
-  return getSystemPluginTemplates().then((res) =>
+  return getSystemPlugins().then((res) =>
     res
       // Just show the active plugins
       .filter((item) => item.isActive)

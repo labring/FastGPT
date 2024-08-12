@@ -1,12 +1,12 @@
+import { getSystemPlugins } from '@/service/core/app/plugin';
 import { initSystemConfig } from '.';
 import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training/utils';
-import { getSystemPluginTemplates } from '@fastgpt/plugins/register';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { MongoSystemPluginSchema } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
 
 export const startMongoWatch = async () => {
   reloadConfigWatch();
-  refetchSystemPlugin();
+  refetchSystemPlugins();
   createDatasetTrainingMongoWatch();
 };
 
@@ -23,12 +23,12 @@ const reloadConfigWatch = () => {
   });
 };
 
-const refetchSystemPlugin = () => {
+const refetchSystemPlugins = () => {
   const changeStream = MongoSystemPluginSchema.watch();
 
   changeStream.on('change', async (change) => {
     try {
-      getSystemPluginTemplates(true);
+      getSystemPlugins(true);
     } catch (error) {}
   });
 };
