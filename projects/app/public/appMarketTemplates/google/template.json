@@ -4,7 +4,6 @@
   "intro": "通过请求谷歌搜索，查询相关内容作为模型的参考。",
   "author": "Fastgpt Team",
   "avatar": "/appMarketTemplates/google/avatar.svg",
-  "authorAvatar": "/icon/logo.svg",
   "tags": ["recommendation", "web-search"],
   "type": "advanced",
   "workflow": {
