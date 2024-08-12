@@ -61,9 +61,7 @@ const getPluginTemplateById = async (
       currentCost: 0
     };
   } else {
-    const item = [...global.communityPlugins, ...(await getSystemPluginTemplates())].find(
-      (plugin) => plugin.id === pluginId
-    );
+    const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
     if (!item) return Promise.reject('plugin not found');
 
     return cloneDeep(item);
