@@ -32,7 +32,8 @@ export enum ChatSourceEnum {
   online = 'online',
   share = 'share',
   api = 'api',
-  team = 'team'
+  team = 'team',
+  feishu = 'feishu'
 }
 export const ChatSourceMap = {
   [ChatSourceEnum.test]: {
@@ -49,6 +50,9 @@ export const ChatSourceMap = {
   },
   [ChatSourceEnum.team]: {
     name: i18nT('common:core.chat.logs.team')
+  },
+  [ChatSourceEnum.feishu]: {
+    name: i18nT('common:core.chat.logs.feishu')
   }
 };
 
