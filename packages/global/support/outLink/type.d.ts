@@ -13,11 +13,15 @@ export interface FeishuAppType {
   verificationToken?: string;
 }
 
-// TODO: Unused
 export interface WecomAppType {
   SuiteId: string;
   SuiteSecret: string;
+  CallbackToken: string;
+  CallbackEncodingAesKey: string;
 }
+
+// TODO: unused
+export interface WechatAppType {}
 
 export type OutlinkAppType = FeishuAppType | WecomAppType | undefined;
 
