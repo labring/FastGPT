@@ -102,7 +102,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
   > 使用 [Sealos](https://sealos.io) 服务，无需采购服务器、无需域名，支持高并发 & 动态伸缩，并且数据库应用采用 kubeblocks 的数据库，在 IO 性能方面，远超于简单的 Docker 容器部署。
 
-  [点击查看 Sealos 一键部署 FastGPT 教材](https://doc.fastgpt.in/docs/development/sealos/)
+  [点击查看 Sealos 一键部署 FastGPT 教程](https://doc.fastgpt.in/docs/development/sealos/)
 
 * [快速开始本地开发](https://doc.fastgpt.in/docs/development/intro/)
 * [部署 FastGPT](https://doc.fastgpt.in/docs/development/sealos)
