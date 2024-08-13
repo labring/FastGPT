@@ -29,6 +29,7 @@
   "UnKnow": "Unknown",
   "Warning": "Warning",
   "add_new": "Add new",
+  "back": "return",
   "chose_condition": "Selection criteria",
   "chosen": "selected",
   "classification": "Classification",
@@ -36,6 +37,8 @@
   "code_editor": "Code edit",
   "code_error": {
     "app_error": {
+      "invalid_app_type": "Wrong application type",
+      "invalid_owner": "Illegal app owner",
       "not_exist": "App does not exist",
       "un_auth_app": "No permission to operate this application"
     },
@@ -237,6 +240,7 @@
       "empty": "This directory has nothing selectable~",
       "open_dataset": "Open knowledge base"
     },
+    "have_done": "Completed",
     "input": {
       "Repeat Value": "Duplicate value"
     },
@@ -258,6 +262,9 @@
       "error tip": "Speech to text failed",
       "not support": "Your browser does not support speech input"
     },
+    "submit_success": "Submitted successfully",
+    "submitted": "Submitted",
+    "submitting": "Submitting",
     "support": "support",
     "system": {
       "Commercial version function": "Commercial version feature",
@@ -599,8 +606,7 @@
             "success": "Start syncing"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",
@@ -1057,6 +1063,7 @@
     "Tools": "Tools"
   },
   "new_create": "Create New",
+  "no": "no",
   "no_data": "No data",
   "no_laf_env": "The system is not configured with Laf environment",
   "not_yet_introduced": "No introduction yet",
@@ -1092,7 +1099,12 @@
     "Resume InheritPermission Confirm": "Whether to resume to inherit the parent folder's permission?",
     "Resume InheritPermission Failed": "Resume Failed",
     "Resume InheritPermission Success": "Resume Success",
-    "change_owner_tip": "Your permissions will not be retained after transfer"
+    "change_owner": "transfer ownership",
+    "change_owner_failed": "Transfer ownership failed",
+    "change_owner_placeholder": "Enter username to find account",
+    "change_owner_success": "Successfully transferred ownership",
+    "change_owner_tip": "Your administrator rights will be retained after the transfer",
+    "change_owner_to": "transferred to"
   },
   "plugin": {
     "App": "Select app",
@@ -1220,6 +1232,7 @@
       "Standard Plan Detail": "Plan details",
       "To read plan": "View plan",
       "amount_0": "The purchase quantity cannot be 0",
+      "apply_invoice": "Apply for making an invoice",
       "bill": {
         "Number": "Order number",
         "Status": "Status",
@@ -1236,12 +1249,33 @@
           "success": "Payment successful"
         }
       },
+      "bill_tag": {
+        "bill": "billing records",
+        "default_header": "Default header",
+        "invoice": "Invoicing records"
+      },
       "buy_resource": "Purchase resource pack",
+      "invoice_amount": "Invoice amount",
+      "invoice_data": {
+        "bank": "Bank of deposit",
+        "bank_account": "Account opening account",
+        "company_address": "Company address",
+        "company_phone": "Company phone number",
+        "email": "Email address",
+        "in_valid": "There are empty fields or incorrect email formats",
+        "need_special_invoice": "Do you need a special ticket?",
+        "organization_name": "Organization name",
+        "unit_code": "same credit code"
+      },
+      "invoice_detail": "Invoice details",
+      "invoice_info": "The invoice will be sent to your mailbox within 3-7 working days, please be patient.",
+      "invoicing": "Invoicing",
       "moduleName": {
         "index": "Index generation",
         "qa": "QA split"
       },
       "noBill": "No bill records~",
+      "no_invoice": "No invoicing record yet",
       "subscription": {
         "AI points": "AI points",
         "AI points click to read tip": "Each call to the AI model will consume a certain amount of AI points (similar to Tokens). Click to view detailed calculation rules.",
@@ -1315,7 +1349,8 @@
         "Total points": "AI points consumed",
         "Usage Detail": "Usage details",
         "Whisper": "Voice input"
-      }
+      },
+      "use_default": "Use default header"
     }
   },
   "sync_link": "Sync Link",
@@ -1435,5 +1470,6 @@
     "type": "type"
   },
   "verification": "verify",
-  "xx_search_result": "{{key}} Search results"
+  "xx_search_result": "{{key}} Search results",
+  "yes": "yes"
 }

@@ -75,6 +75,7 @@
     "unit": "Number"
   },
   "move_app": "Move app",
+  "no": "no",
   "paste_config": "Paste Config",
   "plugin_cost_per_times": "{{cost}}/per time",
   "plugin_dispatch": "Plugins",
@@ -84,6 +85,27 @@
   "search_app": "Search app",
   "setting_app": "Settings",
   "setting_plugin": "Setting plugin",
+  "support": {
+    "wallet": {
+      "bill_tag": {
+        "bill": "billing records",
+        "default_header": "Default header",
+        "invoice": "Invoicing records"
+      },
+      "invoice_data": {
+        "bank": "Bank of deposit",
+        "bank_account": "Account opening account",
+        "company_address": "company address",
+        "company_phone": "company phone",
+        "email": "email address",
+        "in_valid": "There are empty fields or incorrect email formats",
+        "need_special_invoice": "Do you need a special ticket?",
+        "organization_name": "name of association",
+        "unit_code": "same credit code"
+      },
+      "invoicing": "Invoicing"
+    }
+  },
   "template": {
     "simple_robot": "Simple Robot"
   },
@@ -150,5 +172,6 @@
     },
     "user_file_input": "Files url",
     "user_file_input_desc": "Links to documents and images uploaded by users"
-  }
+  },
+  "yes": "yes"
 }

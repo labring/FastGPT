@@ -14,6 +14,7 @@ import {
   TeamMemberSchema
 } from '@fastgpt/global/support/user/team/type.d';
 import { FeTeamPlanStatusType, TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
+import { TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
 
 /* --------------- team  ---------------- */
 export const getTeamList = (status: `${TeamMemberSchema['status']}`) =>
@@ -61,3 +62,9 @@ export const getTeamPlanStatus = () =>
   GET<FeTeamPlanStatusType>(`/support/user/team/plan/getTeamPlanStatus`, { maxQuantity: 1 });
 export const getTeamPlans = () =>
   GET<TeamSubSchema[]>(`/proApi/support/user/team/plan/getTeamPlans`);
+
+export const getTeamInvoiceHeader = () =>
+  GET<TeamInvoiceHeaderType>(`/proApi/support/user/team/invoiceAccount/getTeamInvoiceHeader`);
+
+export const updateTeamInvoiceHeader = (data: TeamInvoiceHeaderType) =>
+  POST(`/proApi/support/user/team/invoiceAccount/update`, data);

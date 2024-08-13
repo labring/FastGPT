@@ -102,8 +102,6 @@ const BillTable = () => {
       position={'relative'}
       h={'100%'}
       overflow={'overlay'}
-      py={[0, 5]}
-      px={[3, 8]}
     >
       <TableContainer>
         <Table>
