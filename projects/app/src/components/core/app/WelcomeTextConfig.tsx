@@ -22,6 +22,7 @@ const WelcomeTextConfig = (props: TextareaProps) => {
         mt={2}
         rows={6}
         fontSize={'sm'}
+        bg={'myGray.50'}
         placeholder={t('common:core.app.tip.welcomeTextTip')}
         {...props}
       />

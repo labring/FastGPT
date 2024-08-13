@@ -10,7 +10,7 @@ const Avatar = ({ w = '30px', src, ...props }: ImageProps) => {
   const isIcon = !!iconPaths[src as any];
 
   return isIcon ? (
-    <Box {...props}>
+    <Box display={'inline-flex'} {...props}>
       <MyIcon name={src as any} w={w} borderRadius={props.borderRadius} />
     </Box>
   ) : (

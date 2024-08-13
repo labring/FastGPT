@@ -29,6 +29,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from './render/ValueTypeLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { isWorkflowStartOutput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { getWebLLMModel } from '@/web/common/system/utils';
 
 const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -46,8 +47,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       if (item.flowNodeType === FlowNodeTypeEnum.chatNode) {
         const model =
           item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
-        const quoteMaxToken =
-          llmModelList.find((item) => item.model === model)?.quoteMaxToken || 3000;
+        const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 3000;
 
         maxTokens = Math.max(maxTokens, quoteMaxToken);
       }

@@ -15,9 +15,15 @@ type Props = {
   llmModelType?: `${LLMModelTypeEnum}`;
   defaultData: SettingAIDataType;
   onChange: (e: SettingAIDataType) => void;
+  bg?: string;
 };
 
-const SettingLLMModel = ({ llmModelType = LLMModelTypeEnum.all, defaultData, onChange }: Props) => {
+const SettingLLMModel = ({
+  llmModelType = LLMModelTypeEnum.all,
+  defaultData,
+  onChange,
+  bg = 'white'
+}: Props) => {
   const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
 
@@ -63,6 +69,7 @@ const SettingLLMModel = ({ llmModelType = LLMModelTypeEnum.all, defaultData, onC
           w={'100%'}
           justifyContent={'flex-start'}
           variant={'whiteFlow'}
+          bg={bg}
           _active={{
             transform: 'none'
           }}

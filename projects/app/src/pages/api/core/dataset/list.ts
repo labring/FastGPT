@@ -36,6 +36,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
       return await authDataset({
         req,
         authToken: true,
+        authApiKey: true,
         per: ReadPermissionVal,
         datasetId: parentId
       });

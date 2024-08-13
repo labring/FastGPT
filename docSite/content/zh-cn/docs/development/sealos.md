@@ -19,15 +19,36 @@ FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI 、A
 
 
 ## 一键部署
-Sealos 的服务器在国外，不需要额外处理网络问题，无需服务器、无需魔法、无需域名，支持高并发 & 动态伸缩。点击以下按钮即可一键部署 👇
+
+使用 Sealos 服务，无需采购服务器、无需域名，支持高并发 & 动态伸缩，并且数据库应用采用 kubeblocks 的数据库，在 IO 性能方面，远超于简单的 Docker 容器部署。可以根据需求，再下面两个区域选择部署。
+
+### 新加坡区
+
+新加披区的服务器在国外，可以直接访问 OpenAI，但国内用户需要梯子才可以正常访问新加坡区。国际区价格稍贵，点击下面按键即可部署👇
 
 <a href="https://template.cloud.sealos.io/deploy?templateName=fastgpt" rel="external" target="_blank"><img src="https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg" alt="Deploy on Sealos"/></a>
 
+### 北京区
+
+北京区服务提供商为火山云，国内用户可以稳定访问，但无法访问 OpenAI 等境外服务，价格约为新加坡区的 1/4。点击下面按键即可部署👇
+
+<a href="https://bja.sealos.run/?openapp=system-template%3FtemplateName%3Dfastgpt" rel="external" target="_blank"><img src="https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg" alt="Deploy on Sealos"/></a>
+
+### 开始部署
+
 由于需要部署数据库，部署完后需要等待 2~4 分钟才能正常访问。默认用了最低配置，首次访问时会有些慢。
+
+根据提示，输入`root_password`，和 `openai`/`oneapi` 的地址和密钥。
 
 ![](/imgs/sealos1.png)
 
-点击 Sealos 提供的外网地址即可打开 FastGPT 的可视化界面。
+点击部署后，会跳转到应用管理页面。可以点击`fastgpt`主应用右侧的详情按键（名字为 fastgpt-xxxx）， 如下图所示。
+
+![](/imgs/sealos-deploy1.jpg)
+
+点击详情后，会跳转到 fastgpt 的部署管理页面，点击外网访问地址中的链接，即可打开 fastgpt 服务。
+
+如需绑定自定义域名、修改部署参数，可以点击右上角变更，根据 sealos 的指引完成。
 
 ![](/imgs/sealos2.png)
 
@@ -52,6 +73,10 @@ Sealos 的服务器在国外，不需要额外处理网络问题，无需服务�
 ### 更新
 
 点击变更或重启会自动拉取镜像更新，请确保镜像`tag`正确。建议不要使用`latest`，改成固定版本号。
+
+## 收费
+
+Sealos 采用按量计费的方式，也就是申请了多少 cpu、内存、磁盘，就按该申请量进行计费。具体的计费标准，可以打开`sealos`控制面板中的`费用中心`进行查看。
 
 ## Sealos 使用
 

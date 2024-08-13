@@ -24,7 +24,7 @@ import { FlowNodeTemplateType, StoreNodeItemType } from './node';
 export type WorkflowTemplateBasicType = {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
-  chatConfigs?: AppChatConfigType;
+  chatConfig?: AppChatConfigType;
 };
 export type WorkflowTemplateType = {
   id: string;
@@ -46,7 +46,18 @@ export type WorkflowTemplateType = {
 
 // template market
 export type TemplateMarketItemType = WorkflowTemplateType & {
-  tags?: { id: string; label: string }[];
+  tags: string[];
+  type: AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
+};
+// template market list
+export type TemplateMarketListItemType = {
+  id: string;
+  name: string;
+  intro?: string;
+  author?: string;
+  tags: string[];
+  type: AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
+  avatar: string;
 };
 
 // system plugin

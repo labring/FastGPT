@@ -61,6 +61,7 @@ export const iconPaths = {
   'common/text/t': () => import('./icons/common/text/t.svg'),
   'common/tickFill': () => import('./icons/common/tickFill.svg'),
   'common/trash': () => import('./icons/common/trash.svg'),
+  'common/upRightArrowLight': () => import('./icons/common/upRightArrowLight.svg'),
   'common/uploadFileFill': () => import('./icons/common/uploadFileFill.svg'),
   'common/viewLight': () => import('./icons/common/viewLight.svg'),
   'common/voiceLight': () => import('./icons/common/voiceLight.svg'),
@@ -199,6 +200,7 @@ export const iconPaths = {
     import('./icons/core/workflow/template/queryExtension.svg'),
   'core/workflow/template/questionClassify': () =>
     import('./icons/core/workflow/template/questionClassify.svg'),
+  'core/workflow/template/readFiles': () => import('./icons/core/workflow/template/readFiles.svg'),
   'core/workflow/template/reply': () => import('./icons/core/workflow/template/reply.svg'),
   'core/workflow/template/runApp': () => import('./icons/core/workflow/template/runApp.svg'),
   'core/workflow/template/stopTool': () => import('./icons/core/workflow/template/stopTool.svg'),

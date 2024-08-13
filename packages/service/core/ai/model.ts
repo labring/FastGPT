@@ -1,20 +1,28 @@
 export const getLLMModel = (model?: string) => {
-  return global.llmModels.find((item) => item.model === model) ?? global.llmModels[0];
+  return (
+    global.llmModels.find((item) => item.model === model || item.name === model) ??
+    global.llmModels[0]
+  );
 };
 export const getDatasetModel = (model?: string) => {
   return (
-    global.llmModels?.filter((item) => item.datasetProcess)?.find((item) => item.model === model) ??
-    global.llmModels[0]
+    global.llmModels
+      ?.filter((item) => item.datasetProcess)
+      ?.find((item) => item.model === model || item.name === model) ?? global.llmModels[0]
   );
 };
 
 export const getVectorModel = (model?: string) => {
-  return global.vectorModels.find((item) => item.model === model) || global.vectorModels[0];
+  return (
+    global.vectorModels.find((item) => item.model === model || item.name === model) ||
+    global.vectorModels[0]
+  );
 };
 
 export function getAudioSpeechModel(model?: string) {
   return (
-    global.audioSpeechModels.find((item) => item.model === model) || global.audioSpeechModels[0]
+    global.audioSpeechModels.find((item) => item.model === model || item.name === model) ||
+    global.audioSpeechModels[0]
   );
 }
 

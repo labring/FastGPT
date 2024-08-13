@@ -1,0 +1,234 @@
+{
+  "name": "飞书 webhook 插件",
+  "intro": "通过 webhook 给飞书机器人发送一条消息",
+  "author": "Fastgpt",
+  "avatar": "/appMarketTemplates/plugin-feishu/avatar.svg",
+  "type": "plugin",
+  "tags": ["recommendation", "office-services"],
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "自定义插件输入",
+        "intro": "自定义配置外部输入，使用插件时，仅暴露自定义配置的输入",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 517.5620777851774,
+          "y": -173.55711888178655
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "inputType": "input",
+            "valueType": "string",
+            "key": "飞书机器人地址",
+            "label": "飞书机器人地址",
+            "description": "",
+            "isToolInput": false,
+            "defaultValue": "",
+            "editField": {
+              "key": true
+            },
+            "dynamicParamDefaultValue": {
+              "inputType": "reference",
+              "valueType": "string",
+              "required": true
+            },
+            "renderTypeList": ["input"],
+            "required": true,
+            "canEdit": true,
+            "value": ""
+          },
+          {
+            "key": "发送的消息",
+            "valueType": "string",
+            "label": "发送的消息",
+            "renderTypeList": ["reference"],
+            "required": true,
+            "description": "",
+            "canEdit": true,
+            "value": "",
+            "editField": {
+              "key": true
+            },
+            "dynamicParamDefaultValue": {
+              "inputType": "reference",
+              "valueType": "string",
+              "required": true
+            }
+          }
+        ],
+        "outputs": [
+          {
+            "id": "mv52BrPVE6bm",
+            "key": "飞书机器人地址",
+            "valueType": "string",
+            "label": "飞书机器人地址",
+            "type": "static"
+          },
+          {
+            "id": "p0m68Dv5KaIp",
+            "key": "发送的消息",
+            "valueType": "string",
+            "label": "发送的消息",
+            "type": "static"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "自定义插件输出",
+        "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
+        "avatar": "/imgs/workflow/output.png",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 1668.9410524554828,
+          "y": -153.47815316221283
+        },
+        "version": "481",
+        "inputs": [],
+        "outputs": []
+      },
+      {
+        "nodeId": "rKBYGQuYefae",
+        "name": "HTTP 请求",
+        "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
+        "avatar": "core/workflow/template/httpRequest",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 1069.7228495148624,
+          "y": -392.26482361861054
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "core.module.input.description.HTTP Dynamic Input"
+          },
+          {
+            "key": "text",
+            "valueType": "string",
+            "label": "text",
+            "renderTypeList": ["reference"],
+            "description": "",
+            "canEdit": true,
+            "editField": {
+              "key": true,
+              "valueType": true
+            },
+            "value": ["pluginInput", "p0m68Dv5KaIp"]
+          },
+          {
+            "key": "url",
+            "valueType": "string",
+            "label": "url",
+            "renderTypeList": ["reference"],
+            "description": "",
+            "canEdit": true,
+            "editField": {
+              "key": true,
+              "valueType": true
+            },
+            "value": ["pluginInput", "mv52BrPVE6bm"]
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": ["custom"],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "label": "",
+            "description": "core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "{{url}}"
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": ["custom"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "description": "core.module.input.description.Http Request Header",
+            "placeholder": "core.module.input.description.Http Request Header",
+            "required": false
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": "{\r\n    \"msg_type\": \"text\",\r\n    \"content\": {\r\n        \"text\": \"{{text}}\"\r\n    }\r\n}",
+            "label": "",
+            "required": false
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "editField": {
+              "key": true,
+              "valueType": true
+            }
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "请求错误",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "label": "原始响应",
+            "required": true,
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "pluginInput",
+        "target": "rKBYGQuYefae",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "rKBYGQuYefae-target-left"
+      },
+      {
+        "source": "rKBYGQuYefae",
+        "target": "pluginOutput",
+        "sourceHandle": "rKBYGQuYefae-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      }
+    ]
+  }
+}

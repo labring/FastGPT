@@ -188,7 +188,7 @@ const toolChoice = async (props: ActionProps) => {
 
   const response = await ai.chat.completions.create({
     model: cqModel.model,
-    temperature: 0,
+    temperature: 0.01,
     messages: filterMessages,
     tools,
     tool_choice: { type: 'function', function: { name: agentFunName } }
@@ -235,7 +235,7 @@ const functionCall = async (props: ActionProps) => {
 
   const response = await ai.chat.completions.create({
     model: cqModel.model,
-    temperature: 0,
+    temperature: 0.01,
     messages: filterMessages,
     function_call: {
       name: agentFunName

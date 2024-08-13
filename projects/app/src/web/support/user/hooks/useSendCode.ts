@@ -4,7 +4,6 @@ import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { i18nT } from '@fastgpt/web/i18n/utils';
 let timer: NodeJS.Timeout;
 
 export const useSendCode = () => {
@@ -29,8 +28,8 @@ export const useSendCode = () => {
       }, 1000);
     },
     {
-      successToast: i18nT('user:password.code_sended'),
-      errorToast: i18nT('user:password.code_send_error'),
+      successToast: t('user:password.code_sended'),
+      errorToast: t('user:password.code_send_error'),
       refreshDeps: [codeCountDown, feConfigs?.googleClientVerKey]
     }
   );

@@ -3,7 +3,7 @@
   "version": "488",
   "name": "Doc2X 图像(URL)识别",
   "avatar": "plugins/doc2x",
-  "intro": "将传入的图片(URL)发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
+  "intro": "从URL下载图片并发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
   "inputExplanationUrl": "https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview",
   "showStatus": true,
   "weight": 10,
@@ -220,7 +220,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"url\": \"{{url}}\",\n  \"img_correction\": \"{{img_correction}}\",\n  \"formula\": \"{{img_correction}}\"\n}",
+            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"url\": \"{{url}}\",\n  \"img_correction\": {{img_correction}},\n  \"formula\": {{formula}}\n}",
             "label": "",
             "required": false
           },

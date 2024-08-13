@@ -6,9 +6,9 @@
 
 | 模型名           | 内存  | 显存  | 硬盘空间 | 启动命令      |
 | ---------------- | ----- | ----- | -------- | ------------- |
-| bge-rerank-base  | >=4GB | >=4GB | >=8GB    | python app.py |
-| bge-rerank-large | >=8GB | >=8GB | >=8GB    | python app.py |
-| bge-rerank-v2-m3 | >=8GB | >=8GB | >=8GB    | python app.py |
+| bge-reranker-base  | >=4GB | >=4GB | >=8GB    | python app.py |
+| bge-reranker-large | >=8GB | >=8GB | >=8GB    | python app.py |
+| bge-reranker-v2-m3 | >=8GB | >=8GB | >=8GB    | python app.py |
 
 ## 源码部署
 
@@ -24,7 +24,7 @@
 
 1. [https://github.com/labring/FastGPT/tree/main/python/reranker/bge-reranker-base](https://github.com/labring/FastGPT/tree/main/python/reranker/bge-reranker-base)
 2. [https://github.com/labring/FastGPT/tree/main/python/reranker/bge-reranker-large](https://github.com/labring/FastGPT/tree/main/python/reranker/bge-reranker-large)
-3. [https://github.com/labring/FastGPT/tree/main/python/reranker/bge-rerank-v2-m3](https://github.com/labring/FastGPT/tree/main/python/reranker/bge-rerank-v2-m3)
+3. [https://github.com/labring/FastGPT/tree/main/python/reranker/bge-reranker-v2-m3](https://github.com/labring/FastGPT/tree/main/python/reranker/bge-reranker-v2-m3)
 
 ### 3. 安装依赖
 
@@ -38,7 +38,7 @@ pip install -r requirements.txt
 
 1. [https://huggingface.co/BAAI/bge-reranker-base](https://huggingface.co/BAAI/bge-reranker-base)
 2. [https://huggingface.co/BAAI/bge-reranker-large](https://huggingface.co/BAAI/bge-reranker-large)
-3. [https://huggingface.co/BAAI/bge-rerank-v2-m3](https://huggingface.co/BAAI/bge-rerank-v2-m3)
+3. [https://huggingface.co/BAAI/bge-reranker-v2-m3](https://huggingface.co/BAAI/bge-reranker-v2-m3)
 
 在对应代码目录下 clone 模型。目录结构：
 
@@ -111,4 +111,4 @@ services:
 
 ## 接入 FastGPT
 
-参考 [ReRank模型接入](https://doc/fastai.site/docs/development/configuration/#rerank-接入)
+参考 [ReRank模型接入](https://doc.fastgpt.in/docs/development/configuration/#rerank-接入)
