@@ -26,7 +26,7 @@ export const TextEditorNode: FlowNodeTemplateType = {
   inputs: [
     {
       ...Input_Template_DynamicInput,
-      description: '可以引用其他节点的输出，作为文本拼接的变量，通过 {{字段名}} 来引用变量',
+      description: '可以引用其他节点的输出，作为文本拼接的变量，输入 / 唤起变量列表',
       customInputConfig: {
         selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
         showDescription: false,
@@ -39,7 +39,7 @@ export const TextEditorNode: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.string,
       required: true,
       label: '拼接文本',
-      placeholder: '可通过 {{字段名}} 来引用变量'
+      placeholder: '可输入 / 唤起变量列表'
     }
   ],
   outputs: [
