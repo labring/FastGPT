@@ -52,7 +52,7 @@ const OutLink = () => {
       title: t('publish:wecom.bot'),
       desc: t('publish:wecom.bot_desc'),
       value: PublishChannelEnum.wecom,
-      isProFn: true,
+      isProFn: true
     }
   ]);
 
