@@ -25,7 +25,14 @@ export interface WecomAppType {
 // TODO: unused
 export interface WechatAppType {}
 
-export type OutlinkAppType = FeishuAppType | WecomAppType | undefined;
+export interface OffiAccountAppType {
+  appId: string;
+  secret: string;
+  token: string;
+  encodingAESKey: string;
+}
+
+export type OutlinkAppType = FeishuAppType | WecomAppType | OffiAccountAppType | undefined;
 
 export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   _id: string;
