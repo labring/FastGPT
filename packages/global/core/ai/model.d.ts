@@ -6,6 +6,8 @@ export type LLMModelItemType = {
   maxResponse: number;
   quoteMaxToken: number;
   maxTemperature: number;
+  minQAChunkSize?: number;
+  maxQAChunkSize?: number;
 
   charsPointsPrice: number; // 1k chars=n points
 
