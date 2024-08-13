@@ -1,5 +1,14 @@
 import React, { useCallback, useMemo } from 'react';
-import { Connection, NodeChange, OnConnectStartParams, addEdge, EdgeChange, Edge } from 'reactflow';
+import {
+  Connection,
+  NodeChange,
+  OnConnectStartParams,
+  addEdge,
+  EdgeChange,
+  Edge,
+  applyNodeChanges,
+  Node
+} from 'reactflow';
 import { EDGE_TYPE } from '@fastgpt/global/core/workflow/node/constant';
 import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -8,6 +17,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useKeyboard } from './useKeyboard';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
+import { useWorkflowUtils } from './useUtils';
 
 export const useWorkflow = () => {
   const { toast } = useToast();
@@ -18,12 +28,47 @@ export const useWorkflow = () => {
   });
 
   const { isDowningCtrl } = useKeyboard();
-  const { setConnectingEdge, nodes, onNodesChange, setEdges, onEdgesChange, setHoverEdgeId } =
-    useContextSelector(WorkflowContext, (v) => v);
+  const {
+    setConnectingEdge,
+    nodes,
+    setNodes,
+    onNodesChange,
+    setEdges,
+    onEdgesChange,
+    setHoverEdgeId,
+    setHelperLineHorizontal,
+    setHelperLineVertical
+  } = useContextSelector(WorkflowContext, (v) => v);
+
+  const { getHelperLines } = useWorkflowUtils();
+
+  const customApplyNodeChanges = useCallback((changes: NodeChange[], nodes: Node[]): Node[] => {
+    setHelperLineHorizontal(undefined);
+    setHelperLineVertical(undefined);
+
+    if (
+      changes.length === 1 &&
+      changes[0].type === 'position' &&
+      changes[0].dragging &&
+      changes[0].position
+    ) {
+      const helperLines = getHelperLines(changes[0], nodes);
+
+      changes[0].position.x = helperLines.snapPosition.x ?? changes[0].position.x;
+      changes[0].position.y = helperLines.snapPosition.y ?? changes[0].position.y;
+
+      setHelperLineHorizontal(helperLines.horizontal);
+      setHelperLineVertical(helperLines.vertical);
+    }
+
+    return applyNodeChanges(changes, nodes);
+  }, []);
 
   /* node */
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      setNodes((nodes) => customApplyNodeChanges(changes, nodes));
+
       for (const change of changes) {
         if (change.type === 'remove') {
           const node = nodes.find((n) => n.id === change.id);

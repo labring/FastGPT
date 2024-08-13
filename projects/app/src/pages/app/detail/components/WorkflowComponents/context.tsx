@@ -48,6 +48,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { formatTime2HM, formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import type { InitProps } from '@/pages/app/detail/components/PublishHistoriesSlider';
 import { cloneDeep } from 'lodash';
+import { THelperLine } from '@fastgpt/global/core/workflow/type';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -134,6 +135,12 @@ type WorkflowContextType = {
   // version history
   historiesDefaultData?: InitProps;
   setHistoriesDefaultData: React.Dispatch<React.SetStateAction<undefined | InitProps>>;
+
+  // helper line
+  helperLineHorizontal?: THelperLine;
+  setHelperLineHorizontal: React.Dispatch<React.SetStateAction<THelperLine | undefined>>;
+  helperLineVertical?: THelperLine;
+  setHelperLineVertical: React.Dispatch<React.SetStateAction<THelperLine | undefined>>;
 
   // chat test
   setWorkflowTestData: React.Dispatch<
@@ -258,6 +265,14 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   saveLabel: '',
   historiesDefaultData: undefined,
   setHistoriesDefaultData: function (value: React.SetStateAction<InitProps | undefined>): void {
+    throw new Error('Function not implemented.');
+  },
+  helperLineHorizontal: undefined,
+  setHelperLineHorizontal: function (value: React.SetStateAction<THelperLine | undefined>): void {
+    throw new Error('Function not implemented.');
+  },
+  helperLineVertical: undefined,
+  setHelperLineVertical: function (value: React.SetStateAction<THelperLine | undefined>): void {
     throw new Error('Function not implemented.');
   },
   getNodeDynamicInputs: function (nodeId: string): FlowNodeInputItemType[] {
@@ -728,6 +743,11 @@ const WorkflowContextProvider = ({
   /* Version histories */
   const [historiesDefaultData, setHistoriesDefaultData] = useState<InitProps>();
 
+  /* helper line */
+  const [helperLineHorizontal, setHelperLineHorizontal] = useState<THelperLine | undefined>(
+    undefined
+  );
+  const [helperLineVertical, setHelperLineVertical] = useState<THelperLine | undefined>(undefined);
   /* event bus */
   useEffect(() => {
     eventBus.on(EventNameEnum.requestWorkflowStore, () => {
@@ -796,6 +816,12 @@ const WorkflowContextProvider = ({
     // version history
     historiesDefaultData,
     setHistoriesDefaultData,
+
+    // helper line
+    helperLineHorizontal,
+    setHelperLineHorizontal,
+    helperLineVertical,
+    setHelperLineVertical,
 
     // chat test
     setWorkflowTestData
