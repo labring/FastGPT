@@ -112,7 +112,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     try {
       httpJsonBody = replaceVariable(httpJsonBody, allVariables);
       if (headers['Content-Type']?.includes('text/plain')) {
-        return httpJsonBody?.replaceAll(UNDEFINED_SIGN, null);
+        return httpJsonBody?.replaceAll(UNDEFINED_SIGN, 'null');
       }
       const jsonParse = JSON.parse(httpJsonBody);
       const removeSignJson = removeUndefinedSign(jsonParse);
