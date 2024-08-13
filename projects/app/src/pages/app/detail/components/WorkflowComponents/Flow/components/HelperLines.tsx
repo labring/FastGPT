@@ -25,7 +25,6 @@ function HelperLinesRenderer({ horizontal, vertical }: HelperLinesProps) {
   const { width, height, transform } = useStore(storeSelector);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  console.log({ horizontal, vertical });
 
   useEffect(() => {
     const canvas = canvasRef.current;
