@@ -119,3 +119,19 @@ services:
 ## 接入 FastGPT
 
 参考 [ReRank模型接入](/docs/development/configuration/#rerank-接入)，host 变量为部署的域名。
+
+## QA
+
+### Docker 运行提示 `Bus error (core dumped)`
+
+尝试增加 `docker-compose.yml` 配置项 `shm_size` ，以增加容器中的共享内存目录大小。
+
+```
+...
+services:
+  reranker:
+    ...
+    container_name: reranker
+    shm_size: '2gb'
+    ...
+```
