@@ -26,6 +26,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
 import { useWorkflow } from './hooks/useWorkflow';
 import { t } from 'i18next';
+import HelperLines from './components/HelperLines';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const nodeTypes: Record<FlowNodeTypeEnum, any> = {
@@ -62,7 +63,8 @@ const edgeTypes = {
 };
 
 const Workflow = () => {
-  const { nodes, edges, reactFlowWrapper } = useContextSelector(WorkflowContext, (v) => v);
+  const { nodes, edges, reactFlowWrapper, helperLineHorizontal, helperLineVertical } =
+    useContextSelector(WorkflowContext, (v) => v);
 
   const {
     ConfirmDeleteModal,
@@ -135,6 +137,7 @@ const Workflow = () => {
           onEdgeMouseLeave={onEdgeMouseLeave}
         >
           <FlowController />
+          <HelperLines horizontal={helperLineHorizontal} vertical={helperLineVertical} />
         </ReactFlow>
       </Box>
 
