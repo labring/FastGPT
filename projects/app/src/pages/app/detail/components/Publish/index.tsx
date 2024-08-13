@@ -59,10 +59,22 @@ const OutLink = () => {
   const [linkType, setLinkType] = useState<PublishChannelEnum>(PublishChannelEnum.share);
 
   return (
-    <>
+    <Box
+      display={['block', 'flex']}
+      overflowY={'auto'}
+      overflowX={'hidden'}
+      h={'100%'}
+      flexDirection={'column'}
+    >
       <Box {...cardStyles} boxShadow={2} px={[4, 8]} py={[4, 6]}>
         <MyRadio
-          gridTemplateColumns={['repeat(1,1fr)', 'repeat(auto-fill, minmax(0, 400px))']}
+          gridTemplateColumns={[
+            'repeat(1,1fr)',
+            'repeat(2, 1fr)',
+            'repeat(3, 1fr)',
+            'repeat(3, 1fr)',
+            'repeat(4, 1fr)'
+          ]}
           iconSize={'20px'}
           list={publishList.current}
           value={linkType}
@@ -87,7 +99,7 @@ const OutLink = () => {
         mt={4}
         px={[4, 8]}
         py={[4, 6]}
-        flex={'1 0 0'}
+        flex={1}
       >
         {linkType === PublishChannelEnum.share && (
           <Link appId={appId} type={PublishChannelEnum.share} />
@@ -96,7 +108,7 @@ const OutLink = () => {
         {linkType === PublishChannelEnum.feishu && <FeiShu appId={appId} />}
         {linkType === PublishChannelEnum.wecom && <Wecom appId={appId} />}
       </Flex>
-    </>
+    </Box>
   );
 };
 

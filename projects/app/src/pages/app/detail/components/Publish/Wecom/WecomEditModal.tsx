@@ -62,7 +62,7 @@ const WecomEditModal = ({
 
   return (
     <MyModal
-      iconSrc="/imgs/modal/shareFill.svg"
+      iconSrc="core/app/publish/wecom"
       title={isEdit ? t('publish:wecom.edit_modal_title') : t('publish:wecom.create_modal_title')}
       minW={['auto', '60rem']}
     >

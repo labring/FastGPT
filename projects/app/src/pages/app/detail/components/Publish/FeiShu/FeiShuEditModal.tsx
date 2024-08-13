@@ -63,7 +63,7 @@ const FeiShuEditModal = ({
 
   return (
     <MyModal
-      iconSrc="/imgs/modal/shareFill.svg"
+      iconSrc="core/app/publish/lark"
       title={isEdit ? t('publish:edit_feishu_bot') : t('publish:new_feishu_bot')}
       minW={['auto', '60rem']}
     >
