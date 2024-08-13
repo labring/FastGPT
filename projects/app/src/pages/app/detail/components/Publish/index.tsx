@@ -16,6 +16,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 const Link = dynamic(() => import('./Link'));
 const API = dynamic(() => import('./API'));
 const FeiShu = dynamic(() => import('./FeiShu'));
+const Wecom = dynamic(() => import('./Wecom'));
 
 const OutLink = () => {
   const { t } = useTranslation();
@@ -44,6 +45,13 @@ const OutLink = () => {
       title: t('publish:feishu_bot'),
       desc: t('publish:feishu_bot_desc'),
       value: PublishChannelEnum.feishu,
+      isProFn: true
+    },
+    {
+      icon: 'core/app/publish/wecom',
+      title: t('publish:wecom.bot'),
+      desc: t('publish:wecom.bot_desc'),
+      value: PublishChannelEnum.wecom,
       isProFn: true
     }
   ]);
@@ -86,6 +94,7 @@ const OutLink = () => {
         )}
         {linkType === PublishChannelEnum.apikey && <API appId={appId} />}
         {linkType === PublishChannelEnum.feishu && <FeiShu appId={appId} />}
+        {linkType === PublishChannelEnum.wecom && <Wecom appId={appId} />}
       </Flex>
     </>
   );

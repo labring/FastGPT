@@ -25,7 +25,7 @@ function BasicInfo({
           {t('common:Name')}
         </FormLabel>
         <Input
-          placeholder={t('publish:feishu_name')}
+          placeholder={t('publish:publish_name')}
           maxLength={20}
           {...register('name', {
             required: t('common:common.name_is_empty')

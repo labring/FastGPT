@@ -1,5 +1,6 @@
-import { AppSchema } from 'core/app/type';
+import { AppSchema } from '../../core/app/type';
 import { PublishChannelEnum } from './constant';
+import { RequireOnlyOne } from '../../common/type/utils';
 
 // Feishu Config interface
 export interface FeishuAppType {
@@ -13,11 +14,16 @@ export interface FeishuAppType {
   verificationToken?: string;
 }
 
-// TODO: Unused
 export interface WecomAppType {
-  SuiteId: string;
+  AgentId: string;
+  CorpId: string;
   SuiteSecret: string;
+  CallbackToken: string;
+  CallbackEncodingAesKey: string;
 }
+
+// TODO: unused
+export interface WechatAppType {}
 
 export type OutlinkAppType = FeishuAppType | WecomAppType | undefined;
 
@@ -27,9 +33,6 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   teamId: string;
   tmbId: string;
   appId: string;
-  // teamId: Schema.Types.ObjectId;
-  // tmbId: Schema.Types.ObjectId;
-  // appId: Schema.Types.ObjectId;
   name: string;
   usagePoints: number;
   lastTime: Date;
