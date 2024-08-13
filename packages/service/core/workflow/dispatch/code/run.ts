@@ -21,6 +21,12 @@ export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeRespon
     params: { codeType, code, [NodeInputKeyEnum.addInputParam]: customVariables }
   } = props;
 
+  if (!process.env.SANDBOX_URL) {
+    return {
+      [NodeOutputKeyEnum.error]: 'Can not find SANDBOX_URL in env'
+    };
+  }
+
   const sandBoxRequestUrl = `${process.env.SANDBOX_URL}/sandbox/js`;
   try {
     const { data: runResult } = await axios.post<{

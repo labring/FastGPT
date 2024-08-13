@@ -75,9 +75,9 @@ const MyRadio = ({
           {!!item.icon && (
             <>
               {item.icon.startsWith('/') ? (
-                <Image src={item.icon} mr={'14px'} w={iconSize} alt={''} />
+                <Image src={item.icon} mr={'14px'} w={iconSize} alt={''} fill={'primary.600'} />
               ) : (
-                <MyIcon mr={'14px'} name={item.icon as any} w={iconSize} />
+                <MyIcon mr={'14px'} name={item.icon as any} w={iconSize} fill={'primary.600'} />
               )}
             </>
           )}

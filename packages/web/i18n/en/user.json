@@ -72,5 +72,8 @@
     "add_collaborator": "Add collaborators",
     "manage_collaborators": "Manage collaborators",
     "no_collaborators": "No collaborators yet"
+  },
+  "usage": {
+    "feishu": "Lark"
   }
 }

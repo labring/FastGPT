@@ -26,7 +26,7 @@ export const formatTimeToChatTime = (time: Date) => {
 
   // 如果时间是今天，展示几时:几分
   if (now.isSame(target, 'day')) {
-    return target.format('HH:mm');
+    return target.format('HH : mm');
   }
 
   // 如果是昨天，展示昨天

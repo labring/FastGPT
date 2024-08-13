@@ -1,32 +1,35 @@
-import React, { useMemo } from 'react';
-import { Flex, Box, Button, ModalFooter, ModalBody, Input } from '@chakra-ui/react';
+import React from 'react';
+import { Flex, Box, Button, ModalFooter, ModalBody, Input, Link, Grid } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import type { FeishuType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
+import type { FeishuAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
-import { useRequest } from '@/web/common/hooks/useRequest';
-import dayjs from 'dayjs';
 import { createShareChat, updateShareChat } from '@/web/support/outLink/api';
-import { useI18n } from '@/web/context/I18n';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import BasicInfo from '../components/BasicInfo';
+import { getDocPath } from '@/web/common/system/doc';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const FeiShuEditModal = ({
   appId,
   defaultData,
   onClose,
   onCreate,
-  onEdit
+  onEdit,
+  isEdit = false
 }: {
   appId: string;
-  defaultData: OutLinkEditType<FeishuType>;
+  defaultData: OutLinkEditType<FeishuAppType>;
   onClose: () => void;
   onCreate: (id: string) => void;
   onEdit: () => void;
+  isEdit?: boolean;
 }) => {
   const { t } = useTranslation();
-  const { publishT } = useI18n();
   const {
     register,
     setValue,
@@ -35,174 +38,101 @@ const FeiShuEditModal = ({
     defaultValues: defaultData
   });
 
-  const isEdit = useMemo(() => !!defaultData?._id, [defaultData]);
-
-  const { mutate: onclickCreate, isLoading: creating } = useRequest({
-    mutationFn: async (e: OutLinkEditType<FeishuType>) => {
+  const { runAsync: onclickCreate, loading: creating } = useRequest2(
+    (e) =>
       createShareChat({
         ...e,
         appId,
         type: PublishChannelEnum.feishu
-      });
-    },
-    errorToast: t('common:common.Create Failed'),
-    onSuccess: onCreate
-  });
-  const { mutate: onclickUpdate, isLoading: updating } = useRequest({
-    mutationFn: (e: OutLinkEditType<FeishuType>) => {
-      return updateShareChat(e);
-    },
+      }),
+    {
+      errorToast: t('common:common.Create Failed'),
+      successToast: t('common:common.Create Success'),
+      onSuccess: onCreate
+    }
+  );
+
+  const { runAsync: onclickUpdate, loading: updating } = useRequest2((e) => updateShareChat(e), {
     errorToast: t('common:common.Update Failed'),
+    successToast: t('common:common.Update Success'),
     onSuccess: onEdit
   });
 
+  const { feConfigs } = useSystemStore();
+  const { isPc } = useSystem();
+
   return (
     <MyModal
-      isOpen={true}
-      iconSrc="/imgs/modal/shareFill.svg"
-      title={isEdit ? publishT('edit_link') : publishT('create_link')}
+      iconSrc="core/app/publish/lark"
+      title={isEdit ? t('publish:edit_feishu_bot') : t('publish:new_feishu_bot')}
+      minW={['auto', '60rem']}
     >
-      <ModalBody>
-        <Flex alignItems={'center'}>
-          <Box flex={'0 0 90px'}>{t('common:Name')}</Box>
-          <Input
-            placeholder={publishT('feishu_name') || 'link_name'} // TODO: i18n
-            maxLength={20}
-            {...register('name', {
-              required: t('common:common.name_is_empty') || 'name_is_empty'
-            })}
-          />
-        </Flex>
-        <Flex alignItems={'center'} mt={4}>
-          <Flex flex={'0 0 90px'} alignItems={'center'}>
-            QPM
-            <QuestionTip ml={1} label={publishT('qpm_tips' || '')}></QuestionTip>
+      <ModalBody display={'grid'} gridTemplateColumns={['1fr', '1fr 1fr']} fontSize={'14px'} p={0}>
+        <Box p={8} h={['auto', '400px']} borderRight={'base'}>
+          <BasicInfo register={register} setValue={setValue} defaultData={defaultData} />
+        </Box>
+        <Flex p={8} h={['auto', '400px']} flexDirection="column" gap={6}>
+          <Flex alignItems="center">
+            <Box color="myGray.600">{t('publish:feishu_api')}</Box>
+            {feConfigs?.docUrl && (
+              <Link
+                href={feConfigs.openAPIDocUrl || getDocPath('/docs/use-cases/feishu-bot')}
+                target={'_blank'}
+                ml={2}
+                color={'primary.500'}
+                fontSize={'sm'}
+              >
+                <Flex alignItems={'center'}>
+                  <MyIcon name="book" mr="1" />
+                  {t('common:common.Read document')}
+                </Flex>
+              </Link>
+            )}
           </Flex>
-          <Input
-            max={1000}
-            {...register('limit.QPM', {
-              min: 0,
-              max: 1000,
-              valueAsNumber: true,
-              required: publishT('qpm_is_empty') || ''
-            })}
-          />
-        </Flex>
-        <Flex alignItems={'center'} mt={4}>
-          <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('common:support.outlink.Max usage points')}
-            <QuestionTip
-              ml={1}
-              label={t('common:support.outlink.Max usage points tip')}
-            ></QuestionTip>
+          <Flex alignItems={'center'}>
+            <FormLabel flex={'0 0 6.25rem'} required>
+              App ID
+            </FormLabel>
+            <Input
+              placeholder={t('common:core.module.http.AppId')}
+              {...register('app.appId', {
+                required: true
+              })}
+            />
           </Flex>
-          <Input
-            {...register('limit.maxUsagePoints', {
-              min: -1,
-              max: 10000000,
-              valueAsNumber: true,
-              required: true
-            })}
-          />
-        </Flex>
-        <Flex alignItems={'center'} mt={4}>
-          <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('common:common.Expired Time')}
+          <Flex alignItems={'center'}>
+            <FormLabel flex={'0 0 6.25rem'} required>
+              App Secret
+            </FormLabel>
+            <Input
+              placeholder={'App Secret'}
+              {...register('app.appSecret', {
+                required: true
+              })}
+            />
           </Flex>
-          <Input
-            type="datetime-local"
-            defaultValue={
-              defaultData.limit?.expiredTime
-                ? dayjs(defaultData.limit?.expiredTime).format('YYYY-MM-DDTHH:mm')
-                : ''
-            }
-            onChange={(e) => {
-              setValue('limit.expiredTime', new Date(e.target.value));
-            }}
-          />
-        </Flex>
-        <Flex alignItems={'center'} mt={4}>
-          <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('common:default_reply')}
+          <Flex alignItems={'center'}>
+            <FormLabel flex={'0 0 6.25rem'}>Encrypt Key</FormLabel>
+            <Input placeholder="Encrypt Key" {...register('app.encryptKey')} />
           </Flex>
-          <Input
-            placeholder={publishT('default_response') || 'link_name'}
-            maxLength={20}
-            {...register('defaultResponse', {
-              required: true
-            })}
-          />
-        </Flex>
-        <Flex alignItems={'center'} mt={4}>
-          <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('common:reply_now')}
+
+          <Box flex={1}></Box>
+
+          <Flex justifyContent={'end'}>
+            <Button variant={'whiteBase'} mr={3} onClick={onClose}>
+              {t('common:common.Close')}
+            </Button>
+            <Button
+              isLoading={creating || updating}
+              onClick={submitShareChat((data) =>
+                isEdit ? onclickUpdate(data) : onclickCreate(data)
+              )}
+            >
+              {t('common:common.Confirm')}
+            </Button>
           </Flex>
-          <Input
-            placeholder={publishT('default_response') || 'link_name'}
-            maxLength={20}
-            {...register('immediateResponse', {
-              required: true
-            })}
-          />
         </Flex>
-        <Flex alignItems={'center'} mt={4}>
-          <Box flex={'0 0 90px'}>{t('common:core.module.http.AppId')}</Box>
-          <Input
-            placeholder={t('common:core.module.http.AppId') || 'link_name'}
-            // maxLength={20}
-            {...register('app.appId', {
-              required: true
-            })}
-          />
-        </Flex>
-        <Flex alignItems={'center'} mt={4}>
-          <Box flex={'0 0 90px'}>{t('common:core.module.http.AppSecret' as any)}</Box>
-          <Input
-            placeholder={'App Secret'}
-            // maxLength={20}
-            {...register('app.appSecret', {
-              required: t('common:common.name_is_empty') || 'name_is_empty'
-            })}
-          />
-        </Flex>
-        <Flex alignItems={'center'} mt={4}>
-          <Box flex={'0 0 90px'}>Encrypt Key</Box>
-          <Input
-            placeholder="Encrypt Key"
-            // maxLength={20}
-            {...register('app.encryptKey', {
-              required: t('common:common.name_is_empty') || 'name_is_empty'
-            })}
-          />
-        </Flex>
-        <Flex alignItems={'center'} mt={4}>
-          <Box flex={'0 0 90px'}>Verification Token</Box>
-          <Input
-            placeholder="Verification Token"
-            // maxLength={20}
-            {...register('app.verificationToken', {
-              required: t('common:common.name_is_empty') || 'name_is_empty'
-            })}
-          />
-        </Flex>
-        {/* <Flex alignItems={'center'} mt={4}> */}
-        {/*   <Flex flex={'0 0 90px'} alignItems={'center'}> */}
-        {/*     限制回复 */}
-        {/*   </Flex> */}
-        {/*   <Switch {...register('wecomConfig.ReplyLimit')} size={'lg'} /> */}
-        {/* </Flex> */}
       </ModalBody>
-      <ModalFooter>
-        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:common.Close')}
-        </Button>
-        <Button
-          isLoading={creating || updating}
-          onClick={submitShareChat((data) => (isEdit ? onclickUpdate(data) : onclickCreate(data)))}
-        >
-          {t('common:common.Confirm')}
-        </Button>
-      </ModalFooter>
     </MyModal>
   );
 };
