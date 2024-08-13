@@ -67,10 +67,10 @@ const WecomEditModal = ({
       minW={['auto', '60rem']}
     >
       <ModalBody display={'grid'} gridTemplateColumns={['1fr', '1fr 1fr']} fontSize={'14px'} p={0}>
-        <Box p={8} h={['auto', '400px']} borderRight={'base'}>
+        <Box p={8} minH={['auto', '400px']} borderRight={'base'}>
           <BasicInfo register={register} setValue={setValue} defaultData={defaultData} />
         </Box>
-        <Flex p={8} h={['auto', '500px']} flexDirection="column" gap={6}>
+        <Flex p={8} minH={['auto', '400px']} flexDirection="column" gap={6}>
           <Flex alignItems="center">
             <Box color="myGray.600">{t('publish:wecom.api')}</Box>
             {feConfigs?.docUrl && (

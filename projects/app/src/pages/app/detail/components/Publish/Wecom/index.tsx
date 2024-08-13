@@ -213,7 +213,7 @@ const Wecom = ({ appId }: { appId: string }) => {
         <ShowShareLinkModal
           shareLink={showShareLink ?? ''}
           onClose={closeShowShareLinkModal}
-          img="/imgs/outlink/feishu-copylink-instruction.png" // TODO
+          img="/imgs/outlink/wecom-copylink-instruction.png"
         />
       )}
     </Box>
