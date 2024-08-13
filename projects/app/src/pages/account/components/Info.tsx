@@ -83,7 +83,7 @@ const Account = () => {
       ) : (
         <>
           <MyInfo />
-          {!!standardPlan && <PlanUsage />}
+          {standardPlan && <PlanUsage />}
           <Other />
         </>
       )}
