@@ -155,12 +155,6 @@ export type DispatchNodeResponseType = {
   // read files
   readFilesResult?: string;
   readFiles?: ReadFileNodeResponse;
-
-  // user select
-  description?: string;
-  userSelectOptions?: UserSelectOptionType[];
-  userSeletedIndex?: number | null;
-  nodeOutputs?: NodeOutputItemType[];
 };
 
 export type DispatchNodeResultType<T> = {

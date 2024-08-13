@@ -176,11 +176,11 @@ export type ToolModuleResponseItemType = {
 export type InteractiveModuleResponseItemType = {
   entryNodeIds?: string[];
   memoryEdges?: FlowNodeOutputItemType[];
+  nodeOutputs?: NodeOutputItemType[];
   params?: {
     description: string;
     userSelectOptions: UserSelectOptionType[];
     userSeletedIndex: number | null;
-    nodeOutputs: NodeOutputItemType[];
   };
 };
 

@@ -23,7 +23,7 @@ export enum DispatchNodeResponseKeyEnum {
   toolResponses = 'toolResponses', // The result is passed back to the tool node for use
   assistantResponses = 'assistantResponses', // assistant response
 
-  INTERACTIVE = 'interactive' // is interactive
+  interactive = 'INTERACTIVE' // is interactive
 }
 
 export const needReplaceReferenceInputTypeList = [

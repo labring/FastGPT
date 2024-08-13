@@ -7,7 +7,6 @@ import {
   ModuleDispatchProps,
   RuntimeNodeItemType
 } from '@fastgpt/global/core/workflow/runtime/type';
-import { responseWrite } from '../../../../common/response';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { UserSelectOptionType } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
@@ -23,12 +22,12 @@ type Props = ModuleDispatchProps<{
 }>;
 type UserSelectResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.selectResult]?: string;
-  [DispatchNodeResponseKeyEnum.INTERACTIVE]?: boolean;
+  [DispatchNodeResponseKeyEnum.interactive]?: boolean;
 }>;
 
 const defaultParseJson = {
-  nodeId: undefined,
-  params: { userSeletedIndex: null, description: '', userSelectOptions: [], nodeOutputs: [] }
+  nodeOutputs: [],
+  params: { userSeletedIndex: null, description: '', userSelectOptions: [] }
 };
 
 export const dispatchUserSelect = async (props: Props): Promise<UserSelectResponse> => {
@@ -76,31 +75,24 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
   })();
 
   const entryNodeIds = getLastInteractiveValue(histories)?.entryNodeIds;
-  const nodeOutputs = getNodeOutputs(runtimeNodes).concat(parsedJson.params?.nodeOutputs || []);
-
-  console.log(entryNodeIds);
+  const nodeOutputs = getNodeOutputs(runtimeNodes).concat(parsedJson?.nodeOutputs || []);
 
   if (!entryNodeIds || !entryNodeIds.includes(nodeId)) {
     return {
-      [DispatchNodeResponseKeyEnum.INTERACTIVE]: true,
+      [DispatchNodeResponseKeyEnum.interactive]: true,
       [DispatchNodeResponseKeyEnum.assistantResponses]: [
         {
           type: ChatItemValueTypeEnum.interactive,
           interactive: {
+            nodeOutputs,
             params: {
               description,
               userSelectOptions,
-              userSeletedIndex: null,
-              nodeOutputs
+              userSeletedIndex: null
             }
           }
         }
-      ],
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        description: description,
-        userSelectOptions: userSelectOptions,
-        userSeletedIndex: null
-      }
+      ]
     };
   }
 
@@ -108,11 +100,6 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     [DispatchNodeResponseKeyEnum.skipHandleId]: userSelectOptions
       .filter((item: any, index: number) => index !== parsedJson.params?.userSeletedIndex)
       .map((item: any) => getHandleId(nodeId, 'source', item.key)),
-    [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      description: parsedJson.params?.description,
-      userSelectOptions: parsedJson.params?.userSelectOptions,
-      userSeletedIndex: parsedJson.params?.userSeletedIndex
-    },
     [NodeOutputKeyEnum.selectResult]:
       parsedJson.params?.userSeletedIndex === null ||
       parsedJson.params?.userSeletedIndex === undefined

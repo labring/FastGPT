@@ -221,23 +221,27 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     return nextStepNodes;
   }
 
+  /* Extract interactive data from flat */
   function extractUserSelectParams(
-    data: {
+    flat: {
       node: RuntimeNodeItemType;
       result: Record<string, any>;
     }[]
   ) {
-    for (const item of data) {
+    for (const item of flat) {
       if (item.node && item.node.flowNodeType === FlowNodeTypeEnum.userSelect) {
         const assistantResponses = item.result?.assistantResponses || [];
         for (const response of assistantResponses) {
-          if (response.type === ChatItemValueTypeEnum.interactive && response.interactive.params) {
-            return response.interactive.params;
+          if (response.type === ChatItemValueTypeEnum.interactive) {
+            return {
+              params: response.interactive.params,
+              nodeOutputs: response.interactive.nodeOutputs
+            };
           }
         }
       }
     }
-    return null;
+    return {};
   }
 
   function handleInteractiveResult({
@@ -282,7 +286,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       event: SseResponseEventEnum.userSelect,
       data: JSON.stringify({
         interactive: {
-          params: extractUserSelectParams(flat),
+          ...extractUserSelectParams(flat),
           entryNodeIds: nodeIds,
           memoryEdges: memoryEdges
         }
@@ -340,7 +344,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       // Update the node output at the end of the run and get the next nodes
       const nextNodes = flat.map((item) => nodeOutput(item.node, item.result)).flat();
 
-      if (flat.some((item) => item.result.interactive)) {
+      if (flat.some((item) => item.result.INTERACTIVE)) {
         chatAssistantResponse = handleInteractiveResult({
           flat,
           runtimeEdges,
@@ -581,9 +585,10 @@ export const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemTy
   return result;
 };
 
+/* Update runtimeNode's outputs with interactive data from history */
 function processHistoryAndNodes(history: ChatItemType[], runtimeNodes: RuntimeNodeItemType[]) {
   const interactive = getLastInteractiveValue(history);
-  if (!interactive?.params?.nodeOutputs) {
+  if (!interactive?.nodeOutputs) {
     return runtimeNodes;
   }
 
@@ -594,7 +599,7 @@ function processHistoryAndNodes(history: ChatItemType[], runtimeNodes: RuntimeNo
 
     const updatedOutputs = node.outputs.map((output: FlowNodeOutputItemType) => {
       // @ts-ignore
-      const historyOutput = interactive?.params.nodeOutputs?.find(
+      const historyOutput = interactive?.nodeOutputs?.find(
         (item: NodeOutputItemType) => item.nodeId === node.nodeId && item.key === output.key
       );
       return historyOutput ? { ...output, value: historyOutput.value } : output;

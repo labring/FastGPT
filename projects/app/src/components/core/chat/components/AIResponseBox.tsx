@@ -40,7 +40,6 @@ const AIResponseBox = ({
   questionGuides,
   onSendMessage
 }: props) => {
-  console.log(value);
   if (value.text) {
     let source = (value.text?.content || '').trim();
 

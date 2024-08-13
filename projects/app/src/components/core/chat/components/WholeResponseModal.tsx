@@ -480,26 +480,6 @@ export const WholeResponseContent = ({
               value={activeModule?.readFilesResult}
             />
           </>
-
-          {/* user select */}
-          <>
-            <Row
-              label={t('workflow:response.User_select_description')}
-              value={activeModule?.description}
-            />
-            <Row
-              label={t('workflow:response.User_select_result')}
-              value={(() => {
-                const selectOptions = activeModule?.userSelectOptions;
-                if (
-                  activeModule?.userSeletedIndex === null ||
-                  activeModule?.userSeletedIndex === undefined
-                )
-                  return undefined;
-                return selectOptions?.[activeModule?.userSeletedIndex]?.value;
-              })()}
-            />
-          </>
         </Box>
       )}
     </>
