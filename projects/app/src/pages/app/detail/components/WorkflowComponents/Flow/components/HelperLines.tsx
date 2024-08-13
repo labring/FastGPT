@@ -1,6 +1,6 @@
 import { THelperLine } from '@fastgpt/global/core/workflow/type';
 import { CSSProperties, useEffect, useRef } from 'react';
-import { ReactFlowState, useStore } from 'reactflow';
+import { ReactFlowState, useStore, useViewport } from 'reactflow';
 
 const canvasStyle: CSSProperties = {
   width: '100%',
@@ -23,6 +23,7 @@ export type HelperLinesProps = {
 
 function HelperLinesRenderer({ horizontal, vertical }: HelperLinesProps) {
   const { width, height, transform } = useStore(storeSelector);
+  const { zoom } = useViewport();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -65,8 +66,8 @@ function HelperLinesRenderer({ horizontal, vertical }: HelperLinesProps) {
       ctx.stroke();
 
       vertical.nodes.forEach((node) => {
-        drawCross(x, node.top * transform[2] + transform[1], 5);
-        drawCross(x, node.bottom * transform[2] + transform[1], 5);
+        drawCross(x, node.top * transform[2] + transform[1], 5 * zoom);
+        drawCross(x, node.bottom * transform[2] + transform[1], 5 * zoom);
       });
     }
 
@@ -84,8 +85,8 @@ function HelperLinesRenderer({ horizontal, vertical }: HelperLinesProps) {
       ctx.stroke();
 
       horizontal.nodes.forEach((node) => {
-        drawCross(node.left * transform[2] + transform[0], y, 5);
-        drawCross(node.right * transform[2] + transform[0], y, 5);
+        drawCross(node.left * transform[2] + transform[0], y, 5 * zoom);
+        drawCross(node.right * transform[2] + transform[0], y, 5 * zoom);
       });
     }
   }, [width, height, transform, horizontal, vertical]);

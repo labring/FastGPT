@@ -43,7 +43,7 @@ export const useWorkflowUtils = () => {
   const getHelperLines = (
     change: NodePositionChange,
     nodes: Node[],
-    distance = 5
+    distance = 8
   ): GetHelperLinesResult => {
     const nodeA = nodes.find((node) => node.id === change.id);
 
