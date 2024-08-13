@@ -119,21 +119,14 @@ const OffiAccountEditModal = ({
             </FormLabel>
             <Input
               placeholder="Token"
-              {...register('app.token', {
+              {...register('app.CallbackToken', {
                 required: true
               })}
             />
           </Flex>
           <Flex alignItems={'center'}>
-            <FormLabel flex={'0 0 6.25rem'} required>
-              AES Key
-            </FormLabel>
-            <Input
-              placeholder="AES Key"
-              {...register('app.encodingAESKey', {
-                required: true
-              })}
-            />
+            <FormLabel flex={'0 0 6.25rem'}>AES Key</FormLabel>
+            <Input placeholder="AES Key" {...register('app.CallbackEncodingAesKey')} />
           </Flex>
 
           <Box flex={1}></Box>
