@@ -199,7 +199,7 @@ async function fetchData({
   method: string;
   url: string;
   headers: Record<string, any>;
-  body: Record<string, any>;
+  body: Record<string, any> | string;
   params: Record<string, any>;
 }) {
   const { data: response } = await axios({
