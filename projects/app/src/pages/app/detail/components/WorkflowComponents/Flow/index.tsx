@@ -64,8 +64,7 @@ const edgeTypes = {
 };
 
 const Workflow = () => {
-  const { nodes, edges, reactFlowWrapper, helperLineHorizontal, helperLineVertical } =
-    useContextSelector(WorkflowContext, (v) => v);
+  const { nodes, edges, reactFlowWrapper } = useContextSelector(WorkflowContext, (v) => v);
 
   const {
     ConfirmDeleteModal,
@@ -75,7 +74,9 @@ const Workflow = () => {
     onConnectEnd,
     customOnConnect,
     onEdgeMouseEnter,
-    onEdgeMouseLeave
+    onEdgeMouseLeave,
+    helperLineHorizontal,
+    helperLineVertical
   } = useWorkflow();
 
   const {
@@ -85,7 +86,7 @@ const Workflow = () => {
   } = useDisclosure();
 
   return (
-    <ReactFlowProvider>
+    <>
       <Box
         flex={'1 0 0'}
         h={0}
@@ -143,11 +144,19 @@ const Workflow = () => {
       </Box>
 
       <ConfirmDeleteModal />
+    </>
+  );
+};
+
+const Render = () => {
+  return (
+    <ReactFlowProvider>
+      <Workflow />
     </ReactFlowProvider>
   );
 };
 
-export default React.memo(Workflow);
+export default React.memo(Render);
 
 const FlowController = React.memo(function FlowController() {
   const { fitView } = useReactFlow();

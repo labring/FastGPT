@@ -89,7 +89,7 @@ function HelperLinesRenderer({ horizontal, vertical }: HelperLinesProps) {
         drawCross(node.right * transform[2] + transform[0], y, 5 * zoom);
       });
     }
-  }, [width, height, transform, horizontal, vertical]);
+  }, [width, height, transform, horizontal, vertical, zoom]);
 
   return <canvas ref={canvasRef} style={canvasStyle} />;
 }
