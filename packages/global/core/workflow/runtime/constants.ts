@@ -12,7 +12,7 @@ export enum SseResponseEventEnum {
   flowResponses = 'flowResponses', // sse response request
   updateVariables = 'updateVariables',
 
-  userSelect = 'userSelect' // user select
+  interactive = 'interactive' // user select
 }
 
 export enum DispatchNodeResponseKeyEnum {

@@ -527,7 +527,8 @@
         "module tokens": "total tokens",
         "plugin output": "Plugin output value",
         "search using reRank": "Result rearrangement",
-        "text output": "text output"
+        "text output": "text output",
+        "user_select_result": "User select result"
       },
       "retry": "Regenerate",
       "tts": {

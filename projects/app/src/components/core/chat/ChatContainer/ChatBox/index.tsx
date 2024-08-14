@@ -33,14 +33,19 @@ import type { AdminMarkType } from './components/SelectMarkCollection';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 import { postQuestionGuide } from '@/web/core/ai/api';
-import type { ComponentRef, ChatBoxInputType, ChatBoxInputFormType } from './type.d';
+import type {
+  ComponentRef,
+  ChatBoxInputType,
+  ChatBoxInputFormType,
+  SendPromptFnType
+} from './type.d';
 import type { StartChatFnProps, generatingMessageProps } from '../type';
 import ChatInput from './Input/ChatInput';
 import ChatBoxDivider from '../../Divider';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { formatChatValue2InputType, setUserSelectedIndex } from './utils';
+import { formatChatValue2InputType } from './utils';
 import { textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext, ChatProviderProps } from './Provider';
@@ -297,7 +302,7 @@ const ChatBox = (
             };
           } else if (event === SseResponseEventEnum.updateVariables && variables) {
             variablesForm.reset(variables);
-          } else if (event === SseResponseEventEnum.userSelect) {
+          } else if (event === SseResponseEventEnum.interactive) {
             const val: AIChatItemValueItemType = {
               type: ChatItemValueTypeEnum.interactive,
               interactive
@@ -375,16 +380,8 @@ const ChatBox = (
   /**
    * user confirm send prompt
    */
-  const sendPrompt = useCallback(
-    ({
-      text = '',
-      files = [],
-      history = chatHistories,
-      autoTTSResponse = false
-    }: ChatBoxInputType & {
-      autoTTSResponse?: boolean;
-      history?: ChatSiteItemType[];
-    }) => {
+  const sendPrompt: SendPromptFnType = useCallback(
+    ({ text = '', files = [], history = chatHistories, autoTTSResponse = false }) => {
       variablesForm.handleSubmit(
         async (variables) => {
           if (!onStartChat) return;
@@ -425,7 +422,7 @@ const ChatBox = (
           }
 
           const newChatList: ChatSiteItemType[] = [
-            ...setUserSelectedIndex(history, text),
+            ...history,
             {
               dataId: getNanoid(24),
               obj: ChatRoleEnum.Human,
@@ -918,6 +915,7 @@ const ChatBox = (
                     onRetry={retryInput(item.dataId)}
                     onDelete={delOneMessage(item.dataId)}
                     isLastChild={index === chatHistories.length - 1}
+                    onSendMessage={undefined}
                   />
                 )}
                 {item.obj === ChatRoleEnum.AI && (

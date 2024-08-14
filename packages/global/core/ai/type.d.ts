@@ -9,7 +9,7 @@ import type {
   ChatCompletionUserMessageParam as SdkChatCompletionUserMessageParam
 } from 'openai/resources';
 import { ChatMessageTypeEnum } from './constants';
-import { InteractiveModuleResponseItemType } from '../../core/chat/type';
+import { InteractiveNodeResponseItemType } from '../workflow/template/system/userSelect/type';
 
 export * from 'openai/resources';
 
@@ -34,7 +34,7 @@ export type ChatCompletionMessageParam = (
   | CustomChatCompletionUserMessageParam
 ) & {
   dataId?: string;
-  interactive?: InteractiveModuleResponseItemType;
+  interactive?: InteractiveNodeResponseItemType;
 };
 export type SdkChatCompletionMessageParam = SdkChatCompletionMessageParam;
 

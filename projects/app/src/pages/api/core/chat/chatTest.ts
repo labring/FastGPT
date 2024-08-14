@@ -22,9 +22,9 @@ import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import {
-  getDefaultEntryNodeIds,
+  getWorkflowEntryNodeIds,
   initWorkflowEdgeStatus,
-  processHistoryAndNodes,
+  rewriteNodeOutputByHistories,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -70,6 +70,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         authToken: true
       })
     ]);
+    // auth balance
+    const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
+
     const isPlugin = app.type === AppTypeEnum.plugin;
 
     if (!Array.isArray(nodes)) {
@@ -79,9 +82,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new Error('Edges is not array');
     }
 
-    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes, chatMessages));
-
-    const runtimeEdges = initWorkflowEdgeStatus(edges, chatMessages);
+    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, chatMessages));
 
     // Plugin need to replace inputs
     if (isPlugin) {
@@ -93,10 +94,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
     }
 
-    runtimeNodes = processHistoryAndNodes(chatMessages, runtimeNodes);
-
-    // auth balance
-    const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
+    runtimeNodes = rewriteNodeOutputByHistories(chatMessages, runtimeNodes);
 
     /* start process */
     const { flowResponses, flowUsages } = await dispatchWorkFlow({
@@ -108,7 +106,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       user,
       app,
       runtimeNodes,
-      runtimeEdges,
+      runtimeEdges: initWorkflowEdgeStatus(edges, chatMessages),
       variables,
       query: removeEmptyUserInput(userInput),
       chatConfig,

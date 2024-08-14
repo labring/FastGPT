@@ -1,7 +1,7 @@
 import { ChatItemValueItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { ChatBoxInputType, UserInputFileItemType } from './type';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
+import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): ChatBoxInputType => {
   if (!value) {
@@ -38,25 +38,36 @@ export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): Chat
   };
 };
 
-export const setUserSelectedIndex = (history: ChatSiteItemType[], text: string) => {
-  if (!history.length) return history;
-  const lastItem = history[history.length - 1];
-  const interactiveItem = lastItem.value[lastItem.value.length - 1];
+export const setUserSelectResultToHistories = (
+  histories: ChatSiteItemType[],
+  selectVal: string
+): ChatSiteItemType[] => {
+  if (histories.length === 0) return histories;
 
-  if (interactiveItem && interactiveItem.type === 'interactive') {
-    const userSelectOptions = interactiveItem.interactive?.params?.userSelectOptions;
+  // @ts-ignore
+  return histories.map((item, i) => {
+    if (i !== histories.length - 1) return item;
+    item.value;
+    const value = item.value.map((val) => {
+      if (val.type !== ChatItemValueTypeEnum.interactive || !val.interactive) return val;
 
-    const selectedIndex = userSelectOptions?.findIndex((option) => option.value === text);
+      return {
+        ...val,
+        interactive: {
+          ...val.interactive,
+          params: {
+            ...val.interactive.params,
+            userSelectedVal: val.interactive.params.userSelectOptions.find(
+              (item) => item.value === selectVal
+            )?.value
+          }
+        }
+      };
+    });
 
-    if (
-      selectedIndex !== -1 &&
-      selectedIndex !== undefined &&
-      interactiveItem.interactive?.params
-    ) {
-      interactiveItem.interactive.params.userSeletedIndex = selectedIndex;
-      return history;
-    }
-  }
-
-  return history;
+    return {
+      ...item,
+      value
+    };
+  });
 };

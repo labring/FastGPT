@@ -28,7 +28,7 @@ export const UserSelectNode: FlowNodeTemplateType = {
   inputs: [
     {
       key: NodeInputKeyEnum.description,
-      renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.textarea],
       valueType: WorkflowIOValueTypeEnum.string,
       label: i18nT('app:workflow.select_description')
     },
@@ -39,11 +39,11 @@ export const UserSelectNode: FlowNodeTemplateType = {
       label: '',
       value: [
         {
-          value: '选项 1',
+          value: 'Confirm',
           key: 'option1'
         },
         {
-          value: '选项 2',
+          value: 'Cancel',
           key: 'option2'
         }
       ]

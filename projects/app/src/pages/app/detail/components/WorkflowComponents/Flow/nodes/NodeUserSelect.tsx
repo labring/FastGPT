@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { NodeProps, Position } from 'reactflow';
-import { Box, Button, Flex, Input } from '@chakra-ui/react';
+import { Box, Button, HStack, Input } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Container from '../components/Container';
@@ -15,11 +15,13 @@ import { SourceHandle } from './render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
-import type { UserSelectOptionType } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
+import { UserSelectOptionItemType } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
+import IOTitle from '../components/IOTitle';
+import RenderOutput from './render/RenderOutput';
 
 const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs } = data;
+  const { nodeId, inputs, outputs } = data;
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const CustomComponent = useMemo(
@@ -29,18 +31,17 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         value = [],
         ...props
       }: FlowNodeInputItemType) => {
-        const options = value as UserSelectOptionType[];
+        const options = value as UserSelectOptionItemType[];
         return (
           <Box>
             {options.map((item, i) => (
               <Box key={item.key} mb={4}>
-                <Flex alignItems={'center'}>
+                <HStack spacing={1}>
                   <MyTooltip label={t('common:common.Delete')}>
                     <MyIcon
-                      mt={1}
-                      mr={2}
+                      mt={0.5}
                       name={'minus'}
-                      w={'12px'}
+                      w={'0.8rem'}
                       cursor={'pointer'}
                       color={'myGray.600'}
                       _hover={{ color: 'red.600' }}
@@ -63,10 +64,10 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       }}
                     />
                   </MyTooltip>
-                  <Box flex={1} color={'myGray.600'} fontWeight={'medium'} fontSize={'sm'}>
+                  <Box color={'myGray.600'} fontWeight={'medium'} fontSize={'sm'}>
                     {t('common:option') + (i + 1)}
                   </Box>
-                </Flex>
+                </HStack>
                 <Box position={'relative'}>
                   <Input
                     mt={1}
@@ -107,8 +108,6 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               fontSize={'sm'}
               leftIcon={<MyIcon name={'common/addLight'} w={4} />}
               onClick={() => {
-                const key = getNanoid();
-
                 onChangeNode({
                   nodeId,
                   type: 'updateInput',
@@ -116,7 +115,7 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   value: {
                     ...props,
                     key: optionKey,
-                    value: options.concat({ value: '', key })
+                    value: options.concat({ value: '', key: getNanoid() })
                   }
                 });
               }}
@@ -134,6 +133,10 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     <NodeCard minW={'400px'} selected={selected} {...data}>
       <Container>
         <RenderInput nodeId={nodeId} flowInputList={inputs} CustomComponent={CustomComponent} />
+      </Container>
+      <Container>
+        <IOTitle text={t('common:common.Output')} />
+        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
       </Container>
     </NodeCard>
   );

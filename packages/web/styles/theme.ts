@@ -34,6 +34,7 @@ const Button = defineStyleConfig({
       transform: 'scale(0.98)'
     },
     _disabled: {
+      transform: 'none !important',
       _hover: {
         filter: 'none'
       }

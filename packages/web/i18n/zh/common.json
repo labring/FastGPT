@@ -537,7 +537,8 @@
         "module tokens": "总 tokens",
         "plugin output": "插件输出值",
         "search using reRank": "结果重排",
-        "text output": "文本输出"
+        "text output": "文本输出",
+        "user_select_result": "用户选择结果"
       },
       "retry": "重新生成",
       "tts": {
@@ -609,7 +610,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",

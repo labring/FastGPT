@@ -27,26 +27,6 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
   return limit * 2;
 };
 
-export const initWorkflowEdgeStatus = (
-  edges: StoreEdgeItemType[],
-  histories?: ChatItemType[]
-): RuntimeEdgeItemType[] => {
-  if (!!histories) {
-    const memoryEdges = getLastInteractiveValue(histories)?.memoryEdges;
-
-    if (memoryEdges && memoryEdges.length > 0) {
-      return memoryEdges;
-    }
-  }
-
-  return (
-    edges?.map((edge) => ({
-      ...edge,
-      status: 'waiting'
-    })) || []
-  );
-};
-
 export const getLastInteractiveValue = (histories: ChatItemType[]) => {
   const lastAIMessage = histories.findLast((item) => item.obj === ChatRoleEnum.AI);
 
@@ -63,10 +43,32 @@ export const getLastInteractiveValue = (histories: ChatItemType[]) => {
   return null;
 };
 
-export const getDefaultEntryNodeIds = (
+export const initWorkflowEdgeStatus = (
+  edges: StoreEdgeItemType[],
+  histories?: ChatItemType[]
+): RuntimeEdgeItemType[] => {
+  // If there is a history, use the last interactive value
+  if (!!histories) {
+    const memoryEdges = getLastInteractiveValue(histories)?.memoryEdges;
+
+    if (memoryEdges && memoryEdges.length > 0) {
+      return memoryEdges;
+    }
+  }
+
+  return (
+    edges?.map((edge) => ({
+      ...edge,
+      status: 'waiting'
+    })) || []
+  );
+};
+
+export const getWorkflowEntryNodeIds = (
   nodes: (StoreNodeItemType | RuntimeNodeItemType)[],
   histories?: ChatItemType[]
 ) => {
+  // If there is a history, use the last interactive entry node
   if (!!histories) {
     const entryNodeIds = getLastInteractiveValue(histories)?.entryNodeIds;
 
@@ -254,28 +256,27 @@ export const textAdaptGptResponse = ({
 };
 
 /* Update runtimeNode's outputs with interactive data from history */
-export function processHistoryAndNodes(
-  history: ChatItemType[],
+export function rewriteNodeOutputByHistories(
+  histories: ChatItemType[],
   runtimeNodes: RuntimeNodeItemType[]
 ) {
-  const interactive = getLastInteractiveValue(history);
+  const interactive = getLastInteractiveValue(histories);
   if (!interactive?.nodeOutputs) {
     return runtimeNodes;
   }
 
   return runtimeNodes.map((node) => {
-    if (!node.outputs || node.outputs.length === 0) {
-      return node;
-    }
-
-    const updatedOutputs = node.outputs.map((output: FlowNodeOutputItemType) => {
-      // @ts-ignore
-      const historyOutput = interactive?.nodeOutputs?.find(
-        (item: NodeOutputItemType) => item.nodeId === node.nodeId && item.key === output.key
-      );
-      return historyOutput ? { ...output, value: historyOutput.value } : output;
-    });
-
-    return { ...node, outputs: updatedOutputs };
+    return {
+      ...node,
+      outputs: node.outputs.map((output: FlowNodeOutputItemType) => {
+        return {
+          ...output,
+          value:
+            interactive?.nodeOutputs?.find(
+              (item: NodeOutputItemType) => item.nodeId === node.nodeId && item.key === output.key
+            )?.value || output?.value
+        };
+      })
+    };
   });
 }

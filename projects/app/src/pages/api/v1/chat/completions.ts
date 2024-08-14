@@ -13,7 +13,7 @@ import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import {
-  getDefaultEntryNodeIds,
+  getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
   initWorkflowEdgeStatus,
   storeNodes2RuntimeNodes,
@@ -64,7 +64,7 @@ import {
   getPluginRunContent
 } from '@fastgpt/global/core/app/plugin/utils';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
-import { processHistoryAndNodes } from '@fastgpt/global/core/workflow/runtime/utils';
+import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -233,16 +233,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const newHistories = concatHistories(histories, chatMessages);
 
     // Get runtimeNodes
-    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes, newHistories));
-    runtimeNodes = isPlugin ? updatePluginInputByVariables(runtimeNodes, variables) : runtimeNodes;
-    runtimeNodes = processHistoryAndNodes(newHistories, runtimeNodes);
+    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, newHistories));
 
-    const runtimeEdges = initWorkflowEdgeStatus(edges, newHistories);
+    if (isPlugin) {
+      // Rewrite plugin run params variables
+      variables = removePluginInputVariables(variables, runtimeNodes);
+      runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
+    }
 
-    const runtimeVariables = removePluginInputVariables(
-      variables,
-      storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes, newHistories))
-    );
+    runtimeNodes = rewriteNodeOutputByHistories(newHistories, runtimeNodes);
 
     /* start flow controller */
     const { flowResponses, flowUsages, assistantResponses, newVariables } = await (async () => {
@@ -258,8 +257,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           chatId,
           responseChatItemId,
           runtimeNodes,
-          runtimeEdges,
-          variables: runtimeVariables,
+          runtimeEdges: initWorkflowEdgeStatus(edges, newHistories),
+          variables,
           query: removeEmptyUserInput(userQuestion.value),
           chatConfig,
           histories: newHistories,

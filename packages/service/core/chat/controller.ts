@@ -1,7 +1,7 @@
 import type { ChatItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { MongoChatItem } from './chatItemSchema';
 import { addLog } from '../../common/system/log';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { delFileByFileIdList, getGFSCollection } from '../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { MongoChat } from './chatSchema';
@@ -82,41 +82,46 @@ export const addCustomFeedbacks = async ({
 /*
   Update the user selected index of the interactive module
 */
-export const updateUserSelectedIndex = async ({
+export const updateUserSelectedResult = async ({
   appId,
   chatId,
-  dataId,
-  userSeletedIndex
+  userSelectedVal
 }: {
   appId: string;
   chatId?: string;
-  dataId?: string;
-  userSeletedIndex: number;
+  userSelectedVal: string;
 }) => {
+  if (!chatId) return;
   try {
-    await MongoChatItem.findOneAndUpdate(
-      {
-        appId,
-        chatId,
-        dataId,
-        'value.type': 'interactive'
-      },
-      {
-        $set: {
-          'value.$.interactive.params.userSeletedIndex': userSeletedIndex,
-          'responseData.$[elem].userSeletedIndex': userSeletedIndex
-        }
-      },
-      {
-        arrayFilters: [
-          {
-            'elem.moduleType': 'userSelect'
-          }
-        ]
-      }
+    const chatItem = await MongoChatItem.findOne(
+      { appId, chatId, obj: ChatRoleEnum.AI },
+      'value'
+    ).sort({ _id: -1 });
+
+    if (!chatItem) return;
+
+    const interactiveValue = chatItem.value.find(
+      (v) => v.type === ChatItemValueTypeEnum.interactive
     );
+
+    if (
+      !interactiveValue ||
+      interactiveValue.type !== ChatItemValueTypeEnum.interactive ||
+      !interactiveValue.interactive?.params
+    )
+      return;
+
+    interactiveValue.interactive = {
+      ...interactiveValue.interactive,
+      params: {
+        ...interactiveValue.interactive.params,
+        userSelectedVal
+      }
+    };
+
+    await chatItem.save();
   } catch (error) {
-    addLog.error('updateUserSelectedIndex error', error);
+    addLog.error('updateUserSelectedResult error', error);
   }
 };
 

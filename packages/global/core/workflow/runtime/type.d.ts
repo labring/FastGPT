@@ -155,6 +155,9 @@ export type DispatchNodeResponseType = {
   // read files
   readFilesResult?: string;
   readFiles?: ReadFileNodeResponse;
+
+  // user select
+  userSelectResult?: string;
 };
 
 export type DispatchNodeResultType<T> = {

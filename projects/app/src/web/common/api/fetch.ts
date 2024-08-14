@@ -201,7 +201,7 @@ export const streamFetch = ({
               event,
               variables: parseJson
             });
-          } else if (event === SseResponseEventEnum.userSelect) {
+          } else if (event === SseResponseEventEnum.interactive) {
             responseQueue.push({
               event,
               ...parseJson
