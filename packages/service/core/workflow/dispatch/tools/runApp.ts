@@ -68,7 +68,6 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     appData.modules,
     getDefaultEntryNodeIds(appData.modules)
   );
-  runtimeNodes = processHistoryAndNodes(chatHistories, runtimeNodes);
 
   const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
