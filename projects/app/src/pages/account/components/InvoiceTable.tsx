@@ -47,11 +47,11 @@ const InvoiceTable = () => {
           <Table>
             <Thead h="3rem">
               <Tr>
-                <Th>#</Th>
-                <Th>{t('common:user.Time')}</Th>
-                <Th>{t('common:support.wallet.Amount')}</Th>
-                <Th>{t('common:support.wallet.bill.Status')}</Th>
-                <Th></Th>
+                <Th w={'20%'}>#</Th>
+                <Th w={'20%'}>{t('common:user.Time')}</Th>
+                <Th w={'20%'}>{t('common:support.wallet.Amount')}</Th>
+                <Th w={'20%'}>{t('common:support.wallet.bill.Status')}</Th>
+                <Th w={'20%'}></Th>
               </Tr>
             </Thead>
             <Tbody fontSize={'sm'}>
@@ -89,11 +89,14 @@ const InvoiceTable = () => {
                       w={'4.5rem'}
                       variant={'whiteBase'}
                       size={'sm'}
-                      my={'0.5rem'}
-                      mx={'0.75rem'}
+                      py={'0.5rem'}
+                      px={'0.75rem'}
+                      _hover={{
+                        color: 'blue.600'
+                      }}
                     >
                       <Flex>
-                        <MyIcon name="paragraph" w={'16px'} h={'16px'} color={'myGray.600'} />
+                        <MyIcon name="paragraph" w={'16px'} h={'16px'} />
                         <Box ml={'0.38rem'}>{t('common:common.Detail')}</Box>
                       </Flex>
                     </Button>

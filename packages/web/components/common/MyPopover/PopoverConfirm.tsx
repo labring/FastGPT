@@ -21,7 +21,9 @@ const PopoverConfirm = ({
   Trigger,
   placement = 'bottom-start',
   offset,
-  onConfirm
+  onConfirm,
+  confirmText,
+  cancelText
 }: {
   content: string;
   showCancel?: boolean;
@@ -30,6 +32,8 @@ const PopoverConfirm = ({
   placement?: PlacementWithLogical;
   offset?: [number, number];
   onConfirm: () => any;
+  confirmText?: string;
+  cancelText?: string;
 }) => {
   const { t } = useTranslation();
 
@@ -82,11 +86,11 @@ const PopoverConfirm = ({
         <HStack mt={1} justifyContent={'flex-end'}>
           {showCancel && (
             <Button variant={'whiteBase'} size="sm" onClick={onClose}>
-              {t('common:common.Cancel')}
+              {cancelText || t('common:common.Cancel')}
             </Button>
           )}
           <Button isLoading={loading} variant={map.variant} size="sm" onClick={onclickConfirm}>
-            {t('common:common.Confirm')}
+            {confirmText || t('common:common.Confirm')}
           </Button>
         </HStack>
       </PopoverContent>
