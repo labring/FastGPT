@@ -1,6 +1,9 @@
 import { NextApiResponse } from 'next';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
   ChatDispatchProps,
@@ -10,6 +13,7 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
+  NodeOutputItemType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type.d';
 import {
@@ -17,7 +21,7 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { responseWriteNodeStatus } from '../../../common/response';
+import { responseWrite, responseWriteNodeStatus } from '../../../common/response';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { replaceVariableLabel } from '@fastgpt/global/core/workflow/utils';
 
@@ -37,7 +41,8 @@ import { dispatchPluginOutput } from './plugin/runOutput';
 import { removeSystemVariable, valueTypeFormat } from './utils';
 import {
   filterWorkflowEdges,
-  checkNodeRunStatus
+  checkNodeRunStatus,
+  getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
@@ -56,6 +61,8 @@ import { dispatchRunCode } from './code/run';
 import { dispatchTextEditor } from './tools/textEditor';
 import { dispatchCustomFeedback } from './tools/customFeedback';
 import { dispatchReadFiles } from './tools/readFiles';
+import { dispatchUserSelect } from './interactive/userSelect';
+import { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -80,6 +87,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.textEditor]: dispatchTextEditor,
   [FlowNodeTypeEnum.customFeedback]: dispatchCustomFeedback,
   [FlowNodeTypeEnum.readFiles]: dispatchReadFiles,
+  [FlowNodeTypeEnum.userSelect]: dispatchUserSelect,
 
   // none
   [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,
@@ -211,6 +219,80 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
     return nextStepNodes;
   }
+
+  function handleInteractiveResult({
+    flat,
+    runtimeEdges,
+    res
+  }: {
+    flat: {
+      node: RuntimeNodeItemType;
+      result: Record<string, any>;
+    }[];
+    runtimeEdges: RuntimeEdgeItemType[];
+    res: NextApiResponse | undefined;
+  }) {
+    // Get node outputs
+    const nodeOutputs: NodeOutputItemType[] = [];
+    runtimeNodes.forEach((node) => {
+      if (node.outputs && node.outputs.length > 0) {
+        node.outputs.forEach((output: FlowNodeOutputItemType) => {
+          if (output.value !== undefined) {
+            nodeOutputs.push({
+              nodeId: node.nodeId,
+              key: output.key as NodeOutputKeyEnum,
+              value: output.value
+            });
+          }
+        });
+      }
+    });
+
+    // Get user select params
+    const params =
+      flat.find(({ node }) => node?.flowNodeType === FlowNodeTypeEnum.userSelect)?.result
+        ?.INTERACTIVE ?? {};
+
+    // Get entry nodeIds
+    const userSelectNodeId = flat.find(
+      (item) => item.node.flowNodeType === FlowNodeTypeEnum.userSelect
+    )?.node.nodeId;
+
+    const otherNextNodeIds = flat
+      .filter(({ node }) => node.flowNodeType !== FlowNodeTypeEnum.userSelect)
+      .flatMap(({ node }) =>
+        runtimeEdges
+          .filter((edge) => edge.source === node.nodeId && edge.status === 'active')
+          .map((edge) => edge.target)
+      );
+
+    const nodeIds = [userSelectNodeId, ...otherNextNodeIds].filter(Boolean) as string[];
+
+    // Get memory edges
+    const memoryEdges = runtimeEdges.map((edge) => ({
+      ...edge,
+      status: nodeIds.includes(edge.target) ? 'active' : 'waiting'
+    }));
+
+    const interactiveResult = {
+      params,
+      nodeOutputs,
+      entryNodeIds: nodeIds,
+      memoryEdges
+    };
+
+    responseWrite({
+      res,
+      event: SseResponseEventEnum.userSelect,
+      data: JSON.stringify({ interactive: interactiveResult })
+    });
+
+    return {
+      type: ChatItemValueTypeEnum.interactive,
+      interactive: interactiveResult
+    };
+  }
+
   function checkNodeCanRun(nodes: RuntimeNodeItemType[] = []): Promise<any> {
     return Promise.all(
       nodes.map(async (node) => {
@@ -241,10 +323,22 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         node: RuntimeNodeItemType;
         result: Record<string, any>;
       }[];
+
       if (flat.length === 0) return;
 
       // Update the node output at the end of the run and get the next nodes
       const nextNodes = flat.map((item) => nodeOutput(item.node, item.result)).flat();
+
+      if (flat.some((item) => item.result.INTERACTIVE)) {
+        chatAssistantResponse.push(
+          handleInteractiveResult({
+            flat,
+            runtimeEdges,
+            res
+          }) as AIChatItemValueItemType
+        );
+        return;
+      }
 
       // Remove repeat nodes(Make sure that the node is only executed once)
       const filterNextNodes = nextNodes.filter(

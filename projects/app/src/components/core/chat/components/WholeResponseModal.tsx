@@ -124,7 +124,7 @@ const WholeResponseModal = ({
         </Flex>
       }
     >
-      {response?.length && <ResponseBox response={response} showDetail={showDetail} />}
+      {!!response?.length && <ResponseBox response={response} showDetail={showDetail} />}
     </MyModal>
   );
 };

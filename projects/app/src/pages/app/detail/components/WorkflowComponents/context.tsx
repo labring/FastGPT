@@ -621,7 +621,6 @@ const WorkflowContextProvider = ({
             },
             appId
           });
-        // console.log({ finishedEdges, finishedNodes, nextStepRunNodes, flowResponses });
         // 5. Store debug result
         const newStoreDebugData = {
           runtimeNodes: finishedNodes,

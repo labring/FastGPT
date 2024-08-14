@@ -761,6 +761,7 @@
     },
     "module": {
       "Add question type": "Add question type",
+      "Add_option": "Add option",
       "Can not connect self": "Cannot connect to self",
       "Confirm Delete Node": "Confirm delete node?",
       "Data Type": "Data type",
@@ -771,6 +772,7 @@
       "Default Value": "Default value",
       "Default value": "Default value",
       "Default value placeholder": "If not filled, the default return is an empty string",
+      "Diagram": "Diagram",
       "Edit intro": "Edit description",
       "Field Description": "Field description",
       "Field Name": "Field name",
@@ -949,6 +951,7 @@
         "histories": "Publishing records"
       },
       "template": {
+        "Interactive": "Interactive",
         "Multimodal": "Multimodal",
         "Search": "Search"
       },
@@ -1060,6 +1063,7 @@
   "no_data": "No data",
   "no_laf_env": "The system is not configured with Laf environment",
   "not_yet_introduced": "No introduction yet",
+  "option": "Option",
   "pay": {
     "amount": "Amount",
     "balance": "Account balance",

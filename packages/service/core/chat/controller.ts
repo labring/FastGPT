@@ -79,6 +79,47 @@ export const addCustomFeedbacks = async ({
   }
 };
 
+/*
+  Update the user selected index of the interactive module
+*/
+export const updateUserSelectedIndex = async ({
+  appId,
+  chatId,
+  dataId,
+  userSeletedIndex
+}: {
+  appId: string;
+  chatId?: string;
+  dataId?: string;
+  userSeletedIndex: number;
+}) => {
+  try {
+    await MongoChatItem.findOneAndUpdate(
+      {
+        appId,
+        chatId,
+        dataId,
+        'value.type': 'interactive'
+      },
+      {
+        $set: {
+          'value.$.interactive.params.userSeletedIndex': userSeletedIndex,
+          'responseData.$[elem].userSeletedIndex': userSeletedIndex
+        }
+      },
+      {
+        arrayFilters: [
+          {
+            'elem.moduleType': 'userSelect'
+          }
+        ]
+      }
+    );
+  } catch (error) {
+    addLog.error('updateUserSelectedIndex error', error);
+  }
+};
+
 /* 
   Delete chat files
   1. ChatId: Delete one chat files

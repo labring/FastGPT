@@ -609,8 +609,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -771,6 +770,7 @@
     },
     "module": {
       "Add question type": "添加问题类型",
+      "Add_option": "添加选项",
       "Can not connect self": "不能连接自身",
       "Confirm Delete Node": "确认删除该节点？",
       "Data Type": "数据类型",
@@ -781,6 +781,7 @@
       "Default Value": "默认值",
       "Default value": "默认值",
       "Default value placeholder": "不填则默认返回空字符",
+      "Diagram": "示意图",
       "Edit intro": "编辑描述",
       "Field Description": "字段描述",
       "Field Name": "字段名",
@@ -959,6 +960,7 @@
         "histories": "发布记录"
       },
       "template": {
+        "Interactive": "交互",
         "Multimodal": "多模态",
         "Search": "搜索"
       },
@@ -1070,6 +1072,7 @@
   "no_data": "暂无数据",
   "no_laf_env": "系统未配置Laf环境",
   "not_yet_introduced": "暂无介绍",
+  "option": "选项",
   "pay": {
     "amount": "金额",
     "balance": "账号余额",

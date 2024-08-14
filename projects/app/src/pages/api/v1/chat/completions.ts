@@ -64,6 +64,7 @@ import {
   getPluginRunContent
 } from '@fastgpt/global/core/app/plugin/utils';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+import { processHistoryAndNodes } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -225,23 +226,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         appId: app._id,
         chatId,
         limit,
-        field: `dataId obj value`
+        field: `dataId obj value nodeOutputs`
       }),
       getAppLatestVersion(app._id, app)
     ]);
     const newHistories = concatHistories(histories, chatMessages);
 
     // Get runtimeNodes
-    const runtimeNodes = isPlugin
-      ? updatePluginInputByVariables(
-          storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
-          variables
-        )
-      : storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes));
+    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes, newHistories));
+    runtimeNodes = isPlugin ? updatePluginInputByVariables(runtimeNodes, variables) : runtimeNodes;
+    runtimeNodes = processHistoryAndNodes(newHistories, runtimeNodes);
+
+    const runtimeEdges = initWorkflowEdgeStatus(edges, newHistories);
 
     const runtimeVariables = removePluginInputVariables(
       variables,
-      storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes))
+      storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes, newHistories))
     );
 
     /* start flow controller */
@@ -258,7 +258,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           chatId,
           responseChatItemId,
           runtimeNodes,
-          runtimeEdges: initWorkflowEdgeStatus(edges),
+          runtimeEdges,
           variables: runtimeVariables,
           query: removeEmptyUserInput(userQuestion.value),
           chatConfig,

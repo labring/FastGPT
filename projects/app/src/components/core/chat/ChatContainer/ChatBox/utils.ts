@@ -1,4 +1,4 @@
-import { ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { ChatItemValueItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { ChatBoxInputType, UserInputFileItemType } from './type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
@@ -36,4 +36,27 @@ export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): Chat
     text,
     files
   };
+};
+
+export const setUserSelectedIndex = (history: ChatSiteItemType[], text: string) => {
+  if (!history.length) return history;
+  const lastItem = history[history.length - 1];
+  const interactiveItem = lastItem.value[lastItem.value.length - 1];
+
+  if (interactiveItem && interactiveItem.type === 'interactive') {
+    const userSelectOptions = interactiveItem.interactive?.params?.userSelectOptions;
+
+    const selectedIndex = userSelectOptions?.findIndex((option) => option.value === text);
+
+    if (
+      selectedIndex !== -1 &&
+      selectedIndex !== undefined &&
+      interactiveItem.interactive?.params
+    ) {
+      interactiveItem.interactive.params.userSeletedIndex = selectedIndex;
+      return history;
+    }
+  }
+
+  return history;
 };
