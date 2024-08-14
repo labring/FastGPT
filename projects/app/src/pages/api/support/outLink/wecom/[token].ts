@@ -9,6 +9,8 @@ async function handler(
   req: ApiRequestProps<OutLinkWecomBody, OutLinkWecomQuery>,
   res: ApiResponseType<any>
 ): Promise<any> {
+  // WARN: it is not supported yet.
+  return {};
   const { token, type } = req.query;
   const result = await plusRequest({
     url: `support/outLink/wecom/${token}`,
