@@ -24,6 +24,7 @@ import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import {
   getDefaultEntryNodeIds,
   initWorkflowEdgeStatus,
+  processHistoryAndNodes,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -91,6 +92,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         throw new Error('Params Error');
       }
     }
+
+    runtimeNodes = processHistoryAndNodes(chatMessages, runtimeNodes);
 
     // auth balance
     const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);

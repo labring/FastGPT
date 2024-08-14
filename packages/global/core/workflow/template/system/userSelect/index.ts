@@ -39,11 +39,11 @@ export const UserSelectNode: FlowNodeTemplateType = {
       label: '',
       value: [
         {
-          value: i18nT('app:workflow.option1'),
+          value: '选项 1',
           key: 'option1'
         },
         {
-          value: i18nT('app:workflow.option2'),
+          value: '选项 2',
           key: 'option2'
         }
       ]

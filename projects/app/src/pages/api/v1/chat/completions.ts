@@ -45,7 +45,7 @@ import { AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { AIChatItemValueItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
+import { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import { dispatchWorkFlowV1 } from '@fastgpt/service/core/workflow/dispatchV1';
@@ -64,6 +64,7 @@ import {
   getPluginRunContent
 } from '@fastgpt/global/core/app/plugin/utils';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+import { processHistoryAndNodes } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -234,6 +235,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes, newHistories));
     runtimeNodes = isPlugin ? updatePluginInputByVariables(runtimeNodes, variables) : runtimeNodes;
+    runtimeNodes = processHistoryAndNodes(newHistories, runtimeNodes);
 
     const runtimeEdges = initWorkflowEdgeStatus(edges, newHistories);
 

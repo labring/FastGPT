@@ -6,8 +6,8 @@ import { StoreEdgeItemType } from '../type/edge';
 import { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
 import { VARIABLE_NODE_ID } from '../constants';
 import { isReferenceValue } from '../utils';
-import { ReferenceValueProps } from '../type/io';
-import { ChatItemType } from '../../../core/chat/type';
+import { FlowNodeOutputItemType, ReferenceValueProps } from '../type/io';
+import { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
 
 export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number => {
@@ -48,10 +48,7 @@ export const initWorkflowEdgeStatus = (
 };
 
 export const getLastInteractiveValue = (histories: ChatItemType[]) => {
-  const lastAIMessage = histories
-    .slice()
-    .reverse()
-    .find((item) => item.obj === ChatRoleEnum.AI);
+  const lastAIMessage = histories.findLast((item) => item.obj === ChatRoleEnum.AI);
 
   if (lastAIMessage) {
     const interactiveValue = lastAIMessage.value.find(
@@ -255,3 +252,30 @@ export const textAdaptGptResponse = ({
     ]
   });
 };
+
+/* Update runtimeNode's outputs with interactive data from history */
+export function processHistoryAndNodes(
+  history: ChatItemType[],
+  runtimeNodes: RuntimeNodeItemType[]
+) {
+  const interactive = getLastInteractiveValue(history);
+  if (!interactive?.nodeOutputs) {
+    return runtimeNodes;
+  }
+
+  return runtimeNodes.map((node) => {
+    if (!node.outputs || node.outputs.length === 0) {
+      return node;
+    }
+
+    const updatedOutputs = node.outputs.map((output: FlowNodeOutputItemType) => {
+      // @ts-ignore
+      const historyOutput = interactive?.nodeOutputs?.find(
+        (item: NodeOutputItemType) => item.nodeId === node.nodeId && item.key === output.key
+      );
+      return historyOutput ? { ...output, value: historyOutput.value } : output;
+    });
+
+    return { ...node, outputs: updatedOutputs };
+  });
+}

@@ -13,7 +13,6 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
-  ChatItemType,
   NodeOutputItemType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type.d';
@@ -221,34 +220,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     return nextStepNodes;
   }
 
-  /* Extract interactive data from flat */
-  function extractUserSelectParams(
-    flat: {
-      node: RuntimeNodeItemType;
-      result: Record<string, any>;
-    }[]
-  ) {
-    for (const item of flat) {
-      if (item.node && item.node.flowNodeType === FlowNodeTypeEnum.userSelect) {
-        const assistantResponses = item.result?.assistantResponses || [];
-        for (const response of assistantResponses) {
-          if (response.type === ChatItemValueTypeEnum.interactive) {
-            return {
-              params: response.interactive.params,
-              nodeOutputs: response.interactive.nodeOutputs
-            };
-          }
-        }
-      }
-    }
-    return {};
-  }
-
   function handleInteractiveResult({
     flat,
     runtimeEdges,
-    res,
-    chatAssistantResponse
+    res
   }: {
     flat: {
       node: RuntimeNodeItemType;
@@ -256,56 +231,66 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     }[];
     runtimeEdges: RuntimeEdgeItemType[];
     res: NextApiResponse | undefined;
-    chatAssistantResponse: AIChatItemValueItemType[];
   }) {
+    // Get node outputs
+    const nodeOutputs: NodeOutputItemType[] = [];
+    runtimeNodes.forEach((node) => {
+      if (node.outputs && node.outputs.length > 0) {
+        node.outputs.forEach((output: FlowNodeOutputItemType) => {
+          if (output.value !== undefined) {
+            nodeOutputs.push({
+              nodeId: node.nodeId,
+              key: output.key as NodeOutputKeyEnum,
+              value: output.value
+            });
+          }
+        });
+      }
+    });
+
+    // Get user select params
+    const params =
+      flat.find(({ node }) => node?.flowNodeType === FlowNodeTypeEnum.userSelect)?.result
+        ?.INTERACTIVE ?? {};
+
+    // Get entry nodeIds
     const userSelectNodeId = flat.find(
       (item) => item.node.flowNodeType === FlowNodeTypeEnum.userSelect
     )?.node.nodeId;
 
     const otherNextNodeIds = flat
-      .filter((item) => item.node.flowNodeType !== FlowNodeTypeEnum.userSelect)
-      .flatMap((item) => {
-        const nextEdges = runtimeEdges.filter(
-          (edge) => edge.source === item.node.nodeId && edge.status === 'active'
-        );
-        return nextEdges.map((edge) => edge.target);
-      });
+      .filter(({ node }) => node.flowNodeType !== FlowNodeTypeEnum.userSelect)
+      .flatMap(({ node }) =>
+        runtimeEdges
+          .filter((edge) => edge.source === node.nodeId && edge.status === 'active')
+          .map((edge) => edge.target)
+      );
 
     const nodeIds = [userSelectNodeId, ...otherNextNodeIds].filter(Boolean) as string[];
 
-    const memoryEdges = runtimeEdges.map((edge) => {
-      if (nodeIds.includes(edge.target)) {
-        return { ...edge, status: 'active' };
-      } else {
-        return { ...edge, status: 'waiting' };
-      }
-    });
+    // Get memory edges
+    const memoryEdges = runtimeEdges.map((edge) => ({
+      ...edge,
+      status: nodeIds.includes(edge.target) ? 'active' : 'waiting'
+    }));
+
+    const interactiveResult = {
+      params,
+      nodeOutputs,
+      entryNodeIds: nodeIds,
+      memoryEdges
+    };
 
     responseWrite({
       res,
       event: SseResponseEventEnum.userSelect,
-      data: JSON.stringify({
-        interactive: {
-          ...extractUserSelectParams(flat),
-          entryNodeIds: nodeIds,
-          memoryEdges: memoryEdges
-        }
-      })
+      data: JSON.stringify({ interactive: interactiveResult })
     });
 
-    return chatAssistantResponse.map((item) => {
-      if (item.type === ChatItemValueTypeEnum.interactive) {
-        return {
-          ...item,
-          interactive: {
-            ...item.interactive,
-            entryNodeIds: nodeIds,
-            memoryEdges: memoryEdges
-          }
-        };
-      }
-      return item;
-    });
+    return {
+      type: ChatItemValueTypeEnum.interactive,
+      interactive: interactiveResult
+    };
   }
 
   function checkNodeCanRun(nodes: RuntimeNodeItemType[] = []): Promise<any> {
@@ -345,12 +330,13 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       const nextNodes = flat.map((item) => nodeOutput(item.node, item.result)).flat();
 
       if (flat.some((item) => item.result.INTERACTIVE)) {
-        chatAssistantResponse = handleInteractiveResult({
-          flat,
-          runtimeEdges,
-          res,
-          chatAssistantResponse
-        }) as AIChatItemValueItemType[];
+        chatAssistantResponse.push(
+          handleInteractiveResult({
+            flat,
+            runtimeEdges,
+            res
+          }) as AIChatItemValueItemType
+        );
         return;
       }
 
@@ -398,7 +384,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       // replace {{$xx.xx$}} variables
       value = replaceVariableLabel({
         text: value,
-        nodes: processHistoryAndNodes(histories, runtimeNodes),
+        nodes: runtimeNodes,
         variables,
         runningNode: node
       });
@@ -406,7 +392,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       // replace reference variables
       value = getReferenceVariableValue({
         value,
-        nodes: processHistoryAndNodes(histories, runtimeNodes),
+        nodes: runtimeNodes,
         variables
       });
 
@@ -584,27 +570,3 @@ export const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemTy
 
   return result;
 };
-
-/* Update runtimeNode's outputs with interactive data from history */
-function processHistoryAndNodes(history: ChatItemType[], runtimeNodes: RuntimeNodeItemType[]) {
-  const interactive = getLastInteractiveValue(history);
-  if (!interactive?.nodeOutputs) {
-    return runtimeNodes;
-  }
-
-  return runtimeNodes.map((node) => {
-    if (!node.outputs || node.outputs.length === 0) {
-      return node;
-    }
-
-    const updatedOutputs = node.outputs.map((output: FlowNodeOutputItemType) => {
-      // @ts-ignore
-      const historyOutput = interactive?.nodeOutputs?.find(
-        (item: NodeOutputItemType) => item.nodeId === node.nodeId && item.key === output.key
-      );
-      return historyOutput ? { ...output, value: historyOutput.value } : output;
-    });
-
-    return { ...node, outputs: updatedOutputs };
-  });
-}
