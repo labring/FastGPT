@@ -70,7 +70,7 @@ export async function authChatCrud({
 
     if (!chat) return { id: outLinkUid };
 
-    //  auth req
+    // auth req
     const { teamId, tmbId, permission } = await authUserPer({
       ...props,
       per: ReadPermissionVal
@@ -81,7 +81,7 @@ export async function authChatCrud({
     if (permission.isOwner) return { uid: outLinkUid };
     if (String(tmbId) === String(chat.tmbId)) return { uid: outLinkUid };
 
-    // admin
+    // Admin can manage all chat
     if (per === WritePermissionVal && permission.hasManagePer) return { uid: outLinkUid };
 
     return Promise.reject(ChatErrEnum.unAuthChat);

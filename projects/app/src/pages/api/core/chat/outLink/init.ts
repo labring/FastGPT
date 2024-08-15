@@ -18,89 +18,83 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
-import { i18nT } from '@fastgpt/web/i18n/utils';
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    await connectToDatabase();
+import { NextAPI } from '@/service/middleware/entry';
 
-    let { chatId, shareId, outLinkUid } = req.query as InitOutLinkChatProps;
+async function handler(req: NextApiRequest, res: NextApiResponse) {
+  let { chatId, shareId, outLinkUid } = req.query as InitOutLinkChatProps;
 
-    // auth link permission
-    const { shareChat, uid, appId } = await authOutLink({ shareId, outLinkUid });
+  // auth link permission
+  const { shareChat, uid, appId } = await authOutLink({ shareId, outLinkUid });
 
-    // auth app permission
-    const [tmb, chat, app] = await Promise.all([
-      MongoTeamMember.findById(shareChat.tmbId, '_id userId').populate('userId', 'avatar').lean(),
-      MongoChat.findOne({ appId, chatId, shareId }).lean(),
-      MongoApp.findById(appId).lean()
-    ]);
+  // auth app permission
+  const [tmb, chat, app] = await Promise.all([
+    MongoTeamMember.findById(shareChat.tmbId, '_id userId').populate('userId', 'avatar').lean(),
+    MongoChat.findOne({ appId, chatId, shareId }).lean(),
+    MongoApp.findById(appId).lean()
+  ]);
 
-    if (!app) {
-      throw new Error(AppErrEnum.unExist);
-    }
+  if (!app) {
+    throw new Error(AppErrEnum.unExist);
+  }
 
-    // auth chat permission
-    if (chat && chat.outLinkUid !== uid) {
-      throw new Error(ChatErrEnum.unAuthChat);
-    }
+  // auth chat permission
+  if (chat && chat.outLinkUid !== uid) {
+    throw new Error(ChatErrEnum.unAuthChat);
+  }
 
-    const [{ histories }, { nodes }] = await Promise.all([
-      getChatItems({
-        appId: app._id,
-        chatId,
-        limit: 30,
-        field: `dataId obj value userGoodFeedback userBadFeedback ${
-          shareChat.responseDetail || app.type === AppTypeEnum.plugin
-            ? `adminFeedback ${DispatchNodeResponseKeyEnum.nodeResponse}`
-            : ''
-        } `
-      }),
-      getAppLatestVersion(app._id, app)
-    ]);
+  const [{ histories }, { nodes }] = await Promise.all([
+    getChatItems({
+      appId: app._id,
+      chatId,
+      limit: 30,
+      field: `dataId obj value userGoodFeedback userBadFeedback ${
+        shareChat.responseDetail || app.type === AppTypeEnum.plugin
+          ? `adminFeedback ${DispatchNodeResponseKeyEnum.nodeResponse}`
+          : ''
+      } `
+    }),
+    getAppLatestVersion(app._id, app)
+  ]);
 
-    // pick share response field
-    app.type !== AppTypeEnum.plugin &&
-      histories.forEach((item) => {
-        if (item.obj === ChatRoleEnum.AI) {
-          item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
-        }
-      });
-
-    jsonRes<InitChatResponse>(res, {
-      data: {
-        chatId,
-        appId: app._id,
-        title: chat?.title || i18nT('chat:new_chat'),
-        //@ts-ignore
-        userAvatar: tmb?.userId?.avatar,
-        variables: chat?.variables || {},
-        history: app.type === AppTypeEnum.plugin ? histories : transformPreviewHistories(histories),
-        app: {
-          chatConfig: getAppChatConfig({
-            chatConfig: app.chatConfig,
-            systemConfigNode: getGuideModule(nodes),
-            storeVariables: chat?.variableList,
-            storeWelcomeText: chat?.welcomeText,
-            isPublicFetch: false
-          }),
-          chatModels: getChatModelNameListByModules(nodes),
-          name: app.name,
-          avatar: app.avatar,
-          intro: app.intro,
-          type: app.type,
-          pluginInputs:
-            app?.modules?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)
-              ?.inputs ?? []
-        }
+  // pick share response field
+  app.type !== AppTypeEnum.plugin &&
+    histories.forEach((item) => {
+      if (item.obj === ChatRoleEnum.AI) {
+        item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
       }
     });
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
-  }
+
+  jsonRes<InitChatResponse>(res, {
+    data: {
+      chatId,
+      appId: app._id,
+      title: chat?.title,
+      //@ts-ignore
+      userAvatar: tmb?.userId?.avatar,
+      variables: chat?.variables || {},
+      history: app.type === AppTypeEnum.plugin ? histories : transformPreviewHistories(histories),
+      app: {
+        chatConfig: getAppChatConfig({
+          chatConfig: app.chatConfig,
+          systemConfigNode: getGuideModule(nodes),
+          storeVariables: chat?.variableList,
+          storeWelcomeText: chat?.welcomeText,
+          isPublicFetch: false
+        }),
+        chatModels: getChatModelNameListByModules(nodes),
+        name: app.name,
+        avatar: app.avatar,
+        intro: app.intro,
+        type: app.type,
+        pluginInputs:
+          app?.modules?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)
+            ?.inputs ?? []
+      }
+    }
+  });
 }
+
+export default NextAPI(handler);
 
 export const config = {
   api: {
