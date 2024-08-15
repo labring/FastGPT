@@ -31,7 +31,7 @@ type props = {
   isLastChild: boolean;
   isChatting: boolean;
   questionGuides: string[];
-  onSendMessage: SendPromptFnType;
+  onSendMessage?: SendPromptFnType;
 };
 
 const AIResponseBox = ({
@@ -148,44 +148,38 @@ ${toolResponse}`}
     value.interactive &&
     value.interactive.type === 'userSelect'
   ) {
-    const description = value.interactive.params.description;
     return (
-      <Box>
-        <Markdown source={description} />
-        <Flex mt={!!description ? 3 : 0} flexDirection={'column'} gap={2} minW={'240px'}>
-          {value.interactive.params.userSelectOptions?.map((option) => {
-            const selected = option.value === value.interactive?.params?.userSelectedVal;
+      <Flex flexDirection={'column'} gap={2} minW={'200px'} maxW={'250px'}>
+        {value.interactive.params.userSelectOptions?.map((option) => {
+          const selected = option.value === value.interactive?.params?.userSelectedVal;
 
-            return (
-              <Button
-                key={option.key}
-                variant={'whitePrimary'}
-                isDisabled={
-                  !isLastChild && value.interactive?.params?.userSelectedVal !== undefined
-                }
-                {...(selected
-                  ? {
-                      _disabled: {
-                        cursor: 'default',
-                        borderColor: 'primary.300',
-                        bg: 'primary.50 !important',
-                        color: 'primary.600'
-                      }
+          return (
+            <Button
+              key={option.key}
+              variant={'whitePrimary'}
+              isDisabled={!isLastChild && value.interactive?.params?.userSelectedVal !== undefined}
+              {...(selected
+                ? {
+                    _disabled: {
+                      cursor: 'default',
+                      borderColor: 'primary.300',
+                      bg: 'primary.50 !important',
+                      color: 'primary.600'
                     }
-                  : {})}
-                onClick={() => {
-                  onSendMessage({
-                    text: option.value,
-                    history: setUserSelectResultToHistories(chatHistories, option.value)
-                  });
-                }}
-              >
-                {option.value}
-              </Button>
-            );
-          })}
-        </Flex>
-      </Box>
+                  }
+                : {})}
+              onClick={() => {
+                onSendMessage?.({
+                  text: option.value,
+                  history: setUserSelectResultToHistories(chatHistories, option.value)
+                });
+              }}
+            >
+              {option.value}
+            </Button>
+          );
+        })}
+      </Flex>
     );
   }
   return null;

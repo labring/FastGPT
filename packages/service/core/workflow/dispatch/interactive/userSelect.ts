@@ -1,4 +1,7 @@
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   DispatchNodeResultType,
   ModuleDispatchProps
@@ -10,41 +13,58 @@ import type {
   UserSelectOptionItemType
 } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
 import { updateUserSelectedResult } from '../../../chat/controller';
-import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import { responseWrite } from '../../../../common/response';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.description]: string;
   [NodeInputKeyEnum.userSelectOptions]: UserSelectOptionItemType[];
 }>;
 type UserSelectResponse = DispatchNodeResultType<{
+  [NodeOutputKeyEnum.answerText]?: string;
   [DispatchNodeResponseKeyEnum.interactive]?: UserSelectInteractive;
   [NodeOutputKeyEnum.selectResult]?: string;
 }>;
 
 export const dispatchUserSelect = async (props: Props): Promise<UserSelectResponse> => {
   const {
+    res,
+    detail,
     histories,
+    stream,
     app: { _id: appId },
     chatId,
     node: { nodeId, isEntry },
-    params: { description, userSelectOptions }
+    params: { description, userSelectOptions },
+    query
   } = props;
 
   // Interactive node is not the entry node, return interactive result
   if (!isEntry) {
+    const answerText = description ? `\n${description}` : undefined;
+    if (res && stream && answerText) {
+      responseWrite({
+        res,
+        event: detail ? SseResponseEventEnum.fastAnswer : undefined,
+        data: textAdaptGptResponse({
+          text: answerText
+        })
+      });
+    }
+
     return {
+      [NodeOutputKeyEnum.answerText]: answerText,
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userSelect',
         params: {
-          userSelectOptions,
-          description
+          userSelectOptions
         }
       }
     };
   }
 
-  const lastInteractiveValue = getLastInteractiveValue(histories);
-  const userSelectedVal = lastInteractiveValue?.params?.userSelectedVal;
+  const { text: userSelectedVal } = chatValue2RuntimePrompt(query);
 
   // Error status
   if (userSelectedVal === undefined) {
@@ -55,6 +75,7 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     };
   }
 
+  // Update db
   updateUserSelectedResult({
     appId,
     chatId,
@@ -63,7 +84,7 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
 
   return {
     [DispatchNodeResponseKeyEnum.skipHandleId]: userSelectOptions
-      .filter((item, index: number) => item.value !== userSelectedVal)
+      .filter((item) => item.value !== userSelectedVal)
       .map((item: any) => getHandleId(nodeId, 'source', item.key)),
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       userSelectResult: userSelectedVal
