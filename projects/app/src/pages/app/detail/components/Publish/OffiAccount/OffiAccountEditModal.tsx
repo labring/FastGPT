@@ -2,7 +2,7 @@ import React from 'react';
 import { Flex, Box, Button, ModalBody, Input, Link } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import type { WecomAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
+import type { OffiAccountAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { createShareChat, updateShareChat } from '@/web/support/outLink/api';
@@ -11,10 +11,9 @@ import BasicInfo from '../components/BasicInfo';
 import { getDocPath } from '@/web/common/system/doc';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
-const WecomEditModal = ({
+const OffiAccountEditModal = ({
   appId,
   defaultData,
   onClose,
@@ -23,7 +22,7 @@ const WecomEditModal = ({
   isEdit = false
 }: {
   appId: string;
-  defaultData: OutLinkEditType<WecomAppType>;
+  defaultData: OutLinkEditType<OffiAccountAppType>;
   onClose: () => void;
   onCreate: (id: string) => void;
   onEdit: () => void;
@@ -43,7 +42,7 @@ const WecomEditModal = ({
       createShareChat({
         ...e,
         appId,
-        type: PublishChannelEnum.wecom
+        type: PublishChannelEnum.officialAccount
       }),
     {
       errorToast: t('common:common.Create Failed'),
@@ -62,8 +61,12 @@ const WecomEditModal = ({
 
   return (
     <MyModal
-      iconSrc="core/app/publish/wecom"
-      title={isEdit ? t('publish:wecom.edit_modal_title') : t('publish:wecom.create_modal_title')}
+      iconSrc="/imgs/modal/shareFill.svg"
+      title={
+        isEdit
+          ? t('publish:official_account.edit_modal_title')
+          : t('publish:official_account.create_modal_title')
+      }
       minW={['auto', '60rem']}
     >
       <ModalBody display={'grid'} gridTemplateColumns={['1fr', '1fr 1fr']} fontSize={'14px'} p={0}>
@@ -72,10 +75,10 @@ const WecomEditModal = ({
         </Box>
         <Flex p={8} minH={['auto', '400px']} flexDirection="column" gap={6}>
           <Flex alignItems="center">
-            <Box color="myGray.600">{t('publish:wecom.api')}</Box>
+            <Box color="myGray.600">{t('publish:official_account.api')}</Box>
             {feConfigs?.docUrl && (
               <Link
-                href={feConfigs.openAPIDocUrl || getDocPath('/docs/use-cases/wecom-bot')}
+                href={feConfigs.openAPIDocUrl || getDocPath('/docs/use-cases/official_account')}
                 target={'_blank'}
                 ml={2}
                 color={'primary.500'}
@@ -90,22 +93,11 @@ const WecomEditModal = ({
           </Flex>
           <Flex alignItems={'center'}>
             <FormLabel flex={'0 0 6.25rem'} required>
-              Corp ID
+              App ID
             </FormLabel>
             <Input
-              placeholder="Corp ID"
-              {...register('app.CorpId', {
-                required: true
-              })}
-            />
-          </Flex>
-          <Flex alignItems={'center'}>
-            <FormLabel flex={'0 0 6.25rem'} required>
-              Agent ID
-            </FormLabel>
-            <Input
-              placeholder="Agent ID"
-              {...register('app.AgentId', {
+              placeholder="App ID"
+              {...register('app.appId', {
                 required: true
               })}
             />
@@ -116,7 +108,7 @@ const WecomEditModal = ({
             </FormLabel>
             <Input
               placeholder="Secret"
-              {...register('app.SuiteSecret', {
+              {...register('app.secret', {
                 required: true
               })}
             />
@@ -133,13 +125,8 @@ const WecomEditModal = ({
             />
           </Flex>
           <Flex alignItems={'center'}>
-            <FormLabel flex={'0 0 6.25rem'} required>
-              AES Key
-            </FormLabel>
-            <Input
-              placeholder="AES Key"
-              {...(register('app.CallbackEncodingAesKey'), { required: true })}
-            />
+            <FormLabel flex={'0 0 6.25rem'}>AES Key</FormLabel>
+            <Input placeholder="AES Key" {...register('app.CallbackEncodingAesKey')} />
           </Flex>
 
           <Box flex={1}></Box>
@@ -163,4 +150,4 @@ const WecomEditModal = ({
   );
 };
 
-export default WecomEditModal;
+export default OffiAccountEditModal;
