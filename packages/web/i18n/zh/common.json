@@ -610,8 +610,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1286,6 +1285,8 @@
         "Sub plan tip": "免费使用 {{title}} 或升级更高的套餐",
         "Team plan and usage": "套餐与用量",
         "Training weight": "训练优先级：{{weight}}",
+        "web_site_sync": "Web 站点同步",
+        "rerank": "检索结果重排",
         "Update extra ai points": "额外 AI 积分",
         "Update extra dataset size": "额外存储量",
         "Upgrade plan": "升级套餐",

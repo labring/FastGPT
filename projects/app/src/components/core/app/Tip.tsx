@@ -50,7 +50,7 @@ const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
       imgUrl: '/imgs/app/welcome.svg'
     },
     [FnTypeEnum.file]: {
-      icon: '/imgs/app/welcome-icon.svg',
+      icon: '/imgs/app/fileinput.svg',
       title: t('app:file_upload'),
       desc: t('app:file_upload_tip'),
       imgUrl: '/imgs/app/fileUploadPlaceholder.png'
