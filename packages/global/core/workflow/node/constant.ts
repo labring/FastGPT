@@ -118,7 +118,8 @@ export enum FlowNodeTypeEnum {
   code = 'code',
   textEditor = 'textEditor',
   customFeedback = 'customFeedback',
-  readFiles = 'readFiles'
+  readFiles = 'readFiles',
+  userSelect = 'userSelect'
 }
 
 // node IO value type

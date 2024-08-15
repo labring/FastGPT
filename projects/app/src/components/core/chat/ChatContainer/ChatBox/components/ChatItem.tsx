@@ -15,6 +15,8 @@ import { useCopyData } from '@/web/common/hooks/useCopyData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
+import { SendPromptFnType } from '../type';
+
 const colorMap = {
   [ChatStatusEnum.loading]: {
     bg: 'myGray.100',
@@ -30,16 +32,7 @@ const colorMap = {
   }
 };
 
-const ChatItem = ({
-  type,
-  avatar,
-  statusBoxData,
-  children,
-  isLastChild,
-  questionGuides = [],
-  ...chatControllerProps
-}: {
-  type: ChatRoleEnum.Human | ChatRoleEnum.AI;
+type BasicProps = {
   avatar?: string;
   statusBoxData?: {
     status: `${ChatStatusEnum}`;
@@ -47,7 +40,28 @@ const ChatItem = ({
   };
   questionGuides?: string[];
   children?: React.ReactNode;
-} & ChatControllerProps) => {
+} & ChatControllerProps;
+
+type UserItemType = BasicProps & {
+  type: ChatRoleEnum.Human;
+  onSendMessage: undefined;
+};
+type AiItemType = BasicProps & {
+  type: ChatRoleEnum.AI;
+  onSendMessage: SendPromptFnType;
+};
+type Props = UserItemType | AiItemType;
+
+const ChatItem = ({
+  type,
+  avatar,
+  statusBoxData,
+  children,
+  isLastChild,
+  questionGuides = [],
+  onSendMessage,
+  ...chatControllerProps
+}: Props) => {
   const styleMap: BoxProps =
     type === ChatRoleEnum.Human
       ? {
@@ -96,12 +110,13 @@ const ChatItem = ({
               isLastChild={isLastChild}
               isChatting={isChatting}
               questionGuides={questionGuides}
+              onSendMessage={onSendMessage}
             />
           );
         })}
       </Flex>
     );
-  }, [chat, isChatting, isLastChild, questionGuides, type]);
+  }, [chat, isChatting, isLastChild, onSendMessage, questionGuides, type]);
 
   const chatStatusMap = useMemo(() => {
     if (!statusBoxData?.status) return;

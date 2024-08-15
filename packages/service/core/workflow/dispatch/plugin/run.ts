@@ -4,7 +4,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getPluginRuntimeById } from '../../../app/plugin/controller';
 import {
-  getDefaultEntryNodeIds,
+  getWorkflowEntryNodeIds,
   initWorkflowEdgeStatus,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -49,7 +49,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
   const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
-    runtimeNodes: storeNodes2RuntimeNodes(plugin.nodes, getDefaultEntryNodeIds(plugin.nodes)).map(
+    runtimeNodes: storeNodes2RuntimeNodes(plugin.nodes, getWorkflowEntryNodeIds(plugin.nodes)).map(
       (node) => {
         if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
           return {

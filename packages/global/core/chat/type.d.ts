@@ -15,6 +15,7 @@ import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { DispatchNodeResponseType } from '../workflow/runtime/type.d';
 import { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
+import { InteractiveNodeResponseItemType } from '../workflow/template/system/userSelect/type';
 
 export type ChatSchema = {
   _id: string;
@@ -67,11 +68,12 @@ export type SystemChatItemType = {
   value: SystemChatItemValueItemType[];
 };
 export type AIChatItemValueItemType = {
-  type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.tool;
+  type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.tool | ChatItemValueTypeEnum.interactive;
   text?: {
     content: string;
   };
   tools?: ToolModuleResponseItemType[];
+  interactive?: InteractiveNodeResponseItemType;
 };
 export type AIChatItemType = {
   obj: ChatRoleEnum.AI;
@@ -151,6 +153,13 @@ export type ChatHistoryItemResType = DispatchNodeResponseType & {
   nodeId: string;
   moduleType: FlowNodeTypeEnum;
   moduleName: string;
+};
+
+/* ---------- node outputs ------------ */
+export type NodeOutputItemType = {
+  nodeId: string;
+  key: NodeOutputKeyEnum;
+  value: any;
 };
 
 /* One tool run response  */

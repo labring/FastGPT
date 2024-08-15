@@ -527,7 +527,8 @@
         "module tokens": "total tokens",
         "plugin output": "Plugin output value",
         "search using reRank": "Result rearrangement",
-        "text output": "text output"
+        "text output": "text output",
+        "user_select_result": "User select result"
       },
       "retry": "Regenerate",
       "tts": {
@@ -761,6 +762,7 @@
     },
     "module": {
       "Add question type": "Add question type",
+      "Add_option": "Add option",
       "Can not connect self": "Cannot connect to self",
       "Confirm Delete Node": "Confirm delete node?",
       "Data Type": "Data type",
@@ -771,6 +773,7 @@
       "Default Value": "Default value",
       "Default value": "Default value",
       "Default value placeholder": "If not filled, the default return is an empty string",
+      "Diagram": "Diagram",
       "Edit intro": "Edit description",
       "Field Description": "Field description",
       "Field Name": "Field name",
@@ -948,7 +951,9 @@
         "OnRevert version confirm": "Confirm to revert to this version? It will save the configuration of the version being edited and create a new published version for the reverted version.",
         "histories": "Publishing records"
       },
+      "run_test": "Test",
       "template": {
+        "Interactive": "Interactive",
         "Multimodal": "Multimodal",
         "Search": "Search"
       },
@@ -1060,6 +1065,7 @@
   "no_data": "No data",
   "no_laf_env": "The system is not configured with Laf environment",
   "not_yet_introduced": "No introduction yet",
+  "option": "Option",
   "pay": {
     "amount": "Amount",
     "balance": "Account balance",

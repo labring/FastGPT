@@ -29,6 +29,16 @@ export type ChatBoxInputType = {
   files?: UserInputFileItemType[];
 };
 
+export type SendPromptFnType = ({
+  text,
+  files,
+  history,
+  autoTTSResponse
+}: ChatBoxInputType & {
+  autoTTSResponse?: boolean;
+  history?: ChatSiteItemType[];
+}) => void;
+
 export type ComponentRef = {
   restartChat: () => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto') => void;

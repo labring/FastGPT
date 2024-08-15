@@ -3,7 +3,8 @@ import {
   ChatItemType,
   UserChatItemValueItemType,
   ChatItemValueItemType,
-  ToolRunResponseItemType
+  ToolRunResponseItemType,
+  NodeOutputItemType
 } from '../../chat/type';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io.d';
 import { StoreNodeItemType } from '../type/node';
@@ -17,6 +18,7 @@ import { AppDetailType, AppSchema } from '../../app/type';
 import { RuntimeNodeItemType } from '../runtime/type';
 import { RuntimeEdgeItemType } from './edge';
 import { ReadFileNodeResponse } from '../template/system/readFiles/type';
+import { UserSelectOptionType } from '../template/system/userSelect/type';
 
 /* workflow props */
 export type ChatDispatchProps = {
@@ -153,6 +155,9 @@ export type DispatchNodeResponseType = {
   // read files
   readFilesResult?: string;
   readFiles?: ReadFileNodeResponse;
+
+  // user select
+  userSelectResult?: string;
 };
 
 export type DispatchNodeResultType<T> = {
