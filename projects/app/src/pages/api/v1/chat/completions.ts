@@ -78,6 +78,7 @@ export type Props = ChatCompletionCreateParams &
     responseChatItemId?: string;
     stream?: boolean;
     detail?: boolean;
+    done?: boolean;
     variables: Record<string, any>; // Global variables or plugin inputs
   };
 
