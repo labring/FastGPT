@@ -1,8 +1,6 @@
 import { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from '../sub/constants';
 import { BillPayWayEnum, BillTypeEnum } from './constants';
 import { TeamInvoiceHeaderType } from '../../user/team/type';
-import { create } from 'zustand';
-
 export type BillSchemaType = {
   _id: string;
   userId: string;
@@ -42,5 +40,5 @@ export type InvoiceSchemaType = {
   _id: string;
   status: 1 | 2;
   createTime: Date;
-  finishedTime?: Date;
+  finishTime?: Date;
 } & InvoiceType;

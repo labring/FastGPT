@@ -43,7 +43,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
     companyPhone: '',
     bankName: '',
     bankAccount: '',
-    needSpecialInvoice: false,
+    needSpecialInvoice: undefined,
     emailAddress: ''
   });
   const {
@@ -127,7 +127,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
       w={'43rem'}
       onClose={onClose}
       isLoading={isLoading}
-      maxH={!isOpenSettleModal ? '80vh' : '100%'}
+      maxH={!isOpenSettleModal ? '39.1rem' : '100%'}
       title={t('common:support.wallet.apply_invoice')}
     >
       {!isOpenSettleModal ? (
@@ -245,7 +245,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
               <Box>{t('common:pay.yuan', { amount: formatStorePrice2Read(totalPrice) })}</Box>
             </Flex>
             <Box w={'100%'} py={4}>
-              <Divider />
+              <Divider showBorderBottom={false} />
             </Box>
             <Box w={'100%'} h={8} pb={6}>
               <Button

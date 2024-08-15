@@ -25,7 +25,17 @@ const InputItem = ({
         <Box fontSize={'14px'} lineHeight={'2rem'}>
           {label}
         </Box>
-        <Input w={'21.25rem'} placeholder={label} value={value} onChange={onChange} name={name} />
+        <Input
+          bg={'myGray.50'}
+          border={'1px solid'}
+          borderColor={'myGray.200'}
+          w={'21.25rem'}
+          focusBorderColor="myGray.200"
+          placeholder={label}
+          value={value}
+          onChange={onChange}
+          name={name}
+        />
       </Flex>
     </>
   );
@@ -43,7 +53,14 @@ export const InvoiceHeaderSingleForm = ({
   const { t } = useTranslation();
   return (
     <>
-      <Flex w={'36rem'} flexDir={'column'} gap={'1rem'}>
+      <Flex
+        w={'36rem'}
+        flexDir={'column'}
+        gap={'1rem'}
+        fontWeight={'500'}
+        color={'myGray.900'}
+        fontSize={'14px'}
+      >
         <InputItem
           label={t('common:support.wallet.invoice_data.organization_name')}
           value={formData.teamName}
@@ -85,7 +102,11 @@ export const InvoiceHeaderSingleForm = ({
             {t('common:support.wallet.invoice_data.need_special_invoice')}
           </Box>
           <RadioGroup
-            value={formData.needSpecialInvoice ? 'true' : 'false'}
+            value={
+              formData.needSpecialInvoice === undefined
+                ? ''
+                : formData.needSpecialInvoice.toString()
+            }
             onChange={handleRatiosChange}
             w={'21.25rem'}
           >
@@ -100,7 +121,7 @@ export const InvoiceHeaderSingleForm = ({
           </RadioGroup>
         </Flex>
         <Box w={'100%'}>
-          <Divider />
+          <Divider showBorderBottom={false} />
         </Box>
         <InputItem
           label={t('common:support.wallet.invoice_data.email')}
@@ -121,7 +142,7 @@ const InvoiceHeaderForm = () => {
     companyPhone: '',
     bankName: '',
     bankAccount: '',
-    needSpecialInvoice: false,
+    needSpecialInvoice: undefined,
     emailAddress: ''
   });
   const { loading: isLoading } = useRequest2(() => getTeamInvoiceHeader(), {

@@ -98,7 +98,7 @@ export type TeamInvoiceHeaderType = {
   companyPhone: string;
   bankName: string;
   bankAccount: string;
-  needSpecialInvoice: boolean;
+  needSpecialInvoice?: boolean;
   emailAddress: string;
 };
 
