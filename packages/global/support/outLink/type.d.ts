@@ -25,7 +25,18 @@ export interface WecomAppType {
 // TODO: unused
 export interface WechatAppType {}
 
-export type OutlinkAppType = FeishuAppType | WecomAppType | undefined;
+export interface OffiAccountAppType {
+  appId: string;
+  isVerified?: boolean; // if isVerified, we could use '客服接口' to reply
+  secret: string;
+  CallbackToken: string;
+  CallbackEncodingAesKey?: string;
+  timeoutReply?: string; // if timeout (15s), will reply this content.
+  // timeout reply is optional, but when isVerified is false, the wechat will reply a default message which is `该公众号暂时无法提供服务，请稍后再试`
+  // because we can not reply anything in 15s. Thus, the wechat server will treat this request as a failed request.
+}
+
+export type OutlinkAppType = FeishuAppType | WecomAppType | OffiAccountAppType | undefined;
 
 export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   _id: string;

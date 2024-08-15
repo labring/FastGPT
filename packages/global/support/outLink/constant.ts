@@ -3,5 +3,6 @@ export enum PublishChannelEnum {
   iframe = 'iframe',
   apikey = 'apikey',
   feishu = 'feishu',
-  wecom = 'wecom'
+  wecom = 'wecom',
+  officialAccount = 'official_account'
 }
