@@ -114,6 +114,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     stream = false,
     detail = false,
+    done = true,
     messages = [],
     variables = {},
     responseChatItemId = getNanoid()
@@ -354,12 +355,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           finish_reason: 'stop'
         })
       });
-      responseWrite({
-        res,
-        event: detail ? SseResponseEventEnum.answer : undefined,
-        data: '[DONE]'
-      });
-
+      if(done) {
+          responseWrite({
+          res,
+          event: detail ? SseResponseEventEnum.answer : undefined,
+          data: '[DONE]'
+        });
+      }
+      
       if (detail) {
         if (responseDetail || isPlugin) {
           responseWrite({
