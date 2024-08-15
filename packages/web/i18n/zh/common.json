@@ -537,7 +537,8 @@
         "module tokens": "总 tokens",
         "plugin output": "插件输出值",
         "search using reRank": "结果重排",
-        "text output": "文本输出"
+        "text output": "文本输出",
+        "user_select_result": "用户选择结果"
       },
       "retry": "重新生成",
       "tts": {
@@ -771,6 +772,7 @@
     },
     "module": {
       "Add question type": "添加问题类型",
+      "Add_option": "添加选项",
       "Can not connect self": "不能连接自身",
       "Confirm Delete Node": "确认删除该节点？",
       "Data Type": "数据类型",
@@ -781,6 +783,7 @@
       "Default Value": "默认值",
       "Default value": "默认值",
       "Default value placeholder": "不填则默认返回空字符",
+      "Diagram": "示意图",
       "Edit intro": "编辑描述",
       "Field Description": "字段描述",
       "Field Name": "字段名",
@@ -958,7 +961,9 @@
         "OnRevert version confirm": "确认回退至该版本？会为您保存编辑中版本的配置，并为回退版本创建一个新的发布版本。",
         "histories": "发布记录"
       },
+      "run_test": "运行",
       "template": {
+        "Interactive": "交互",
         "Multimodal": "多模态",
         "Search": "搜索"
       },
@@ -1070,6 +1075,7 @@
   "no_data": "暂无数据",
   "no_laf_env": "系统未配置Laf环境",
   "not_yet_introduced": "暂无介绍",
+  "option": "选项",
   "pay": {
     "amount": "金额",
     "balance": "账号余额",

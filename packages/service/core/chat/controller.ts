@@ -1,7 +1,7 @@
 import type { ChatItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { MongoChatItem } from './chatItemSchema';
 import { addLog } from '../../common/system/log';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { delFileByFileIdList, getGFSCollection } from '../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { MongoChat } from './chatSchema';
@@ -76,6 +76,52 @@ export const addCustomFeedbacks = async ({
     );
   } catch (error) {
     addLog.error('addCustomFeedbacks error', error);
+  }
+};
+
+/*
+  Update the user selected index of the interactive module
+*/
+export const updateUserSelectedResult = async ({
+  appId,
+  chatId,
+  userSelectedVal
+}: {
+  appId: string;
+  chatId?: string;
+  userSelectedVal: string;
+}) => {
+  if (!chatId) return;
+  try {
+    const chatItem = await MongoChatItem.findOne(
+      { appId, chatId, obj: ChatRoleEnum.AI },
+      'value'
+    ).sort({ _id: -1 });
+
+    if (!chatItem) return;
+
+    const interactiveValue = chatItem.value.find(
+      (v) => v.type === ChatItemValueTypeEnum.interactive
+    );
+
+    if (
+      !interactiveValue ||
+      interactiveValue.type !== ChatItemValueTypeEnum.interactive ||
+      !interactiveValue.interactive?.params
+    )
+      return;
+
+    interactiveValue.interactive = {
+      ...interactiveValue.interactive,
+      params: {
+        ...interactiveValue.interactive.params,
+        userSelectedVal
+      }
+    };
+
+    await chatItem.save();
+  } catch (error) {
+    addLog.error('updateUserSelectedResult error', error);
   }
 };
 

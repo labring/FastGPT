@@ -56,7 +56,8 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.lafModule]: dynamic(() => import('./nodes/NodeLaf')),
   [FlowNodeTypeEnum.ifElseNode]: dynamic(() => import('./nodes/NodeIfElse')),
   [FlowNodeTypeEnum.variableUpdate]: dynamic(() => import('./nodes/NodeVariableUpdate')),
-  [FlowNodeTypeEnum.code]: dynamic(() => import('./nodes/NodeCode'))
+  [FlowNodeTypeEnum.code]: dynamic(() => import('./nodes/NodeCode')),
+  [FlowNodeTypeEnum.userSelect]: dynamic(() => import('./nodes/NodeUserSelect'))
 };
 const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge

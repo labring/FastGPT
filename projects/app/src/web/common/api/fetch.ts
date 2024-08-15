@@ -201,6 +201,11 @@ export const streamFetch = ({
               event,
               variables: parseJson
             });
+          } else if (event === SseResponseEventEnum.interactive) {
+            responseQueue.push({
+              event,
+              ...parseJson
+            });
           } else if (event === SseResponseEventEnum.error) {
             if (parseJson.statusText === TeamErrEnum.aiPointsNotEnough) {
               useSystemStore.getState().setIsNotSufficientModal(true);

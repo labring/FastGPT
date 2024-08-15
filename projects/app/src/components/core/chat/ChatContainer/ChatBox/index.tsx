@@ -11,7 +11,6 @@ import React, {
 import Script from 'next/script';
 import type {
   AIChatItemValueItemType,
-  ChatHistoryItemResType,
   ChatSiteItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type.d';
@@ -34,7 +33,12 @@ import type { AdminMarkType } from './components/SelectMarkCollection';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 import { postQuestionGuide } from '@/web/core/ai/api';
-import type { ComponentRef, ChatBoxInputType, ChatBoxInputFormType } from './type.d';
+import type {
+  ComponentRef,
+  ChatBoxInputType,
+  ChatBoxInputFormType,
+  SendPromptFnType
+} from './type.d';
 import type { StartChatFnProps, generatingMessageProps } from '../type';
 import ChatInput from './Input/ChatInput';
 import ChatBoxDivider from '../../Divider';
@@ -151,6 +155,16 @@ const ChatBox = (
     isChatting
   } = useContextSelector(ChatBoxContext, (v) => v);
 
+  const isInteractive = useMemo(() => {
+    const lastAIHistory = chatHistories[chatHistories.length - 1];
+    if (!lastAIHistory) return false;
+    const lastAIMessage = lastAIHistory.value as AIChatItemValueItemType[];
+    const interactiveContent = lastAIMessage?.find(
+      (item) => item.type === ChatItemValueTypeEnum.interactive
+    )?.interactive?.params;
+    return !!interactiveContent;
+  }, [chatHistories]);
+
   // compute variable input is finish.
   const chatForm = useForm<ChatBoxInputFormType>({
     defaultValues: {
@@ -201,6 +215,7 @@ const ChatBox = (
       status,
       name,
       tool,
+      interactive,
       autoTTSResponse,
       variables
     }: generatingMessageProps & { autoTTSResponse?: boolean }) => {
@@ -287,6 +302,16 @@ const ChatBox = (
             };
           } else if (event === SseResponseEventEnum.updateVariables && variables) {
             variablesForm.reset(variables);
+          } else if (event === SseResponseEventEnum.interactive) {
+            const val: AIChatItemValueItemType = {
+              type: ChatItemValueTypeEnum.interactive,
+              interactive
+            };
+
+            return {
+              ...item,
+              value: item.value.concat(val)
+            };
           }
 
           return item;
@@ -355,16 +380,8 @@ const ChatBox = (
   /**
    * user confirm send prompt
    */
-  const sendPrompt = useCallback(
-    ({
-      text = '',
-      files = [],
-      history = chatHistories,
-      autoTTSResponse = false
-    }: ChatBoxInputType & {
-      autoTTSResponse?: boolean;
-      history?: ChatSiteItemType[];
-    }) => {
+  const sendPrompt: SendPromptFnType = useCallback(
+    ({ text = '', files = [], history = chatHistories, autoTTSResponse = false }) => {
       variablesForm.handleSubmit(
         async (variables) => {
           if (!onStartChat) return;
@@ -898,6 +915,7 @@ const ChatBox = (
                     onRetry={retryInput(item.dataId)}
                     onDelete={delOneMessage(item.dataId)}
                     isLastChild={index === chatHistories.length - 1}
+                    onSendMessage={undefined}
                   />
                 )}
                 {item.obj === ChatRoleEnum.AI && (
@@ -907,7 +925,8 @@ const ChatBox = (
                       avatar={appAvatar}
                       chat={item}
                       isLastChild={index === chatHistories.length - 1}
-                      {...(item.obj === ChatRoleEnum.AI && {
+                      onSendMessage={sendPrompt}
+                      {...{
                         showVoiceIcon,
                         shareId,
                         outLinkUid,
@@ -923,7 +942,7 @@ const ChatBox = (
                         onCloseUserLike: onCloseUserLike(item),
                         onAddUserDislike: onAddUserDislike(item),
                         onReadUserDislike: onReadUserDislike(item)
-                      })}
+                      }}
                     >
                       <ResponseTags
                         showTags={index !== chatHistories.length - 1 || !isChatting}
@@ -973,7 +992,7 @@ const ChatBox = (
         </Box>
       </Box>
       {/* message input */}
-      {onStartChat && chatStarted && active && appId && (
+      {onStartChat && chatStarted && active && appId && !isInteractive && (
         <ChatInput
           onSendMessage={sendPrompt}
           onStop={() => chatController.current?.abort('stop')}

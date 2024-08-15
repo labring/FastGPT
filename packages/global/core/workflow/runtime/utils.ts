@@ -6,7 +6,9 @@ import { StoreEdgeItemType } from '../type/edge';
 import { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
 import { VARIABLE_NODE_ID } from '../constants';
 import { isReferenceValue } from '../utils';
-import { ReferenceValueProps } from '../type/io';
+import { FlowNodeOutputItemType, ReferenceValueProps } from '../type/io';
+import { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
 
 export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number => {
   let limit = 10;
@@ -25,7 +27,35 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
   return limit * 2;
 };
 
-export const initWorkflowEdgeStatus = (edges: StoreEdgeItemType[]): RuntimeEdgeItemType[] => {
+export const getLastInteractiveValue = (histories: ChatItemType[]) => {
+  const lastAIMessage = histories.findLast((item) => item.obj === ChatRoleEnum.AI);
+
+  if (lastAIMessage) {
+    const interactiveValue = lastAIMessage.value.find(
+      (v) => v.type === ChatItemValueTypeEnum.interactive
+    );
+
+    if (interactiveValue && 'interactive' in interactiveValue) {
+      return interactiveValue.interactive;
+    }
+  }
+
+  return null;
+};
+
+export const initWorkflowEdgeStatus = (
+  edges: StoreEdgeItemType[],
+  histories?: ChatItemType[]
+): RuntimeEdgeItemType[] => {
+  // If there is a history, use the last interactive value
+  if (!!histories) {
+    const memoryEdges = getLastInteractiveValue(histories)?.memoryEdges;
+
+    if (memoryEdges && memoryEdges.length > 0) {
+      return memoryEdges;
+    }
+  }
+
   return (
     edges?.map((edge) => ({
       ...edge,
@@ -34,7 +64,19 @@ export const initWorkflowEdgeStatus = (edges: StoreEdgeItemType[]): RuntimeEdgeI
   );
 };
 
-export const getDefaultEntryNodeIds = (nodes: (StoreNodeItemType | RuntimeNodeItemType)[]) => {
+export const getWorkflowEntryNodeIds = (
+  nodes: (StoreNodeItemType | RuntimeNodeItemType)[],
+  histories?: ChatItemType[]
+) => {
+  // If there is a history, use the last interactive entry node
+  if (!!histories) {
+    const entryNodeIds = getLastInteractiveValue(histories)?.entryNodeIds;
+
+    if (Array.isArray(entryNodeIds) && entryNodeIds.length > 0) {
+      return entryNodeIds;
+    }
+  }
+
   const entryList = [
     FlowNodeTypeEnum.systemConfig,
     FlowNodeTypeEnum.workflowStart,
@@ -212,3 +254,29 @@ export const textAdaptGptResponse = ({
     ]
   });
 };
+
+/* Update runtimeNode's outputs with interactive data from history */
+export function rewriteNodeOutputByHistories(
+  histories: ChatItemType[],
+  runtimeNodes: RuntimeNodeItemType[]
+) {
+  const interactive = getLastInteractiveValue(histories);
+  if (!interactive?.nodeOutputs) {
+    return runtimeNodes;
+  }
+
+  return runtimeNodes.map((node) => {
+    return {
+      ...node,
+      outputs: node.outputs.map((output: FlowNodeOutputItemType) => {
+        return {
+          ...output,
+          value:
+            interactive?.nodeOutputs?.find(
+              (item: NodeOutputItemType) => item.nodeId === node.nodeId && item.key === output.key
+            )?.value || output?.value
+        };
+      })
+    };
+  });
+}

@@ -6,7 +6,9 @@ import {
   AccordionIcon,
   AccordionItem,
   AccordionPanel,
-  Box
+  Box,
+  Button,
+  Flex
 } from '@chakra-ui/react';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
@@ -17,6 +19,10 @@ import {
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import { SendPromptFnType } from '../ChatContainer/ChatBox/type';
+import { useContextSelector } from 'use-context-selector';
+import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
+import { setUserSelectResultToHistories } from '../ChatContainer/ChatBox/utils';
 
 type props = {
   value: UserChatItemValueItemType | AIChatItemValueItemType;
@@ -25,10 +31,21 @@ type props = {
   isLastChild: boolean;
   isChatting: boolean;
   questionGuides: string[];
+  onSendMessage?: SendPromptFnType;
 };
 
-const AIResponseBox = ({ value, index, chat, isLastChild, isChatting, questionGuides }: props) => {
-  if (value.text) {
+const AIResponseBox = ({
+  value,
+  index,
+  chat,
+  isLastChild,
+  isChatting,
+  questionGuides,
+  onSendMessage
+}: props) => {
+  const chatHistories = useContextSelector(ChatBoxContext, (v) => v.chatHistories);
+
+  if (value.type === ChatItemValueTypeEnum.text && value.text) {
     let source = (value.text?.content || '').trim();
 
     // First empty line
@@ -124,6 +141,45 @@ ${toolResponse}`}
           );
         })}
       </Box>
+    );
+  }
+  if (
+    value.type === ChatItemValueTypeEnum.interactive &&
+    value.interactive &&
+    value.interactive.type === 'userSelect'
+  ) {
+    return (
+      <Flex flexDirection={'column'} gap={2} minW={'200px'} maxW={'250px'}>
+        {value.interactive.params.userSelectOptions?.map((option) => {
+          const selected = option.value === value.interactive?.params?.userSelectedVal;
+
+          return (
+            <Button
+              key={option.key}
+              variant={'whitePrimary'}
+              isDisabled={!isLastChild && value.interactive?.params?.userSelectedVal !== undefined}
+              {...(selected
+                ? {
+                    _disabled: {
+                      cursor: 'default',
+                      borderColor: 'primary.300',
+                      bg: 'primary.50 !important',
+                      color: 'primary.600'
+                    }
+                  }
+                : {})}
+              onClick={() => {
+                onSendMessage?.({
+                  text: option.value,
+                  history: setUserSelectResultToHistories(chatHistories, option.value)
+                });
+              }}
+            >
+              {option.value}
+            </Button>
+          );
+        })}
+      </Flex>
     );
   }
   return null;

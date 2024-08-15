@@ -18,7 +18,12 @@ import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { uploadFile2DB } from '@/web/common/file/controller';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { ChatBoxInputFormType, ChatBoxInputType, UserInputFileItemType } from '../type';
+import {
+  ChatBoxInputFormType,
+  ChatBoxInputType,
+  SendPromptFnType,
+  UserInputFileItemType
+} from '../type';
 import { textareaMinH } from '../constants';
 import { UseFormReturn, useFieldArray } from 'react-hook-form';
 import { ChatBoxContext } from '../Provider';
@@ -51,7 +56,7 @@ const ChatInput = ({
   chatForm,
   appId
 }: {
-  onSendMessage: (val: ChatBoxInputType & { autoTTSResponse?: boolean }) => void;
+  onSendMessage: SendPromptFnType;
   onStop: () => void;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: ChatBoxInputType) => void;

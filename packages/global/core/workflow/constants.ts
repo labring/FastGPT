@@ -3,6 +3,7 @@ export enum FlowNodeTemplateTypeEnum {
   ai = 'ai',
   function = 'function',
   tools = 'tools',
+  interactive = 'interactive',
 
   search = 'search',
   multimodal = 'multimodal',
@@ -123,7 +124,9 @@ export enum NodeInputKeyEnum {
   codeType = 'codeType', // js|py
 
   // read files
-  fileUrlList = 'fileUrlList'
+  fileUrlList = 'fileUrlList',
+  // user select
+  userSelectOptions = 'userSelectOptions'
 }
 
 export enum NodeOutputKeyEnum {
@@ -162,7 +165,11 @@ export enum NodeOutputKeyEnum {
   // plugin
   pluginStart = 'pluginStart',
 
-  ifElseResult = 'ifElseResult'
+  // if else
+  ifElseResult = 'ifElseResult',
+
+  //user select
+  selectResult = 'selectResult'
 }
 
 export enum VariableInputEnum {

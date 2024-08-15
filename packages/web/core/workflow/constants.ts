@@ -18,6 +18,11 @@ export const workflowNodeTemplateList = [
     list: []
   },
   {
+    type: FlowNodeTemplateTypeEnum.interactive,
+    label: i18nT('common:core.workflow.template.Interactive'),
+    list: []
+  },
+  {
     type: FlowNodeTemplateTypeEnum.multimodal,
     label: i18nT('common:core.workflow.template.Multimodal'),
     list: []

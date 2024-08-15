@@ -141,14 +141,20 @@
   "workflow": {
     "Input guide": "Input guide",
     "file_url": "Url",
+    "option1": "Option 1",
+    "option2": "Option 2",
     "read_files": "Documents parse",
     "read_files_result": "Document parsing results",
     "read_files_result_desc": "The original text of the document consists of the file name and the document content. Multiple files are separated by horizontal lines.",
     "read_files_tip": "Parse all uploaded documents in the conversation and return the corresponding document content",
+    "select_description": "Select description",
+    "select_result": "Select result",
     "template": {
       "communication": "Communication"
     },
     "user_file_input": "Files url",
-    "user_file_input_desc": "Links to documents and images uploaded by users"
+    "user_file_input_desc": "Links to documents and images uploaded by users",
+    "user_select": "User select",
+    "user_select_tip": "The module can have multiple options that lead to different workflow branches"
   }
 }
