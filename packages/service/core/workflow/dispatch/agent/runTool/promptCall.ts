@@ -411,6 +411,7 @@ const parseAnswer = (
   str = str.trim();
   // 首先，使用正则表达式提取TOOL_ID和TOOL_ARGUMENTS
   const prefixReg = /^1(:|：)/;
+  const answerPrefixReg = /^0(:|：)/;
 
   if (prefixReg.test(str)) {
     const toolString = sliceJsonStr(str);
@@ -432,7 +433,7 @@ const parseAnswer = (
     }
   } else {
     return {
-      answer: str
+      answer: str.replace(answerPrefixReg, '')
     };
   }
 };

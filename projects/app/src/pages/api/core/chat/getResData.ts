@@ -1,11 +1,15 @@
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  ManagePermissionVal,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 
 export type getResDataQuery = OutLinkChatAuthProps & {
   chatId?: string;
@@ -25,12 +29,24 @@ async function handler(
   if (!appId || !chatId || !dataId) {
     return {};
   }
-  await authChatCrud({
-    req,
-    authToken: true,
-    ...req.query,
-    per: ReadPermissionVal
-  });
+
+  // 1. Un login api: share chat, team chat
+  // 2. Login api: account chat, chat log
+  try {
+    await authChatCrud({
+      req,
+      authToken: true,
+      ...req.query,
+      per: ReadPermissionVal
+    });
+  } catch (error) {
+    await authApp({
+      req,
+      authToken: true,
+      appId,
+      per: ManagePermissionVal
+    });
+  }
 
   const chatData = await MongoChatItem.findOne({
     appId,
