@@ -961,6 +961,7 @@
         "OnRevert version confirm": "确认回退至该版本？会为您保存编辑中版本的配置，并为回退版本创建一个新的发布版本。",
         "histories": "发布记录"
       },
+      "run_test": "运行",
       "template": {
         "Interactive": "交互",
         "Multimodal": "多模态",

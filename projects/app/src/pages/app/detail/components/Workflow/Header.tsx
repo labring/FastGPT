@@ -146,7 +146,7 @@ const Header = () => {
                   }
                 }}
               >
-                {t('common:core.workflow.Debug')}
+                {t('common:core.workflow.run_test')}
               </Button>
 
               {!historiesDefaultData && (

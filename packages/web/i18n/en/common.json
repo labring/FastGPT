@@ -951,6 +951,7 @@
         "OnRevert version confirm": "Confirm to revert to this version? It will save the configuration of the version being edited and create a new published version for the reverted version.",
         "histories": "Publishing records"
       },
+      "run_test": "Test",
       "template": {
         "Interactive": "Interactive",
         "Multimodal": "Multimodal",
