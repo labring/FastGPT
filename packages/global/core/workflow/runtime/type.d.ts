@@ -128,7 +128,7 @@ export type DispatchNodeResponseType = {
 
   // http
   params?: Record<string, any>;
-  body?: Record<string, any>;
+  body?: Record<string, any> | string;
   headers?: Record<string, any>;
   httpResult?: Record<string, any>;
 
