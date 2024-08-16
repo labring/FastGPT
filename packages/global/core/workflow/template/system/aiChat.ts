@@ -1,4 +1,5 @@
 import {
+  chatHistoryValueDesc,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -97,6 +98,7 @@ export const AiChatModule: FlowNodeTemplateType = {
       label: 'core.module.output.label.New context',
       description: 'core.module.output.description.New context',
       valueType: WorkflowIOValueTypeEnum.chatHistory,
+      valueDesc: chatHistoryValueDesc,
       type: FlowNodeOutputTypeEnum.static
     },
     {

@@ -24,8 +24,6 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { useMount } from 'ahooks';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../../context';
 
 const FieldModal = ({
   customInputConfig,

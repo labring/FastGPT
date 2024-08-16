@@ -12,7 +12,7 @@
         "name": "系统配置",
         "intro": "可以配置应用的系统参数",
         "avatar": "core/workflow/template/systemConfig",
-        "flowNodeType": "FlowNodeTypeEnum.systemConfig",
+        "flowNodeType": "userGuide",
         "position": {
           "x": 531.2422736065552,
           "y": -486.7611729549753
@@ -75,7 +75,7 @@
         "name": "流程开始",
         "intro": "",
         "avatar": "core/workflow/template/workflowStart",
-        "flowNodeType": "FlowNodeTypeEnum.workflowStart",
+        "flowNodeType": "workflowStart",
         "position": {
           "x": 558.4082376415505,
           "y": 123.72387429194112
@@ -106,7 +106,7 @@
         "name": "AI 对话",
         "intro": "AI 大模型对话",
         "avatar": "core/workflow/template/aiChat",
-        "flowNodeType": "FlowNodeTypeEnum.chatNode",
+        "flowNodeType": "chatNode",
         "showStatus": true,
         "position": {
           "x": 1638.509551404687,
@@ -229,7 +229,7 @@
         "name": "知识库搜索",
         "intro": "调用\"语义检索\"和\"全文检索\"能力，从\"知识库\"中查找可能与问题相关的参考内容",
         "avatar": "core/workflow/template/datasetSearch",
-        "flowNodeType": "FlowNodeTypeEnum.datasetSearchNode",
+        "flowNodeType": "datasetSearchNode",
         "showStatus": true,
         "position": {
           "x": 918.5901682164496,
