@@ -305,7 +305,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                       }}
                       cursor={'pointer'}
                     >
-                      <MyIcon name="common/addLight" w={4} />
+                      <MyIcon name="common/add2" w={4} />
                     </Box>
                     <Box
                       className="icon-box"
@@ -487,8 +487,14 @@ const AddTagToCollections = ({
             <Flex
               px={2}
               py={1}
+              mb={2}
               flex={'1'}
-              _hover={{ bg: 'myGray.100' }}
+              _hover={{
+                bg: 'myGray.100',
+                ...(!selectedCollections.includes(collection.id)
+                  ? { svg: { color: 'myGray.100' } }
+                  : {})
+              }}
               alignItems={'center'}
               borderRadius={'4px'}
               key={collection.id}
@@ -506,6 +512,7 @@ const AddTagToCollections = ({
               <Checkbox
                 size={'md'}
                 mr={2}
+                icon={<MyIcon name="common/check" w={'12px'} />}
                 onChange={() => {
                   setSelectedCollections((prev) => {
                     if (prev.includes(collection.id)) {
@@ -517,8 +524,8 @@ const AddTagToCollections = ({
                 }}
                 isChecked={selectedCollections.includes(collection.id)}
               />
-              <MyIcon name={collection.icon as any} w={'16px'} mr={2} />
-              <Box fontSize={'14px'} borderRadius={'6px'}>
+              <MyIcon name={collection.icon as any} w={'20px'} mr={2} />
+              <Box fontSize={'14px'} borderRadius={'6px'} color={'myGray.900'}>
                 {collection.name}
               </Box>
             </Flex>

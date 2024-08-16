@@ -57,6 +57,7 @@ import type { StreamResponseType } from '@/web/common/api/fetch';
 import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useThrottleFn } from 'ahooks';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -962,7 +963,10 @@ const ChatBox = (
                               <MyTooltip
                                 label={t('common:core.app.feedback.close custom feedback')}
                               >
-                                <Checkbox onChange={onCloseCustomFeedback(item, i)}>
+                                <Checkbox
+                                  onChange={onCloseCustomFeedback(item, i)}
+                                  icon={<MyIcon name={'common/check'} w={'12px'} />}
+                                >
                                   {text}
                                 </Checkbox>
                               </MyTooltip>

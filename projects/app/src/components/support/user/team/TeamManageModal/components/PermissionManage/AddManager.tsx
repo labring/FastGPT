@@ -101,7 +101,10 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                     alignItems="center"
                     key={member.tmbId}
                     cursor={'pointer'}
-                    _hover={{ bg: 'myGray.50' }}
+                    _hover={{
+                      bg: 'myGray.50',
+                      ...(!selected.includes(member) ? { svg: { color: 'myGray.50' } } : {})
+                    }}
                     _notLast={{ mb: 2 }}
                     onClick={() => {
                       if (selected.indexOf(member) == -1) {
@@ -111,7 +114,10 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                       }
                     }}
                   >
-                    <Checkbox isChecked={selected.includes(member)} />
+                    <Checkbox
+                      isChecked={selected.includes(member)}
+                      icon={<MyIcon name={'common/check'} w={'12px'} />}
+                    />
                     <Avatar ml={2} src={member.avatar} w="1.5rem" />
                     {member.memberName}
                   </Flex>
