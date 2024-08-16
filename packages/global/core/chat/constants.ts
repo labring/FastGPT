@@ -34,8 +34,11 @@ export enum ChatSourceEnum {
   share = 'share',
   api = 'api',
   team = 'team',
-  feishu = 'feishu'
+  feishu = 'feishu',
+  official_account = 'official_account',
+  wecom = 'wecom'
 }
+
 export const ChatSourceMap = {
   [ChatSourceEnum.test]: {
     name: i18nT('common:core.chat.logs.test')
@@ -54,6 +57,12 @@ export const ChatSourceMap = {
   },
   [ChatSourceEnum.feishu]: {
     name: i18nT('common:core.chat.logs.feishu')
+  },
+  [ChatSourceEnum.official_account]: {
+    name: i18nT('common:core.chat.logs.official_account')
+  },
+  [ChatSourceEnum.wecom]: {
+    name: i18nT('common:core.chat.logs.wecom')
   }
 };
 
