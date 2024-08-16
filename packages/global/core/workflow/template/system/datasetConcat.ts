@@ -1,4 +1,5 @@
 import {
+  datasetQuoteValueDesc,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -13,8 +14,6 @@ import {
 import { getNanoid } from '../../../../common/string/tools';
 import { getHandleConfig } from '../utils';
 import { FlowNodeInputItemType } from '../../type/io.d';
-
-const defaultQuoteKey = 'defaultQuoteKey';
 
 export const getOneQuoteInputTemplate = ({
   key = getNanoid(),
@@ -63,7 +62,8 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
       key: NodeOutputKeyEnum.datasetQuoteQA,
       label: 'core.module.Dataset quote.label',
       type: FlowNodeOutputTypeEnum.static,
-      valueType: WorkflowIOValueTypeEnum.datasetQuote
+      valueType: WorkflowIOValueTypeEnum.datasetQuote,
+      valueDesc: datasetQuoteValueDesc
     }
   ]
 };

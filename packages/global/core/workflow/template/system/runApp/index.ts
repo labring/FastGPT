@@ -1,4 +1,5 @@
 import {
+  chatHistoryValueDesc,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -47,6 +48,7 @@ export const RunAppModule: FlowNodeTemplateType = {
       label: '新的上下文',
       description: '将该应用回复内容拼接到历史记录中，作为新的上下文返回',
       valueType: WorkflowIOValueTypeEnum.chatHistory,
+      valueDesc: chatHistoryValueDesc,
       required: true,
       type: FlowNodeOutputTypeEnum.static
     },

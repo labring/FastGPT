@@ -11,7 +11,10 @@ import { WorkflowContext } from '../../context';
 import { useCreation } from 'ahooks';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  chatHistoryValueDesc,
+  FlowNodeOutputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppContext } from '@/pages/app/detail/components/context';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
@@ -30,14 +33,27 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       t
     });
 
-    return variables.map<FlowNodeOutputItemType>((item) => ({
-      id: item.key,
-      type: FlowNodeOutputTypeEnum.static,
-      key: item.key,
-      required: item.required,
-      valueType: item.valueType || WorkflowIOValueTypeEnum.any,
-      label: item.label
-    }));
+    return variables.map<FlowNodeOutputItemType>((item) => {
+      if (item.valueType === WorkflowIOValueTypeEnum.chatHistory) {
+        return {
+          id: item.key,
+          type: FlowNodeOutputTypeEnum.static,
+          key: item.key,
+          required: item.required,
+          valueType: item.valueType,
+          valueDesc: chatHistoryValueDesc,
+          label: item.label
+        };
+      }
+      return {
+        id: item.key,
+        type: FlowNodeOutputTypeEnum.static,
+        key: item.key,
+        required: item.required,
+        valueType: item.valueType || WorkflowIOValueTypeEnum.any,
+        label: item.label
+      };
+    });
   }, [nodeList, t]);
 
   // Dynamic add or delete userFilesInput

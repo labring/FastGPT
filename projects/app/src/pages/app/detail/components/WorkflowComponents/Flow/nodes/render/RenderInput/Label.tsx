@@ -1,7 +1,7 @@
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Box, Flex, HStack } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -10,9 +10,6 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 
 type Props = {
@@ -25,7 +22,8 @@ const InputLabel = ({ nodeId, input }: Props) => {
 
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
-  const { description, required, label, selectedTypeIndex, renderTypeList, valueType } = input;
+  const { description, required, label, selectedTypeIndex, renderTypeList, valueType, valueDesc } =
+    input;
 
   const onChangeRenderType = useCallback(
     (e: string) => {
@@ -60,7 +58,9 @@ const InputLabel = ({ nodeId, input }: Props) => {
           {description && <QuestionTip ml={1} label={t(description as any)}></QuestionTip>}
         </Flex>
         {/* value type */}
-        {renderType === FlowNodeInputTypeEnum.reference && <ValueTypeLabel valueType={valueType} />}
+        {renderType === FlowNodeInputTypeEnum.reference && (
+          <ValueTypeLabel valueType={valueType} valueDesc={valueDesc} />
+        )}
 
         {/* input type select */}
         {renderTypeList && renderTypeList.length > 1 && (

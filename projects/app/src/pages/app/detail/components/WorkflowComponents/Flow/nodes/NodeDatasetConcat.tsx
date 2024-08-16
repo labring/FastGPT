@@ -7,11 +7,7 @@ import RenderInput from './render/RenderInput';
 import { Box, Button, Flex, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import {
-  WorkflowIOValueTypeEnum,
-  NodeInputKeyEnum,
-  VARIABLE_NODE_ID
-} from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { getOneQuoteInputTemplate } from '@fastgpt/global/core/workflow/template/system/datasetConcat';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -189,7 +185,7 @@ function Reference({
       <Flex alignItems={'center'} mb={1}>
         <FormLabel required={inputChildren.required}>{inputChildren.label}</FormLabel>
         {/* value */}
-        <ValueTypeLabel valueType={inputChildren.valueType} />
+        <ValueTypeLabel valueType={inputChildren.valueType} valueDesc={inputChildren.valueDesc} />
 
         <MyIcon
           className="delete"

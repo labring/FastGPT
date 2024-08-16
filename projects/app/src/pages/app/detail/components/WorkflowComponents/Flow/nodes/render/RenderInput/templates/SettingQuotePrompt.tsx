@@ -24,6 +24,7 @@ import { useCreation } from 'ahooks';
 import { AppContext } from '@/pages/app/detail/components/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { datasetQuoteValueDesc } from '@fastgpt/global/core/workflow/node/constant';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -154,7 +155,10 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
           <Box position={'relative'} color={'myGray.600'} fontWeight={'medium'}>
             {t('common:core.module.Dataset quote.label')}
           </Box>
-          <ValueTypeLabel valueType={WorkflowIOValueTypeEnum.datasetQuote} />
+          <ValueTypeLabel
+            valueType={WorkflowIOValueTypeEnum.datasetQuote}
+            valueDesc={datasetQuoteValueDesc}
+          />
 
           <MyTooltip label={t('common:core.module.Setting quote prompt')}>
             <MyIcon

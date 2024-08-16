@@ -184,7 +184,7 @@ function Reference({
           <QuestionTip ml={1} label={inputChildren.description}></QuestionTip>
         )}
         {/* value */}
-        <ValueTypeLabel valueType={inputChildren.valueType} />
+        <ValueTypeLabel valueType={inputChildren.valueType} valueDesc={inputChildren.valueDesc} />
 
         <MyIcon
           name={'common/settingLight'}
