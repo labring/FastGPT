@@ -126,6 +126,29 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
                 </Button>
               </Box>
             ))}
+
+            {feConfigs.sso && (
+              <Box mt={4} color={'primary.700'} cursor={'pointer'} textAlign={'center'}>
+                <Button
+                  variant={'whitePrimary'}
+                  w={'100%'}
+                  h={'42px'}
+                  leftIcon={
+                    <Image
+                      src={feConfigs.sso.icon as any}
+                      w="20px"
+                      cursor="pointer"
+                      color="myGray.800"
+                    />
+                  }
+                  onClick={() => {
+                    console.debug('open url', feConfigs?.sso?.url);
+                  }}
+                >
+                  {feConfigs.sso.title}
+                </Button>
+              </Box>
+            )}
           </Box>
         </>
       )}
