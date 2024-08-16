@@ -127,6 +127,10 @@
   },
   "upload_file_max_amount": "最大文件数量",
   "upload_file_max_amount_tip": "1.单次上传文件的最大数量。\n2.对话窗口记忆的最大文件数量：每轮对话会自动获取历史中的文件，超出范围的文件会被遗忘。",
+  "variable": {
+    "select type_desc": "可以定义一个无需用户填写的全局变量。\n该变量的值可以来自于 API 接口，分享链接的 Query 或通过【变量更新】模块进行赋值。",
+    "textarea_type_desc": "允许用户最多输入4000字的对话框。"
+  },
   "version": {
     "Revert success": "回滚成功"
   },
