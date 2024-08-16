@@ -4,14 +4,19 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import React from 'react';
 
-const ValueTypeLabel = ({ valueType }: { valueType?: WorkflowIOValueTypeEnum }) => {
+const ValueTypeLabel = ({
+  valueType,
+  valueDesc
+}: {
+  valueType?: WorkflowIOValueTypeEnum;
+  valueDesc?: string;
+}) => {
   const valueTypeData = valueType ? FlowValueTypeMap[valueType] : undefined;
 
   const label = valueTypeData?.label || '';
-  const description = valueTypeData?.description || '';
 
   return !!label ? (
-    <MyTooltip label={description}>
+    <MyTooltip label={valueDesc}>
       <Box
         bg={'myGray.100'}
         color={'myGray.500'}

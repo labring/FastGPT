@@ -14,7 +14,6 @@ import {
   Textarea
 } from '@chakra-ui/react';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   CustomFieldConfigType,
   FlowNodeOutputItemType
@@ -25,7 +24,6 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import React, { useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import { useMount } from 'ahooks';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 

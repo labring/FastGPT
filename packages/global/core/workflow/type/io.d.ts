@@ -43,6 +43,7 @@ export type FlowNodeInputItemType = InputComponentPropsType & {
 
   key: `${NodeInputKeyEnum}` | string;
   valueType?: WorkflowIOValueTypeEnum; // data type
+  valueDesc?: string; // data desc
   value?: any;
   label: string;
   debugLabel?: string;
@@ -60,6 +61,7 @@ export type FlowNodeOutputItemType = {
   type: FlowNodeOutputTypeEnum;
   key: `${NodeOutputKeyEnum}` | string;
   valueType?: WorkflowIOValueTypeEnum;
+  valueDesc?: string;
   value?: any;
 
   label?: string;

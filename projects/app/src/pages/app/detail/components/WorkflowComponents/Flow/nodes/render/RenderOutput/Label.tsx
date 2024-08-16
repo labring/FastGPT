@@ -11,7 +11,7 @@ import ValueTypeLabel from '../ValueTypeLabel';
 
 const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutputItemType }) => {
   const { t } = useTranslation();
-  const { label = '', description, valueType } = output;
+  const { label = '', description, valueType, valueDesc } = output;
 
   const Render = useMemo(() => {
     return (
@@ -36,7 +36,7 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
             {t(label as any)}
           </Box>
           {description && <QuestionTip ml={1} label={t(description as any)} />}
-          <ValueTypeLabel valueType={valueType} />
+          <ValueTypeLabel valueType={valueType} valueDesc={valueDesc} />
         </Flex>
         {output.type === FlowNodeOutputTypeEnum.source && (
           <SourceHandle
