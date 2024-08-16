@@ -21,7 +21,7 @@ const InputItem = ({
 }) => {
   return (
     <>
-      <Flex justify={'space-between'}>
+      <Flex justify={'space-between'} flexDir={['column', 'row']}>
         <Box fontSize={'14px'} lineHeight={'2rem'}>
           {label}
         </Box>
@@ -54,7 +54,7 @@ export const InvoiceHeaderSingleForm = ({
   return (
     <>
       <Flex
-        w={'36rem'}
+        w={['auto', '36rem']}
         flexDir={'column'}
         gap={'1rem'}
         fontWeight={'500'}
@@ -97,7 +97,7 @@ export const InvoiceHeaderSingleForm = ({
           onChange={handleChange}
           name="bankAccount"
         />
-        <Flex justify={'space-between'}>
+        <Flex justify={'space-between'} flexDir={['column', 'row']}>
           <Box fontSize={'14px'} lineHeight={'2rem'}>
             {t('common:support.wallet.invoice_data.need_special_invoice')}
           </Box>
@@ -184,18 +184,18 @@ const InvoiceHeaderForm = () => {
   }, [handleSubmit, formData, isHeaderValid, toast, t]);
   return (
     <>
-      <MyBox isLoading={isLoading} pt="3.5rem">
-        <Flex w={'100%'} justify={'center'} flexDir={'column'} align={'center'}>
+      <MyBox isLoading={isLoading} pt={['1rem', '3.5rem']}>
+        <Flex w={'100%'} overflow={'auto'} justify={'center'} flexDir={'column'} align={'center'}>
           <InvoiceHeaderSingleForm
             formData={formData}
             handleChange={handleChange}
             handleRatiosChange={handleRatiosChange}
           />
           <Flex w={'100%'} justify={'center'} mt={'3rem'}>
-            <Button variant={'primary'} px="0" onClick={onSubmit} isDisabled={isSubmitting}>
+            <Button variant={'primary'} px="0" onClick={onSubmit} isLoading={isSubmitting}>
               <Flex alignItems={'center'} px={'20px'}>
                 <Box px={'1.25rem'} py={'0.5rem'}>
-                  {isSubmitting ? t('common:common.submitting') : t('common:common.Save')}
+                  {t('common:common.Save')}
                 </Box>
               </Flex>
             </Button>

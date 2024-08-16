@@ -23,7 +23,8 @@
   },
   "name": "name",
   "notification": {
-    "Bind Notification Pipe Hint": "Bind the email address or mobile phone number for receiving notifications to ensure that you receive important system notifications in a timely manner."
+    "Bind Notification Pipe Hint": "Bind the email address or mobile phone number for receiving notifications to ensure that you receive important system notifications in a timely manner.",
+    "remind_owner_bind": "Please remind the creator to bind the notification account"
   },
   "operations": "operate",
   "password": {

@@ -1,4 +1,8 @@
-import { getInvoiceBillsData, submitInvoice } from '@/web/support/wallet/bill/invoice/api';
+import {
+  getInvoiceBillsData,
+  invoiceBillDataType,
+  submitInvoice
+} from '@/web/support/wallet/bill/invoice/api';
 import {
   Box,
   Button,
@@ -89,17 +93,15 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
     {
       manual: true,
       successToast: t('common:common.submit_success'),
-      errorToast: t('common:common.Submit failed')
+      errorToast: t('common:common.Submit failed'),
+      onSuccess: () => onClose()
     }
   );
 
-  const { loading: isLoadingHeader, run: useDefaultHeader } = useRequest2(
-    () => getTeamInvoiceHeader(),
-    {
-      manual: true,
-      onSuccess: (res) => setFormData(res)
-    }
-  );
+  const { loading: isLoadingHeader } = useRequest2(() => getTeamInvoiceHeader(), {
+    manual: false,
+    onSuccess: (res) => setFormData(res)
+  });
 
   const handleSubmit = useCallback(async () => {
     if (!isHeaderValid(formData)) {
@@ -118,21 +120,34 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
     onCloseSettleModal();
   }, [getInvoiceBills, onCloseSettleModal]);
 
+  const handleSingleCheck = useCallback(
+    (item: invoiceBillDataType) => {
+      if (chosenBillDataList.find((bill) => bill._id === item._id)) {
+        setChosenBillDataList(chosenBillDataList.filter((bill) => bill._id !== item._id));
+      } else {
+        setChosenBillDataList([...chosenBillDataList, { _id: item._id, price: item.price }]);
+      }
+    },
+    [chosenBillDataList]
+  );
+
   return (
     <MyModal
       isOpen={true}
       isCentered
       iconSrc="/imgs/modal/invoice.svg"
-      h={'46.25rem'}
+      minHeight={'42.25rem'}
       w={'43rem'}
       onClose={onClose}
       isLoading={isLoading}
-      maxH={!isOpenSettleModal ? '39.1rem' : '100%'}
       title={t('common:support.wallet.apply_invoice')}
     >
       {!isOpenSettleModal ? (
-        <Box px={'3.25rem'} py={'2rem'} h={'100%'}>
-          <Box h={'28rem'} overflow={'auto'}>
+        <Box px={['1.6rem', '3.25rem']} py={['1rem', '2rem']}>
+          <Box fontWeight={500} fontSize={'1rem'} pb={'0.75rem'}>
+            {t('common:support.wallet.billable_invoice')}
+          </Box>
+          <Box h={'27.9rem'} overflow={'auto'}>
             <TableContainer>
               <Table>
                 <Thead>
@@ -161,20 +176,21 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
                 </Thead>
                 <Tbody fontSize={'0.875rem'}>
                   {billsList?.map((item) => (
-                    <Tr key={item._id}>
+                    <Tr
+                      cursor={'pointer'}
+                      key={item._id}
+                      onClick={(e: any) => {
+                        if (e.target?.name && e.target.name === 'check') return;
+                        handleSingleCheck(item);
+                      }}
+                      _hover={{
+                        bg: 'blue.50'
+                      }}
+                    >
                       <Td>
                         <Checkbox
+                          name="check"
                           isChecked={chosenBillDataList.some((i) => i._id === item._id)}
-                          onChange={(e) => {
-                            !e.target.checked
-                              ? setChosenBillDataList((prev) =>
-                                  prev.filter((i) => i._id !== item._id)
-                                )
-                              : setChosenBillDataList((prev) => [
-                                  ...prev,
-                                  { _id: item._id, price: item.price }
-                                ]);
-                          }}
                         />
                       </Td>
                       <Td>{t(billTypeMap[item.type]?.label as any)}</Td>
@@ -203,9 +219,8 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
               )}
             </TableContainer>
           </Box>
-          <Box pt={'2rem'}>
+          <Flex pt={'2.5rem'} justify={'flex-end'}>
             <Button
-              float={'right'}
               variant={'primary'}
               px="0"
               isDisabled={!chosenBillDataList.length}
@@ -218,49 +233,21 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
             >
               <Flex alignItems={'center'}>
                 <Box px={'1.25rem'} py={'0.5rem'}>
-                  {t('common:support.wallet.invoicing')}
+                  {t('common:common.Confirm')}
                 </Box>
               </Flex>
             </Button>
-          </Box>
+          </Flex>
         </Box>
       ) : (
-        <Box px={'3.25rem'} py={'2rem'} h={'100%'}>
-          <Flex align={'center'}>
-            <MyIcon
-              cursor={'pointer'}
-              _hover={{ color: 'primary.500' }}
-              onClick={handleBack}
-              name="common/backLight"
-              width={3}
-              height={3}
-            />
-            <Box lineHeight={3} fontSize={'0.875rem'} pl={2}>
-              {t('common:back')}
-            </Box>
-          </Flex>
-          <Box w={'100%'} pb={4} fontSize={'0.875rem'} pt={'1.5rem'}>
+        <Box px={['1.6rem', '3.25rem']} py={['1rem', '2rem']}>
+          <Box w={'100%'} fontSize={'0.875rem'}>
             <Flex w={'100%'} justifyContent={'space-between'}>
               <Box>{t('common:support.wallet.invoice_amount')}</Box>
               <Box>{t('common:pay.yuan', { amount: formatStorePrice2Read(totalPrice) })}</Box>
             </Flex>
             <Box w={'100%'} py={4}>
               <Divider showBorderBottom={false} />
-            </Box>
-            <Box w={'100%'} h={8} pb={6}>
-              <Button
-                float={'right'}
-                colorScheme="blue"
-                variant={'outline'}
-                px="0"
-                onClick={useDefaultHeader}
-              >
-                <Flex alignItems={'center'}>
-                  <Box px={'0.88rem'} py={'0.5rem'} fontWeight={'normal'}>
-                    {t('common:support.wallet.use_default')}
-                  </Box>
-                </Flex>
-              </Button>
             </Box>
           </Box>
           <MyBox isLoading={isLoadingHeader}>
@@ -288,15 +275,22 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
               {t('common:support.wallet.invoice_info')}
             </Box>
           </Flex>
-          <Box w={'100%'} pt={2}>
-            <Button isDisabled={isSubmitting} float={'right'} px="0" onClick={handleSubmit}>
+          <Flex justify={'flex-end'} w={'100%'} pt={[3, 7]}>
+            <Button variant={'outline'} mr={'0.75rem'} px="0" onClick={handleBack}>
               <Flex alignItems={'center'}>
-                <Box px={'0.88rem'} py={'0.5rem'}>
+                <Box px={'1.25rem'} py={'0.5rem'}>
+                  {t('common:back')}
+                </Box>
+              </Flex>
+            </Button>
+            <Button isLoading={isSubmitting} px="0" onClick={handleSubmit}>
+              <Flex alignItems={'center'}>
+                <Box px={'1.25rem'} py={'0.5rem'}>
                   {t('common:common.Confirm')}
                 </Box>
               </Flex>
             </Button>
-          </Box>
+          </Flex>
         </Box>
       )}
     </MyModal>

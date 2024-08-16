@@ -365,6 +365,14 @@
       "logs": {
         "Source And Time": "Source & Time"
       },
+      "more": "View more",
+      "navbar": {
+        "External": "external use",
+        "Flow mode": "Advanced orchestration",
+        "Publish": "release",
+        "Publish app": "Publish application",
+        "Simple mode": "Easy configuration"
+      },
       "no_app": "There is no application yet, go and create one!",
       "not_published": "Unpublished",
       "outLink": {
@@ -607,7 +615,8 @@
             "success": "Start syncing"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",
@@ -1255,12 +1264,15 @@
           "success": "Payment successful"
         }
       },
+      "bill_detail": "Bill details",
       "bill_tag": {
         "bill": "billing records",
         "default_header": "Default header",
         "invoice": "Invoicing records"
       },
+      "billable_invoice": "Billable bills",
       "buy_resource": "Purchase resource pack",
+      "has_invoice": "Whether the invoice has been issued",
       "invoice_amount": "Invoice amount",
       "invoice_data": {
         "bank": "Bank of deposit",

@@ -44,6 +44,7 @@ export enum BillPayWayEnum {
   balance = 'balance',
   wx = 'wx'
 }
+
 export const billPayWayMap = {
   [BillPayWayEnum.balance]: {
     label: 'support.wallet.bill.payWay.balance'
@@ -52,6 +53,23 @@ export const billPayWayMap = {
     label: 'support.wallet.bill.payWay.wx'
   }
 };
+
+export enum feishuInvoiceTableEnum {
+  needSpecialInvoice = '是否需要专票',
+  amount = '开票金额',
+  status = '开票状态',
+  id = '开票ID',
+  handled = '已处理',
+  email = '开票邮箱',
+  file = '开票文件'
+}
+
+export enum feishuInvoiceTableFieldEnum {
+  submitted = '已提交',
+  finished = '已完成',
+  yes = '是',
+  no = '否'
+}
 
 export const SUB_DATASET_SIZE_RATE = 1000;
 export const SUB_EXTRA_POINT_RATE = 1000;
