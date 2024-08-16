@@ -39,6 +39,7 @@ async function handler(
     type: app.type,
     modules: app.modules,
     edges: app.edges,
+    chatConfig: app.chatConfig,
     teamId: app.teamId,
     tmbId,
     pluginData: app.pluginData

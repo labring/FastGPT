@@ -75,7 +75,7 @@ const OffiAccountEditModal = ({
         </Box>
         <Flex p={8} minH={['auto', '400px']} flexDirection="column" gap={6}>
           <Flex alignItems="center">
-            <Box color="myGray.600">{t('publish:official_account.api')}</Box>
+            <Box color="myGray.600">{t('publish:official_account.params')}</Box>
             {feConfigs?.docUrl && (
               <Link
                 href={feConfigs.openAPIDocUrl || getDocPath('/docs/use-cases/official_account')}

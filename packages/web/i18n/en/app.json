@@ -125,6 +125,10 @@
   },
   "upload_file_max_amount": "Max files",
   "upload_file_max_amount_tip": "1. The maximum number of files to be uploaded at a time.\n2. The maximum number of files that can be remembered in the dialog window: Files in the history are automatically retrieved for each round of conversation, and files that are out of range are forgotten.",
+  "variable": {
+    "select type_desc": "You can define a global variable that does not need to be filled in by the user.\n\nThe value of this variable can come from the API interface, the Query of the shared link, or be assigned through the [Variable Update] module.",
+    "textarea_type_desc": "A dialog box that allows the user to enter up to 4000 words."
+  },
   "version": {
     "Revert success": "Revert success"
   },

@@ -35,7 +35,7 @@ const MyModal = ({
   closeOnOverlayClick = true,
   ...props
 }: MyModalProps) => {
-  const isPc = useSystem();
+  const { isPc } = useSystem();
 
   return (
     <Modal
