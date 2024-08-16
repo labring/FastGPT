@@ -96,6 +96,10 @@ const HeaderTagPopOver = () => {
             overflow={'hidden'}
             h={['28px', '36px']}
             fontSize={'sm'}
+            _hover={{
+              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+              borderColor: 'primary.300'
+            }}
           >
             <Flex flex={'1 0 0'}>
               {t('dataset:tag.tags')}
@@ -158,9 +162,12 @@ const HeaderTagPopOver = () => {
                     py={1}
                     my={1}
                     cursor={'pointer'}
-                    bg={checked ? '#1118240D' : 'transparent'}
                     color={checked ? 'primary.700' : 'myGray.600'}
-                    _hover={{ bg: '#1118240D', color: 'primary.700' }}
+                    _hover={{
+                      bg: '#1118240D',
+                      color: 'primary.700',
+                      ...(checked ? {} : { svg: { color: '#F3F3F4' } })
+                    }}
                     borderRadius={'xs'}
                     key={item._id}
                     onClick={(e) => {
@@ -174,6 +181,7 @@ const HeaderTagPopOver = () => {
                         checkTags(item);
                       }}
                       size={'md'}
+                      icon={<MyIcon name={'common/check'} w={'12px'} />}
                     />
                     <Box ml={2}>{item.tag}</Box>
                   </Flex>
@@ -186,6 +194,7 @@ const HeaderTagPopOver = () => {
                 fontSize={'sm'}
                 _hover={{ bg: '#1118240D', color: 'primary.700' }}
                 borderRadius={'none'}
+                borderBottomLeftRadius={'md'}
                 variant={'unstyled'}
                 onClick={() => {
                   setCheckedTags([]);
@@ -202,6 +211,7 @@ const HeaderTagPopOver = () => {
                 fontSize={'sm'}
                 _hover={{ bg: '#1118240D', color: 'primary.700' }}
                 borderRadius={'none'}
+                borderBottomRightRadius={'md'}
                 variant={'unstyled'}
                 onClick={() => {
                   onOpenTagManageModal();
