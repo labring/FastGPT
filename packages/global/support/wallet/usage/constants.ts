@@ -6,7 +6,10 @@ export enum UsageSourceEnum {
   shareLink = 'shareLink',
   training = 'training',
   cronJob = 'cronJob',
-  feishu = 'feishu'
+  share = 'share',
+  wecom = 'wecom',
+  feishu = 'feishu',
+  official_account = 'official_account'
 }
 
 export const UsageSourceMap = {
@@ -27,5 +30,14 @@ export const UsageSourceMap = {
   },
   [UsageSourceEnum.feishu]: {
     label: i18nT('user:usage.feishu')
+  },
+  [UsageSourceEnum.official_account]: {
+    label: i18nT('user:usage.official_account')
+  },
+  [UsageSourceEnum.share]: {
+    label: i18nT('user:usage.share')
+  },
+  [UsageSourceEnum.wecom]: {
+    label: i18nT('user:usage.wecom')
   }
 };
