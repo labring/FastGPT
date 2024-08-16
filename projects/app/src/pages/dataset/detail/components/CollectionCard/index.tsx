@@ -237,12 +237,12 @@ const CollectionCard = () => {
                 >
                   <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
                     <Flex alignItems={'center'}>
-                      <MyIcon name={collection.icon as any} w={'16px'} mr={2} />
+                      <MyIcon name={collection.icon as any} w={'18px'} mr={2} />
                       <MyTooltip
                         label={t('common:common.folder.Drag Tip')}
                         shouldWrapChildren={false}
                       >
-                        <Box color={'myGray.900'} className="textEllipsis">
+                        <Box color={'myGray.900'} fontWeight={'500'} className="textEllipsis">
                           {collection.name}
                         </Box>
                       </MyTooltip>

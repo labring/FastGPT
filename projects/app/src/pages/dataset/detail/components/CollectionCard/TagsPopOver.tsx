@@ -155,9 +155,10 @@ const TagsPopOver = ({
               <Box
                 key={index}
                 h={5}
-                mr={1}
+                mr={2}
                 px={2}
                 fontSize={'11px'}
+                fontWeight={'500'}
                 bg={'#F0FBFF'}
                 color={'#0884DD'}
                 borderRadius={'4px'}
@@ -213,6 +214,7 @@ const TagsPopOver = ({
                     borderRadius={'xs'}
                     onClick={() => {
                       onCreateCollectionTag(searchTag);
+                      // setCheckedTags([...checkedTags, item]);
                     }}
                   >
                     <MyIcon name={'common/addLight'} w={'14px'} />
@@ -228,13 +230,16 @@ const TagsPopOver = ({
                       alignItems={'center'}
                       fontSize={'xs'}
                       px={1}
-                      py={0.5}
-                      my={0.5}
+                      py={1}
+                      my={1}
                       key={item._id}
                       cursor={'pointer'}
-                      bg={tagsList.includes(item.tag) ? '#1118240D' : 'transparent'}
                       color={tagsList.includes(item.tag) ? '#2B5FD9' : 'myGray.600'}
-                      _hover={{ bg: '#1118240D', color: '#2B5FD9' }}
+                      _hover={{
+                        bg: '#1118240D',
+                        color: '#2B5FD9',
+                        ...(tagsList.includes(item.tag) ? {} : { svg: { color: '#F3F3F4' } })
+                      }}
                       borderRadius={'xs'}
                       onClick={(e) => {
                         e.preventDefault();
@@ -254,8 +259,9 @@ const TagsPopOver = ({
                             setCheckedTags(checkedTags.filter((t) => t._id !== item._id));
                           }
                         }}
+                        icon={<MyIcon name={'common/check'} w={'12px'} />}
                       />
-                      <Box ml={1}>{item.tag}</Box>
+                      <Box ml={2}>{item.tag}</Box>
                     </Flex>
                   );
                 })}

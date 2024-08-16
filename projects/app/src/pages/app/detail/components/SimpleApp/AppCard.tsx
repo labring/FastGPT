@@ -167,7 +167,10 @@ const AppCard = () => {
           <ModalBody>
             <Box mb={3}>{appT('transition_to_workflow_create_new_tip')}</Box>
             <HStack cursor={'pointer'} onClick={() => setTransitionCreateNew((state) => !state)}>
-              <Checkbox isChecked={transitionCreateNew} />
+              <Checkbox
+                isChecked={transitionCreateNew}
+                icon={<MyIcon name={'common/check'} w={'12px'} />}
+              />
               <Box>{appT('transition_to_workflow_create_new_placeholder')}</Box>
             </HStack>
           </ModalBody>
