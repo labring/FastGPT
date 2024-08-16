@@ -75,6 +75,9 @@
     "no_collaborators": "暂无协作者"
   },
   "usage": {
-    "feishu": "飞书"
+    "feishu": "飞书",
+    "official_account": "公众号",
+    "share": "分享链接",
+    "wecom": "企业微信"
   }
 }

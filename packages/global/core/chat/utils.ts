@@ -1,8 +1,9 @@
 import { DispatchNodeResponseType } from '../workflow/runtime/type';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from './constants';
+import { ChatItemValueTypeEnum, ChatRoleEnum, ChatSourceEnum } from './constants';
 import { ChatHistoryItemResType, ChatItemType, UserChatItemValueItemType } from './type.d';
 import { sliceStrStartEnd } from '../../common/string/tools';
+import { PublishChannelEnum } from '../../support/outLink/constant';
 
 // Concat 2 -> 1, and sort by role
 export const concatHistories = (histories1: ChatItemType[], histories2: ChatItemType[]) => {
@@ -122,4 +123,23 @@ export const getPluginOutputsFromChatResponses = (responses: ChatHistoryItemResT
   const outputs =
     responses.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput)?.pluginOutput ?? {};
   return outputs;
+};
+
+export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum) => {
+  switch (publishChannel) {
+    case PublishChannelEnum.share:
+      return ChatSourceEnum.share;
+    case PublishChannelEnum.iframe:
+      return ChatSourceEnum.share;
+    case PublishChannelEnum.apikey:
+      return ChatSourceEnum.api;
+    case PublishChannelEnum.feishu:
+      return ChatSourceEnum.feishu;
+    case PublishChannelEnum.wecom:
+      return ChatSourceEnum.wecom;
+    case PublishChannelEnum.officialAccount:
+      return ChatSourceEnum.official_account;
+    default:
+      return ChatSourceEnum.online;
+  }
 };
