@@ -118,7 +118,8 @@ export const loadRequestMessages = async ({
     }
 
     // 正则表达式匹配图片URL
-    const imageRegex = /(https?:\/\/.*\.(?:png|jpe?g|gif|webp|bmp|tiff?|svg|ico|heic|avif))/i;
+    const imageRegex =
+      /(https?:\/\/[^\s/$.?#].[^\s]*\.(?:png|jpe?g|gif|webp|bmp|tiff?|svg|ico|heic|avif))/i;
 
     const result: { type: 'text' | 'image'; value: string }[] = [];
     let lastIndex = 0;

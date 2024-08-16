@@ -95,6 +95,10 @@ export async function getServerSideProps(context: any) {
   const datasetId = context?.query?.datasetId;
 
   return {
-    props: { currentTab, datasetId, ...(await serviceSideProps(context, ['dataset', 'file'])) }
+    props: {
+      currentTab,
+      datasetId,
+      ...(await serviceSideProps(context, ['dataset', 'file', 'user']))
+    }
   };
 }

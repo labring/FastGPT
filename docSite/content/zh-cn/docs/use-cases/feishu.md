@@ -1,11 +1,12 @@
 ---
-title: "教程 - 接入飞书机器人"
-description: "FastGPT 接入飞书机器人"
+title: "接入飞书机器人教程"
+description: "FastGPT 接入飞书机器人教程"
 icon: "chat"
 draft: false
 toc: true
 weight: 507
 ---
+
 ## 1. 申请飞书应用
 
 开一个免费的测试企业更方便进行调试。

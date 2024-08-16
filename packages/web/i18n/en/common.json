@@ -600,8 +600,7 @@
             "success": "Start syncing"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",
@@ -1270,7 +1269,9 @@
         "Sub plan": "Subscription plan",
         "Sub plan tip": "Free use of {{title}} or upgrade to a higher plan",
         "Team plan and usage": "Plan and usage",
+        "web_site_sync": "Website sync",
         "Training weight": "Training priority: {{weight}}",
+        "rerank": "Rerank",
         "Update extra ai points": "Extra AI points",
         "Update extra dataset size": "Extra storage",
         "Upgrade plan": "Upgrade plan",
