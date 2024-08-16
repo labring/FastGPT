@@ -78,7 +78,7 @@ const OffiAccountEditModal = ({
             <Box color="myGray.600">{t('publish:official_account.params')}</Box>
             {feConfigs?.docUrl && (
               <Link
-                href={feConfigs.openAPIDocUrl || getDocPath('/docs/use-cases/official_account')}
+                href={feConfigs.openAPIDocUrl || getDocPath('/docs/course/official_account')}
                 target={'_blank'}
                 ml={2}
                 color={'primary.500'}

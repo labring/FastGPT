@@ -8,9 +8,9 @@ weight: 852
 ---
 
 {{% alert icon="🤖 " context="success" %}}
-该接口的 API Key 需使用`应用特定的 key`，否则会报错。  
+* 该接口的 API Key 需使用`应用特定的 key`，否则会报错。  
 
-有些包调用时，`BaseUrl`需要添加`v1`路径，有些不需要，如果出现404情况，可补充`v1`重试。
+* 有些包调用时，`BaseUrl`需要添加`v1`路径，有些不需要，如果出现404情况，可补充`v1`重试。
 {{% /alert %}}
 
 ## 发起对话(简易应用和工作流)
@@ -18,7 +18,7 @@ weight: 852
 对话接口兼容`GPT`的接口！如果你的项目使用的是标准的`GPT`官方接口，可以直接通过修改`BaseUrl`和 `Authorization`来访问 FastGpt 应用，不过需要注意下面几个规则：
 
 {{% alert icon="🤖 " context="success" %}}
-* 传入的`model`，`temperature`等参数字段均无效，这些字段由编排决定。
+* 传入的`model`，`temperature`等参数字段均无效，这些字段由编排决定，不会根据 API 参数改变。
 * 不会返回实际消耗`Token`值，如果需要，可以设置`detail=true`，并手动计算 `responseData` 里的`tokens`值。
 {{% /alert %}}
 
@@ -457,6 +457,6 @@ event取值：
 
 ## 使用案例
 
-- [接入 NextWeb/ChatGPT web 等应用](/docs/use-cases/openapi)
+- [接入 NextWeb/ChatGPT web 等应用](/docs/course/openapi)
 - [接入 onwechat](/docs/use-cases/onwechat)
-- [接入 飞书](/docs/use-cases/feishu)
+- [接入 飞书](/docs/course/feishu)

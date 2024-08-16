@@ -4,8 +4,10 @@ description: "FastGPT 接入飞书机器人教程"
 icon: "chat"
 draft: false
 toc: true
-weight: 507
+weight: 111
 ---
+
+从 4.8.10 版本起，FastGPT 商业版支持直接接入飞书机器人，无需额外的 API。
 
 ## 1. 申请飞书应用
 
