@@ -135,6 +135,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
                   h={'42px'}
                   leftIcon={
                     <Image
+                      alt=""
                       src={feConfigs.sso.icon as any}
                       w="20px"
                       cursor="pointer"
@@ -142,7 +143,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
                     />
                   }
                   onClick={() => {
-                    console.debug('open url', feConfigs?.sso?.url);
+                    feConfigs.sso?.url && router.replace(feConfigs.sso?.url, '_self');
                   }}
                 >
                   {feConfigs.sso.title}
