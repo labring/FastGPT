@@ -76,7 +76,7 @@ const FeiShuEditModal = ({
             <Box color="myGray.600">{t('publish:feishu_api')}</Box>
             {feConfigs?.docUrl && (
               <Link
-                href={feConfigs.openAPIDocUrl || getDocPath('/docs/use-cases/feishu')}
+                href={feConfigs.openAPIDocUrl || getDocPath('/docs/course/feishu')}
                 target={'_blank'}
                 ml={2}
                 color={'primary.500'}
