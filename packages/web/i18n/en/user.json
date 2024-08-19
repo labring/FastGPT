@@ -1,6 +1,12 @@
 {
   "bind_inform_account_error": "Abnormal binding notification account",
   "bind_inform_account_success": "Binding notification account successful",
+  "code_error": {
+    "app_error": {
+      "invalid_app_type": "Wrong application type",
+      "invalid_owner": "Illegal app owner"
+    }
+  },
   "delete": {
     "admin_failed": "Failed to delete administrator",
     "admin_success": "Administrator deleted successfully"
@@ -17,7 +23,8 @@
   },
   "name": "name",
   "notification": {
-    "Bind Notification Pipe Hint": "Bind the email address or mobile phone number for receiving notifications to ensure that you receive important system notifications in a timely manner."
+    "Bind Notification Pipe Hint": "Bind the email address or mobile phone number for receiving notifications to ensure that you receive important system notifications in a timely manner.",
+    "remind_owner_bind": "Please remind the creator to bind the notification account"
   },
   "operations": "operate",
   "password": {
@@ -48,6 +55,12 @@
     "Read desc": "Members can only read related resources and cannot create new resources.",
     "Write": "Write",
     "Write tip": "In addition to readable resources, you can also create new resources",
+    "change_owner": "transfer ownership",
+    "change_owner_failed": "Transfer ownership failed",
+    "change_owner_placeholder": "Enter username to find account",
+    "change_owner_success": "Successfully transferred ownership",
+    "change_owner_tip": "Your administrator rights will be retained after the transfer",
+    "change_owner_to": "transferred to",
     "only_collaborators": "Collaborator access only",
     "team_read": "Team accessible",
     "team_write": "Team editable"

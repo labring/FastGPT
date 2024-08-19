@@ -16,7 +16,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const Promotion = dynamic(() => import('./components/Promotion'));
 const UsageTable = dynamic(() => import('./components/UsageTable'));
-const BillTable = dynamic(() => import('./components/BillTable'));
+const BillAndInvoice = dynamic(() => import('./components/bill/BillAndInvoice'));
 const InformTable = dynamic(() => import('./components/InformTable'));
 const ApiKeyTable = dynamic(() => import('./components/ApiKeyTable'));
 const Individuation = dynamic(() => import('./components/Individuation'));
@@ -53,7 +53,8 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
           }
         ]
       : []),
-    ...(feConfigs?.show_pay && userInfo?.team?.permission.hasWritePer
+    // ...(feConfigs?.show_pay && userInfo?.team?.permission.hasWritePer
+    ...(feConfigs?.show_pay || userInfo?.team?.permission.hasWritePer
       ? [
           {
             icon: 'support/bill/payRecordLight',
@@ -176,7 +177,7 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
             {currentTab === TabEnum.info && <UserInfo />}
             {currentTab === TabEnum.promotion && <Promotion />}
             {currentTab === TabEnum.usage && <UsageTable />}
-            {currentTab === TabEnum.bill && <BillTable />}
+            {currentTab === TabEnum.bill && <BillAndInvoice />}
             {currentTab === TabEnum.individuation && <Individuation />}
             {currentTab === TabEnum.inform && <InformTable />}
             {currentTab === TabEnum.apikey && <ApiKeyTable />}

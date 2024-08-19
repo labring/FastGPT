@@ -5,7 +5,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { postCreateDatasetCollectionTag } from '@/web/core/dataset/api';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useCallback, useEffect, useState } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { CollectionPageContext } from './Context';

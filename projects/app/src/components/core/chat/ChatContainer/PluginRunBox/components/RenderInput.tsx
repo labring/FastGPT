@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { Controller } from 'react-hook-form';
 import RenderPluginInput from './renderPluginInput';
 import { Button, Flex } from '@chakra-ui/react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { PluginRunContext } from '../context';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';

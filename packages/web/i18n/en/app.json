@@ -75,6 +75,7 @@
     "unit": "Number"
   },
   "move_app": "Move app",
+  "no": "no",
   "paste_config": "Paste Config",
   "plugin_cost_per_times": "{{cost}}/per time",
   "plugin_dispatch": "Plugins",
@@ -84,6 +85,27 @@
   "search_app": "Search app",
   "setting_app": "Settings",
   "setting_plugin": "Setting plugin",
+  "support": {
+    "wallet": {
+      "bill_tag": {
+        "bill": "billing records",
+        "default_header": "Default header",
+        "invoice": "Invoicing records"
+      },
+      "invoice_data": {
+        "bank": "Bank of deposit",
+        "bank_account": "Account opening account",
+        "company_address": "company address",
+        "company_phone": "company phone",
+        "email": "email address",
+        "in_valid": "There are empty fields or incorrect email formats",
+        "need_special_invoice": "Do you need a special ticket?",
+        "organization_name": "name of association",
+        "unit_code": "same credit code"
+      },
+      "invoicing": "Invoicing"
+    }
+  },
   "template": {
     "simple_robot": "Simple Robot"
   },
@@ -95,6 +117,7 @@
     "templateTags": {
       "Image_generation": "Image generation",
       "Office_services": "Office searvices",
+      "Recommendation": "recommend",
       "Roleplay": "Roleplay",
       "Web_search": "Web search",
       "Writing": "Writing"
@@ -115,6 +138,7 @@
     "Create plugin bot": "Create plugin bot",
     "Create simple bot": "Create simple bot",
     "Create simple bot tip": "Create simple AI applications in form form",
+    "Create template tip": "Explore more ways to play in the template market to help you understand and use various applications",
     "Create workflow bot": "Create workflow bot",
     "Create workflow tip": "Through the way of low code, build a logically complex multi-round dialogue AI application, recommended for advanced players",
     "Http plugin": "Http plugin",
@@ -160,5 +184,6 @@
     "user_file_input_desc": "Links to documents and images uploaded by users",
     "user_select": "User select",
     "user_select_tip": "The module can have multiple options that lead to different workflow branches"
-  }
+  },
+  "yes": "yes"
 }

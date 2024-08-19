@@ -90,3 +90,19 @@ export type LafAccountType = {
   appid: string;
   pat: string;
 };
+
+export type TeamInvoiceHeaderType = {
+  teamName: string;
+  unifiedCreditCode: string;
+  companyAddress: string;
+  companyPhone: string;
+  bankName: string;
+  bankAccount: string;
+  needSpecialInvoice?: boolean;
+  emailAddress: string;
+};
+
+export type TeamInvoiceHeaderInfoSchemaType = TeamInvoiceHeaderType & {
+  _id: string;
+  teamId: string;
+};
