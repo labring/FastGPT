@@ -617,8 +617,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1095,7 +1094,7 @@
     "need_to_pay": "实付",
     "new_package_price": "新套餐价格",
     "notice": "请勿关闭页面",
-    "old_package_price": "旧套餐价格",
+    "old_package_price": "旧套餐余额",
     "other": "其他金额，请取整数",
     "to_recharge": "余额不足，去充值",
     "wechat": "请微信扫码支付: {{price}}元，请勿关闭页面",
