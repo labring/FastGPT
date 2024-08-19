@@ -117,6 +117,7 @@
     "templateTags": {
       "Image_generation": "Image generation",
       "Office_services": "Office searvices",
+      "Recommendation": "recommend",
       "Roleplay": "Roleplay",
       "Web_search": "Web search",
       "Writing": "Writing"
@@ -137,6 +138,7 @@
     "Create plugin bot": "Create plugin bot",
     "Create simple bot": "Create simple bot",
     "Create simple bot tip": "Create simple AI applications in form form",
+    "Create template tip": "Explore more ways to play in the template market to help you understand and use various applications",
     "Create workflow bot": "Create workflow bot",
     "Create workflow tip": "Through the way of low code, build a logically complex multi-round dialogue AI application, recommended for advanced players",
     "Http plugin": "Http plugin",

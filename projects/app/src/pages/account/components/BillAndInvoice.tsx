@@ -20,7 +20,7 @@ const BillAndInvoice = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Box p={'2rem'}>
+      <Box p={['1rem', '2rem']}>
         <Flex justifyContent={'space-between'} alignItems={'center'} pb={'0.75rem'}>
           <FillRowTabs
             list={[
