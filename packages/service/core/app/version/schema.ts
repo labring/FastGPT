@@ -25,6 +25,21 @@ const AppVersionSchema = new Schema({
   },
   chatConfig: {
     type: chatConfigType
+  },
+  isPublish: {
+    type: Boolean,
+    default: true
+  },
+  versionName: {
+    type: String,
+    default: ''
+  },
+  avatar: {
+    type: String,
+    default: '/icon/logo.svg'
+  },
+  username: {
+    type: String
   }
 });
 

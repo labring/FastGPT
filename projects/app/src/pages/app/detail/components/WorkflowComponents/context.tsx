@@ -14,7 +14,7 @@ import { RuntimeEdgeItemType, StoreEdgeItemType } from '@fastgpt/global/core/wor
 import { FlowNodeChangeProps } from '@fastgpt/global/core/workflow/type/fe';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useMemoizedFn, useUpdateEffect } from 'ahooks';
+import { useLocalStorageState, useMemoizedFn, useUpdateEffect } from 'ahooks';
 import React, {
   Dispatch,
   SetStateAction,
@@ -45,12 +45,22 @@ import { useDisclosure } from '@chakra-ui/react';
 import { uiWorkflow2StoreWorkflow } from './utils';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { formatTime2HM, formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
+import {
+  formatTime2HM,
+  formatTime2YMDHMS,
+  formatTime2YMDHMW
+} from '@fastgpt/global/common/string/time';
 import type { InitProps } from '@/pages/app/detail/components/PublishHistoriesSlider';
 import { cloneDeep } from 'lodash';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
+type SnapshotsType = {
+  nodes: Node[];
+  edges: Edge[];
+  title: string;
+  chatConfig: AppChatConfigType;
+};
 type WorkflowContextType = {
   appId?: string;
   basicNodeTemplates: FlowNodeTemplateType[];
@@ -81,6 +91,26 @@ type WorkflowContextType = {
   }) => void;
   hoverEdgeId?: string;
   setHoverEdgeId: React.Dispatch<React.SetStateAction<string | undefined>>;
+
+  // snapshots
+  saveSnapshot: ({
+    pastNodes,
+    pastEdges,
+    customTitle,
+    chatConfig
+  }: {
+    pastNodes?: Node[];
+    pastEdges?: Edge[];
+    customTitle?: string;
+    chatConfig?: AppChatConfigType;
+  }) => void;
+  resetSnapshot: (state: SnapshotsType) => void;
+  past: SnapshotsType[];
+  future: SnapshotsType[];
+  redo: () => void;
+  undo: () => void;
+  canRedo: boolean;
+  canUndo: boolean;
 
   // connect
   connectingEdge?: OnConnectStartParams;
@@ -262,7 +292,23 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   },
   getNodeDynamicInputs: function (nodeId: string): FlowNodeInputItemType[] {
     throw new Error('Function not implemented.');
-  }
+  },
+  saveSnapshot: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  resetSnapshot: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  past: [],
+  future: [],
+  redo: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  undo: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  canRedo: false,
+  canUndo: false
 });
 
 const WorkflowContextProvider = ({
@@ -363,6 +409,7 @@ const WorkflowContextProvider = ({
 
   const onChangeNode = useMemoizedFn((props: FlowNodeChangeProps) => {
     const { nodeId, type } = props;
+    saveSnapshot({});
     setNodes((nodes) =>
       nodes.map((node) => {
         if (node.id !== nodeId) return node;
@@ -500,7 +547,7 @@ const WorkflowContextProvider = ({
   });
 
   /* save workflow */
-  const [saveLabel, setSaveLabel] = useState(t('common:core.app.Onclick to save'));
+  const [saveLabel, setSaveLabel] = useState(t('common:core.app.Not saved'));
   const { runAsync: onSaveWorkflow, loading: isSaving } = useRequest2(async () => {
     const { nodes } = await getWorkflowStore();
 
@@ -750,6 +797,98 @@ const WorkflowContextProvider = ({
     onOpenTest();
   }, [workflowTestData]);
 
+  const [past, setPast] = useLocalStorageState<SnapshotsType[]>(`${appId}-past`, {
+    defaultValue: []
+  }) as [SnapshotsType[], (value: SetStateAction<SnapshotsType[]>) => void];
+  const [future, setFuture] = useLocalStorageState<SnapshotsType[]>(`${appId}-future`, {
+    defaultValue: []
+  }) as [SnapshotsType[], (value: SetStateAction<SnapshotsType[]>) => void];
+
+  useEffect(() => {
+    const keys = Object.keys(localStorage);
+    const snapshotKeys = keys.filter((key) => key.endsWith('-past') || key.endsWith('-future'));
+    snapshotKeys.forEach((key) => {
+      const keyAppId = key.split('-')[0];
+      if (keyAppId !== appId) {
+        localStorage.removeItem(key);
+      }
+    });
+  }, [appId]);
+
+  const saveSnapshot = useCallback(
+    ({
+      pastNodes,
+      pastEdges,
+      customTitle,
+      chatConfig
+    }: {
+      pastNodes?: Node[];
+      pastEdges?: Edge[];
+      customTitle?: string;
+      chatConfig?: AppChatConfigType;
+    }) => {
+      setPast((past) => [
+        {
+          nodes: pastNodes || nodes,
+          edges: pastEdges || edges,
+          title: customTitle || formatTime2YMDHMS(new Date()),
+          chatConfig: chatConfig || appDetail.chatConfig
+        },
+        ...past.slice(0, 49)
+      ]);
+
+      setFuture([]);
+    },
+    [nodes, edges]
+  );
+
+  const undo = useCallback(() => {
+    const pastState = past[0];
+
+    if (pastState) {
+      setPast((past) => past.slice(1));
+      setFuture((future) => [
+        { nodes, edges, chatConfig: appDetail.chatConfig, title: formatTime2YMDHMS(new Date()) },
+        ...future
+      ]);
+      resetSnapshot(pastState);
+    }
+  }, [setNodes, setEdges, past, nodes, edges]);
+
+  const redo = useCallback(() => {
+    const futureState = future[0];
+
+    if (futureState) {
+      setFuture((future) => future.slice(1));
+      setPast((past) => [
+        { nodes, edges, chatConfig: appDetail.chatConfig, title: formatTime2YMDHMS(new Date()) },
+        ...past
+      ]);
+      resetSnapshot(futureState);
+    }
+  }, [setNodes, setEdges, future, nodes, edges]);
+
+  const resetSnapshot = (state: SnapshotsType) => {
+    setNodes(state.nodes);
+    setEdges(state.edges);
+  };
+
+  useEffect(() => {
+    const keyDownHandler = (event: KeyboardEvent) => {
+      if (event.key === 'z' && (event.ctrlKey || event.metaKey) && event.shiftKey) {
+        redo();
+      } else if (event.key === 'z' && (event.ctrlKey || event.metaKey)) {
+        undo();
+      }
+    };
+
+    document.addEventListener('keydown', keyDownHandler);
+
+    return () => {
+      document.removeEventListener('keydown', keyDownHandler);
+    };
+  }, [undo, redo]);
+
   const value = {
     appId,
     reactFlowWrapper,
@@ -776,6 +915,16 @@ const WorkflowContextProvider = ({
     connectingEdge,
     setConnectingEdge,
     onDelEdge,
+
+    // snapshots
+    past,
+    future,
+    undo,
+    redo,
+    saveSnapshot,
+    resetSnapshot,
+    canUndo: !!past.length,
+    canRedo: !!future.length,
 
     // function
     onFixView,

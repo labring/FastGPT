@@ -20,11 +20,11 @@ export const workflowBoxStyles: FlexProps = {
 export const publishStatusStyle = {
   unPublish: {
     colorSchema: 'adora' as any,
-    text: i18nT('common:core.app.not_published')
+    text: i18nT('common:core.app.not_saved')
   },
   published: {
     colorSchema: 'green' as any,
-    text: i18nT('common:core.app.have_publish')
+    text: i18nT('common:core.app.have_saved')
   }
 };
 

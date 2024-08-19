@@ -9,16 +9,25 @@ import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/strin
 import { PostPublishAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-
-type Response = {};
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<{}> {
   const { appId } = req.query as { appId: string };
-  const { nodes = [], edges = [], chatConfig, type } = req.body as PostPublishAppProps;
+  const {
+    nodes = [],
+    edges = [],
+    chatConfig,
+    type,
+    isPublish,
+    versionName
+  } = req.body as PostPublishAppProps;
 
-  const { app } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
+  const { app, tmbId } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
 
   const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
+  const tmb = await MongoTeamMember.findById({ _id: tmbId });
+  const user = await MongoUser.findById({ _id: tmb?.userId });
 
   await mongoSessionRun(async (session) => {
     // create version histories
@@ -28,7 +37,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
           appId,
           nodes: formatNodes,
           edges,
-          chatConfig
+          chatConfig,
+          isPublish,
+          versionName,
+          avatar: user?.avatar,
+          username: user?.username
         }
       ],
       { session }

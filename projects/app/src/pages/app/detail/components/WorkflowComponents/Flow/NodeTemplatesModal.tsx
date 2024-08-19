@@ -388,13 +388,14 @@ const RenderList = React.memo(function RenderList({
   setParentId
 }: RenderListProps) {
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
+  const { appT } = useI18n();
+  const { feConfigs, setLoading } = useSystemStore();
+  const { saveSnapshot } = useContextSelector(WorkflowContext, (v) => v);
 
   const { isPc } = useSystem();
   const isSystemPlugin = type === TemplateTypeEnum.systemPlugin;
 
   const { x, y, zoom } = useViewport();
-  const { setLoading } = useSystemStore();
   const { toast } = useToast();
   const reactFlowWrapper = useContextSelector(WorkflowContext, (v) => v.reactFlowWrapper);
   const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
@@ -423,6 +424,7 @@ const RenderList = React.memo(function RenderList({
 
       const templateNode = await (async () => {
         try {
+          saveSnapshot({});
           // get plugin preview module
           if (template.flowNodeType === FlowNodeTypeEnum.pluginModule) {
             setLoading(true);

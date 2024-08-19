@@ -184,6 +184,7 @@
     "Save": "Save",
     "Save Failed": "Saved failed",
     "Save Success": "Saved success",
+    "Save_and_exit": "Save and exit",
     "Search": "Search",
     "Select File Failed": "Select File Failed",
     "Select template": "Select template",
@@ -311,6 +312,7 @@
       "Max histories": "Chat history count",
       "Max tokens": "Reply limit",
       "Name and avatar": "Avatar & name",
+      "Not saved": "Not saved",
       "Onclick to save": "Click to save",
       "Publish": "Publish",
       "Publish Confirm": "Confirm to publish the app? It will immediately update the app status across all published channels.",
@@ -361,6 +363,7 @@
         "close custom feedback": "Close feedback"
       },
       "have_publish": "Published",
+      "have_saved": "have saved",
       "loading": "loading",
       "logs": {
         "Source And Time": "Source & Time"
@@ -375,6 +378,7 @@
       },
       "no_app": "There is no application yet, go and create one!",
       "not_published": "Unpublished",
+      "not_saved": "not saved",
       "outLink": {
         "Can Drag": "Icon draggable",
         "Default open": "Open by default",
@@ -475,6 +479,7 @@
       "Recent use": "Recent use",
       "Record": "Voice input",
       "Restart": "Restart conversation",
+      "Run test": "Run test",
       "Select Image": "Select image",
       "Select dataset": "Select dataset",
       "Select dataset Desc": "Select a dataset to store the expected answer",
@@ -935,7 +940,10 @@
       "Debug Node": "Debug mode",
       "Failed": "Execution failed",
       "Not intro": "This node has no introduction~",
+      "Run": "Run",
       "Running": "Running",
+      "Save and publish": "Save and publish",
+      "Save to cloud": "Save to cloud",
       "Skipped": "Skipped execution",
       "Stop debug": "Stop debugging",
       "Success": "Execution successful",

@@ -92,6 +92,7 @@ export default React.memo(NodeUserGuide);
 function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentProps) {
   const { t } = useTranslation();
   const [, startTst] = useTransition();
+  const { saveSnapshot } = useContextSelector(WorkflowContext, (v) => v);
 
   return (
     <Box className="nodrag">
@@ -100,6 +101,7 @@ function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentPro
         defaultValue={welcomeText}
         onChange={(e) => {
           startTst(() => {
+            saveSnapshot({});
             setAppDetail((state) => ({
               ...state,
               chatConfig: {

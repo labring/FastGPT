@@ -297,6 +297,7 @@ const MenuRender = React.memo(function MenuRender({
 }) {
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
+  const { saveSnapshot } = useContextSelector(WorkflowContext, (v) => v);
 
   const { openConfirm: onOpenConfirmDeleteNode, ConfirmModal: ConfirmDeleteModal } = useConfirm({
     content: t('common:core.module.Confirm Delete Node'),
@@ -351,6 +352,7 @@ const MenuRender = React.memo(function MenuRender({
   );
   const onDelNode = useCallback(
     (nodeId: string) => {
+      saveSnapshot({});
       setNodes((state) => state.filter((item) => item.data.nodeId !== nodeId));
       setEdges((state) => state.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
     },
@@ -386,7 +388,7 @@ const MenuRender = React.memo(function MenuRender({
               icon: 'delete',
               label: t('common:common.Delete'),
               variant: 'whiteDanger',
-              onClick: onOpenConfirmDeleteNode(() => onDelNode(nodeId))
+              onClick: () => onDelNode(nodeId)
             }
           ])
     ];

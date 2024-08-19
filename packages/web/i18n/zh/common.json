@@ -184,6 +184,7 @@
     "Save": "保存",
     "Save Failed": "保存异常",
     "Save Success": "保存成功",
+    "Save_and_exit": "保存并退出",
     "Search": "搜索",
     "Select File Failed": "选择文件异常",
     "Select template": "选择模板",
@@ -311,6 +312,7 @@
       "Max histories": "聊天记录数量",
       "Max tokens": "回复上限",
       "Name and avatar": "头像 & 名称",
+      "Not saved": "未保存",
       "Onclick to save": "点击保存",
       "Publish": "发布",
       "Publish Confirm": "确认发布应用？会立即更新所有发布渠道的应用状态。",
@@ -361,6 +363,7 @@
         "close custom feedback": "关闭反馈"
       },
       "have_publish": "已发布",
+      "have_saved": "已保存",
       "loading": "加载中",
       "logs": {
         "Source And Time": "来源 & 时间"
@@ -375,6 +378,7 @@
       },
       "no_app": "还没有应用，快去创建一个吧！",
       "not_published": "未发布",
+      "not_saved": "未保存",
       "outLink": {
         "Can Drag": "图标可拖拽",
         "Default open": "默认打开",
@@ -475,6 +479,7 @@
       "Recent use": "最近使用",
       "Record": "语音输入",
       "Restart": "重开对话",
+      "Run test": "运行预览",
       "Select Image": "选择图片",
       "Select dataset": "选择知识库",
       "Select dataset Desc": "选择一个知识库存储预期答案",
@@ -934,7 +939,10 @@
       "Debug Node": "Debug 模式",
       "Failed": "运行失败",
       "Not intro": "这个节点没有介绍~",
+      "Run": "运行",
       "Running": "运行中",
+      "Save and publish": "保存并发布",
+      "Save to cloud": "保存到云端",
       "Skipped": "跳过运行",
       "Stop debug": "停止调试",
       "Success": "运行成功",
