@@ -10,7 +10,7 @@ export type invoiceBillDataType = {
   _id: string;
 };
 
-export const getInvoiceBillsData = () =>
+export const getInvoiceBillsList = () =>
   GET<invoiceBillDataType[]>(`/proApi/support/wallet/bill/invoice/unInvoiceList`);
 
 export const submitInvoice = (data: InvoiceType) =>

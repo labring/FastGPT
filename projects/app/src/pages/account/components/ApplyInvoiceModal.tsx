@@ -1,5 +1,5 @@
 import {
-  getInvoiceBillsData,
+  getInvoiceBillsList,
   invoiceBillDataType,
   submitInvoice
 } from '@/web/support/wallet/bill/invoice/api';
@@ -79,7 +79,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
     loading: isLoading,
     data: billsList,
     run: getInvoiceBills
-  } = useRequest2(() => getInvoiceBillsData(), {
+  } = useRequest2(() => getInvoiceBillsList(), {
     manual: false
   });
 
