@@ -5,7 +5,7 @@ import { TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useCallback, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const InputItem = ({
@@ -168,8 +168,8 @@ const InvoiceHeaderForm = () => {
     () => updateTeamInvoiceHeader(formData),
     {
       manual: true,
-      successToast: t('common:common.submit_success'),
-      errorToast: t('common:common.Submit failed')
+      successToast: t('common:common.Save Success'),
+      errorToast: t('common:common.Save Failed')
     }
   );
   const onSubmit = useCallback(() => {

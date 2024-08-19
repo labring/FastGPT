@@ -16,7 +16,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const Promotion = dynamic(() => import('./components/Promotion'));
 const UsageTable = dynamic(() => import('./components/UsageTable'));
-const BillAndInvoice = dynamic(() => import('./components/BillAndInvoice'));
+const BillAndInvoice = dynamic(() => import('./components/bill/BillAndInvoice'));
 const InformTable = dynamic(() => import('./components/InformTable'));
 const ApiKeyTable = dynamic(() => import('./components/ApiKeyTable'));
 const Individuation = dynamic(() => import('./components/Individuation'));

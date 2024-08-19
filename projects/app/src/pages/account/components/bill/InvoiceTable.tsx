@@ -1,6 +1,6 @@
 import { getInvoiceRecords } from '@/web/support/wallet/bill/invoice/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useEffect, useState } from 'react';
 import {
   Box,
@@ -40,98 +40,94 @@ const InvoiceTable = () => {
   useEffect(() => {
     getData(1);
   }, [getData]);
+
   return (
-    <>
-      <MyBox isLoading={isLoading} position={'relative'} h={'100%'} overflow={'overlay'}>
-        <TableContainer>
-          <Table>
-            <Thead h="3rem">
-              <Tr>
-                <Th w={'20%'}>#</Th>
-                <Th w={'20%'}>{t('common:user.Time')}</Th>
-                <Th w={'20%'}>{t('common:support.wallet.Amount')}</Th>
-                <Th w={'20%'}>{t('common:support.wallet.bill.Status')}</Th>
-                <Th w={'20%'}></Th>
-              </Tr>
-            </Thead>
-            <Tbody fontSize={'sm'}>
-              {invoices.map((item, i) => (
-                <Tr key={item._id}>
-                  <Td>{i + 1}</Td>
-                  <Td>
-                    {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
-                  </Td>
-                  <Td>{t('common:pay.yuan', { amount: formatStorePrice2Read(item.amount) })}</Td>
-                  <Td>
-                    <Flex
-                      px={'0.75rem'}
-                      py={'0.38rem'}
-                      w={'4.25rem'}
-                      h={'1.75rem'}
-                      bg={item.status === 1 ? 'blue.50' : 'green.50'}
-                      rounded={'md'}
-                      justify={'center'}
-                      align={'center'}
-                      color={item.status === 1 ? 'blue.600' : 'green.600'}
-                    >
-                      <MyIcon name="point" w={'6px'} h={'6px'} />
-                      <Box ml={'0.25rem'}>
-                        {item.status === 1
-                          ? t('common:common.submitted')
-                          : t('common:common.have_done')}
-                      </Box>
+    <MyBox isLoading={isLoading} position={'relative'} h={'100%'} overflow={'overlay'}>
+      <TableContainer minH={'50vh'}>
+        <Table>
+          <Thead h="3rem">
+            <Tr>
+              <Th w={'20%'}>#</Th>
+              <Th w={'20%'}>{t('common:user.Time')}</Th>
+              <Th w={'20%'}>{t('common:support.wallet.Amount')}</Th>
+              <Th w={'20%'}>{t('common:support.wallet.bill.Status')}</Th>
+              <Th w={'20%'}></Th>
+            </Tr>
+          </Thead>
+          <Tbody fontSize={'sm'}>
+            {invoices.map((item, i) => (
+              <Tr key={item._id}>
+                <Td>{i + 1}</Td>
+                <Td>
+                  {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
+                </Td>
+                <Td>{t('common:pay.yuan', { amount: formatStorePrice2Read(item.amount) })}</Td>
+                <Td>
+                  <Flex
+                    px={'0.75rem'}
+                    py={'0.38rem'}
+                    w={'4.25rem'}
+                    h={'1.75rem'}
+                    bg={item.status === 1 ? 'blue.50' : 'green.50'}
+                    rounded={'md'}
+                    justify={'center'}
+                    align={'center'}
+                    color={item.status === 1 ? 'blue.600' : 'green.600'}
+                  >
+                    <MyIcon name="point" w={'6px'} h={'6px'} />
+                    <Box ml={'0.25rem'}>
+                      {item.status === 1
+                        ? t('common:common.submitted')
+                        : t('common:common.have_done')}
+                    </Box>
+                  </Flex>
+                </Td>
+                <Td>
+                  <Button
+                    onClick={() => setInvoiceDetailData(item)}
+                    h={'2rem'}
+                    w={'4.5rem'}
+                    variant={'whiteBase'}
+                    size={'sm'}
+                    py={'0.5rem'}
+                    px={'0.75rem'}
+                    _hover={{
+                      color: 'blue.600'
+                    }}
+                  >
+                    <Flex>
+                      <MyIcon name="paragraph" w={'16px'} h={'16px'} />
+                      <Box ml={'0.38rem'}>{t('common:common.Detail')}</Box>
                     </Flex>
-                  </Td>
-                  <Td>
-                    <Button
-                      onClick={() => setInvoiceDetailData(item)}
-                      h={'2rem'}
-                      w={'4.5rem'}
-                      variant={'whiteBase'}
-                      size={'sm'}
-                      py={'0.5rem'}
-                      px={'0.75rem'}
-                      _hover={{
-                        color: 'blue.600'
-                      }}
-                    >
-                      <Flex>
-                        <MyIcon name="paragraph" w={'16px'} h={'16px'} />
-                        <Box ml={'0.38rem'}>{t('common:common.Detail')}</Box>
-                      </Flex>
-                    </Button>
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-          {total >= 20 && (
-            <Flex mt={3} justifyContent={'flex-end'}>
-              <Pagination />
-            </Flex>
-          )}
-          {!isLoading && invoices.length === 0 && (
-            <Flex
-              mt={'20vh'}
-              flexDirection={'column'}
-              alignItems={'center'}
-              justifyContent={'center'}
-            >
-              <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-              <Box mt={2} color={'myGray.500'}>
-                {t('common:support.wallet.no_invoice')}
-              </Box>
-            </Flex>
-          )}
-        </TableContainer>
-        {!!invoiceDetailData && (
-          <InvoiceDetailModal
-            invoice={invoiceDetailData}
-            onClose={() => setInvoiceDetailData('')}
-          />
+                  </Button>
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+        {total >= 20 && (
+          <Flex mt={3} justifyContent={'flex-end'}>
+            <Pagination />
+          </Flex>
         )}
-      </MyBox>
-    </>
+        {!isLoading && invoices.length === 0 && (
+          <Flex
+            mt={'20vh'}
+            flexDirection={'column'}
+            alignItems={'center'}
+            justifyContent={'center'}
+          >
+            <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+            <Box mt={2} color={'myGray.500'}>
+              {t('common:support.wallet.no_invoice')}
+            </Box>
+          </Flex>
+        )}
+      </TableContainer>
+      {!!invoiceDetailData && (
+        <InvoiceDetailModal invoice={invoiceDetailData} onClose={() => setInvoiceDetailData('')} />
+      )}
+    </MyBox>
   );
 };
 

@@ -5,7 +5,7 @@ import type { PermissionValueType } from '@fastgpt/global/support/permission/typ
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 export enum defaultPermissionEnum {
   private = 'private',

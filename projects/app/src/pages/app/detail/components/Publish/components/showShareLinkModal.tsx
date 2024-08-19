@@ -2,7 +2,7 @@ import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { Box, Image, Flex, ModalBody } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 export type ShowShareLinkModalProps = {
   shareLink: string;

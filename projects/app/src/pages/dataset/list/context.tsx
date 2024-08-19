@@ -20,7 +20,7 @@ import dynamic from 'next/dynamic';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetItemType, DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 

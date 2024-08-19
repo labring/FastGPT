@@ -218,7 +218,7 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.has_invoice')}:</FormLabel>
-          <Box>{bill.metadata.invoice ? t('common:yes') : t('common:no')}</Box>
+          <Box>{bill.hasInvoice ? t('common:yes') : t('common:no')}</Box>
         </Flex>
         {!!bill.metadata?.subMode && (
           <Flex alignItems={'center'} pb={4}>
