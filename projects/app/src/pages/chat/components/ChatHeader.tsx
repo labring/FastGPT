@@ -52,7 +52,7 @@ const ChatHeader = ({
       {isPc ? (
         <>
           <PcHeader
-            title={chatData.title || t('chat:new_chat')}
+            title={chatData.title || t('common:core.chat.New Chat')}
             chatModels={chatData.app.chatModels}
             history={history}
           />
