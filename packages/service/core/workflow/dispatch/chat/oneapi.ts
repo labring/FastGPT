@@ -112,17 +112,17 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       systemPrompt,
       stringQuoteText
     }),
-    async () => {
+    await (async () => {
       // censor model and system key
       if (modelConstantsData.censor && !user.openaiAccount?.key) {
-        await postTextCensor({
+        return await postTextCensor({
           text: `${systemPrompt}
             ${datasetQuoteText}
             ${userChatInput}
           `
         });
       }
-    }
+    })()
   ]);
 
   // Get the request messages
