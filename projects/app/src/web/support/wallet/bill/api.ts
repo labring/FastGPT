@@ -20,3 +20,5 @@ export const checkBalancePayResult = (payId: string) =>
     } catch (error) {}
     return data;
   });
+
+export const balanceConversion = () => GET<string>(`/proApi/support/wallet/bill/balanceConversion`);
