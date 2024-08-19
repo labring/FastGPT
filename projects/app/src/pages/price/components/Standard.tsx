@@ -7,9 +7,8 @@ import { postCheckStandardSub, postUpdateStandardSub } from '@/web/support/walle
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { StandardSubPlanParams } from '@fastgpt/global/support/wallet/sub/api';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { StandardSubPlanUpdateResponse } from '@fastgpt/global/support/wallet/sub/api.d';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -63,15 +62,17 @@ const Standard = ({
       : [];
   }, [subPlans?.standard, selectSubMode]);
 
-  const { mutate: onclickUpdateStandardPlan, isLoading: isUpdatingStandardPlan } = useRequest({
-    mutationFn: (data: StandardSubPlanParams) => postUpdateStandardSub(data),
-    onSuccess() {
-      refetchTeamSubPlan();
-      router.reload();
-    },
-    successToast: t('common:support.wallet.subscription.Standard update success'),
-    errorToast: t('common:support.wallet.subscription.Standard update fail')
-  });
+  const { runAsync: onclickUpdateStandardPlan, loading: isUpdatingStandardPlan } = useRequest2(
+    postUpdateStandardSub,
+    {
+      onSuccess() {
+        refetchTeamSubPlan();
+        router.reload();
+      },
+      successToast: t('common:support.wallet.subscription.Standard update success'),
+      errorToast: t('common:support.wallet.subscription.Standard update fail')
+    }
+  );
 
   const { mutate: onclickPreCheckStandPlan, isLoading: isCheckingStandardPlan } = useRequest({
     mutationFn: (data: StandardSubPlanParams) => postCheckStandardSub(data),
@@ -332,6 +333,8 @@ const ConfirmPayModal = ({
     }
   });
 
+  const { runAsync: onPay, loading: onPaying } = useRequest2(async () => onConfirmPay());
+
   return (
     <MyModal
       isOpen
@@ -353,7 +356,7 @@ const ConfirmPayModal = ({
           </Box>
         </Flex>
         <Flex mt={6}>
-          <Box flex={'0 0 100px'}>{t('common:pay.balance_notice')}</Box>
+          <Box flex={'0 0 100px'}>{t('common:pay.need_to_pay')}</Box>
           <Box>
             {t('common:pay.yuan', {
               amount: formatPayPrice
@@ -375,7 +378,7 @@ const ConfirmPayModal = ({
           })}
         </Box>
         {teamBalance >= payPrice ? (
-          <Button size={'sm'} onClick={onConfirmPay}>
+          <Button isLoading={onPaying} size={'sm'} onClick={onPay}>
             {t('common:pay.confirm_pay')}
           </Button>
         ) : (

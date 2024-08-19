@@ -1091,6 +1091,7 @@
     "confirm_pay": "confirm payment",
     "get_pay_QR": "Get the recharge QR code",
     "need_pay": "Need to pay",
+    "need_to_pay": "Actually paid",
     "new_package_price": "New package price",
     "notice": "Do not close the page",
     "old_package_price": "Old package price",
