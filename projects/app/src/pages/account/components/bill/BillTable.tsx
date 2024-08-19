@@ -102,8 +102,6 @@ const BillTable = () => {
       position={'relative'}
       h={'100%'}
       overflow={'overlay'}
-      py={[0, 5]}
-      px={[3, 8]}
     >
       <TableContainer>
         <Table>
@@ -188,7 +186,7 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
       isOpen={true}
       onClose={onClose}
       iconSrc="/imgs/modal/bill.svg"
-      title={t('common:support.wallet.usage.Usage Detail')}
+      title={t('common:support.wallet.bill_detail')}
       maxW={['90vw', '700px']}
     >
       <ModalBody>
@@ -217,6 +215,10 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
         <Flex alignItems={'center'} pb={4}>
           <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.Type')}:</FormLabel>
           <Box>{t(billTypeMap[bill.type]?.label as any)}</Box>
+        </Flex>
+        <Flex alignItems={'center'} pb={4}>
+          <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.has_invoice')}:</FormLabel>
+          <Box>{bill.hasInvoice ? t('common:yes') : t('common:no')}</Box>
         </Flex>
         {!!bill.metadata?.subMode && (
           <Flex alignItems={'center'} pb={4}>

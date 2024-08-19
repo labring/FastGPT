@@ -29,7 +29,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       maxSize: (global.feConfigs?.uploadFileMaxSize || 500) * 1024 * 1024
     });
     const { file, bucketName, metadata } = await upload.doUpload(req, res);
-
+    filePaths.push(file.path);
     const { teamId, tmbId, outLinkUid } = await authChatCert({ req, authToken: true });
 
     await authUploadLimit(outLinkUid || tmbId);

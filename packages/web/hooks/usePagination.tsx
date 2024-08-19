@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { IconButton, Flex, Box, Input } from '@chakra-ui/react';
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
 import { useMutation } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { throttle } from 'lodash';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';

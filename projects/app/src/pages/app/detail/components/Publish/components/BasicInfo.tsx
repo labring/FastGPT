@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Flex, Input } from '@chakra-ui/react';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import dayjs from 'dayjs';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { UseFormRegister, UseFormSetValue } from 'react-hook-form';
 import { OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';

@@ -34,7 +34,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useI18n } from '@/web/context/I18n';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 function List() {
   const { setLoading } = useSystemStore();
