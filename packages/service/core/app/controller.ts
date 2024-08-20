@@ -48,6 +48,28 @@ export const beforeUpdateAppFormat = <T extends AppSchema['modules'] | undefined
 
 export const getAppLatestVersion = async (appId: string, app?: AppSchema) => {
   const version = await MongoAppVersion.findOne({
+    appId,
+    isPublish: true
+  }).sort({
+    time: -1
+  });
+
+  if (version) {
+    return {
+      nodes: version.nodes,
+      edges: version.edges,
+      chatConfig: version.chatConfig || app?.chatConfig || {}
+    };
+  }
+  return {
+    nodes: app?.modules || [],
+    edges: app?.edges || [],
+    chatConfig: app?.chatConfig || {}
+  };
+};
+
+export const getAppLatestSavedVersion = async (appId: string, app?: AppSchema) => {
+  const version = await MongoAppVersion.findOne({
     appId
   }).sort({
     time: -1
