@@ -204,7 +204,7 @@ const Dataset = () => {
               name={folderDetail.name}
               intro={folderDetail.intro}
               onEdit={() => {
-                setEditedDataset({
+                setEditFolderData({
                   id: folderDetail._id,
                   name: folderDetail.name,
                   intro: folderDetail.intro
@@ -263,6 +263,7 @@ const Dataset = () => {
 
       {!!editFolderData && (
         <EditFolderModal
+          {...editFolderData}
           onClose={() => setEditFolderData(undefined)}
           onCreate={async ({ name, intro }) => {
             try {
