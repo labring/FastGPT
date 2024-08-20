@@ -469,7 +469,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
   // start process width initInput
   const entryNodes = runtimeNodes.filter((item) => item.isEntry);
-  console.log(runtimeEdges);
+
   // reset entry
   // runtimeNodes.forEach((item) => {
   //   item.isEntry = false;

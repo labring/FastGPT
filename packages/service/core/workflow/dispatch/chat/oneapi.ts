@@ -112,7 +112,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       systemPrompt,
       stringQuoteText
     }),
-    (async () => {
+    (() => {
       // censor model and system key
       if (modelConstantsData.censor && !user.openaiAccount?.key) {
         return postTextCensor({

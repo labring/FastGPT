@@ -66,21 +66,35 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
 
-  const { data: templates = [], loading: isLoading } = useRequest2(
-    async () => {
-      if (templateType === TemplateTypeEnum.systemPlugin) {
-        return getSystemPlugTemplates({ parentId, searchKey });
-      } else if (templateType === TemplateTypeEnum.teamPlugin) {
+  const {
+    data: templates = [],
+    runAsync: loadTemplates,
+    loading: isLoading
+  } = useRequest2(
+    async ({
+      type = templateType,
+      parentId = '',
+      searchVal = searchKey
+    }: {
+      type?: TemplateTypeEnum;
+      parentId?: ParentIdType;
+      searchVal?: string;
+    }) => {
+      if (type === TemplateTypeEnum.systemPlugin) {
+        return getSystemPlugTemplates({ parentId, searchKey: searchVal });
+      } else if (type === TemplateTypeEnum.teamPlugin) {
         return getTeamPlugTemplates({
           parentId,
-          searchKey,
+          searchKey: searchVal,
           type: [AppTypeEnum.folder, AppTypeEnum.httpPlugin, AppTypeEnum.plugin]
         });
       }
     },
     {
-      manual: false,
-      throttleWait: 300,
+      onSuccess(_, [{ type = templateType, parentId = '' }]) {
+        setTemplateType(type);
+        setParentId(parentId);
+      },
       refreshDeps: [templateType, searchKey, parentId],
       errorToast: t('common:core.module.templates.Load plugin error')
     }
@@ -97,9 +111,20 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     }
   );
 
-  useEffect(() => {
-    setParentId('');
-  }, [templateType, searchKey]);
+  const onUpdateParentId = useCallback(
+    (parentId: ParentIdType) => {
+      loadTemplates({
+        parentId
+      });
+    },
+    [loadTemplates]
+  );
+
+  useRequest2(() => loadTemplates({ searchVal: searchKey }), {
+    manual: false,
+    throttleWait: 300,
+    refreshDeps: [searchKey]
+  });
 
   return (
     <MyModal
@@ -129,7 +154,12 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           py={'5px'}
           px={'15px'}
           value={templateType}
-          onChange={(e) => setTemplateType(e as TemplateTypeEnum)}
+          onChange={(e) =>
+            loadTemplates({
+              type: e as TemplateTypeEnum,
+              parentId: null
+            })
+          }
         />
         <InputGroup w={300}>
           <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
@@ -149,7 +179,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
             paths={paths}
             FirstPathDom={null}
             onClick={() => {
-              setParentId(null);
+              onUpdateParentId(null);
             }}
           />
         </Flex>
@@ -158,7 +188,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
         <RenderList
           templates={templates}
           isLoadingData={isLoading}
-          setParentId={setParentId}
+          setParentId={onUpdateParentId}
           showCost={templateType === TemplateTypeEnum.systemPlugin}
           {...props}
         />
@@ -180,7 +210,7 @@ const RenderList = React.memo(function RenderList({
 }: Props & {
   templates: NodeTemplateListItemType[];
   isLoadingData: boolean;
-  setParentId: React.Dispatch<React.SetStateAction<ParentIdType>>;
+  setParentId: (parentId: ParentIdType) => any;
   showCost?: boolean;
 }) {
   const { t } = useTranslation();

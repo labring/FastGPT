@@ -17,7 +17,7 @@ weight: 506
 
 ## 配置微秘书
 
-打开[微秘书](https://wechat.aibotk.com?r=zWLnZK) 注册登陆后找到菜单栏「基础配置」->「智能配置」，按照下图配置。
+打开[微秘书](https://wechat.aibotk.com?r=zWLnZK) 注册登录后找到菜单栏「基础配置」->「智能配置」，按照下图配置。
 
 ![](/imgs/wechat2.png)
 
@@ -27,7 +27,7 @@ weight: 506
 
 ## sealos部署服务
 
-[访问sealos](https://cloud.sealos.run/) 登陆进来之后打开「应用管理」-> 「新建应用」。
+[访问sealos](https://cloud.sealos.run/) 登录进来之后打开「应用管理」-> 「新建应用」。
 - 应用名：称随便填写
 - 镜像名：私人微信填写 aibotk/wechat-assistant 企业微信填写 aibotk/worker-assistant
 - cpu和内存建议 1c1g
@@ -61,12 +61,12 @@ WORK_PRO_TOKEN=你申请的企微 token   （企业微信需要填写，私人�
 
 ![](/imgs/wechat8.png)
 
-返回[微秘书](https://wechat.aibotk.com?r=zWLnZK) 找到「首页」，扫码登陆需要接入的微信号。
+返回[微秘书](https://wechat.aibotk.com?r=zWLnZK) 找到「首页」，扫码登录需要接入的微信号。
 
 ![](/imgs/wechat9.png)
 
 ## 测试
-只需要发送信息，或者拉入群聊@登陆的微信就会回复信息啦。
+只需要发送信息，或者拉入群聊@登录的微信就会回复信息啦。
 ![](/imgs/wechat10.png)
 
 

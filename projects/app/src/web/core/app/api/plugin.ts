@@ -17,7 +17,8 @@ import { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSys
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = (data?: ListAppBody) =>
   getMyApps(data).then((res) =>
-    res.map<NodeTemplateListItemType>((app) => ({
+    res.map((app) => ({
+      tmbId: app.tmbId,
       id: app._id,
       pluginId: app._id,
       isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.httpPlugin,

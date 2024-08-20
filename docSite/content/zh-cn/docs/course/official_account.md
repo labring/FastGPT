@@ -15,9 +15,9 @@ weight: 113
 
 ![图片](/imgs/offiaccount-1.png)
 
-## 2. 登陆微信公众平台，获取 AppID 、 Secret和Token
+## 2. 登录微信公众平台，获取 AppID 、 Secret和Token
 
-### 1. https://mp.weixin.qq.com 登陆微信公众平台，选择您的公众号。
+### 1. https://mp.weixin.qq.com 登录微信公众平台，选择您的公众号。
 
 **只支持通过验证的公众号，未通过验证的公众号暂不支持。**
 

@@ -110,7 +110,7 @@ const UsageTable = () => {
         px={[3, 8]}
         alignItems={['flex-end', 'center']}
       >
-        {tmbList.length > 1 && userInfo?.team?.permission.hasWritePer && (
+        {tmbList.length > 1 && userInfo?.team?.permission.hasManagePer && (
           <Flex alignItems={'center'}>
             <Box mr={2} flexShrink={0}>
               {t('common:support.user.team.member')}

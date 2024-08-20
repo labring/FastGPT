@@ -205,13 +205,6 @@ export class PgVectorCtrl {
       });
     }
   };
-  getVectorCountByTeamId = async (teamId: string) => {
-    const total = await PgClient.count(DatasetVectorTableName, {
-      where: [['team_id', String(teamId)]]
-    });
-
-    return total;
-  };
   getVectorDataByTime = async (start: Date, end: Date) => {
     const { rows } = await PgClient.query<{
       id: string;
@@ -229,5 +222,19 @@ export class PgVectorCtrl {
       teamId: item.team_id,
       datasetId: item.dataset_id
     }));
+  };
+  getVectorCountByTeamId = async (teamId: string) => {
+    const total = await PgClient.count(DatasetVectorTableName, {
+      where: [['team_id', String(teamId)]]
+    });
+
+    return total;
+  };
+  getVectorCountByDatasetId = async (teamId: string, datasetId: string) => {
+    const total = await PgClient.count(DatasetVectorTableName, {
+      where: [['team_id', String(teamId)], 'and', ['dataset_id', String(datasetId)]]
+    });
+
+    return total;
   };
 }
