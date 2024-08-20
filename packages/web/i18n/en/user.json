@@ -87,6 +87,9 @@
     "no_collaborators": "No collaborators yet"
   },
   "usage": {
-    "feishu": "Lark"
+    "feishu": "Lark",
+    "official_account": "Official account",
+    "share": "share link",
+    "wecom": "Enterprise WeChat"
   }
 }

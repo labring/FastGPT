@@ -1,5 +1,14 @@
-import React, { useState } from 'react';
-import { Box, Flex, Image, Button, useDisclosure } from '@chakra-ui/react';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+  Box,
+  Flex,
+  Image,
+  Button,
+  useDisclosure,
+  InputGroup,
+  InputLeftElement,
+  Input
+} from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import PageContainer from '@/components/PageContainer';
 import { useTranslation } from 'next-i18next';
@@ -28,6 +37,10 @@ import {
   getCollaboratorList
 } from '@/web/core/dataset/api/collaborator';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { CreateDatasetType } from './component/CreateModal';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -52,32 +65,62 @@ const Dataset = () => {
     setEditedDataset,
     setMoveDatasetId,
     onDelDataset,
-    onUpdateDataset
+    onUpdateDataset,
+    searchKey,
+    setSearchKey
   } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
-
+  const { toast } = useToast();
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
+  const [createDatasetType, setCreateDatasetType] = useState<CreateDatasetType>();
 
-  const {
-    isOpen: isOpenCreateModal,
-    onOpen: onOpenCreateModal,
-    onClose: onCloseCreateModal
-  } = useDisclosure();
+  const onSelectDatasetType = useCallback(
+    (e: CreateDatasetType) => {
+      if (
+        !feConfigs?.isPlus &&
+        (e === DatasetTypeEnum.websiteDataset || e === DatasetTypeEnum.externalFile)
+      ) {
+        return toast({
+          status: 'warning',
+          title: t('common:common.system.Commercial version function')
+        });
+      }
+      setCreateDatasetType(e);
+    },
+    [t, toast]
+  );
 
+  const RenderSearchInput = useMemo(
+    () => (
+      <InputGroup maxW={['auto', '250px']} pr={4}>
+        <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
+          <MyIcon name={'common/searchLight'} w={'1rem'} />
+        </InputLeftElement>
+        <Input
+          value={searchKey}
+          onChange={(e) => setSearchKey(e.target.value)}
+          placeholder={t('common:dataset.dataset_name')}
+          maxLength={30}
+          bg={'white'}
+        />
+      </InputGroup>
+    ),
+    [searchKey, setSearchKey, t]
+  );
   return (
-    <PageContainer
+    <MyBox
       isLoading={myDatasets.length === 0 && isFetchingDatasets}
-      insertProps={{ px: folderDetail ? [4, 6] : [5, '10'] }}
+      flexDirection={'column'}
+      h={'100%'}
     >
-      <Flex pt={[4, 6]}>
+      <Flex pt={[4, 6]} pl={3} pr={10}>
         <Flex flexGrow={1} flexDirection="column">
           <Flex alignItems={'flex-start'} justifyContent={'space-between'}>
             <ParentPaths
               paths={paths}
               FirstPathDom={
                 <Flex flex={1} alignItems={'center'}>
-                  <Image src={'/imgs/workflow/db.png'} alt={''} mr={2} h={'24px'} />
-                  <Box className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
+                  <Box pl={2} letterSpacing={1} fontSize={'1.25rem'} fontWeight={'bold'}>
                     {t('common:core.dataset.My Dataset')}
                   </Box>
                 </Flex>
@@ -90,10 +133,14 @@ const Dataset = () => {
                 });
               }}
             />
+
+            {isPc && RenderSearchInput}
+
             {userInfo?.team?.permission.hasWritePer && (
               <MyMenu
                 offset={[-30, 5]}
                 width={120}
+                iconSize="2rem"
                 Button={
                   <Button variant={'primary'} px="0">
                     <Flex alignItems={'center'} px={'20px'}>
@@ -106,22 +153,31 @@ const Dataset = () => {
                   {
                     children: [
                       {
-                        label: (
-                          <Flex>
-                            <MyIcon name={FolderIcon} w={'20px'} mr={1} />
-                            {t('common:Folder')}
-                          </Flex>
-                        ),
-                        onClick: () => setEditFolderData({})
+                        icon: 'core/dataset/commonDatasetColor',
+                        label: t('dataset:common_dataset'),
+                        description: t('dataset:common_dataset_desc'),
+                        onClick: () => setCreateDatasetType(DatasetTypeEnum.dataset)
                       },
                       {
-                        label: (
-                          <Flex>
-                            <Image src={'/imgs/workflow/db.png'} alt={''} w={'20px'} mr={1} />
-                            {t('common:core.dataset.Dataset')}
-                          </Flex>
-                        ),
-                        onClick: onOpenCreateModal
+                        icon: 'core/dataset/websiteDatasetColor',
+                        label: t('dataset:website_dataset'),
+                        description: t('dataset:website_dataset_desc'),
+                        onClick: () => setCreateDatasetType(DatasetTypeEnum.websiteDataset)
+                      },
+                      {
+                        icon: 'core/dataset/externalDatasetColor',
+                        label: t('dataset:external_file'),
+                        description: t('dataset:external_file_dataset_desc'),
+                        onClick: () => setCreateDatasetType(DatasetTypeEnum.externalFile)
+                      }
+                    ]
+                  },
+                  {
+                    children: [
+                      {
+                        icon: FolderIcon,
+                        label: t('common:Folder'),
+                        onClick: () => setEditFolderData({})
                       }
                     ]
                   }
@@ -129,6 +185,9 @@ const Dataset = () => {
               />
             )}
           </Flex>
+
+          {!isPc && <Box mt={2}>{RenderSearchInput}</Box>}
+
           <Box flexGrow={1}>
             <List />
           </Box>
@@ -231,13 +290,16 @@ const Dataset = () => {
           }}
         />
       )}
-      {isOpenCreateModal && (
-        <CreateModal onClose={onCloseCreateModal} parentId={parentId || undefined} />
+      {createDatasetType && (
+        <CreateModal
+          type={createDatasetType}
+          onClose={() => setCreateDatasetType(undefined)}
+          parentId={parentId || undefined}
+        />
       )}
-    </PageContainer>
+    </MyBox>
   );
 };
-
 export async function getServerSideProps(content: any) {
   return {
     props: {

@@ -15,10 +15,15 @@
   "key_alias": "key alias, for display only ",
   "key_tips": "You can use the API Key to access certain interfaces (you can't access the app, you need to use the API key within the app to access the app)",
   "link_name": "Name of the share link",
+  "new_feishu_bot": "Added Feishu robot",
   "official_account": {
+    "api": "WeChat public account API",
+    "create_modal_title": "Create a WeChat public account to access",
+    "desc": "Directly access WeChat official account through API",
+    "edit_modal_title": "Edit WeChat public account access",
+    "name": "WeChat public account access",
     "params": "Wechat params"
   },
-  "new_feishu_bot": "Added Feishu robot",
   "publish_name": "name",
   "qpm_is_empty": "QPM cannot be empty",
   "qpm_tips": "How many times per minute can each IP ask at most",
