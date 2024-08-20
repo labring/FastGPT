@@ -137,6 +137,12 @@ type WorkflowContextType = {
         edges: StoreEdgeItemType[];
       }
     | undefined;
+  flowData2StoreData: () =>
+    | {
+        nodes: StoreNodeItemType[];
+        edges: StoreEdgeItemType[];
+      }
+    | undefined;
   onSaveWorkflow: () => Promise<null | undefined>;
   saveLabel: string;
   isSaving: boolean;
@@ -278,6 +284,11 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     throw new Error('Function not implemented.');
   },
   flowData2StoreDataAndCheck: function ():
+    | { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }
+    | undefined {
+    throw new Error('Function not implemented.');
+  },
+  flowData2StoreData: function ():
     | { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }
     | undefined {
     throw new Error('Function not implemented.');
@@ -544,6 +555,12 @@ const WorkflowContextProvider = ({
         title: t('common:core.workflow.Check Failed')
       });
     }
+  });
+
+  const flowData2StoreData = useMemoizedFn(() => {
+    const storeNodes = uiWorkflow2StoreWorkflow({ nodes, edges });
+
+    return storeNodes;
   });
 
   /* save workflow */
@@ -919,6 +936,7 @@ const WorkflowContextProvider = ({
     splitToolInputs,
     initData,
     flowData2StoreDataAndCheck,
+    flowData2StoreData,
     onSaveWorkflow,
     isSaving,
     saveLabel,

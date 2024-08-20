@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { AppChatConfigType, AppDetailType } from '@fastgpt/global/core/app/type';
 import { AppUpdateParams, PostPublishAppProps } from '@/global/core/app/api';
-import { postPublishApp } from '@/web/core/app/api/version';
+import { getAppLatestSavedVersion, postPublishApp } from '@/web/core/app/api/version';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import dynamic from 'next/dynamic';
 import { useDisclosure } from '@chakra-ui/react';
@@ -137,7 +137,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const { data: appLatestVersion, run: reloadAppLatestVersion } = useRequest2(
-    () => getAppLatestVersion({ appId }),
+    () => getAppLatestSavedVersion({ appId }),
     {
       manual: false
     }

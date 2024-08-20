@@ -60,6 +60,7 @@ const Header = () => {
   const [isSave, setIsSave] = useState(false);
 
   const {
+    flowData2StoreData,
     flowData2StoreDataAndCheck,
     setWorkflowTestData,
     onSaveWorkflow,
@@ -71,7 +72,8 @@ const Header = () => {
   const { runAsync: onClickSave, loading } = useRequest2(
     useCallback(
       async ({ isPublish, versionName }: { isPublish: boolean; versionName: string }) => {
-        const data = flowData2StoreDataAndCheck();
+        const data = flowData2StoreData();
+
         if (data) {
           await onPublish({
             ...data,
@@ -83,7 +85,7 @@ const Header = () => {
           });
         }
       },
-      [flowData2StoreDataAndCheck, onPublish, appDetail.chatConfig]
+      [flowData2StoreData, onPublish, appDetail.chatConfig]
     )
   );
 
@@ -106,7 +108,7 @@ const Header = () => {
   }, 40000);
 
   const isPublished = (() => {
-    const data = flowData2StoreDataAndCheck(true);
+    const data = flowData2StoreData();
     if (!appLatestVersion) return true;
 
     if (data) {
@@ -180,14 +182,11 @@ const Header = () => {
               </Button>
               <Button
                 onClick={async () => {
-                  const data = flowData2StoreDataAndCheck();
-                  if (data) {
-                    await onClickSave({
-                      isPublish: false,
-                      versionName: ''
-                    });
-                    back();
-                  }
+                  await onClickSave({
+                    isPublish: false,
+                    versionName: ''
+                  });
+                  back();
                 }}
               >
                 {t('common:common.Save_and_exit')}
@@ -276,10 +275,7 @@ const Header = () => {
                         _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
                         cursor={'pointer'}
                         onClick={() => {
-                          const data = flowData2StoreDataAndCheck();
-                          if (data) {
-                            setValue('isPublish', false);
-                          }
+                          setValue('isPublish', false);
                         }}
                       >
                         <MyIcon name={'core/workflow/upload'} w={'16px'} mr={2} />
