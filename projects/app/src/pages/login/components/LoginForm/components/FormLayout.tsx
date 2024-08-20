@@ -127,21 +127,13 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
               </Box>
             ))}
 
-            {feConfigs.sso && (
+            {feConfigs?.sso && (
               <Box mt={4} color={'primary.700'} cursor={'pointer'} textAlign={'center'}>
                 <Button
                   variant={'whitePrimary'}
                   w={'100%'}
                   h={'42px'}
-                  leftIcon={
-                    <Image
-                      alt=""
-                      src={feConfigs.sso.icon as any}
-                      w="20px"
-                      cursor="pointer"
-                      color="myGray.800"
-                    />
-                  }
+                  leftIcon={<Image alt="" src={feConfigs.sso.icon as any} w="20px" />}
                   onClick={() => {
                     feConfigs.sso?.url && router.replace(feConfigs.sso?.url, '_self');
                   }}
