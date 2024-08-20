@@ -49,7 +49,8 @@ function List() {
     setEditedDataset,
     onDelDataset,
     onUpdateDataset,
-    myDatasets
+    myDatasets,
+    folderDetail
   } = useContextSelector(DatasetsContext, (v) => v);
   const [editPerDatasetIndex, setEditPerDatasetIndex] = useState<number>();
   const [loadingDatasetId, setLoadingDatasetId] = useState<string>();
@@ -142,11 +143,14 @@ function List() {
     <>
       {formatDatasets.length > 0 && (
         <Grid
-          flexGrow={1}
-          py={5}
-          gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
+          py={4}
+          gridTemplateColumns={
+            folderDetail
+              ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+              : ['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+          }
           gridGap={5}
-          userSelect={'none'}
+          alignItems={'stretch'}
         >
           {formatDatasets.map((dataset, index) => (
             <MyTooltip
@@ -165,14 +169,18 @@ function List() {
                 isLoading={loadingDatasetId === dataset._id}
                 display={'flex'}
                 flexDirection={'column'}
+                lineHeight={1.5}
+                h="100%"
                 py={3}
                 px={5}
                 cursor={'pointer'}
                 borderWidth={1.5}
+                border={'base'}
+                boxShadow={'2'}
                 bg={'white'}
-                borderRadius={'md'}
-                minH={'130px'}
+                borderRadius={'lg'}
                 position={'relative'}
+                minH={'150px'}
                 {...getBoxProps({
                   dataId: dataset._id,
                   isFolder: dataset.type === DatasetTypeEnum.folder
