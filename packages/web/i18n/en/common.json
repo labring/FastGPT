@@ -500,10 +500,12 @@
       "logs": {
         "api": "API call",
         "feishu": "Lark",
+        "official_account": "Official account",
         "online": "Online use",
         "share": "External link call",
         "team": "Team chat",
-        "test": "Test"
+        "test": "Test",
+        "wecom": "Enterprise WeChat"
       },
       "markdown": {
         "Edit Question": "Edit question",
@@ -560,7 +562,7 @@
       "Avatar": "Dataset avatar",
       "Choose Dataset": "Associate dataset",
       "Collection": "Dataset",
-      "Create dataset": "Create a dataset",
+      "Create dataset": "Create a {{name}}",
       "Dataset": "Dataset",
       "Dataset ID": "Dataset ID",
       "Dataset Type": "Dataset type",
@@ -615,8 +617,7 @@
             "success": "Start syncing"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",
@@ -1029,6 +1030,7 @@
       },
       "input is empty": "Data content cannot be empty"
     },
+    "dataset_name": "Knowledge base name",
     "deleteFolderTips": "Confirm to delete this folder and all the datasets it contains? Once deleted, data cannot be recovered. Please confirm!",
     "test": {
       "noResult": "No results found"
@@ -1316,9 +1318,7 @@
         "Sub plan": "Subscription plan",
         "Sub plan tip": "Free use of {{title}} or upgrade to a higher plan",
         "Team plan and usage": "Plan and usage",
-        "web_site_sync": "Website sync",
         "Training weight": "Training priority: {{weight}}",
-        "rerank": "Rerank",
         "Update extra ai points": "Extra AI points",
         "Update extra dataset size": "Extra storage",
         "Upgrade plan": "Upgrade plan",
@@ -1338,6 +1338,7 @@
           "Year sale": "Two months free"
         },
         "point": "integral",
+        "rerank": "Rerank",
         "standardSubLevel": {
           "enterprise": "Enterprise edition",
           "experience": "Experience edition",
@@ -1351,7 +1352,8 @@
           "extraDatasetSize": "Knowledge base expansion",
           "extraPoints": "AI points package",
           "standard": "Plan subscription"
-        }
+        },
+        "web_site_sync": "Website sync"
       },
       "usage": {
         "Ai model": "AI model",
