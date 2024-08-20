@@ -155,19 +155,19 @@ const Dataset = () => {
                       {
                         icon: 'core/dataset/commonDatasetColor',
                         label: t('dataset:common_dataset'),
-                        description: t('app:type.Create simple bot tip'),
+                        description: t('dataset:common_dataset_desc'),
                         onClick: () => setCreateDatasetType(DatasetTypeEnum.dataset)
                       },
                       {
                         icon: 'core/dataset/websiteDatasetColor',
                         label: t('dataset:website_dataset'),
-                        description: t('app:type.Create workflow tip'),
+                        description: t('dataset:website_dataset_desc'),
                         onClick: () => setCreateDatasetType(DatasetTypeEnum.websiteDataset)
                       },
                       {
                         icon: 'core/dataset/externalDatasetColor',
                         label: t('dataset:external_file'),
-                        description: t('app:type.Create one plugin tip'),
+                        description: t('dataset:external_file_dataset_desc'),
                         onClick: () => setCreateDatasetType(DatasetTypeEnum.externalFile)
                       }
                     ]
@@ -303,7 +303,7 @@ const Dataset = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['dataset', 'user', 'app']))
+      ...(await serviceSideProps(content, ['dataset', 'user']))
     }
   };
 }
