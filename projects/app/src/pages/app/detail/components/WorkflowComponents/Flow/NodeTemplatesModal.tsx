@@ -424,7 +424,6 @@ const RenderList = React.memo(function RenderList({
 
       const templateNode = await (async () => {
         try {
-          saveSnapshot({});
           // get plugin preview module
           if (template.flowNodeType === FlowNodeTypeEnum.pluginModule) {
             setLoading(true);
@@ -468,6 +467,7 @@ const RenderList = React.memo(function RenderList({
         selected: true
       });
 
+      saveSnapshot({});
       setNodes((state) =>
         state
           .map((node) => ({
