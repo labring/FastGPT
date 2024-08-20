@@ -31,6 +31,7 @@ const FillRowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props 
           key={item.value}
           flex={'1 0 0'}
           alignItems={'center'}
+          justifyContent={'center'}
           cursor={'pointer'}
           borderRadius={'md'}
           px={px}

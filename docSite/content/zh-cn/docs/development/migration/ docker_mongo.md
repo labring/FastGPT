@@ -172,7 +172,7 @@ docker exec -it mongo mongorestore -u "username" -p "password" --authenticationD
 5.重启容器 【C环境】
 ``` 
 docker compose restart
-docker logs -f mongo  **强烈建议先检查mongo运行情况，在去做登陆动作，如果mongo报错，访问web也会报错”
+docker logs -f mongo  **强烈建议先检查mongo运行情况，在去做登录动作，如果mongo报错，访问web也会报错”
 ``` 
 
 如果mongo启动正常，显示的是类似这样的，而不是 “mongo is restarting”，后者就是错误
@@ -182,5 +182,5 @@ docker logs -f mongo  **强烈建议先检查mongo运行情况，在去做登陆
 <img width="508" alt="iShot_2024-05-09_19 23 13" src="https://github.com/labring/FastGPT/assets/103937568/2e2afc9f-484c-4b63-93ee-1c14aef03de0">
 
 
-6. 启动fastgpt容器服务后，登陆新fastgpt web，能看到原来的数据库内容完整显示，说明已经导入系统了。
+6. 启动fastgpt容器服务后，登录新fastgpt web，能看到原来的数据库内容完整显示，说明已经导入系统了。
 <img width="1728" alt="iShot_2024-05-09_19 23 51" src="https://github.com/labring/FastGPT/assets/103937568/846b6157-6b6a-4468-a1d9-c44d681ebf7c">

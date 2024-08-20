@@ -30,7 +30,9 @@ export const UserSelectNode: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.description,
       renderTypeList: [FlowNodeInputTypeEnum.textarea],
       valueType: WorkflowIOValueTypeEnum.string,
-      label: i18nT('app:workflow.select_description')
+      label: i18nT('app:workflow.select_description'),
+      description: i18nT('app:workflow.select_description_tip'),
+      placeholder: i18nT('app:workflow.select_description_placeholder')
     },
     {
       key: NodeInputKeyEnum.userSelectOptions,
