@@ -62,7 +62,7 @@ const MyEdit = () => {
   const { t } = useTranslation();
 
   return (
-    <Flex px={5} flex={'1 0 0'} flexDirection={'column'} overflow={'auto'}>
+    <Flex px={5} flex={'1 0 0'} flexDirection={'column'}>
       {past.length > 0 && (
         <Box py={2} px={3}>
           <Button
@@ -72,10 +72,7 @@ const MyEdit = () => {
             onClick={() => {
               const initialState = past[past.length - 1];
               saveSnapshot({
-                pastEdges: initialState.edges,
-                pastNodes: initialState.nodes,
-                customTitle: t(`app:app.version_initial_copy`),
-                chatConfig: initialState.chatConfig
+                customTitle: t(`app:app.version_initial_copy`)
               });
               resetSnapshot(initialState);
             }}
@@ -84,58 +81,57 @@ const MyEdit = () => {
           </Button>
         </Box>
       )}
-      {past.map((item, index) => {
-        return (
-          <Flex
-            key={index}
-            alignItems={'center'}
-            py={2}
-            px={3}
-            borderRadius={'md'}
-            cursor={'pointer'}
-            fontWeight={500}
-            _hover={{
-              bg: 'primary.50'
-            }}
-            onClick={() => {
-              saveSnapshot({
-                pastNodes: item.nodes,
-                pastEdges: item.edges,
-                customTitle: `${t('app:app.version_copy')}-${item.title}`,
-                chatConfig: item.chatConfig
-              });
+      <Flex flex={'1 0 0'} flexDirection={'column'} overflow={'auto'}>
+        {past.map((item, index) => {
+          return (
+            <Flex
+              key={index}
+              alignItems={'center'}
+              py={2}
+              px={3}
+              borderRadius={'md'}
+              cursor={'pointer'}
+              fontWeight={500}
+              _hover={{
+                bg: 'primary.50'
+              }}
+              onClick={() => {
+                saveSnapshot({
+                  customTitle: `${t('app:app.version_copy')}-${item.title}`
+                });
 
-              resetSnapshot(item);
-            }}
-          >
-            <Box
-              w={'12px'}
-              h={'12px'}
-              borderWidth={'2px'}
-              borderColor={'primary.600'}
-              borderRadius={'50%'}
-              position={'relative'}
-              {...(index !== past.length - 1 && {
-                _after: {
-                  content: '""',
-                  height: '26px',
-                  width: '2px',
-                  bgColor: 'myGray.250',
-                  position: 'absolute',
-                  top: '10px',
-                  left: '3px'
-                }
-              })}
-            ></Box>
-            <Box ml={3} flex={'1 0 0'} fontSize={'sm'}>
-              {item.title}
-            </Box>
-          </Flex>
-        );
-      })}
-      <Box py={2} textAlign={'center'} color={'myGray.600'} fontSize={'xs'}>
-        {t('common:common.No more data')}
-      </Box>
+                resetSnapshot(item);
+              }}
+            >
+              <Box
+                w={'12px'}
+                h={'12px'}
+                borderWidth={'2px'}
+                borderColor={'primary.600'}
+                borderRadius={'50%'}
+                position={'relative'}
+                {...(index !== past.length - 1 && {
+                  _after: {
+                    content: '""',
+                    height: '26px',
+                    width: '2px',
+                    bgColor: 'myGray.250',
+                    position: 'absolute',
+                    top: '10px',
+                    left: '3px'
+                  }
+                })}
+              ></Box>
+              <Box ml={3} flex={'1 0 0'} fontSize={'sm'}>
+                {item.title}
+              </Box>
+            </Flex>
+          );
+        })}
+        <Box py={2} textAlign={'center'} color={'myGray.600'} fontSize={'xs'}>
+          {t('common:common.No more data')}
+        </Box>
+      </Flex>
     </Flex>
   );
 };
@@ -188,10 +184,7 @@ const TeamCloud = () => {
               };
 
               saveSnapshot({
-                pastNodes: state.nodes,
-                pastEdges: state.edges,
-                customTitle: `${t('app:app.version_copy')}-${state.title}`,
-                chatConfig: state.chatConfig
+                customTitle: `${t('app:app.version_copy')}-${state.title}`
               });
 
               resetSnapshot(state);
@@ -244,7 +237,10 @@ const TeamCloud = () => {
                     name="edit"
                     w={'18px'}
                     _hover={{ color: 'primary.600' }}
-                    onClick={() => setEditIndex(index)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditIndex(index);
+                    }}
                   />
                 )}
               </>

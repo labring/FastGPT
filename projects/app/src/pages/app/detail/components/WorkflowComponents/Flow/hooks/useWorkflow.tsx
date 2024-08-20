@@ -361,15 +361,18 @@ export const useWorkflow = () => {
   }, [setConnectingEdge]);
   const onConnect = useCallback(
     ({ connect }: { connect: Connection }) => {
-      setEdges((state) =>
-        addEdge(
+      setEdges((state) => {
+        saveSnapshot({
+          pastEdges: state
+        });
+        return addEdge(
           {
             ...connect,
             type: EDGE_TYPE
           },
           state
-        )
-      );
+        );
+      });
     },
     [setEdges]
   );
@@ -384,6 +387,7 @@ export const useWorkflow = () => {
           title: t('common:core.module.Can not connect self')
         });
       }
+
       onConnect({
         connect
       });

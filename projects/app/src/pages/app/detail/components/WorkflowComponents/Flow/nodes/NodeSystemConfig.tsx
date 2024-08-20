@@ -91,7 +91,7 @@ export default React.memo(NodeUserGuide);
 
 function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentProps) {
   const [, startTst] = useTransition();
-  const { saveSnapshot } = useContextSelector(WorkflowContext, (v) => v);
+  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
 
   return (
     <Box className="nodrag">
@@ -99,6 +99,7 @@ function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentPro
         resize={'both'}
         defaultValue={welcomeText}
         onChange={(e) => {
+          // saveSnapshot({});
           startTst(() => {
             setAppDetail((state) => ({
               ...state,
@@ -164,8 +165,6 @@ function TTSGuide({ chatConfig: { ttsConfig }, setAppDetail }: ComponentProps) {
 }
 
 function WhisperGuide({ chatConfig: { whisperConfig, ttsConfig }, setAppDetail }: ComponentProps) {
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-
   return (
     <WhisperConfig
       isOpenAudio={ttsConfig?.type !== TTSTypeEnum.none}

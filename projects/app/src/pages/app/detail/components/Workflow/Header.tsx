@@ -180,11 +180,14 @@ const Header = () => {
               </Button>
               <Button
                 onClick={async () => {
-                  await onClickSave({
-                    isPublish: false,
-                    versionName: ''
-                  });
-                  back();
+                  const data = flowData2StoreDataAndCheck();
+                  if (data) {
+                    await onClickSave({
+                      isPublish: false,
+                      versionName: ''
+                    });
+                    back();
+                  }
                 }}
               >
                 {t('common:common.Save_and_exit')}
@@ -272,7 +275,12 @@ const Header = () => {
                         rounded={'4px'}
                         _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
                         cursor={'pointer'}
-                        onClick={() => setValue('isPublish', false)}
+                        onClick={() => {
+                          const data = flowData2StoreDataAndCheck();
+                          if (data) {
+                            setValue('isPublish', false);
+                          }
+                        }}
                       >
                         <MyIcon name={'core/workflow/upload'} w={'16px'} mr={2} />
                         <Box fontSize={'sm'}>{t('common:core.workflow.Save to cloud')}</Box>
@@ -333,7 +341,12 @@ const Header = () => {
                         rounded={'4px'}
                         _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
                         cursor={'pointer'}
-                        onClick={() => setValue('isPublish', true)}
+                        onClick={() => {
+                          const data = flowData2StoreDataAndCheck();
+                          if (data) {
+                            setValue('isPublish', true);
+                          }
+                        }}
                       >
                         <MyIcon name={'core/workflow/publish'} w={'16px'} mr={2} />
                         <Box fontSize={'sm'}>{t('common:core.workflow.Save and publish')}</Box>

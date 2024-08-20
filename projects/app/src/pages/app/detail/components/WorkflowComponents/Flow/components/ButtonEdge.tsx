@@ -7,7 +7,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 
 const ButtonEdge = (props: EdgeProps) => {
-  const { nodes, setEdges, workflowDebugData, hoverEdgeId } = useContextSelector(
+  const { nodes, setEdges, workflowDebugData, hoverEdgeId, saveSnapshot } = useContextSelector(
     WorkflowContext,
     (v) => v
   );
@@ -30,6 +30,7 @@ const ButtonEdge = (props: EdgeProps) => {
 
   const onDelConnect = useCallback(
     (id: string) => {
+      saveSnapshot({});
       setEdges((state) => state.filter((item) => item.id !== id));
     },
     [setEdges]

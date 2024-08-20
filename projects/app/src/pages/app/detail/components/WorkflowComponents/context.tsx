@@ -409,6 +409,7 @@ const WorkflowContextProvider = ({
 
   const onChangeNode = useMemoizedFn((props: FlowNodeChangeProps) => {
     const { nodeId, type } = props;
+    saveSnapshot({});
     setNodes((nodes) =>
       nodes.map((node) => {
         if (node.id !== nodeId) return node;
