@@ -176,6 +176,8 @@
     "read_files_result_desc": "The original text of the document consists of the file name and the document content. Multiple files are separated by horizontal lines.",
     "read_files_tip": "Parse all uploaded documents in the conversation and return the corresponding document content",
     "select_description": "Select description",
+    "select_description_placeholder": "For example: \n\nAre there any tomatoes in the refrigerator?",
+    "select_description_tip": "You can add a descriptive text to explain to users what each option represents.",
     "select_result": "Select result",
     "template": {
       "communication": "Communication"

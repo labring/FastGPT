@@ -179,7 +179,7 @@ const TemplateMarketModal = ({
           <Box
             flex={['1 0 48px', '1 0 56px']}
             mt={3}
-            pr={8}
+            pr={1}
             textAlign={'justify'}
             wordBreak={'break-all'}
             fontSize={'xs'}

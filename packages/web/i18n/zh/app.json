@@ -154,6 +154,8 @@
     "read_files_result_desc": "文档原文，由文件名和文档内容组成，多个文件之间通过横线隔开。",
     "read_files_tip": "解析对话中所有上传的文档，并返回对应文档内容",
     "select_description": "说明文字",
+    "select_description_placeholder": "例如: \n冰箱里是否有西红柿？",
+    "select_description_tip": "你可以添加一段说明文字，用以向用户说明每个选项代表的含义。",
     "select_result": "选择的结果",
     "template": {
       "communication": "通信"
