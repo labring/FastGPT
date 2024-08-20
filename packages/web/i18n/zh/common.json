@@ -1062,7 +1062,7 @@
     "include": "包含标准套餐与额外资源包",
     "node_info": "调整该模块会对工具调用时机有影响。\n你可以通过精确的描述该模块功能，引导模型进行工具调用。",
     "old_version_attention": "检测到您的高级编排为旧版，系统将为您自动格式化成新版工作流。\n\n由于版本差异较大，会导致一些工作流无法正常排布，请重新手动连接工作流。如仍异常，可尝试删除对应节点后重新添加。\n\n你可以直接点击调试进行工作流测试，调试完毕后点击发布。直到你点击发布，新工作流才会真正保存生效。\n\n在你发布新工作流前，自动保存不会生效。",
-    "open_api_notice": "可以填写 OpenAI/OneAPI的相关秘钥。如果你填写了该内容，在线上平台使用【AI对话】、【问题分类】和【内容提取】将会走你填写的Key，不会计费。请注意你的Key 是否有访问对应模型的权限。GPT模型可以选择 FastAI。",
+    "open_api_notice": "可以填写 OpenAI/OneAPI的相关密钥。如果你填写了该内容，在线上平台使用【AI对话】、【问题分类】和【内容提取】将会走你填写的Key，不会计费。请注意你的Key 是否有访问对应模型的权限。GPT模型可以选择 FastAI。",
     "open_api_placeholder": "请求地址，默认为 openai 官方。可填中转地址，未自动补全 \"v1\"",
     "resource": "资源用量"
   },
@@ -1161,10 +1161,10 @@
     },
     "openapi": {
       "Api baseurl": "API 根地址",
-      "Api manager": "API 秘钥管理",
+      "Api manager": "API 密钥管理",
       "Copy success": "已复制 API 地址",
-      "New api key": "新的 API 秘钥",
-      "New api key tip": "请保管好你的秘钥，秘钥不会再次展示~"
+      "New api key": "新的 API 密钥",
+      "New api key tip": "请保管好你的密钥，密钥不会再次展示~"
     },
     "outlink": {
       "Delete link tip": "确认删除该免登录链接？删除后，该链接将会立即失效，对话日志仍会保留，请确认！",
@@ -1433,7 +1433,7 @@
     "Update password successful": "修改密码成功",
     "Usage Record": "使用记录",
     "apikey": {
-      "key": "API 秘钥"
+      "key": "API 密钥"
     },
     "confirm_password": "确认密码",
     "new_password": "新密码",
