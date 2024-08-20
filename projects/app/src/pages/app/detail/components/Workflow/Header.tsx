@@ -32,7 +32,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
 import { compareWorkflow } from '@/web/core/workflow/utils';
 
-const PublishHistories = dynamic(() => import('../PublishHistoriesSlider'));
+const PublishHistories = dynamic(() => import('../WorkflowPublishHistoriesSlider'));
 
 type FormType = {
   versionName: string;
@@ -89,6 +89,8 @@ const Header = () => {
 
   const back = useCallback(async () => {
     try {
+      localStorage.removeItem(`${appDetail._id}-past`);
+      localStorage.removeItem(`${appDetail._id}-future`);
       router.push('/app/list');
     } catch (error) {}
   }, [onSaveWorkflow, router]);
@@ -390,11 +392,9 @@ const Header = () => {
         </Flex>
         {historiesDefaultData && (
           <PublishHistories
-            initData={initData}
             onClose={() => {
               setHistoriesDefaultData(undefined);
             }}
-            defaultData={historiesDefaultData}
           />
         )}
       </>

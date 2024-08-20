@@ -344,7 +344,6 @@ export const useWorkflow = () => {
   };
   const handleEdgeChange = useCallback(
     (changes: EdgeChange[]) => {
-      saveSnapshot({});
       onEdgesChange(changes.filter((change) => change.type !== 'remove'));
     },
     [onEdgesChange]
@@ -385,7 +384,6 @@ export const useWorkflow = () => {
           title: t('common:core.module.Can not connect self')
         });
       }
-      saveSnapshot({});
       onConnect({
         connect
       });

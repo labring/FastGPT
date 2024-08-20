@@ -409,7 +409,6 @@ const WorkflowContextProvider = ({
 
   const onChangeNode = useMemoizedFn((props: FlowNodeChangeProps) => {
     const { nodeId, type } = props;
-    saveSnapshot({});
     setNodes((nodes) =>
       nodes.map((node) => {
         if (node.id !== nodeId) return node;
@@ -827,12 +826,16 @@ const WorkflowContextProvider = ({
       customTitle?: string;
       chatConfig?: AppChatConfigType;
     }) => {
+      const currentNodes = pastNodes || nodes;
+      const currentEdges = pastEdges || edges;
+      const currentChatConfig = chatConfig || appDetail.chatConfig;
+
       setPast((past) => [
         {
-          nodes: pastNodes || nodes,
-          edges: pastEdges || edges,
+          nodes: currentNodes,
+          edges: currentEdges,
           title: customTitle || formatTime2YMDHMS(new Date()),
-          chatConfig: chatConfig || appDetail.chatConfig
+          chatConfig: currentChatConfig
         },
         ...past.slice(0, 49)
       ]);
@@ -872,22 +875,6 @@ const WorkflowContextProvider = ({
     setNodes(state.nodes);
     setEdges(state.edges);
   };
-
-  useEffect(() => {
-    const keyDownHandler = (event: KeyboardEvent) => {
-      if (event.key === 'z' && (event.ctrlKey || event.metaKey) && event.shiftKey) {
-        redo();
-      } else if (event.key === 'z' && (event.ctrlKey || event.metaKey)) {
-        undo();
-      }
-    };
-
-    document.addEventListener('keydown', keyDownHandler);
-
-    return () => {
-      document.removeEventListener('keydown', keyDownHandler);
-    };
-  }, [undo, redo]);
 
   const value = {
     appId,

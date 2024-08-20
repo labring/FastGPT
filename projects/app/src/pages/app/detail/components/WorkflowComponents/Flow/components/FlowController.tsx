@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Background, ControlButton, MiniMap, Panel, useReactFlow } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
@@ -23,13 +23,34 @@ const controlTips = `【windows】
 撤销上限50步，
 恢复生效前提是撤销且没有新的操作
   - 可撤回范围：组件编辑、组件拖动、组件连线等
-  - 不受影响：页面缩放滚动、保存的新版本、切换查看不同编辑记录。
-  - 原“删除组件会出现弹窗确认”功能取消。删除就直接删除`;
+  - 不受影响：页面缩放滚动、保存的新版本、切换查看不同编辑记录`;
 
 const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { undo, redo, canRedo, canUndo } = useContextSelector(WorkflowContext, (v) => v);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    const keyDownHandler = (event: KeyboardEvent) => {
+      if (event.key === 'z' && (event.ctrlKey || event.metaKey) && event.shiftKey) {
+        redo();
+      } else if (event.key === 'z' && (event.ctrlKey || event.metaKey)) {
+        undo();
+      } else if ((event.key === '=' || event.key === '+') && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        zoomIn();
+      } else if (event.key === '-' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        zoomOut();
+      }
+    };
+
+    document.addEventListener('keydown', keyDownHandler);
+
+    return () => {
+      document.removeEventListener('keydown', keyDownHandler);
+    };
+  }, [undo, redo]);
 
   const buttonStyle = {
     border: 'none',

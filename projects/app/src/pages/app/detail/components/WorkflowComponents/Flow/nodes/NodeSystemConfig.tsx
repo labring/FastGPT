@@ -90,7 +90,6 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 export default React.memo(NodeUserGuide);
 
 function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentProps) {
-  const { t } = useTranslation();
   const [, startTst] = useTransition();
   const { saveSnapshot } = useContextSelector(WorkflowContext, (v) => v);
 
@@ -101,7 +100,6 @@ function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentPro
         defaultValue={welcomeText}
         onChange={(e) => {
           startTst(() => {
-            saveSnapshot({});
             setAppDetail((state) => ({
               ...state,
               chatConfig: {

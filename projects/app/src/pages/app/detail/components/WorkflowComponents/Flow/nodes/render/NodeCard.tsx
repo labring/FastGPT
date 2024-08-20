@@ -310,6 +310,7 @@ const MenuRender = React.memo(function MenuRender({
 
   const onCopyNode = useCallback(
     (nodeId: string) => {
+      saveSnapshot({});
       setNodes((state) => {
         const node = state.find((node) => node.id === nodeId);
         if (!node) return state;
