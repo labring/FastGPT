@@ -27,7 +27,7 @@ const controlTips = `【windows】
 
 const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
-  const { undo, redo, canRedo, canUndo } = useContextSelector(WorkflowContext, (v) => v);
+  const { undo, redo, canRedo, canUndo, past } = useContextSelector(WorkflowContext, (v) => v);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -90,7 +90,7 @@ const FlowController = React.memo(function FlowController() {
           <MyTooltip label={controlTips}>
             <Flex gap={2}>
               <ControlButton
-                onClick={() => undo()}
+                onClick={undo}
                 style={buttonStyle}
                 className={`${styles.customControlButton}`}
                 disabled={!canUndo}
@@ -98,7 +98,7 @@ const FlowController = React.memo(function FlowController() {
                 <MyIcon name={'core/workflow/undo'} />
               </ControlButton>
               <ControlButton
-                onClick={() => redo()}
+                onClick={redo}
                 style={buttonStyle}
                 className={`${styles.customControlButton}`}
                 disabled={!canRedo}

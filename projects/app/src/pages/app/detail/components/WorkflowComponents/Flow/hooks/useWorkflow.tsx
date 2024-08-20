@@ -335,6 +335,8 @@ export const useWorkflow = () => {
         }
       } else if (change.type === 'select' && change.selected === false && isDowningCtrl) {
         change.selected = true;
+      } else {
+        setNodes((nodes) => customApplyNodeChanges(changes, nodes));
       }
     }
 
@@ -361,17 +363,21 @@ export const useWorkflow = () => {
   }, [setConnectingEdge]);
   const onConnect = useCallback(
     ({ connect }: { connect: Connection }) => {
-      setEdges((state) => {
-        saveSnapshot({
-          pastEdges: state
+      setNodes((nodeState) => {
+        setEdges((state) => {
+          saveSnapshot({
+            pastEdges: state,
+            pastNodes: nodeState
+          });
+          return addEdge(
+            {
+              ...connect,
+              type: EDGE_TYPE
+            },
+            state
+          );
         });
-        return addEdge(
-          {
-            ...connect,
-            type: EDGE_TYPE
-          },
-          state
-        );
+        return nodeState;
       });
     },
     [setEdges]
