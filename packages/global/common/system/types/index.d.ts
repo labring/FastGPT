@@ -25,6 +25,9 @@ export type FastGPTConfigFileType = {
 export type FastGPTFeConfigsType = {
   show_emptyChat?: boolean;
   show_register?: boolean;
+  login_method?: 'email' | 'phone' | 'username' | 'all'; // attention: login method is diffrent with oauth
+  find_password_method?: 'email' | 'phone' | 'nono' | 'all';
+  bind_notification_method?: 'email' | 'all';
   show_appStore?: boolean;
   show_git?: boolean;
   show_pay?: boolean;
@@ -43,8 +46,6 @@ export type FastGPTFeConfigsType = {
   systemDescription?: string;
   googleClientVerKey?: string;
   isPlus?: boolean;
-  show_phoneLogin?: boolean;
-  show_emailLogin?: boolean;
   sso?: {
     icon?: string;
     title?: string;
