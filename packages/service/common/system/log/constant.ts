@@ -5,13 +5,6 @@ export enum LogLevelEnum {
   error = 3
 }
 
-export const LogLevelEnumReverse = {
-  [LogLevelEnum.debug]: 'debug',
-  [LogLevelEnum.info]: 'info',
-  [LogLevelEnum.warn]: 'warn',
-  [LogLevelEnum.error]: 'error'
-};
-
 export enum LogSignEnum {
   slowOperation = 'slowOperation'
 }
