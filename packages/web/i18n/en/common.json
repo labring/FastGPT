@@ -562,7 +562,7 @@
       "Avatar": "Dataset avatar",
       "Choose Dataset": "Associate dataset",
       "Collection": "Dataset",
-      "Create dataset": "Create a ",
+      "Create dataset": "Create a {{name}}",
       "Dataset": "Dataset",
       "Dataset ID": "Dataset ID",
       "Dataset Type": "Dataset type",

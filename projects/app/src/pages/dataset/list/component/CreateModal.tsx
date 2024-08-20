@@ -117,7 +117,7 @@ const CreateModal = ({
   return (
     <MyModal
       iconSrc={iconMap[type]}
-      title={t('common:core.dataset.Create dataset') + databaseNameMap[type]}
+      title={t('common:core.dataset.Create dataset', { name: databaseNameMap[type] })}
       isOpen
       onClose={onClose}
       isCentered={!isPc}

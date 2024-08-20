@@ -565,7 +565,7 @@
       "Avatar": "知识库头像",
       "Choose Dataset": "关联知识库",
       "Collection": "数据集",
-      "Create dataset": "创建一个",
+      "Create dataset": "创建一个{{name}}",
       "Dataset": "知识库",
       "Dataset ID": "知识库 ID",
       "Dataset Type": "知识库类型",
