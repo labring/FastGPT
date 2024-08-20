@@ -10,7 +10,8 @@ import {
   Th,
   Td,
   Tbody,
-  useDisclosure
+  useDisclosure,
+  Link
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -26,6 +27,7 @@ import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getDocPath } from '@/web/common/system/doc';
 
 const FeiShuEditModal = dynamic(() => import('./FeiShuEditModal'));
 const ShowShareLinkModal = dynamic(() => import('../components/showShareLinkModal'));
@@ -64,9 +66,26 @@ const FeiShu = ({ appId }: { appId: string }) => {
   return (
     <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
       <Flex justifyContent={'space-between'} flexDirection="row">
-        <Box fontWeight={'bold'} fontSize={['md', 'lg']}>
-          {t('common:core.app.publish.Fei shu bot publish')}
-        </Box>
+        <Flex alignItems={'center'}>
+          <Box fontWeight={'bold'} fontSize={['md', 'lg']}>
+            {t('common:core.app.publish.Fei shu bot publish')}
+          </Box>
+
+          {feConfigs?.docUrl && (
+            <Link
+              href={feConfigs.openAPIDocUrl || getDocPath('/docs/course/feishu')}
+              target={'_blank'}
+              ml={2}
+              color={'primary.500'}
+              fontSize={'sm'}
+            >
+              <Flex alignItems={'center'}>
+                <MyIcon name="book" mr="1" />
+                {t('common:common.Read document')}
+              </Flex>
+            </Link>
+          )}
+        </Flex>
         <Button
           variant={'primary'}
           colorScheme={'blue'}
