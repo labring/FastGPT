@@ -45,6 +45,11 @@ export type FastGPTFeConfigsType = {
   isPlus?: boolean;
   show_phoneLogin?: boolean;
   show_emailLogin?: boolean;
+  sso?: {
+    icon?: string;
+    title?: string;
+    url?: string;
+  };
   oauth?: {
     github?: string;
     google?: string;
