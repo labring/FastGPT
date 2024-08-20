@@ -68,27 +68,6 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchema) => {
   };
 };
 
-export const getAppLatestSavedVersion = async (appId: string, app?: AppSchema) => {
-  const version = await MongoAppVersion.findOne({
-    appId
-  }).sort({
-    time: -1
-  });
-
-  if (version) {
-    return {
-      nodes: version.nodes,
-      edges: version.edges,
-      chatConfig: version.chatConfig || app?.chatConfig || {}
-    };
-  }
-  return {
-    nodes: app?.modules || [],
-    edges: app?.edges || [],
-    chatConfig: app?.chatConfig || {}
-  };
-};
-
 /* Get apps */
 export async function findAppAndAllChildren({
   teamId,

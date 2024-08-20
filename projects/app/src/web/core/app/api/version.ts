@@ -11,9 +11,6 @@ import { UpdateAppVersionBody } from '@/pages/api/core/app/version/update';
 export const getAppLatestVersion = (data: getLatestVersionQuery) =>
   GET<getLatestVersionResponse>('/core/app/version/latest', data);
 
-export const getAppLatestSavedVersion = (data: getLatestVersionQuery) =>
-  GET<getLatestVersionResponse>('/core/app/version/latestSaved', data);
-
 export const postPublishApp = (appId: string, data: PostPublishAppProps) =>
   POST(`/core/app/version/publish?appId=${appId}`, data);
 

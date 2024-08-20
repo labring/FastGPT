@@ -28,7 +28,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
-import { compareWorkflow } from '@/web/core/workflow/utils';
+import { isEqual } from 'lodash';
 
 const PublishHistories = dynamic(() => import('../WorkflowPublishHistoriesSlider'));
 
@@ -63,7 +63,10 @@ const Header = () => {
     setWorkflowTestData,
     setHistoriesDefaultData,
     historiesDefaultData,
-    initData
+    initData,
+    past,
+    nodes,
+    edges
   } = useContextSelector(WorkflowContext, (v) => v);
 
   const { runAsync: onClickSave, loading } = useRequest2(
@@ -95,24 +98,21 @@ const Header = () => {
   }, [router]);
 
   const isPublished = (() => {
-    const data = flowData2StoreData();
-    if (!appLatestVersion) return true;
+    const pastState = past[past.length - 1];
+    if (!pastState) return true;
 
-    if (data) {
-      return compareWorkflow(
-        {
-          nodes: appLatestVersion.nodes,
-          edges: appLatestVersion.edges,
-          chatConfig: appLatestVersion.chatConfig
-        },
-        {
-          nodes: data.nodes,
-          edges: data.edges,
-          chatConfig: appDetail.chatConfig
-        }
-      );
-    }
-    return false;
+    return isEqual(
+      {
+        nodes: pastState.nodes,
+        edges: pastState.edges,
+        chatConfig: pastState.chatConfig
+      },
+      {
+        nodes: nodes,
+        edges: edges,
+        chatConfig: appDetail.chatConfig
+      }
+    );
   })();
 
   const Render = useMemo(() => {
@@ -160,12 +160,9 @@ const Header = () => {
             <ModalBody>
               <Box>{t('workflow:workflow.exit_tips')}</Box>
             </ModalBody>
-            <ModalFooter display={'flex'} justifyContent={'space-between'}>
+            <ModalFooter gap={3}>
               <Button variant={'whiteDanger'} onClick={() => back()}>
-                {t('common:common.Exit')}
-              </Button>
-              <Button variant={'whiteBase'} onClick={onClose}>
-                {t('common:common.Cancel')}
+                {t('common:common.Exit Directly')}
               </Button>
               <Button
                 onClick={async () => {

@@ -138,6 +138,7 @@
     "Done": "完成",
     "Edit": "编辑",
     "Exit": "退出",
+    "Exit Directly": "直接退出",
     "Expired Time": "过期时间",
     "Field": "字段",
     "File": "文件",
@@ -622,7 +623,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",

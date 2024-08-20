@@ -51,7 +51,7 @@ import {
   formatTime2YMDHMW
 } from '@fastgpt/global/common/string/time';
 import type { InitProps } from '@/pages/app/detail/components/PublishHistoriesSlider';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isEqual, throttle } from 'lodash';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -833,40 +833,52 @@ const WorkflowContextProvider = ({
   }, [appId]);
 
   const saveSnapshot = useCallback(
-    ({
-      pastNodes,
-      pastEdges,
-      customTitle,
-      chatConfig
-    }: {
-      pastNodes?: Node[];
-      pastEdges?: Edge[];
-      customTitle?: string;
-      chatConfig?: AppChatConfigType;
-    }) => {
-      const currentNodes = pastNodes || nodes;
-      const currentEdges = pastEdges || edges;
-      const currentChatConfig = chatConfig || appDetail.chatConfig;
+    throttle(
+      ({
+        pastNodes,
+        pastEdges,
+        customTitle,
+        chatConfig
+      }: {
+        pastNodes?: Node[];
+        pastEdges?: Edge[];
+        customTitle?: string;
+        chatConfig?: AppChatConfigType;
+      }) => {
+        const pastState = past[0];
+        const currentNodes = pastNodes || nodes;
+        const currentEdges = pastEdges || edges;
+        const currentChatConfig = chatConfig || appDetail.chatConfig;
+        const isPastEqual = isEqual(
+          {
+            nodes: currentNodes,
+            edges: currentEdges,
+            chatConfig: currentChatConfig
+          },
+          {
+            nodes: pastState?.nodes,
+            edges: pastState?.edges,
+            chatConfig: pastState?.chatConfig
+          }
+        );
 
-      console.log({
-        nodes: currentNodes,
-        edges: currentEdges,
-        title: customTitle || formatTime2YMDHMS(new Date()),
-        chatConfig: currentChatConfig
-      });
-      setPast((past) => [
-        {
-          nodes: currentNodes,
-          edges: currentEdges,
-          title: customTitle || formatTime2YMDHMS(new Date()),
-          chatConfig: currentChatConfig
-        },
-        ...past.slice(0, 49)
-      ]);
+        if (isPastEqual) return;
+        setPast((past) => [
+          {
+            nodes: currentNodes,
+            edges: currentEdges,
+            title: customTitle || formatTime2YMDHMS(new Date()),
+            chatConfig: currentChatConfig
+          },
+          ...past.slice(0, 199)
+        ]);
 
-      setFuture([]);
-    },
-    [nodes, edges]
+        setFuture([]);
+      },
+      500,
+      { leading: true, trailing: true }
+    ),
+    [nodes, edges, past, appDetail.chatConfig, setPast, setFuture]
   );
 
   const undo = useCallback(() => {
