@@ -68,7 +68,7 @@ enum TemplateTypeEnum {
   'teamPlugin' = 'teamPlugin'
 }
 
-const sliderWidth = 440;
+const sliderWidth = 460;
 
 const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const { t } = useTranslation();
@@ -524,7 +524,7 @@ const RenderList = React.memo(function RenderList({
                 </Flex>
               )}
 
-              <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} gap={2}>
+              <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={2}>
                 {item.list.map((template) => (
                   <MyTooltip
                     key={template.id}
