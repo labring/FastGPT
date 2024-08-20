@@ -8,7 +8,6 @@ import TTSSelect from '@/components/core/app/TTSSelect';
 import WhisperConfig from '@/components/core/app/WhisperConfig';
 import InputGuideConfig from '@/components/core/app/InputGuideConfig';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
-import { useTranslation } from 'next-i18next';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import NodeCard from './render/NodeCard';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
@@ -91,7 +90,7 @@ export default React.memo(NodeUserGuide);
 
 function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentProps) {
   const [, startTst] = useTransition();
-  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
+  // const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
 
   return (
     <Box className="nodrag">
@@ -99,15 +98,20 @@ function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentPro
         resize={'both'}
         defaultValue={welcomeText}
         onChange={(e) => {
-          // saveSnapshot({});
           startTst(() => {
-            setAppDetail((state) => ({
-              ...state,
-              chatConfig: {
-                ...state.chatConfig,
-                welcomeText: e.target.value
-              }
-            }));
+            setAppDetail((state) => {
+              // saveSnapshot({
+              //   chatConfig: state.chatConfig
+              // });
+
+              return {
+                ...state,
+                chatConfig: {
+                  ...state.chatConfig,
+                  welcomeText: e.target.value
+                }
+              };
+            });
           });
         }}
       />
@@ -116,67 +120,111 @@ function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentPro
 }
 
 function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: ComponentProps) {
+  const [, startTst] = useTransition();
+  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
+
   const updateVariables = useMemoizedFn((value: VariableItemType[]) => {
-    setAppDetail((state) => ({
-      ...state,
-      chatConfig: {
-        ...state.chatConfig,
-        variables: value
-      }
-    }));
+    startTst(() => {
+      setAppDetail((state) => {
+        saveSnapshot({
+          chatConfig: state.chatConfig
+        });
+
+        return {
+          ...state,
+          chatConfig: {
+            ...state.chatConfig,
+            variables: value
+          }
+        };
+      });
+    });
   });
 
   return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} />;
 }
 
 function QuestionGuide({ chatConfig: { questionGuide = false }, setAppDetail }: ComponentProps) {
+  const [, startTst] = useTransition();
+  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
+
   return (
     <QGSwitch
       isChecked={questionGuide}
       onChange={(e) => {
         const value = e.target.checked;
-        setAppDetail((state) => ({
-          ...state,
-          chatConfig: {
-            ...state.chatConfig,
-            questionGuide: value
-          }
-        }));
+        startTst(() => {
+          setAppDetail((state) => {
+            saveSnapshot({
+              chatConfig: state.chatConfig
+            });
+
+            return {
+              ...state,
+              chatConfig: {
+                ...state.chatConfig,
+                questionGuide: value
+              }
+            };
+          });
+        });
       }}
     />
   );
 }
 
 function TTSGuide({ chatConfig: { ttsConfig }, setAppDetail }: ComponentProps) {
+  const [, startTst] = useTransition();
+  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
+
   return (
     <TTSSelect
       value={ttsConfig}
       onChange={(e) => {
-        setAppDetail((state) => ({
-          ...state,
-          chatConfig: {
-            ...state.chatConfig,
-            ttsConfig: e
-          }
-        }));
+        startTst(() => {
+          setAppDetail((state) => {
+            saveSnapshot({
+              chatConfig: state.chatConfig
+            });
+
+            return {
+              ...state,
+              chatConfig: {
+                ...state.chatConfig,
+                ttsConfig: e
+              }
+            };
+          });
+        });
       }}
     />
   );
 }
 
 function WhisperGuide({ chatConfig: { whisperConfig, ttsConfig }, setAppDetail }: ComponentProps) {
+  const [, startTst] = useTransition();
+  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
+
   return (
     <WhisperConfig
       isOpenAudio={ttsConfig?.type !== TTSTypeEnum.none}
       value={whisperConfig}
       onChange={(e) => {
-        setAppDetail((state) => ({
-          ...state,
-          chatConfig: {
-            ...state.chatConfig,
-            whisperConfig: e
-          }
-        }));
+        startTst(() => {
+          setAppDetail((state) => {
+            saveSnapshot({
+              chatConfig: state.chatConfig
+            });
+
+            return {
+              ...state,
+              chatConfig: {
+                ...state.chatConfig,
+                whisperConfig: e
+              }
+            };
+          });
+        });
       }}
     />
   );
@@ -186,54 +234,86 @@ function ScheduledTrigger({
   chatConfig: { scheduledTriggerConfig },
   setAppDetail
 }: ComponentProps) {
+  const [, startTst] = useTransition();
+  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
+
   return (
     <ScheduledTriggerConfig
       value={scheduledTriggerConfig}
       onChange={(e) => {
-        setAppDetail((state) => ({
-          ...state,
-          chatConfig: {
-            ...state.chatConfig,
-            scheduledTriggerConfig: e
-          }
-        }));
+        startTst(() => {
+          setAppDetail((state) => {
+            saveSnapshot({
+              chatConfig: state.chatConfig
+            });
+
+            return {
+              ...state,
+              chatConfig: {
+                ...state.chatConfig,
+                scheduledTriggerConfig: e
+              }
+            };
+          });
+        });
       }}
     />
   );
 }
 
 function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: ComponentProps) {
+  const [, startTst] = useTransition();
   const appId = useContextSelector(WorkflowContext, (v) => v.appId);
+  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
 
   return appId ? (
     <InputGuideConfig
       appId={appId}
       value={chatInputGuide}
       onChange={(e) => {
-        setAppDetail((state) => ({
-          ...state,
-          chatConfig: {
-            ...state.chatConfig,
-            chatInputGuide: e
-          }
-        }));
+        startTst(() => {
+          setAppDetail((state) => {
+            saveSnapshot({
+              chatConfig: state.chatConfig
+            });
+
+            return {
+              ...state,
+              chatConfig: {
+                ...state.chatConfig,
+                chatInputGuide: e
+              }
+            };
+          });
+        });
       }}
     />
   ) : null;
 }
 
 function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: ComponentProps) {
+  const [, startTst] = useTransition();
+  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
+
   return (
     <FileSelect
       value={fileSelectConfig}
       onChange={(e) => {
-        setAppDetail((state) => ({
-          ...state,
-          chatConfig: {
-            ...state.chatConfig,
-            fileSelectConfig: e
-          }
-        }));
+        startTst(() => {
+          setAppDetail((state) => {
+            saveSnapshot({
+              chatConfig: state.chatConfig
+            });
+
+            return {
+              ...state,
+              chatConfig: {
+                ...state.chatConfig,
+                fileSelectConfig: e
+              }
+            };
+          });
+        });
       }}
     />
   );

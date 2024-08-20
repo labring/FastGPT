@@ -60,9 +60,9 @@ const Header = () => {
   const [isSave, setIsSave] = useState(false);
 
   const {
+    flowData2StoreData,
     flowData2StoreDataAndCheck,
     setWorkflowTestData,
-    onSaveWorkflow,
     setHistoriesDefaultData,
     historiesDefaultData,
     initData
@@ -71,7 +71,8 @@ const Header = () => {
   const { runAsync: onClickSave, loading } = useRequest2(
     useCallback(
       async ({ isPublish, versionName }: { isPublish: boolean; versionName: string }) => {
-        const data = flowData2StoreDataAndCheck();
+        const data = flowData2StoreData();
+
         if (data) {
           await onPublish({
             ...data,
@@ -83,28 +84,20 @@ const Header = () => {
           });
         }
       },
-      [flowData2StoreDataAndCheck, onPublish, appDetail.chatConfig]
+      [flowData2StoreData, onPublish, appDetail.chatConfig]
     )
   );
 
   const back = useCallback(async () => {
     try {
+      localStorage.removeItem(`${appDetail._id}-past`);
+      localStorage.removeItem(`${appDetail._id}-future`);
       router.push('/app/list');
     } catch (error) {}
-  }, [onSaveWorkflow, router]);
-
-  // effect
-  useBeforeunload({
-    callback: onSaveWorkflow,
-    tip: t('common:core.common.tip.leave page')
-  });
-  useInterval(() => {
-    if (!appDetail._id) return;
-    onSaveWorkflow();
-  }, 40000);
+  }, [router]);
 
   const isPublished = (() => {
-    const data = flowData2StoreDataAndCheck(true);
+    const data = flowData2StoreData();
     if (!appLatestVersion) return true;
 
     if (data) {
@@ -270,7 +263,9 @@ const Header = () => {
                         rounded={'4px'}
                         _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
                         cursor={'pointer'}
-                        onClick={() => setValue('isPublish', false)}
+                        onClick={() => {
+                          setValue('isPublish', false);
+                        }}
                       >
                         <MyIcon name={'core/workflow/upload'} w={'16px'} mr={2} />
                         <Box fontSize={'sm'}>{t('common:core.workflow.Save to cloud')}</Box>
@@ -331,7 +326,12 @@ const Header = () => {
                         rounded={'4px'}
                         _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
                         cursor={'pointer'}
-                        onClick={() => setValue('isPublish', true)}
+                        onClick={() => {
+                          const data = flowData2StoreDataAndCheck();
+                          if (data) {
+                            setValue('isPublish', true);
+                          }
+                        }}
                       >
                         <MyIcon name={'core/workflow/publish'} w={'16px'} mr={2} />
                         <Box fontSize={'sm'}>{t('common:core.workflow.Save and publish')}</Box>

@@ -14,10 +14,8 @@ import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext, getWorkflowStore } from '../WorkflowComponents/context';
-import { useInterval } from 'ahooks';
 import { AppContext, TabEnum } from '../context';
 import RouteTab from '../RouteTab';
 import { useRouter } from 'next/router';
@@ -63,7 +61,6 @@ const Header = () => {
     flowData2StoreData,
     flowData2StoreDataAndCheck,
     setWorkflowTestData,
-    onSaveWorkflow,
     setHistoriesDefaultData,
     historiesDefaultData,
     initData
@@ -95,17 +92,7 @@ const Header = () => {
       localStorage.removeItem(`${appDetail._id}-future`);
       router.push('/app/list');
     } catch (error) {}
-  }, [onSaveWorkflow, router]);
-
-  // effect
-  useBeforeunload({
-    callback: onSaveWorkflow,
-    tip: t('common:core.common.tip.leave page')
-  });
-  useInterval(() => {
-    if (!appDetail._id) return;
-    onSaveWorkflow();
-  }, 40000);
+  }, [router]);
 
   const isPublished = (() => {
     const data = flowData2StoreData();

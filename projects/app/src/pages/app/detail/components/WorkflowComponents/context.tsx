@@ -848,6 +848,7 @@ const WorkflowContextProvider = ({
       const currentEdges = pastEdges || edges;
       const currentChatConfig = chatConfig || appDetail.chatConfig;
 
+      console.log(chatConfig);
       setPast((past) => [
         {
           nodes: currentNodes,
@@ -890,8 +891,13 @@ const WorkflowContextProvider = ({
   }, [setNodes, setEdges, future, nodes, edges]);
 
   const resetSnapshot = (state: SnapshotsType) => {
+    console.log(state);
     setNodes(state.nodes);
     setEdges(state.edges);
+    setAppDetail((detail) => ({
+      ...detail,
+      chatConfig: state.chatConfig
+    }));
   };
 
   const value = {

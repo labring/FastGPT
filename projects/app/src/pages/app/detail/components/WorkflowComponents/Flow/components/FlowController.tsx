@@ -33,8 +33,10 @@ const FlowController = React.memo(function FlowController() {
   useEffect(() => {
     const keyDownHandler = (event: KeyboardEvent) => {
       if (event.key === 'z' && (event.ctrlKey || event.metaKey) && event.shiftKey) {
+        event.preventDefault();
         redo();
       } else if (event.key === 'z' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
         undo();
       } else if ((event.key === '=' || event.key === '+') && (event.ctrlKey || event.metaKey)) {
         event.preventDefault();
