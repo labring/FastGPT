@@ -108,6 +108,7 @@ type WorkflowContextType = {
   canRedo: boolean;
   canUndo: boolean;
   initialSnapshot: SnapshotsType;
+  setIsInitialSet: React.Dispatch<React.SetStateAction<boolean>>;
 
   // connect
   connectingEdge?: OnConnectStartParams;
@@ -323,6 +324,9 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     edges: [],
     title: '',
     chatConfig: {}
+  },
+  setIsInitialSet: function (value: React.SetStateAction<boolean>): void {
+    throw new Error('Function not implemented.');
   }
 });
 
@@ -979,6 +983,7 @@ const WorkflowContextProvider = ({
     canUndo: !!past.length,
     canRedo: !!future.length,
     initialSnapshot: initial,
+    setIsInitialSet,
 
     // function
     onFixView,

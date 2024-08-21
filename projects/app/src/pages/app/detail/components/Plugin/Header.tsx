@@ -28,7 +28,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
-import { isEqual } from 'lodash';
+import { isEqual, isObject, omit } from 'lodash';
 
 const PublishHistories = dynamic(() => import('../WorkflowPublishHistoriesSlider'));
 
@@ -62,7 +62,8 @@ const Header = () => {
     historiesDefaultData,
     initialSnapshot,
     nodes,
-    edges
+    edges,
+    setIsInitialSet
   } = useContextSelector(WorkflowContext, (v) => v);
 
   const { runAsync: onClickSave, loading } = useRequest2(
@@ -80,6 +81,7 @@ const Header = () => {
             version: 'v2'
           });
         }
+        setIsInitialSet(false);
       },
       [flowData2StoreData, onPublish, appDetail.chatConfig]
     )
@@ -94,7 +96,26 @@ const Header = () => {
   }, [router]);
 
   const isPublished = (() => {
-    return isEqual(
+    // 自定义比较函数
+    const customIsEqual = (obj1: Record<string, any>, obj2: Record<string, any>): boolean => {
+      if (Array.isArray(obj1) && Array.isArray(obj2)) {
+        if (obj1.length !== obj2.length) return false;
+        return obj1.every((item, index) => customIsEqual(item, obj2[index]));
+      }
+
+      if (isObject(obj1) && isObject(obj2)) {
+        const keys1 = Object.keys(obj1).filter((key) => key !== 'width' && key !== 'height');
+        const keys2 = Object.keys(obj2).filter((key) => key !== 'width' && key !== 'height');
+
+        if (keys1.length !== keys2.length) return false;
+
+        return keys1.every((key) => customIsEqual(obj1[key], obj2[key]));
+      }
+
+      return isEqual(obj1, obj2);
+    };
+
+    return customIsEqual(
       {
         nodes: initialSnapshot.nodes,
         edges: initialSnapshot.edges,

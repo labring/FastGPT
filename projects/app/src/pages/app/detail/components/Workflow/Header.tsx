@@ -62,7 +62,8 @@ const Header = () => {
     historiesDefaultData,
     initialSnapshot,
     nodes,
-    edges
+    edges,
+    setIsInitialSet
   } = useContextSelector(WorkflowContext, (v) => v);
 
   const { runAsync: onClickSave, loading } = useRequest2(
@@ -79,6 +80,7 @@ const Header = () => {
             //@ts-ignore
             version: 'v2'
           });
+          setIsInitialSet(false);
         }
       },
       [flowData2StoreData, onPublish, appDetail.chatConfig]

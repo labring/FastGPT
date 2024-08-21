@@ -57,7 +57,10 @@ const WorkflowPublishHistoriesSlider = ({ onClose }: { onClose: () => void }) =>
 export default React.memo(WorkflowPublishHistoriesSlider);
 
 const MyEdit = () => {
-  const { past, saveSnapshot, resetSnapshot } = useContextSelector(WorkflowContext, (v) => v);
+  const { past, saveSnapshot, resetSnapshot, initialSnapshot } = useContextSelector(
+    WorkflowContext,
+    (v) => v
+  );
   const { t } = useTranslation();
 
   return (
@@ -69,11 +72,11 @@ const MyEdit = () => {
             w={'full'}
             h={'30px'}
             onClick={() => {
-              const initialState = past[past.length - 1];
               saveSnapshot({
+                ...initialSnapshot,
                 customTitle: t(`app:app.version_initial_copy`)
               });
-              resetSnapshot(initialState);
+              resetSnapshot(initialSnapshot);
             }}
           >
             {t('app:app.version_back')}
