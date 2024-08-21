@@ -90,6 +90,17 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     [loginSuccess, t, toast]
   );
 
+  const placeholder = feConfigs?.register_method
+    ?.map((item) => {
+      switch (item) {
+        case 'email':
+          return t('common:support.user.login.Email');
+        case 'phone':
+          return t('common:support.user.login.Phone number');
+      }
+    })
+    .join('/');
+
   return (
     <>
       <Box fontWeight={'bold'} fontSize={'2xl'} textAlign={'center'}>
@@ -98,7 +109,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
       <Box
         mt={'42px'}
         onKeyDown={(e) => {
-          if (e.keyCode === 13 && !e.shiftKey && !requesting) {
+          if (e.key === 'Enter' && !e.shiftKey && !requesting) {
             handleSubmit(onclickRegister)();
           }
         }}
@@ -106,7 +117,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         <FormControl isInvalid={!!errors.username}>
           <Input
             bg={'myGray.50'}
-            placeholder={t('user:password.email_phone')}
+            placeholder={placeholder}
             {...register('username', {
               required: t('user:password.email_phone_void'),
               pattern: {
