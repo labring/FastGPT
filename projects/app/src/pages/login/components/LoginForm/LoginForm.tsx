@@ -57,24 +57,32 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     [loginSuccess, t, toast]
   );
 
-  const isCommunityVersion = feConfigs?.show_register === false && !feConfigs?.isPlus;
+  const isCommunityVersion = !!(feConfigs?.register_method && !feConfigs?.isPlus);
 
-  const loginOptions = [
-    feConfigs?.show_phoneLogin ? t('common:support.user.login.Phone number') : '',
-    feConfigs?.show_emailLogin ? t('common:support.user.login.Email') : '',
-    t('common:support.user.login.Username')
-  ].filter(Boolean);
-
-  const placeholder = isCommunityVersion
-    ? t('common:support.user.login.Root login')
-    : loginOptions.join('/');
+  const placeholder = (() => {
+    if (isCommunityVersion) {
+      return t('common:support.user.login.Root login');
+    }
+    return [t('common:support.user.login.Username')]
+      .concat(
+        feConfigs?.login_method?.map((item) => {
+          switch (item) {
+            case 'email':
+              return t('common:support.user.login.Email');
+            case 'phone':
+              return t('common:support.user.login.Phone number');
+          }
+        }) ?? []
+      )
+      .join('/');
+  })();
 
   return (
     <FormLayout setPageType={setPageType} pageType={LoginPageTypeEnum.passwordLogin}>
       <Box
         mt={'42px'}
         onKeyDown={(e) => {
-          if (e.keyCode === 13 && !e.shiftKey && !requesting) {
+          if (e.key === 'Enter' && !e.shiftKey && !requesting) {
             handleSubmit(onclickLogin)();
           }
         }}
@@ -140,17 +148,19 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           {t('common:Login')}
         </Button>
 
-        {feConfigs?.show_register && (
-          <>
-            <Flex align={'center'} justifyContent={'flex-end'} color={'primary.700'}>
-              <Box
-                cursor={'pointer'}
-                _hover={{ textDecoration: 'underline' }}
-                onClick={() => setPageType('forgetPassword')}
-                fontSize="sm"
-              >
-                {t('common:support.user.login.Forget Password')}
-              </Box>
+        <Flex align={'center'} justifyContent={'flex-end'} color={'primary.700'}>
+          {feConfigs?.find_password_method && feConfigs.find_password_method.length > 0 && (
+            <Box
+              cursor={'pointer'}
+              _hover={{ textDecoration: 'underline' }}
+              onClick={() => setPageType('forgetPassword')}
+              fontSize="sm"
+            >
+              {t('common:support.user.login.Forget Password')}
+            </Box>
+          )}
+          {feConfigs?.register_method && feConfigs.register_method.length > 0 && (
+            <>
               <Box mx={3} h={'16px'} w={'1.5px'} bg={'myGray.250'}></Box>
               <Box
                 cursor={'pointer'}
@@ -160,9 +170,9 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
               >
                 {t('common:support.user.login.Register')}
               </Box>
-            </Flex>
-          </>
-        )}
+            </>
+          )}
+        </Flex>
       </Box>
     </FormLayout>
   );

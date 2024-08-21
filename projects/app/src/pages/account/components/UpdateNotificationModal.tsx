@@ -8,6 +8,7 @@ import { updateNotificationAccount } from '@/web/support/user/api';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type FormType = {
   account: string;
@@ -17,6 +18,7 @@ type FormType = {
 const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { initUserInfo } = useUserStore();
+  const { feConfigs } = useSystemStore();
   const { register, handleSubmit, trigger, getValues, watch } = useForm<FormType>({
     defaultValues: {
       account: '',
@@ -51,6 +53,17 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
     });
   }, [getValues, sendCode, trigger]);
 
+  const placeholder = feConfigs?.bind_notification_method
+    ?.map((item) => {
+      switch (item) {
+        case 'email':
+          return t('common:support.user.login.Email');
+        case 'phone':
+          return t('common:support.user.login.Phone number');
+      }
+    })
+    .join('/');
+
   return (
     <MyModal
       isOpen
@@ -70,7 +83,7 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
               flex={1}
               bg={'myGray.50'}
               {...register('account', { required: true })}
-              placeholder={t('user:password.email_phone')}
+              placeholder={placeholder}
             ></Input>
           </Flex>
           <Flex mt="6" alignItems="center" position={'relative'}>
