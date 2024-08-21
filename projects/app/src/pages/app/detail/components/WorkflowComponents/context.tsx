@@ -108,7 +108,7 @@ type WorkflowContextType = {
   canRedo: boolean;
   canUndo: boolean;
   initialSnapshot: SnapshotsType;
-  setIsInitialSet: React.Dispatch<React.SetStateAction<boolean>>;
+  setResetInitial: React.Dispatch<React.SetStateAction<boolean>>;
 
   // connect
   connectingEdge?: OnConnectStartParams;
@@ -325,7 +325,7 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     title: '',
     chatConfig: {}
   },
-  setIsInitialSet: function (value: React.SetStateAction<boolean>): void {
+  setResetInitial: function (value: React.SetStateAction<boolean>): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -832,18 +832,28 @@ const WorkflowContextProvider = ({
     }
   }) as [SnapshotsType, (value: SetStateAction<SnapshotsType>) => void];
   const [isInitialSet, setIsInitialSet] = useState(false);
+  const [resetInitial, setResetInitial] = useState(false);
 
   useDeepCompareEffect(() => {
-    if (!isInitialSet && nodes.length > 0 && appDetail.chatConfig) {
+    if (!isInitialSet && !initial.nodes.length && past.length > 0) {
+      setInitial(past[past.length - 1]);
+      setIsInitialSet(true);
+    }
+    if (
+      resetInitial ||
+      (!isInitialSet && !initial.nodes.length && nodes.length > 0 && appDetail.chatConfig)
+    ) {
       setInitial({
         nodes,
         edges,
         title: formatTime2YMDHMS(new Date()),
         chatConfig: appDetail.chatConfig
       });
+
       setIsInitialSet(true);
+      setResetInitial(false);
     }
-  }, [nodes, edges, appDetail.chatConfig, isInitialSet]);
+  }, [nodes, edges, appDetail.chatConfig]);
 
   useEffect(() => {
     const keys = Object.keys(localStorage);
@@ -856,6 +866,7 @@ const WorkflowContextProvider = ({
         localStorage.removeItem(key);
       }
     });
+    past[0] && resetSnapshot(past[0]);
   }, [appId]);
 
   const { runAsync: saveSnapshot } = useRequest2(
@@ -983,7 +994,7 @@ const WorkflowContextProvider = ({
     canUndo: !!past.length,
     canRedo: !!future.length,
     initialSnapshot: initial,
-    setIsInitialSet,
+    setResetInitial,
 
     // function
     onFixView,

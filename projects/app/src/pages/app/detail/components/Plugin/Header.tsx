@@ -63,7 +63,7 @@ const Header = () => {
     initialSnapshot,
     nodes,
     edges,
-    setIsInitialSet
+    setResetInitial
   } = useContextSelector(WorkflowContext, (v) => v);
 
   const { runAsync: onClickSave, loading } = useRequest2(
@@ -80,8 +80,8 @@ const Header = () => {
             //@ts-ignore
             version: 'v2'
           });
+          setResetInitial(true);
         }
-        setIsInitialSet(false);
       },
       [flowData2StoreData, onPublish, appDetail.chatConfig]
     )
@@ -91,6 +91,7 @@ const Header = () => {
     try {
       localStorage.removeItem(`${appDetail._id}-past`);
       localStorage.removeItem(`${appDetail._id}-future`);
+      localStorage.removeItem(`${appDetail._id}-initial`);
       router.push('/app/list');
     } catch (error) {}
   }, [router]);
