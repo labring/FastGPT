@@ -388,7 +388,6 @@ const RenderList = React.memo(function RenderList({
   setParentId
 }: RenderListProps) {
   const { t } = useTranslation();
-  const { appT } = useI18n();
   const { feConfigs, setLoading } = useSystemStore();
   const { saveSnapshot } = useContextSelector(WorkflowContext, (v) => v);
 
