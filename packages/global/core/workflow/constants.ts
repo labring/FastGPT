@@ -105,6 +105,7 @@ export enum NodeInputKeyEnum {
   httpMethod = 'system_httpMethod',
   httpParams = 'system_httpParams',
   httpJsonBody = 'system_httpJsonBody',
+  httpTimeout = 'system_httpTimeout',
   abandon_httpUrl = 'url',
 
   // app
