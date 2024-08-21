@@ -617,7 +617,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -795,6 +796,7 @@
       "Field Name": "字段名",
       "Http request props": "请求参数",
       "Http request settings": "请求配置",
+      "Http timeout": "超时时长",
       "Input Type": "输入类型",
       "Laf sync params": "同步参数",
       "Max Length": "最大长度",
@@ -993,7 +995,6 @@
     "Edit Folder": "编辑文件夹",
     "Edit Info": "编辑信息",
     "Export": "导出",
-    "dataset_name": "知识库名称",
     "Export Dataset Limit Error": "导出数据失败",
     "Folder Name": "输入文件夹名称",
     "Insert Data": "插入",
@@ -1031,6 +1032,7 @@
       },
       "input is empty": "数据内容不能为空 "
     },
+    "dataset_name": "知识库名称",
     "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！",
     "test": {
       "noResult": "搜索结果为空"
