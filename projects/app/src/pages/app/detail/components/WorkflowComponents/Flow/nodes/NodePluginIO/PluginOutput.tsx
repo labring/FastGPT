@@ -176,7 +176,7 @@ function Reference({
         <FormLabel required={input.required}>{input.label}</FormLabel>
         {input.description && <QuestionTip ml={0.5} label={input.description}></QuestionTip>}
         {/* value */}
-        <ValueTypeLabel valueType={input.valueType} />
+        <ValueTypeLabel valueType={input.valueType} valueDesc={input.valueDesc} />
 
         <MyIcon
           name={'common/settingLight'}

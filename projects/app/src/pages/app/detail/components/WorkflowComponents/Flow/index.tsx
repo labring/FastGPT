@@ -26,6 +26,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
 import { useWorkflow } from './hooks/useWorkflow';
 import { t } from 'i18next';
+import HelperLines from './components/HelperLines';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const nodeTypes: Record<FlowNodeTypeEnum, any> = {
@@ -55,7 +56,8 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.lafModule]: dynamic(() => import('./nodes/NodeLaf')),
   [FlowNodeTypeEnum.ifElseNode]: dynamic(() => import('./nodes/NodeIfElse')),
   [FlowNodeTypeEnum.variableUpdate]: dynamic(() => import('./nodes/NodeVariableUpdate')),
-  [FlowNodeTypeEnum.code]: dynamic(() => import('./nodes/NodeCode'))
+  [FlowNodeTypeEnum.code]: dynamic(() => import('./nodes/NodeCode')),
+  [FlowNodeTypeEnum.userSelect]: dynamic(() => import('./nodes/NodeUserSelect'))
 };
 const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge
@@ -72,7 +74,9 @@ const Workflow = () => {
     onConnectEnd,
     customOnConnect,
     onEdgeMouseEnter,
-    onEdgeMouseLeave
+    onEdgeMouseLeave,
+    helperLineHorizontal,
+    helperLineVertical
   } = useWorkflow();
 
   const {
@@ -82,7 +86,7 @@ const Workflow = () => {
   } = useDisclosure();
 
   return (
-    <ReactFlowProvider>
+    <>
       <Box
         flex={'1 0 0'}
         h={0}
@@ -135,15 +139,24 @@ const Workflow = () => {
           onEdgeMouseLeave={onEdgeMouseLeave}
         >
           <FlowController />
+          <HelperLines horizontal={helperLineHorizontal} vertical={helperLineVertical} />
         </ReactFlow>
       </Box>
 
       <ConfirmDeleteModal />
+    </>
+  );
+};
+
+const Render = () => {
+  return (
+    <ReactFlowProvider>
+      <Workflow />
     </ReactFlowProvider>
   );
 };
 
-export default React.memo(Workflow);
+export default React.memo(Render);
 
 const FlowController = React.memo(function FlowController() {
   const { fitView } = useReactFlow();

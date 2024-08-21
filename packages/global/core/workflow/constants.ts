@@ -1,8 +1,11 @@
+import { i18nT } from '../../../web/i18n/utils';
+
 export enum FlowNodeTemplateTypeEnum {
   systemInput = 'systemInput',
   ai = 'ai',
   function = 'function',
   tools = 'tools',
+  interactive = 'interactive',
 
   search = 'search',
   multimodal = 'multimodal',
@@ -123,7 +126,9 @@ export enum NodeInputKeyEnum {
   codeType = 'codeType', // js|py
 
   // read files
-  fileUrlList = 'fileUrlList'
+  fileUrlList = 'fileUrlList',
+  // user select
+  userSelectOptions = 'userSelectOptions'
 }
 
 export enum NodeOutputKeyEnum {
@@ -162,7 +167,11 @@ export enum NodeOutputKeyEnum {
   // plugin
   pluginStart = 'pluginStart',
 
-  ifElseResult = 'ifElseResult'
+  // if else
+  ifElseResult = 'ifElseResult',
+
+  //user select
+  selectResult = 'selectResult'
 }
 
 export enum VariableInputEnum {
@@ -174,23 +183,23 @@ export enum VariableInputEnum {
 export const variableMap = {
   [VariableInputEnum.input]: {
     icon: 'core/app/variable/input',
-    title: 'core.module.variable.input type',
+    title: i18nT('common:core.module.variable.input type'),
     desc: ''
   },
   [VariableInputEnum.textarea]: {
     icon: 'core/app/variable/textarea',
-    title: 'core.module.variable.textarea type',
-    desc: '允许用户最多输入4000字的对话框。'
+    title: i18nT('common:core.module.variable.textarea type'),
+    desc: i18nT('app:variable.textarea_type_desc')
   },
   [VariableInputEnum.select]: {
     icon: 'core/app/variable/select',
-    title: 'core.module.variable.select type',
+    title: i18nT('common:core.module.variable.select type'),
     desc: ''
   },
   [VariableInputEnum.custom]: {
     icon: 'core/app/variable/external',
-    title: 'core.module.variable.Custom type',
-    desc: '可以定义一个无需用户填写的全局变量。\n该变量的值可以来自于 API 接口，分享链接的 Query 或通过【变量更新】模块进行赋值。'
+    title: i18nT('common:core.module.variable.Custom type'),
+    desc: i18nT('app:variable.select type_desc')
   }
 };
 

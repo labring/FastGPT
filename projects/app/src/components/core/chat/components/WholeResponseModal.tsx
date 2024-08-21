@@ -17,6 +17,7 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -124,7 +125,11 @@ const WholeResponseModal = ({
         </Flex>
       }
     >
-      {response?.length && <ResponseBox response={response} showDetail={showDetail} />}
+      {!!response?.length ? (
+        <ResponseBox response={response} showDetail={showDetail} />
+      ) : (
+        <EmptyTip text={t('chat:no_workflow_response')} />
+      )}
     </MyModal>
   );
 };
@@ -480,6 +485,12 @@ export const WholeResponseContent = ({
               value={activeModule?.readFilesResult}
             />
           </>
+
+          {/* user select */}
+          <Row
+            label={t('common:core.chat.response.user_select_result')}
+            value={activeModule?.userSelectResult}
+          />
         </Box>
       )}
     </>

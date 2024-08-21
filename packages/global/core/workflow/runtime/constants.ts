@@ -10,7 +10,9 @@ export enum SseResponseEventEnum {
   toolParams = 'toolParams', // tool params return
   toolResponse = 'toolResponse', // tool response return
   flowResponses = 'flowResponses', // sse response request
-  updateVariables = 'updateVariables'
+  updateVariables = 'updateVariables',
+
+  interactive = 'interactive' // user select
 }
 
 export enum DispatchNodeResponseKeyEnum {
@@ -19,7 +21,9 @@ export enum DispatchNodeResponseKeyEnum {
   nodeDispatchUsages = 'nodeDispatchUsages', // the node bill.
   childrenResponses = 'childrenResponses', // Some nodes make recursive calls that need to be returned
   toolResponses = 'toolResponses', // The result is passed back to the tool node for use
-  assistantResponses = 'assistantResponses' // assistant response
+  assistantResponses = 'assistantResponses', // assistant response
+
+  interactive = 'INTERACTIVE' // is interactive
 }
 
 export const needReplaceReferenceInputTypeList = [

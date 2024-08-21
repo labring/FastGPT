@@ -433,6 +433,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
               <Checkbox
                 mr={2}
                 isChecked={selected}
+                icon={<MyIcon name={'common/check'} w={'12px'} />}
                 onChange={(e) => {
                   if (e.target.checked) {
                     setSelectedRows([...selectedRows, item._id]);

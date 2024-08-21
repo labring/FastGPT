@@ -34,6 +34,7 @@ const Button = defineStyleConfig({
       transform: 'scale(0.98)'
     },
     _disabled: {
+      transform: 'none !important',
       _hover: {
         filter: 'none'
       }
@@ -476,6 +477,7 @@ const Checkbox = checkBoxMultiStyle({
       _checked: {
         bg: 'primary.50',
         borderColor: 'primary.600',
+        borderWidth: '1px',
         color: 'primary.600',
         boxShadow: `${shadowLight} !important`,
         _hover: {

@@ -127,6 +127,10 @@
   },
   "upload_file_max_amount": "最大文件数量",
   "upload_file_max_amount_tip": "1.单次上传文件的最大数量。\n2.对话窗口记忆的最大文件数量：每轮对话会自动获取历史中的文件，超出范围的文件会被遗忘。",
+  "variable": {
+    "select type_desc": "可以定义一个无需用户填写的全局变量。\n该变量的值可以来自于 API 接口，分享链接的 Query 或通过【变量更新】模块进行赋值。",
+    "textarea_type_desc": "允许用户最多输入4000字的对话框。"
+  },
   "version": {
     "Revert success": "回滚成功"
   },
@@ -143,14 +147,22 @@
   "workflow": {
     "Input guide": "填写说明",
     "file_url": "文档链接",
+    "option1": "选项 1",
+    "option2": "选项 2",
     "read_files": "文档解析",
     "read_files_result": "文档解析结果",
     "read_files_result_desc": "文档原文，由文件名和文档内容组成，多个文件之间通过横线隔开。",
     "read_files_tip": "解析对话中所有上传的文档，并返回对应文档内容",
+    "select_description": "说明文字",
+    "select_description_placeholder": "例如: \n冰箱里是否有西红柿？",
+    "select_description_tip": "你可以添加一段说明文字，用以向用户说明每个选项代表的含义。",
+    "select_result": "选择的结果",
     "template": {
       "communication": "通信"
     },
     "user_file_input": "文件链接",
-    "user_file_input_desc": "用户上传的文档和图片链接"
+    "user_file_input_desc": "用户上传的文档和图片链接",
+    "user_select": "用户选择",
+    "user_select_tip": "该模块可配置多个选项，以供对话时选择。不同选项可导向不同工作流支线"
   }
 }

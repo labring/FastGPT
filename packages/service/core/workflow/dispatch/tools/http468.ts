@@ -110,7 +110,15 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   const requestBody = await (() => {
     if (!httpJsonBody) return {};
     try {
+      // Replace all variables in the string body
       httpJsonBody = replaceVariable(httpJsonBody, allVariables);
+
+      // Text body, return directly
+      if (headers['Content-Type']?.includes('text/plain')) {
+        return httpJsonBody?.replaceAll(UNDEFINED_SIGN, 'null');
+      }
+
+      // Json body, parse and return
       const jsonParse = JSON.parse(httpJsonBody);
       const removeSignJson = removeUndefinedSign(jsonParse);
       return removeSignJson;
@@ -196,7 +204,7 @@ async function fetchData({
   method: string;
   url: string;
   headers: Record<string, any>;
-  body: Record<string, any>;
+  body: Record<string, any> | string;
   params: Record<string, any>;
 }) {
   const { data: response } = await axios({

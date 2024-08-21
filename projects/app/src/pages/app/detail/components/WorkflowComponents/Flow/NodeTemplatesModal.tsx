@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Box,
-  Divider,
   Flex,
+  Grid,
+  HStack,
   IconButton,
   Input,
   InputGroup,
@@ -47,6 +48,7 @@ import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/cons
 import { cloneDeep } from 'lodash';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import CostTooltip from '@/components/core/app/plugin/CostTooltip';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -57,7 +59,7 @@ type RenderListProps = {
   type: TemplateTypeEnum;
   onClose: () => void;
   parentId: ParentIdType;
-  setParentId: React.Dispatch<React.SetStateAction<ParentIdType>>;
+  setParentId: (parenId: ParentIdType) => any;
 };
 
 enum TemplateTypeEnum {
@@ -66,11 +68,13 @@ enum TemplateTypeEnum {
   'teamPlugin' = 'teamPlugin'
 }
 
-const sliderWidth = 420;
+const sliderWidth = 460;
 
 const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const { loadAndGetTeamMembers } = useUserStore();
+
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
   const { feConfigs } = useSystemStore();
@@ -79,11 +83,16 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     (v) => v
   );
 
+  const { data: members = [] } = useRequest2(loadAndGetTeamMembers, {
+    manual: !feConfigs.isPlus
+  });
+
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
   const { data: basicNodes } = useRequest2(
     async () => {
       if (templateType === TemplateTypeEnum.basic) {
+        console.log(1111);
         return basicNodeTemplates
           .filter((item) => {
             // unique node filter
@@ -115,43 +124,61 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     },
     {
       manual: false,
-      throttleWait: 300,
-      refreshDeps: [basicNodeTemplates, nodeList, hasToolNode, templateType, searchKey, parentId]
+      refreshDeps: [members, basicNodeTemplates, nodeList, hasToolNode, templateType]
     }
   );
-  const { data: teamAndSystemApps, loading: isLoadingTeamApp } = useRequest2(
-    async () => {
-      if (templateType === TemplateTypeEnum.teamPlugin) {
-        return getTeamPlugTemplates({
+  const {
+    data: teamAndSystemApps,
+    loading: isLoading,
+    runAsync: loadNodeTemplates
+  } = useRequest2(
+    async ({
+      parentId = '',
+      type = templateType,
+      searchVal = searchKey
+    }: {
+      parentId?: ParentIdType;
+      type?: TemplateTypeEnum;
+      searchVal?: string;
+    }) => {
+      if (type === TemplateTypeEnum.teamPlugin) {
+        const plugins = await getTeamPlugTemplates({
           parentId,
-          searchKey,
+          searchKey: searchVal,
           type: [AppTypeEnum.folder, AppTypeEnum.httpPlugin, AppTypeEnum.plugin]
         }).then((res) => res.filter((app) => app.id !== appId));
+
+        return plugins.map<NodeTemplateListItemType>((plugin) => {
+          const member = members.find((member) => member.tmbId === plugin.tmbId);
+          return {
+            ...plugin,
+            author: member?.memberName,
+            authorAvatar: member?.avatar
+          };
+        });
       }
-      if (templateType === TemplateTypeEnum.systemPlugin) {
+      if (type === TemplateTypeEnum.systemPlugin) {
         return getSystemPlugTemplates({
-          searchKey,
+          searchKey: searchVal,
           parentId
         });
       }
     },
     {
-      manual: false,
-      throttleWait: 300,
-      refreshDeps: [templateType, searchKey, parentId]
+      onSuccess(res, [{ parentId = '', type = templateType }]) {
+        setParentId(parentId);
+        setTemplateType(type);
+      },
+      refreshDeps: [searchKey, templateType]
     }
   );
 
-  const isLoading = isLoadingTeamApp;
   const templates = useMemo(
     () => basicNodes || teamAndSystemApps || [],
     [basicNodes, teamAndSystemApps]
   );
 
-  useEffect(() => {
-    setParentId('');
-  }, [templateType, searchKey]);
-
+  // Get paths
   const { data: paths = [] } = useRequest2(
     () => {
       if (templateType === TemplateTypeEnum.teamPlugin) return getAppFolderPath(parentId);
@@ -160,6 +187,29 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     {
       manual: false,
       refreshDeps: [parentId]
+    }
+  );
+
+  const onUpdateParentId = useCallback(
+    (parentId: ParentIdType) => {
+      loadNodeTemplates({
+        parentId
+      });
+    },
+    [loadNodeTemplates]
+  );
+
+  // Init load refresh templates
+  useRequest2(
+    () =>
+      loadNodeTemplates({
+        parentId: '',
+        searchVal: searchKey
+      }),
+    {
+      manual: false,
+      throttleWait: 300,
+      refreshDeps: [searchKey]
     }
   );
 
@@ -198,7 +248,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
           overflow={isOpen ? 'none' : 'hidden'}
         >
           {/* Header */}
-          <Box pl={'20px'} mb={3} pr={'10px'} whiteSpace={'nowrap'} overflow={'hidden'}>
+          <Box px={'5'} mb={3} whiteSpace={'nowrap'} overflow={'hidden'}>
             {/* Tabs */}
             <Flex flex={'1 0 0'} alignItems={'center'} gap={3}>
               <Box flex={'1 0 0'}>
@@ -206,24 +256,29 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                   list={[
                     {
                       icon: 'core/modules/basicNode',
-                      label: t('core.module.template.Basic Node'),
+                      label: t('common:core.module.template.Basic Node'),
                       value: TemplateTypeEnum.basic
                     },
                     {
                       icon: 'core/modules/systemPlugin',
-                      label: t('core.module.template.System Plugin'),
+                      label: t('common:core.module.template.System Plugin'),
                       value: TemplateTypeEnum.systemPlugin
                     },
                     {
                       icon: 'core/modules/teamPlugin',
-                      label: t('core.module.template.Team Plugin'),
+                      label: t('common:core.module.template.Team Plugin'),
                       value: TemplateTypeEnum.teamPlugin
                     }
                   ]}
                   width={'100%'}
                   py={'5px'}
                   value={templateType}
-                  onChange={(e) => setTemplateType(e as TemplateTypeEnum)}
+                  onChange={(e) => {
+                    loadNodeTemplates({
+                      type: e as TemplateTypeEnum,
+                      parentId: ''
+                    });
+                  }}
                 />
               </Box>
               {/* close icon */}
@@ -291,7 +346,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
               !searchKey &&
               parentId && (
                 <Flex alignItems={'center'} mt={2}>
-                  <FolderPath paths={paths} FirstPathDom={null} onClick={setParentId} />
+                  <FolderPath paths={paths} FirstPathDom={null} onClick={onUpdateParentId} />
                 </Flex>
               )}
           </Box>
@@ -300,12 +355,26 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
             type={templateType}
             onClose={onClose}
             parentId={parentId}
-            setParentId={setParentId}
+            setParentId={onUpdateParentId}
           />
         </MyBox>
       </>
     );
-  }, [isOpen, onClose, isLoading, t, templateType, searchKey, parentId, paths, templates, router]);
+  }, [
+    isOpen,
+    onClose,
+    isLoading,
+    t,
+    templateType,
+    feConfigs.systemPluginCourseUrl,
+    searchKey,
+    parentId,
+    paths,
+    onUpdateParentId,
+    templates,
+    loadNodeTemplates,
+    router
+  ]);
 
   return Render;
 };
@@ -320,7 +389,6 @@ const RenderList = React.memo(function RenderList({
   setParentId
 }: RenderListProps) {
   const { t } = useTranslation();
-  const { appT } = useI18n();
   const { feConfigs } = useSystemStore();
 
   const { isPc } = useSystem();
@@ -412,11 +480,31 @@ const RenderList = React.memo(function RenderList({
     [computedNewNodeName, reactFlowWrapper, setLoading, setNodes, t, toast, x, y, zoom]
   );
 
+  const gridStyle = useMemo(() => {
+    if (type === TemplateTypeEnum.teamPlugin) {
+      return {
+        gridTemplateColumns: ['1fr', '1fr'],
+        py: 2,
+        avatarSize: '2rem',
+        authorInName: false,
+        authorInRight: true
+      };
+    }
+
+    return {
+      gridTemplateColumns: ['1fr', '1fr 1fr'],
+      py: 3,
+      avatarSize: '1.75rem',
+      authorInName: true,
+      authorInRight: false
+    };
+  }, [type]);
+
   const Render = useMemo(() => {
     return templates.length === 0 ? (
-      <EmptyTip text={appT('module.No Modules')} />
+      <EmptyTip text={t('app:module.No Modules')} />
     ) : (
-      <Box flex={'1 0 0'} overflow={'overlay'} px={'20px'}>
+      <Box flex={'1 0 0'} overflow={'overlay'} px={'5'}>
         <Box mx={'auto'}>
           {formatTemplates.map((item, i) => (
             <Box
@@ -426,16 +514,17 @@ const RenderList = React.memo(function RenderList({
                   display: 'block'
                 }
               })}
+              _notLast={{ mb: 5 }}
             >
               {item.label && formatTemplates.length > 1 && (
                 <Flex>
-                  <Box fontSize={'sm'} fontWeight={'500'} flex={1} color={'myGray.900'}>
+                  <Box fontSize={'sm'} mb={3} fontWeight={'500'} flex={1} color={'myGray.900'}>
                     {t(item.label as any)}
                   </Box>
                 </Flex>
               )}
 
-              <>
+              <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={2}>
                 {item.list.map((template) => (
                   <MyTooltip
                     key={template.id}
@@ -462,7 +551,7 @@ const RenderList = React.memo(function RenderList({
                   >
                     <Flex
                       alignItems={'center'}
-                      py={4}
+                      py={gridStyle.py}
                       px={3}
                       cursor={'pointer'}
                       _hover={{ bg: 'myWhite.600' }}
@@ -494,36 +583,42 @@ const RenderList = React.memo(function RenderList({
                     >
                       <Avatar
                         src={template.avatar}
-                        w={'2rem'}
+                        w={gridStyle.avatarSize}
                         objectFit={'contain'}
                         borderRadius={'md'}
                       />
-                      <Box
-                        color={'myGray.900'}
-                        fontWeight={'500'}
-                        fontSize={'sm'}
-                        ml={3}
-                        flex={'1 0 0'}
-                      >
-                        {t(template.name as any)}
-                      </Box>
-                      {template.author !== undefined && (
-                        <Box fontSize={'xs'} color={'myGray.500'}>
-                          {`by ${template.author || feConfigs.systemTitle}`}
+                      <Box ml={3} flex={'1'}>
+                        <Box color={'myGray.900'} fontWeight={'500'} fontSize={'sm'} flex={'1 0 0'}>
+                          {t(template.name as any)}
                         </Box>
+                        {gridStyle.authorInName && template.author !== undefined && (
+                          <Box fontSize={'xs'} mt={0.5} color={'myGray.500'}>
+                            {`by ${template.author || feConfigs.systemTitle}`}
+                          </Box>
+                        )}
+                      </Box>
+
+                      {gridStyle.authorInRight && template.authorAvatar && template.author && (
+                        <HStack spacing={1} maxW={'120px'}>
+                          <Avatar src={template.authorAvatar} w={'1rem'} borderRadius={'50%'} />
+                          <Box fontSize={'xs'} className="textEllipsis">
+                            {template.author}
+                          </Box>
+                        </HStack>
                       )}
                     </Flex>
                   </MyTooltip>
                 ))}
-              </>
+              </Grid>
             </Box>
           ))}
         </Box>
       </Box>
     );
   }, [
-    appT,
+    feConfigs.systemTitle,
     formatTemplates,
+    gridStyle,
     isPc,
     isSystemPlugin,
     onAddNode,

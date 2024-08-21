@@ -1,17 +1,43 @@
 {
+  "app_key_tips": "These keys have the current application identification, refer to the document for specific use ",
+  "basic_info": "Basic information",
+  "copy_link_hint": "Copy the link below to the specified location",
   "create_api_key": "Create new Key",
   "create_link": "Create link",
   "default_response": "Default Response",
   "edit_api_key": "Edit Key information",
+  "edit_feishu_bot": "Edit Feishu Robot",
   "edit_link": "Edit",
+  "feishu_api": "Feishu interface",
+  "feishu_bot": "Feishu Robot",
+  "feishu_bot_desc": "Directly access Feishu Robot through API",
   "feishu_name": "Lark",
-  "link_name": "Name of the share link",
-  "qpm_tips": "How many times per minute can each IP ask at most",
-  "qpm_is_empty": "QPM cannot be empty",
-  "app_key_tips": "These keys have the current application identification, refer to the document for specific use ",
   "key_alias": "key alias, for display only ",
   "key_tips": "You can use the API Key to access certain interfaces (you can't access the app, you need to use the API key within the app to access the app)",
+  "link_name": "Name of the share link",
+  "new_feishu_bot": "Added Feishu robot",
+  "official_account": {
+    "api": "WeChat public account API",
+    "create_modal_title": "Create a WeChat public account to access",
+    "desc": "Directly access WeChat official account through API",
+    "edit_modal_title": "Edit WeChat public account access",
+    "name": "WeChat public account access",
+    "params": "Wechat params"
+  },
+  "publish_name": "name",
+  "qpm_is_empty": "QPM cannot be empty",
+  "qpm_tips": "How many times per minute can each IP ask at most",
+  "request_address": "Request address",
+  "show_share_link_modal_title": "Get started",
   "token_auth": "Token authentication",
   "token_auth_tips": "Identity verification server address, if this value is filled, a request will be sent to the specified server before each conversation to perform identity verification",
-  "token_auth_use_cases": "View usage instructions for identity verification"
+  "token_auth_use_cases": "View usage instructions for identity verification",
+  "wecom": {
+    "api": "Qiwei API",
+    "bot": "Enterprise WeChat robot",
+    "bot_desc": "Directly access enterprise WeChat robots through API",
+    "create_modal_title": "Create a Qiwei robot",
+    "edit_modal_title": "Edit Qiwei Robot",
+    "title": "Publish to enterprise WeChat robot"
+  }
 }

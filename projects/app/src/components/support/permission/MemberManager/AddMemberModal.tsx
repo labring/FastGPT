@@ -134,12 +134,16 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
                     alignItems="center"
                     _hover={{
                       bgColor: 'myGray.50',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      ...(!selectedMemberIdList.includes(member.tmbId)
+                        ? { svg: { color: 'myGray.50' } }
+                        : {})
                     }}
                   >
                     <Checkbox
                       mr="3"
                       isChecked={selectedMemberIdList.includes(member.tmbId)}
+                      icon={<MyIcon name={'common/check'} w={'12px'} />}
                       onChange={onChange}
                     />
                     <Flex

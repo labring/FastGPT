@@ -9,8 +9,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
-import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -22,11 +21,18 @@ import { NextAPI } from '@/service/middleware/entry';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import {
+  getWorkflowEntryNodeIds,
+  initWorkflowEdgeStatus,
+  rewriteNodeOutputByHistories,
+  storeNodes2RuntimeNodes
+} from '@fastgpt/global/core/workflow/runtime/utils';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
-  nodes: RuntimeNodeItemType[];
-  edges: RuntimeEdgeItemType[];
+  nodes: StoreNodeItemType[];
+  edges: StoreEdgeItemType[];
   variables: Record<string, any>;
   appId: string;
   appName: string;
@@ -52,8 +58,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     chatConfig
   } = req.body as Props;
   try {
-    // [histories, user]
     const chatMessages = GPTMessages2Chats(messages);
+
     const userInput = chatMessages.pop()?.value as UserChatItemValueItemType[] | undefined;
 
     /* user auth */
@@ -64,6 +70,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         authToken: true
       })
     ]);
+    // auth balance
+    const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
+
     const isPlugin = app.type === AppTypeEnum.plugin;
 
     if (!Array.isArray(nodes)) {
@@ -73,18 +82,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new Error('Edges is not array');
     }
 
+    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, chatMessages));
+
     // Plugin need to replace inputs
     if (isPlugin) {
-      nodes = updatePluginInputByVariables(nodes, variables);
-      variables = removePluginInputVariables(variables, nodes);
+      runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
+      variables = removePluginInputVariables(variables, runtimeNodes);
     } else {
       if (!userInput) {
         throw new Error('Params Error');
       }
     }
 
-    // auth balance
-    const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
+    runtimeNodes = rewriteNodeOutputByHistories(chatMessages, runtimeNodes);
 
     /* start process */
     const { flowResponses, flowUsages } = await dispatchWorkFlow({
@@ -95,8 +105,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       tmbId,
       user,
       app,
-      runtimeNodes: nodes,
-      runtimeEdges: edges,
+      runtimeNodes,
+      runtimeEdges: initWorkflowEdgeStatus(edges, chatMessages),
       variables,
       query: removeEmptyUserInput(userInput),
       chatConfig,

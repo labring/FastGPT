@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Box, Button, Card, Flex } from '@chakra-ui/react';
+import { Box, Button, Card, Flex, Image } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -42,7 +42,6 @@ type Props = FlowNodeItemType & {
 
 const NodeCard = (props: Props) => {
   const { t } = useTranslation();
-  const { appT } = useI18n();
 
   const { toast } = useToast();
 
@@ -70,7 +69,7 @@ const NodeCard = (props: Props) => {
   // custom title edit
   const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('common:common.Custom Title'),
-    placeholder: appT('module.Custom Title Tip') || ''
+    placeholder: t('app:module.Custom Title Tip') || ''
   });
 
   const showToolHandle = useMemo(
@@ -166,7 +165,7 @@ const NodeCard = (props: Props) => {
                     onSuccess: (e) => {
                       if (!e) {
                         return toast({
-                          title: appT('modules.Title is required'),
+                          title: t('app:modules.Title is required'),
                           status: 'warning'
                         });
                       }
@@ -183,7 +182,7 @@ const NodeCard = (props: Props) => {
             )}
             <Box flex={1} />
             {hasNewVersion && (
-              <MyTooltip label={appT('app.modules.click to update')}>
+              <MyTooltip label={t('app:app.modules.click to update')}>
                 <Button
                   bg={'yellow.50'}
                   color={'yellow.600'}
@@ -197,9 +196,27 @@ const NodeCard = (props: Props) => {
                   _hover={{ bg: 'yellow.100' }}
                   onClick={onOpenConfirmSync(onClickSyncVersion)}
                 >
-                  <Box>{appT('app.modules.has new version')}</Box>
+                  <Box>{t('app:app.modules.has new version')}</Box>
                   <QuestionOutlineIcon ml={1} />
                 </Button>
+              </MyTooltip>
+            )}
+            {!!nodeTemplate?.diagram && (
+              <MyTooltip
+                label={
+                  <Image src={nodeTemplate?.diagram} w={'100%'} minH={['auto', '200px']} alt={''} />
+                }
+              >
+                <Box
+                  fontSize={'sm'}
+                  color={'primary.700'}
+                  p={1}
+                  rounded={'sm'}
+                  cursor={'default'}
+                  _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
+                >
+                  {t('common:core.module.Diagram')}
+                </Box>
               </MyTooltip>
             )}
           </Flex>
@@ -217,9 +234,9 @@ const NodeCard = (props: Props) => {
     name,
     menuForbid,
     hasNewVersion,
-    appT,
     onOpenConfirmSync,
     onClickSyncVersion,
+    nodeTemplate?.diagram,
     intro,
     ConfirmSyncModal,
     onOpenCustomTitleModal,

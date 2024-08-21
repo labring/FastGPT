@@ -66,6 +66,8 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
   // action
   forbidDelete?: boolean; // forbid delete
   unique?: boolean;
+
+  diagram?: string; // diagram url
 };
 
 export type NodeTemplateListItemType = {
@@ -78,6 +80,7 @@ export type NodeTemplateListItemType = {
   name: string;
   intro?: string; // template list intro
   isTool?: boolean;
+  authorAvatar?: string;
   author?: string;
   unique?: boolean; // 唯一的
   currentCost?: number; // 当前积分消耗

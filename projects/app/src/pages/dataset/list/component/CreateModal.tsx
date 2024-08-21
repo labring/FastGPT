@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Box, Flex, Button, ModalFooter, ModalBody, Input } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
@@ -14,29 +14,56 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { postCreateDataset } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { useTranslation } from 'next-i18next';
-import MyRadio from '@/components/common/MyRadio';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { useI18n } from '@/web/context/I18n';
+
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
-const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
+export type CreateDatasetType =
+  | DatasetTypeEnum.dataset
+  | DatasetTypeEnum.externalFile
+  | DatasetTypeEnum.websiteDataset;
+
+const CreateModal = ({
+  onClose,
+  parentId,
+  type
+}: {
+  onClose: () => void;
+  parentId?: string;
+  type: CreateDatasetType;
+}) => {
   const { t } = useTranslation();
-  const { datasetT } = useI18n();
   const { toast } = useToast();
   const router = useRouter();
-  const { feConfigs, vectorModelList, datasetModelList } = useSystemStore();
+  const { vectorModelList, datasetModelList } = useSystemStore();
   const { isPc } = useSystem();
+
+  const databaseNameMap = useMemo(() => {
+    return {
+      [DatasetTypeEnum.dataset]: t('dataset:common_dataset'),
+      [DatasetTypeEnum.externalFile]: t('dataset:external_file'),
+      [DatasetTypeEnum.websiteDataset]: t('dataset:website_dataset')
+    };
+  }, [t]);
+
+  const iconMap = useMemo(() => {
+    return {
+      [DatasetTypeEnum.dataset]: 'core/dataset/commonDatasetColor',
+      [DatasetTypeEnum.externalFile]: 'core/dataset/externalDatasetColor',
+      [DatasetTypeEnum.websiteDataset]: 'core/dataset/websiteDatasetColor'
+    };
+  }, []);
 
   const filterNotHiddenVectorModelList = vectorModelList.filter((item) => !item.hidden);
 
   const { register, setValue, handleSubmit, watch } = useForm<CreateDatasetParams>({
     defaultValues: {
       parentId,
-      type: DatasetTypeEnum.dataset,
-      avatar: '/icon/logo.svg',
+      type: type || DatasetTypeEnum.dataset,
+      avatar: iconMap[type] || 'core/dataset/commonDatasetColor',
       name: '',
       intro: '',
       vectorModel: filterNotHiddenVectorModelList[0].model,
@@ -44,7 +71,6 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
     }
   });
   const avatar = watch('avatar');
-  const datasetType = watch('type');
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
 
@@ -88,63 +114,16 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
     }
   });
 
-  const onSelectDatasetType = useCallback(
-    (e: DatasetTypeEnum) => {
-      if (
-        !feConfigs?.isPlus &&
-        (e === DatasetTypeEnum.websiteDataset || e === DatasetTypeEnum.externalFile)
-      ) {
-        return toast({
-          status: 'warning',
-          title: t('common:common.system.Commercial version function')
-        });
-      }
-      setValue('type', e);
-    },
-    [feConfigs?.isPlus, setValue, t, toast]
-  );
-
   return (
     <MyModal
-      iconSrc="/imgs/workflow/db.png"
-      title={t('common:core.dataset.Create dataset')}
+      iconSrc={iconMap[type]}
+      title={t('common:core.dataset.Create dataset', { name: databaseNameMap[type] })}
       isOpen
       onClose={onClose}
       isCentered={!isPc}
       w={'450px'}
     >
       <ModalBody py={2}>
-        <>
-          <Box mb={1} color={'myGray.900'}>
-            {t('common:core.dataset.Dataset Type')}
-          </Box>
-          <MyRadio
-            gridGap={2}
-            gridTemplateColumns={'repeat(1,1fr)'}
-            list={[
-              {
-                title: datasetT('common_dataset'),
-                value: DatasetTypeEnum.dataset,
-                icon: 'core/dataset/commonDataset',
-                desc: datasetT('common_dataset_desc')
-              },
-              {
-                title: datasetT('website_dataset'),
-                value: DatasetTypeEnum.websiteDataset,
-                icon: 'core/dataset/websiteDataset',
-                desc: datasetT('website_dataset_desc')
-              },
-              {
-                title: datasetT('external_file'),
-                value: DatasetTypeEnum.externalFile,
-                icon: 'core/dataset/externalDataset',
-                desc: datasetT('external_file_dataset_desc')
-              }
-            ]}
-            value={datasetType}
-            onChange={onSelectDatasetType}
-          />
-        </>
         <Box mt={5}>
           <Box color={'myGray.900'}>{t('common:common.Set Name')}</Box>
           <Flex mt={1} alignItems={'center'}>

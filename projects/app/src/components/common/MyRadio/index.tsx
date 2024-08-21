@@ -1,8 +1,8 @@
 import React from 'react';
-import { Box, Flex, useTheme, Grid, type GridProps, theme, Image, Radio } from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import { Box, Flex, useTheme, Grid, type GridProps, Radio } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 
 // @ts-ignore
 interface Props extends GridProps {
@@ -53,7 +53,8 @@ const MyRadio = ({
           {...(value === item.value
             ? {
                 borderColor: 'primary.400',
-                bg: 'primary.50'
+                bg: 'primary.50',
+                color: 'primary.600'
               }
             : {
                 bg: 'myWhite.300',
@@ -74,11 +75,7 @@ const MyRadio = ({
         >
           {!!item.icon && (
             <>
-              {item.icon.startsWith('/') ? (
-                <Image src={item.icon} mr={'14px'} w={iconSize} alt={''} />
-              ) : (
-                <MyIcon mr={'14px'} name={item.icon as any} w={iconSize} />
-              )}
+              <Avatar src={item.icon} w={iconSize} mr={'14px'} />
             </>
           )}
           <Box pr={hiddenCircle ? 0 : 2} flex={'1 0 0'}>

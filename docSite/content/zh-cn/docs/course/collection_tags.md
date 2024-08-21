@@ -4,7 +4,7 @@ description: "FastGPT 知识库集合标签使用说明"
 icon: "developer_guide"
 draft: false
 toc: true
-weight: 108
+weight: 109
 ---
 
 知识库集合标签是 FastGPT 商业版特有功能。它允许你对知识库中的数据集合添加标签进行分类，更高效地管理知识库数据。

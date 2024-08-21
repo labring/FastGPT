@@ -1,4 +1,5 @@
 import {
+  datasetQuoteValueDesc,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -118,7 +119,8 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       label: 'core.module.Dataset quote.label',
       description: '特殊数组格式，搜索结果为空时，返回空数组。',
       type: FlowNodeOutputTypeEnum.static,
-      valueType: WorkflowIOValueTypeEnum.datasetQuote
+      valueType: WorkflowIOValueTypeEnum.datasetQuote,
+      valueDesc: datasetQuoteValueDesc
     }
   ]
 };

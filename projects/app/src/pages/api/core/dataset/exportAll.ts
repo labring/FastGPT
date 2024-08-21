@@ -18,7 +18,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     datasetId: string;
   };
 
-  if (!datasetId || !global.pgClient) {
+  if (!datasetId) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
