@@ -390,46 +390,45 @@ const RenderHttpTimeout = ({
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   return (
-    <Box>
-      <Box mb={2} display={'flex'} justifyContent={'space-between'}>
-        <Box fontWeight={'medium'} color={'myGray.600'}>
-          {t('common:core.module.Http timeout')}
-        </Box>
-        <Box>
-          {isEditTimeout ? (
-            <NumberInput
-              defaultValue={timeout.value}
-              min={timeout.min}
-              max={timeout.max}
-              onBlur={() => setIsEditTimeout(false)}
-              onChange={(e) => {
-                onChangeNode({
-                  nodeId,
-                  type: 'updateInput',
-                  key: NodeInputKeyEnum.httpTimeout,
-                  value: {
-                    ...timeout,
-                    value: Number(e)
-                  }
-                });
-              }}
-            >
-              <NumberInputField bg={'white'} px={3} borderRadius={'sm'} />
-              <NumberInputStepper>
-                <NumberIncrementStepper />
-                <NumberDecrementStepper />
-              </NumberInputStepper>
-            </NumberInput>
-          ) : (
-            <Button
-              variant={'ghost'}
-              color={'myGray.600'}
-              onClick={() => setIsEditTimeout(true)}
-            >{`${timeout?.value} s`}</Button>
-          )}
-        </Box>
+    <Flex alignItems={'center'} justifyContent={'space-between'}>
+      <Box fontWeight={'medium'} color={'myGray.600'}>
+        {t('common:core.module.Http timeout')}
       </Box>
-    </Box>
+      <Box>
+        {isEditTimeout ? (
+          <NumberInput
+            defaultValue={timeout.value}
+            min={timeout.min}
+            max={timeout.max}
+            bg={'white'}
+            onBlur={() => setIsEditTimeout(false)}
+            onChange={(e) => {
+              onChangeNode({
+                nodeId,
+                type: 'updateInput',
+                key: NodeInputKeyEnum.httpTimeout,
+                value: {
+                  ...timeout,
+                  value: Number(e)
+                }
+              });
+            }}
+          >
+            <NumberInputField autoFocus bg={'white'} px={3} borderRadius={'sm'} />
+            <NumberInputStepper>
+              <NumberIncrementStepper />
+              <NumberDecrementStepper />
+            </NumberInputStepper>
+          </NumberInput>
+        ) : (
+          <Button
+            variant={'whiteBase'}
+            color={'myGray.600'}
+            onClick={() => setIsEditTimeout(true)}
+          >{`${timeout?.value} s`}</Button>
+        )}
+      </Box>
+    </Flex>
   );
 };
 const RenderForm = ({
