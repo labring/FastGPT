@@ -60,6 +60,7 @@ const Markdown = ({
       remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
       rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
       components={components}
+      urlTransform={(val) => val}
     >
       {formatSource}
     </ReactMarkdown>
