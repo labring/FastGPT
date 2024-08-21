@@ -6,7 +6,8 @@ import {
   Box,
   useOutsideClick,
   MenuButton,
-  MenuItemProps
+  MenuItemProps,
+  PlacementWithLogical
 } from '@chakra-ui/react';
 import MyDivider from '../MyDivider';
 import type { IconNameType } from '../Icon/type';
@@ -21,6 +22,8 @@ export type Props = {
   Button: React.ReactNode;
   trigger?: 'hover' | 'click';
   iconSize?: string;
+  iconRadius?: string;
+  placement?: PlacementWithLogical;
   menuList: {
     label?: string;
     children: {
@@ -40,7 +43,9 @@ const MyMenu = ({
   offset,
   iconSize = '1rem',
   Button,
-  menuList
+  menuList,
+  iconRadius = 'sm',
+  placement = 'bottom-start'
 }: Props) => {
   const typeMapStyle: Record<MenuItemType, MenuItemProps> = {
     primary: {
@@ -107,7 +112,7 @@ const MyMenu = ({
       direction={'ltr'}
       isLazy
       lazyBehavior={'keepMounted'}
-      placement="bottom-start"
+      placement={placement}
       computePositionOnMount
     >
       <Box
@@ -172,7 +177,14 @@ const MyMenu = ({
                     _notLast={{ mb: 0.5 }}
                     {...typeMapStyle[child.type || 'primary']}
                   >
-                    {!!child.icon && <Avatar src={child.icon as any} w={iconSize} mr={3} />}
+                    {!!child.icon && (
+                      <Avatar
+                        src={child.icon as any}
+                        borderRadius={iconRadius}
+                        w={iconSize}
+                        mr={3}
+                      />
+                    )}
                     <Box>
                       <Box color={child.description ? 'myGray.900' : 'inherit'} fontSize={'sm'}>
                         {child.label}

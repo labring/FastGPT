@@ -10,7 +10,6 @@ import {
   Input
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import PageContainer from '@/components/PageContainer';
 import { useTranslation } from 'next-i18next';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import ParentPaths from '@/components/common/folder/Path';
@@ -92,14 +91,17 @@ const Dataset = () => {
 
   const RenderSearchInput = useMemo(
     () => (
-      <InputGroup maxW={['auto', '250px']} pr={4}>
+      <InputGroup maxW={['auto', '250px']} pr={[0, 4]}>
         <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
-          <MyIcon name={'common/searchLight'} w={'1rem'} />
+          <MyIcon color={'myGray.600'} name={'common/searchLight'} w={'1rem'} />
         </InputLeftElement>
         <Input
+          pl={'34px'}
           value={searchKey}
           onChange={(e) => setSearchKey(e.target.value)}
           placeholder={t('common:dataset.dataset_name')}
+          py={0}
+          lineHeight={'34px'}
           maxLength={30}
           bg={'white'}
         />
@@ -112,15 +114,23 @@ const Dataset = () => {
       isLoading={myDatasets.length === 0 && isFetchingDatasets}
       flexDirection={'column'}
       h={'100%'}
+      overflowY={'auto'}
+      overflowX={'hidden'}
     >
-      <Flex pt={[4, 6]} pl={3} pr={10}>
+      <Flex pt={[4, 6]} pl={3} pr={[3, 10]}>
         <Flex flexGrow={1} flexDirection="column">
           <Flex alignItems={'flex-start'} justifyContent={'space-between'}>
             <ParentPaths
               paths={paths}
               FirstPathDom={
                 <Flex flex={1} alignItems={'center'}>
-                  <Box pl={2} letterSpacing={1} fontSize={'1.25rem'} fontWeight={'bold'}>
+                  <Box
+                    pl={2}
+                    letterSpacing={1}
+                    fontSize={'1.25rem'}
+                    fontWeight={'bold'}
+                    color={'myGray.900'}
+                  >
                     {t('common:core.dataset.My Dataset')}
                   </Box>
                 </Flex>
@@ -138,9 +148,11 @@ const Dataset = () => {
 
             {userInfo?.team?.permission.hasWritePer && (
               <MyMenu
-                offset={[-30, 5]}
+                offset={[0, 10]}
                 width={120}
                 iconSize="2rem"
+                iconRadius="6px"
+                placement="bottom-end"
                 Button={
                   <Button variant={'primary'} px="0">
                     <Flex alignItems={'center'} px={'20px'}>
@@ -204,7 +216,7 @@ const Dataset = () => {
               name={folderDetail.name}
               intro={folderDetail.intro}
               onEdit={() => {
-                setEditedDataset({
+                setEditFolderData({
                   id: folderDetail._id,
                   name: folderDetail.name,
                   intro: folderDetail.intro
@@ -263,6 +275,7 @@ const Dataset = () => {
 
       {!!editFolderData && (
         <EditFolderModal
+          {...editFolderData}
           onClose={() => setEditFolderData(undefined)}
           onCreate={async ({ name, intro }) => {
             try {

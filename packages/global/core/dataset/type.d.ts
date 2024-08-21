@@ -137,7 +137,9 @@ export type DatasetSimpleItemType = {
 };
 export type DatasetListItemType = {
   _id: string;
+  tmbId: string;
   avatar: string;
+  updateTime: Date;
   name: string;
   intro: string;
   type: `${DatasetTypeEnum}`;
