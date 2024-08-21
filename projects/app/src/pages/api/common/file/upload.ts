@@ -26,7 +26,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     const start = Date.now();
     /* Creates the multer uploader */
     const upload = getUploadModel({
-      maxSize: (global.feConfigs?.uploadFileMaxSize || 500) * 1024 * 1024
+      maxSize: global.feConfigs?.uploadFileMaxSize
     });
     const { file, bucketName, metadata } = await upload.doUpload(req, res);
     filePaths.push(file.path);
