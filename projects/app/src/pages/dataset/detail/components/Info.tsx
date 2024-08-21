@@ -143,9 +143,10 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         <Box flex={1}>{datasetDetail._id}</Box>
       </Flex>
       <Flex mt={8} w={'100%'} alignItems={'center'} flexWrap={'wrap'}>
-        <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}>
-          {t('common:core.ai.model.Vector Model')}
-        </FormLabel>
+        <HStack flex={['0 0 90px', '0 0 160px']} w={0} spacing={1}>
+          <FormLabel>{t('common:core.ai.model.Vector Model')}</FormLabel>
+          <QuestionTip label={t('common:core.dataset.embedding model tip')} />
+        </HStack>
         <Box flex={[1, '0 0 320px']}>
           <AIModelSelector
             w={'100%'}
@@ -177,9 +178,10 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         <Box flex={[1, '0 0 320px']}>{vectorModel.maxToken}</Box>
       </Flex>
       <Flex mt={6} alignItems={'center'} flexWrap={'wrap'}>
-        <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}>
-          {t('common:core.ai.model.Dataset Agent Model')}
-        </FormLabel>
+        <HStack flex={['0 0 90px', '0 0 160px']} w={0} spacing={1}>
+          <FormLabel>{t('common:core.ai.model.Dataset Agent Model')}</FormLabel>
+          <QuestionTip label={t('dataset:file_model_function_tip')} />
+        </HStack>
         <Box flex={[1, '0 0 320px']}>
           <AIModelSelector
             w={'100%'}

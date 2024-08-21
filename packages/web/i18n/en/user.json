@@ -1,4 +1,7 @@
 {
+  "bill": {
+    "not_need_invoice": "Balance payment, unable to issue invoice"
+  },
   "bind_inform_account_error": "Abnormal binding notification account",
   "bind_inform_account_success": "Binding notification account successful",
   "code_error": {

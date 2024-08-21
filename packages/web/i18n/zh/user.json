@@ -1,4 +1,7 @@
 {
+  "bill": {
+    "not_need_invoice": "余额支付，无法开票"
+  },
   "bind_inform_account_error": "绑定通知账号异常",
   "bind_inform_account_success": "绑定通知账号成功",
   "delete": {

@@ -201,7 +201,7 @@ const NodeCard = (props: Props) => {
                 </Button>
               </MyTooltip>
             )}
-            {!!nodeTemplate?.diagram && (
+            {!!nodeTemplate?.diagram && !hasNewVersion && (
               <MyTooltip
                 label={
                   <Image src={nodeTemplate?.diagram} w={'100%'} minH={['auto', '200px']} alt={''} />

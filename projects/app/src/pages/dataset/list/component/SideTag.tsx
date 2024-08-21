@@ -28,8 +28,6 @@ const SideTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps)
   return (
     <Flex
       bg={'myGray.100'}
-      borderWidth={'1px'}
-      borderColor={'myGray.200'}
       py={'3px'}
       pl={'8px'}
       pr={'12px'}

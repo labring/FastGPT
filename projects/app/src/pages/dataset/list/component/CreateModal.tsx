@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, Flex, Button, ModalFooter, ModalBody, Input } from '@chakra-ui/react';
+import { Box, Flex, Button, ModalFooter, ModalBody, Input, HStack } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
@@ -19,6 +19,7 @@ import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants'
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 export type CreateDatasetType =
   | DatasetTypeEnum.dataset
@@ -163,19 +164,18 @@ const CreateModal = ({
             justify={'space-between'}
             flexDir={['column', 'row']}
           >
-            <Flex
+            <HStack
+              spacing={1}
               alignItems={'center'}
-              flex={['', '0 0 100px']}
+              flex={['', '0 0 110px']}
               fontSize={'sm'}
               color={'myGray.900'}
               fontWeight={500}
               pb={['12px', '0']}
             >
-              {t('common:core.ai.model.Vector Model')}
-              <MyTooltip label={t('common:core.dataset.embedding model tip')}>
-                <MyIcon w={'16px'} h={'16px'} color={'myGray.500'} ml={'4px'} name="common/help" />
-              </MyTooltip>
-            </Flex>
+              <Box>{t('common:core.ai.model.Vector Model')}</Box>
+              <QuestionTip label={t('common:core.dataset.embedding model tip')} />
+            </HStack>
             <Box w={['100%', '300px']}>
               <AIModelSelector
                 w={['100%', '300px']}
@@ -198,15 +198,17 @@ const CreateModal = ({
             justify={'space-between'}
             flexDir={['column', 'row']}
           >
-            <Box
-              flex={['', '0 0 100px']}
+            <HStack
+              spacing={1}
+              flex={['', '0 0 110px']}
               fontSize={'sm'}
               color={'myGray.900'}
               fontWeight={500}
               pb={['12px', '0']}
             >
-              {t('common:core.ai.model.Dataset Agent Model')}
-            </Box>
+              <Box>{t('common:core.ai.model.Dataset Agent Model')}</Box>
+              <QuestionTip label={t('dataset:file_model_function_tip')} />
+            </HStack>
             <Box w={['100%', '300px']}>
               <AIModelSelector
                 w={['100%', '300px']}
@@ -224,7 +226,7 @@ const CreateModal = ({
         )}
       </ModalBody>
 
-      <ModalFooter pt={'0px'} pb={'24px'}>
+      <ModalFooter px={'36px'}>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common:common.Close')}
         </Button>
