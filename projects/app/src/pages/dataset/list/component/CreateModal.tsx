@@ -17,8 +17,7 @@ import { useTranslation } from 'next-i18next';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 export type CreateDatasetType =
@@ -116,17 +115,23 @@ const CreateModal = ({
 
   return (
     <MyModal
-      iconSrc={iconMap[type]}
-      title={t('common:core.dataset.Create dataset', { name: databaseNameMap[type] })}
+      title={
+        <Flex alignItems={'center'} ml={-3}>
+          <Avatar w={'20px'} h={'20px'} borderRadius={'4px'} src={iconMap[type]} pr={'10px'} />
+          {t('common:core.dataset.Create dataset', { name: databaseNameMap[type] })}
+        </Flex>
+      }
       isOpen
       onClose={onClose}
       isCentered={!isPc}
-      w={'450px'}
+      w={'490px'}
     >
-      <ModalBody py={2}>
-        <Box mt={5}>
-          <Box color={'myGray.900'}>{t('common:common.Set Name')}</Box>
-          <Flex mt={1} alignItems={'center'}>
+      <ModalBody py={'24px'} px={'36px'}>
+        <Box>
+          <Box color={'myGray.900'} fontWeight={500} fontSize={'14px'}>
+            {t('common:common.Set Name')}
+          </Box>
+          <Flex mt={'12px'} alignItems={'center'}>
             <MyTooltip label={t('common:common.avatar.Select Avatar')}>
               <Avatar
                 flexShrink={0}
@@ -152,14 +157,28 @@ const CreateModal = ({
           </Flex>
         </Box>
         {filterNotHiddenVectorModelList.length > 1 && (
-          <Flex mt={6} alignItems={'center'}>
-            <Flex alignItems={'center'} flex={'0 0 100px'} fontSize={'sm'}>
+          <Flex
+            mt={6}
+            alignItems={['flex-start', 'center']}
+            justify={'space-between'}
+            flexDir={['column', 'row']}
+          >
+            <Flex
+              alignItems={'center'}
+              flex={['', '0 0 100px']}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={500}
+              pb={['12px', '0']}
+            >
               {t('common:core.ai.model.Vector Model')}
-              <QuestionTip label={t('common:core.dataset.embedding model tip')} />
+              <MyTooltip label={t('common:core.dataset.embedding model tip')}>
+                <MyIcon w={'16px'} h={'16px'} color={'myGray.500'} ml={'4px'} name="common/help" />
+              </MyTooltip>
             </Flex>
-            <Box flex={1}>
+            <Box w={['100%', '300px']}>
               <AIModelSelector
-                w={'100%'}
+                w={['100%', '300px']}
                 value={vectorModel}
                 list={filterNotHiddenVectorModelList.map((item) => ({
                   label: item.name,
@@ -173,13 +192,24 @@ const CreateModal = ({
           </Flex>
         )}
         {datasetModelList.length > 1 && (
-          <Flex mt={6} alignItems={'center'}>
-            <Box flex={'0 0 100px'} fontSize={'sm'}>
+          <Flex
+            mt={6}
+            alignItems={['flex-start', 'center']}
+            justify={'space-between'}
+            flexDir={['column', 'row']}
+          >
+            <Box
+              flex={['', '0 0 100px']}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={500}
+              pb={['12px', '0']}
+            >
               {t('common:core.ai.model.Dataset Agent Model')}
             </Box>
-            <Box flex={1}>
+            <Box w={['100%', '300px']}>
               <AIModelSelector
-                w={'100%'}
+                w={['100%', '300px']}
                 value={agentModel}
                 list={datasetModelList.map((item) => ({
                   label: item.name,
@@ -194,7 +224,7 @@ const CreateModal = ({
         )}
       </ModalBody>
 
-      <ModalFooter>
+      <ModalFooter pt={'0px'} pb={'24px'}>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common:common.Close')}
         </Button>

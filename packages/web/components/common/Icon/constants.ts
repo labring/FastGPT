@@ -32,6 +32,7 @@ export const iconPaths = {
   'common/googleFill': () => import('./icons/common/googleFill.svg'),
   'common/importLight': () => import('./icons/common/importLight.svg'),
   'common/info': () => import('./icons/common/info.svg'),
+  'common/help': () => import('./icons/common/help.svg'),
   'common/inviteLight': () => import('./icons/common/inviteLight.svg'),
   'common/language/en': () => import('./icons/common/language/en.svg'),
   'common/language/zh': () => import('./icons/common/language/zh.svg'),
@@ -129,11 +130,15 @@ export const iconPaths = {
   'core/chat/stopSpeech': () => import('./icons/core/chat/stopSpeech.svg'),
   'core/dataset/commonDataset': () => import('./icons/core/dataset/commonDataset.svg'),
   'core/dataset/commonDatasetColor': () => import('./icons/core/dataset/commonDatasetColor.svg'),
+  'core/dataset/commonDatasetOutline': () =>
+    import('./icons/core/dataset/commonDatasetOutline.svg'),
   'core/dataset/datasetFill': () => import('./icons/core/dataset/datasetFill.svg'),
   'core/dataset/datasetLight': () => import('./icons/core/dataset/datasetLight.svg'),
   'core/dataset/externalDataset': () => import('./icons/core/dataset/externalDataset.svg'),
   'core/dataset/externalDatasetColor': () =>
     import('./icons/core/dataset/externalDatasetColor.svg'),
+  'core/dataset/externalDatasetOutline': () =>
+    import('./icons/core/dataset/externalDatasetOutline.svg'),
   'core/dataset/fileCollection': () => import('./icons/core/dataset/fileCollection.svg'),
   'core/dataset/fullTextRecall': () => import('./icons/core/dataset/fullTextRecall.svg'),
   'core/dataset/manualCollection': () => import('./icons/core/dataset/manualCollection.svg'),
@@ -145,6 +150,8 @@ export const iconPaths = {
   'core/dataset/tag': () => import('./icons/core/dataset/tag.svg'),
   'core/dataset/websiteDataset': () => import('./icons/core/dataset/websiteDataset.svg'),
   'core/dataset/websiteDatasetColor': () => import('./icons/core/dataset/websiteDatasetColor.svg'),
+  'core/dataset/websiteDatasetOutline': () =>
+    import('./icons/core/dataset/websiteDatasetOutline.svg'),
   'core/modules/basicNode': () => import('./icons/core/modules/basicNode.svg'),
   'core/modules/fixview': () => import('./icons/core/modules/fixview.svg'),
   'core/modules/flowLight': () => import('./icons/core/modules/flowLight.svg'),

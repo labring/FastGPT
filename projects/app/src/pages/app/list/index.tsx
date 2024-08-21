@@ -186,7 +186,7 @@ const MyApps = () => {
             {userInfo?.team.permission.hasWritePer &&
               folderDetail?.type !== AppTypeEnum.httpPlugin && (
                 <MyMenu
-                  iconSize="1.5rem"
+                  iconSize="2rem"
                   Button={
                     <Button variant={'primary'} leftIcon={<AddIcon />}>
                       <Box>{t('common:common.Create New')}</Box>
