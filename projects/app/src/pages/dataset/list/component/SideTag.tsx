@@ -5,31 +5,27 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 
 const SideTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps) => {
+  if (type === DatasetTypeEnum.folder) return null;
   const { t } = useTranslation();
   const DatasetListTypeMap = useMemo(() => {
     return {
-      [DatasetTypeEnum.folder]: {
-        icon: 'common/folderFill',
-        label: 'folder_dataset',
-        collectionLabel: 'common.Folder'
-      },
       [DatasetTypeEnum.dataset]: {
         icon: 'core/dataset/commonDatasetOutline',
-        label: 'dataset:common_dataset',
+        label: t('dataset:common_dataset'),
         collectionLabel: 'common.File'
       },
       [DatasetTypeEnum.websiteDataset]: {
         icon: 'core/dataset/websiteDatasetOutline',
-        label: 'dataset:website_dataset',
+        label: t('dataset:website_dataset'),
         collectionLabel: 'common.Website'
       },
       [DatasetTypeEnum.externalFile]: {
         icon: 'core/dataset/externalDatasetOutline',
-        label: 'dataset:external_file',
+        label: t('dataset:external_file'),
         collectionLabel: 'common.File'
       }
     };
-  }, []);
+  }, [t]);
   const item = DatasetListTypeMap[type] || DatasetListTypeMap['dataset'];
 
   return (
@@ -48,7 +44,7 @@ const SideTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps)
       <MyIcon name={item.icon as any} w={'0.8rem'} color={'myGray.400'} />
       <Box fontSize={'mini'} ml={1}>
         {/* @ts-ignore */}
-        {t(item.label)}
+        {item.label}
       </Box>
     </Flex>
   );
