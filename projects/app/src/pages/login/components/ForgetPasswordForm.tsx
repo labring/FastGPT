@@ -46,6 +46,18 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   }, [getValues, sendCode, trigger]);
 
   const [requesting, setRequesting] = useState(false);
+  const placeholder = feConfigs?.find_password_method
+    ?.map((item) => {
+      switch (item) {
+        case 'email':
+          return t('common:support.user.login.Email');
+        case 'phone':
+          return t('common:support.user.login.Phone number');
+        default:
+          return t('common:support.user.login.Username');
+      }
+    })
+    .join('/');
 
   const onclickFindPassword = useCallback(
     async ({ username, code, password }: RegisterType) => {
@@ -89,7 +101,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         <FormControl isInvalid={!!errors.username}>
           <Input
             bg={'myGray.50'}
-            placeholder={t('user:password.email_phone')}
+            placeholder={placeholder}
             {...register('username', {
               required: t('user:password.email_phone_void'),
               pattern: {
