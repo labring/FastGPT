@@ -92,7 +92,6 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const { data: basicNodes } = useRequest2(
     async () => {
       if (templateType === TemplateTypeEnum.basic) {
-        console.log(1111);
         return basicNodeTemplates
           .filter((item) => {
             // unique node filter

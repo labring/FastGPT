@@ -308,7 +308,7 @@ function replaceVariable(text: string, obj: Record<string, any>) {
         replacement.startsWith('"') && replacement.endsWith('"')
           ? replacement.slice(1, -1)
           : replacement;
-      text = text.replace(new RegExp(`{{(${key})}}`, 'g'), unquotedReplacement);
+      text = text.replace(new RegExp(`{{(${key})}}`, 'g'), () => unquotedReplacement);
     }
   }
   return text || '';
