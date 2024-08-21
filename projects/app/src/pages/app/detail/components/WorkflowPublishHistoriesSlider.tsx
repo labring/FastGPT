@@ -6,7 +6,6 @@ import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, Input } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
-import { AppSchema } from '@fastgpt/global/core/app/type';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { WorkflowContext } from './WorkflowComponents/context';
 import { formatTime2YMDHM, formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
@@ -99,7 +98,6 @@ const MyEdit = () => {
                 saveSnapshot({
                   customTitle: `${t('app:app.version_copy')}-${item.title}`
                 });
-
                 resetSnapshot(item);
               }}
             >
@@ -122,7 +120,14 @@ const MyEdit = () => {
                   }
                 })}
               ></Box>
-              <Box ml={3} flex={'1 0 0'} fontSize={'sm'}>
+              <Box
+                ml={3}
+                flex={'1 0 0'}
+                fontSize={'sm'}
+                overflow="hidden"
+                textOverflow="ellipsis"
+                whiteSpace="nowrap"
+              >
                 {item.title}
               </Box>
             </Flex>
@@ -219,23 +224,39 @@ const TeamCloud = () => {
             </MyPopover>
             {editIndex !== index ? (
               <>
-                <Box ml={3} flex={'1 0 0'} fontSize={'sm'}>
-                  {item.versionName || formatTime2YMDHM(item.time)}
+                <Box
+                  ml={3}
+                  flex={'1 0 0'}
+                  fontSize={'sm'}
+                  display="flex"
+                  alignItems="center"
+                  overflow="hidden"
+                  textOverflow="ellipsis"
+                  whiteSpace="nowrap"
+                >
+                  <Box minWidth={0} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                    <Box as={'span'} color={'myGray.900'}>
+                      {item.versionName || formatTime2YMDHM(item.time)}
+                    </Box>
+                  </Box>
+                  {item.isPublish && (
+                    <Tag
+                      ml={3}
+                      flexShrink={0}
+                      type="borderSolid"
+                      colorSchema={index === firstPublishedIndex ? 'green' : 'blue'}
+                    >
+                      {index === firstPublishedIndex
+                        ? t('app:app.version_current')
+                        : t('app:app.version_past')}
+                    </Tag>
+                  )}
                 </Box>
-                {hoveredIndex !== index && item.isPublish && (
-                  <Tag
-                    type="borderSolid"
-                    colorSchema={index === firstPublishedIndex ? 'green' : 'blue'}
-                  >
-                    {index === firstPublishedIndex
-                      ? t('app:app.version_current')
-                      : t('app:app.version_past')}
-                  </Tag>
-                )}
                 {hoveredIndex === index && (
                   <MyIcon
                     name="edit"
                     w={'18px'}
+                    ml={2}
                     _hover={{ color: 'primary.600' }}
                     onClick={(e) => {
                       e.stopPropagation();

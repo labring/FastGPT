@@ -326,7 +326,6 @@ export const useWorkflow = () => {
           });
         } else {
           return (() => {
-            saveSnapshot({});
             onNodesChange(changes);
             setEdges((state) =>
               state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
@@ -366,7 +365,6 @@ export const useWorkflow = () => {
       setNodes((nodeState) => {
         setEdges((state) => {
           saveSnapshot({
-            pastEdges: state,
             pastNodes: nodeState
           });
           return addEdge(
@@ -413,7 +411,7 @@ export const useWorkflow = () => {
   }, [setHoverEdgeId]);
 
   /* drag */
-  const onNodeDragStart = useCallback(() => {
+  const onNodeDragStop = useCallback(() => {
     saveSnapshot({});
   }, [saveSnapshot]);
 
@@ -428,7 +426,7 @@ export const useWorkflow = () => {
     onEdgeMouseLeave,
     helperLineHorizontal,
     helperLineVertical,
-    onNodeDragStart
+    onNodeDragStop
   };
 };
 

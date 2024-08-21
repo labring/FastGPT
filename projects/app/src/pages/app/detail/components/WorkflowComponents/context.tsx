@@ -14,7 +14,7 @@ import { RuntimeEdgeItemType, StoreEdgeItemType } from '@fastgpt/global/core/wor
 import { FlowNodeChangeProps } from '@fastgpt/global/core/workflow/type/fe';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useLocalStorageState, useMemoizedFn, useUpdateEffect } from 'ahooks';
+import { useDeepCompareEffect, useLocalStorageState, useMemoizedFn, useUpdateEffect } from 'ahooks';
 import React, {
   Dispatch,
   SetStateAction,
@@ -45,13 +45,9 @@ import { useDisclosure } from '@chakra-ui/react';
 import { uiWorkflow2StoreWorkflow } from './utils';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import {
-  formatTime2HM,
-  formatTime2YMDHMS,
-  formatTime2YMDHMW
-} from '@fastgpt/global/common/string/time';
+import { formatTime2YMDHMS, formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import type { InitProps } from '@/pages/app/detail/components/PublishHistoriesSlider';
-import { cloneDeep, isEqual, throttle } from 'lodash';
+import { cloneDeep, isEqual } from 'lodash';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -111,6 +107,7 @@ type WorkflowContextType = {
   undo: () => void;
   canRedo: boolean;
   canUndo: boolean;
+  initialSnapshot: SnapshotsType;
 
   // connect
   connectingEdge?: OnConnectStartParams;
@@ -126,11 +123,14 @@ type WorkflowContextType = {
     toolInputs: FlowNodeInputItemType[];
     commonInputs: FlowNodeInputItemType[];
   };
-  initData: (e: {
-    nodes: StoreNodeItemType[];
-    edges: StoreEdgeItemType[];
-    chatConfig?: AppChatConfigType;
-  }) => Promise<void>;
+  initData: (
+    e: {
+      nodes: StoreNodeItemType[];
+      edges: StoreEdgeItemType[];
+      chatConfig?: AppChatConfigType;
+    },
+    isSetInitial?: boolean
+  ) => Promise<void>;
   flowData2StoreDataAndCheck: (hideTip?: boolean) =>
     | {
         nodes: StoreNodeItemType[];
@@ -144,7 +144,6 @@ type WorkflowContextType = {
       }
     | undefined;
   onSaveWorkflow: () => Promise<null | undefined>;
-  saveLabel: string;
   isSaving: boolean;
 
   // debug
@@ -296,7 +295,6 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   onSaveWorkflow: function (): Promise<null | undefined> {
     throw new Error('Function not implemented.');
   },
-  saveLabel: '',
   historiesDefaultData: undefined,
   setHistoriesDefaultData: function (value: React.SetStateAction<InitProps | undefined>): void {
     throw new Error('Function not implemented.');
@@ -319,7 +317,13 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     throw new Error('Function not implemented.');
   },
   canRedo: false,
-  canUndo: false
+  canUndo: false,
+  initialSnapshot: {
+    nodes: [],
+    edges: [],
+    title: '',
+    chatConfig: {}
+  }
 });
 
 const WorkflowContextProvider = ({
@@ -420,9 +424,8 @@ const WorkflowContextProvider = ({
 
   const onChangeNode = useMemoizedFn((props: FlowNodeChangeProps) => {
     const { nodeId, type } = props;
-    saveSnapshot({});
-    setNodes((nodes) =>
-      nodes.map((node) => {
+    setNodes((nodes) => {
+      const newNodes = nodes.map((node) => {
         if (node.id !== nodeId) return node;
 
         const updateObj = cloneDeep(node.data);
@@ -487,8 +490,10 @@ const WorkflowContextProvider = ({
           ...node,
           data: updateObj
         };
-      })
-    );
+      });
+      saveSnapshot({ pastNodes: newNodes });
+      return newNodes;
+    });
   });
   const getNodeDynamicInputs = useCallback(
     (nodeId: string) => {
@@ -564,7 +569,6 @@ const WorkflowContextProvider = ({
   });
 
   /* save workflow */
-  const [saveLabel, setSaveLabel] = useState(t('common:core.app.Not saved'));
   const { runAsync: onSaveWorkflow, loading: isSaving } = useRequest2(async () => {
     const { nodes } = await getWorkflowStore();
 
@@ -586,11 +590,6 @@ const WorkflowContextProvider = ({
         //@ts-ignore
         version: 'v2'
       });
-      setSaveLabel(
-        t('common:core.app.Saved time', {
-          time: formatTime2HM()
-        })
-      );
     } catch (error) {}
 
     return null;
@@ -820,10 +819,33 @@ const WorkflowContextProvider = ({
   const [future, setFuture] = useLocalStorageState<SnapshotsType[]>(`${appId}-future`, {
     defaultValue: []
   }) as [SnapshotsType[], (value: SetStateAction<SnapshotsType[]>) => void];
+  const [initial, setInitial] = useLocalStorageState<SnapshotsType>(`${appId}-initial`, {
+    defaultValue: {
+      nodes: [],
+      edges: [],
+      title: '',
+      chatConfig: appDetail.chatConfig
+    }
+  }) as [SnapshotsType, (value: SetStateAction<SnapshotsType>) => void];
+  const [isInitialSet, setIsInitialSet] = useState(false);
+
+  useDeepCompareEffect(() => {
+    if (!isInitialSet && nodes.length > 0 && appDetail.chatConfig) {
+      setInitial({
+        nodes,
+        edges,
+        title: formatTime2YMDHMS(new Date()),
+        chatConfig: appDetail.chatConfig
+      });
+      setIsInitialSet(true);
+    }
+  }, [nodes, edges, appDetail.chatConfig, isInitialSet]);
 
   useEffect(() => {
     const keys = Object.keys(localStorage);
-    const snapshotKeys = keys.filter((key) => key.endsWith('-past') || key.endsWith('-future'));
+    const snapshotKeys = keys.filter(
+      (key) => key.endsWith('-past') || key.endsWith('-future') || key.endsWith('-initial')
+    );
     snapshotKeys.forEach((key) => {
       const keyAppId = key.split('-')[0];
       if (keyAppId !== appId) {
@@ -832,38 +854,39 @@ const WorkflowContextProvider = ({
     });
   }, [appId]);
 
-  const saveSnapshot = useCallback(
-    throttle(
-      ({
-        pastNodes,
-        pastEdges,
-        customTitle,
-        chatConfig
-      }: {
-        pastNodes?: Node[];
-        pastEdges?: Edge[];
-        customTitle?: string;
-        chatConfig?: AppChatConfigType;
-      }) => {
-        const pastState = past[0];
-        const currentNodes = pastNodes || nodes;
-        const currentEdges = pastEdges || edges;
-        const currentChatConfig = chatConfig || appDetail.chatConfig;
-        const isPastEqual = isEqual(
-          {
-            nodes: currentNodes,
-            edges: currentEdges,
-            chatConfig: currentChatConfig
-          },
-          {
-            nodes: pastState?.nodes,
-            edges: pastState?.edges,
-            chatConfig: pastState?.chatConfig
-          }
-        );
+  const { runAsync: saveSnapshot } = useRequest2(
+    async ({
+      pastNodes,
+      pastEdges,
+      customTitle,
+      chatConfig
+    }: {
+      pastNodes?: Node[];
+      pastEdges?: Edge[];
+      customTitle?: string;
+      chatConfig?: AppChatConfigType;
+    }) => {
+      const pastState = past[0];
+      const currentNodes = pastNodes || nodes;
+      const currentEdges = pastEdges || edges;
+      const currentChatConfig = chatConfig || appDetail.chatConfig;
+      const isPastEqual = isEqual(
+        {
+          nodes: currentNodes,
+          edges: currentEdges,
+          chatConfig: currentChatConfig
+        },
+        {
+          nodes: pastState?.nodes,
+          edges: pastState?.edges,
+          chatConfig: pastState?.chatConfig
+        }
+      );
 
-        if (isPastEqual) return;
-        setPast((past) => [
+      if (isPastEqual) return;
+
+      setPast((past) => {
+        return [
           {
             nodes: currentNodes,
             edges: currentEdges,
@@ -871,41 +894,44 @@ const WorkflowContextProvider = ({
             chatConfig: currentChatConfig
           },
           ...past.slice(0, 199)
-        ]);
+        ];
+      });
 
-        setFuture([]);
-      },
-      500,
-      { leading: true, trailing: true }
-    ),
-    [nodes, edges, past, appDetail.chatConfig, setPast, setFuture]
+      setFuture([]);
+
+      if (customTitle) {
+        toast({
+          title: t('workflow:workflow.Switch_success'),
+          status: 'success'
+        });
+      }
+    },
+    {
+      debounceWait: 500
+    }
   );
 
   const undo = useCallback(() => {
-    const pastState = past[0];
-
-    if (pastState) {
+    if (past[0] && past[1]) {
+      setFuture((future) => [past[0], ...future]);
       setPast((past) => past.slice(1));
-      setFuture((future) => [
-        { nodes, edges, chatConfig: appDetail.chatConfig, title: formatTime2YMDHMS(new Date()) },
-        ...future
-      ]);
-      resetSnapshot(pastState);
+      resetSnapshot(past[1]);
+    } else if (past[0]) {
+      setFuture((future) => [past[0], ...future]);
+      setPast((past) => past.slice(1));
+      resetSnapshot(initial);
     }
-  }, [setNodes, setEdges, past, nodes, edges]);
+  }, [setNodes, setEdges, past, nodes, edges, initial, appDetail.chatConfig]);
 
   const redo = useCallback(() => {
     const futureState = future[0];
 
     if (futureState) {
+      setPast((past) => [future[0], ...past]);
       setFuture((future) => future.slice(1));
-      setPast((past) => [
-        { nodes, edges, chatConfig: appDetail.chatConfig, title: formatTime2YMDHMS(new Date()) },
-        ...past
-      ]);
       resetSnapshot(futureState);
     }
-  }, [setNodes, setEdges, future, nodes, edges]);
+  }, [setNodes, setEdges, future, nodes, edges, appDetail.chatConfig]);
 
   const resetSnapshot = (state: SnapshotsType) => {
     setNodes(state.nodes);
@@ -952,6 +978,7 @@ const WorkflowContextProvider = ({
     resetSnapshot,
     canUndo: !!past.length,
     canRedo: !!future.length,
+    initialSnapshot: initial,
 
     // function
     onFixView,
@@ -961,7 +988,6 @@ const WorkflowContextProvider = ({
     flowData2StoreData,
     onSaveWorkflow,
     isSaving,
-    saveLabel,
 
     // debug
     workflowDebugData,

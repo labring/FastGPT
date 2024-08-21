@@ -42,10 +42,7 @@ const Header = () => {
   const { isPc } = useSystem();
   const router = useRouter();
 
-  const { appDetail, onPublish, appLatestVersion, currentTab } = useContextSelector(
-    AppContext,
-    (v) => v
-  );
+  const { appDetail, onPublish, currentTab } = useContextSelector(AppContext, (v) => v);
   const isV2Workflow = appDetail?.version === 'v2';
   const { register, setValue, watch, handleSubmit, reset } = useForm<FormType>({
     defaultValues: {
@@ -63,8 +60,7 @@ const Header = () => {
     setWorkflowTestData,
     setHistoriesDefaultData,
     historiesDefaultData,
-    initData,
-    past,
+    initialSnapshot,
     nodes,
     edges
   } = useContextSelector(WorkflowContext, (v) => v);
@@ -98,14 +94,11 @@ const Header = () => {
   }, [router]);
 
   const isPublished = (() => {
-    const pastState = past[past.length - 1];
-    if (!pastState) return true;
-
     return isEqual(
       {
-        nodes: pastState.nodes,
-        edges: pastState.edges,
-        chatConfig: pastState.chatConfig
+        nodes: initialSnapshot.nodes,
+        edges: initialSnapshot.edges,
+        chatConfig: initialSnapshot.chatConfig
       },
       {
         nodes: nodes,
@@ -152,7 +145,6 @@ const Header = () => {
           <MyModal
             isOpen={isOpen}
             onClose={onClose}
-            isLoading={loading}
             iconSrc="common/warn"
             title={t('common:common.Exit')}
             w={'400px'}
@@ -165,6 +157,7 @@ const Header = () => {
                 {t('common:common.Exit Directly')}
               </Button>
               <Button
+                isLoading={loading}
                 onClick={async () => {
                   await onClickSave({
                     isPublish: false,
@@ -181,9 +174,7 @@ const Header = () => {
           <Box ml={1}>
             <AppCard
               isPublished={isPublished}
-              showSaveStatus={
-                !historiesDefaultData && isV2Workflow && currentTab === TabEnum.appEdit
-              }
+              showSaveStatus={isV2Workflow && currentTab === TabEnum.appEdit}
             />
           </Box>
 
@@ -252,69 +243,25 @@ const Header = () => {
                 >
                   {({}) => (
                     <MyBox p={1.5}>
-                      <Flex
+                      <MyBox
+                        display={'flex'}
+                        size={'md'}
                         px={1}
                         py={1.5}
                         rounded={'4px'}
                         _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
                         cursor={'pointer'}
-                        onClick={() => {
-                          setValue('isPublish', false);
+                        isLoading={loading}
+                        onClick={async () => {
+                          await onClickSave({
+                            isPublish: false,
+                            versionName: ''
+                          });
                         }}
                       >
                         <MyIcon name={'core/workflow/upload'} w={'16px'} mr={2} />
                         <Box fontSize={'sm'}>{t('common:core.workflow.Save to cloud')}</Box>
-                        {!isPublish && isPublish !== undefined && (
-                          <MyModal
-                            title={t('common:core.workflow.Save to cloud')}
-                            iconSrc={'core/workflow/upload'}
-                            maxW={'400px'}
-                            isOpen
-                            onClose={() => reset()}
-                            isLoading={loading}
-                          >
-                            <ModalBody>
-                              <Box
-                                mb={2.5}
-                                color={'myGray.900'}
-                                fontSize={'14px'}
-                                fontWeight={'500'}
-                              >
-                                {t('common:common.Name')}
-                              </Box>
-                              <Box mb={3}>
-                                <Input
-                                  autoFocus
-                                  placeholder={t('app:app.Version name')}
-                                  bg={'myWhite.600'}
-                                  {...register('versionName', {
-                                    required: t('app:app.version_name_tips')
-                                  })}
-                                />
-                              </Box>
-                              <Box fontSize={'14px'}>{t('app:app.version_save_tips')}</Box>
-                            </ModalBody>
-                            <ModalFooter gap={3}>
-                              <Button
-                                onClick={() => {
-                                  reset();
-                                }}
-                                variant={'whiteBase'}
-                              >
-                                {t('common:common.Cancel')}
-                              </Button>
-                              <Button
-                                onClick={handleSubmit(async (data) => {
-                                  await onClickSave({ ...data, isPublish });
-                                  reset();
-                                })}
-                              >
-                                {t('common:common.Confirm')}
-                              </Button>
-                            </ModalFooter>
-                          </MyModal>
-                        )}
-                      </Flex>
+                      </MyBox>
                       <Flex
                         px={1}
                         py={1.5}
@@ -337,7 +284,6 @@ const Header = () => {
                             maxW={'400px'}
                             isOpen
                             onClose={() => reset()}
-                            isLoading={loading}
                           >
                             <ModalBody>
                               <Box
@@ -365,6 +311,7 @@ const Header = () => {
                                 {t('common:common.Cancel')}
                               </Button>
                               <Button
+                                isLoading={loading}
                                 onClick={handleSubmit(async (data) => {
                                   await onClickSave({ ...data, isPublish });
                                   reset();
@@ -383,7 +330,7 @@ const Header = () => {
             </HStack>
           )}
         </Flex>
-        {historiesDefaultData && (
+        {historiesDefaultData && isV2Workflow && currentTab === TabEnum.appEdit && (
           <PublishHistories
             onClose={() => {
               setHistoriesDefaultData(undefined);
@@ -399,7 +346,6 @@ const Header = () => {
     historiesDefaultData,
     isV2Workflow,
     t,
-    initData,
     setHistoriesDefaultData,
     appDetail.chatConfig,
     flowData2StoreDataAndCheck,

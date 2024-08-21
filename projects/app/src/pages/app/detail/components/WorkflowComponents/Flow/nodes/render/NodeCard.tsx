@@ -310,7 +310,6 @@ const MenuRender = React.memo(function MenuRender({
 
   const onCopyNode = useCallback(
     (nodeId: string) => {
-      saveSnapshot({});
       setNodes((state) => {
         const node = state.find((node) => node.id === nodeId);
         if (!node) return state;
@@ -329,7 +328,7 @@ const MenuRender = React.memo(function MenuRender({
           pluginId: node.data.pluginId,
           version: node.data.version
         };
-        return state.concat(
+        const newState = state.concat(
           storeNode2FlowNode({
             item: {
               flowNodeType: template.flowNodeType,
@@ -347,15 +346,27 @@ const MenuRender = React.memo(function MenuRender({
             selected: true
           })
         );
+        saveSnapshot({
+          pastNodes: newState
+        });
+        return newState;
       });
     },
     [computedNewNodeName, setNodes]
   );
   const onDelNode = useCallback(
     (nodeId: string) => {
-      saveSnapshot({});
-      setNodes((state) => state.filter((item) => item.data.nodeId !== nodeId));
-      setEdges((state) => state.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+      setNodes((nodeState) => {
+        setEdges((state) => {
+          saveSnapshot({
+            pastNodes: nodeState.filter((item) => item.data.nodeId !== nodeId),
+            pastEdges: state.filter((edge) => edge.source !== nodeId && edge.target !== nodeId)
+          });
+
+          return state.filter((edge) => edge.source !== nodeId && edge.target !== nodeId);
+        });
+        return nodeState.filter((item) => item.data.nodeId !== nodeId);
+      });
     },
     [setEdges, setNodes]
   );

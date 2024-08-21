@@ -90,7 +90,7 @@ export default React.memo(NodeUserGuide);
 
 function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentProps) {
   const [, startTst] = useTransition();
-  // const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
+  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
 
   return (
     <Box className="nodrag">
@@ -100,9 +100,12 @@ function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentPro
         onChange={(e) => {
           startTst(() => {
             setAppDetail((state) => {
-              // saveSnapshot({
-              //   chatConfig: state.chatConfig
-              // });
+              saveSnapshot({
+                chatConfig: {
+                  ...state.chatConfig,
+                  welcomeText: e.target.value
+                }
+              });
 
               return {
                 ...state,
@@ -127,7 +130,10 @@ function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: Com
     startTst(() => {
       setAppDetail((state) => {
         saveSnapshot({
-          chatConfig: state.chatConfig
+          chatConfig: {
+            ...state.chatConfig,
+            variables: value
+          }
         });
 
         return {
@@ -156,7 +162,10 @@ function QuestionGuide({ chatConfig: { questionGuide = false }, setAppDetail }: 
         startTst(() => {
           setAppDetail((state) => {
             saveSnapshot({
-              chatConfig: state.chatConfig
+              chatConfig: {
+                ...state.chatConfig,
+                questionGuide: value
+              }
             });
 
             return {
@@ -184,7 +193,10 @@ function TTSGuide({ chatConfig: { ttsConfig }, setAppDetail }: ComponentProps) {
         startTst(() => {
           setAppDetail((state) => {
             saveSnapshot({
-              chatConfig: state.chatConfig
+              chatConfig: {
+                ...state.chatConfig,
+                ttsConfig: e
+              }
             });
 
             return {
@@ -213,7 +225,10 @@ function WhisperGuide({ chatConfig: { whisperConfig, ttsConfig }, setAppDetail }
         startTst(() => {
           setAppDetail((state) => {
             saveSnapshot({
-              chatConfig: state.chatConfig
+              chatConfig: {
+                ...state.chatConfig,
+                whisperConfig: e
+              }
             });
 
             return {
@@ -244,7 +259,10 @@ function ScheduledTrigger({
         startTst(() => {
           setAppDetail((state) => {
             saveSnapshot({
-              chatConfig: state.chatConfig
+              chatConfig: {
+                ...state.chatConfig,
+                scheduledTriggerConfig: e
+              }
             });
 
             return {
@@ -274,7 +292,10 @@ function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: Co
         startTst(() => {
           setAppDetail((state) => {
             saveSnapshot({
-              chatConfig: state.chatConfig
+              chatConfig: {
+                ...state.chatConfig,
+                chatInputGuide: e
+              }
             });
 
             return {
@@ -302,7 +323,10 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
         startTst(() => {
           setAppDetail((state) => {
             saveSnapshot({
-              chatConfig: state.chatConfig
+              chatConfig: {
+                ...state.chatConfig,
+                fileSelectConfig: e
+              }
             });
 
             return {

@@ -467,16 +467,19 @@ const RenderList = React.memo(function RenderList({
         selected: true
       });
 
-      saveSnapshot({});
-      setNodes((state) =>
-        state
+      setNodes((state) => {
+        const newState = state
           .map((node) => ({
             ...node,
             selected: false
           }))
           // @ts-ignore
-          .concat(node)
-      );
+          .concat(node);
+        saveSnapshot({
+          pastNodes: newState
+        });
+        return newState;
+      });
     },
     [computedNewNodeName, reactFlowWrapper, setLoading, setNodes, t, toast, x, y, zoom]
   );

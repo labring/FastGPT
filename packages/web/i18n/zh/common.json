@@ -258,6 +258,8 @@
     "no_intro": "暂无介绍",
     "not_support": "不支持",
     "page_center": "页面居中",
+    "redo_tip": "恢复  ctrl  shift  z",
+    "redo_tip_mac": "恢复  ⌘  shift  z",
     "request_end": "已加载全部",
     "request_more": "点击加载更多",
     "speech": {
@@ -277,7 +279,13 @@
       "textarea": {
         "Magnifying": "放大"
       }
-    }
+    },
+    "undo_tip": "撤销  ctrl  z",
+    "undo_tip_mac": "撤销  ⌘  z ",
+    "zoomin_tip": "缩小  ctrl  -",
+    "zoomin_tip_mac": "缩小  ⌘  -",
+    "zoomout_tip": "放大  ctrl  +",
+    "zoomout_tip_mac": "放大  ⌘  +"
   },
   "confirm_choice": "确认选择",
   "contribute_app_template": "贡献模板",
@@ -944,7 +952,7 @@
       "Run": "运行",
       "Running": "运行中",
       "Save and publish": "保存并发布",
-      "Save to cloud": "保存到云端",
+      "Save to cloud": "仅保存",
       "Skipped": "跳过运行",
       "Stop debug": "停止调试",
       "Success": "运行成功",

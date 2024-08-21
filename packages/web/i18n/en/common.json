@@ -258,6 +258,8 @@
     "no_intro": "No introduction yet",
     "not_support": "not support",
     "page_center": "Center the page",
+    "redo_tip": "redo  ctrl  shift  z",
+    "redo_tip_mac": "redo  ⌘  shift  z",
     "request_end": "All loaded",
     "request_more": "Click to load more",
     "speech": {
@@ -277,7 +279,13 @@
       "textarea": {
         "Magnifying": "Magnify"
       }
-    }
+    },
+    "undo_tip": "unde ctrl z",
+    "undo_tip_mac": "undo  ⌘  z  ",
+    "zoomin_tip": "zoomIn  ctrl  -",
+    "zoomin_tip_mac": "zoomIn ⌘  -",
+    "zoomout_tip": "zoomOut  ctrl  +",
+    "zoomout_tip_mac": "zoomOut  ⌘  +"
   },
   "confirm_choice": "Confirm selection",
   "contribute_app_template": "Contribution template",
@@ -944,7 +952,7 @@
       "Run": "Run",
       "Running": "Running",
       "Save and publish": "Save and publish",
-      "Save to cloud": "Save to cloud",
+      "Save to cloud": "Save",
       "Skipped": "Skipped execution",
       "Stop debug": "Stop debugging",
       "Success": "Execution successful",

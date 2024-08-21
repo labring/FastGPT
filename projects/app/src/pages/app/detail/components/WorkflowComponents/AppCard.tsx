@@ -31,7 +31,7 @@ const AppCard = ({
 
   const { appDetail, onOpenInfoEdit, onOpenTeamTagModal, onDelApp, currentTab } =
     useContextSelector(AppContext, (v) => v);
-  const { historiesDefaultData, flowData2StoreDataAndCheck, onSaveWorkflow, isSaving, saveLabel } =
+  const { historiesDefaultData, flowData2StoreDataAndCheck, onSaveWorkflow, isSaving } =
     useContextSelector(WorkflowContext, (v) => v);
 
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
@@ -156,6 +156,7 @@ const AppCard = ({
             <Flex alignItems={'center'} h={'20px'} fontSize={'mini'} lineHeight={1}>
               <MyTag
                 py={0}
+                px={0}
                 showDot
                 bg={'transparent'}
                 colorSchema={
@@ -186,7 +187,6 @@ const AppCard = ({
     isSaving,
     onCloseImport,
     onSaveWorkflow,
-    saveLabel,
     showSaveStatus,
     t
   ]);

@@ -4,31 +4,36 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import styles from './index.module.scss';
 
-const controlTips = `【windows】
-撤销  ctrl  z
-恢复  ctrl  shift  z
-放大  ctrl  +
-缩小  ctrl  -
-
-【mac】
-撤销  ⌘  z  
-恢复  ⌘  shift  z
-放大  ⌘  +
-缩小  ⌘  -
-
-撤销上限50步，
-恢复生效前提是撤销且没有新的操作
-  - 可撤回范围：组件编辑、组件拖动、组件连线等
-  - 不受影响：页面缩放滚动、保存的新版本、切换查看不同编辑记录`;
-
 const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
-  const { undo, redo, canRedo, canUndo, past } = useContextSelector(WorkflowContext, (v) => v);
+  const { undo, redo, canRedo, canUndo } = useContextSelector(WorkflowContext, (v) => v);
   const { t } = useTranslation();
+  const os = useMemo(() => {
+    const userAgent = window?.navigator.userAgent;
+    const platform = window?.navigator.platform;
+    const macosPlatforms = ['Macintosh', 'MacIntel', 'MacPPC', 'Mac68K'];
+    const windowsPlatforms = ['Win32', 'Win64', 'Windows', 'WinCE'];
+    const iosPlatforms = ['iPhone', 'iPad', 'iPod'];
+
+    if (macosPlatforms.indexOf(platform) !== -1) {
+      return 'Mac OS';
+    } else if (iosPlatforms.indexOf(platform) !== -1) {
+      return 'iOS';
+    } else if (windowsPlatforms.indexOf(platform) !== -1) {
+      return 'Windows';
+    } else if (/Android/.test(userAgent)) {
+      return 'Android';
+    } else if (/Linux/.test(platform)) {
+      return 'Linux';
+    }
+
+    return 'Unknown';
+  }, []);
+  const isMac = os === 'Mac OS';
 
   useEffect(() => {
     const keyDownHandler = (event: KeyboardEvent) => {
@@ -65,9 +70,9 @@ const FlowController = React.memo(function FlowController() {
       <>
         <MiniMap
           style={{
-            height: 106,
-            width: 196,
-            marginBottom: 86,
+            height: 98,
+            width: 184,
+            marginBottom: 72,
             borderRadius: '10px',
             boxShadow: '0px 0px 1px rgba(19, 51, 107, 0.10), 0px 4px 10px rgba(19, 51, 107, 0.10)'
           }}
@@ -78,59 +83,68 @@ const FlowController = React.memo(function FlowController() {
           style={{
             display: 'flex',
             marginBottom: 24,
-            padding: '10px 8px',
+            padding: '5px 8px',
             background: 'white',
             borderRadius: '6px',
             overflow: 'hidden',
             alignItems: 'center',
+            gap: '2px',
             boxShadow:
               '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 12px 16px -4px rgba(19, 51, 107, 0.20)'
           }}
         >
-          <MyTooltip label={controlTips}>
-            <Flex gap={2}>
-              <ControlButton
-                onClick={undo}
-                style={buttonStyle}
-                className={`${styles.customControlButton}`}
-                disabled={!canUndo}
-              >
-                <MyIcon name={'core/workflow/undo'} />
-              </ControlButton>
-              <ControlButton
-                onClick={redo}
-                style={buttonStyle}
-                className={`${styles.customControlButton}`}
-                disabled={!canRedo}
-              >
-                <MyIcon name={'core/workflow/redo'} />
-              </ControlButton>
-              <Box w="1px" h="20px" bg="gray.200" mx={1}></Box>
-              <ControlButton
-                onClick={() => zoomOut()}
-                style={buttonStyle}
-                className={`${styles.customControlButton}`}
-              >
-                <MyIcon name={'common/subtract'} />
-              </ControlButton>
-              <ControlButton
-                onClick={() => zoomIn()}
-                style={buttonStyle}
-                className={`${styles.customControlButton}`}
-              >
-                <MyIcon name={'common/addLight'} />
-              </ControlButton>
-              <Box w="1px" h="20px" bg="gray.200" mx={1}></Box>
-              <MyTooltip label={t('common:common.page_center')}>
-                <ControlButton
-                  onClick={() => fitView()}
-                  style={buttonStyle}
-                  className={`custom-workflow-fix_view ${styles.customControlButton}`}
-                >
-                  <MyIcon name={'core/modules/fixview'} />
-                </ControlButton>
-              </MyTooltip>
-            </Flex>
+          <MyTooltip label={isMac ? t('common:common.undo_tip_mac') : t('common:common.undo_tip')}>
+            <ControlButton
+              onClick={undo}
+              style={buttonStyle}
+              className={`${styles.customControlButton}`}
+              disabled={!canUndo}
+            >
+              <MyIcon name={'core/workflow/undo'} />
+            </ControlButton>
+          </MyTooltip>
+          <MyTooltip label={isMac ? t('common:common.redo_tip_mac') : t('common:common.redo_tip')}>
+            <ControlButton
+              onClick={redo}
+              style={buttonStyle}
+              className={`${styles.customControlButton}`}
+              disabled={!canRedo}
+            >
+              <MyIcon name={'core/workflow/redo'} />
+            </ControlButton>
+          </MyTooltip>
+          <Box w="1px" h="20px" bg="gray.200" mx={1.5}></Box>
+          <MyTooltip
+            label={isMac ? t('common:common.zoomout_tip_mac') : t('common:common.zoomout_tip')}
+          >
+            <ControlButton
+              onClick={() => zoomOut()}
+              style={buttonStyle}
+              className={`${styles.customControlButton}`}
+            >
+              <MyIcon name={'common/subtract'} />
+            </ControlButton>
+          </MyTooltip>
+          <MyTooltip
+            label={isMac ? t('common:common.zoomin_tip_mac') : t('common:common.zoomin_tip')}
+          >
+            <ControlButton
+              onClick={() => zoomIn()}
+              style={buttonStyle}
+              className={`${styles.customControlButton}`}
+            >
+              <MyIcon name={'common/addLight'} />
+            </ControlButton>
+          </MyTooltip>
+          <Box w="1px" h="20px" bg="gray.200" mx={1.5}></Box>
+          <MyTooltip label={t('common:common.page_center')}>
+            <ControlButton
+              onClick={() => fitView()}
+              style={buttonStyle}
+              className={`custom-workflow-fix_view ${styles.customControlButton}`}
+            >
+              <MyIcon name={'core/modules/fixview'} />
+            </ControlButton>
           </MyTooltip>
         </Panel>
         <Background />
