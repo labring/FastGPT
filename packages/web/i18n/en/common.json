@@ -617,7 +617,8 @@
             "success": "Start syncing"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",
@@ -795,6 +796,7 @@
       "Field Name": "Field name",
       "Http request props": "Request parameters",
       "Http request settings": "Request settings",
+      "Http timeout": "Timeout",
       "Input Type": "Input type",
       "Laf sync params": "Synchronize parameters",
       "Max Length": "Maximum length",

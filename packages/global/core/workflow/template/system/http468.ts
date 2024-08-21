@@ -45,6 +45,16 @@ export const HttpNode468: FlowNodeTemplateType = {
       required: true
     },
     {
+      key: NodeInputKeyEnum.httpTimeout,
+      renderTypeList: [FlowNodeInputTypeEnum.custom],
+      valueType: WorkflowIOValueTypeEnum.number,
+      label: '',
+      value: 120,
+      min: 30,
+      max: 600,
+      required: true
+    },
+    {
       key: NodeInputKeyEnum.httpReqUrl,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       valueType: WorkflowIOValueTypeEnum.string,

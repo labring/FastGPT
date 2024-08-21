@@ -17,7 +17,12 @@ import {
   Td,
   TableContainer,
   Button,
-  useDisclosure
+  useDisclosure,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+  NumberInput
 } from '@chakra-ui/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
@@ -372,6 +377,61 @@ export function RenderHttpProps({
 
   return Render;
 }
+const RenderHttpTimeout = ({
+  nodeId,
+  inputs
+}: {
+  nodeId: string;
+  inputs: FlowNodeInputItemType[];
+}) => {
+  const { t } = useTranslation();
+  const timeout = inputs.find((item) => item.key === NodeInputKeyEnum.httpTimeout)!;
+  const [isEditTimeout, setIsEditTimeout] = useState(false);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+
+  return (
+    <Box>
+      <Box mb={2} display={'flex'} justifyContent={'space-between'}>
+        <Box fontWeight={'medium'} color={'myGray.600'}>
+          {t('common:core.module.Http timeout')}
+        </Box>
+        <Box>
+          {isEditTimeout ? (
+            <NumberInput
+              defaultValue={timeout.value}
+              min={timeout.min}
+              max={timeout.max}
+              onBlur={() => setIsEditTimeout(false)}
+              onChange={(e) => {
+                onChangeNode({
+                  nodeId,
+                  type: 'updateInput',
+                  key: NodeInputKeyEnum.httpTimeout,
+                  value: {
+                    ...timeout,
+                    value: Number(e)
+                  }
+                });
+              }}
+            >
+              <NumberInputField bg={'white'} px={3} borderRadius={'sm'} />
+              <NumberInputStepper>
+                <NumberIncrementStepper />
+                <NumberDecrementStepper />
+              </NumberInputStepper>
+            </NumberInput>
+          ) : (
+            <Button
+              variant={'ghost'}
+              color={'myGray.600'}
+              onClick={() => setIsEditTimeout(true)}
+            >{`${timeout?.value} s`}</Button>
+          )}
+        </Box>
+      </Box>
+    </Box>
+  );
+};
 const RenderForm = ({
   nodeId,
   input,
@@ -643,11 +703,13 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     <RenderHttpMethodAndUrl nodeId={nodeId} inputs={inputs} />
   ));
   const Headers = useMemoizedFn(() => <RenderHttpProps nodeId={nodeId} inputs={inputs} />);
+  const HttpTimeout = useMemoizedFn(() => <RenderHttpTimeout nodeId={nodeId} inputs={inputs} />);
 
   const CustomComponents = useMemo(() => {
     return {
       [NodeInputKeyEnum.httpMethod]: HttpMethodAndUrl,
-      [NodeInputKeyEnum.httpHeaders]: Headers
+      [NodeInputKeyEnum.httpHeaders]: Headers,
+      [NodeInputKeyEnum.httpTimeout]: HttpTimeout
     };
   }, [Headers, HttpMethodAndUrl]);
 

@@ -57,10 +57,13 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       system_httpHeader: httpHeader,
       system_httpParams: httpParams = [],
       system_httpJsonBody: httpJsonBody,
+      system_httpTimeout: httpTimeout,
       [NodeInputKeyEnum.addInputParam]: dynamicInput,
       ...body
     }
   } = props;
+
+  console.log(props);
 
   if (!httpReqUrl) {
     return Promise.reject('Http url is empty');
@@ -143,7 +146,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         url: httpReqUrl,
         headers,
         body: requestBody,
-        params
+        params,
+        timeout: httpTimeout
       });
     })();
 
@@ -199,13 +203,15 @@ async function fetchData({
   url,
   headers,
   body,
-  params
+  params,
+  timeout
 }: {
   method: string;
   url: string;
   headers: Record<string, any>;
   body: Record<string, any> | string;
   params: Record<string, any>;
+  timeout: number;
 }) {
   const { data: response } = await axios({
     method,
@@ -215,7 +221,7 @@ async function fetchData({
       'Content-Type': 'application/json',
       ...headers
     },
-    timeout: 120000,
+    timeout: timeout * 1000,
     params: params,
     data: ['POST', 'PUT', 'PATCH'].includes(method) ? body : undefined
   });
