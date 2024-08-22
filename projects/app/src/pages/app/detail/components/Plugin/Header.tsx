@@ -60,43 +60,13 @@ const Header = () => {
     setWorkflowTestData,
     setHistoriesDefaultData,
     historiesDefaultData,
-    initialSnapshot,
     nodes,
     edges,
-    setResetInitial
+    savedSnapshot,
+    setIsResetSavedSnapshot
   } = useContextSelector(WorkflowContext, (v) => v);
 
-  const { runAsync: onClickSave, loading } = useRequest2(
-    useCallback(
-      async ({ isPublish, versionName }: { isPublish: boolean; versionName: string }) => {
-        const data = flowData2StoreData();
-
-        if (data) {
-          await onPublish({
-            ...data,
-            isPublish,
-            versionName,
-            chatConfig: appDetail.chatConfig,
-            //@ts-ignore
-            version: 'v2'
-          });
-          setResetInitial(true);
-        }
-      },
-      [flowData2StoreData, onPublish, appDetail.chatConfig]
-    )
-  );
-
-  const back = useCallback(async () => {
-    try {
-      localStorage.removeItem(`${appDetail._id}-past`);
-      localStorage.removeItem(`${appDetail._id}-future`);
-      localStorage.removeItem(`${appDetail._id}-initial`);
-      router.push('/app/list');
-    } catch (error) {}
-  }, [router]);
-
-  const isPublished = (() => {
+  const isPublished = useMemo(() => {
     // 自定义比较函数
     const customIsEqual = (obj1: Record<string, any>, obj2: Record<string, any>): boolean => {
       if (Array.isArray(obj1) && Array.isArray(obj2)) {
@@ -118,9 +88,9 @@ const Header = () => {
 
     return customIsEqual(
       {
-        nodes: initialSnapshot.nodes,
-        edges: initialSnapshot.edges,
-        chatConfig: initialSnapshot.chatConfig
+        nodes: savedSnapshot.nodes,
+        edges: savedSnapshot.edges,
+        chatConfig: savedSnapshot.chatConfig
       },
       {
         nodes: nodes,
@@ -128,7 +98,38 @@ const Header = () => {
         chatConfig: appDetail.chatConfig
       }
     );
-  })();
+  }, [savedSnapshot, nodes, edges, appDetail.chatConfig]);
+
+  const { runAsync: onClickSave, loading } = useRequest2(
+    useCallback(
+      async ({ isPublish, versionName }: { isPublish: boolean; versionName: string }) => {
+        const data = flowData2StoreData();
+
+        if (data) {
+          await onPublish({
+            ...data,
+            isPublish,
+            versionName,
+            chatConfig: appDetail.chatConfig,
+            //@ts-ignore
+            version: 'v2'
+          });
+          setIsResetSavedSnapshot(true);
+        }
+      },
+      [flowData2StoreData, onPublish, appDetail.chatConfig]
+    )
+  );
+
+  const back = useCallback(async () => {
+    try {
+      localStorage.removeItem(`${appDetail._id}-past`);
+      localStorage.removeItem(`${appDetail._id}-future`);
+      localStorage.removeItem(`${appDetail._id}-initial`);
+      localStorage.removeItem(`${appDetail._id}-saved`);
+      router.push('/app/list');
+    } catch (error) {}
+  }, [router]);
 
   const Render = useMemo(() => {
     return (

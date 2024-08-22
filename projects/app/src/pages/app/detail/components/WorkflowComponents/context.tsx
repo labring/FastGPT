@@ -108,7 +108,8 @@ type WorkflowContextType = {
   canRedo: boolean;
   canUndo: boolean;
   initialSnapshot: SnapshotsType;
-  setResetInitial: React.Dispatch<React.SetStateAction<boolean>>;
+  savedSnapshot: SnapshotsType;
+  setIsResetSavedSnapshot: React.Dispatch<React.SetStateAction<boolean>>;
 
   // connect
   connectingEdge?: OnConnectStartParams;
@@ -325,7 +326,13 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     title: '',
     chatConfig: {}
   },
-  setResetInitial: function (value: React.SetStateAction<boolean>): void {
+  savedSnapshot: {
+    nodes: [],
+    edges: [],
+    title: '',
+    chatConfig: {}
+  },
+  setIsResetSavedSnapshot: function (value: React.SetStateAction<boolean>): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -832,33 +839,56 @@ const WorkflowContextProvider = ({
     }
   }) as [SnapshotsType, (value: SetStateAction<SnapshotsType>) => void];
   const [isInitialSet, setIsInitialSet] = useState(false);
-  const [resetInitial, setResetInitial] = useState(false);
+  const [savedSnapshot, setSavedSnapshot] = useLocalStorageState<SnapshotsType>(`${appId}-saved`, {
+    defaultValue: {
+      nodes: [],
+      edges: [],
+      title: '',
+      chatConfig: appDetail.chatConfig
+    }
+  }) as [SnapshotsType, (value: SetStateAction<SnapshotsType>) => void];
+  const [isResetSavedSnapshot, setIsResetSavedSnapshot] = useState(false);
+
+  useDeepCompareEffect(() => {
+    if (isResetSavedSnapshot && past.length > 0) {
+      setSavedSnapshot(past[0]);
+      setIsResetSavedSnapshot(false);
+    }
+  }, [nodes, edges, appDetail.chatConfig, isResetSavedSnapshot]);
 
   useDeepCompareEffect(() => {
     if (!isInitialSet && !initial.nodes.length && past.length > 0) {
       setInitial(past[past.length - 1]);
+      !savedSnapshot.nodes.length && setSavedSnapshot(past[past.length - 1]);
       setIsInitialSet(true);
     }
-    if (
-      resetInitial ||
-      (!isInitialSet && !initial.nodes.length && nodes.length > 0 && appDetail.chatConfig)
-    ) {
+    if (!isInitialSet && !initial.nodes.length && nodes.length > 0 && appDetail.chatConfig) {
       setInitial({
         nodes,
         edges,
         title: formatTime2YMDHMS(new Date()),
         chatConfig: appDetail.chatConfig
       });
+      !savedSnapshot.nodes.length &&
+        setSavedSnapshot({
+          nodes,
+          edges,
+          title: formatTime2YMDHMS(new Date()),
+          chatConfig: appDetail.chatConfig
+        });
 
       setIsInitialSet(true);
-      setResetInitial(false);
     }
   }, [nodes, edges, appDetail.chatConfig]);
 
   useEffect(() => {
     const keys = Object.keys(localStorage);
     const snapshotKeys = keys.filter(
-      (key) => key.endsWith('-past') || key.endsWith('-future') || key.endsWith('-initial')
+      (key) =>
+        key.endsWith('-past') ||
+        key.endsWith('-future') ||
+        key.endsWith('-initial') ||
+        key.endsWith('-initial')
     );
     snapshotKeys.forEach((key) => {
       const keyAppId = key.split('-')[0];
@@ -994,7 +1024,8 @@ const WorkflowContextProvider = ({
     canUndo: !!past.length,
     canRedo: !!future.length,
     initialSnapshot: initial,
-    setResetInitial,
+    savedSnapshot,
+    setIsResetSavedSnapshot,
 
     // function
     onFixView,
