@@ -96,7 +96,7 @@ function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentPro
     <Box className="nodrag">
       <WelcomeTextConfig
         resize={'both'}
-        defaultValue={welcomeText}
+        value={welcomeText}
         onChange={(e) => {
           startTst(() => {
             setAppDetail((state) => {
@@ -250,7 +250,7 @@ function ScheduledTrigger({
   setAppDetail
 }: ComponentProps) {
   const [, startTst] = useTransition();
-  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
+  // const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
 
   return (
     <ScheduledTriggerConfig
@@ -258,12 +258,12 @@ function ScheduledTrigger({
       onChange={(e) => {
         startTst(() => {
           setAppDetail((state) => {
-            saveSnapshot({
-              chatConfig: {
-                ...state.chatConfig,
-                scheduledTriggerConfig: e
-              }
-            });
+            // saveSnapshot({
+            //   chatConfig: {
+            //     ...state.chatConfig,
+            //     scheduledTriggerConfig: e
+            //   }
+            // });
 
             return {
               ...state,

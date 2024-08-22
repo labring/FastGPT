@@ -11,6 +11,7 @@
     "version_back": "Back to initial",
     "version_copy": "Copy",
     "version_current": "current version",
+    "version_initial": "Initial version",
     "version_initial_copy": "Copy-Initial state",
     "version_name_tips": "Version name can't be empty.",
     "version_past": "published",

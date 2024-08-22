@@ -36,7 +36,7 @@ const ButtonEdge = (props: EdgeProps) => {
         return newState;
       });
     },
-    [setEdges]
+    [saveSnapshot, setEdges]
   );
 
   const highlightEdge = useMemo(() => {

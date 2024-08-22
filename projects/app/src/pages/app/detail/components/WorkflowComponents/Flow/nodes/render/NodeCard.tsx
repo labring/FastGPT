@@ -352,7 +352,7 @@ const MenuRender = React.memo(function MenuRender({
         return newState;
       });
     },
-    [computedNewNodeName, setNodes]
+    [computedNewNodeName, saveSnapshot, setNodes]
   );
   const onDelNode = useCallback(
     (nodeId: string) => {
@@ -368,7 +368,7 @@ const MenuRender = React.memo(function MenuRender({
         return nodeState.filter((item) => item.data.nodeId !== nodeId);
       });
     },
-    [setEdges, setNodes]
+    [saveSnapshot, setEdges, setNodes]
   );
 
   const Render = useMemo(() => {

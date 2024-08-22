@@ -6,7 +6,6 @@ import {
   addEdge,
   EdgeChange,
   Edge,
-  applyNodeChanges,
   Node,
   NodePositionChange,
   XYPosition
@@ -334,8 +333,6 @@ export const useWorkflow = () => {
         }
       } else if (change.type === 'select' && change.selected === false && isDowningCtrl) {
         change.selected = true;
-      } else {
-        setNodes((nodes) => customApplyNodeChanges(changes, nodes));
       }
     }
 

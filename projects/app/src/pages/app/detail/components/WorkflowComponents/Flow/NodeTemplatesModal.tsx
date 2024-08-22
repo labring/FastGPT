@@ -480,7 +480,18 @@ const RenderList = React.memo(function RenderList({
         return newState;
       });
     },
-    [computedNewNodeName, reactFlowWrapper, setLoading, setNodes, t, toast, x, y, zoom]
+    [
+      computedNewNodeName,
+      reactFlowWrapper,
+      saveSnapshot,
+      setLoading,
+      setNodes,
+      t,
+      toast,
+      x,
+      y,
+      zoom
+    ]
   );
 
   const gridStyle = useMemo(() => {

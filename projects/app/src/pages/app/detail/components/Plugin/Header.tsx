@@ -62,12 +62,12 @@ const Header = () => {
     historiesDefaultData,
     nodes,
     edges,
-    savedSnapshot,
-    setIsResetSavedSnapshot
+    past,
+    future,
+    setPast
   } = useContextSelector(WorkflowContext, (v) => v);
 
   const isPublished = useMemo(() => {
-    // 自定义比较函数
     const customIsEqual = (obj1: Record<string, any>, obj2: Record<string, any>): boolean => {
       if (Array.isArray(obj1) && Array.isArray(obj2)) {
         if (obj1.length !== obj2.length) return false;
@@ -86,50 +86,59 @@ const Header = () => {
       return isEqual(obj1, obj2);
     };
 
+    const savedSnapshot = [...future.reverse(), ...past].find(
+      (snapshot) => snapshot.isSaved === true
+    );
     return customIsEqual(
       {
-        nodes: savedSnapshot.nodes,
-        edges: savedSnapshot.edges,
-        chatConfig: savedSnapshot.chatConfig
+        nodes: savedSnapshot?.nodes,
+        edges: savedSnapshot?.edges
+        // chatConfig: savedSnapshot.chatConfig
       },
       {
         nodes: nodes,
-        edges: edges,
-        chatConfig: appDetail.chatConfig
+        edges: edges
+        // chatConfig: appDetail.chatConfig
       }
     );
-  }, [savedSnapshot, nodes, edges, appDetail.chatConfig]);
+  }, [future, past, nodes, edges]);
 
   const { runAsync: onClickSave, loading } = useRequest2(
-    useCallback(
-      async ({ isPublish, versionName }: { isPublish: boolean; versionName: string }) => {
-        const data = flowData2StoreData();
+    async ({ isPublish, versionName }: { isPublish: boolean; versionName: string }) => {
+      const data = flowData2StoreData();
 
-        if (data) {
-          await onPublish({
-            ...data,
-            isPublish,
-            versionName,
-            chatConfig: appDetail.chatConfig,
-            //@ts-ignore
-            version: 'v2'
-          });
-          setIsResetSavedSnapshot(true);
-        }
-      },
-      [flowData2StoreData, onPublish, appDetail.chatConfig]
-    )
+      if (data) {
+        await onPublish({
+          ...data,
+          isPublish,
+          versionName,
+          chatConfig: appDetail.chatConfig,
+          //@ts-ignore
+          version: 'v2'
+        });
+        setPast((prevPast) => {
+          if (prevPast.length === 0) {
+            return prevPast;
+          }
+
+          const updatedFirstElement = {
+            ...prevPast[0],
+            isSaved: true
+          };
+
+          return [updatedFirstElement, ...prevPast.slice(1)];
+        });
+      }
+    }
   );
 
   const back = useCallback(async () => {
     try {
       localStorage.removeItem(`${appDetail._id}-past`);
       localStorage.removeItem(`${appDetail._id}-future`);
-      localStorage.removeItem(`${appDetail._id}-initial`);
-      localStorage.removeItem(`${appDetail._id}-saved`);
       router.push('/app/list');
     } catch (error) {}
-  }, [router]);
+  }, [appDetail._id, router]);
 
   const Render = useMemo(() => {
     return (
@@ -365,20 +374,26 @@ const Header = () => {
   }, [
     isPc,
     currentTab,
-    back,
-    historiesDefaultData,
-    isV2Workflow,
+    isPublished,
+    isOpen,
+    onClose,
     t,
+    loading,
+    isV2Workflow,
+    historiesDefaultData,
+    isSave,
+    back,
+    onOpen,
+    onClickSave,
     setHistoriesDefaultData,
     appDetail.chatConfig,
     flowData2StoreDataAndCheck,
     setWorkflowTestData,
     isPublish,
-    isPublished,
-    isOpen,
-    onClickSave,
-    loading,
-    isSave
+    register,
+    handleSubmit,
+    setValue,
+    reset
   ]);
 
   return Render;

@@ -56,6 +56,7 @@ type SnapshotsType = {
   edges: Edge[];
   title: string;
   chatConfig: AppChatConfigType;
+  isSaved?: boolean;
 };
 type WorkflowContextType = {
   appId?: string;
@@ -102,14 +103,12 @@ type WorkflowContextType = {
   }) => void;
   resetSnapshot: (state: SnapshotsType) => void;
   past: SnapshotsType[];
+  setPast: Dispatch<SetStateAction<SnapshotsType[]>>;
   future: SnapshotsType[];
   redo: () => void;
   undo: () => void;
   canRedo: boolean;
   canUndo: boolean;
-  initialSnapshot: SnapshotsType;
-  savedSnapshot: SnapshotsType;
-  setIsResetSavedSnapshot: React.Dispatch<React.SetStateAction<boolean>>;
 
   // connect
   connectingEdge?: OnConnectStartParams;
@@ -311,6 +310,9 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     throw new Error('Function not implemented.');
   },
   past: [],
+  setPast: function (): void {
+    throw new Error('Function not implemented.');
+  },
   future: [],
   redo: function (): void {
     throw new Error('Function not implemented.');
@@ -319,22 +321,7 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     throw new Error('Function not implemented.');
   },
   canRedo: false,
-  canUndo: false,
-  initialSnapshot: {
-    nodes: [],
-    edges: [],
-    title: '',
-    chatConfig: {}
-  },
-  savedSnapshot: {
-    nodes: [],
-    edges: [],
-    title: '',
-    chatConfig: {}
-  },
-  setIsResetSavedSnapshot: function (value: React.SetStateAction<boolean>): void {
-    throw new Error('Function not implemented.');
-  }
+  canUndo: false
 });
 
 const WorkflowContextProvider = ({
@@ -543,18 +530,33 @@ const WorkflowContextProvider = ({
     };
   };
 
-  const initData = useMemoizedFn(async (e: Parameters<WorkflowContextType['initData']>[0]) => {
-    setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item })) || []);
-    setEdges(e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || []);
+  const initData = useMemoizedFn(
+    async (e: Parameters<WorkflowContextType['initData']>[0], isInit?: boolean) => {
+      setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item })) || []);
+      setEdges(e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || []);
 
-    const chatConfig = e.chatConfig;
-    if (chatConfig) {
-      setAppDetail((state) => ({
-        ...state,
-        chatConfig
-      }));
+      const chatConfig = e.chatConfig;
+      if (chatConfig) {
+        setAppDetail((state) => ({
+          ...state,
+          chatConfig
+        }));
+      }
+
+      if (!isInit) return;
+      if (past.length > 0) {
+        resetSnapshot(past[0]);
+        return;
+      }
+      saveSnapshot({
+        pastNodes: e.nodes?.map((item) => storeNode2FlowNode({ item })) || [],
+        pastEdges: e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [],
+        customTitle: t(`app:app.version_initial`),
+        chatConfig: appDetail.chatConfig,
+        isInit
+      });
     }
-  });
+  );
 
   /* ui flow to store data */
   const flowData2StoreDataAndCheck = useMemoizedFn((hideTip = false) => {
@@ -824,92 +826,40 @@ const WorkflowContextProvider = ({
     onOpenTest();
   }, [workflowTestData]);
 
+  /* snapshots */
   const [past, setPast] = useLocalStorageState<SnapshotsType[]>(`${appId}-past`, {
     defaultValue: []
   }) as [SnapshotsType[], (value: SetStateAction<SnapshotsType[]>) => void];
+
   const [future, setFuture] = useLocalStorageState<SnapshotsType[]>(`${appId}-future`, {
     defaultValue: []
   }) as [SnapshotsType[], (value: SetStateAction<SnapshotsType[]>) => void];
-  const [initial, setInitial] = useLocalStorageState<SnapshotsType>(`${appId}-initial`, {
-    defaultValue: {
-      nodes: [],
-      edges: [],
-      title: '',
-      chatConfig: appDetail.chatConfig
-    }
-  }) as [SnapshotsType, (value: SetStateAction<SnapshotsType>) => void];
-  const [isInitialSet, setIsInitialSet] = useState(false);
-  const [savedSnapshot, setSavedSnapshot] = useLocalStorageState<SnapshotsType>(`${appId}-saved`, {
-    defaultValue: {
-      nodes: [],
-      edges: [],
-      title: '',
-      chatConfig: appDetail.chatConfig
-    }
-  }) as [SnapshotsType, (value: SetStateAction<SnapshotsType>) => void];
-  const [isResetSavedSnapshot, setIsResetSavedSnapshot] = useState(false);
 
-  useDeepCompareEffect(() => {
-    if (isResetSavedSnapshot && past.length > 0) {
-      setSavedSnapshot(past[0]);
-      setIsResetSavedSnapshot(false);
-    }
-  }, [nodes, edges, appDetail.chatConfig, isResetSavedSnapshot]);
-
-  useDeepCompareEffect(() => {
-    if (!isInitialSet && !initial.nodes.length && past.length > 0) {
-      setInitial(past[past.length - 1]);
-      !savedSnapshot.nodes.length && setSavedSnapshot(past[past.length - 1]);
-      setIsInitialSet(true);
-    }
-    if (!isInitialSet && !initial.nodes.length && nodes.length > 0 && appDetail.chatConfig) {
-      setInitial({
-        nodes,
-        edges,
-        title: formatTime2YMDHMS(new Date()),
-        chatConfig: appDetail.chatConfig
-      });
-      !savedSnapshot.nodes.length &&
-        setSavedSnapshot({
-          nodes,
-          edges,
-          title: formatTime2YMDHMS(new Date()),
-          chatConfig: appDetail.chatConfig
-        });
-
-      setIsInitialSet(true);
-    }
-  }, [nodes, edges, appDetail.chatConfig]);
-
-  useEffect(() => {
-    const keys = Object.keys(localStorage);
-    const snapshotKeys = keys.filter(
-      (key) =>
-        key.endsWith('-past') ||
-        key.endsWith('-future') ||
-        key.endsWith('-initial') ||
-        key.endsWith('-initial')
-    );
-    snapshotKeys.forEach((key) => {
-      const keyAppId = key.split('-')[0];
-      if (keyAppId !== appId) {
-        localStorage.removeItem(key);
-      }
-    });
-    past[0] && resetSnapshot(past[0]);
-  }, [appId]);
+  const resetSnapshot = useCallback(
+    (state: SnapshotsType) => {
+      setNodes(state.nodes);
+      setEdges(state.edges);
+      setAppDetail((detail) => ({
+        ...detail,
+        chatConfig: state.chatConfig
+      }));
+    },
+    [setAppDetail, setEdges, setNodes]
+  );
 
   const { runAsync: saveSnapshot } = useRequest2(
     async ({
       pastNodes,
       pastEdges,
       customTitle,
-      chatConfig
+      chatConfig,
+      isInit
     }: {
       pastNodes?: Node[];
       pastEdges?: Edge[];
       customTitle?: string;
       chatConfig?: AppChatConfigType;
+      isInit?: boolean;
     }) => {
       const pastState = past[0];
       const currentNodes = pastNodes || nodes;
@@ -930,21 +880,20 @@ const WorkflowContextProvider = ({
 
       if (isPastEqual) return;
 
-      setPast((past) => {
-        return [
-          {
-            nodes: currentNodes,
-            edges: currentEdges,
-            title: customTitle || formatTime2YMDHMS(new Date()),
-            chatConfig: currentChatConfig
-          },
-          ...past.slice(0, 199)
-        ];
-      });
+      setPast((past) => [
+        {
+          nodes: currentNodes,
+          edges: currentEdges,
+          title: customTitle || formatTime2YMDHMS(new Date()),
+          chatConfig: currentChatConfig,
+          isSaved: isInit
+        },
+        ...past.slice(0, 199)
+      ]);
 
       setFuture([]);
 
-      if (customTitle) {
+      if (customTitle && !isInit) {
         toast({
           title: t('workflow:workflow.Switch_success'),
           status: 'success'
@@ -957,16 +906,12 @@ const WorkflowContextProvider = ({
   );
 
   const undo = useCallback(() => {
-    if (past[0] && past[1]) {
+    if (past[1]) {
       setFuture((future) => [past[0], ...future]);
       setPast((past) => past.slice(1));
       resetSnapshot(past[1]);
-    } else if (past[0]) {
-      setFuture((future) => [past[0], ...future]);
-      setPast((past) => past.slice(1));
-      resetSnapshot(initial);
     }
-  }, [setNodes, setEdges, past, nodes, edges, initial, appDetail.chatConfig]);
+  }, [past, setFuture, setPast, resetSnapshot]);
 
   const redo = useCallback(() => {
     const futureState = future[0];
@@ -976,16 +921,19 @@ const WorkflowContextProvider = ({
       setFuture((future) => future.slice(1));
       resetSnapshot(futureState);
     }
-  }, [setNodes, setEdges, future, nodes, edges, appDetail.chatConfig]);
+  }, [future, setPast, setFuture, resetSnapshot]);
 
-  const resetSnapshot = (state: SnapshotsType) => {
-    setNodes(state.nodes);
-    setEdges(state.edges);
-    setAppDetail((detail) => ({
-      ...detail,
-      chatConfig: state.chatConfig
-    }));
-  };
+  // remove other app's snapshot
+  useEffect(() => {
+    const keys = Object.keys(localStorage);
+    const snapshotKeys = keys.filter((key) => key.endsWith('-past') || key.endsWith('-future'));
+    snapshotKeys.forEach((key) => {
+      const keyAppId = key.split('-')[0];
+      if (keyAppId !== appId) {
+        localStorage.removeItem(key);
+      }
+    });
+  }, [appId]);
 
   const value = {
     appId,
@@ -1016,16 +964,14 @@ const WorkflowContextProvider = ({
 
     // snapshots
     past,
+    setPast,
     future,
     undo,
     redo,
     saveSnapshot,
     resetSnapshot,
-    canUndo: !!past.length,
+    canUndo: past.length > 1,
     canRedo: !!future.length,
-    initialSnapshot: initial,
-    savedSnapshot,
-    setIsResetSavedSnapshot,
 
     // function
     onFixView,

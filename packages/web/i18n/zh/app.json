@@ -11,6 +11,7 @@
     "version_back": "回到初始状态",
     "version_copy": "副本",
     "version_current": "当前版本",
+    "version_initial": "初始版本",
     "version_initial_copy": "副本-初始状态",
     "version_name_tips": "版本名称不能为空",
     "version_past": "发布过",
