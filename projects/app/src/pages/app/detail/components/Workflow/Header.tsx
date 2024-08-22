@@ -44,14 +44,12 @@ const Header = () => {
 
   const { appDetail, onPublish, currentTab } = useContextSelector(AppContext, (v) => v);
   const isV2Workflow = appDetail?.version === 'v2';
-  const { register, setValue, watch, handleSubmit, reset } = useForm<FormType>({
-    defaultValues: {
-      versionName: '',
-      isPublish: undefined
-    }
-  });
-  const isPublish = watch('isPublish');
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    isOpen: isSaveAndPublishModalOpen,
+    onOpen: onSaveAndPublishModalOpen,
+    onClose: onSaveAndPublishModalClose
+  } = useDisclosure();
   const [isSave, setIsSave] = useState(false);
 
   const {
@@ -80,17 +78,7 @@ const Header = () => {
 
         if (keys1.length !== keys2.length) return false;
 
-        return keys1.every((key) => {
-          if (key === 'chatConfig') {
-            const chatConfig1 = { ...obj1[key] };
-            const chatConfig2 = { ...obj2[key] };
-            delete chatConfig1.scheduledTriggerConfig;
-            delete chatConfig2.scheduledTriggerConfig;
-
-            return customIsEqual(chatConfig1, chatConfig2);
-          }
-          return customIsEqual(obj1[key], obj2[key]);
-        });
+        return keys1.every((key) => customIsEqual(obj1[key], obj2[key]));
       }
 
       return isEqual(obj1, obj2);
@@ -99,23 +87,22 @@ const Header = () => {
     const savedSnapshot = [...future.reverse(), ...past].find(
       (snapshot) => snapshot.isSaved === true
     );
-
     return customIsEqual(
       {
         nodes: savedSnapshot?.nodes,
-        edges: savedSnapshot?.edges,
-        chatConfig: savedSnapshot?.chatConfig
+        edges: savedSnapshot?.edges
+        // chatConfig: savedSnapshot.chatConfig
       },
       {
         nodes: nodes,
-        edges: edges,
-        chatConfig: appDetail.chatConfig
+        edges: edges
+        // chatConfig: appDetail.chatConfig
       }
     );
-  }, [future, past, nodes, edges, appDetail.chatConfig]);
+  }, [future, past, nodes, edges]);
 
   const { runAsync: onClickSave, loading } = useRequest2(
-    async ({ isPublish, versionName }: { isPublish: boolean; versionName: string }) => {
+    async ({ isPublish, versionName }: { isPublish?: boolean; versionName: string }) => {
       const data = flowData2StoreData();
 
       if (data) {
@@ -127,23 +114,21 @@ const Header = () => {
           //@ts-ignore
           version: 'v2'
         });
-        setPast((prevPast) => {
-          if (prevPast.length === 0) {
-            return prevPast;
-          }
-
-          const updatedFirstElement = {
-            ...prevPast[0],
-            isSaved: true
-          };
-
-          return [updatedFirstElement, ...prevPast.slice(1)];
-        });
+        setPast((prevPast) =>
+          prevPast.map((item, index) =>
+            index === prevPast.length - 1
+              ? {
+                  ...item,
+                  isSaved: true
+                }
+              : item
+          )
+        );
       }
     }
   );
 
-  const back = useCallback(async () => {
+  const onBack = useCallback(async () => {
     try {
       localStorage.removeItem(`${appDetail._id}-past`);
       localStorage.removeItem(`${appDetail._id}-future`);
@@ -183,7 +168,7 @@ const Header = () => {
             name={'common/leftArrowLight'}
             w={'1.75rem'}
             cursor={'pointer'}
-            onClick={isPublished ? () => back() : () => onOpen()}
+            onClick={isPublished ? onBack : () => onOpen()}
           />
           <MyModal
             isOpen={isOpen}
@@ -196,17 +181,16 @@ const Header = () => {
               <Box>{t('workflow:workflow.exit_tips')}</Box>
             </ModalBody>
             <ModalFooter gap={3}>
-              <Button variant={'whiteDanger'} onClick={() => back()}>
+              <Button variant={'whiteDanger'} onClick={onBack}>
                 {t('common:common.Exit Directly')}
               </Button>
               <Button
                 isLoading={loading}
                 onClick={async () => {
                   await onClickSave({
-                    isPublish: false,
                     versionName: ''
                   });
-                  back();
+                  onBack();
                 }}
               >
                 {t('common:common.Save_and_exit')}
@@ -215,10 +199,7 @@ const Header = () => {
           </MyModal>
           {/* app info */}
           <Box ml={1}>
-            <AppCard
-              isPublished={isPublished}
-              showSaveStatus={isV2Workflow && currentTab === TabEnum.appEdit}
-            />
+            <AppCard isPublished={isPublished} showSaveStatus={isV2Workflow} />
           </Box>
 
           {isPc && (
@@ -297,7 +278,6 @@ const Header = () => {
                         isLoading={loading}
                         onClick={async () => {
                           await onClickSave({
-                            isPublish: false,
                             versionName: ''
                           });
                         }}
@@ -314,56 +294,18 @@ const Header = () => {
                         onClick={() => {
                           const data = flowData2StoreDataAndCheck();
                           if (data) {
-                            setValue('isPublish', true);
+                            onSaveAndPublishModalOpen();
                           }
                         }}
                       >
                         <MyIcon name={'core/workflow/publish'} w={'16px'} mr={2} />
                         <Box fontSize={'sm'}>{t('common:core.workflow.Save and publish')}</Box>
-                        {isPublish && (
-                          <MyModal
-                            title={t('common:core.workflow.Save and publish')}
-                            iconSrc={'core/workflow/publish'}
-                            maxW={'400px'}
-                            isOpen
-                            onClose={() => reset()}
-                          >
-                            <ModalBody>
-                              <Box
-                                mb={2.5}
-                                color={'myGray.900'}
-                                fontSize={'14px'}
-                                fontWeight={'500'}
-                              >
-                                {t('common:common.Name')}
-                              </Box>
-                              <Box mb={3}>
-                                <Input
-                                  autoFocus
-                                  placeholder={t('app:app.Version name')}
-                                  bg={'myWhite.600'}
-                                  {...register('versionName', {
-                                    required: t('app:app.version_name_tips')
-                                  })}
-                                />
-                              </Box>
-                              <Box fontSize={'14px'}>{t('app:app.version_publish_tips')}</Box>
-                            </ModalBody>
-                            <ModalFooter gap={3}>
-                              <Button onClick={() => reset()} variant={'whiteBase'}>
-                                {t('common:common.Cancel')}
-                              </Button>
-                              <Button
-                                isLoading={loading}
-                                onClick={handleSubmit(async (data) => {
-                                  await onClickSave({ ...data, isPublish });
-                                  reset();
-                                })}
-                              >
-                                {t('common:common.Confirm')}
-                              </Button>
-                            </ModalFooter>
-                          </MyModal>
+                        {isSaveAndPublishModalOpen && (
+                          <SaveAndPublishModal
+                            isLoading={loading}
+                            onClose={onSaveAndPublishModalClose}
+                            onClickSave={onClickSave}
+                          />
                         )}
                       </Flex>
                     </MyBox>
@@ -393,21 +335,83 @@ const Header = () => {
     isV2Workflow,
     historiesDefaultData,
     isSave,
-    back,
+    onBack,
     onOpen,
     onClickSave,
     setHistoriesDefaultData,
     appDetail.chatConfig,
     flowData2StoreDataAndCheck,
     setWorkflowTestData,
-    isPublish,
-    register,
-    handleSubmit,
-    setValue,
-    reset
+    isSaveAndPublishModalOpen,
+    onSaveAndPublishModalClose,
+    onSaveAndPublishModalOpen
   ]);
 
   return Render;
 };
 
 export default React.memo(Header);
+
+const SaveAndPublishModal = ({
+  onClose,
+  isLoading,
+  onClickSave
+}: {
+  onClose: () => void;
+  isLoading: boolean;
+  onClickSave: (data: { isPublish: boolean; versionName: string }) => Promise<void>;
+}) => {
+  const { t } = useTranslation();
+  const { register, handleSubmit } = useForm<FormType>({
+    defaultValues: {
+      versionName: '',
+      isPublish: undefined
+    }
+  });
+
+  return (
+    <MyModal
+      title={t('common:core.workflow.Save and publish')}
+      iconSrc={'core/workflow/publish'}
+      maxW={'400px'}
+      isOpen
+      onClose={onClose}
+    >
+      <ModalBody>
+        <Box mb={2.5} color={'myGray.900'} fontSize={'14px'} fontWeight={'500'}>
+          {t('common:common.Name')}
+        </Box>
+        <Box mb={3}>
+          <Input
+            autoFocus
+            placeholder={t('app:app.Version name')}
+            bg={'myWhite.600'}
+            {...register('versionName', {
+              required: t('app:app.version_name_tips')
+            })}
+          />
+        </Box>
+        <Box fontSize={'14px'}>{t('app:app.version_publish_tips')}</Box>
+      </ModalBody>
+      <ModalFooter gap={3}>
+        <Button
+          onClick={() => {
+            onClose();
+          }}
+          variant={'whiteBase'}
+        >
+          {t('common:common.Cancel')}
+        </Button>
+        <Button
+          isLoading={isLoading}
+          onClick={handleSubmit(async (data) => {
+            await onClickSave({ ...data, isPublish: true });
+            onClose();
+          })}
+        >
+          {t('common:common.Confirm')}
+        </Button>
+      </ModalFooter>
+    </MyModal>
+  );
+};

@@ -27,18 +27,13 @@ const AppVersionSchema = new Schema({
     type: chatConfigType
   },
   isPublish: {
-    type: Boolean,
-    default: true
+    type: Boolean
   },
   versionName: {
     type: String,
     default: ''
   },
-  avatar: {
-    type: String,
-    default: '/icon/logo.svg'
-  },
-  username: {
+  tmbId: {
     type: String
   }
 });

@@ -375,7 +375,7 @@ export const useWorkflow = () => {
         return nodeState;
       });
     },
-    [setEdges]
+    [saveSnapshot, setEdges, setNodes]
   );
   const customOnConnect = useCallback(
     (connect: Connection) => {

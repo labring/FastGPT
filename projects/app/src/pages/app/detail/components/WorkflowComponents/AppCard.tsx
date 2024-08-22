@@ -184,9 +184,7 @@ const AppCard = ({
     appDetail.name,
     isOpenImport,
     isPublished,
-    isSaving,
     onCloseImport,
-    onSaveWorkflow,
     showSaveStatus,
     t
   ]);

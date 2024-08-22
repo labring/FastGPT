@@ -12,28 +12,8 @@ const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { undo, redo, canRedo, canUndo } = useContextSelector(WorkflowContext, (v) => v);
   const { t } = useTranslation();
-  const os = useMemo(() => {
-    const userAgent = window?.navigator.userAgent;
-    const platform = window?.navigator.platform;
-    const macosPlatforms = ['Macintosh', 'MacIntel', 'MacPPC', 'Mac68K'];
-    const windowsPlatforms = ['Win32', 'Win64', 'Windows', 'WinCE'];
-    const iosPlatforms = ['iPhone', 'iPad', 'iPod'];
 
-    if (macosPlatforms.indexOf(platform) !== -1) {
-      return 'Mac OS';
-    } else if (iosPlatforms.indexOf(platform) !== -1) {
-      return 'iOS';
-    } else if (windowsPlatforms.indexOf(platform) !== -1) {
-      return 'Windows';
-    } else if (/Android/.test(userAgent)) {
-      return 'Android';
-    } else if (/Linux/.test(platform)) {
-      return 'Linux';
-    }
-
-    return 'Unknown';
-  }, []);
-  const isMac = os === 'Mac OS';
+  const isMac = window.navigator.userAgent.toLocaleLowerCase().includes('mac');
 
   useEffect(() => {
     const keyDownHandler = (event: KeyboardEvent) => {
@@ -57,7 +37,7 @@ const FlowController = React.memo(function FlowController() {
     return () => {
       document.removeEventListener('keydown', keyDownHandler);
     };
-  }, [undo, redo]);
+  }, [undo, redo, zoomIn, zoomOut]);
 
   const buttonStyle = {
     border: 'none',
@@ -93,6 +73,7 @@ const FlowController = React.memo(function FlowController() {
               '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 12px 16px -4px rgba(19, 51, 107, 0.20)'
           }}
         >
+          {/* undo */}
           <MyTooltip label={isMac ? t('common:common.undo_tip_mac') : t('common:common.undo_tip')}>
             <ControlButton
               onClick={undo}
@@ -103,6 +84,8 @@ const FlowController = React.memo(function FlowController() {
               <MyIcon name={'core/workflow/undo'} />
             </ControlButton>
           </MyTooltip>
+
+          {/* redo */}
           <MyTooltip label={isMac ? t('common:common.redo_tip_mac') : t('common:common.redo_tip')}>
             <ControlButton
               onClick={redo}
@@ -113,7 +96,10 @@ const FlowController = React.memo(function FlowController() {
               <MyIcon name={'core/workflow/redo'} />
             </ControlButton>
           </MyTooltip>
+
           <Box w="1px" h="20px" bg="gray.200" mx={1.5}></Box>
+
+          {/* zoom out */}
           <MyTooltip
             label={isMac ? t('common:common.zoomout_tip_mac') : t('common:common.zoomout_tip')}
           >
@@ -125,6 +111,8 @@ const FlowController = React.memo(function FlowController() {
               <MyIcon name={'common/subtract'} />
             </ControlButton>
           </MyTooltip>
+
+          {/* zoom in */}
           <MyTooltip
             label={isMac ? t('common:common.zoomin_tip_mac') : t('common:common.zoomin_tip')}
           >
@@ -136,7 +124,10 @@ const FlowController = React.memo(function FlowController() {
               <MyIcon name={'common/addLight'} />
             </ControlButton>
           </MyTooltip>
+
           <Box w="1px" h="20px" bg="gray.200" mx={1.5}></Box>
+
+          {/* fit view */}
           <MyTooltip label={t('common:common.page_center')}>
             <ControlButton
               onClick={() => fitView()}
@@ -150,7 +141,7 @@ const FlowController = React.memo(function FlowController() {
         <Background />
       </>
     );
-  }, [fitView, canUndo, canRedo]);
+  }, [isMac, t, undo, buttonStyle, canUndo, redo, canRedo, zoomOut, zoomIn, fitView]);
 
   return Render;
 });
