@@ -1,4 +1,4 @@
-import { StandardSubLevelEnum, SubModeEnum, SubStatusEnum, SubTypeEnum } from './constants';
+import { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from './constants';
 
 // Content of plan
 export type TeamStandardSubPlanItemType = {
@@ -17,10 +17,7 @@ export type TeamStandardSubPlanItemType = {
   permissionReRank: boolean;
 };
 
-export type StandSubPlanLevelMapType = Record<
-  `${StandardSubLevelEnum}`,
-  TeamStandardSubPlanItemType
->;
+export type StandSubPlanLevelMapType = Record<StandardSubLevelEnum, TeamStandardSubPlanItemType>;
 
 export type SubPlanType = {
   [SubTypeEnum.standard]: StandSubPlanLevelMapType;
@@ -36,15 +33,14 @@ export type TeamSubSchema = {
   _id: string;
   teamId: string;
   type: `${SubTypeEnum}`;
-  status: `${SubStatusEnum}`;
   startTime: Date;
   expiredTime: Date;
   price: number;
 
   currentMode: `${SubModeEnum}`;
   nextMode: `${SubModeEnum}`;
-  currentSubLevel: `${StandardSubLevelEnum}`;
-  nextSubLevel: `${StandardSubLevelEnum}`;
+  currentSubLevel: StandardSubLevelEnum;
+  nextSubLevel: StandardSubLevelEnum;
 
   pointPrice: number;
   totalPoints: number;

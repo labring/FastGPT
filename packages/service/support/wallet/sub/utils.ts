@@ -1,7 +1,6 @@
 import {
   StandardSubLevelEnum,
   SubModeEnum,
-  SubStatusEnum,
   SubTypeEnum
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { MongoTeamSub } from './schema';
@@ -38,12 +37,11 @@ export const initTeamStandardPlan2Free = async ({
   teamId: string;
   session?: ClientSession;
 }) => {
-  const freePoints = global?.subPlans?.standard?.free?.totalPoints || 100;
+  const freePoints = global?.subPlans?.standard?.[StandardSubLevelEnum.free]?.totalPoints || 100;
 
   const teamStandardSub = await MongoTeamSub.findOne({ teamId, type: SubTypeEnum.standard });
 
   if (teamStandardSub) {
-    teamStandardSub.status = SubStatusEnum.active;
     teamStandardSub.currentMode = SubModeEnum.month;
     teamStandardSub.nextMode = SubModeEnum.month;
     teamStandardSub.startTime = new Date();
@@ -68,7 +66,6 @@ export const initTeamStandardPlan2Free = async ({
       {
         teamId,
         type: SubTypeEnum.standard,
-        status: SubStatusEnum.active,
         currentMode: SubModeEnum.month,
         nextMode: SubModeEnum.month,
         startTime: new Date(),

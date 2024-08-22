@@ -19,19 +19,6 @@ export const subTypeMap = {
   }
 };
 
-export enum SubStatusEnum {
-  active = 'active',
-  expired = 'expired'
-}
-export const subStatusMap = {
-  [SubStatusEnum.active]: {
-    label: 'support.wallet.subscription.status.active'
-  },
-  [SubStatusEnum.expired]: {
-    label: 'support.wallet.subscription.status.canceled'
-  }
-};
-
 export enum SubModeEnum {
   month = 'month',
   year = 'year'

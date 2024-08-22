@@ -7,10 +7,9 @@ import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import {
-  standardSubLevelMap,
-  subModeMap,
-  subStatusMap,
-  subTypeMap
+  StandardSubLevelEnum,
+  SubModeEnum,
+  SubTypeEnum
 } from '@fastgpt/global/support/wallet/sub/constants';
 import type { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 
@@ -24,12 +23,7 @@ const SubSchema = new Schema({
   },
   type: {
     type: String,
-    enum: Object.keys(subTypeMap),
-    required: true
-  },
-  status: {
-    type: String,
-    enum: Object.keys(subStatusMap),
+    enum: Object.values(SubTypeEnum),
     required: true
   },
   startTime: {
@@ -41,7 +35,7 @@ const SubSchema = new Schema({
     required: true
   },
   price: {
-    // last sub pay price(total price)
+    // Pay price(total price)
     type: Number,
     required: true
   },
@@ -49,19 +43,19 @@ const SubSchema = new Schema({
   // standard sub
   currentMode: {
     type: String,
-    enum: Object.keys(subModeMap)
+    enum: Object.values(SubModeEnum)
   },
   nextMode: {
     type: String,
-    enum: Object.keys(subModeMap)
+    enum: Object.values(SubModeEnum)
   },
   currentSubLevel: {
     type: String,
-    enum: Object.keys(standardSubLevelMap)
+    enum: Object.values(StandardSubLevelEnum)
   },
   nextSubLevel: {
     type: String,
-    enum: Object.keys(standardSubLevelMap)
+    enum: Object.values(StandardSubLevelEnum)
   },
 
   // stand sub and extra points sub. Plan total points
