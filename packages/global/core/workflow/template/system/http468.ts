@@ -49,8 +49,8 @@ export const HttpNode468: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.custom],
       valueType: WorkflowIOValueTypeEnum.number,
       label: '',
-      value: 120,
-      min: 30,
+      value: 30,
+      min: 5,
       max: 600,
       required: true
     },

@@ -31,6 +31,7 @@ type HttpRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.httpParams]: PropsArrType[];
   [NodeInputKeyEnum.httpJsonBody]: string;
   [NodeInputKeyEnum.addInputParam]: Record<string, any>;
+  [NodeInputKeyEnum.httpTimeout]?: number;
   [key: string]: any;
 }>;
 type HttpResponse = DispatchNodeResultType<{
@@ -57,7 +58,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       system_httpHeader: httpHeader,
       system_httpParams: httpParams = [],
       system_httpJsonBody: httpJsonBody,
-      system_httpTimeout: httpTimeout,
+      system_httpTimeout: httpTimeout = 60,
       [NodeInputKeyEnum.addInputParam]: dynamicInput,
       ...body
     }

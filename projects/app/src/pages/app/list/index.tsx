@@ -138,7 +138,7 @@ const MyApps = () => {
           flex={'1 0 0'}
           flexDirection={'column'}
           h={'100%'}
-          pr={folderDetail ? [4, 2] : [4, 10]}
+          pr={folderDetail ? [3, 2] : [3, 10]}
           pl={3}
           overflowY={'auto'}
           overflowX={'hidden'}

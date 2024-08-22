@@ -20,6 +20,7 @@
   "external_read_url": "外部预览地址",
   "external_read_url_tip": "可以配置你文件库的阅读地址。便于对用户进行阅读鉴权操作。目前可以使用 {{fileId}} 变量来指代外部文件 ID。",
   "external_url": "文件访问 URL",
+  "file_model_function_tip": "用于增强索引和 QA 生成",
   "filename": "文件名",
   "folder_dataset": "文件夹",
   "rebuild_embedding_start_tip": "切换索引模型任务已开始",

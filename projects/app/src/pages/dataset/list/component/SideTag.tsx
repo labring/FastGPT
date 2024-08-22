@@ -11,18 +11,15 @@ const SideTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps)
     return {
       [DatasetTypeEnum.dataset]: {
         icon: 'core/dataset/commonDatasetOutline',
-        label: t('dataset:common_dataset'),
-        collectionLabel: 'common.File'
+        label: t('dataset:common_dataset')
       },
       [DatasetTypeEnum.websiteDataset]: {
         icon: 'core/dataset/websiteDatasetOutline',
-        label: t('dataset:website_dataset'),
-        collectionLabel: 'common.Website'
+        label: t('dataset:website_dataset')
       },
       [DatasetTypeEnum.externalFile]: {
         icon: 'core/dataset/externalDatasetOutline',
-        label: t('dataset:external_file'),
-        collectionLabel: 'common.File'
+        label: t('dataset:external_file')
       }
     };
   }, [t]);
@@ -31,8 +28,6 @@ const SideTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps)
   return (
     <Flex
       bg={'myGray.100'}
-      borderWidth={'1px'}
-      borderColor={'myGray.200'}
       py={'3px'}
       pl={'8px'}
       pr={'12px'}
@@ -43,7 +38,6 @@ const SideTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps)
     >
       <MyIcon name={item.icon as any} w={'0.8rem'} color={'myGray.400'} />
       <Box fontSize={'mini'} ml={1}>
-        {/* @ts-ignore */}
         {item.label}
       </Box>
     </Flex>

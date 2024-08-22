@@ -197,11 +197,11 @@ function InvoiceDetailModal({
   );
 }
 
-function LabelItem({ label, value }: { label: string; value: string }) {
+function LabelItem({ label, value }: { label: string; value?: string }) {
   return (
     <Flex alignItems={'center'} justify={'space-between'}>
       <FormLabel flex={'0 0 120px'}>{label}</FormLabel>
-      <Box>{value}</Box>
+      <Box>{value || '-'}</Box>
     </Flex>
   );
 }

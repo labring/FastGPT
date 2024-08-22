@@ -409,7 +409,7 @@ const PlanUsage = () => {
 
   return standardPlan ? (
     <Box mt={[6, 0]}>
-      <Flex fontSize={'lg'} h={'30px'}>
+      <Flex fontSize={['md', 'lg']} h={'30px'}>
         <Flex alignItems={'center'}>
           <MyIcon mr={2} name={'support/account/plans'} w={'20px'} />
           {t('common:support.wallet.subscription.Team plan and usage')}
@@ -428,7 +428,7 @@ const PlanUsage = () => {
         borderColor={'borderColor.low'}
         borderRadius={'md'}
       >
-        <Flex px={[5, 7]} py={[3, 6]}>
+        <Flex px={[5, 7]} py={[3, 6]} whiteSpace={'nowrap'}>
           <Box flex={'1 0 0'}>
             <Box color={'myGray.600'} fontSize="sm">
               {t('common:support.wallet.subscription.Current plan')}
@@ -475,8 +475,10 @@ const PlanUsage = () => {
       >
         <Flex>
           <Flex flex={'1 0 0'} alignItems={'flex-end'}>
-            <Box fontSize={'md'}>{t('common:info.resource')}</Box>
-            <Box fontSize={'xs'} color={'myGray.500'}>
+            <Box fontSize={'md'} fontWeight={'bold'} color={'myGray.900'}>
+              {t('common:info.resource')}
+            </Box>
+            <Box ml={1} display={['none', 'block']} fontSize={'xs'} color={'myGray.500'}>
               {t('common:info.include')}
             </Box>
           </Flex>

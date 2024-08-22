@@ -149,8 +149,8 @@ const ListItem = () => {
                 app.type === AppTypeEnum.folder
                   ? t('common:common.folder.Open folder')
                   : app.permission.hasWritePer
-                    ? appT('edit_app')
-                    : appT('go_to_chat')
+                    ? t('app:edit_app')
+                    : t('app:go_to_chat')
               }
             >
               <MyBox
