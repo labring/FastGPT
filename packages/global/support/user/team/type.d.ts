@@ -94,11 +94,11 @@ export type LafAccountType = {
 export type TeamInvoiceHeaderType = {
   teamName: string;
   unifiedCreditCode: string;
-  companyAddress: string;
-  companyPhone: string;
-  bankName: string;
-  bankAccount: string;
-  needSpecialInvoice?: boolean;
+  companyAddress?: string;
+  companyPhone?: string;
+  bankName?: string;
+  bankAccount?: string;
+  needSpecialInvoice: boolean;
   emailAddress: string;
 };
 

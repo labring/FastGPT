@@ -1,6 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { resumeInheritPer } from '@/web/core/dataset/api';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { Box, Flex, Grid, HStack } from '@chakra-ui/react';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
@@ -38,6 +37,8 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideTag from './SideTag';
+
+const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
 function List() {
   const { setLoading } = useSystemStore();
@@ -110,8 +111,6 @@ function List() {
     },
     errorToast: t('common:dataset.Export Dataset Limit Error')
   });
-
-  const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
   const DeleteTipsMap = useRef({
     [DatasetTypeEnum.folder]: t('common:dataset.deleteFolderTips'),
@@ -412,7 +411,6 @@ function List() {
               intro: data.intro,
               avatar: data.avatar
             });
-            setEditedDataset(undefined);
           }}
         />
       )}
