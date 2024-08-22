@@ -31,6 +31,7 @@ import { InvoiceHeaderSingleForm } from './InvoiceHeaderForm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getTeamInvoiceHeader } from '@/web/support/user/team/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useRouter } from 'next/router';
 type chosenBillDataType = {
   _id: string;
   price: number;
@@ -50,6 +51,8 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
     needSpecialInvoice: undefined,
     emailAddress: ''
   });
+
+  const router = useRouter();
   const {
     isOpen: isOpenSettleModal,
     onOpen: onOpenSettleModal,
@@ -94,7 +97,10 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
       manual: true,
       successToast: t('common:common.submit_success'),
       errorToast: t('common:common.Submit failed'),
-      onSuccess: () => onClose()
+      onSuccess: () => {
+        onClose();
+        router.reload();
+      }
     }
   );
 
