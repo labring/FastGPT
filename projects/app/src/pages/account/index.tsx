@@ -20,7 +20,6 @@ const BillAndInvoice = dynamic(() => import('./components/bill/BillAndInvoice'))
 const InformTable = dynamic(() => import('./components/InformTable'));
 const ApiKeyTable = dynamic(() => import('./components/ApiKeyTable'));
 const Individuation = dynamic(() => import('./components/Individuation'));
-
 enum TabEnum {
   'info' = 'info',
   'promotion' = 'promotion',
