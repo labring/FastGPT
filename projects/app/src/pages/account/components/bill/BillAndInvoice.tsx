@@ -14,9 +14,10 @@ export const InvoiceTabEnum = {
 const BillTable = dynamic(() => import('./BillTable'));
 const InvoiceHeaderForm = dynamic(() => import('./InvoiceHeaderForm'));
 const InvoiceTable = dynamic(() => import('./InvoiceTable'));
-const BillAndInvoice = ({ invoiceTab }: { invoiceTab: string }) => {
+const BillAndInvoice = () => {
   const [isOpenInvoiceModal, setIsOpenInvoiceModal] = useState(false);
   const router = useRouter();
+  const invoiceTab = (router.query.invoiceTab as string) || InvoiceTabEnum.bill;
   const { t } = useTranslation();
   return (
     <>

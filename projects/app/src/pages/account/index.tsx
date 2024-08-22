@@ -13,7 +13,6 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import Script from 'next/script';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { InvoiceTabEnum } from './components/bill/BillAndInvoice';
 
 const Promotion = dynamic(() => import('./components/Promotion'));
 const UsageTable = dynamic(() => import('./components/UsageTable'));
@@ -21,7 +20,6 @@ const BillAndInvoice = dynamic(() => import('./components/bill/BillAndInvoice'))
 const InformTable = dynamic(() => import('./components/InformTable'));
 const ApiKeyTable = dynamic(() => import('./components/ApiKeyTable'));
 const Individuation = dynamic(() => import('./components/Individuation'));
-type invoiceTabType = 'bill' | 'invoice' | 'invoiceHeader';
 enum TabEnum {
   'info' = 'info',
   'promotion' = 'promotion',
@@ -33,13 +31,7 @@ enum TabEnum {
   'loginout' = 'loginout'
 }
 
-const Account = ({
-  currentTab,
-  invoiceTab
-}: {
-  currentTab: TabEnum;
-  invoiceTab: invoiceTabType;
-}) => {
+const Account = ({ currentTab }: { currentTab: TabEnum }) => {
   const { t } = useTranslation();
   const { userInfo, setUserInfo } = useUserStore();
   const { feConfigs, systemVersion } = useSystemStore();
@@ -184,7 +176,7 @@ const Account = ({
             {currentTab === TabEnum.info && <UserInfo />}
             {currentTab === TabEnum.promotion && <Promotion />}
             {currentTab === TabEnum.usage && <UsageTable />}
-            {currentTab === TabEnum.bill && <BillAndInvoice invoiceTab={invoiceTab} />}
+            {currentTab === TabEnum.bill && <BillAndInvoice />}
             {currentTab === TabEnum.individuation && <Individuation />}
             {currentTab === TabEnum.inform && <InformTable />}
             {currentTab === TabEnum.apikey && <ApiKeyTable />}
@@ -200,7 +192,6 @@ export async function getServerSideProps(content: any) {
   return {
     props: {
       currentTab: content?.query?.currentTab || TabEnum.info,
-      invoiceTab: content?.query?.invoiceTab || InvoiceTabEnum.bill,
       ...(await serviceSideProps(content, ['publish', 'user']))
     }
   };
