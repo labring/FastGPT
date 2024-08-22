@@ -279,7 +279,7 @@ export const useWorkflow = () => {
   const [helperLineHorizontal, setHelperLineHorizontal] = useState<THelperLine>();
   const [helperLineVertical, setHelperLineVertical] = useState<THelperLine>();
 
-  const customApplyNodeChanges = (changes: NodeChange[], nodes: Node[]): Node[] => {
+  const customApplyNodeChanges = (changes: NodeChange[], nodes: Node[]) => {
     const positionChange =
       changes[0].type === 'position' && changes[0].dragging ? changes[0] : undefined;
 
@@ -316,14 +316,10 @@ export const useWorkflow = () => {
       setHelperLineHorizontal(undefined);
       setHelperLineVertical(undefined);
     }
-
-    return applyNodeChanges(changes, nodes);
   };
 
   /* node */
   const handleNodesChange = (changes: NodeChange[]) => {
-    setNodes((nodes) => customApplyNodeChanges(changes, nodes));
-
     for (const change of changes) {
       if (change.type === 'remove') {
         const node = nodes.find((n) => n.id === change.id);
@@ -344,6 +340,8 @@ export const useWorkflow = () => {
         change.selected = true;
       }
     }
+
+    customApplyNodeChanges(changes, nodes);
 
     onNodesChange(changes);
   };

@@ -101,6 +101,7 @@ const BillTable = () => {
       isLoading={isLoading || isRefreshing}
       position={'relative'}
       h={'100%'}
+      minH={'50vh'}
       overflow={'overlay'}
     >
       <TableContainer>
@@ -199,6 +200,10 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
           <Box>{dayjs(bill.createTime).format('YYYY/MM/DD HH:mm:ss')}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
+          <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.Type')}:</FormLabel>
+          <Box>{t(billTypeMap[bill.type]?.label as any)}</Box>
+        </Flex>
+        <Flex alignItems={'center'} pb={4}>
           <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.Status')}:</FormLabel>
           <Box>{t(billStatusMap[bill.status]?.label as any)}</Box>
         </Flex>
@@ -212,14 +217,18 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
           <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.Amount')}:</FormLabel>
           <Box>{commonT('common:pay.yuan', { amount: formatStorePrice2Read(bill.price) })}</Box>
         </Flex>
-        <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.Type')}:</FormLabel>
-          <Box>{t(billTypeMap[bill.type]?.label as any)}</Box>
-        </Flex>
-        <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.has_invoice')}:</FormLabel>
-          <Box>{bill.hasInvoice ? t('common:yes') : t('common:no')}</Box>
-        </Flex>
+        {bill.metadata && (
+          <Flex alignItems={'center'} pb={4}>
+            <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.has_invoice')}:</FormLabel>
+            {bill.metadata.payWay === 'balance' ? (
+              t('user:bill.not_need_invoice')
+            ) : (
+              <Box>
+                {(bill.metadata.payWay = bill.hasInvoice ? t('common:yes') : t('common:no'))}
+              </Box>
+            )}
+          </Flex>
+        )}
         {!!bill.metadata?.subMode && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>

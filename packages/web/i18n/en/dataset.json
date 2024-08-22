@@ -20,6 +20,7 @@
   "external_read_url": "External read url",
   "external_read_url_tip": "You can configure the reading address of your file library. This allows users to read and authenticate. You can currently use the {{fileId}} variable to refer to the external file ID.",
   "external_url": "File read url",
+  "file_model_function_tip": "For enhanced indexing and QA generation",
   "filename": "filename",
   "folder_dataset": "Folder",
   "rebuild_embedding_start_tip": "The task of switching index models has begun",

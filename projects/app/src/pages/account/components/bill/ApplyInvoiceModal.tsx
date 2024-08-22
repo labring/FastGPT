@@ -32,51 +32,24 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getTeamInvoiceHeader } from '@/web/support/user/team/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
+import { useForm } from 'react-hook-form';
+
 type chosenBillDataType = {
   _id: string;
   price: number;
 };
+
 const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const router = useRouter();
+
   const [chosenBillDataList, setChosenBillDataList] = useState<chosenBillDataType[]>([]);
   const [totalPrice, setTotalPrice] = useState(0);
-  const [formData, setFormData] = useState<TeamInvoiceHeaderType>({
-    teamName: '',
-    unifiedCreditCode: '',
-    companyAddress: '',
-    companyPhone: '',
-    bankName: '',
-    bankAccount: '',
-    needSpecialInvoice: undefined,
-    emailAddress: ''
-  });
-
-  const router = useRouter();
   const {
     isOpen: isOpenSettleModal,
     onOpen: onOpenSettleModal,
     onClose: onCloseSettleModal
   } = useDisclosure();
-
-  const handleChange = useCallback((e: any) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  }, []);
-
-  const handleRatiosChange = useCallback((v: string) => {
-    setFormData((prev) => ({ ...prev, needSpecialInvoice: v === 'true' }));
-  }, []);
-
-  const isHeaderValid = useCallback((v: TeamInvoiceHeaderType) => {
-    const emailRegex = /\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*/;
-    for (const [key, value] of Object.entries(v)) {
-      if (typeof value === 'string' && value.trim() === '') {
-        return false;
-      }
-    }
-    return emailRegex.test(v.emailAddress);
-  }, []);
 
   const {
     loading: isLoading,
@@ -86,12 +59,23 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
     manual: false
   });
 
-  const { run: handleSubmitInvoice, loading: isSubmitting } = useRequest2(
-    () =>
+  const handleSingleCheck = useCallback(
+    (item: invoiceBillDataType) => {
+      if (chosenBillDataList.find((bill) => bill._id === item._id)) {
+        setChosenBillDataList(chosenBillDataList.filter((bill) => bill._id !== item._id));
+      } else {
+        setChosenBillDataList([...chosenBillDataList, { _id: item._id, price: item.price }]);
+      }
+    },
+    [chosenBillDataList]
+  );
+
+  const { runAsync: onSubmitApply, loading: isSubmitting } = useRequest2(
+    (data) =>
       submitInvoice({
         amount: totalPrice,
         billIdList: chosenBillDataList.map((item) => item._id),
-        ...formData
+        ...data
       }),
     {
       manual: true,
@@ -104,38 +88,28 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
+  const inputForm = useForm<TeamInvoiceHeaderType>({
+    defaultValues: {
+      teamName: '',
+      unifiedCreditCode: '',
+      companyAddress: '',
+      companyPhone: '',
+      bankName: '',
+      bankAccount: '',
+      needSpecialInvoice: false,
+      emailAddress: ''
+    }
+  });
   const { loading: isLoadingHeader } = useRequest2(() => getTeamInvoiceHeader(), {
     manual: false,
-    onSuccess: (res) => setFormData(res)
+    onSuccess: (res) => inputForm.reset(res)
   });
-
-  const handleSubmit = useCallback(async () => {
-    if (!isHeaderValid(formData)) {
-      toast({
-        title: t('common:support.wallet.invoice_data.in_valid'),
-        status: 'info'
-      });
-      return;
-    }
-    handleSubmitInvoice();
-  }, [formData, handleSubmitInvoice, isHeaderValid, t, toast]);
 
   const handleBack = useCallback(() => {
     setChosenBillDataList([]);
     getInvoiceBills();
     onCloseSettleModal();
   }, [getInvoiceBills, onCloseSettleModal]);
-
-  const handleSingleCheck = useCallback(
-    (item: invoiceBillDataType) => {
-      if (chosenBillDataList.find((bill) => bill._id === item._id)) {
-        setChosenBillDataList(chosenBillDataList.filter((bill) => bill._id !== item._id));
-      } else {
-        setChosenBillDataList([...chosenBillDataList, { _id: item._id, price: item.price }]);
-      }
-    },
-    [chosenBillDataList]
-  );
 
   return (
     <MyModal
@@ -258,11 +232,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
           </Box>
           <MyBox isLoading={isLoadingHeader}>
             <Flex justify={'center'}>
-              <InvoiceHeaderSingleForm
-                formData={formData}
-                handleChange={handleChange}
-                handleRatiosChange={handleRatiosChange}
-              />
+              <InvoiceHeaderSingleForm inputForm={inputForm} />
             </Flex>
           </MyBox>
           <Flex
@@ -289,7 +259,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
                 </Box>
               </Flex>
             </Button>
-            <Button isLoading={isSubmitting} px="0" onClick={handleSubmit}>
+            <Button isLoading={isSubmitting} px="0" onClick={inputForm.handleSubmit(onSubmitApply)}>
               <Flex alignItems={'center'}>
                 <Box px={'1.25rem'} py={'0.5rem'}>
                   {t('common:common.Confirm')}

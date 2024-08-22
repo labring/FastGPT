@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import 'katex/dist/katex.min.css';
 import RemarkMath from 'remark-math'; // Math syntax
@@ -52,6 +52,10 @@ const Markdown = ({
     return formatSource;
   }, [source]);
 
+  const urlTransform = useCallback((val: string) => {
+    return val;
+  }, []);
+
   return (
     <ReactMarkdown
       className={`markdown ${styles.markdown}
@@ -60,6 +64,7 @@ const Markdown = ({
       remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
       rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
       components={components}
+      urlTransform={urlTransform}
     >
       {formatSource}
     </ReactMarkdown>

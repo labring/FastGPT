@@ -36,9 +36,10 @@ export type InvoiceType = {
 } & TeamInvoiceHeaderType;
 
 export type InvoiceSchemaType = {
-  teamId: string;
   _id: string;
+  teamId: string;
   status: 1 | 2;
   createTime: Date;
   finishTime?: Date;
+  file?: Buffer;
 } & InvoiceType;
