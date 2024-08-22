@@ -33,6 +33,7 @@ import { getTeamInvoiceHeader } from '@/web/support/user/team/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
+
 type chosenBillDataType = {
   _id: string;
   price: number;
@@ -40,7 +41,8 @@ type chosenBillDataType = {
 
 const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const router = useRouter();
+
   const [chosenBillDataList, setChosenBillDataList] = useState<chosenBillDataType[]>([]);
   const [totalPrice, setTotalPrice] = useState(0);
   const {
@@ -79,7 +81,10 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
       manual: true,
       successToast: t('common:common.submit_success'),
       errorToast: t('common:common.Submit failed'),
-      onSuccess: () => onClose()
+      onSuccess: () => {
+        onClose();
+        router.reload();
+      }
     }
   );
 

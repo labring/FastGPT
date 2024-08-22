@@ -6,19 +6,22 @@ import { useTranslation } from 'next-i18next';
 import ApplyInvoiceModal from './ApplyInvoiceModal';
 import { useRouter } from 'next/router';
 
-export const InvoiceTabEnum = {
-  bill: 'bill',
-  invoice: 'invoice',
-  invoiceHeader: 'invoiceHeader'
-};
+export enum InvoiceTabEnum {
+  bill = 'bill',
+  invoice = 'invoice',
+  invoiceHeader = 'invoiceHeader'
+}
+
 const BillTable = dynamic(() => import('./BillTable'));
 const InvoiceHeaderForm = dynamic(() => import('./InvoiceHeaderForm'));
 const InvoiceTable = dynamic(() => import('./InvoiceTable'));
 const BillAndInvoice = () => {
-  const [isOpenInvoiceModal, setIsOpenInvoiceModal] = useState(false);
-  const router = useRouter();
-  const invoiceTab = (router.query.invoiceTab as string) || InvoiceTabEnum.bill;
   const { t } = useTranslation();
+  const router = useRouter();
+  const { invoiceTab = InvoiceTabEnum.bill } = router.query as { invoiceTab: `${InvoiceTabEnum}` };
+
+  const [isOpenInvoiceModal, setIsOpenInvoiceModal] = useState(false);
+
   return (
     <>
       <Box p={['1rem', '2rem']}>
@@ -36,7 +39,7 @@ const BillAndInvoice = () => {
             onChange={(e) => {
               router.replace({
                 query: {
-                  currentTab: router.query.currentTab,
+                  ...router.query,
                   invoiceTab: e
                 }
               });
