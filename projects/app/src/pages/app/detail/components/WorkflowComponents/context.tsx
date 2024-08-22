@@ -14,7 +14,7 @@ import { RuntimeEdgeItemType, StoreEdgeItemType } from '@fastgpt/global/core/wor
 import { FlowNodeChangeProps } from '@fastgpt/global/core/workflow/type/fe';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useDeepCompareEffect, useLocalStorageState, useMemoizedFn, useUpdateEffect } from 'ahooks';
+import { useLocalStorageState, useMemoizedFn, useUpdateEffect } from 'ahooks';
 import React, {
   Dispatch,
   SetStateAction,
@@ -51,7 +51,7 @@ import { cloneDeep, isEqual } from 'lodash';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
-type SnapshotsType = {
+export type SnapshotsType = {
   nodes: Node[];
   edges: Edge[];
   title: string;

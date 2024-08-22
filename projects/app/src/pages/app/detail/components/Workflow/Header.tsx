@@ -29,6 +29,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
 import { isEqual, isObject, omit } from 'lodash';
+import { compareSnapshot } from '@/web/core/workflow/utils';
 
 const PublishHistories = dynamic(() => import('../WorkflowPublishHistoriesSlider'));
 
@@ -87,19 +88,19 @@ const Header = () => {
     const savedSnapshot = [...future.reverse(), ...past].find(
       (snapshot) => snapshot.isSaved === true
     );
-    return customIsEqual(
+    return compareSnapshot(
       {
         nodes: savedSnapshot?.nodes,
-        edges: savedSnapshot?.edges
-        // chatConfig: savedSnapshot.chatConfig
+        edges: savedSnapshot?.edges,
+        chatConfig: savedSnapshot?.chatConfig
       },
       {
         nodes: nodes,
-        edges: edges
-        // chatConfig: appDetail.chatConfig
+        edges: edges,
+        chatConfig: appDetail.chatConfig
       }
     );
-  }, [future, past, nodes, edges]);
+  }, [future, past, nodes, edges, appDetail.chatConfig]);
 
   const { runAsync: onClickSave, loading } = useRequest2(
     async ({ isPublish, versionName }: { isPublish?: boolean; versionName: string }) => {
