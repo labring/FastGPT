@@ -243,6 +243,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     runtimeNodes = rewriteNodeOutputByHistories(newHistories, runtimeNodes);
 
+    const hanleApiKey = () => {
+      //api调用指定了key的情况下，使用这个key
+      if (variables.ChatApiKey) {
+        user.openaiAccount = {
+          key: variables.ChatApiKey,
+          baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
+        };
+      }
+    };
+    hanleApiKey();
+
     /* start flow controller */
     const { flowResponses, flowUsages, assistantResponses, newVariables } = await (async () => {
       if (app.version === 'v2') {
