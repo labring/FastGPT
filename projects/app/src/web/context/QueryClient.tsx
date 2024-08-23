@@ -8,7 +8,8 @@ const queryClient = new QueryClient({
       keepPreviousData: true,
       refetchOnWindowFocus: false,
       retry: false,
-      cacheTime: 10
+      cacheTime: 10,
+      networkMode: 'always'
     }
   }
 });

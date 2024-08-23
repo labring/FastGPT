@@ -76,7 +76,7 @@ export const AiChatModule: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
       valueType: WorkflowIOValueTypeEnum.boolean,
-      value: true
+      value: false
     },
     // settings modal ---
     {
