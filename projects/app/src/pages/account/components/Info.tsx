@@ -315,12 +315,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         )}
       </Box>
       {isOpenConversionModal && (
-        <ConversionModal
-          onClose={onCloseConversionModal}
-          balance={formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}
-          tokens={String((userInfo?.team?.balance ?? 0) / 15 / 10)}
-          onOpenContact={onOpenContact}
-        />
+        <ConversionModal onClose={onCloseConversionModal} onOpenContact={onOpenContact} />
       )}
       {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
       {isOpenUpdateNotification && <UpdateNotification onClose={onCloseUpdateNotification} />}
