@@ -18,6 +18,7 @@ import { storeEdgesRenderEdge, storeNode2FlowNode } from '@/web/core/workflow/ut
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const WorkflowPublishHistoriesSlider = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -62,6 +63,7 @@ export default React.memo(WorkflowPublishHistoriesSlider);
 const MyEdit = () => {
   const { past, saveSnapshot, resetSnapshot } = useContextSelector(WorkflowContext, (v) => v);
   const { t } = useTranslation();
+  const { toast } = useToast();
 
   return (
     <Flex px={5} flex={'1 0 0'} flexDirection={'column'}>
@@ -71,13 +73,20 @@ const MyEdit = () => {
             variant={'whiteBase'}
             w={'full'}
             h={'30px'}
-            onClick={() => {
+            onClick={async () => {
               const initialSnapshot = past[past.length - 1];
-              saveSnapshot({
-                ...initialSnapshot,
+              const res = await saveSnapshot({
+                pastNodes: initialSnapshot.nodes,
+                pastEdges: initialSnapshot.edges,
+                chatConfig: initialSnapshot.chatConfig,
                 customTitle: t(`app:app.version_initial_copy`)
               });
+              if (!res) return;
               resetSnapshot(initialSnapshot);
+              toast({
+                title: t('workflow:workflow.Switch_success'),
+                status: 'success'
+              });
             }}
           >
             {t('app:app.version_back')}
@@ -98,11 +107,19 @@ const MyEdit = () => {
               _hover={{
                 bg: 'primary.50'
               }}
-              onClick={() => {
-                saveSnapshot({
+              onClick={async () => {
+                const res = await saveSnapshot({
+                  pastNodes: item.nodes,
+                  pastEdges: item.edges,
+                  chatConfig: item.chatConfig,
                   customTitle: `${t('app:app.version_copy')}-${item.title}`
                 });
+                if (!res) return;
                 resetSnapshot(item);
+                toast({
+                  title: t('workflow:workflow.Switch_success'),
+                  status: 'success'
+                });
               }}
             >
               <Box
@@ -168,6 +185,7 @@ const TeamCloud = () => {
   const [hoveredIndex, setHoveredIndex] = useState<number | undefined>(undefined);
 
   const [isEditing, setIsEditing] = useState(false);
+  const { toast } = useToast();
 
   return (
     <ScrollList isLoading={isLoading} flex={'1 0 0'} px={5}>
@@ -190,7 +208,7 @@ const TeamCloud = () => {
             _hover={{
               bg: 'primary.50'
             }}
-            onClick={() => {
+            onClick={async () => {
               const state = {
                 nodes: item.nodes?.map((item) => storeNode2FlowNode({ item })),
                 edges: item.edges?.map((item) => storeEdgesRenderEdge({ edge: item })),
@@ -198,11 +216,19 @@ const TeamCloud = () => {
                 chatConfig: item.chatConfig
               };
 
-              saveSnapshot({
+              const res = await saveSnapshot({
+                pastNodes: state.nodes,
+                pastEdges: state.edges,
+                chatConfig: state.chatConfig,
                 customTitle: `${t('app:app.version_copy')}-${state.title}`
               });
 
+              if (!res) return;
               resetSnapshot(state);
+              toast({
+                title: t('workflow:workflow.Switch_success'),
+                status: 'success'
+              });
             }}
           >
             <MyPopover

@@ -240,19 +240,19 @@ function ScheduledTrigger({
   chatConfig: { scheduledTriggerConfig },
   setAppDetail
 }: ComponentProps) {
-  // const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
+  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
 
   return (
     <ScheduledTriggerConfig
       value={scheduledTriggerConfig}
       onChange={(e) => {
         setAppDetail((state) => {
-          // saveSnapshot({
-          //   chatConfig: {
-          //     ...state.chatConfig,
-          //     scheduledTriggerConfig: e
-          //   }
-          // });
+          saveSnapshot({
+            chatConfig: {
+              ...state.chatConfig,
+              scheduledTriggerConfig: e
+            }
+          });
 
           return {
             ...state,

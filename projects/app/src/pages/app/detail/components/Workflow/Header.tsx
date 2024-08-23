@@ -117,7 +117,7 @@ const Header = () => {
         });
         setPast((prevPast) =>
           prevPast.map((item, index) =>
-            index === prevPast.length - 1
+            index === 0
               ? {
                   ...item,
                   isSaved: true

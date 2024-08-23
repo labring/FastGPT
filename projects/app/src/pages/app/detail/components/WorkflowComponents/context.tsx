@@ -1,6 +1,7 @@
 import { postWorkflowDebug } from '@/web/core/workflow/api';
 import {
   checkWorkflowNodeAndConnection,
+  compareSnapshot,
   storeEdgesRenderEdge,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
@@ -100,7 +101,7 @@ type WorkflowContextType = {
     pastEdges?: Edge[];
     customTitle?: string;
     chatConfig?: AppChatConfigType;
-  }) => void;
+  }) => Promise<boolean>;
   resetSnapshot: (state: SnapshotsType) => void;
   past: SnapshotsType[];
   setPast: Dispatch<SetStateAction<SnapshotsType[]>>;
@@ -303,7 +304,7 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   getNodeDynamicInputs: function (nodeId: string): FlowNodeInputItemType[] {
     throw new Error('Function not implemented.');
   },
-  saveSnapshot: function (): void {
+  saveSnapshot: function (): Promise<boolean> {
     throw new Error('Function not implemented.');
   },
   resetSnapshot: function (): void {
@@ -489,7 +490,6 @@ const WorkflowContextProvider = ({
           data: updateObj
         };
       });
-      saveSnapshot({ pastNodes: newNodes });
       return newNodes;
     });
   });
@@ -553,7 +553,7 @@ const WorkflowContextProvider = ({
         pastEdges: e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [],
         customTitle: t(`app:app.version_initial`),
         chatConfig: appDetail.chatConfig,
-        isInit
+        isSaved: isInit
       });
     }
   );
@@ -853,19 +853,19 @@ const WorkflowContextProvider = ({
       pastEdges,
       customTitle,
       chatConfig,
-      isInit
+      isSaved
     }: {
       pastNodes?: Node[];
       pastEdges?: Edge[];
       customTitle?: string;
       chatConfig?: AppChatConfigType;
-      isInit?: boolean;
+      isSaved?: boolean;
     }) => {
       const pastState = past[0];
       const currentNodes = pastNodes || nodes;
       const currentEdges = pastEdges || edges;
       const currentChatConfig = chatConfig || appDetail.chatConfig;
-      const isPastEqual = isEqual(
+      const isPastEqual = compareSnapshot(
         {
           nodes: currentNodes,
           edges: currentEdges,
@@ -878,7 +878,7 @@ const WorkflowContextProvider = ({
         }
       );
 
-      if (isPastEqual) return;
+      if (isPastEqual) return false;
 
       setPast((past) => [
         {
@@ -886,24 +886,30 @@ const WorkflowContextProvider = ({
           edges: currentEdges,
           title: customTitle || formatTime2YMDHMS(new Date()),
           chatConfig: currentChatConfig,
-          isSaved: isInit
+          isSaved
         },
         ...past.slice(0, 199)
       ]);
 
       setFuture([]);
 
-      if (customTitle && !isInit) {
-        toast({
-          title: t('workflow:workflow.Switch_success'),
-          status: 'success'
-        });
-      }
+      return true;
     },
     {
-      debounceWait: 500
+      debounceWait: 500,
+      refreshDeps: [nodes, edges, appDetail.chatConfig, past]
     }
   );
+
+  useEffect(() => {
+    if (!nodes.length) return;
+    saveSnapshot({
+      pastNodes: nodes,
+      pastEdges: edges,
+      customTitle: formatTime2YMDHMS(new Date()),
+      chatConfig: appDetail.chatConfig
+    });
+  }, [nodes, edges]);
 
   const undo = useCallback(() => {
     if (past[1]) {

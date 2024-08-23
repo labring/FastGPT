@@ -7,7 +7,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 
 const ButtonEdge = (props: EdgeProps) => {
-  const { nodes, setEdges, workflowDebugData, hoverEdgeId, saveSnapshot } = useContextSelector(
+  const { nodes, setEdges, workflowDebugData, hoverEdgeId } = useContextSelector(
     WorkflowContext,
     (v) => v
   );
@@ -32,11 +32,10 @@ const ButtonEdge = (props: EdgeProps) => {
     (id: string) => {
       setEdges((state) => {
         const newState = state.filter((item) => item.id !== id);
-        saveSnapshot({ pastEdges: newState });
         return newState;
       });
     },
-    [saveSnapshot, setEdges]
+    [setEdges]
   );
 
   const highlightEdge = useMemo(() => {

@@ -389,7 +389,6 @@ const RenderList = React.memo(function RenderList({
 }: RenderListProps) {
   const { t } = useTranslation();
   const { feConfigs, setLoading } = useSystemStore();
-  const { saveSnapshot } = useContextSelector(WorkflowContext, (v) => v);
 
   const { isPc } = useSystem();
   const isSystemPlugin = type === TemplateTypeEnum.systemPlugin;
@@ -474,24 +473,10 @@ const RenderList = React.memo(function RenderList({
           }))
           // @ts-ignore
           .concat(node);
-        saveSnapshot({
-          pastNodes: newState
-        });
         return newState;
       });
     },
-    [
-      computedNewNodeName,
-      reactFlowWrapper,
-      saveSnapshot,
-      setLoading,
-      setNodes,
-      t,
-      toast,
-      x,
-      y,
-      zoom
-    ]
+    [computedNewNodeName, reactFlowWrapper, setLoading, setNodes, t, toast, x, y, zoom]
   );
 
   const gridStyle = useMemo(() => {

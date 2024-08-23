@@ -266,8 +266,7 @@ export const useWorkflow = () => {
     onNodesChange,
     setEdges,
     onEdgesChange,
-    setHoverEdgeId,
-    saveSnapshot
+    setHoverEdgeId
   } = useContextSelector(WorkflowContext, (v) => v);
 
   /* helper line */
@@ -359,23 +358,17 @@ export const useWorkflow = () => {
   }, [setConnectingEdge]);
   const onConnect = useCallback(
     ({ connect }: { connect: Connection }) => {
-      setNodes((nodeState) => {
-        setEdges((state) => {
-          saveSnapshot({
-            pastNodes: nodeState
-          });
-          return addEdge(
-            {
-              ...connect,
-              type: EDGE_TYPE
-            },
-            state
-          );
-        });
-        return nodeState;
-      });
+      setEdges((state) =>
+        addEdge(
+          {
+            ...connect,
+            type: EDGE_TYPE
+          },
+          state
+        )
+      );
     },
-    [saveSnapshot, setEdges, setNodes]
+    [setEdges]
   );
   const customOnConnect = useCallback(
     (connect: Connection) => {
@@ -407,11 +400,6 @@ export const useWorkflow = () => {
     setHoverEdgeId(undefined);
   }, [setHoverEdgeId]);
 
-  /* drag */
-  const onNodeDragStop = useCallback(() => {
-    saveSnapshot({});
-  }, [saveSnapshot]);
-
   return {
     handleNodesChange,
     handleEdgeChange,
@@ -422,8 +410,7 @@ export const useWorkflow = () => {
     onEdgeMouseEnter,
     onEdgeMouseLeave,
     helperLineHorizontal,
-    helperLineVertical,
-    onNodeDragStop
+    helperLineVertical
   };
 };
 

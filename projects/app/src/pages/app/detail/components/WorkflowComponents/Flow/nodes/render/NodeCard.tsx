@@ -297,7 +297,6 @@ const MenuRender = React.memo(function MenuRender({
 }) {
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
-  const { saveSnapshot } = useContextSelector(WorkflowContext, (v) => v);
 
   const { openConfirm: onOpenConfirmDeleteNode, ConfirmModal: ConfirmDeleteModal } = useConfirm({
     content: t('common:core.module.Confirm Delete Node'),
@@ -328,7 +327,7 @@ const MenuRender = React.memo(function MenuRender({
           pluginId: node.data.pluginId,
           version: node.data.version
         };
-        const newState = state.concat(
+        return state.concat(
           storeNode2FlowNode({
             item: {
               flowNodeType: template.flowNodeType,
@@ -346,29 +345,20 @@ const MenuRender = React.memo(function MenuRender({
             selected: true
           })
         );
-        saveSnapshot({
-          pastNodes: newState
-        });
-        return newState;
       });
     },
-    [computedNewNodeName, saveSnapshot, setNodes]
+    [computedNewNodeName, setNodes]
   );
   const onDelNode = useCallback(
     (nodeId: string) => {
       setNodes((nodeState) => {
-        setEdges((state) => {
-          saveSnapshot({
-            pastNodes: nodeState.filter((item) => item.data.nodeId !== nodeId),
-            pastEdges: state.filter((edge) => edge.source !== nodeId && edge.target !== nodeId)
-          });
-
-          return state.filter((edge) => edge.source !== nodeId && edge.target !== nodeId);
-        });
+        setEdges((state) =>
+          state.filter((edge) => edge.source !== nodeId && edge.target !== nodeId)
+        );
         return nodeState.filter((item) => item.data.nodeId !== nodeId);
       });
     },
-    [saveSnapshot, setEdges, setNodes]
+    [setEdges, setNodes]
   );
 
   const Render = useMemo(() => {
@@ -443,7 +433,6 @@ const MenuRender = React.memo(function MenuRender({
     menuForbid?.copy,
     menuForbid?.delete,
     t,
-    onOpenConfirmDeleteNode,
     ConfirmDeleteModal,
     DebugInputModal,
     openDebugNode,

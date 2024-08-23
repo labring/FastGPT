@@ -65,8 +65,7 @@ const Workflow = () => {
     onEdgeMouseEnter,
     onEdgeMouseLeave,
     helperLineHorizontal,
-    helperLineVertical,
-    onNodeDragStop
+    helperLineVertical
   } = useWorkflow();
 
   const {
@@ -127,7 +126,6 @@ const Workflow = () => {
           onConnectEnd={onConnectEnd}
           onEdgeMouseEnter={onEdgeMouseEnter}
           onEdgeMouseLeave={onEdgeMouseLeave}
-          onNodeDragStop={onNodeDragStop}
         >
           <FlowController />
           <HelperLines horizontal={helperLineHorizontal} vertical={helperLineVertical} />
