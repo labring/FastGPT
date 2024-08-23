@@ -45,5 +45,12 @@
   },
   "tool_input": "Tool",
   "update_link_error": "Update link exception",
-  "variable_picker_tips": "enter node name or variable name to search"
+  "variable_picker_tips": "enter node name or variable name to search",
+  "workflow": {
+    "Back_to_current_version": "Back to current version",
+    "My edit": "My edit",
+    "Switch_success": "switch successfully",
+    "Team cloud": "Team cloud",
+    "exit_tips": "Your changes have not been saved. Exiting directly will not save your edits."
+  }
 }

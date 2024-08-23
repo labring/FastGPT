@@ -25,6 +25,16 @@ const AppVersionSchema = new Schema({
   },
   chatConfig: {
     type: chatConfigType
+  },
+  isPublish: {
+    type: Boolean
+  },
+  versionName: {
+    type: String,
+    default: ''
+  },
+  tmbId: {
+    type: String
   }
 });
 

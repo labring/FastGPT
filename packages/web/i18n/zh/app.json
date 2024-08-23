@@ -3,10 +3,20 @@
   "ai_settings": "AI 配置",
   "all_apps": "全部应用",
   "app": {
+    "Version name": "版本名称",
     "modules": {
       "click to update": "点击更新",
       "has new version": "有新版本"
-    }
+    },
+    "version_back": "回到初始状态",
+    "version_copy": "副本",
+    "version_current": "当前版本",
+    "version_initial": "初始版本",
+    "version_initial_copy": "副本-初始状态",
+    "version_name_tips": "版本名称不能为空",
+    "version_past": "发布过",
+    "version_publish_tips": "该版本将被保存至团队云端，同步给整个团队，同时更新所有发布渠道的应用版本",
+    "version_save_tips": "该版本将被保存至团队云端，同步给整个团队"
   },
   "app_detail": "应用详情",
   "chat_debug": "调试预览",

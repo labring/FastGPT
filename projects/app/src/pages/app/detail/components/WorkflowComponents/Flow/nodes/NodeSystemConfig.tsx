@@ -8,7 +8,6 @@ import TTSSelect from '@/components/core/app/TTSSelect';
 import WhisperConfig from '@/components/core/app/WhisperConfig';
 import InputGuideConfig from '@/components/core/app/InputGuideConfig';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
-import { useTranslation } from 'next-i18next';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import NodeCard from './render/NodeCard';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
@@ -90,14 +89,12 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 export default React.memo(NodeUserGuide);
 
 function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentProps) {
-  const { t } = useTranslation();
   const [, startTst] = useTransition();
-
   return (
     <Box className="nodrag">
       <WelcomeTextConfig
         resize={'both'}
-        defaultValue={welcomeText}
+        value={welcomeText}
         onChange={(e) => {
           startTst(() => {
             setAppDetail((state) => ({
@@ -164,8 +161,6 @@ function TTSGuide({ chatConfig: { ttsConfig }, setAppDetail }: ComponentProps) {
 }
 
 function WhisperGuide({ chatConfig: { whisperConfig, ttsConfig }, setAppDetail }: ComponentProps) {
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-
   return (
     <WhisperConfig
       isOpenAudio={ttsConfig?.type !== TTSTypeEnum.none}
@@ -205,7 +200,6 @@ function ScheduledTrigger({
 
 function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: ComponentProps) {
   const appId = useContextSelector(WorkflowContext, (v) => v.appId);
-
   return appId ? (
     <InputGuideConfig
       appId={appId}

@@ -512,3 +512,111 @@ export const compareWorkflow = (workflow1: WorkflowType, workflow2: WorkflowType
 
   return isEqual(node1, node2);
 };
+
+export const compareSnapshot = (
+  snapshot1: {
+    nodes: Node<FlowNodeItemType, string | undefined>[] | undefined;
+    edges: Edge<any>[] | undefined;
+    chatConfig: AppChatConfigType | undefined;
+  },
+  snapshot2: {
+    nodes: Node<FlowNodeItemType, string | undefined>[];
+    edges: Edge<any>[];
+    chatConfig: AppChatConfigType;
+  }
+) => {
+  const clone1 = cloneDeep(snapshot1);
+  const clone2 = cloneDeep(snapshot2);
+
+  if (!clone1.nodes || !clone2.nodes) return false;
+  const formatEdge = (edges: Edge[] | undefined) => {
+    if (!edges) return [];
+    return edges.map((edge) => ({
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle,
+      targetHandle: edge.targetHandle,
+      type: edge.type
+    }));
+  };
+
+  if (!isEqual(formatEdge(clone1.edges), formatEdge(clone2.edges))) {
+    console.log('Edge not equal');
+    return false;
+  }
+
+  if (
+    clone1.chatConfig &&
+    clone2.chatConfig &&
+    !isEqual(
+      {
+        welcomeText: clone1.chatConfig?.welcomeText || '',
+        variables: clone1.chatConfig?.variables || [],
+        questionGuide: clone1.chatConfig?.questionGuide || false,
+        ttsConfig: clone1.chatConfig?.ttsConfig || undefined,
+        whisperConfig: clone1.chatConfig?.whisperConfig || undefined,
+        scheduledTriggerConfig: clone1.chatConfig?.scheduledTriggerConfig || undefined,
+        chatInputGuide: clone1.chatConfig?.chatInputGuide || undefined,
+        fileSelectConfig: clone1.chatConfig?.fileSelectConfig || undefined
+      },
+      {
+        welcomeText: clone2.chatConfig?.welcomeText || '',
+        variables: clone2.chatConfig?.variables || [],
+        questionGuide: clone2.chatConfig?.questionGuide || false,
+        ttsConfig: clone2.chatConfig?.ttsConfig || undefined,
+        whisperConfig: clone2.chatConfig?.whisperConfig || undefined,
+        scheduledTriggerConfig: clone2.chatConfig?.scheduledTriggerConfig || undefined,
+        chatInputGuide: clone2.chatConfig?.chatInputGuide || undefined,
+        fileSelectConfig: clone2.chatConfig?.fileSelectConfig || undefined
+      }
+    )
+  ) {
+    console.log('chatConfig not equal');
+    return false;
+  }
+
+  const formatNodes = (nodes: Node[]) => {
+    return nodes
+      .filter((node) => {
+        if (!node) return;
+        if (FlowNodeTypeEnum.systemConfig === node.type) return;
+
+        return true;
+      })
+      .map((node) => ({
+        id: node.id,
+        type: node.type,
+        position: node.position,
+        data: {
+          id: node.data.id,
+          flowNodeType: node.data.flowNodeType,
+          inputs: node.data.inputs.map((input: FlowNodeInputItemType) => ({
+            key: input.key,
+            selectedTypeIndex: input.selectedTypeIndex ?? 0,
+            renderTypeLis: input.renderTypeList,
+            valueType: input.valueType,
+            value: input.value ?? undefined
+          })),
+          outputs: node.data.outputs.map((item: FlowNodeOutputItemType) => ({
+            key: item.key,
+            type: item.type,
+            value: item.value ?? undefined
+          })),
+          name: node.data.name,
+          intro: node.data.intro,
+          avatar: node.data.avatar,
+          version: node.data.version
+        }
+      }));
+  };
+  const node1 = formatNodes(clone1.nodes);
+  const node2 = formatNodes(clone2.nodes);
+
+  node1.forEach((node, i) => {
+    if (!isEqual(node, node2[i])) {
+      console.log('node not equal');
+    }
+  });
+
+  return isEqual(node1, node2);
+};

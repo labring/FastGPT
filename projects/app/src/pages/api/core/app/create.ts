@@ -14,6 +14,8 @@ import { defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant'
 import { ClientSession } from '@fastgpt/service/common/mongo';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
@@ -42,6 +44,8 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
 
   // 上限校验
   await checkTeamAppLimit(teamId);
+  const tmb = await MongoTeamMember.findById({ _id: tmbId });
+  const user = await MongoUser.findById({ _id: tmb?.userId });
 
   // 创建app
   const appId = await onCreateApp({
@@ -53,7 +57,9 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     edges,
     chatConfig,
     teamId,
-    tmbId
+    tmbId,
+    userAvatar: user?.avatar,
+    username: user?.username
   });
 
   return appId;
@@ -73,6 +79,8 @@ export const onCreateApp = async ({
   teamId,
   tmbId,
   pluginData,
+  username,
+  userAvatar,
   session
 }: {
   parentId?: ParentIdType;
@@ -86,6 +94,8 @@ export const onCreateApp = async ({
   teamId: string;
   tmbId: string;
   pluginData?: AppSchema['pluginData'];
+  username?: string;
+  userAvatar?: string;
   session?: ClientSession;
 }) => {
   const create = async (session: ClientSession) => {
@@ -117,7 +127,10 @@ export const onCreateApp = async ({
             appId,
             nodes: modules,
             edges,
-            chatConfig
+            chatConfig,
+            versionName: name,
+            username,
+            avatar: userAvatar
           }
         ],
         { session }

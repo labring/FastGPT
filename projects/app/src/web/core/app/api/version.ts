@@ -6,6 +6,7 @@ import type {
   getLatestVersionQuery,
   getLatestVersionResponse
 } from '@/pages/api/core/app/version/latest';
+import { UpdateAppVersionBody } from '@/pages/api/core/app/version/update';
 
 export const getAppLatestVersion = (data: getLatestVersionQuery) =>
   GET<getLatestVersionResponse>('/core/app/version/latest', data);
@@ -18,3 +19,6 @@ export const getPublishList = (data: PaginationProps<{ appId: string }>) =>
 
 export const postRevertVersion = (appId: string, data: PostRevertAppProps) =>
   POST(`/core/app/version/revert?appId=${appId}`, data);
+
+export const updateAppVersion = (data: UpdateAppVersionBody) =>
+  POST(`/core/app/version/update`, data);

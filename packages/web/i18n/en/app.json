@@ -3,10 +3,20 @@
   "ai_settings": "AI Settings",
   "all_apps": "All Apps",
   "app": {
+    "Version name": "Version name",
     "modules": {
       "click to update": "click to update",
       "has new version": "has new version"
-    }
+    },
+    "version_back": "Back to initial",
+    "version_copy": "Copy",
+    "version_current": "current version",
+    "version_initial": "Initial version",
+    "version_initial_copy": "Copy-Initial state",
+    "version_name_tips": "Version name can't be empty.",
+    "version_past": "published",
+    "version_publish_tips": "This version will be saved to the team's cloud, synchronized with the entire team, and update the application versions across all publishing channels.",
+    "version_save_tips": "This version will be saved to the team's cloud and synchronized with the entire team."
   },
   "app_detail": "App Details",
   "chat_debug": "Chat Debug",

@@ -30,7 +30,10 @@ const ButtonEdge = (props: EdgeProps) => {
 
   const onDelConnect = useCallback(
     (id: string) => {
-      setEdges((state) => state.filter((item) => item.id !== id));
+      setEdges((state) => {
+        const newState = state.filter((item) => item.id !== id);
+        return newState;
+      });
     },
     [setEdges]
   );

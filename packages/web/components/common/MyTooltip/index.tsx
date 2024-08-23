@@ -1,12 +1,9 @@
 import React from 'react';
-import { Box, Tooltip, TooltipProps } from '@chakra-ui/react';
-import { useSystem } from '../../../hooks/useSystem';
+import { Tooltip, TooltipProps } from '@chakra-ui/react';
 
 interface Props extends TooltipProps {}
 
 const MyTooltip = ({ children, shouldWrapChildren = true, ...props }: Props) => {
-  const { isPc } = useSystem();
-
   return (
     <Tooltip
       className="chakra-tooltip"

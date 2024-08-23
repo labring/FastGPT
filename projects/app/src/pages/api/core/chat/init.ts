@@ -45,7 +45,7 @@ async function handler(
   }
 
   // get app and history
-  const [{ histories }, { nodes }] = await Promise.all([
+  const [{ histories }, { nodes, chatConfig }] = await Promise.all([
     getChatItems({
       appId,
       chatId,
@@ -68,7 +68,7 @@ async function handler(
     history: app.type === AppTypeEnum.plugin ? histories : transformPreviewHistories(histories),
     app: {
       chatConfig: getAppChatConfig({
-        chatConfig: app.chatConfig,
+        chatConfig,
         systemConfigNode: getGuideModule(nodes),
         storeVariables: chat?.variableList,
         storeWelcomeText: chat?.welcomeText,

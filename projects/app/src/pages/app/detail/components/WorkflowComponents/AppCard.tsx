@@ -2,14 +2,13 @@ import React, { useCallback, useMemo } from 'react';
 import { Box, Flex, HStack, useDisclosure } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useI18n } from '@/web/context/I18n';
 import { WorkflowContext } from './context';
-import { compareWorkflow, filterSensitiveNodesData } from '@/web/core/workflow/utils';
+import { filterSensitiveNodesData } from '@/web/core/workflow/utils';
 import dynamic from 'next/dynamic';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -18,15 +17,21 @@ import { publishStatusStyle } from '../constants';
 
 const ImportSettings = dynamic(() => import('./Flow/ImportSettings'));
 
-const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
+const AppCard = ({
+  showSaveStatus,
+  isPublished
+}: {
+  showSaveStatus: boolean;
+  isPublished: boolean;
+}) => {
   const { t } = useTranslation();
   const { appT } = useI18n();
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
 
-  const { appDetail, appLatestVersion, onOpenInfoEdit, onOpenTeamTagModal, onDelApp, currentTab } =
+  const { appDetail, onOpenInfoEdit, onOpenTeamTagModal, onDelApp, currentTab } =
     useContextSelector(AppContext, (v) => v);
-  const { historiesDefaultData, flowData2StoreDataAndCheck, onSaveWorkflow, isSaving, saveLabel } =
+  const { historiesDefaultData, flowData2StoreDataAndCheck, onSaveWorkflow, isSaving } =
     useContextSelector(WorkflowContext, (v) => v);
 
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
@@ -47,27 +52,6 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
       );
     }
   }, [appDetail.chatConfig, appT, copyData, flowData2StoreDataAndCheck]);
-
-  const isPublished = (() => {
-    const data = flowData2StoreDataAndCheck(true);
-    if (!appLatestVersion) return true;
-
-    if (data) {
-      return compareWorkflow(
-        {
-          nodes: appLatestVersion.nodes,
-          edges: appLatestVersion.edges,
-          chatConfig: appLatestVersion.chatConfig
-        },
-        {
-          nodes: data.nodes,
-          edges: data.edges,
-          chatConfig: appDetail.chatConfig
-        }
-      );
-    }
-    return false;
-  })();
 
   const InfoMenu = useCallback(
     ({ children }: { children: React.ReactNode }) => {
@@ -169,35 +153,25 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
             </HStack>
           </InfoMenu>
           {showSaveStatus && (
-            <MyTooltip label={t('common:core.app.Onclick to save')}>
-              <Flex
-                alignItems={'center'}
-                h={'20px'}
-                cursor={'pointer'}
-                fontSize={'mini'}
-                onClick={onSaveWorkflow}
-                lineHeight={1}
+            <Flex alignItems={'center'} h={'20px'} fontSize={'mini'} lineHeight={1}>
+              <MyTag
+                py={0}
+                px={0}
+                showDot
+                bg={'transparent'}
+                colorSchema={
+                  isPublished
+                    ? publishStatusStyle.published.colorSchema
+                    : publishStatusStyle.unPublish.colorSchema
+                }
               >
-                {isSaving && <MyIcon name={'common/loading'} w={'0.8rem'} mr={0.5} />}
-                <Box color={'myGray.500'}>{saveLabel}</Box>
-                <MyTag
-                  py={0}
-                  showDot
-                  bg={'transparent'}
-                  colorSchema={
-                    isPublished
-                      ? publishStatusStyle.published.colorSchema
-                      : publishStatusStyle.unPublish.colorSchema
-                  }
-                >
-                  {t(
-                    isPublished
-                      ? publishStatusStyle.published.text
-                      : publishStatusStyle.unPublish.text
-                  )}
-                </MyTag>
-              </Flex>
-            </MyTooltip>
+                {t(
+                  isPublished
+                    ? publishStatusStyle.published.text
+                    : publishStatusStyle.unPublish.text
+                )}
+              </MyTag>
+            </Flex>
           )}
         </Box>
 
@@ -210,10 +184,7 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
     appDetail.name,
     isOpenImport,
     isPublished,
-    isSaving,
     onCloseImport,
-    onSaveWorkflow,
-    saveLabel,
     showSaveStatus,
     t
   ]);
