@@ -305,11 +305,12 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
               <Box flex={1}>
                 <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong> 元
               </Box>
-              {userInfo?.permission.hasManagePer && !!standardPlan && (
+              {/* TODO:暂时隐藏 */}
+              {/* {userInfo?.permission.hasManagePer && !!standardPlan && (
                 <Button variant={'primary'} size={'sm'} ml={5} onClick={onOpenConversionModal}>
                   {t('user:bill.conversion')}
                 </Button>
-              )}
+              )} */}
             </Flex>
           </Box>
         )}

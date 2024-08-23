@@ -6,7 +6,6 @@ import Icon from '@fastgpt/web/components/common/Icon';
 import Tag from '@fastgpt/web/components/common/Tag';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { balanceConversion } from '@/web/support/wallet/bill/api';
-import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { SUB_EXTRA_POINT_RATE } from '@fastgpt/global/support/wallet/bill/constants';
@@ -27,7 +26,7 @@ const ConversionModal = ({
     if (!userInfo?.team?.balance) return 0;
     const balance = formatStorePrice2Read(userInfo?.team?.balance);
 
-    return Math.ceil(balance / 15) * SUB_EXTRA_POINT_RATE;
+    return Math.ceil((balance / 15) * SUB_EXTRA_POINT_RATE);
   }, []);
 
   const { runAsync: onConvert, loading } = useRequest2(balanceConversion, {
@@ -47,7 +46,6 @@ const ConversionModal = ({
       title={t('user:bill.use_balance')}
     >
       <ModalBody maxW={'450px'}>
-        {loading && <Loading />}
         <VStack px="2.25" gap={2} pb="6">
           <HStack px="4" py="2" color="primary.600" bgColor="primary.50" borderRadius="md">
             <Icon name="common/info" w="1rem" mr="1" />
@@ -86,6 +84,7 @@ const ConversionModal = ({
               fontSize={'sm'}
               minW={'10rem'}
               onClick={onConvert}
+              isLoading={loading}
             >
               {t('user:bill.conversion')}
             </Button>
