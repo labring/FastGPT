@@ -61,9 +61,9 @@ const Header = () => {
   } = useContextSelector(WorkflowContext, (v) => v);
 
   const isPublished = useMemo(() => {
-    const savedSnapshot = [...future.reverse(), ...past].find(
-      (snapshot) => snapshot.isSaved === true
-    );
+    const savedSnapshot =
+      future.findLast((snapshot) => snapshot.isSaved) || past.find((snapshot) => snapshot.isSaved);
+
     return compareSnapshot(
       {
         nodes: savedSnapshot?.nodes,

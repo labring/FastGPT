@@ -555,7 +555,7 @@ const WorkflowContextProvider = ({
         pastEdges: e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [],
         customTitle: t(`app:app.version_initial`),
         chatConfig: appDetail.chatConfig,
-        isSaved: isInit
+        isSaved: true
       });
     }
   );
