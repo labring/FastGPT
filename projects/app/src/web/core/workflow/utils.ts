@@ -529,8 +529,18 @@ export const compareSnapshot = (
   const clone2 = cloneDeep(snapshot2);
 
   if (!clone1.nodes || !clone2.nodes) return false;
+  const formatEdge = (edges: Edge[] | undefined) => {
+    if (!edges) return [];
+    return edges.map((edge) => ({
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle,
+      targetHandle: edge.targetHandle,
+      type: edge.type
+    }));
+  };
 
-  if (!isEqual(clone1.edges, clone2.edges)) {
+  if (!isEqual(formatEdge(clone1.edges), formatEdge(clone2.edges))) {
     console.log('Edge not equal');
     return false;
   }

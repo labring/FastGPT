@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -48,7 +47,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   // get app and history
-  const [{ histories }, { nodes }] = await Promise.all([
+  const [{ histories }, { nodes, chatConfig }] = await Promise.all([
     getChatItems({
       appId,
       chatId,
@@ -76,7 +75,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       history: app.type === AppTypeEnum.plugin ? histories : transformPreviewHistories(histories),
       app: {
         chatConfig: getAppChatConfig({
-          chatConfig: app.chatConfig,
+          chatConfig,
           systemConfigNode: getGuideModule(nodes),
           storeVariables: chat?.variableList,
           storeWelcomeText: chat?.welcomeText,

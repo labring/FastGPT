@@ -90,8 +90,6 @@ export default React.memo(NodeUserGuide);
 
 function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentProps) {
   const [, startTst] = useTransition();
-  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
-
   return (
     <Box className="nodrag">
       <WelcomeTextConfig
@@ -99,22 +97,13 @@ function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentPro
         value={welcomeText}
         onChange={(e) => {
           startTst(() => {
-            setAppDetail((state) => {
-              saveSnapshot({
-                chatConfig: {
-                  ...state.chatConfig,
-                  welcomeText: e.target.value
-                }
-              });
-
-              return {
-                ...state,
-                chatConfig: {
-                  ...state.chatConfig,
-                  welcomeText: e.target.value
-                }
-              };
-            });
+            setAppDetail((state) => ({
+              ...state,
+              chatConfig: {
+                ...state.chatConfig,
+                welcomeText: e.target.value
+              }
+            }));
           });
         }}
       />
@@ -124,26 +113,15 @@ function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentPro
 
 function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: ComponentProps) {
   const [, startTst] = useTransition();
-  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
-
   const updateVariables = useMemoizedFn((value: VariableItemType[]) => {
     startTst(() => {
-      setAppDetail((state) => {
-        saveSnapshot({
-          chatConfig: {
-            ...state.chatConfig,
-            variables: value
-          }
-        });
-
-        return {
-          ...state,
-          chatConfig: {
-            ...state.chatConfig,
-            variables: value
-          }
-        };
-      });
+      setAppDetail((state) => ({
+        ...state,
+        chatConfig: {
+          ...state.chatConfig,
+          variables: value
+        }
+      }));
     });
   });
 
@@ -151,86 +129,53 @@ function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: Com
 }
 
 function QuestionGuide({ chatConfig: { questionGuide = false }, setAppDetail }: ComponentProps) {
-  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
-
   return (
     <QGSwitch
       isChecked={questionGuide}
       onChange={(e) => {
         const value = e.target.checked;
-        setAppDetail((state) => {
-          saveSnapshot({
-            chatConfig: {
-              ...state.chatConfig,
-              questionGuide: value
-            }
-          });
-
-          return {
-            ...state,
-            chatConfig: {
-              ...state.chatConfig,
-              questionGuide: value
-            }
-          };
-        });
+        setAppDetail((state) => ({
+          ...state,
+          chatConfig: {
+            ...state.chatConfig,
+            questionGuide: value
+          }
+        }));
       }}
     />
   );
 }
 
 function TTSGuide({ chatConfig: { ttsConfig }, setAppDetail }: ComponentProps) {
-  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
-
   return (
     <TTSSelect
       value={ttsConfig}
       onChange={(e) => {
-        setAppDetail((state) => {
-          saveSnapshot({
-            chatConfig: {
-              ...state.chatConfig,
-              ttsConfig: e
-            }
-          });
-
-          return {
-            ...state,
-            chatConfig: {
-              ...state.chatConfig,
-              ttsConfig: e
-            }
-          };
-        });
+        setAppDetail((state) => ({
+          ...state,
+          chatConfig: {
+            ...state.chatConfig,
+            ttsConfig: e
+          }
+        }));
       }}
     />
   );
 }
 
 function WhisperGuide({ chatConfig: { whisperConfig, ttsConfig }, setAppDetail }: ComponentProps) {
-  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
-
   return (
     <WhisperConfig
       isOpenAudio={ttsConfig?.type !== TTSTypeEnum.none}
       value={whisperConfig}
       onChange={(e) => {
-        setAppDetail((state) => {
-          saveSnapshot({
-            chatConfig: {
-              ...state.chatConfig,
-              whisperConfig: e
-            }
-          });
-
-          return {
-            ...state,
-            chatConfig: {
-              ...state.chatConfig,
-              whisperConfig: e
-            }
-          };
-        });
+        setAppDetail((state) => ({
+          ...state,
+          chatConfig: {
+            ...state.chatConfig,
+            whisperConfig: e
+          }
+        }));
       }}
     />
   );
@@ -240,28 +185,17 @@ function ScheduledTrigger({
   chatConfig: { scheduledTriggerConfig },
   setAppDetail
 }: ComponentProps) {
-  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
-
   return (
     <ScheduledTriggerConfig
       value={scheduledTriggerConfig}
       onChange={(e) => {
-        setAppDetail((state) => {
-          saveSnapshot({
-            chatConfig: {
-              ...state.chatConfig,
-              scheduledTriggerConfig: e
-            }
-          });
-
-          return {
-            ...state,
-            chatConfig: {
-              ...state.chatConfig,
-              scheduledTriggerConfig: e
-            }
-          };
-        });
+        setAppDetail((state) => ({
+          ...state,
+          chatConfig: {
+            ...state.chatConfig,
+            scheduledTriggerConfig: e
+          }
+        }));
       }}
     />
   );
@@ -269,57 +203,35 @@ function ScheduledTrigger({
 
 function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: ComponentProps) {
   const appId = useContextSelector(WorkflowContext, (v) => v.appId);
-  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
-
   return appId ? (
     <InputGuideConfig
       appId={appId}
       value={chatInputGuide}
       onChange={(e) => {
-        setAppDetail((state) => {
-          saveSnapshot({
-            chatConfig: {
-              ...state.chatConfig,
-              chatInputGuide: e
-            }
-          });
-
-          return {
-            ...state,
-            chatConfig: {
-              ...state.chatConfig,
-              chatInputGuide: e
-            }
-          };
-        });
+        setAppDetail((state) => ({
+          ...state,
+          chatConfig: {
+            ...state.chatConfig,
+            chatInputGuide: e
+          }
+        }));
       }}
     />
   ) : null;
 }
 
 function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: ComponentProps) {
-  const saveSnapshot = useContextSelector(WorkflowContext, (v) => v.saveSnapshot);
-
   return (
     <FileSelect
       value={fileSelectConfig}
       onChange={(e) => {
-        setAppDetail((state) => {
-          saveSnapshot({
-            chatConfig: {
-              ...state.chatConfig,
-              fileSelectConfig: e
-            }
-          });
-
-          return {
-            ...state,
-            chatConfig: {
-              ...state.chatConfig,
-              fileSelectConfig: e
-            }
-          };
-        });
+        setAppDetail((state) => ({
+          ...state,
+          chatConfig: {
+            ...state.chatConfig,
+            fileSelectConfig: e
+          }
+        }));
       }}
     />
   );

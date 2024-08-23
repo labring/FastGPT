@@ -909,7 +909,7 @@ const WorkflowContextProvider = ({
       customTitle: formatTime2YMDHMS(new Date()),
       chatConfig: appDetail.chatConfig
     });
-  }, [nodes, edges]);
+  }, [nodes, edges, appDetail.chatConfig]);
 
   const undo = useCallback(() => {
     if (past[1]) {
