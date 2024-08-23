@@ -91,7 +91,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     mutationFn: (data: DatasetItemType) => {
       return updateDataset({
         id: datasetId,
-        ...data
+        name: data.name,
+        avatar: data.avatar,
+        intro: data.intro,
+        agentModel: data.agentModel,
+        externalReadUrl: data.externalReadUrl,
+        defaultPermission: data.defaultPermission
       });
     },
     successToast: t('common:common.Update Success'),
@@ -236,6 +241,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               w={['32px', '40px']}
               h={['32px', '40px']}
               cursor={'pointer'}
+              borderRadius={'md'}
               onClick={onOpenSelectFile}
             />
           </MyTooltip>
