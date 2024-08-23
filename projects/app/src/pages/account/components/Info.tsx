@@ -105,8 +105,9 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
+  const { teamPlanStatus } = useUserStore();
+  const standardPlan = teamPlanStatus?.standardConstants;
   const { isPc } = useSystem();
-
   const { toast } = useToast();
   const {
     isOpen: isOpenConversionModal,
@@ -304,9 +305,11 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
               <Box flex={1}>
                 <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong> 元
               </Box>
-              <Button variant={'primary'} size={'sm'} ml={5} onClick={onOpenConversionModal}>
-                {t('user:bill.conversion')}
-              </Button>
+              {userInfo?.permission.hasManagePer && !!standardPlan && (
+                <Button variant={'primary'} size={'sm'} ml={5} onClick={onOpenConversionModal}>
+                  {t('user:bill.conversion')}
+                </Button>
+              )}
             </Flex>
           </Box>
         )}
