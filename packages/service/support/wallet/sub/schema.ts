@@ -34,11 +34,6 @@ const SubSchema = new Schema({
     type: Date,
     required: true
   },
-  price: {
-    // Pay price(total price)
-    type: Number,
-    required: true
-  },
 
   // standard sub
   currentMode: {
@@ -60,10 +55,6 @@ const SubSchema = new Schema({
 
   // stand sub and extra points sub. Plan total points
   totalPoints: {
-    type: Number
-  },
-  pointPrice: {
-    // stand level point total price
     type: Number
   },
   surplusPoints: {

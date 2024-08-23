@@ -1,6 +1,8 @@
 {
   "bill": {
-    "not_need_invoice": "余额支付，无法开票"
+    "buy_standard_plan_success": "购买套餐成功",
+    "not_need_invoice": "余额支付，无法开票",
+    "renew_plan": "续费套餐"
   },
   "bind_inform_account_error": "绑定通知账号异常",
   "bind_inform_account_success": "绑定通知账号成功",
