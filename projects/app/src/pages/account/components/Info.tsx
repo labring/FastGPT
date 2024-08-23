@@ -48,7 +48,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const StandDetailModal = dynamic(() => import('./standardDetailModal'));
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
-const PayModal = dynamic(() => import('./PayModal'));
+const ConversionModal = dynamic(() => import('./ConversionModal'));
 const UpdatePswModal = dynamic(() => import('./UpdatePswModal'));
 const UpdateNotification = dynamic(() => import('./UpdateNotificationModal'));
 const OpenAIAccountModal = dynamic(() => import('./OpenAIAccountModal'));
@@ -59,41 +59,45 @@ const Account = () => {
   const { isPc } = useSystem();
   const { teamPlanStatus } = useUserStore();
   const standardPlan = teamPlanStatus?.standardConstants;
+  const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
 
   const { initUserInfo } = useUserStore();
 
   useQuery(['init'], initUserInfo);
 
   return (
-    <Box py={[3, '28px']} maxW={['95vw', '1080px']} px={[5, 10]} mx={'auto'}>
-      {isPc ? (
-        <Flex justifyContent={'center'}>
-          <Box flex={'0 0 330px'}>
-            <MyInfo />
-            <Box mt={9}>
-              <Other />
+    <>
+      <Box py={[3, '28px']} maxW={['95vw', '1080px']} px={[5, 10]} mx={'auto'}>
+        {isPc ? (
+          <Flex justifyContent={'center'}>
+            <Box flex={'0 0 330px'}>
+              <MyInfo onOpenContact={onOpenContact} />
+              <Box mt={9}>
+                <Other onOpenContact={onOpenContact} />
+              </Box>
             </Box>
-          </Box>
-          {!!standardPlan && (
-            <Box ml={'45px'} flex={'1 0 0'} maxW={'600px'}>
-              <PlanUsage />
-            </Box>
-          )}
-        </Flex>
-      ) : (
-        <>
-          <MyInfo />
-          {standardPlan && <PlanUsage />}
-          <Other />
-        </>
-      )}
-    </Box>
+            {!!standardPlan && (
+              <Box ml={'45px'} flex={'1 0 0'} maxW={'600px'}>
+                <PlanUsage />
+              </Box>
+            )}
+          </Flex>
+        ) : (
+          <>
+            <MyInfo onOpenContact={onOpenContact} />
+            {standardPlan && <PlanUsage />}
+            <Other onOpenContact={onOpenContact} />
+          </>
+        )}
+      </Box>
+      {isOpenContact && <CommunityModal onClose={onCloseContact} />}
+    </>
   );
 };
 
 export default React.memo(Account);
 
-const MyInfo = () => {
+const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const theme = useTheme();
   const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
@@ -101,13 +105,14 @@ const MyInfo = () => {
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
+  const { teamPlanStatus } = useUserStore();
+  const standardPlan = teamPlanStatus?.standardConstants;
   const { isPc } = useSystem();
-
   const { toast } = useToast();
   const {
-    isOpen: isOpenPayModal,
-    onClose: onClosePayModal,
-    onOpen: onOpenPayModal
+    isOpen: isOpenConversionModal,
+    onClose: onCloseConversionModal,
+    onOpen: onOpenConversionModal
   } = useDisclosure();
   const {
     isOpen: isOpenUpdatePsw,
@@ -293,23 +298,30 @@ const MyInfo = () => {
             <TeamMenu />
           </Box>
         </Flex>
-        {feConfigs?.isPlus && (
+        {feConfigs?.isPlus && (userInfo?.team?.balance ?? 0) > 0 && (
           <Box mt={6} whiteSpace={'nowrap'}>
             <Flex alignItems={'center'}>
               <Box {...labelStyles}>{t('common:user.team.Balance')}:&nbsp;</Box>
               <Box flex={1}>
                 <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong> 元
               </Box>
-              {feConfigs?.show_pay && userInfo?.team?.permission.hasWritePer && (
-                <Button variant={'whitePrimary'} size={'sm'} ml={5} onClick={onOpenPayModal}>
-                  {t('common:user.Pay')}
+              {userInfo?.permission.hasManagePer && !!standardPlan && (
+                <Button variant={'primary'} size={'sm'} ml={5} onClick={onOpenConversionModal}>
+                  {t('user:bill.conversion')}
                 </Button>
               )}
             </Flex>
           </Box>
         )}
       </Box>
-      {isOpenPayModal && <PayModal onClose={onClosePayModal} />}
+      {isOpenConversionModal && (
+        <ConversionModal
+          onClose={onCloseConversionModal}
+          balance={formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}
+          tokens={String((userInfo?.team?.balance ?? 0) / 15 / 10)}
+          onOpenContact={onOpenContact}
+        />
+      )}
       {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
       {isOpenUpdateNotification && <UpdateNotification onClose={onCloseUpdateNotification} />}
       <File onSelect={onSelectFile} />
@@ -552,7 +564,8 @@ const PlanUsage = () => {
     </Box>
   ) : null;
 };
-const Other = () => {
+
+const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const theme = useTheme();
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
@@ -563,7 +576,6 @@ const Other = () => {
   });
   const { isOpen: isOpenLaf, onClose: onCloseLaf, onOpen: onOpenLaf } = useDisclosure();
   const { isOpen: isOpenOpenai, onClose: onCloseOpenai, onOpen: onOpenOpenai } = useDisclosure();
-  const { isOpen: isOpenConcat, onClose: onCloseConcat, onOpen: onOpenConcat } = useDisclosure();
 
   const onclickSave = useCallback(
     async (data: UserType) => {
@@ -686,7 +698,7 @@ const Other = () => {
             variant={'whiteBase'}
             justifyContent={'flex-start'}
             leftIcon={<MyIcon name={'modal/concat'} w={'18px'} color={'myGray.600'} />}
-            onClick={onOpenConcat}
+            onClick={onOpenContact}
             h={'48px'}
             fontSize={'sm'}
           >
@@ -710,7 +722,6 @@ const Other = () => {
           onClose={onCloseOpenai}
         />
       )}
-      {isOpenConcat && <CommunityModal onClose={onCloseConcat} />}
     </Box>
   );
 };

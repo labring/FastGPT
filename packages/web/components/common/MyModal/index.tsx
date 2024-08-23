@@ -14,6 +14,7 @@ import Avatar from '../Avatar';
 
 export interface MyModalProps extends ModalContentProps {
   iconSrc?: string;
+  iconColor?: string;
   title?: any;
   isCentered?: boolean;
   isLoading?: boolean;
@@ -33,6 +34,7 @@ const MyModal = ({
   w = 'auto',
   maxW = ['90vw', '600px'],
   closeOnOverlayClick = true,
+  iconColor,
   ...props
 }: MyModalProps) => {
   const { isPc } = useSystem();
@@ -71,6 +73,7 @@ const MyModal = ({
             {iconSrc && (
               <>
                 <Avatar
+                  color={iconColor}
                   objectFit={'contain'}
                   alt=""
                   src={iconSrc}
