@@ -38,7 +38,8 @@ const WorkflowEdit = () => {
         cloneDeep({
           nodes: appDetail.modules || [],
           edges: appDetail.edges || []
-        })
+        }),
+        true
       );
     }
   });

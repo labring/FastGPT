@@ -21,6 +21,7 @@ import { subTypeMap, standardSubLevelMap } from '@fastgpt/global/support/wallet/
 import { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+
 const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { Loading } = useLoading();
@@ -33,6 +34,7 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
       maxW={['90vw', '1200px']}
       iconSrc="modal/teamPlans"
       title={t('common:support.wallet.Standard Plan Detail')}
+      isCentered
     >
       <ModalCloseButton onClick={onClose} />
       <ModalBody>
