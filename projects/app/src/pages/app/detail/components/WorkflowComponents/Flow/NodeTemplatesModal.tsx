@@ -123,6 +123,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     },
     {
       manual: false,
+      throttleWait: 100,
       refreshDeps: [basicNodeTemplates, nodeList, hasToolNode, templateType]
     }
   );

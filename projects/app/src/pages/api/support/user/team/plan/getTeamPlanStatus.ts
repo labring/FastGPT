@@ -1,28 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { FeTeamPlanStatusType } from '@fastgpt/global/support/wallet/sub/type';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
+import { NextAPI } from '@/service/middleware/entry';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  try {
-    await connectToDatabase();
+async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+  const { teamId } = await authCert({
+    req,
+    authToken: true
+  });
 
-    const { teamId } = await authCert({
-      req,
-      authToken: true
-    });
-
-    jsonRes<FeTeamPlanStatusType>(res, {
-      data: await getTeamPlanStatus({
-        teamId
-      })
-    });
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
-  }
+  return getTeamPlanStatus({
+    teamId
+  });
 }
+
+export default NextAPI(handler);

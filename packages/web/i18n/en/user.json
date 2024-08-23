@@ -1,6 +1,8 @@
 {
   "bill": {
-    "not_need_invoice": "Balance payment, unable to issue invoice"
+    "buy_standard_plan_success": "Package purchased successfully",
+    "not_need_invoice": "Balance payment, unable to issue invoice",
+    "renew_plan": "Renewal package"
   },
   "bind_inform_account_error": "Abnormal binding notification account",
   "bind_inform_account_success": "Binding notification account successful",

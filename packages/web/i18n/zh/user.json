@@ -11,7 +11,9 @@
     "use_balance_hint": "由于系统升级，原“自动续费从余额扣款”模式取消，余额充值入口关闭。您的余额可用于购买积分",
     "contact_customer_service": "联系客服",
     "convert_success": "兑换成功",
-    "convert_error": "兑换失败"
+    "convert_error": "兑换失败",
+    "buy_standard_plan_success": "购买套餐成功",
+    "renew_plan": "续费套餐"
   },
   "bind_inform_account_error": "绑定通知账号异常",
   "bind_inform_account_success": "绑定通知账号成功",

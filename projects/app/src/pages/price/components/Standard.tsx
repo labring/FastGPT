@@ -1,33 +1,21 @@
 import React, { useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { Box, Button, Flex, Grid, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
-import { postCheckStandardSub, postUpdateStandardSub } from '@/web/support/wallet/sub/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
-import { StandardSubPlanParams } from '@fastgpt/global/support/wallet/sub/api';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { StandardSubPlanUpdateResponse } from '@fastgpt/global/support/wallet/sub/api.d';
-import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
-import MyModal from '@fastgpt/web/components/common/MyModal';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import { getWxPayQRCode } from '@/web/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
 import { useRouter } from 'next/router';
-
-type ConfirmPayModalProps = {
-  teamBalance: number;
-  totalPrice: number;
-  payPrice: number;
-
-  planProps: StandardSubPlanParams;
-};
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const Standard = ({
-  standardPlan,
+  standardPlan: myStandardPlan,
   refetchTeamSubPlan
 }: {
   standardPlan?: TeamSubSchema;
@@ -35,8 +23,9 @@ const Standard = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const { toast } = useToast();
+
   const { subPlans, feConfigs } = useSystemStore();
-  const [confirmPayData, setConfirmPayData] = useState<ConfirmPayModalProps>();
   const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
 
   const standardSubList = useMemo(() => {
@@ -62,37 +51,17 @@ const Standard = ({
       : [];
   }, [subPlans?.standard, selectSubMode]);
 
-  const { runAsync: onclickUpdateStandardPlan, loading: isUpdatingStandardPlan } = useRequest2(
-    postUpdateStandardSub,
-    {
-      onSuccess() {
-        refetchTeamSubPlan();
-        router.reload();
-      },
-      successToast: t('common:support.wallet.subscription.Standard update success'),
-      errorToast: t('common:support.wallet.subscription.Standard update fail')
-    }
-  );
+  // Pay code
+  const [qrPayData, setQRPayData] = useState<QRPayProps>();
 
-  const { mutate: onclickPreCheckStandPlan, isLoading: isCheckingStandardPlan } = useRequest({
-    mutationFn: (data: StandardSubPlanParams) => postCheckStandardSub(data),
-    onSuccess(res: StandardSubPlanUpdateResponse) {
-      if (res.payPrice === undefined) {
-        onclickUpdateStandardPlan({
-          level: res.nextSubLevel,
-          mode: res.nextMode
-        });
-      } else {
-        setConfirmPayData({
-          teamBalance: res.teamBalance,
-          totalPrice: res.planPrice,
-          payPrice: res.payPrice,
-          planProps: {
-            level: res.nextSubLevel,
-            mode: res.nextMode
-          }
-        });
-      }
+  /* Get pay code */
+  const { runAsync: onPay, loading: isLoading } = useRequest2(getWxPayQRCode, {
+    onSuccess(res) {
+      setQRPayData({
+        readPrice: res.readPrice,
+        codeUrl: res.codeUrl,
+        billId: res.billId
+      });
     }
   });
 
@@ -136,9 +105,7 @@ const Standard = ({
         minH={'550px'}
       >
         {standardSubList.map((item) => {
-          const isCurrentPlan =
-            item.level === standardPlan?.currentSubLevel &&
-            selectSubMode === standardPlan?.currentMode;
+          const isCurrentPlan = item.level === myStandardPlan?.currentSubLevel;
 
           return (
             <Box
@@ -158,7 +125,7 @@ const Standard = ({
                   })}
             >
               <Box fontSize={'md'} fontWeight={'500'}>
-                {t(item.label as any)}
+                {t(item.label)}
               </Box>
               <Box fontSize={['32px', '42px']} fontWeight={'bold'}>
                 ￥{item.price}
@@ -166,46 +133,44 @@ const Standard = ({
               <Box color={'myGray.500'} h={'40px'} fontSize={'xs'}>
                 {t(item.desc as any, { title: feConfigs?.systemTitle })}
               </Box>
+
+              {/* Button */}
               {(() => {
-                if (
-                  item.level === StandardSubLevelEnum.free &&
-                  selectSubMode === SubModeEnum.year
-                ) {
+                if (item.level === StandardSubLevelEnum.free) {
                   return (
                     <Button isDisabled mt={4} mb={6} w={'100%'} variant={'solid'}>
                       {t('common:support.wallet.subscription.Nonsupport')}
                     </Button>
                   );
                 }
-                if (
-                  item.level === standardPlan?.nextSubLevel &&
-                  selectSubMode === standardPlan?.nextMode
-                ) {
-                  return (
-                    <Button mt={4} mb={6} w={'100%'} variant={'whiteBase'} isDisabled>
-                      {t('common:support.wallet.subscription.Next plan')}
-                    </Button>
-                  );
-                }
+                // feature:
+                // if (
+                //   item.level === myStandardPlan?.nextSubLevel &&
+                //   selectSubMode === myStandardPlan?.nextMode
+                // ) {
+                //   return (
+                //     <Button mt={4} mb={6} w={'100%'} variant={'whiteBase'} isDisabled>
+                //       {t('common:support.wallet.subscription.Next plan')}
+                //     </Button>
+                //   );
+                // }
                 if (isCurrentPlan) {
                   return (
                     <Button
                       mt={4}
                       mb={6}
                       w={'100%'}
-                      variant={'whiteBase'}
-                      isDisabled={
-                        item.level === standardPlan?.nextSubLevel &&
-                        selectSubMode === standardPlan?.nextMode
-                      }
-                      onClick={() =>
-                        onclickPreCheckStandPlan({
+                      variant={'primary'}
+                      isLoading={isLoading}
+                      onClick={() => {
+                        onPay({
+                          type: BillTypeEnum.standSubPlan,
                           level: item.level,
-                          mode: selectSubMode
-                        })
-                      }
+                          subMode: selectSubMode
+                        });
+                      }}
                     >
-                      {t('common:support.wallet.subscription.Current plan')}
+                      {t('user:bill.renew_plan')}
                     </Button>
                   );
                 }
@@ -216,11 +181,12 @@ const Standard = ({
                     mb={6}
                     w={'100%'}
                     variant={'primaryGhost'}
-                    isLoading={isUpdatingStandardPlan || isCheckingStandardPlan}
+                    isLoading={isLoading}
                     onClick={() =>
-                      onclickPreCheckStandPlan({
+                      onPay({
+                        type: BillTypeEnum.standSubPlan,
                         level: item.level,
-                        mode: selectSubMode
+                        subMode: selectSubMode
                       })
                     }
                   >
@@ -236,13 +202,7 @@ const Standard = ({
         })}
       </Grid>
 
-      {!!confirmPayData && (
-        <ConfirmPayModal
-          {...confirmPayData}
-          onClose={() => setConfirmPayData(undefined)}
-          onConfirmPay={() => onclickUpdateStandardPlan(confirmPayData.planProps)}
-        />
-      )}
+      {!!qrPayData && <QRCodePayModal tip="您正在购买订阅套餐" {...qrPayData} />}
     </Flex>
   );
 };
@@ -299,102 +259,5 @@ const RowTabs = ({
         </Flex>
       ))}
     </Box>
-  );
-};
-
-const ConfirmPayModal = ({
-  teamBalance,
-  totalPrice,
-  payPrice,
-  onClose,
-  onConfirmPay
-}: ConfirmPayModalProps & { onClose: () => void; onConfirmPay: () => void }) => {
-  const { t } = useTranslation();
-
-  const [qrPayData, setQRPayData] = useState<QRPayProps>();
-
-  const formatPayPrice = Math.ceil(formatStorePrice2Read(payPrice));
-  const formatTeamBalance = Math.floor(formatStorePrice2Read(teamBalance));
-
-  const { mutate: handleClickPay, isLoading } = useRequest({
-    mutationFn: async (amount: number) => {
-      // 获取支付二维码
-      return getWxPayQRCode({
-        type: BillTypeEnum.balance,
-        balance: amount
-      });
-    },
-    onSuccess(res) {
-      setQRPayData({
-        readPrice: res.readPrice,
-        codeUrl: res.codeUrl,
-        billId: res.billId
-      });
-    }
-  });
-
-  const { runAsync: onPay, loading: onPaying } = useRequest2(async () => onConfirmPay());
-
-  return (
-    <MyModal
-      isOpen
-      iconSrc="modal/confirmPay"
-      title={t('common:support.wallet.Confirm pay')}
-      onClose={onClose}
-    >
-      <ModalBody py={5} px={9}>
-        <Flex>
-          <Box flex={'0 0 100px'}>{t('common:pay.new_package_price')}</Box>
-          <Box>{t('common:pay.yuan', { amount: formatStorePrice2Read(totalPrice) })}</Box>
-        </Flex>
-        <Flex mt={6}>
-          <Box flex={'0 0 100px'}>{t('common:pay.old_package_price')}</Box>
-          <Box>
-            {t('common:pay.yuan', {
-              amount: Math.floor(formatStorePrice2Read(totalPrice - payPrice))
-            })}
-          </Box>
-        </Flex>
-        <Flex mt={6}>
-          <Box flex={'0 0 100px'}>{t('common:pay.need_to_pay')}</Box>
-          <Box>
-            {t('common:pay.yuan', {
-              amount: formatPayPrice
-            })}
-          </Box>
-        </Flex>
-      </ModalBody>
-      <ModalFooter
-        borderTopWidth={'1px'}
-        borderTopColor={'borderColor.base'}
-        mx={9}
-        justifyContent={'flex-start'}
-        px={0}
-      >
-        <Box>{t('common:pay.balance') + ': '}</Box>
-        <Box ml={2} flex={1}>
-          {t('common:pay.yuan', {
-            amount: formatTeamBalance
-          })}
-        </Box>
-        {teamBalance >= payPrice ? (
-          <Button isLoading={onPaying} size={'sm'} onClick={onPay}>
-            {t('common:pay.confirm_pay')}
-          </Button>
-        ) : (
-          <Button
-            size={'sm'}
-            isLoading={isLoading}
-            onClick={() => {
-              handleClickPay(Math.ceil(formatStorePrice2Read(payPrice - teamBalance)));
-            }}
-          >
-            {t('common:pay.to_recharge')}
-          </Button>
-        )}
-      </ModalFooter>
-
-      {!!qrPayData && <QRCodePayModal {...qrPayData} onSuccess={onConfirmPay} />}
-    </MyModal>
   );
 };

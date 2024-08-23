@@ -1,3 +1,5 @@
+import { i18nT } from '../../../../web/i18n/utils';
+
 export enum SubTypeEnum {
   standard = 'standard',
   extraDatasetSize = 'extraDatasetSize',
@@ -16,19 +18,6 @@ export const subTypeMap = {
   [SubTypeEnum.extraPoints]: {
     label: 'support.wallet.subscription.type.extraPoints',
     icon: 'core/chat/chatLight'
-  }
-};
-
-export enum SubStatusEnum {
-  active = 'active',
-  expired = 'expired'
-}
-export const subStatusMap = {
-  [SubStatusEnum.active]: {
-    label: 'support.wallet.subscription.status.active'
-  },
-  [SubStatusEnum.expired]: {
-    label: 'support.wallet.subscription.status.canceled'
   }
 };
 
@@ -56,23 +45,28 @@ export enum StandardSubLevelEnum {
 }
 export const standardSubLevelMap = {
   [StandardSubLevelEnum.free]: {
-    label: 'support.wallet.subscription.standardSubLevel.free',
-    desc: 'support.wallet.subscription.standardSubLevel.free desc'
+    label: i18nT('common:support.wallet.subscription.standardSubLevel.free'),
+    desc: i18nT('common:support.wallet.subscription.standardSubLevel.free desc'),
+    weight: 1
   },
   [StandardSubLevelEnum.experience]: {
-    label: 'support.wallet.subscription.standardSubLevel.experience',
-    desc: ''
+    label: i18nT('common:support.wallet.subscription.standardSubLevel.experience'),
+    desc: '',
+    weight: 2
   },
   [StandardSubLevelEnum.team]: {
-    label: 'support.wallet.subscription.standardSubLevel.team',
-    desc: ''
+    label: i18nT('common:support.wallet.subscription.standardSubLevel.team'),
+    desc: '',
+    weight: 3
   },
   [StandardSubLevelEnum.enterprise]: {
-    label: 'support.wallet.subscription.standardSubLevel.enterprise',
-    desc: ''
+    label: i18nT('common:support.wallet.subscription.standardSubLevel.enterprise'),
+    desc: '',
+    weight: 4
   },
   [StandardSubLevelEnum.custom]: {
-    label: 'support.wallet.subscription.standardSubLevel.custom',
-    desc: ''
+    label: i18nT('common:support.wallet.subscription.standardSubLevel.custom'),
+    desc: '',
+    weight: 5
   }
 };
