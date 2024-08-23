@@ -8,7 +8,7 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { WorkflowContext } from './WorkflowComponents/context';
-import { formatTime2YMDHM, formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import Tag from '@fastgpt/web/components/common/Tag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -148,6 +148,7 @@ const MyEdit = () => {
                 overflow="hidden"
                 textOverflow="ellipsis"
                 whiteSpace="nowrap"
+                color={'myGray.900'}
               >
                 {item.title}
               </Box>
@@ -272,7 +273,7 @@ const TeamCloud = () => {
                 >
                   <Box minWidth={0} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
                     <Box as={'span'} color={'myGray.900'}>
-                      {item.versionName || formatTime2YMDHM(item.time)}
+                      {item.versionName || formatTime2YMDHMS(item.time)}
                     </Box>
                   </Box>
                   {item.isPublish && (
@@ -306,7 +307,7 @@ const TeamCloud = () => {
                 <Input
                   autoFocus
                   h={8}
-                  defaultValue={item.versionName || formatTime2YMDHM(item.time)}
+                  defaultValue={item.versionName || formatTime2YMDHMS(item.time)}
                   onBlur={async (e) => {
                     setIsEditing(true);
                     await updateAppVersion({

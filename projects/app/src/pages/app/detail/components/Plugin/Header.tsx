@@ -26,9 +26,9 @@ import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { isEqual, isObject, omit } from 'lodash';
 import { compareSnapshot } from '@/web/core/workflow/utils';
 import SaveAndPublishModal from '../WorkflowComponents/Flow/components/SaveAndPublish';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
 const PublishHistories = dynamic(() => import('../WorkflowPublishHistoriesSlider'));
 
@@ -165,7 +165,7 @@ const Header = () => {
                 isLoading={loading}
                 onClick={async () => {
                   await onClickSave({
-                    versionName: ''
+                    versionName: formatTime2YMDHMS(new Date())
                   });
                   onBack();
                 }}
@@ -255,7 +255,7 @@ const Header = () => {
                         isLoading={loading}
                         onClick={async () => {
                           await onClickSave({
-                            versionName: ''
+                            versionName: formatTime2YMDHMS(new Date())
                           });
                         }}
                       >
