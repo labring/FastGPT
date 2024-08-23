@@ -388,13 +388,12 @@ const RenderList = React.memo(function RenderList({
   setParentId
 }: RenderListProps) {
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, setLoading } = useSystemStore();
 
   const { isPc } = useSystem();
   const isSystemPlugin = type === TemplateTypeEnum.systemPlugin;
 
   const { x, y, zoom } = useViewport();
-  const { setLoading } = useSystemStore();
   const { toast } = useToast();
   const reactFlowWrapper = useContextSelector(WorkflowContext, (v) => v.reactFlowWrapper);
   const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
@@ -466,15 +465,16 @@ const RenderList = React.memo(function RenderList({
         selected: true
       });
 
-      setNodes((state) =>
-        state
+      setNodes((state) => {
+        const newState = state
           .map((node) => ({
             ...node,
             selected: false
           }))
           // @ts-ignore
-          .concat(node)
-      );
+          .concat(node);
+        return newState;
+      });
     },
     [computedNewNodeName, reactFlowWrapper, setLoading, setNodes, t, toast, x, y, zoom]
   );

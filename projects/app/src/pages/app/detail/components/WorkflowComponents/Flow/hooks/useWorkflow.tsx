@@ -6,7 +6,6 @@ import {
   addEdge,
   EdgeChange,
   Edge,
-  applyNodeChanges,
   Node,
   NodePositionChange,
   XYPosition
@@ -15,7 +14,6 @@ import { EDGE_TYPE } from '@fastgpt/global/core/workflow/node/constant';
 import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useKeyboard } from './useKeyboard';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
@@ -259,10 +257,6 @@ const computeHelperLines = (
 export const useWorkflow = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { openConfirm: onOpenConfirmDeleteNode, ConfirmModal: ConfirmDeleteModal } = useConfirm({
-    content: t('common:core.module.Confirm Delete Node'),
-    type: 'delete'
-  });
 
   const { isDowningCtrl } = useKeyboard();
   const {
@@ -329,7 +323,7 @@ export const useWorkflow = () => {
             title: t('common:core.workflow.Can not delete node')
           });
         } else {
-          return onOpenConfirmDeleteNode(() => {
+          return (() => {
             onNodesChange(changes);
             setEdges((state) =>
               state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
@@ -387,6 +381,7 @@ export const useWorkflow = () => {
           title: t('common:core.module.Can not connect self')
         });
       }
+
       onConnect({
         connect
       });
@@ -406,7 +401,6 @@ export const useWorkflow = () => {
   }, [setHoverEdgeId]);
 
   return {
-    ConfirmDeleteModal,
     handleNodesChange,
     handleEdgeChange,
     onConnectStart,
@@ -416,9 +410,7 @@ export const useWorkflow = () => {
     onEdgeMouseEnter,
     onEdgeMouseLeave,
     helperLineHorizontal,
-    setHelperLineHorizontal,
-    helperLineVertical,
-    setHelperLineVertical
+    helperLineVertical
   };
 };
 

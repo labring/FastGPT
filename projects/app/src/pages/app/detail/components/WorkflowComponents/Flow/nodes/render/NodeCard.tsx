@@ -386,7 +386,7 @@ const MenuRender = React.memo(function MenuRender({
               icon: 'delete',
               label: t('common:common.Delete'),
               variant: 'whiteDanger',
-              onClick: onOpenConfirmDeleteNode(() => onDelNode(nodeId))
+              onClick: () => onDelNode(nodeId)
             }
           ])
     ];
@@ -429,7 +429,6 @@ const MenuRender = React.memo(function MenuRender({
     menuForbid?.copy,
     menuForbid?.delete,
     t,
-    onOpenConfirmDeleteNode,
     ConfirmDeleteModal,
     DebugInputModal,
     openDebugNode,

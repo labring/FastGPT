@@ -138,6 +138,7 @@
     "Done": "Done",
     "Edit": "Edit",
     "Exit": "Exit",
+    "Exit Directly": "Exit",
     "Expired Time": "Expired Time",
     "Field": "Field",
     "File": "File",
@@ -184,6 +185,7 @@
     "Save": "Save",
     "Save Failed": "Saved failed",
     "Save Success": "Saved success",
+    "Save_and_exit": "Save and exit",
     "Search": "Search",
     "Select File Failed": "Select File Failed",
     "Select template": "Select template",
@@ -256,6 +258,8 @@
     "no_intro": "No introduction yet",
     "not_support": "not support",
     "page_center": "Center the page",
+    "redo_tip": "redo  ctrl  shift  z",
+    "redo_tip_mac": "redo  ⌘  shift  z",
     "request_end": "All loaded",
     "request_more": "Click to load more",
     "speech": {
@@ -275,7 +279,13 @@
       "textarea": {
         "Magnifying": "Magnify"
       }
-    }
+    },
+    "undo_tip": "unde ctrl z",
+    "undo_tip_mac": "undo  ⌘  z  ",
+    "zoomin_tip": "zoomIn  ctrl  -",
+    "zoomin_tip_mac": "zoomIn ⌘  -",
+    "zoomout_tip": "zoomOut  ctrl  +",
+    "zoomout_tip_mac": "zoomOut  ⌘  +"
   },
   "confirm_choice": "Confirm selection",
   "contribute_app_template": "Contribution template",
@@ -311,6 +321,7 @@
       "Max histories": "Chat history count",
       "Max tokens": "Reply limit",
       "Name and avatar": "Avatar & name",
+      "Not saved": "Not saved",
       "Onclick to save": "Click to save",
       "Publish": "Publish",
       "Publish Confirm": "Confirm to publish the app? It will immediately update the app status across all published channels.",
@@ -361,6 +372,7 @@
         "close custom feedback": "Close feedback"
       },
       "have_publish": "Published",
+      "have_saved": "have saved",
       "loading": "loading",
       "logs": {
         "Source And Time": "Source & Time"
@@ -375,6 +387,7 @@
       },
       "no_app": "There is no application yet, go and create one!",
       "not_published": "Unpublished",
+      "not_saved": "not saved",
       "outLink": {
         "Can Drag": "Icon draggable",
         "Default open": "Open by default",
@@ -475,6 +488,7 @@
       "Recent use": "Recent use",
       "Record": "Voice input",
       "Restart": "Restart conversation",
+      "Run test": "Run test",
       "Select Image": "Select image",
       "Select dataset": "Select dataset",
       "Select dataset Desc": "Select a dataset to store the expected answer",
@@ -935,7 +949,10 @@
       "Debug Node": "Debug mode",
       "Failed": "Execution failed",
       "Not intro": "This node has no introduction~",
+      "Run": "Run",
       "Running": "Running",
+      "Save and publish": "Save and publish",
+      "Save to cloud": "Save",
       "Skipped": "Skipped execution",
       "Stop debug": "Stop debugging",
       "Success": "Execution successful",

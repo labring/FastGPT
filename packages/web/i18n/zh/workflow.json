@@ -45,5 +45,12 @@
   },
   "tool_input": "工具参数",
   "update_link_error": "更新链接异常",
-  "variable_picker_tips": "可输入节点名或变量名搜索"
+  "variable_picker_tips": "可输入节点名或变量名搜索",
+  "workflow": {
+    "Back_to_current_version": "回到初始状态",
+    "My edit": "我的编辑",
+    "Switch_success": "切换成功",
+    "Team cloud": "团队云端",
+    "exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。"
+  }
 }
