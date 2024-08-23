@@ -79,7 +79,13 @@ const Header = () => {
   }, [future, past, nodes, edges, appDetail.chatConfig]);
 
   const { runAsync: onClickSave, loading } = useRequest2(
-    async ({ isPublish, versionName }: { isPublish?: boolean; versionName: string }) => {
+    async ({
+      isPublish,
+      versionName = formatTime2YMDHMS(new Date())
+    }: {
+      isPublish?: boolean;
+      versionName?: string;
+    }) => {
       const data = flowData2StoreData();
 
       if (data) {
@@ -164,9 +170,7 @@ const Header = () => {
               <Button
                 isLoading={loading}
                 onClick={async () => {
-                  await onClickSave({
-                    versionName: formatTime2YMDHMS(new Date())
-                  });
+                  await onClickSave({});
                   onBack();
                 }}
               >
@@ -254,9 +258,7 @@ const Header = () => {
                         cursor={'pointer'}
                         isLoading={loading}
                         onClick={async () => {
-                          await onClickSave({
-                            versionName: formatTime2YMDHMS(new Date())
-                          });
+                          await onClickSave({});
                         }}
                       >
                         <MyIcon name={'core/workflow/upload'} w={'16px'} mr={2} />
