@@ -48,7 +48,6 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const StandDetailModal = dynamic(() => import('./standardDetailModal'));
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
-const PayModal = dynamic(() => import('./PayModal'));
 const UpdatePswModal = dynamic(() => import('./UpdatePswModal'));
 const UpdateNotification = dynamic(() => import('./UpdateNotificationModal'));
 const OpenAIAccountModal = dynamic(() => import('./OpenAIAccountModal'));
@@ -104,11 +103,7 @@ const MyInfo = () => {
   const { isPc } = useSystem();
 
   const { toast } = useToast();
-  const {
-    isOpen: isOpenPayModal,
-    onClose: onClosePayModal,
-    onOpen: onOpenPayModal
-  } = useDisclosure();
+
   const {
     isOpen: isOpenUpdatePsw,
     onClose: onCloseUpdatePsw,
@@ -300,16 +295,10 @@ const MyInfo = () => {
               <Box flex={1}>
                 <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong> 元
               </Box>
-              {feConfigs?.show_pay && userInfo?.team?.permission.hasWritePer && (
-                <Button variant={'whitePrimary'} size={'sm'} ml={5} onClick={onOpenPayModal}>
-                  {t('common:user.Pay')}
-                </Button>
-              )}
             </Flex>
           </Box>
         )}
       </Box>
-      {isOpenPayModal && <PayModal onClose={onClosePayModal} />}
       {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
       {isOpenUpdateNotification && <UpdateNotification onClose={onCloseUpdateNotification} />}
       <File onSelect={onSelectFile} />
