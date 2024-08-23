@@ -145,7 +145,7 @@ const Header = () => {
             name={'common/leftArrowLight'}
             w={'1.75rem'}
             cursor={'pointer'}
-            onClick={isPublished ? onBack : () => onOpen()}
+            onClick={isPublished ? onBack : onOpen}
           />
           <MyModal
             isOpen={isOpen}
