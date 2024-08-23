@@ -543,7 +543,9 @@ const WorkflowContextProvider = ({
         }));
       }
 
+      // If it is the initial data, save the initial snapshot
       if (!isInit) return;
+      // If it has been initialized, it will not be saved
       if (past.length > 0) {
         resetSnapshot(past[0]);
         return;

@@ -351,12 +351,8 @@ const MenuRender = React.memo(function MenuRender({
   );
   const onDelNode = useCallback(
     (nodeId: string) => {
-      setNodes((nodeState) => {
-        setEdges((state) =>
-          state.filter((edge) => edge.source !== nodeId && edge.target !== nodeId)
-        );
-        return nodeState.filter((item) => item.data.nodeId !== nodeId);
-      });
+      setNodes((state) => state.filter((item) => item.data.nodeId !== nodeId));
+      setEdges((state) => state.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
     },
     [setEdges, setNodes]
   );

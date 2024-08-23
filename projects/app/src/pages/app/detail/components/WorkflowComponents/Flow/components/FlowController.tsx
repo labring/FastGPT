@@ -13,7 +13,7 @@ const FlowController = React.memo(function FlowController() {
   const { undo, redo, canRedo, canUndo } = useContextSelector(WorkflowContext, (v) => v);
   const { t } = useTranslation();
 
-  const isMac = window.navigator.userAgent.toLocaleLowerCase().includes('mac');
+  const isMac = !window ? false : window.navigator.userAgent.toLocaleLowerCase().includes('mac');
 
   useEffect(() => {
     const keyDownHandler = (event: KeyboardEvent) => {

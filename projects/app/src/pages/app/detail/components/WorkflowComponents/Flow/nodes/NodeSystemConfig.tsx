@@ -112,17 +112,14 @@ function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentPro
 }
 
 function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: ComponentProps) {
-  const [, startTst] = useTransition();
   const updateVariables = useMemoizedFn((value: VariableItemType[]) => {
-    startTst(() => {
-      setAppDetail((state) => ({
-        ...state,
-        chatConfig: {
-          ...state.chatConfig,
-          variables: value
-        }
-      }));
-    });
+    setAppDetail((state) => ({
+      ...state,
+      chatConfig: {
+        ...state.chatConfig,
+        variables: value
+      }
+    }));
   });
 
   return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} />;
