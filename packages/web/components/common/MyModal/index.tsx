@@ -71,6 +71,7 @@ const MyModal = ({
             {iconSrc && (
               <>
                 <Avatar
+                  color="primary.600"
                   objectFit={'contain'}
                   alt=""
                   src={iconSrc}
