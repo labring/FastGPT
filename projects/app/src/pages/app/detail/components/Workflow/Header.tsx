@@ -61,6 +61,9 @@ const Header = () => {
   } = useContextSelector(WorkflowContext, (v) => v);
 
   const isPublished = useMemo(() => {
+    /* 
+      Find the last saved snapshot in the past and future snapshots
+    */
     const savedSnapshot =
       future.findLast((snapshot) => snapshot.isSaved) || past.find((snapshot) => snapshot.isSaved);
 
@@ -97,6 +100,7 @@ const Header = () => {
           //@ts-ignore
           version: 'v2'
         });
+        // Mark the current snapshot as saved
         setPast((prevPast) =>
           prevPast.map((item, index) =>
             index === prevPast.length - 1
