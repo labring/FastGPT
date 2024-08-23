@@ -298,7 +298,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             <TeamMenu />
           </Box>
         </Flex>
-        {feConfigs?.isPlus && (
+        {feConfigs?.isPlus && (userInfo?.team?.balance ?? 0) > 0 && (
           <Box mt={6} whiteSpace={'nowrap'}>
             <Flex alignItems={'center'}>
               <Box {...labelStyles}>{t('common:user.team.Balance')}:&nbsp;</Box>

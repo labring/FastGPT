@@ -31,6 +31,7 @@ const ConversionModal = ({
       isOpen
       onClose={onClose}
       iconSrc="support/bill/wallet"
+      iconColor="primary.600"
       title={t('user:bill.use_balance')}
     >
       <ModalBody maxW={'450px'}>
