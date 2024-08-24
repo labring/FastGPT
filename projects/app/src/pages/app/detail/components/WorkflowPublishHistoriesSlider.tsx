@@ -245,7 +245,7 @@ const TeamCloud = () => {
             _hover={{
               bg: 'primary.50'
             }}
-            onClick={() => onChangeVersion(item)}
+            onClick={() => hoveredIndex === undefined && onChangeVersion(item)}
           >
             <MyPopover
               trigger="hover"
