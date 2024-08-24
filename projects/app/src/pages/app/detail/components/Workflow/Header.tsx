@@ -29,6 +29,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { compareSnapshot } from '@/web/core/workflow/utils';
 import SaveAndPublishModal from '../WorkflowComponents/Flow/components/SaveAndPublish';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const PublishHistories = dynamic(() => import('../WorkflowPublishHistoriesSlider'));
 
@@ -36,6 +37,7 @@ const Header = () => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const router = useRouter();
+  const { toast } = useToast();
 
   const { appDetail, onPublish, currentTab } = useContextSelector(AppContext, (v) => v);
   const isV2Workflow = appDetail?.version === 'v2';
@@ -103,7 +105,7 @@ const Header = () => {
         // Mark the current snapshot as saved
         setPast((prevPast) =>
           prevPast.map((item, index) =>
-            index === prevPast.length - 1
+            index === 0
               ? {
                   ...item,
                   isSaved: true
@@ -175,6 +177,7 @@ const Header = () => {
                 isLoading={loading}
                 onClick={async () => {
                   await onClickSave({});
+                  onClose();
                   onBack();
                 }}
               >
@@ -250,7 +253,7 @@ const Header = () => {
                     </Button>
                   }
                 >
-                  {({}) => (
+                  {({ onClose }) => (
                     <MyBox p={1.5}>
                       <MyBox
                         display={'flex'}
@@ -263,6 +266,10 @@ const Header = () => {
                         isLoading={loading}
                         onClick={async () => {
                           await onClickSave({});
+                          toast({
+                            status: 'success',
+                            title: t('app:saved_success')
+                          });
                         }}
                       >
                         <MyIcon name={'core/workflow/upload'} w={'16px'} mr={2} />
@@ -279,6 +286,7 @@ const Header = () => {
                           if (data) {
                             onSaveAndPublishModalOpen();
                           }
+                          onClose();
                         }}
                       >
                         <MyIcon name={'core/workflow/publish'} w={'16px'} mr={2} />
@@ -311,6 +319,8 @@ const Header = () => {
     isPc,
     currentTab,
     isPublished,
+    onBack,
+    onOpen,
     isOpen,
     onClose,
     t,
@@ -318,8 +328,6 @@ const Header = () => {
     isV2Workflow,
     historiesDefaultData,
     isSave,
-    onBack,
-    onOpen,
     onClickSave,
     setHistoriesDefaultData,
     appDetail.chatConfig,
@@ -327,6 +335,7 @@ const Header = () => {
     setWorkflowTestData,
     isSaveAndPublishModalOpen,
     onSaveAndPublishModalClose,
+    toast,
     onSaveAndPublishModalOpen
   ]);
 

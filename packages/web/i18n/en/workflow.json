@@ -49,6 +49,7 @@
   "workflow": {
     "Back_to_current_version": "Back to current version",
     "My edit": "My edit",
+    "Switch_failed": "Switch failed",
     "Switch_success": "switch successfully",
     "Team cloud": "Team cloud",
     "exit_tips": "Your changes have not been saved. Exiting directly will not save your edits."
