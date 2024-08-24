@@ -23,15 +23,18 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { versionListResponse } from '@/pages/api/core/app/version/listWorkflow';
 
 const WorkflowPublishHistoriesSlider = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const [currentTab, setCurrentTab] = useState<'myEdit' | 'teamCloud'>('myEdit');
+  const [isLoading, setIsLoading] = useState(false);
 
   return (
     <>
       <CustomRightDrawer
         onClose={() => onClose()}
+        isLoading={isLoading}
         title={
           (
             <>
@@ -55,7 +58,7 @@ const WorkflowPublishHistoriesSlider = ({ onClose }: { onClose: () => void }) =>
         showMask={false}
         overflow={'unset'}
       >
-        {currentTab === 'myEdit' ? <MyEdit /> : <TeamCloud />}
+        {currentTab === 'myEdit' ? <MyEdit /> : <TeamCloud setIsLoading={setIsLoading} />}
       </CustomRightDrawer>
     </>
   );
@@ -166,7 +169,7 @@ const MyEdit = () => {
   );
 };
 
-const TeamCloud = () => {
+const TeamCloud = ({ setIsLoading }: { setIsLoading: (value: boolean) => void }) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { saveSnapshot, resetSnapshot } = useContextSelector(WorkflowContext, (v) => v);
@@ -187,11 +190,41 @@ const TeamCloud = () => {
   });
   const [editIndex, setEditIndex] = useState<number | undefined>(undefined);
   const [hoveredIndex, setHoveredIndex] = useState<number | undefined>(undefined);
-  const [loadingIndex, setLoadingIndex] = useState<number | undefined>(undefined);
 
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
 
+  const onChangeVersion = async (versionItem: versionListResponse) => {
+    setIsLoading(true);
+    const versionDetail = await getAppVersionDetail(versionItem._id, versionItem.appId);
+    setIsLoading(false);
+    if (!versionDetail) return;
+    const state = {
+      nodes: versionDetail.nodes?.map((item) => storeNode2FlowNode({ item })),
+      edges: versionDetail.edges?.map((item) => storeEdgesRenderEdge({ edge: item })),
+      title: versionItem.versionName,
+      chatConfig: versionDetail.chatConfig
+    };
+
+    const res = await saveSnapshot({
+      pastNodes: state.nodes,
+      pastEdges: state.edges,
+      chatConfig: state.chatConfig,
+      customTitle: `${t('app:app.version_copy')}-${state.title}`
+    });
+
+    if (!res) {
+      return toast({
+        title: t('workflow:workflow.Switch_failed'),
+        status: 'warning'
+      });
+    }
+    resetSnapshot(state);
+    toast({
+      title: t('workflow:workflow.Switch_success'),
+      status: 'success'
+    });
+  };
   return (
     <ScrollList isLoading={isLoading} flex={'1 0 0'} px={5}>
       {list.map((data, index) => {
@@ -200,11 +233,8 @@ const TeamCloud = () => {
         const tmb = members.find((member) => member.tmbId === item.tmbId);
 
         return (
-          <MyBox
+          <Flex
             key={data.index}
-            display={'flex'}
-            isLoading={loadingIndex === index}
-            size={'md'}
             alignItems={'center'}
             py={editIndex !== index ? 2 : 1}
             px={3}
@@ -216,37 +246,7 @@ const TeamCloud = () => {
             _hover={{
               bg: 'primary.50'
             }}
-            onClick={async () => {
-              setLoadingIndex(index);
-              const versionDetail = await getAppVersionDetail(item._id, item.appId);
-              setLoadingIndex(undefined);
-              if (!versionDetail) return;
-              const state = {
-                nodes: versionDetail.nodes?.map((item) => storeNode2FlowNode({ item })),
-                edges: versionDetail.edges?.map((item) => storeEdgesRenderEdge({ edge: item })),
-                title: item.versionName,
-                chatConfig: versionDetail.chatConfig
-              };
-
-              const res = await saveSnapshot({
-                pastNodes: state.nodes,
-                pastEdges: state.edges,
-                chatConfig: state.chatConfig,
-                customTitle: `${t('app:app.version_copy')}-${state.title}`
-              });
-
-              if (!res) {
-                return toast({
-                  title: t('workflow:workflow.Switch_failed'),
-                  status: 'warning'
-                });
-              }
-              resetSnapshot(state);
-              toast({
-                title: t('workflow:workflow.Switch_success'),
-                status: 'success'
-              });
-            }}
+            onClick={() => onChangeVersion(item)}
           >
             <MyPopover
               trigger="hover"
@@ -339,7 +339,7 @@ const TeamCloud = () => {
                 />
               </MyBox>
             )}
-          </MyBox>
+          </Flex>
         );
       })}
     </ScrollList>
