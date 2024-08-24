@@ -22,9 +22,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
   const { current, pageSize, appId } = req.body as Props;
 
   const [result, total] = await Promise.all([
-    MongoAppVersion.find({
-      appId
-    })
+    MongoAppVersion.find(
+      {
+        appId
+      },
+      '_id appId versionName time isPublish tmbId'
+    )
       .sort({
         time: -1
       })

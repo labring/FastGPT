@@ -123,7 +123,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     },
     {
       manual: false,
-      refreshDeps: [basicNodeTemplates, nodeList, hasToolNode, templateType]
+      refreshDeps: [members, basicNodeTemplates, nodeList, hasToolNode, templateType]
     }
   );
   const {

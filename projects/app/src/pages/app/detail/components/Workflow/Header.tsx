@@ -176,7 +176,7 @@ const Header = () => {
               <Button
                 isLoading={loading}
                 onClick={async () => {
-                  onClickSave({});
+                  await onClickSave({});
                   onClose();
                   onBack();
                 }}
