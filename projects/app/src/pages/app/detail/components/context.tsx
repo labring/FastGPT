@@ -35,7 +35,7 @@ type AppContextType = {
   onOpenInfoEdit: () => void;
   onOpenTeamTagModal: () => void;
   onDelApp: () => void;
-  onPublish: (data: PostPublishAppProps) => Promise<void>;
+  onSaveApp: (data: PostPublishAppProps) => Promise<void>;
   appLatestVersion:
     | {
         nodes: StoreNodeItemType[];
@@ -70,7 +70,7 @@ export const AppContext = createContext<AppContextType>({
   onDelApp: function (): void {
     throw new Error('Function not implemented.');
   },
-  onPublish: function (data: PostPublishAppProps): Promise<void> {
+  onSaveApp: function (data: PostPublishAppProps): Promise<void> {
     throw new Error('Function not implemented.');
   },
   appLatestVersion: undefined,
@@ -150,7 +150,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }));
   });
 
-  const { runAsync: onPublish } = useRequest2(async (data: PostPublishAppProps) => {
+  const { runAsync: onSaveApp } = useRequest2(async (data: PostPublishAppProps) => {
     await postPublishApp(appId, data);
     setAppDetail((state) => ({
       ...state,
@@ -190,7 +190,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     onOpenInfoEdit,
     onOpenTeamTagModal,
     onDelApp,
-    onPublish,
+    onSaveApp,
     appLatestVersion,
     reloadAppLatestVersion,
     reloadApp
