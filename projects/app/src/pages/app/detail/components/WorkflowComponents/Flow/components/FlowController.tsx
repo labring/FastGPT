@@ -149,7 +149,7 @@ const FlowController = React.memo(function FlowController() {
         <Background />
       </>
     );
-  }, [isMac, t, undo, buttonStyle, canUndo, redo, canRedo, zoomOut, zoomIn, fitView]);
+  }, [isMac, t, undo, buttonStyle, canUndo, redo, canRedo, zoom, zoomOut, zoomIn, fitView]);
 
   return Render;
 });
