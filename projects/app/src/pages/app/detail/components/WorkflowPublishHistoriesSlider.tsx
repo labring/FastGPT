@@ -86,14 +86,15 @@ const MyEdit = () => {
                 chatConfig: initialSnapshot.chatConfig,
                 customTitle: t(`app:app.version_initial_copy`)
               });
+
               if (res) {
                 resetSnapshot(initialSnapshot);
-              }
 
-              toast({
-                title: t('workflow:workflow.Switch_success'),
-                status: 'success'
-              });
+                toast({
+                  title: t('workflow:workflow.Switch_success'),
+                  status: 'success'
+                });
+              }
             }}
           >
             {t('app:app.version_back')}
@@ -123,11 +124,12 @@ const MyEdit = () => {
                 });
                 if (res) {
                   resetSnapshot(item);
+
+                  toast({
+                    title: t('workflow:workflow.Switch_success'),
+                    status: 'success'
+                  });
                 }
-                toast({
-                  title: t('workflow:workflow.Switch_success'),
-                  status: 'success'
-                });
               }}
             >
               <Box
@@ -209,18 +211,20 @@ const TeamCloud = () => {
         chatConfig: versionDetail.chatConfig
       };
 
-      await saveSnapshot({
+      const res = await saveSnapshot({
         pastNodes: state.nodes,
         pastEdges: state.edges,
         chatConfig: state.chatConfig,
         customTitle: `${t('app:app.version_copy')}-${state.title}`
       });
 
-      resetSnapshot(state);
-      toast({
-        title: t('workflow:workflow.Switch_success'),
-        status: 'success'
-      });
+      if (res) {
+        resetSnapshot(state);
+        toast({
+          title: t('workflow:workflow.Switch_success'),
+          status: 'success'
+        });
+      }
     }
   );
 

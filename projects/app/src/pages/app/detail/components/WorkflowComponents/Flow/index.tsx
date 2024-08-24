@@ -18,6 +18,9 @@ import { useWorkflow } from './hooks/useWorkflow';
 import HelperLines from './components/HelperLines';
 import FlowController from './components/FlowController';
 
+export const minZoom = 0.1;
+export const maxZoom = 1.5;
+
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.emptyNode]: NodeSimple,
@@ -112,8 +115,8 @@ const Workflow = () => {
           fitView
           nodes={nodes}
           edges={edges}
-          minZoom={0.1}
-          maxZoom={1.5}
+          minZoom={minZoom}
+          maxZoom={maxZoom}
           defaultEdgeOptions={defaultEdgeOptions}
           elevateEdgesOnSelect
           connectionLineStyle={connectionLineStyle}
