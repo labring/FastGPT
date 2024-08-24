@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { Background, ControlButton, MiniMap, Panel, useReactFlow } from 'reactflow';
+import { Background, ControlButton, MiniMap, Panel, useReactFlow, useViewport } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -7,9 +7,11 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import styles from './index.module.scss';
+import { maxZoom, minZoom } from '..';
 
 const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
+  const { zoom } = useViewport();
   const { undo, redo, canRedo, canUndo } = useContextSelector(WorkflowContext, (v) => v);
   const { t } = useTranslation();
 
@@ -111,6 +113,7 @@ const FlowController = React.memo(function FlowController() {
               onClick={() => zoomOut()}
               style={buttonStyle}
               className={`${styles.customControlButton}`}
+              disabled={zoom <= minZoom}
             >
               <MyIcon name={'common/subtract'} />
             </ControlButton>
@@ -124,6 +127,7 @@ const FlowController = React.memo(function FlowController() {
               onClick={() => zoomIn()}
               style={buttonStyle}
               className={`${styles.customControlButton}`}
+              disabled={zoom >= maxZoom}
             >
               <MyIcon name={'common/addLight'} />
             </ControlButton>
@@ -145,7 +149,7 @@ const FlowController = React.memo(function FlowController() {
         <Background />
       </>
     );
-  }, [isMac, t, undo, buttonStyle, canUndo, redo, canRedo, zoomOut, zoomIn, fitView]);
+  }, [isMac, t, undo, buttonStyle, canUndo, redo, canRedo, zoom, zoomOut, zoomIn, fitView]);
 
   return Render;
 });

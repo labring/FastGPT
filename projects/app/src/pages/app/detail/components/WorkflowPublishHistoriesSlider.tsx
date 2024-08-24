@@ -86,6 +86,7 @@ const MyEdit = () => {
                 chatConfig: initialSnapshot.chatConfig,
                 customTitle: t(`app:app.version_initial_copy`)
               });
+
               if (res) {
                 resetSnapshot(initialSnapshot);
               }
@@ -124,6 +125,7 @@ const MyEdit = () => {
                 if (res) {
                   resetSnapshot(item);
                 }
+
                 toast({
                   title: t('workflow:workflow.Switch_success'),
                   status: 'success'
@@ -245,7 +247,7 @@ const TeamCloud = () => {
             _hover={{
               bg: 'primary.50'
             }}
-            onClick={() => onChangeVersion(item)}
+            onClick={() => editIndex === undefined && onChangeVersion(item)}
           >
             <MyPopover
               trigger="hover"
