@@ -6,7 +6,7 @@ import { NullPermission } from '@fastgpt/global/support/permission/constant';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 export const defaultApp: AppDetailType = {
   _id: '',
-  name: i18nT('common:core.app.loading'),
+  name: 'AI',
   type: AppTypeEnum.simple,
   avatar: '/icon/logo.svg',
   intro: '',
