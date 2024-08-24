@@ -92,6 +92,7 @@
   "plugin_dispatch_tip": "It is up to the model to decide which plug-ins to add additional capabilities to. If the plug-in is selected, the knowledge base call is also treated as a special plug-in.",
   "publish_channel": "Publish channel",
   "publish_success": "Publish success",
+  "saved_success": "Saved success",
   "search_app": "Search app",
   "setting_app": "Settings",
   "setting_plugin": "Setting plugin",

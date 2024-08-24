@@ -1,5 +1,6 @@
 import { Box, Button, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 type FormType = {
@@ -17,6 +18,7 @@ const SaveAndPublishModal = ({
   onClickSave: (data: { isPublish: boolean; versionName: string }) => Promise<void>;
 }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const { register, handleSubmit } = useForm<FormType>({
     defaultValues: {
       versionName: '',
@@ -61,6 +63,10 @@ const SaveAndPublishModal = ({
           isLoading={isLoading}
           onClick={handleSubmit(async (data) => {
             await onClickSave({ ...data, isPublish: true });
+            toast({
+              status: 'success',
+              title: t('app:publish_success')
+            });
             onClose();
           })}
         >

@@ -91,6 +91,7 @@
   "plugin_dispatch_tip": "给模型附加额外的能力，具体调用哪些插件，将由模型自主决定。\n若选择了插件，知识库调用将自动作为一个特殊的插件。",
   "publish_channel": "发布渠道",
   "publish_success": "发布成功",
+  "saved_success": "保存成功",
   "search_app": "搜索应用",
   "setting_app": "应用配置",
   "setting_plugin": "插件配置",

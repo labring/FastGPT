@@ -49,6 +49,7 @@
   "workflow": {
     "Back_to_current_version": "回到初始状态",
     "My edit": "我的编辑",
+    "Switch_failed": "切换失败",
     "Switch_success": "切换成功",
     "Team cloud": "团队云端",
     "exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。"
