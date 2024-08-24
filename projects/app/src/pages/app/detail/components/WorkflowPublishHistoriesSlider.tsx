@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { getPublishList, updateAppVersion } from '@/web/core/app/api/version';
+import {
+  getAppVersionDetail,
+  getWorkflowVersionList,
+  updateAppVersion
+} from '@/web/core/app/api/version';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import CustomRightDrawer from '@fastgpt/web/components/common/MyDrawer/CustomRightDrawer';
 import { useTranslation } from 'next-i18next';
@@ -49,7 +53,6 @@ const WorkflowPublishHistoriesSlider = ({ onClose }: { onClose: () => void }) =>
         maxW={'340px'}
         px={0}
         showMask={false}
-        top={'60px'}
         overflow={'unset'}
       >
         {currentTab === 'myEdit' ? <MyEdit /> : <TeamCloud />}
@@ -170,7 +173,7 @@ const TeamCloud = () => {
   const { loadAndGetTeamMembers } = useUserStore();
   const { feConfigs } = useSystemStore();
 
-  const { list, ScrollList, isLoading, fetchData } = useScrollPagination(getPublishList, {
+  const { list, ScrollList, isLoading, fetchData } = useScrollPagination(getWorkflowVersionList, {
     itemHeight: 40,
     overscan: 20,
 
@@ -184,6 +187,7 @@ const TeamCloud = () => {
   });
   const [editIndex, setEditIndex] = useState<number | undefined>(undefined);
   const [hoveredIndex, setHoveredIndex] = useState<number | undefined>(undefined);
+  const [loadingIndex, setLoadingIndex] = useState<number | undefined>(undefined);
 
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
@@ -196,8 +200,11 @@ const TeamCloud = () => {
         const tmb = members.find((member) => member.tmbId === item.tmbId);
 
         return (
-          <Flex
+          <MyBox
             key={data.index}
+            display={'flex'}
+            isLoading={loadingIndex === index}
+            size={'md'}
             alignItems={'center'}
             py={editIndex !== index ? 2 : 1}
             px={3}
@@ -210,11 +217,15 @@ const TeamCloud = () => {
               bg: 'primary.50'
             }}
             onClick={async () => {
+              setLoadingIndex(index);
+              const versionDetail = await getAppVersionDetail(item._id, item.appId);
+              setLoadingIndex(undefined);
+              if (!versionDetail) return;
               const state = {
-                nodes: item.nodes?.map((item) => storeNode2FlowNode({ item })),
-                edges: item.edges?.map((item) => storeEdgesRenderEdge({ edge: item })),
+                nodes: versionDetail.nodes?.map((item) => storeNode2FlowNode({ item })),
+                edges: versionDetail.edges?.map((item) => storeEdgesRenderEdge({ edge: item })),
                 title: item.versionName,
-                chatConfig: item.chatConfig
+                chatConfig: versionDetail.chatConfig
               };
 
               const res = await saveSnapshot({
@@ -224,7 +235,12 @@ const TeamCloud = () => {
                 customTitle: `${t('app:app.version_copy')}-${state.title}`
               });
 
-              if (!res) return;
+              if (!res) {
+                return toast({
+                  title: t('workflow:workflow.Switch_failed'),
+                  status: 'warning'
+                });
+              }
               resetSnapshot(state);
               toast({
                 title: t('workflow:workflow.Switch_success'),
@@ -308,6 +324,7 @@ const TeamCloud = () => {
                   autoFocus
                   h={8}
                   defaultValue={item.versionName || formatTime2YMDHMS(item.time)}
+                  onClick={(e) => e.stopPropagation()}
                   onBlur={async (e) => {
                     setIsEditing(true);
                     await updateAppVersion({
@@ -322,7 +339,7 @@ const TeamCloud = () => {
                 />
               </MyBox>
             )}
-          </Flex>
+          </MyBox>
         );
       })}
     </ScrollList>

@@ -15,7 +15,7 @@ import { RuntimeEdgeItemType, StoreEdgeItemType } from '@fastgpt/global/core/wor
 import { FlowNodeChangeProps } from '@fastgpt/global/core/workflow/type/fe';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useLocalStorageState, useMemoizedFn, useUpdateEffect } from 'ahooks';
+import { useDebounceEffect, useLocalStorageState, useMemoizedFn, useUpdateEffect } from 'ahooks';
 import React, {
   Dispatch,
   SetStateAction,
@@ -900,20 +900,23 @@ const WorkflowContextProvider = ({
       return true;
     },
     {
-      debounceWait: 500,
       refreshDeps: [nodes, edges, appDetail.chatConfig, past]
     }
   );
 
-  useEffect(() => {
-    if (!nodes.length) return;
-    saveSnapshot({
-      pastNodes: nodes,
-      pastEdges: edges,
-      customTitle: formatTime2YMDHMS(new Date()),
-      chatConfig: appDetail.chatConfig
-    });
-  }, [nodes, edges, appDetail.chatConfig]);
+  useDebounceEffect(
+    () => {
+      if (!nodes.length) return;
+      saveSnapshot({
+        pastNodes: nodes,
+        pastEdges: edges,
+        customTitle: formatTime2YMDHMS(new Date()),
+        chatConfig: appDetail.chatConfig
+      });
+    },
+    [nodes, edges, appDetail.chatConfig],
+    { wait: 500 }
+  );
 
   const undo = useCallback(() => {
     if (past[1]) {

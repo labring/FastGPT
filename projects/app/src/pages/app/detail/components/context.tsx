@@ -84,7 +84,6 @@ export const AppContext = createContext<AppContextType>({
 
 const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
-  const { appT } = useI18n();
   const router = useRouter();
   const { appId, currentTab = TabEnum.appEdit } = router.query as {
     appId: string;
@@ -151,23 +150,18 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }));
   });
 
-  const { runAsync: onPublish } = useRequest2(
-    async (data: PostPublishAppProps) => {
-      await postPublishApp(appId, data);
-      setAppDetail((state) => ({
-        ...state,
-        ...data,
-        modules: data.nodes || state.modules
-      }));
-      reloadAppLatestVersion();
-    },
-    {
-      successToast: appT('publish_success')
-    }
-  );
+  const { runAsync: onPublish } = useRequest2(async (data: PostPublishAppProps) => {
+    await postPublishApp(appId, data);
+    setAppDetail((state) => ({
+      ...state,
+      ...data,
+      modules: data.nodes || state.modules
+    }));
+    reloadAppLatestVersion();
+  });
 
   const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
-    content: appT('confirm_del_app_tip'),
+    content: t('app:confirm_del_app_tip'),
     type: 'delete'
   });
   const { runAsync: deleteApp } = useRequest2(
