@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Box,
   Flex,
@@ -39,14 +39,20 @@ const Header = () => {
   const router = useRouter();
   const { toast } = useToast();
 
-  const { appDetail, onPublish, currentTab } = useContextSelector(AppContext, (v) => v);
+  const { appDetail, onSaveApp, currentTab } = useContextSelector(AppContext, (v) => v);
   const isV2Workflow = appDetail?.version === 'v2';
-  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const {
+    isOpen: isOpenBackConfirm,
+    onOpen: onOpenBackConfirm,
+    onClose: onCloseBackConfirm
+  } = useDisclosure();
   const {
     isOpen: isSaveAndPublishModalOpen,
     onOpen: onSaveAndPublishModalOpen,
     onClose: onSaveAndPublishModalClose
   } = useDisclosure();
+
   const [isSave, setIsSave] = useState(false);
 
   const {
@@ -94,7 +100,7 @@ const Header = () => {
       const data = flowData2StoreData();
 
       if (data) {
-        await onPublish({
+        await onSaveApp({
           ...data,
           isPublish,
           versionName,
@@ -157,34 +163,9 @@ const Header = () => {
             name={'common/leftArrowLight'}
             w={'1.75rem'}
             cursor={'pointer'}
-            onClick={isPublished ? onBack : onOpen}
+            onClick={isPublished ? onBack : onOpenBackConfirm}
           />
-          <MyModal
-            isOpen={isOpen}
-            onClose={onClose}
-            iconSrc="common/warn"
-            title={t('common:common.Exit')}
-            w={'400px'}
-          >
-            <ModalBody>
-              <Box>{t('workflow:workflow.exit_tips')}</Box>
-            </ModalBody>
-            <ModalFooter gap={3}>
-              <Button variant={'whiteDanger'} onClick={onBack}>
-                {t('common:common.Exit Directly')}
-              </Button>
-              <Button
-                isLoading={loading}
-                onClick={async () => {
-                  await onClickSave({});
-                  onClose();
-                  onBack();
-                }}
-              >
-                {t('common:common.Save_and_exit')}
-              </Button>
-            </ModalFooter>
-          </MyModal>
+
           {/* app info */}
           <Box ml={1}>
             <AppCard isPublished={isPublished} showSaveStatus={isV2Workflow} />
@@ -313,6 +294,32 @@ const Header = () => {
             }}
           />
         )}
+        <MyModal
+          isOpen={isOpenBackConfirm}
+          onClose={onCloseBackConfirm}
+          iconSrc="common/warn"
+          title={t('common:common.Exit')}
+          w={'400px'}
+        >
+          <ModalBody>
+            <Box>{t('workflow:workflow.exit_tips')}</Box>
+          </ModalBody>
+          <ModalFooter gap={3}>
+            <Button variant={'whiteDanger'} onClick={onBack}>
+              {t('common:common.Exit Directly')}
+            </Button>
+            <Button
+              isLoading={loading}
+              onClick={async () => {
+                await onClickSave({});
+                onCloseBackConfirm();
+                onBack();
+              }}
+            >
+              {t('common:common.Save_and_exit')}
+            </Button>
+          </ModalFooter>
+        </MyModal>
       </>
     );
   }, [
@@ -320,9 +327,9 @@ const Header = () => {
     currentTab,
     isPublished,
     onBack,
-    onOpen,
-    isOpen,
-    onClose,
+    isOpenBackConfirm,
+    onOpenBackConfirm,
+    onCloseBackConfirm,
     t,
     loading,
     isV2Workflow,

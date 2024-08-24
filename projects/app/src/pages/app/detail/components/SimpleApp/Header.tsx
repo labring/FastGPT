@@ -22,6 +22,7 @@ import { publishStatusStyle } from '../constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
 const Header = ({
   appForm,
@@ -34,7 +35,7 @@ const Header = ({
   const { isPc } = useSystem();
   const router = useRouter();
   const { toast } = useToast();
-  const { appId, appDetail, onPublish, currentTab } = useContextSelector(AppContext, (v) => v);
+  const { appId, appDetail, onSaveApp, currentTab } = useContextSelector(AppContext, (v) => v);
 
   const { data: paths = [] } = useRequest2(() => getAppFolderPath(appId), {
     manual: false,
@@ -71,18 +72,20 @@ const Header = ({
   const onSubmitPublish = useCallback(
     async (data: AppSimpleEditFormType) => {
       const { nodes, edges } = form2AppWorkflow(data, t);
-      await onPublish({
+      await onSaveApp({
         nodes,
         edges,
         chatConfig: data.chatConfig,
-        type: AppTypeEnum.simple
+        type: AppTypeEnum.simple,
+        isPublish: true,
+        versionName: formatTime2YMDHMS(new Date())
       });
       toast({
         status: 'success',
         title: t('app:publish_success')
       });
     },
-    [onPublish, t, toast]
+    [onSaveApp, t, toast]
   );
 
   const [historiesDefaultData, setHistoriesDefaultData] = useState<InitProps>();

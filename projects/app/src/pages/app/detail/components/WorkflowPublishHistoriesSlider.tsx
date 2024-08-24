@@ -28,13 +28,11 @@ import { versionListResponse } from '@/pages/api/core/app/version/listWorkflow';
 const WorkflowPublishHistoriesSlider = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const [currentTab, setCurrentTab] = useState<'myEdit' | 'teamCloud'>('myEdit');
-  const [isLoading, setIsLoading] = useState(false);
 
   return (
     <>
       <CustomRightDrawer
         onClose={() => onClose()}
-        isLoading={isLoading}
         title={
           (
             <>
@@ -58,7 +56,7 @@ const WorkflowPublishHistoriesSlider = ({ onClose }: { onClose: () => void }) =>
         showMask={false}
         overflow={'unset'}
       >
-        {currentTab === 'myEdit' ? <MyEdit /> : <TeamCloud setIsLoading={setIsLoading} />}
+        {currentTab === 'myEdit' ? <MyEdit /> : <TeamCloud />}
       </CustomRightDrawer>
     </>
   );
@@ -81,14 +79,17 @@ const MyEdit = () => {
             h={'30px'}
             onClick={async () => {
               const initialSnapshot = past[past.length - 1];
+
               const res = await saveSnapshot({
                 pastNodes: initialSnapshot.nodes,
                 pastEdges: initialSnapshot.edges,
                 chatConfig: initialSnapshot.chatConfig,
                 customTitle: t(`app:app.version_initial_copy`)
               });
-              if (!res) return;
-              resetSnapshot(initialSnapshot);
+              if (res) {
+                resetSnapshot(initialSnapshot);
+              }
+
               toast({
                 title: t('workflow:workflow.Switch_success'),
                 status: 'success'
@@ -120,8 +121,9 @@ const MyEdit = () => {
                   chatConfig: item.chatConfig,
                   customTitle: `${t('app:app.version_copy')}-${item.title}`
                 });
-                if (!res) return;
-                resetSnapshot(item);
+                if (res) {
+                  resetSnapshot(item);
+                }
                 toast({
                   title: t('workflow:workflow.Switch_success'),
                   status: 'success'
@@ -169,7 +171,7 @@ const MyEdit = () => {
   );
 };
 
-const TeamCloud = ({ setIsLoading }: { setIsLoading: (value: boolean) => void }) => {
+const TeamCloud = () => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { saveSnapshot, resetSnapshot } = useContextSelector(WorkflowContext, (v) => v);
@@ -194,39 +196,36 @@ const TeamCloud = ({ setIsLoading }: { setIsLoading: (value: boolean) => void })
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
 
-  const onChangeVersion = async (versionItem: versionListResponse) => {
-    setIsLoading(true);
-    const versionDetail = await getAppVersionDetail(versionItem._id, versionItem.appId);
-    setIsLoading(false);
-    if (!versionDetail) return;
-    const state = {
-      nodes: versionDetail.nodes?.map((item) => storeNode2FlowNode({ item })),
-      edges: versionDetail.edges?.map((item) => storeEdgesRenderEdge({ edge: item })),
-      title: versionItem.versionName,
-      chatConfig: versionDetail.chatConfig
-    };
+  const { runAsync: onChangeVersion, loading: isLoadingVersion } = useRequest2(
+    async (versionItem: versionListResponse) => {
+      const versionDetail = await getAppVersionDetail(versionItem._id, versionItem.appId);
 
-    const res = await saveSnapshot({
-      pastNodes: state.nodes,
-      pastEdges: state.edges,
-      chatConfig: state.chatConfig,
-      customTitle: `${t('app:app.version_copy')}-${state.title}`
-    });
+      if (!versionDetail) return;
 
-    if (!res) {
-      return toast({
-        title: t('workflow:workflow.Switch_failed'),
-        status: 'warning'
+      const state = {
+        nodes: versionDetail.nodes?.map((item) => storeNode2FlowNode({ item })),
+        edges: versionDetail.edges?.map((item) => storeEdgesRenderEdge({ edge: item })),
+        title: versionItem.versionName,
+        chatConfig: versionDetail.chatConfig
+      };
+
+      await saveSnapshot({
+        pastNodes: state.nodes,
+        pastEdges: state.edges,
+        chatConfig: state.chatConfig,
+        customTitle: `${t('app:app.version_copy')}-${state.title}`
+      });
+
+      resetSnapshot(state);
+      toast({
+        title: t('workflow:workflow.Switch_success'),
+        status: 'success'
       });
     }
-    resetSnapshot(state);
-    toast({
-      title: t('workflow:workflow.Switch_success'),
-      status: 'success'
-    });
-  };
+  );
+
   return (
-    <ScrollList isLoading={isLoading} flex={'1 0 0'} px={5}>
+    <ScrollList isLoading={isLoading || isLoadingVersion} flex={'1 0 0'} px={5}>
       {list.map((data, index) => {
         const item = data.data;
         const firstPublishedIndex = list.findIndex((data) => data.data.isPublish);
