@@ -7,7 +7,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import styles from './index.module.scss';
-import { maxZoom, minZoom } from '..';
+import { maxZoom, minZoom } from '../index';
 
 const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
