@@ -259,15 +259,8 @@ export const useWorkflow = () => {
   const { t } = useTranslation();
 
   const { isDowningCtrl } = useKeyboard();
-  const {
-    setConnectingEdge,
-    nodes,
-    setNodes,
-    onNodesChange,
-    setEdges,
-    onEdgesChange,
-    setHoverEdgeId
-  } = useContextSelector(WorkflowContext, (v) => v);
+  const { setConnectingEdge, nodes, onNodesChange, setEdges, onEdgesChange, setHoverEdgeId } =
+    useContextSelector(WorkflowContext, (v) => v);
 
   /* helper line */
   const [helperLineHorizontal, setHelperLineHorizontal] = useState<THelperLine>();
