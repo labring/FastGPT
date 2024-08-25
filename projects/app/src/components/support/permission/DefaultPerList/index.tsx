@@ -1,4 +1,4 @@
-import { Box, BoxProps } from '@chakra-ui/react';
+import { Box, BoxProps, ButtonProps } from '@chakra-ui/react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import React from 'react';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
@@ -21,6 +21,7 @@ type Props = Omit<BoxProps, 'onChange'> & {
   onChange: (v: PermissionValueType) => Promise<any> | any;
   isInheritPermission?: boolean;
   hasParent?: boolean;
+  fontSize?: string;
 };
 
 const DefaultPermissionList = ({
@@ -31,6 +32,7 @@ const DefaultPermissionList = ({
   onChange,
   isInheritPermission = false,
   hasParent,
+  fontSize = '14px',
   ...styles
 }: Props) => {
   const { ConfirmModal, openConfirm } = useConfirm({});
@@ -63,6 +65,7 @@ const DefaultPermissionList = ({
               return onRequestChange(per);
             }
           }}
+          fontSize={fontSize}
         />
       </Box>
       <ConfirmModal />

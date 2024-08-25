@@ -39,6 +39,7 @@ const FileSourceSelector = dynamic(() => import('../Import/components/FileSource
 const Header = ({}: {}) => {
   const { t } = useTranslation();
   const theme = useTheme();
+
   const { setLoading, feConfigs } = useSystemStore();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
@@ -110,35 +111,44 @@ const Header = ({}: {}) => {
     successToast: t('common:common.Create Success'),
     errorToast: t('common:common.Create Failed')
   });
+  const isWebSite = datasetDetail?.type === DatasetTypeEnum.websiteDataset;
 
   return (
     <Flex px={[2, 6]} alignItems={'flex-start'} h={'35px'}>
-      <Box flex={1}>
+      <Box flex={1} fontWeight={'500'} color={'myGray.900'} h={'100%'}>
         <ParentPath
           paths={paths.map((path, i) => ({
             parentId: path.parentId,
             parentName: i === paths.length - 1 ? `${path.parentName}` : path.parentName
           }))}
           FirstPathDom={
-            <>
-              <Box fontWeight={'bold'} fontSize={['sm', 'md']}>
+            <Flex
+              flexDir={'column'}
+              justify={'center'}
+              h={'100%'}
+              fontSize={isWebSite ? '14px' : '16px'}
+              fontWeight={'500'}
+              color={'myGray.600'}
+              pb={isWebSite ? '14px' : '0px'}
+            >
+              <Flex align={'center'}>
+                {!isWebSite && <MyIcon name="common/list" mr={2} w={'20px'} color={'black'} />}
                 {t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel as any)}({total})
-              </Box>
+              </Flex>
               {datasetDetail?.websiteConfig?.url && (
-                <Flex fontSize={'sm'}>
+                <Flex fontSize={'12px'}>
                   {t('common:core.dataset.website.Base Url')}:
                   <Link
                     href={datasetDetail.websiteConfig.url}
                     target="_blank"
                     mr={2}
-                    textDecoration={'underline'}
-                    color={'primary.600'}
+                    color={'blue.700'}
                   >
                     {datasetDetail.websiteConfig.url}
                   </Link>
                 </Flex>
               )}
-            </>
+            </Flex>
           }
           onClick={(e) => {
             router.replace({
@@ -202,18 +212,26 @@ const Header = ({}: {}) => {
                   fontSize={['sm', 'md']}
                 >
                   <Flex
-                    alignItems={'center'}
-                    px={5}
+                    px={'14px'}
                     py={2}
-                    borderRadius={'md'}
+                    borderRadius={'6px'}
                     cursor={'pointer'}
                     bg={'primary.500'}
                     overflow={'hidden'}
                     color={'white'}
-                    h={['28px', '35px']}
                   >
-                    <MyIcon name={'common/importLight'} mr={2} w={'14px'} />
-                    <Box>{t('common:dataset.collections.Create And Import')}</Box>
+                    <Flex h={'20px'} alignItems={'center'}>
+                      <MyIcon
+                        name={'common/folderImport'}
+                        mr={2}
+                        w={'18px'}
+                        h={'18px'}
+                        color={'white'}
+                      />
+                    </Flex>
+                    <Box h={'20px'} fontSize={'14px'} fontWeight={'500'}>
+                      {t('common:dataset.collections.Create And Import')}
+                    </Box>
                   </Flex>
                 </MenuButton>
               }
@@ -323,18 +341,26 @@ const Header = ({}: {}) => {
                   fontSize={['sm', 'md']}
                 >
                   <Flex
-                    alignItems={'center'}
-                    px={5}
+                    px={'14px'}
                     py={2}
-                    borderRadius={'md'}
+                    borderRadius={'6px'}
                     cursor={'pointer'}
                     bg={'primary.500'}
                     overflow={'hidden'}
                     color={'white'}
-                    h={['28px', '35px']}
                   >
-                    <MyIcon name={'common/importLight'} mr={2} w={'14px'} />
-                    <Box>{t('common:dataset.collections.Create And Import')}</Box>
+                    <Flex h={'20px'} alignItems={'center'}>
+                      <MyIcon
+                        name={'common/folderImport'}
+                        mr={2}
+                        w={'18px'}
+                        h={'18px'}
+                        color={'white'}
+                      />
+                    </Flex>
+                    <Box h={'20px'} fontSize={'14px'} fontWeight={'500'}>
+                      {t('common:dataset.collections.Create And Import')}
+                    </Box>
                   </Flex>
                 </MenuButton>
               }

@@ -141,7 +141,6 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         flex={1}
         maxW={'500px'}
         py={4}
-        borderRight={['none', theme.borders.base]}
       >
         <Box
           border={'2px solid'}
@@ -280,7 +279,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
             </Button>
           </Flex>
         </Box>
-        <Box mt={5} flex={'1 0 0'} px={4} overflow={'overlay'} display={['none', 'block']}>
+        <Box mt={5} px={4} overflow={'overlay'} display={['none', 'block']}>
           <TestHistories
             datasetId={datasetId}
             datasetTestItem={datasetTestItem}
