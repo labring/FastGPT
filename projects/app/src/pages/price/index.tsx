@@ -1,7 +1,6 @@
 import React from 'react';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { Box, Image } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { Box } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getTeamPlanStatus } from '@/web/support/user/team/api';
 import { useQuery } from '@tanstack/react-query';
@@ -14,7 +13,6 @@ import { getToken } from '@/web/support/user/auth';
 import Script from 'next/script';
 
 const PriceBox = () => {
-  const { t } = useTranslation();
   const { userInfo } = useUserStore();
 
   const { data: teamSubPlan, refetch: refetchTeamSubPlan } = useQuery(
@@ -60,6 +58,6 @@ export default PriceBox;
 
 export async function getServerSideProps(context: any) {
   return {
-    props: { ...(await serviceSideProps(context)) }
+    props: { ...(await serviceSideProps(context, ['user'])) }
   };
 }

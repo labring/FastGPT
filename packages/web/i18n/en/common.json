@@ -1331,7 +1331,7 @@
         "FAQ": "Frequently asked questions",
         "Month amount": "Months",
         "Next plan": "Future plan",
-        "Nonsupport": "Unable to switch",
+        "Nonsupport": "No purchase required",
         "Stand plan level": "Subscription plan",
         "Standard update fail": "Failed to modify subscription plan",
         "Standard update success": "Subscription plan change successful!",
@@ -1360,6 +1360,7 @@
         "point": "integral",
         "rerank": "Rerank",
         "standardSubLevel": {
+          "custom": "Customized version",
           "enterprise": "Enterprise edition",
           "experience": "Experience edition",
           "free": "Free edition",
