@@ -142,16 +142,15 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
       searchVal?: string;
     }) => {
       if (type === TemplateTypeEnum.teamPlugin) {
-        const plugins = await getTeamPlugTemplates({
+        const teamApps = await getTeamPlugTemplates({
           parentId,
-          searchKey: searchVal,
-          type: [AppTypeEnum.folder, AppTypeEnum.httpPlugin, AppTypeEnum.plugin]
+          searchKey: searchVal
         }).then((res) => res.filter((app) => app.id !== appId));
 
-        return plugins.map<NodeTemplateListItemType>((plugin) => {
-          const member = members.find((member) => member.tmbId === plugin.tmbId);
+        return teamApps.map<NodeTemplateListItemType>((app) => {
+          const member = members.find((member) => member.tmbId === app.tmbId);
           return {
-            ...plugin,
+            ...app,
             author: member?.memberName,
             authorAvatar: member?.avatar
           };
@@ -266,7 +265,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                     },
                     {
                       icon: 'core/modules/teamPlugin',
-                      label: t('common:core.module.template.Team Plugin'),
+                      label: t('common:core.module.template.Team app'),
                       value: TemplateTypeEnum.teamPlugin
                     }
                   ]}
@@ -302,7 +301,11 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                   <Input
                     h={'full'}
                     bg={'myGray.50'}
-                    placeholder={t('common:plugin.Search plugin')}
+                    placeholder={
+                      templateType === TemplateTypeEnum.teamPlugin
+                        ? t('common:plugin.Search_app')
+                        : t('common:plugin.Search plugin')
+                    }
                     onChange={(e) => setSearchKey(e.target.value)}
                   />
                 </InputGroup>
@@ -424,7 +427,10 @@ const RenderList = React.memo(function RenderList({
       const templateNode = await (async () => {
         try {
           // get plugin preview module
-          if (template.flowNodeType === FlowNodeTypeEnum.pluginModule) {
+          if (
+            template.flowNodeType === FlowNodeTypeEnum.pluginModule ||
+            template.flowNodeType === FlowNodeTypeEnum.appModule
+          ) {
             setLoading(true);
             const res = await getPreviewPluginNode({ appId: template.id });
 

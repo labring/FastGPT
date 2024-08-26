@@ -106,6 +106,7 @@ export enum FlowNodeTypeEnum {
   contentExtract = 'contentExtract',
   httpRequest468 = 'httpRequest468',
   runApp = 'app',
+  appModule = 'appModule',
   pluginModule = 'pluginModule',
   pluginInput = 'pluginInput',
   pluginOutput = 'pluginOutput',
