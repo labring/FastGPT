@@ -28,6 +28,8 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -95,6 +97,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     runtimeNodes = rewriteNodeOutputByHistories(chatMessages, runtimeNodes);
+    const workflowResponseWrite = getWorkflowResponseWrite({
+      res,
+      detail: true,
+      streamResponse: true,
+      id: getNanoid(24)
+    });
 
     /* start process */
     const { flowResponses, flowUsages } = await dispatchWorkFlow({
@@ -112,8 +120,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       chatConfig,
       histories: chatMessages,
       stream: true,
-      detail: true,
-      maxRunTimes: 200
+      maxRunTimes: 200,
+      workflowStreamResponse: workflowResponseWrite
     });
 
     responseWrite({

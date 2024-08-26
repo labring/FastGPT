@@ -19,6 +19,7 @@ import { RuntimeNodeItemType } from '../runtime/type';
 import { RuntimeEdgeItemType } from './edge';
 import { ReadFileNodeResponse } from '../template/system/readFiles/type';
 import { UserSelectOptionType } from '../template/system/userSelect/type';
+import { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
 
 /* workflow props */
 export type ChatDispatchProps = {
@@ -36,9 +37,9 @@ export type ChatDispatchProps = {
   query: UserChatItemValueItemType[]; // trigger query
   chatConfig: AppSchema['chatConfig'];
   stream: boolean;
-  detail: boolean; // response detail
   maxRunTimes: number;
   isToolCall?: boolean;
+  workflowStreamResponse?: WorkflowResponseType;
 };
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {

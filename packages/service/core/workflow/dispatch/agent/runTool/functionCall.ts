@@ -11,18 +11,14 @@ import {
   ChatCompletionAssistantMessageParam
 } from '@fastgpt/global/core/ai/type.d';
 import { NextApiResponse } from 'next';
-import {
-  responseWrite,
-  responseWriteController,
-  responseWriteNodeStatus
-} from '../../../../../common/response';
+import { responseWriteController } from '../../../../../common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { dispatchWorkFlow } from '../../index';
 import { DispatchToolModuleProps, RunToolResponse, ToolNodeItemType } from './type.d';
 import json5 from 'json5';
-import { DispatchFlowResponse } from '../../type';
+import { DispatchFlowResponse, WorkflowResponseType } from '../../type';
 import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
@@ -50,9 +46,9 @@ export const runToolWithFunctionCall = async (
     res,
     requestOrigin,
     runtimeNodes,
-    detail = false,
     node,
     stream,
+    workflowStreamResponse,
     params: { temperature = 0, maxToken = 4000, aiChatVision }
   } = props;
   const assistantResponses = response?.assistantResponses || [];
@@ -143,9 +139,9 @@ export const runToolWithFunctionCall = async (
     if (res && stream) {
       return streamResponse({
         res,
-        detail,
         toolNodes,
-        stream: aiResponse
+        stream: aiResponse,
+        workflowStreamResponse
       });
     } else {
       const result = aiResponse as ChatCompletion;
@@ -216,21 +212,18 @@ export const runToolWithFunctionCall = async (
           content: stringToolResponse
         };
 
-        if (stream && detail) {
-          responseWrite({
-            res,
-            event: SseResponseEventEnum.toolResponse,
-            data: JSON.stringify({
-              tool: {
-                id: tool.id,
-                toolName: '',
-                toolAvatar: '',
-                params: '',
-                response: sliceStrStartEnd(stringToolResponse, 500, 500)
-              }
-            })
-          });
-        }
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.toolResponse,
+          data: {
+            tool: {
+              id: tool.id,
+              toolName: '',
+              toolAvatar: '',
+              params: '',
+              response: sliceStrStartEnd(stringToolResponse, 500, 500)
+            }
+          }
+        });
 
         return {
           toolRunResponse,
@@ -260,12 +253,14 @@ export const runToolWithFunctionCall = async (
     ];
     // console.log(tokens, 'tool');
 
-    if (stream && detail) {
-      responseWriteNodeStatus({
-        res,
+    // Run tool status
+    workflowStreamResponse?.({
+      event: SseResponseEventEnum.flowNodeStatus,
+      data: {
+        status: 'running',
         name: node.name
-      });
-    }
+      }
+    });
 
     // tool assistant
     const toolAssistants = toolsRunResponse
@@ -337,14 +332,14 @@ export const runToolWithFunctionCall = async (
 
 async function streamResponse({
   res,
-  detail,
   toolNodes,
-  stream
+  stream,
+  workflowStreamResponse
 }: {
   res: NextApiResponse;
-  detail: boolean;
   toolNodes: ToolNodeItemType[];
   stream: StreamChatType;
+  workflowStreamResponse?: WorkflowResponseType;
 }) {
   const write = responseWriteController({
     res,
@@ -367,9 +362,9 @@ async function streamResponse({
       const content = responseChoice?.content || '';
       textAnswer += content;
 
-      responseWrite({
+      workflowStreamResponse?.({
         write,
-        event: detail ? SseResponseEventEnum.answer : undefined,
+        event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
           text: content
         })
@@ -397,22 +392,20 @@ async function streamResponse({
             toolAvatar: toolNode.avatar
           });
 
-          if (detail) {
-            responseWrite({
-              write,
-              event: SseResponseEventEnum.toolCall,
-              data: JSON.stringify({
-                tool: {
-                  id: functionId,
-                  toolName: toolNode.name,
-                  toolAvatar: toolNode.avatar,
-                  functionName: functionCall.name,
-                  params: functionCall.arguments,
-                  response: ''
-                }
-              })
-            });
-          }
+          workflowStreamResponse?.({
+            write,
+            event: SseResponseEventEnum.toolCall,
+            data: {
+              tool: {
+                id: functionId,
+                toolName: toolNode.name,
+                toolAvatar: toolNode.avatar,
+                functionName: functionCall.name,
+                params: functionCall.arguments,
+                response: ''
+              }
+            }
+          });
         }
 
         continue;
@@ -424,21 +417,19 @@ async function streamResponse({
       if (currentTool) {
         currentTool.arguments += arg;
 
-        if (detail) {
-          responseWrite({
-            write,
-            event: SseResponseEventEnum.toolParams,
-            data: JSON.stringify({
-              tool: {
-                id: functionId,
-                toolName: '',
-                toolAvatar: '',
-                params: arg,
-                response: ''
-              }
-            })
-          });
-        }
+        workflowStreamResponse?.({
+          write,
+          event: SseResponseEventEnum.toolParams,
+          data: {
+            tool: {
+              id: functionId,
+              toolName: '',
+              toolAvatar: '',
+              params: arg,
+              response: ''
+            }
+          }
+        });
       }
     }
   }
