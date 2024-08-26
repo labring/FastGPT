@@ -272,7 +272,7 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
         <Box mt={5} pl={[0, '100px']} gap={3}>
           {feConfigs?.show_pay && (
             <MyTooltip label={priceTip}>
-              <MyTag colorSchema={'gray'} py={'6px'} borderRadius={'md'} px={3} whiteSpace={'wrap'}>
+              <MyTag colorSchema={'gray'} py={1.5} borderRadius={'md'} px={3} whiteSpace={'wrap'}>
                 {priceTip}
               </MyTag>
             </MyTooltip>

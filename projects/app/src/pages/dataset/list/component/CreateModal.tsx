@@ -127,7 +127,7 @@ const CreateModal = ({
       isCentered={!isPc}
       w={'490px'}
     >
-      <ModalBody py={'24px'} px={'36px'}>
+      <ModalBody py={6} px={9}>
         <Box>
           <Box color={'myGray.900'} fontWeight={500} fontSize={'sm'}>
             {t('common:common.Set Name')}
@@ -226,7 +226,7 @@ const CreateModal = ({
         )}
       </ModalBody>
 
-      <ModalFooter px={'36px'}>
+      <ModalFooter px={9}>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common:common.Close')}
         </Button>

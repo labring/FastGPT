@@ -155,7 +155,7 @@ const Dataset = () => {
                 placement="bottom-end"
                 Button={
                   <Button variant={'primary'} px="0">
-                    <Flex alignItems={'center'} px={'20px'}>
+                    <Flex alignItems={'center'} px={5}>
                       <AddIcon mr={2} />
                       <Box>{t('common:common.Create New')}</Box>
                     </Flex>

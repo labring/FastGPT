@@ -212,7 +212,7 @@ const Header = ({}: {}) => {
                   fontSize={['sm', 'md']}
                 >
                   <Flex
-                    px={'14px'}
+                    px={3.5}
                     py={2}
                     borderRadius={'sm'}
                     cursor={'pointer'}
