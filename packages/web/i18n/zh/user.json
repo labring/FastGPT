@@ -9,14 +9,16 @@
     "convert_success": "兑换成功",
     "not_need_invoice": "余额支付，无法开票",
     "price": "价格",
-    "renew_plan": "续费套餐",
     "standard_valid_tip": "套餐使用规则：系统优先使用更高级的套餐，原未用完的套餐将延后生效",
     "token_expire_1year": "积分有效期一年",
     "tokens": "积分",
     "use_balance": "使用余额",
     "use_balance_hint": "由于系统升级，原“自动续费从余额扣款”模式取消，余额充值入口关闭。您的余额可用于购买积分",
     "valid_time": "生效时间",
-    "you_can_convert": "您可兑换"
+    "you_can_convert": "您可兑换",
+    "renew_plan": "续费套餐",
+    "current_token_price": "当前积分价格",
+    "yuan": "元"
   },
   "bind_inform_account_error": "绑定通知账号异常",
   "bind_inform_account_success": "绑定通知账号成功",
