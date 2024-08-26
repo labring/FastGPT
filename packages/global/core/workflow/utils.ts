@@ -1,10 +1,16 @@
-import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from './node/constant';
+import {
+  chatHistoryValueDesc,
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from './node/constant';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   VariableInputEnum,
   variableMap,
-  VARIABLE_NODE_ID
+  VARIABLE_NODE_ID,
+  NodeOutputKeyEnum
 } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType, ReferenceValueProps } from './type/io.d';
 import { StoreNodeItemType } from './type/node';
@@ -25,6 +31,11 @@ import {
 import { IfElseResultEnum } from './template/system/ifElse/constant';
 import { RuntimeNodeItemType } from './runtime/type';
 import { getReferenceVariableValue } from './runtime/utils';
+import {
+  Input_Template_History,
+  Input_Template_Text_Quote,
+  Input_Template_UserChatInput
+} from './template/input';
 
 export const getHandleId = (nodeId: string, type: 'source' | 'target', key: string) => {
   return `${nodeId}-${type}-${key}`;
@@ -147,9 +158,11 @@ export const getModuleInputUiField = (input: FlowNodeInputItemType) => {
   return {};
 };
 
-export const pluginData2FlowNodeIO = (
-  nodes: StoreNodeItemType[]
-): {
+export const pluginData2FlowNodeIO = ({
+  nodes
+}: {
+  nodes: StoreNodeItemType[];
+}): {
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
 } => {
@@ -177,6 +190,74 @@ export const pluginData2FlowNodeIO = (
           }))
         ]
       : []
+  };
+};
+
+export const appData2FlowNodeIO = ({
+  chatConfig
+}: {
+  chatConfig: AppChatConfigType;
+}): {
+  inputs: FlowNodeInputItemType[];
+  outputs: FlowNodeOutputItemType[];
+} => {
+  const variableInput = !chatConfig?.variables
+    ? []
+    : chatConfig.variables.map((item) => {
+        const renderTypeMap = {
+          [VariableInputEnum.input]: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          [VariableInputEnum.textarea]: [
+            FlowNodeInputTypeEnum.textarea,
+            FlowNodeInputTypeEnum.reference
+          ],
+          [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
+          [VariableInputEnum.custom]: [FlowNodeInputTypeEnum.hidden],
+          default: [FlowNodeInputTypeEnum.reference]
+        };
+
+        return {
+          key: item.key,
+          renderTypeList: renderTypeMap[item.type] || renderTypeMap.default,
+          label: item.label,
+          debugLabel: item.label,
+          description: '',
+          valueType: WorkflowIOValueTypeEnum.any,
+          required: item.required,
+          list: item.enums.map((enumItem) => ({
+            label: enumItem.value,
+            value: enumItem.value
+          }))
+        };
+      });
+
+  return {
+    inputs: [
+      Input_Template_History,
+      Input_Template_UserChatInput,
+      ...(chatConfig?.fileSelectConfig ? [Input_Template_Text_Quote] : []),
+      ...variableInput
+    ],
+    outputs: [
+      {
+        id: NodeOutputKeyEnum.history,
+        key: NodeOutputKeyEnum.history,
+        required: true,
+        label: 'core.module.output.label.New context',
+        description: 'core.module.output.description.New context',
+        valueType: WorkflowIOValueTypeEnum.chatHistory,
+        valueDesc: chatHistoryValueDesc,
+        type: FlowNodeOutputTypeEnum.static
+      },
+      {
+        id: NodeOutputKeyEnum.answerText,
+        key: NodeOutputKeyEnum.answerText,
+        required: false,
+        label: 'core.module.output.label.Ai response content',
+        description: 'core.module.output.description.Ai response content',
+        valueType: WorkflowIOValueTypeEnum.string,
+        type: FlowNodeOutputTypeEnum.static
+      }
+    ]
   };
 };
 
