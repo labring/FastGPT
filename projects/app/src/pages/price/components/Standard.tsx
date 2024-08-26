@@ -190,7 +190,7 @@ const Standard = ({
                       })
                     }
                   >
-                    {t('common:support.wallet.subscription.Buy now')}
+                    {t('user:bill.buy_plan')}
                   </Button>
                 );
               })()}

@@ -1,8 +1,11 @@
 {
   "bill": {
+    "buy_plan": "Buy a package",
     "buy_standard_plan_success": "Package purchased successfully",
     "not_need_invoice": "Balance payment, unable to issue invoice",
-    "renew_plan": "Renewal package"
+    "renew_plan": "Renewal package",
+    "standard_valid_tip": "Package usage rules: The system gives priority to using more advanced packages, and the original unused packages will take effect later.",
+    "valid_time": "Effective time"
   },
   "bind_inform_account_error": "Abnormal binding notification account",
   "bind_inform_account_success": "Binding notification account successful",
