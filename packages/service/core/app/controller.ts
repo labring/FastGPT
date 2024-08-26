@@ -50,9 +50,11 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchema) => {
   const version = await MongoAppVersion.findOne({
     appId,
     isPublish: true
-  }).sort({
-    time: -1
-  });
+  })
+    .sort({
+      time: -1
+    })
+    .lean();
 
   if (version) {
     return {
