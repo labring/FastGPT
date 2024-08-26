@@ -36,6 +36,18 @@ export const getWorkflowResponseWrite = ({
 
     if (!res || res.closed || !useStreamResponse) return;
 
+    const detailEvent = [
+      SseResponseEventEnum.error,
+      SseResponseEventEnum.flowNodeStatus,
+      SseResponseEventEnum.flowResponses,
+      SseResponseEventEnum.interactive,
+      SseResponseEventEnum.toolCall,
+      SseResponseEventEnum.toolParams,
+      SseResponseEventEnum.toolResponse,
+      SseResponseEventEnum.updateVariables
+    ];
+    if (!detail && detailEvent.includes(event)) return;
+
     responseWrite({
       res,
       write,
