@@ -52,7 +52,6 @@ export const getScheduleTriggerApp = async () => {
           chatConfig: defaultApp.chatConfig,
           histories: [],
           stream: false,
-          detail: false,
           maxRunTimes: 200
         });
         pushChatUsage({

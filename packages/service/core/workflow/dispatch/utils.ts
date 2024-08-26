@@ -6,6 +6,56 @@ import {
   NodeOutputKeyEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { responseWrite } from '../../../common/response';
+import { NextApiResponse } from 'next';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+
+export const getWorkflowResponseWrite = ({
+  res,
+  detail,
+  streamResponse,
+  id
+}: {
+  res?: NextApiResponse;
+  detail: boolean;
+  streamResponse: boolean;
+  id: string;
+}) => {
+  return ({
+    write,
+    event,
+    data,
+    stream
+  }: {
+    write?: (text: string) => void;
+    event: SseResponseEventEnum;
+    data: Record<string, any>;
+    stream?: boolean; // Focus set stream response
+  }) => {
+    const useStreamResponse = stream ?? streamResponse;
+
+    if (!res || res.closed || !useStreamResponse) return;
+
+    const detailEvent = [
+      SseResponseEventEnum.error,
+      SseResponseEventEnum.flowNodeStatus,
+      SseResponseEventEnum.flowResponses,
+      SseResponseEventEnum.interactive,
+      SseResponseEventEnum.toolCall,
+      SseResponseEventEnum.toolParams,
+      SseResponseEventEnum.toolResponse,
+      SseResponseEventEnum.updateVariables
+    ];
+    if (!detail && detailEvent.includes(event)) return;
+
+    responseWrite({
+      res,
+      write,
+      event: detail ? event : undefined,
+      data: JSON.stringify(data)
+    });
+  };
+};
 
 export const filterToolNodeIdByEdges = ({
   nodeId,

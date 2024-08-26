@@ -1,4 +1,3 @@
-import { NextApiResponse } from 'next';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   DispatchNodeResponseKeyEnum,
@@ -21,7 +20,6 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { responseWrite, responseWriteNodeStatus } from '../../../common/response';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { replaceVariableLabel } from '@fastgpt/global/core/workflow/utils';
 
@@ -114,7 +112,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     variables = {},
     user,
     stream = false,
-    detail = false,
     ...props
   } = data;
 
@@ -260,13 +257,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       nodeOutputs
     };
 
-    if (stream && res) {
-      responseWrite({
-        res,
-        event: SseResponseEventEnum.interactive,
-        data: JSON.stringify({ interactive: interactiveResult })
-      });
-    }
+    props.workflowStreamResponse?.({
+      event: SseResponseEventEnum.interactive,
+      data: { interactive: interactiveResult }
+    });
 
     return {
       type: ChatItemValueTypeEnum.interactive,
@@ -400,11 +394,13 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   }
   async function nodeRunWithActive(node: RuntimeNodeItemType) {
     // push run status messages
-    if (res && stream && detail && node.showStatus) {
-      responseStatus({
-        res,
-        name: node.name,
-        status: 'running'
+    if (node.showStatus) {
+      props.workflowStreamResponse?.({
+        event: SseResponseEventEnum.flowNodeStatus,
+        data: {
+          status: 'running',
+          name: node.name
+        }
       });
     }
     const startTime = Date.now();
@@ -419,7 +415,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       histories,
       user,
       stream,
-      detail,
       node,
       runtimeNodes,
       runtimeEdges,
@@ -507,23 +502,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     [DispatchNodeResponseKeyEnum.toolResponses]: toolRunResponse,
     newVariables: removeSystemVariable(variables)
   };
-}
-
-/* sse response modules staus */
-export function responseStatus({
-  res,
-  status,
-  name
-}: {
-  res: NextApiResponse;
-  status?: 'running' | 'finish';
-  name?: string;
-}) {
-  if (!name) return;
-  responseWriteNodeStatus({
-    res,
-    name
-  });
 }
 
 /* get system variable */

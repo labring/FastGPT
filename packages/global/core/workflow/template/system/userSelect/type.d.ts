@@ -22,5 +22,3 @@ type UserSelectInteractive = {
 };
 
 export type InteractiveNodeResponseItemType = InteractiveBasicType & UserSelectInteractive;
-
-export type UserInteractiveType = UserSelectInteractive;
