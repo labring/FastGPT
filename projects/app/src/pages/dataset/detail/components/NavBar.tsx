@@ -69,7 +69,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
             h={10}
             borderRadius={'md'}
             _hover={{ bg: 'myGray.05' }}
-            fontSize={'14px'}
+            fontSize={'sm'}
             fontWeight={500}
             onClick={() => {
               if (currentTab !== TabEnum.dataCard) router.replace('/dataset/list');
@@ -86,20 +86,18 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
             <IconButton
               p={2}
               mr={2}
-              w={'24px'}
+              w={'1.5rem'}
               h={'24px'}
               border={'1px solid'}
               borderColor={'myGray.200'}
-              boxShadow={
-                '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
-              }
+              boxShadow={'1'}
               icon={<MyIcon name={'common/arrowLeft'} w={'16px'} color={'myGray.500'} />}
               bg={'white'}
               size={'smSquare'}
               borderRadius={'50%'}
               aria-label={''}
             />
-            <Box fontWeight={500} color={'myGray.600'} fontSize={'14px'}>
+            <Box fontWeight={500} color={'myGray.600'} fontSize={'sm'}>
               {currentTab !== TabEnum.dataCard
                 ? t('common:core.dataset.All Dataset')
                 : datasetDetail.name}
@@ -115,7 +113,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
               w={'100%'}
               list={tabList}
               value={currentTab}
-              chosenColor="blue.700"
+              activatedColor="blue.700"
               onChange={setCurrentTab}
               inlineStyles={{
                 fontSize: '1rem',
@@ -169,7 +167,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                     value={100}
                     size={'xs'}
                     colorScheme={agentTrainingMap.colorSchema}
-                    borderRadius={'10px'}
+                    borderRadius={'md'}
                     isAnimated
                     hasStripe
                   />
@@ -182,7 +180,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                     value={100}
                     size={'xs'}
                     colorScheme={vectorTrainingMap.colorSchema}
-                    borderRadius={'10px'}
+                    borderRadius={'md'}
                     isAnimated
                     hasStripe
                   />

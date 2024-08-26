@@ -118,7 +118,7 @@ const CreateModal = ({
     <MyModal
       title={
         <Flex alignItems={'center'} ml={-3}>
-          <Avatar w={'20px'} h={'20px'} borderRadius={'4px'} src={iconMap[type]} pr={'10px'} />
+          <Avatar w={'20px'} h={'20px'} borderRadius={'xs'} src={iconMap[type]} pr={'10px'} />
           {t('common:core.dataset.Create dataset', { name: databaseNameMap[type] })}
         </Flex>
       }
@@ -129,7 +129,7 @@ const CreateModal = ({
     >
       <ModalBody py={'24px'} px={'36px'}>
         <Box>
-          <Box color={'myGray.900'} fontWeight={500} fontSize={'14px'}>
+          <Box color={'myGray.900'} fontWeight={500} fontSize={'sm'}>
             {t('common:common.Set Name')}
           </Box>
           <Flex mt={'12px'} alignItems={'center'}>

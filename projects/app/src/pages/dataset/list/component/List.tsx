@@ -264,7 +264,7 @@ function List() {
                     h={'24px'}
                     alignItems={'center'}
                     justifyContent={'space-between'}
-                    fontSize={'12px'}
+                    fontSize={'sm'}
                     fontWeight={500}
                     color={'myGray.500'}
                   >

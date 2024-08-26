@@ -9,7 +9,7 @@ type Props<ValueType = string> = Omit<GridProps, 'onChange'> & {
   value: ValueType;
   size?: 'sm' | 'md' | 'lg';
   inlineStyles?: FlexProps;
-  chosenColor?: string;
+  activatedColor?: string;
   onChange: (value: ValueType) => void;
 };
 
@@ -17,7 +17,7 @@ const LightRowTabs = <ValueType = string,>({
   list,
   size = 'md',
   value,
-  chosenColor = 'primary.600',
+  activatedColor = 'primary.600',
   onChange,
   inlineStyles,
   ...props
@@ -68,10 +68,10 @@ const LightRowTabs = <ValueType = string,>({
             whiteSpace={'nowrap'}
             {...(value === item.value
               ? {
-                  color: chosenColor,
+                  color: activatedColor,
                   cursor: 'default',
                   fontWeight: 'bold',
-                  borderBottomColor: chosenColor
+                  borderBottomColor: activatedColor
                 }
               : {
                   cursor: 'pointer'

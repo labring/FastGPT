@@ -126,7 +126,7 @@ const Header = ({}: {}) => {
               flexDir={'column'}
               justify={'center'}
               h={'100%'}
-              fontSize={isWebSite ? '14px' : '16px'}
+              fontSize={isWebSite ? 'sm' : 'md'}
               fontWeight={'500'}
               color={'myGray.600'}
               pb={isWebSite ? '14px' : '0px'}
@@ -136,7 +136,7 @@ const Header = ({}: {}) => {
                 {t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel as any)}({total})
               </Flex>
               {datasetDetail?.websiteConfig?.url && (
-                <Flex fontSize={'12px'}>
+                <Flex fontSize={'mini'}>
                   {t('common:core.dataset.website.Base Url')}:
                   <Link
                     href={datasetDetail.websiteConfig.url}
@@ -214,7 +214,7 @@ const Header = ({}: {}) => {
                   <Flex
                     px={'14px'}
                     py={2}
-                    borderRadius={'6px'}
+                    borderRadius={'sm'}
                     cursor={'pointer'}
                     bg={'primary.500'}
                     overflow={'hidden'}
@@ -229,7 +229,7 @@ const Header = ({}: {}) => {
                         color={'white'}
                       />
                     </Flex>
-                    <Box h={'20px'} fontSize={'14px'} fontWeight={'500'}>
+                    <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
                       {t('common:dataset.collections.Create And Import')}
                     </Box>
                   </Flex>
@@ -341,9 +341,9 @@ const Header = ({}: {}) => {
                   fontSize={['sm', 'md']}
                 >
                   <Flex
-                    px={'14px'}
+                    px={3.5}
                     py={2}
-                    borderRadius={'6px'}
+                    borderRadius={'sm'}
                     cursor={'pointer'}
                     bg={'primary.500'}
                     overflow={'hidden'}
@@ -358,7 +358,7 @@ const Header = ({}: {}) => {
                         color={'white'}
                       />
                     </Flex>
-                    <Box h={'20px'} fontSize={'14px'} fontWeight={'500'}>
+                    <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
                       {t('common:dataset.collections.Create And Import')}
                     </Box>
                   </Flex>

@@ -15,10 +15,10 @@ const DatasetTypeTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & Fle
       bg={'myGray.100'}
       borderWidth={'1px'}
       borderColor={'myGray.200'}
-      px={'12px'}
-      py={'6px'}
+      px={3}
+      py={1.5}
       h={'1.75rem'}
-      borderRadius={'6px'}
+      borderRadius={'sm'}
       fontSize={'xs'}
       alignItems={'center'}
       {...props}

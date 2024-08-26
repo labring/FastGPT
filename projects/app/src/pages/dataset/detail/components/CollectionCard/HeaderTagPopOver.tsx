@@ -121,7 +121,7 @@ const HeaderTagPopOver = () => {
               <Input
                 pl={2}
                 h={8}
-                borderRadius={'4px'}
+                borderRadius={'xs'}
                 value={searchTag}
                 placeholder={t('dataset:tag.searchOrAddTag')}
                 onChange={(e) => setSearchTag(e.target.value)}

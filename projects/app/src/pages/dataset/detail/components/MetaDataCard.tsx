@@ -11,10 +11,10 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { DatasetCollectionTypeMap, TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 
-const MetaDataCard = () => {
+const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { collectionId = '', datasetId } = router.query as {
+  const { collectionId = '' } = router.query as {
     collectionId: string;
     datasetId: string;
   };

@@ -74,7 +74,7 @@ const Detail = ({ datasetId, currentTab }: Props) => {
             my={3}
             mr={2}
             boxShadow={'2'}
-            borderRadius={'8px'}
+            borderRadius={'md'}
           >
             <NavBar currentTab={currentTab} />
             <Box flex={'1 0 0'} w={'100%'} overflow={'auto'}>
@@ -90,14 +90,18 @@ const Detail = ({ datasetId, currentTab }: Props) => {
           </Flex>
           <Flex
             bg={'white'}
-            borderRadius={'8px'}
+            borderRadius={'md'}
             overflowY={'scroll'}
             boxShadow={'2'}
             my={3}
             mr={3}
             flex={19}
           >
-            {currentTab === TabEnum.dataCard ? <MetaDataCard /> : <Info />}
+            {currentTab === TabEnum.dataCard ? (
+              <MetaDataCard datasetId={datasetId} />
+            ) : (
+              <Info datasetId={datasetId} />
+            )}
           </Flex>
         </Flex>
       ) : (
@@ -114,7 +118,7 @@ const Detail = ({ datasetId, currentTab }: Props) => {
                 )}
                 {currentTab === TabEnum.dataCard && <DataCard />}
                 {currentTab === TabEnum.test && <Test datasetId={datasetId} />}
-                {currentTab === TabEnum.info && <Info />}
+                {currentTab === TabEnum.info && <Info datasetId={datasetId} />}
                 {currentTab === TabEnum.import && <Import />}
               </Box>
             )}

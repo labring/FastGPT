@@ -21,7 +21,6 @@ type Props = Omit<BoxProps, 'onChange'> & {
   onChange: (v: PermissionValueType) => Promise<any> | any;
   isInheritPermission?: boolean;
   hasParent?: boolean;
-  fontSize?: string;
 };
 
 const DefaultPermissionList = ({
@@ -32,7 +31,6 @@ const DefaultPermissionList = ({
   onChange,
   isInheritPermission = false,
   hasParent,
-  fontSize = '14px',
   ...styles
 }: Props) => {
   const { ConfirmModal, openConfirm } = useConfirm({});
@@ -65,7 +63,7 @@ const DefaultPermissionList = ({
               return onRequestChange(per);
             }
           }}
-          fontSize={fontSize}
+          fontSize={styles?.fontSize}
         />
       </Box>
       <ConfirmModal />

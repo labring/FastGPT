@@ -16,15 +16,15 @@ function MemberManager({ managePer }: { managePer: MemberManagerInputPropsType }
             <>
               <Flex alignItems="center" flexDirection="row" justifyContent="space-between" w="full">
                 <Box>
-                  <FormLabel fontSize={'12px'}>{t('common:permission.Collaborator')}</FormLabel>
+                  <FormLabel fontSize={'mini'}>{t('common:permission.Collaborator')}</FormLabel>
                 </Box>
                 <Flex gap={0.5}>
                   <Box p={1}>
                     <MyIcon
                       onClick={onOpenManageModal}
                       name="common/setting"
-                      w={'16px'}
-                      h={'16px'}
+                      w={'1rem'}
+                      h={'1rem'}
                       color={'myGray.600'}
                       cursor={'pointer'}
                       _hover={{ color: 'primary.500' }}
@@ -36,8 +36,8 @@ function MemberManager({ managePer }: { managePer: MemberManagerInputPropsType }
                       onClick={onOpenAddMember}
                       name="common/addUser"
                       _hover={{ color: 'primary.500' }}
-                      w={'16px'}
-                      h={'16px'}
+                      w={'1rem'}
+                      h={'1rem'}
                       color={'myGray.600'}
                     />
                   </Box>

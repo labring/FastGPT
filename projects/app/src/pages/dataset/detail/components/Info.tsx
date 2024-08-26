@@ -38,12 +38,10 @@ import {
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import dynamic from 'next/dynamic';
 import { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
+const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
-const Info = () => {
+const Info = ({ datasetId }: { datasetId: string }) => {
   const router = useRouter();
-  const { datasetId = '' } = router.query as {
-    datasetId: string;
-  };
   const [openBaseConfig, setOpenBaseConfig] = useState(true);
   const [openPermissionConfig, setOpenPermissionConfig] = useState(true);
   const { t } = useTranslation();
@@ -143,20 +141,18 @@ const Info = () => {
 
   const btnLoading = isSelecting || isDeleting || isSaving || isRebuilding;
 
-  const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
-
   return (
     <Box w={'100%'} h={'100%'} p={6}>
       <Box>
         <Flex mb={2} alignItems={'center'}>
-          <Avatar src={datasetDetail.avatar} w={'20px'} h={'20px'} borderRadius={'4px'} />
-          <Box ml={'6px'}>
+          <Avatar src={datasetDetail.avatar} w={'20px'} h={'20px'} borderRadius={'xs'} />
+          <Box ml={1.5}>
             <Box fontWeight={'bold'} color={'myGray.900'}>
               {datasetDetail.name}
             </Box>
           </Box>
           <MyIcon
-            pl={'6px'}
+            pl={1.5}
             name={'edit'}
             _hover={{ color: 'primary.600' }}
             w={'0.875rem'}
@@ -194,7 +190,7 @@ const Info = () => {
       <MyDivider my={4} h={'2px'} maxW={'500px'} />
 
       <Box overflow={'hidden'} h={openBaseConfig ? 'auto' : '24px'}>
-        <Flex justify={'space-between'} alignItems={'center'} fontSize={'12px'} h={'24px'}>
+        <Flex justify={'space-between'} alignItems={'center'} fontSize={'mini'} h={'24px'}>
           <Box fontWeight={'500'} color={'myGray.900'}>
             {t('common:common.base_config')}
           </Box>
@@ -207,17 +203,17 @@ const Info = () => {
           />
         </Flex>
         <Flex mt={3} w={'100%'} flexDir={'column'}>
-          <FormLabel fontSize={'12px'}>{t('common:core.dataset.Dataset ID')}</FormLabel>
-          <Box fontSize={'12px'}>{datasetDetail._id}</Box>
+          <FormLabel fontSize={'mini'}>{t('common:core.dataset.Dataset ID')}</FormLabel>
+          <Box fontSize={'mini'}>{datasetDetail._id}</Box>
         </Flex>
 
         <Box mt={5} w={'100%'}>
-          <FormLabel fontSize={'12px'}>{t('common:core.ai.model.Vector Model')}</FormLabel>
+          <FormLabel fontSize={'mini'}>{t('common:core.ai.model.Vector Model')}</FormLabel>
           <Box pt={2} flex={[1, '0 0 320px']}>
             <AIModelSelector
               w={'100%'}
               value={vectorModel.model}
-              fontSize={'12px'}
+              fontSize={'mini'}
               disableTip={
                 rebuildingCount > 0 || trainingCount > 0
                   ? t(
@@ -242,16 +238,16 @@ const Info = () => {
         </Box>
 
         <Flex mt={2} w={'100%'} alignItems={'center'}>
-          <FormLabel flex={['0 0 90px', '0 0 160px']} fontSize={'12px'} w={0}>
+          <FormLabel flex={['0 0 90px', '0 0 160px']} fontSize={'mini'} w={0}>
             {t('common:core.Max Token')}
           </FormLabel>
-          <Box flex={[1, '0 0 320px']} fontSize={'12px'}>
+          <Box flex={[1, '0 0 320px']} fontSize={'mini'}>
             {vectorModel.maxToken}
           </Box>
         </Flex>
 
         <Box pt={5}>
-          <FormLabel fontSize={'12px'}>{t('common:core.ai.model.Dataset Agent Model')}</FormLabel>
+          <FormLabel fontSize={'mini'}>{t('common:core.ai.model.Dataset Agent Model')}</FormLabel>
           <Box pt={2}>
             <AIModelSelector
               w={'100%'}
@@ -260,7 +256,7 @@ const Info = () => {
                 label: item.name,
                 value: item.model
               }))}
-              fontSize={'12px'}
+              fontSize={'mini'}
               onchange={(e) => {
                 const agentModel = datasetModelList.find((item) => item.model === e);
                 if (!agentModel) return;
@@ -275,12 +271,12 @@ const Info = () => {
         {datasetDetail.type === DatasetTypeEnum.externalFile && (
           <>
             <Box w={'100%'} alignItems={'center'} pt={4}>
-              <FormLabel display={'flex'} pb={2} fontSize={'12px'}>
+              <FormLabel display={'flex'} pb={2} fontSize={'mini'}>
                 <Box>{t('dataset:external_read_url')}</Box>
                 <QuestionTip label={t('dataset:external_read_url_tip')} />
               </FormLabel>
               <Input
-                fontSize={'12px'}
+                fontSize={'mini'}
                 flex={[1, '0 0 320px']}
                 placeholder="https://test.com/read?fileId={{fileId}}"
                 {...register('externalReadUrl')}
@@ -294,7 +290,7 @@ const Info = () => {
         <>
           <MyDivider my={4} h={'2px'} maxW={'500px'} />
           <Box overflow={'hidden'} h={openPermissionConfig ? 'auto' : '24px'}>
-            <Flex justify={'space-between'} alignItems={'center'} fontSize={'12px'} h={'24px'}>
+            <Flex justify={'space-between'} alignItems={'center'} fontSize={'mini'} h={'24px'}>
               <Box fontWeight={'500'} color={'myGray.900'}>
                 {t('common:permission.Permission config')}
               </Box>
@@ -308,11 +304,11 @@ const Info = () => {
             </Flex>
 
             <Box mt={3}>
-              <FormLabel fontSize={'12px'} pb={3}>
+              <FormLabel fontSize={'mini'} pb={3}>
                 {t('common:permission.Default permission')}
               </FormLabel>
               <DefaultPermissionList
-                fontSize={'12px'}
+                fontSize={'mini'}
                 per={defaultPermission}
                 defaultPer={DatasetDefaultPermissionVal}
                 onChange={(v) => setValue('defaultPermission', v)}
@@ -371,7 +367,7 @@ const Info = () => {
       <ConfirmRebuildModal countDown={10} />
       {editedDataset && (
         <EditResourceModal
-          avatarBorderRadius="4px"
+          avatarBorderRadius="xs"
           {...editedDataset}
           title={t('common:dataset.Edit Info')}
           onClose={() => {

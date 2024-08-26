@@ -242,7 +242,7 @@ const DataCard = () => {
                   <MyTag
                     px={2}
                     type="borderFill"
-                    borderRadius={'6px'}
+                    borderRadius={'sm'}
                     border={'1px'}
                     color={'myGray.200'}
                     bg={'white'}
@@ -250,7 +250,7 @@ const DataCard = () => {
                   >
                     <Box color={'blue.600'}>#{item.chunkIndex ?? '-'} </Box>
                     <Box
-                      ml={'6px'}
+                      ml={'sm'}
                       className={'textEllipsis'}
                       fontSize={'mini'}
                       textAlign={'right'}
@@ -322,22 +322,20 @@ const DataCard = () => {
                       alignItems={'center'}
                       bg={'white'}
                       color={'myGray.600'}
-                      borderRadius={'6px'}
+                      borderRadius={'sm'}
                       border={'1px'}
                       borderColor={'myGray.200'}
                       h={'24px'}
                       px={2}
-                      fontSize={'10px'}
-                      boxShadow={
-                        '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
-                      }
+                      fontSize={'mini'}
+                      boxShadow={'1'}
                       py={1}
                       mr={2}
                     >
                       <MyIcon
                         bg={'white'}
                         color={'myGray.600'}
-                        borderRadius={'6px'}
+                        borderRadius={'sm'}
                         border={'1px'}
                         borderColor={'myGray.200'}
                         name="common/text/t"
