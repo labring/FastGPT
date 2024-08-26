@@ -306,11 +306,11 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
                 <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong> 元
               </Box>
               {/* TODO:暂时隐藏 */}
-              {/* {userInfo?.permission.hasManagePer && !!standardPlan && (
+              {userInfo?.permission.hasManagePer && !!standardPlan && (
                 <Button variant={'primary'} size={'sm'} ml={5} onClick={onOpenConversionModal}>
                   {t('user:bill.conversion')}
                 </Button>
-              )} */}
+              )}
             </Flex>
           </Box>
         )}
