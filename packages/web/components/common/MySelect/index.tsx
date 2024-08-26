@@ -50,6 +50,9 @@ const MySelect = <T = any,>(
   }>
 ) => {
   const ButtonRef = useRef<HTMLButtonElement>(null);
+  const MenuListRef = useRef<HTMLDivElement>(null);
+  const SelectedItemRef = useRef<HTMLDivElement>(null);
+
   const menuItemStyles: MenuItemProps = {
     borderRadius: 'sm',
     py: 2,
@@ -70,6 +73,14 @@ const MySelect = <T = any,>(
       onOpen();
     }
   }));
+
+  useEffect(() => {
+    if (isOpen && MenuListRef.current && SelectedItemRef.current) {
+      const menu = MenuListRef.current;
+      const selectedItem = SelectedItemRef.current;
+      menu.scrollTop = selectedItem.offsetTop - menu.offsetTop - 100;
+    }
+  }, [isOpen]);
 
   return (
     <Box
@@ -113,6 +124,7 @@ const MySelect = <T = any,>(
         </MenuButton>
 
         <MenuList
+          ref={MenuListRef}
           className={props.className}
           minW={(() => {
             const w = ButtonRef.current?.clientWidth;
@@ -140,6 +152,7 @@ const MySelect = <T = any,>(
               {...menuItemStyles}
               {...(value === item.value
                 ? {
+                    ref: SelectedItemRef,
                     color: 'primary.600',
                     bg: 'myGray.100'
                   }
