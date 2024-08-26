@@ -250,7 +250,7 @@ const DataCard = () => {
                   >
                     <Box color={'blue.600'}>#{item.chunkIndex ?? '-'} </Box>
                     <Box
-                      ml={'sm'}
+                      ml={1.5}
                       className={'textEllipsis'}
                       fontSize={'mini'}
                       textAlign={'right'}

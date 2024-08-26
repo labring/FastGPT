@@ -129,7 +129,6 @@ const Header = ({}: {}) => {
               fontSize={isWebSite ? 'sm' : 'md'}
               fontWeight={'500'}
               color={'myGray.600'}
-              pb={isWebSite ? '14px' : '0px'}
             >
               <Flex align={'center'}>
                 {!isWebSite && <MyIcon name="common/list" mr={2} w={'20px'} color={'black'} />}

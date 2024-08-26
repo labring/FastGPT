@@ -59,6 +59,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           px={4}
           justify={'space-between'}
           borderBottom={theme.borders.base}
+          borderColor={'myGray.200'}
           position={'relative'}
         >
           <Flex
@@ -96,6 +97,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
               size={'smSquare'}
               borderRadius={'50%'}
               aria-label={''}
+              _hover={'none'}
             />
             <Box fontWeight={500} color={'myGray.600'} fontSize={'sm'}>
               {currentTab !== TabEnum.dataCard
@@ -144,7 +146,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                 }}
               >
                 <MyIcon name={'common/monitor'} w={'18px'} h={'18px'} color={'myGray.500'} />
-                <Box color={'myGray.600'} ml={'6px'} fontWeight={500}>
+                <Box color={'myGray.600'} ml={1.5} fontWeight={500}>
                   {t('common:core.dataset.training.tag')}
                 </Box>
               </Flex>

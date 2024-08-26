@@ -89,13 +89,10 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     errorToast: t('common:common.Delete Failed')
   });
 
-  const { mutate: onclickSave, isLoading: isSaving } = useRequest({
+  const { mutate: onSave, isLoading: isSaving } = useRequest({
     mutationFn: (data: DatasetItemType) => {
       return updateDataset({
         id: datasetId,
-        name: data.name,
-        avatar: data.avatar,
-        intro: data.intro,
         agentModel: data.agentModel,
         externalReadUrl: data.externalReadUrl,
         defaultPermission: data.defaultPermission
@@ -139,7 +136,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     errorToast: t('common:common.Update Failed')
   });
 
-  const btnLoading = isSelecting || isDeleting || isSaving || isRebuilding;
+  const totalLoading = isSelecting || isDeleting || isSaving || isRebuilding;
 
   return (
     <Box w={'100%'} h={'100%'} p={6}>
@@ -261,7 +258,9 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 const agentModel = datasetModelList.find((item) => item.model === e);
                 if (!agentModel) return;
                 setValue('agentModel', agentModel);
+                handleSubmit((data) => onSave({ ...data, agentModel: agentModel }))();
               }}
+              isDisabled={totalLoading}
             />
           </Box>
         </Box>
@@ -280,6 +279,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 flex={[1, '0 0 320px']}
                 placeholder="https://test.com/read?fileId={{fileId}}"
                 {...register('externalReadUrl')}
+                onBlur={handleSubmit((data) => onSave(data))}
               />
             </Box>
           </>
@@ -311,7 +311,11 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 fontSize={'mini'}
                 per={defaultPermission}
                 defaultPer={DatasetDefaultPermissionVal}
-                onChange={(v) => setValue('defaultPermission', v)}
+                isDisabled={totalLoading}
+                onChange={(v) => {
+                  setValue('defaultPermission', v);
+                  handleSubmit((data) => onSave({ ...data, defaultPermission: v }))();
+                }}
               />
             </Box>
 
@@ -338,30 +342,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </>
       )}
 
-      <Flex py={5} w={'100%'} justify={'center'}>
-        <Box>
-          <Button
-            isLoading={btnLoading}
-            mr={4}
-            w={'70px'}
-            onClick={handleSubmit((data) => onclickSave(data))}
-          >
-            {t('common:common.Save')}
-          </Button>
-          {datasetDetail.permission.isOwner && (
-            <IconButton
-              isLoading={btnLoading}
-              p={2}
-              icon={<DeleteIcon />}
-              aria-label={''}
-              variant={'whiteDanger'}
-              size={'smSquare'}
-              onClick={onOpenConfirmDel(onclickDelete)}
-            />
-          )}
-        </Box>
-      </Flex>
-
       <File onSelect={onSelectFile} />
       <ConfirmDelModal />
       <ConfirmRebuildModal countDown={10} />
@@ -371,8 +351,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           {...editedDataset}
           title={t('common:dataset.Edit Info')}
           onClose={() => {
-            console.log('close');
-            console.log(editedDataset);
             setEditedDataset(undefined);
           }}
           onEdit={async (data) => {

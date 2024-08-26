@@ -229,7 +229,7 @@ function List() {
                 >
                   <HStack>
                     <Avatar src={dataset.avatar} borderRadius={6} w={'28px'} />
-                    <Box flex={'1 0 0'} className="textEllipsis3">
+                    <Box flex={'1 0 0'} className="textEllipsis3" color={'myGray.900'}>
                       {dataset.name}
                     </Box>
 
