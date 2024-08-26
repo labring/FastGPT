@@ -89,22 +89,19 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 export default React.memo(NodeUserGuide);
 
 function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentProps) {
-  const [, startTst] = useTransition();
   return (
     <Box className="nodrag">
       <WelcomeTextConfig
         resize={'both'}
         value={welcomeText}
         onChange={(e) => {
-          startTst(() => {
-            setAppDetail((state) => ({
-              ...state,
-              chatConfig: {
-                ...state.chatConfig,
-                welcomeText: e.target.value
-              }
-            }));
-          });
+          setAppDetail((state) => ({
+            ...state,
+            chatConfig: {
+              ...state.chatConfig,
+              welcomeText: e.target.value
+            }
+          }));
         }}
       />
     </Box>
