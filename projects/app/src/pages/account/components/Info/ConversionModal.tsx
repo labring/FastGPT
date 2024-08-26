@@ -53,10 +53,10 @@ const ConversionModal = ({
           </HStack>
           <VStack mt={6}>
             <Box fontSize={'sm'} color="myGray.600" fontWeight="500">
-              当前积分价格
+              {t('user:bill.current_token_price')}
             </Box>
             <Box fontSize={'xl'} fontWeight={'700'} color="myGray.900">
-              ￥15/1000 {t('user:bill.tokens')}/月
+              ￥15/1000 {t('user:bill.tokens')}/{t('common:common.month')}
             </Box>
           </VStack>
           <VStack mt={6}>

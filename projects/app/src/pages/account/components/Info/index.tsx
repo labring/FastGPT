@@ -303,7 +303,8 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             <Flex alignItems={'center'}>
               <Box {...labelStyles}>{t('common:user.team.Balance')}:&nbsp;</Box>
               <Box flex={1}>
-                <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong> 元
+                <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong>{' '}
+                {t('user:bill.yuan')}
               </Box>
               {/* TODO:暂时隐藏 */}
               {userInfo?.permission.hasManagePer && !!standardPlan && (
