@@ -54,7 +54,6 @@ async function handler(
     chatConfig: defaultApp.chatConfig,
     histories: [],
     stream: false,
-    detail: true,
     maxRunTimes: 200
   });
 

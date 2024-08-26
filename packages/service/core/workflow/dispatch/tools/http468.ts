@@ -14,7 +14,6 @@ import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
 import { addLog } from '../../../../common/system/log';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { responseWrite } from '../../../../common/response';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getSystemPluginCb } from '../../../../../plugins/register';
 
@@ -43,15 +42,13 @@ const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
 export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<HttpResponse> => {
   let {
-    res,
-    detail,
     app: { _id: appId },
     chatId,
-    stream,
     responseChatItemId,
     variables,
     node: { outputs },
     histories,
+    workflowStreamResponse,
     params: {
       system_httpMethod: httpMethod = 'POST',
       system_httpReqUrl: httpReqUrl,
@@ -158,10 +155,9 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       results[key] = valueTypeFormat(formatResponse[key], output.valueType);
     }
 
-    if (stream && typeof formatResponse[NodeOutputKeyEnum.answerText] === 'string') {
-      responseWrite({
-        res,
-        event: detail ? SseResponseEventEnum.fastAnswer : undefined,
+    if (typeof formatResponse[NodeOutputKeyEnum.answerText] === 'string') {
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.fastAnswer,
         data: textAdaptGptResponse({
           text: formatResponse[NodeOutputKeyEnum.answerText]
         })

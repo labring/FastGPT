@@ -236,7 +236,7 @@ export const textAdaptGptResponse = ({
   finish_reason?: null | 'stop';
   extraData?: Object;
 }) => {
-  return JSON.stringify({
+  return {
     ...extraData,
     id: '',
     object: '',
@@ -252,7 +252,7 @@ export const textAdaptGptResponse = ({
         finish_reason
       }
     ]
-  });
+  };
 };
 
 /* Update runtimeNode's outputs with interactive data from history */
