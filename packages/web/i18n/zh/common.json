@@ -1116,7 +1116,7 @@
     "old_package_price": "旧套餐余额",
     "other": "其他金额，请取整数",
     "to_recharge": "余额不足，去充值",
-    "wechat": "请微信扫码支付: {{price}}元，请勿关闭页面",
+    "wechat": "请微信扫码支付: {{price}}元\n请勿关闭页面",
     "yuan": "{{amount}}元"
   },
   "permission": {
@@ -1331,7 +1331,7 @@
         "FAQ": "常见问题",
         "Month amount": "月数",
         "Next plan": "未来套餐",
-        "Nonsupport": "无法切换",
+        "Nonsupport": "无需购买",
         "Stand plan level": "订阅套餐",
         "Standard update fail": "修改订阅套餐异常",
         "Standard update success": "变更订阅套餐成功！",
@@ -1360,6 +1360,7 @@
         "point": "积分",
         "rerank": "检索结果重排",
         "standardSubLevel": {
+          "custom": "自定义版",
           "enterprise": "企业版",
           "experience": "体验版",
           "free": "免费版",

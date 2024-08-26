@@ -1,7 +1,7 @@
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Box, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Box, ModalBody } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { checkBalancePayResult } from '@/web/support/wallet/bill/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -15,11 +15,12 @@ export type QRPayProps = {
 };
 
 const QRCodePayModal = ({
+  tip,
   readPrice,
   codeUrl,
   billId,
   onSuccess
-}: QRPayProps & { onSuccess?: () => any }) => {
+}: QRPayProps & { tip?: string; onSuccess?: () => any }) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -72,11 +73,13 @@ const QRCodePayModal = ({
 
   return (
     <MyModal isOpen title={t('common:user.Pay')} iconSrc="/imgs/modal/pay.svg">
-      <ModalBody textAlign={'center'}>
-        <Box mb={3}>{t('common:pay.wechat', { price: readPrice })}</Box>
+      <ModalBody textAlign={'center'} py={6} whiteSpace={'pre'}>
+        {tip && <Box mb={3}>{tip}</Box>}
         <Box id={'payQRCode'} display={'inline-block'} h={'128px'}></Box>
+        <Box mt={3} textAlign={'center'}>
+          {t('common:pay.wechat', { price: readPrice })}
+        </Box>
       </ModalBody>
-      <ModalFooter />
     </MyModal>
   );
 };
