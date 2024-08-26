@@ -348,9 +348,7 @@ const DataCard = () => {
                       <IconButton
                         display={'flex'}
                         p={1}
-                        boxShadow={
-                          '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
-                        }
+                        boxShadow={'1'}
                         icon={<MyIcon name={'common/trash'} w={'14px'} color={'myGray.600'} />}
                         variant={'whiteDanger'}
                         size={'xsSquare'}
