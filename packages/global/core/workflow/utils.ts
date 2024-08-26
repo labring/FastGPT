@@ -196,7 +196,7 @@ export const pluginData2FlowNodeIO = ({
 export const appData2FlowNodeIO = ({
   chatConfig
 }: {
-  chatConfig: AppChatConfigType;
+  chatConfig?: AppChatConfigType;
 }): {
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];

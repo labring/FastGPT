@@ -79,7 +79,6 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   }[];
 
   workflow: WorkflowTemplateBasicType;
-  chatConfig: AppChatConfigType;
 };
 
 export type THelperLine = {

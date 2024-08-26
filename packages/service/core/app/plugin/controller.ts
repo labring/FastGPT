@@ -52,9 +52,9 @@ const getPluginTemplateById = async (
       showStatus: true,
       workflow: {
         nodes: item.modules,
-        edges: item.edges
+        edges: item.edges,
+        chatConfig: item.chatConfig
       },
-      chatConfig: item.chatConfig,
       templateType: FlowNodeTemplateTypeEnum.teamApp,
       version: item?.pluginData?.nodeVersion || defaultNodeVersion,
       originCost: 0,
@@ -91,7 +91,7 @@ export async function getPluginPreviewNode({ id }: { id: string }): Promise<Flow
     targetHandle: getHandleConfig(true, true, true, true),
     ...(isPlugin
       ? pluginData2FlowNodeIO({ nodes: plugin.workflow.nodes })
-      : appData2FlowNodeIO({ chatConfig: plugin.chatConfig }))
+      : appData2FlowNodeIO({ chatConfig: plugin.workflow.chatConfig }))
   };
 }
 
