@@ -10,7 +10,8 @@
     "postinstall": "sh ./scripts/postinstall.sh",
     "initIcon": "node ./scripts/icon/init.js",
     "previewIcon": "node ./scripts/icon/index.js",
-    "checkI18n": "node ./scripts/i18n/delete-unused-keys.js"
+    "i18n:delete-unused-keys": "node ./scripts/i18n/delete-unused-keys.js",
+    "i18n:query": "node ./scripts/i18n/query.js"
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",
