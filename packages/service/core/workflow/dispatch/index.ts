@@ -41,8 +41,7 @@ import { dispatchPluginOutput } from './plugin/runOutput';
 import { removeSystemVariable, valueTypeFormat } from './utils';
 import {
   filterWorkflowEdges,
-  checkNodeRunStatus,
-  getLastInteractiveValue
+  checkNodeRunStatus
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
@@ -62,12 +61,11 @@ import { dispatchTextEditor } from './tools/textEditor';
 import { dispatchCustomFeedback } from './tools/customFeedback';
 import { dispatchReadFiles } from './tools/readFiles';
 import { dispatchUserSelect } from './interactive/userSelect';
-import { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
   InteractiveNodeResponseItemType,
-  UserInteractiveType,
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
+import { dispatchAppModule } from './agent/runAppModule';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -79,6 +77,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
   [FlowNodeTypeEnum.httpRequest468]: dispatchHttp468Request,
   [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
+  [FlowNodeTypeEnum.appModule]: dispatchAppModule,
   [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,

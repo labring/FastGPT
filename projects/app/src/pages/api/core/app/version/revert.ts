@@ -73,7 +73,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
       scheduledTriggerNextTime: scheduledTriggerConfig?.cronString
         ? getNextTimeByCronStringAndTimezone(scheduledTriggerConfig)
         : null,
-      ...(app.type === AppTypeEnum.plugin && { 'pluginData.nodeVersion': _id })
+      'pluginData.nodeVersion': _id
     });
   });
 

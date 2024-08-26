@@ -56,7 +56,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
         scheduledTriggerNextTime: chatConfig?.scheduledTriggerConfig?.cronString
           ? getNextTimeByCronStringAndTimezone(chatConfig.scheduledTriggerConfig)
           : null,
-        ...(app.type === AppTypeEnum.plugin && { 'pluginData.nodeVersion': _id })
+        'pluginData.nodeVersion': _id
       },
       {
         session
