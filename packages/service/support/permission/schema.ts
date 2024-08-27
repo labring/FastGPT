@@ -3,8 +3,9 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { connectionMongo, getMongoModel } from '../../common/mongo';
-import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import type { ResourcePermissionType, SubjectType } from '@fastgpt/global/support/permission/type';
+import { PerResourceTypeEnum, SubjectTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { MemberGroupSchema, MemberGroupCollectionName } from './memberGroup/memberGroupSchema';
 const { Schema } = connectionMongo;
 
 export const ResourcePermissionCollectionName = 'resource_permission';
@@ -17,6 +18,15 @@ export const ResourcePermissionSchema = new Schema({
   tmbId: {
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName
+  },
+  groupId: {
+    type: Schema.Types.ObjectId,
+    ref: MemberGroupCollectionName
+  },
+  subjectType: {
+    type: String,
+    enum: Object.values(SubjectTypeEnum),
+    required: true
   },
   resourceType: {
     type: String,
@@ -46,6 +56,19 @@ try {
       unique: true
     }
   );
+
+  ResourcePermissionSchema.index(
+    {
+      resourceType: 1,
+      teamId: 1,
+      groupId: 1,
+      resourceId: 1
+    },
+    {
+      unique: true
+    }
+  );
+
   ResourcePermissionSchema.index({
     resourceType: 1,
     teamId: 1,
@@ -55,7 +78,7 @@ try {
   console.log(error);
 }
 
-export const MongoResourcePermission = getMongoModel<ResourcePermissionType>(
+export const MongoResourcePermission = getMongoModel<ResourcePermissionType<SubjectType>>(
   ResourcePermissionCollectionName,
   ResourcePermissionSchema
 );
