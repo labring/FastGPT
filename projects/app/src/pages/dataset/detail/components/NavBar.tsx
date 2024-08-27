@@ -130,6 +130,8 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
               }}
             />
           </Box>
+
+          {/* 训练情况hover弹窗 */}
           <MyPopover
             placement="bottom-end"
             visibility={currentTab === TabEnum.collectionCard ? 'visible' : 'hidden'}
@@ -196,7 +198,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           <LightRowTabs<TabEnum>
             m={'auto'}
             w={'full'}
-            size={isPc ? 'md' : 'sm'}
+            size={'sm'}
             list={tabList}
             value={currentTab}
             onChange={setCurrentTab}

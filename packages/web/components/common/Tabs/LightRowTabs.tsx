@@ -84,12 +84,10 @@ const LightRowTabs = <ValueType = string,>({
           >
             {item.icon && (
               <>
-                <Avatar src={item.icon} alt={''} w={'1.25rem'} borderRadius={'sm'} />
+                <Avatar src={item.icon} alt={''} w={'1.25rem'} borderRadius={'sm'} mr={1} />
               </>
             )}
-            <Box ml={item.icon !== undefined ? 1 : 0}>
-              {typeof item.label === 'string' ? t(item.label as any) : item.label}
-            </Box>
+            <Box>{typeof item.label === 'string' ? t(item.label as any) : item.label}</Box>
           </Flex>
         ))}
       </Grid>

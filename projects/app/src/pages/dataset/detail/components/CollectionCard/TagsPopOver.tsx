@@ -217,7 +217,7 @@ const TagsPopOver = ({
                       // setCheckedTags([...checkedTags, item]);
                     }}
                   >
-                    <MyIcon name={'common/addLight'} w={'1xs'} />
+                    <MyIcon name={'common/addLight'} w={'sm'} />
                     <Box ml={1} py={1}>
                       {t('dataset:tag.add') + ` "${searchTag}"`}
                     </Box>

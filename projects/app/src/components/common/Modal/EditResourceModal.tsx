@@ -18,14 +18,12 @@ export type EditResourceInfoFormType = {
   name: string;
   avatar?: string;
   intro?: string;
-  avatarBorderRadius?: string;
 };
 
 const EditResourceModal = ({
   onClose,
   onEdit,
   title,
-  avatarBorderRadius = 'md',
   ...defaultForm
 }: EditResourceInfoFormType & {
   title: string;
@@ -87,7 +85,7 @@ const EditResourceModal = ({
                 w={'2rem'}
                 h={'2rem'}
                 cursor={'pointer'}
-                borderRadius={avatarBorderRadius}
+                borderRadius={'sm'}
                 onClick={onOpenSelectFile}
               />
             </MyTooltip>

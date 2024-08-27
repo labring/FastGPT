@@ -177,10 +177,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           fontSize={'xs'}
           color={'myGray.500'}
         >
-          {datasetDetail.intro ||
-            (datasetDetail.type === DatasetTypeEnum.folder
-              ? t('common:core.dataset.Folder placeholder')
-              : t('common:core.dataset.Intro Placeholder'))}
+          {datasetDetail.intro || t('common:core.dataset.Intro Placeholder')}
         </Box>
       </Box>
 
@@ -347,7 +344,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       <ConfirmRebuildModal countDown={10} />
       {editedDataset && (
         <EditResourceModal
-          avatarBorderRadius="xs"
           {...editedDataset}
           title={t('common:dataset.Edit Info')}
           onClose={() => {

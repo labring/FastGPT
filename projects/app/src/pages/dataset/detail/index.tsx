@@ -76,7 +76,7 @@ const Detail = ({ datasetId, currentTab }: Props) => {
             boxShadow={'2'}
             borderRadius={'md'}
           >
-            <NavBar currentTab={currentTab} />
+            {currentTab !== TabEnum.import && <NavBar currentTab={currentTab} />}
             <Box flex={'1 0 0'} w={'100%'} overflow={'auto'}>
               {currentTab === TabEnum.collectionCard && (
                 <CollectionPageContextProvider>
@@ -88,21 +88,23 @@ const Detail = ({ datasetId, currentTab }: Props) => {
               {currentTab === TabEnum.import && <Import />}
             </Box>
           </Flex>
-          <Flex
-            bg={'white'}
-            borderRadius={'md'}
-            overflowY={'scroll'}
-            boxShadow={'2'}
-            my={3}
-            mr={3}
-            flex={19}
-          >
-            {currentTab === TabEnum.dataCard ? (
-              <MetaDataCard datasetId={datasetId} />
-            ) : (
-              <Info datasetId={datasetId} />
-            )}
-          </Flex>
+          {currentTab !== TabEnum.import && (
+            <Flex
+              bg={'white'}
+              borderRadius={'md'}
+              overflowY={'scroll'}
+              boxShadow={'2'}
+              my={3}
+              mr={3}
+              flex={19}
+            >
+              {currentTab === TabEnum.dataCard ? (
+                <MetaDataCard datasetId={datasetId} />
+              ) : (
+                <Info datasetId={datasetId} />
+              )}
+            </Flex>
+          )}
         </Flex>
       ) : (
         <PageContainer insertProps={{ bg: 'white' }}>
