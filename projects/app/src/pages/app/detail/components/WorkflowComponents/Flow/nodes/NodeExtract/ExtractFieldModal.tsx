@@ -20,7 +20,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 export const defaultField: ContextExtractAgentItemType = {
-  valueType: 'string',
+  valueType: WorkflowIOValueTypeEnum.string,
   required: false,
   defaultValue: '',
   desc: '',
