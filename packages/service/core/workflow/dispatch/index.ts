@@ -63,7 +63,7 @@ import {
   InteractiveNodeResponseItemType,
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
-import { dispatchAppModule } from './agent/runAppModule';
+import { dispatchRunAppNode } from './agent/runAppModule';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -75,7 +75,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
   [FlowNodeTypeEnum.httpRequest468]: dispatchHttp468Request,
   [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
-  [FlowNodeTypeEnum.appModule]: dispatchAppModule,
+  [FlowNodeTypeEnum.appModule]: dispatchRunAppNode,
   [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,

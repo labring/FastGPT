@@ -2,7 +2,6 @@ import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/runApp/type';
 import { dispatchWorkFlow } from '../index';
-import { responseWrite } from '../../../../common/response';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
@@ -29,15 +28,13 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.history]: ChatItemType[];
 }>;
 
-export const dispatchAppModule = async (props: Props): Promise<Response> => {
+export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const {
-    res,
     app: workflowApp,
-    stream,
-    detail,
     histories,
     query,
     node: { pluginId },
+    workflowStreamResponse,
     params
   } = props;
 
@@ -46,22 +43,20 @@ export const dispatchAppModule = async (props: Props): Promise<Response> => {
     return Promise.reject('Params error');
   }
 
-  // 检查该工作流的tmb是否有调用该app的权限（不是校验对话的人，是否有权限）
+  // Auth the app by tmbId(Not the user, but the workflow user)
   const { app: appData } = await authAppByTmbId({
     appId: pluginId,
     tmbId: workflowApp.tmbId,
     per: ReadPermissionVal
   });
 
-  if (res && stream) {
-    responseWrite({
-      res,
-      event: detail ? SseResponseEventEnum.answer : undefined,
-      data: textAdaptGptResponse({
-        text: '\n'
-      })
-    });
-  }
+  // Auto line
+  workflowStreamResponse?.({
+    event: SseResponseEventEnum.answer,
+    data: textAdaptGptResponse({
+      text: '\n'
+    })
+  });
 
   const chatHistories = getHistories(history, histories);
   const { files } = chatValue2RuntimePrompt(query);
