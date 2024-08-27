@@ -5,6 +5,7 @@ import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/c
 import { delFileByFileIdList, getGFSCollection } from '../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { MongoChat } from './chatSchema';
+import { ChatSchema as ChatType } from '@fastgpt/global/core/chat/type.d';
 
 export async function getChatItems({
   appId,
@@ -35,7 +36,26 @@ export async function getChatItems({
 
   return { histories };
 }
-/* 临时适配旧的对话记录 */
+
+export async function getChat({
+  appId,
+  chatId,
+  field
+}: {
+  appId: string;
+  chatId?: string;
+  field: string;
+}): Promise<{ chat: ChatType | null }> {
+  if (!chatId) {
+    return { chat: null };
+  }
+
+  const chat = await MongoChat.findOne({ appId, chatId }, field).lean();
+
+  return { chat };
+}
+
+/* Temporary adaptation for old conversation records */
 export const adaptStringValue = (value: any): ChatItemValueItemType[] => {
   if (typeof value === 'string') {
     return [
