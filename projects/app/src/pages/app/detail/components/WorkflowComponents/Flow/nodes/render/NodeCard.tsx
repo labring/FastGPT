@@ -19,7 +19,6 @@ import { storeNode2FlowNode, getLatestNodeTemplate } from '@/web/core/workflow/u
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
-import { useI18n } from '@/web/context/I18n';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -84,7 +83,10 @@ const NodeCard = (props: Props) => {
 
   const { data: nodeTemplate, runAsync: getNodeLatestTemplate } = useRequest2(
     async () => {
-      if (node?.flowNodeType === FlowNodeTypeEnum.pluginModule) {
+      if (
+        node?.flowNodeType === FlowNodeTypeEnum.pluginModule ||
+        node?.flowNodeType === FlowNodeTypeEnum.appModule
+      ) {
         if (!node?.pluginId) return;
         const template = await getPreviewPluginNode({ appId: node.pluginId });
 
@@ -115,7 +117,10 @@ const NodeCard = (props: Props) => {
       const template = moduleTemplatesFlat.find((item) => item.flowNodeType === node?.flowNodeType);
       if (!node || !template) return;
 
-      if (node?.flowNodeType === FlowNodeTypeEnum.pluginModule) {
+      if (
+        node?.flowNodeType === FlowNodeTypeEnum.pluginModule ||
+        node?.flowNodeType === FlowNodeTypeEnum.appModule
+      ) {
         if (!node.pluginId) return;
         onResetNode({
           id: nodeId,
@@ -298,11 +303,6 @@ const MenuRender = React.memo(function MenuRender({
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
 
-  const { openConfirm: onOpenConfirmDeleteNode, ConfirmModal: ConfirmDeleteModal } = useConfirm({
-    content: t('common:core.module.Confirm Delete Node'),
-    type: 'delete'
-  });
-
   const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
   const setEdges = useContextSelector(WorkflowContext, (v) => v.setEdges);
   const { computedNewNodeName } = useWorkflowUtils();
@@ -420,7 +420,6 @@ const MenuRender = React.memo(function MenuRender({
             </Box>
           ))}
         </Box>
-        <ConfirmDeleteModal />
         <DebugInputModal />
       </>
     );
@@ -429,7 +428,6 @@ const MenuRender = React.memo(function MenuRender({
     menuForbid?.copy,
     menuForbid?.delete,
     t,
-    ConfirmDeleteModal,
     DebugInputModal,
     openDebugNode,
     nodeId,

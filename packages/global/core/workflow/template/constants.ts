@@ -16,6 +16,7 @@ import { RunAppModule } from './system/runApp/index';
 import { PluginInputModule } from './system/pluginInput';
 import { PluginOutputModule } from './system/pluginOutput';
 import { RunPluginModule } from './system/runPlugin';
+import { RunAppPluginModule } from './system/runAppPlugin';
 import { AiQueryExtension } from './system/queryExtension';
 
 import type { FlowNodeTemplateType } from '../type/node';
@@ -44,8 +45,8 @@ const systemNodes: FlowNodeTemplateType[] = [
   LafModule,
   IfElseNode,
   VariableUpdateNode,
-  CodeNode,
-  RunAppModule
+  CodeNode
+  // RunAppModule
 ];
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
@@ -70,5 +71,6 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
     )
   ),
   EmptyNode,
-  RunPluginModule
+  RunPluginModule,
+  RunAppPluginModule
 ];

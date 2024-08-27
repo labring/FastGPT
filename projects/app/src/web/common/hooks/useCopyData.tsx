@@ -1,6 +1,7 @@
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useCallback } from 'react';
+import { hasHttps } from '@fastgpt/web/common/system/utils';
 
 /**
  * copy text data
@@ -16,7 +17,7 @@ export const useCopyData = () => {
       duration = 1000
     ) => {
       try {
-        if (navigator.clipboard) {
+        if (hasHttps() && navigator.clipboard) {
           await navigator.clipboard.writeText(data);
         } else {
           throw new Error('');

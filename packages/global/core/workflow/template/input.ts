@@ -73,3 +73,12 @@ export const Input_Template_Text_Quote: FlowNodeInputItemType = {
   description: i18nT('app:document_quote_tip'),
   valueType: WorkflowIOValueTypeEnum.string
 };
+export const Input_Template_File_Link: FlowNodeInputItemType = {
+  key: NodeInputKeyEnum.fileUrlList,
+  renderTypeList: [FlowNodeInputTypeEnum.reference],
+  required: true,
+  label: i18nT('app:workflow.user_file_input'),
+  debugLabel: i18nT('app:workflow.user_file_input'),
+  description: i18nT('app:workflow.user_file_input_desc'),
+  valueType: WorkflowIOValueTypeEnum.arrayString
+};

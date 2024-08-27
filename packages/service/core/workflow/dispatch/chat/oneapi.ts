@@ -31,7 +31,7 @@ import {
 import type { AIChatNodeProps } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { responseWrite, responseWriteController } from '../../../../common/response';
+import { responseWriteController } from '../../../../common/response';
 import { getLLMModel, ModelTypeEnum } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -41,6 +41,7 @@ import { filterSearchResultsByMaxChars } from '../../utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { addLog } from '../../../../common/system/log';
 import { computedMaxToken, computedTemperature } from '../../../ai/utils';
+import { WorkflowResponseType } from '../type';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -60,11 +61,11 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     res,
     requestOrigin,
     stream = false,
-    detail = false,
     user,
     histories,
     node: { name },
     query,
+    workflowStreamResponse,
     params: {
       model,
       temperature = 0,
@@ -179,8 +180,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         // sse response
         const { answer } = await streamResponse({
           res,
-          detail,
-          stream: response
+          stream: response,
+          workflowStreamResponse
         });
 
         if (!answer) {
@@ -340,12 +341,12 @@ async function getChatMessages({
 
 async function streamResponse({
   res,
-  detail,
-  stream
+  stream,
+  workflowStreamResponse
 }: {
   res: NextApiResponse;
-  detail: boolean;
   stream: StreamChatType;
+  workflowStreamResponse?: WorkflowResponseType;
 }) {
   const write = responseWriteController({
     res,
@@ -360,9 +361,9 @@ async function streamResponse({
     const content = part.choices?.[0]?.delta?.content || '';
     answer += content;
 
-    responseWrite({
+    workflowStreamResponse?.({
       write,
-      event: detail ? SseResponseEventEnum.answer : undefined,
+      event: SseResponseEventEnum.answer,
       data: textAdaptGptResponse({
         text: content
       })

@@ -1,85 +1,88 @@
-// @ts-nocheck
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/runApp/type';
-import { dispatchWorkFlowV1 } from '../index';
-import { MongoApp } from '../../../../core/app/schema';
-import { responseWrite } from '../../../../common/response';
+import { dispatchWorkFlow } from '../index';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  getWorkflowEntryNodeIds,
+  initWorkflowEdgeStatus,
+  storeNodes2RuntimeNodes,
+  textAdaptGptResponse
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getHistories, setEntryEntries } from '../utils';
+import { getHistories } from '../utils';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import { authAppByTmbId } from '../../../../support/permission/app/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
   [NodeInputKeyEnum.history]?: ChatItemType[] | number;
-  app: SelectAppItemType;
+  [NodeInputKeyEnum.fileUrlList]?: string[];
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
   [NodeOutputKeyEnum.history]: ChatItemType[];
 }>;
 
-export const dispatchAppRequest = async (props: Props): Promise<Response> => {
+export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const {
-    res,
-    teamId,
-    stream,
-    detail,
+    app: workflowApp,
     histories,
-    inputFiles,
-    params: { userChatInput, history, app }
+    query,
+    node: { pluginId },
+    workflowStreamResponse,
+    params
   } = props;
-  let start = Date.now();
 
+  const { userChatInput, history, ...variables } = params;
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
+  if (!pluginId) {
+    return Promise.reject('pluginId is empty');
+  }
 
-  const appData = await MongoApp.findOne({
-    _id: app.id,
-    teamId
+  // Auth the app by tmbId(Not the user, but the workflow user)
+  const { app: appData } = await authAppByTmbId({
+    appId: pluginId,
+    tmbId: workflowApp.tmbId,
+    per: ReadPermissionVal
   });
 
-  if (!appData) {
-    return Promise.reject('App not found');
-  }
-
-  if (stream) {
-    responseWrite({
-      res,
-      event: detail ? SseResponseEventEnum.answer : undefined,
-      data: textAdaptGptResponse({
-        text: '\n'
-      })
-    });
-  }
+  // Auto line
+  workflowStreamResponse?.({
+    event: SseResponseEventEnum.answer,
+    data: textAdaptGptResponse({
+      text: '\n'
+    })
+  });
 
   const chatHistories = getHistories(history, histories);
+  const { files } = chatValue2RuntimePrompt(query);
 
-  const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlowV1({
+  const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
-    appId: app.id,
-    modules: setEntryEntries(appData.modules),
-    runtimeModules: undefined, // must reset
+    app: appData,
+    runtimeNodes: storeNodes2RuntimeNodes(
+      appData.modules,
+      getWorkflowEntryNodeIds(appData.modules)
+    ),
+    runtimeEdges: initWorkflowEdgeStatus(appData.edges),
     histories: chatHistories,
-    inputFiles,
-    startParams: {
-      userChatInput
-    }
+    query: runtimePrompt2ChatsValue({
+      files,
+      text: userChatInput
+    }),
+    variables: variables
   });
 
   const completeMessages = chatHistories.concat([
     {
       obj: ChatRoleEnum.Human,
-      value: runtimePrompt2ChatsValue({
-        files: inputFiles,
-        text: userChatInput
-      })
+      value: query
     },
     {
       obj: ChatRoleEnum.AI,
