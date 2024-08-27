@@ -432,7 +432,7 @@ async function streamResponse({
       }
 
       /* arg 插入最后一个工具的参数里 */
-      const arg: string = toolCall?.function?.arguments;
+      const arg: string = toolCall?.function?.arguments ?? '';
       const currentTool = toolCalls[toolCalls.length - 1];
 
       if (currentTool) {
