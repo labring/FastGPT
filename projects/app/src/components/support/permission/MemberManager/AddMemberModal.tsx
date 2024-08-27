@@ -20,7 +20,6 @@ import PermissionSelect from './PermissionSelect';
 import PermissionTags from './PermissionTags';
 import { CollaboratorContext } from './context';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { getTeamMembers } from '@/web/support/user/team/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -33,15 +32,16 @@ export type AddModalPropsType = {
 
 function AddMemberModal({ onClose }: AddModalPropsType) {
   const { t } = useTranslation();
-  const { userInfo } = useUserStore();
+  const { userInfo, loadAndGetTeamMembers } = useUserStore();
 
   const { permissionList, collaboratorList, onUpdateCollaborators, getPerLabelList } =
     useContextSelector(CollaboratorContext, (v) => v);
   const [searchText, setSearchText] = useState<string>('');
+
   const { data: members = [], loading: loadingMembers } = useRequest2(
     async () => {
       if (!userInfo?.team?.teamId) return [];
-      const members = await getTeamMembers();
+      const members = await loadAndGetTeamMembers(true);
       return members;
     },
     {
