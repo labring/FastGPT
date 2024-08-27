@@ -128,6 +128,7 @@ export enum NodeInputKeyEnum {
 
   // read files
   fileUrlList = 'fileUrlList',
+
   // user select
   userSelectOptions = 'userSelectOptions'
 }

@@ -31,11 +31,7 @@ import {
 import { IfElseResultEnum } from './template/system/ifElse/constant';
 import { RuntimeNodeItemType } from './runtime/type';
 import { getReferenceVariableValue } from './runtime/utils';
-import {
-  Input_Template_History,
-  Input_Template_Text_Quote,
-  Input_Template_UserChatInput
-} from './template/input';
+import { Input_Template_History, Input_Template_UserChatInput } from './template/input';
 
 export const getHandleId = (nodeId: string, type: 'source' | 'target', key: string) => {
   return `${nodeId}-${type}-${key}`;
@@ -211,7 +207,10 @@ export const appData2FlowNodeIO = ({
             FlowNodeInputTypeEnum.reference
           ],
           [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
-          [VariableInputEnum.custom]: [FlowNodeInputTypeEnum.hidden],
+          [VariableInputEnum.custom]: [
+            FlowNodeInputTypeEnum.input,
+            FlowNodeInputTypeEnum.reference
+          ],
           default: [FlowNodeInputTypeEnum.reference]
         };
 
@@ -230,11 +229,14 @@ export const appData2FlowNodeIO = ({
         };
       });
 
+  // const showFileLink =
+  //   chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg;
+
   return {
     inputs: [
       Input_Template_History,
       Input_Template_UserChatInput,
-      ...(chatConfig?.fileSelectConfig ? [Input_Template_Text_Quote] : []),
+      // ...(showFileLink ? [Input_Template_File_Link] : []),
       ...variableInput
     ],
     outputs: [
