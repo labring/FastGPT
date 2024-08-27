@@ -303,11 +303,6 @@ const MenuRender = React.memo(function MenuRender({
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
 
-  const { openConfirm: onOpenConfirmDeleteNode, ConfirmModal: ConfirmDeleteModal } = useConfirm({
-    content: t('common:core.module.Confirm Delete Node'),
-    type: 'delete'
-  });
-
   const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
   const setEdges = useContextSelector(WorkflowContext, (v) => v.setEdges);
   const { computedNewNodeName } = useWorkflowUtils();
@@ -425,7 +420,6 @@ const MenuRender = React.memo(function MenuRender({
             </Box>
           ))}
         </Box>
-        <ConfirmDeleteModal />
         <DebugInputModal />
       </>
     );
@@ -434,7 +428,6 @@ const MenuRender = React.memo(function MenuRender({
     menuForbid?.copy,
     menuForbid?.delete,
     t,
-    ConfirmDeleteModal,
     DebugInputModal,
     openDebugNode,
     nodeId,
