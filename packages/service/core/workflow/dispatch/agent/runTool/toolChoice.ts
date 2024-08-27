@@ -436,7 +436,9 @@ async function streamResponse({
       const currentTool = toolCalls[toolCalls.length - 1];
 
       if (currentTool) {
-        currentTool.function.arguments += arg;
+        if (arg != null) {
+          currentTool.function.arguments += arg;
+        }
 
         workflowStreamResponse?.({
           write,
