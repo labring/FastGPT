@@ -49,7 +49,9 @@ const ConversionModal = ({
         <VStack px="2.25" gap={2} pb="6">
           <HStack px="4" py="2" color="primary.600" bgColor="primary.50" borderRadius="md">
             <Icon name="common/info" w="1rem" mr="1" />
-            <Box fontSize={'sm'}>{t('user:bill.use_balance_hint')}</Box>
+            <Box fontSize={'mini'} fontWeight={'500'}>
+              {t('user:bill.use_balance_hint')}
+            </Box>
           </HStack>
           <VStack mt={6}>
             <Box fontSize={'sm'} color="myGray.600" fontWeight="500">
@@ -74,7 +76,9 @@ const ConversionModal = ({
             <Box fontSize={'xl'} fontWeight={'700'} color="myGray.900">
               {points} {t('user:bill.tokens')}
             </Box>
-            <Tag fontSize={'lg'}>{t('user:bill.token_expire_1year')}</Tag>
+            <Tag fontSize={'xs'} fontWeight={'500'}>
+              {t('user:bill.token_expire_1year')}
+            </Tag>
           </VStack>
 
           <VStack mt="6">
@@ -88,7 +92,7 @@ const ConversionModal = ({
             >
               {t('user:bill.conversion')}
             </Button>
-            <Link color="primary" mt="2" onClick={onOpenContact}>
+            <Link fontSize={'sm'} color="primary" mt="2" onClick={onOpenContact}>
               {t('user:bill.contact_customer_service')}
             </Link>
           </VStack>

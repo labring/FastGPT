@@ -1,11 +1,24 @@
 {
   "bill": {
+    "balance": "Balance",
     "buy_plan": "Buy a package",
     "buy_standard_plan_success": "Package purchased successfully",
+    "contact_customer_service": "Contact customer service",
+    "conversion": "exchange",
+    "convert_error": "Redemption failed",
+    "convert_success": "Redemption successful",
+    "current_token_price": "Current points price",
     "not_need_invoice": "Balance payment, unable to issue invoice",
+    "price": "price",
     "renew_plan": "Renewal package",
     "standard_valid_tip": "Package usage rules: The system gives priority to using more advanced packages, and the original unused packages will take effect later.",
-    "valid_time": "Effective time"
+    "token_expire_1year": "Points are valid for one year",
+    "tokens": "integral",
+    "use_balance": "Use balance",
+    "use_balance_hint": "Due to the system upgrade, the original \"automatic renewal and deduction from balance\" mode has been cancelled, and the balance recharge entrance has been closed. \nYour balance can be used to purchase points",
+    "valid_time": "Effective time",
+    "you_can_convert": "You can redeem",
+    "yuan": "Yuan"
   },
   "bind_inform_account_error": "Abnormal binding notification account",
   "bind_inform_account_success": "Binding notification account successful",
