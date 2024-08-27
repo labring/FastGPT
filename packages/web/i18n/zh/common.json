@@ -128,6 +128,7 @@
     "Confirm to leave the page": "确认离开该页面？",
     "Copy": "复制",
     "Copy Successful": "复制成功",
+    "Copy_failed": "复制失败，请手动复制",
     "Create Failed": "创建异常",
     "Create New": "新建",
     "Create Success": "创建成功",
@@ -637,7 +638,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1429,7 +1431,7 @@
     "Quote Content Tip": "可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置：\n{{q}} - 检索内容，{{a}} - 预期内容，{{source}} - 来源，{{sourceId}} - 来源文件名，{{index}} - 第 n 个引用，他们都是可选的，下面是默认值：\n{{default}}",
     "Quote Prompt Tip": "可以用 {{quote}} 来插入引用内容模板，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"
   },
-  "textarea_variable_picker_tip": "输入 / 可选择变量",
+  "textarea_variable_picker_tip": "输入\"/\"可选择变量",
   "tool_field": "工具字段参数配置",
   "undefined_var": "引用了未定义的变量，是否自动添加？",
   "unit": {

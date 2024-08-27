@@ -16,7 +16,6 @@ import {
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { useQuery } from '@tanstack/react-query';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getTeamPlans } from '@/web/support/user/team/api';
@@ -25,7 +24,6 @@ import {
   standardSubLevelMap,
   SubTypeEnum
 } from '@fastgpt/global/support/wallet/sub/constants';
-import { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -71,7 +69,7 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
       isCentered
     >
       <ModalCloseButton onClick={onClose} />
-      <ModalBody px={'3.25rem'} py={'2rem'}>
+      <ModalBody px={[4, 8]} py={[2, 6]}>
         <TableContainer mt={2} position={'relative'} minH={'300px'}>
           <Table>
             <Thead>
@@ -100,7 +98,6 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
                     ? subPlans?.standard?.[currentSubLevel]
                     : undefined;
                   const datasetSize = standardPlan?.maxDatasetSize || currentExtraDatasetSize;
-                  const now = new Date();
 
                   return (
                     <Tr key={_id} fontWeight={500} fontSize={'mini'} color={'myGray.900'}>

@@ -126,6 +126,7 @@
     "Confirm to leave the page": "Confirm to leave the page?",
     "Copy": "Copy",
     "Copy Successful": "Copy Successful",
+    "Copy_failed": "Copy failed, please copy manually",
     "Create Failed": "Create Failed",
     "Create New": "Create New",
     "Create Success": "Create Success",
@@ -1430,7 +1431,7 @@
     "Quote Content Tip": "You can customize the structure of the quote content to better adapt to different scenarios. You can use some variables for template configuration:\n{{q}} - search content, {{a}} - expected content, {{source}} - source, {{sourceId}} - source file name, {{index}} - the nth quote, they are all optional, here are the default values:\n{{default}}",
     "Quote Prompt Tip": "You can use {{quote}} to insert the quote content template, and use {{question}} to insert the question. Here are the default values:\n{{default}}"
   },
-  "textarea_variable_picker_tip": "Input / to select variables",
+  "textarea_variable_picker_tip": "Input '/' to select variables",
   "tool_field": "Tool field parameter configuration",
   "undefined_var": "An undefined variable is referenced. Is it automatically added?",
   "unit": {

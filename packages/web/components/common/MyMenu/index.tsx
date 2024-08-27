@@ -44,7 +44,7 @@ const MyMenu = ({
   iconSize = '1rem',
   Button,
   menuList,
-  iconRadius = 'sm',
+  iconRadius,
   placement = 'bottom-start'
 }: Props) => {
   const typeMapStyle: Record<MenuItemType, MenuItemProps> = {
