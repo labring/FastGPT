@@ -914,6 +914,7 @@
         "add option": "添加选项",
         "input type": "文本",
         "key": "变量 key",
+        "key already exists": "Key 已经存在",
         "key is required": "变量 key 是必须的",
         "select type": "下拉单选",
         "text max length": "最大长度",
