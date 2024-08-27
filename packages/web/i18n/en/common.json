@@ -126,6 +126,7 @@
     "Confirm to leave the page": "Confirm to leave the page?",
     "Copy": "Copy",
     "Copy Successful": "Copy Successful",
+    "Copy_failed": "Copy failed, please copy manually",
     "Create Failed": "Create Failed",
     "Create New": "Create New",
     "Create Success": "Create Success",
@@ -635,7 +636,8 @@
             "success": "Start syncing"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",

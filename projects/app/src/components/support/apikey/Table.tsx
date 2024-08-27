@@ -58,6 +58,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
   const [baseUrl, setBaseUrl] = useState('https://fastgpt.in/api');
   const [editData, setEditData] = useState<EditProps>();
   const [apiKey, setApiKey] = useState('');
+
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
     content: t('workflow:delete_api')
@@ -271,6 +272,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             wordBreak={'break-all'}
             cursor={'pointer'}
             borderRadius={'md'}
+            userSelect={'all'}
             onClick={() => copyData(apiKey)}
           >
             <Box flex={1}>{apiKey}</Box>
