@@ -20,7 +20,7 @@ import {
   textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { getChatItems } from '@fastgpt/service/core/chat/controller';
+import { getChat, getChatItems } from '@fastgpt/service/core/chat/controller';
 import { saveChat } from '@fastgpt/service/core/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { pushChatUsage } from '@/service/support/wallet/usage/push';
@@ -220,16 +220,30 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Get and concat history;
     const limit = getMaxHistoryLimitFromNodes(app.modules);
-    const [{ histories }, { nodes, edges, chatConfig }] = await Promise.all([
+    const [{ histories }, { nodes, edges, chatConfig }, { chat }] = await Promise.all([
       getChatItems({
         appId: app._id,
         chatId,
         limit,
         field: `dataId obj value nodeOutputs`
       }),
-      getAppLatestVersion(app._id, app)
+      getAppLatestVersion(app._id, app),
+      getChat({
+        appId: app._id,
+        chatId,
+        field: 'source variableList variables'
+      })
     ]);
+    // get chat histories
     const newHistories = concatHistories(histories, chatMessages);
+
+    // get global variables
+    if (chat && chat.variables) {
+      variables = {
+        ...chat.variables,
+        ...variables
+      };
+    }
 
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, newHistories));
