@@ -374,10 +374,7 @@ export const getWorkflowGlobalVariables = ({
       systemConfigNode: getGuideModule(nodes),
       isPublicFetch: true
     })?.variables || []
-  ).map((item) => ({
-    ...item,
-    valueType: WorkflowIOValueTypeEnum.any
-  }));
+  );
 
   const systemVariables = getSystemVariables(t);
 

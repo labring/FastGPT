@@ -23,7 +23,11 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { VariableInputEnum, variableMap } from '@fastgpt/global/core/workflow/constants';
+import {
+  VariableInputEnum,
+  variableMap,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useForm } from 'react-hook-form';
@@ -310,6 +314,27 @@ const VariableEdit = ({
                   return;
                 }
               }
+
+              // check repeat key
+              const existingVariable = variables.find(
+                (item) => item.key === variable.key && item.id !== variable.id
+              );
+              if (existingVariable) {
+                toast({
+                  status: 'warning',
+                  title: t('common:core.module.variable.key already exists')
+                });
+                return;
+              }
+
+              // set valuetype based on variable.type
+              variable.valueType = valueTypeMap[variable.type];
+
+              // set default required value based on variableType
+              if (variable.type === VariableInputEnum.custom) {
+                variable.required = false;
+              }
+
               const onChangeVariable = [...variables];
               // update
               if (variable.id) {
@@ -344,9 +369,16 @@ export const defaultVariable: VariableItemType = {
   type: VariableInputEnum.input,
   required: true,
   maxLen: 50,
-  enums: [{ value: '' }]
+  enums: [{ value: '' }],
+  valueType: WorkflowIOValueTypeEnum.string
 };
 export const addVariable = () => {
   const newVariable = { ...defaultVariable, key: '', id: '' };
   return newVariable;
+};
+const valueTypeMap = {
+  [VariableInputEnum.input]: WorkflowIOValueTypeEnum.string,
+  [VariableInputEnum.select]: WorkflowIOValueTypeEnum.string,
+  [VariableInputEnum.textarea]: WorkflowIOValueTypeEnum.string,
+  [VariableInputEnum.custom]: WorkflowIOValueTypeEnum.any
 };

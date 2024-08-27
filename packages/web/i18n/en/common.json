@@ -914,6 +914,7 @@
         "add option": "Add option",
         "input type": "Text",
         "key": "Variable key",
+        "key already exists": "Key already exist",
         "key is required": "Variable key is required",
         "select type": "Dropdown single select",
         "text max length": "Maximum length",
