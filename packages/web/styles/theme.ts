@@ -680,6 +680,19 @@ export const theme = extendTheme({
       800: '#93370D',
       900: '#7A2E0E'
     },
+    adora: {
+      25: '#FCFCFF',
+      50: '#F0EEFF',
+      100: '#E4E1FC',
+      200: '#D3CAFF',
+      300: '#B6A8FC',
+      400: '#9E8DFB',
+      500: '#8774EE',
+      600: '#6F5DD7',
+      700: '#5E4EBD',
+      800: '#4E4198',
+      900: '#42387D'
+    },
     borderColor: {
       low: '#E8EBF0',
       base: '#DFE2EA',

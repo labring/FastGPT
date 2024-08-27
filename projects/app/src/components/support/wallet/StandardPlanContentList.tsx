@@ -78,7 +78,7 @@ const StandardPlanContentList = ({
       </Flex>
       <Flex alignItems={'center'}>
         <MyIcon name={'price/right'} w={'16px'} mr={3} />
-        <Box fontWeight={'bold'}>
+        <Box fontWeight={'bold'} color={'myGray.600'}>
           {t('common:support.wallet.subscription.function.Max dataset size', {
             amount: planContent.maxDatasetSize
           })}
@@ -87,7 +87,7 @@ const StandardPlanContentList = ({
       <Flex alignItems={'center'}>
         <MyIcon name={'price/right'} w={'16px'} mr={3} />
         <Flex alignItems={'center'}>
-          <Box fontWeight={'bold'}>
+          <Box fontWeight={'bold'} color={'myGray.600'}>
             {t('common:support.wallet.subscription.function.Points', {
               amount: planContent.totalPoints
             })}

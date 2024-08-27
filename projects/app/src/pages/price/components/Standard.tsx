@@ -1,8 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { Box, Button, Flex, Grid } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import {
+  StandardSubLevelEnum,
+  SubModeEnum,
+  PackageChangeStatusEnum,
+  packagePayTextMap
+} from '@fastgpt/global/support/wallet/sub/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -24,7 +29,7 @@ const Standard = ({
   const { t } = useTranslation();
   const router = useRouter();
   const { toast } = useToast();
-
+  const [packageChange, setPackageChange] = useState<PackageChangeStatusEnum>();
   const { subPlans, feConfigs } = useSystemStore();
   const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
 
@@ -66,103 +71,180 @@ const Standard = ({
   });
 
   return (
-    <Flex flexDirection={'column'} alignItems={'center'} position={'relative'}>
-      <Box fontWeight={'bold'} fontSize={['24px', '36px']}>
-        {t('common:support.wallet.subscription.Sub plan')}
-      </Box>
-      <Box mt={8} mb={10} color={'myGray.500'} fontSize={'md'}>
-        {t('common:support.wallet.subscription.Sub plan tip', {
-          title: feConfigs?.systemTitle
-        })}
-      </Box>
-      <Box>
-        <RowTabs
-          list={[
-            { label: t('common:support.wallet.subscription.mode.Month'), value: SubModeEnum.month },
-            {
-              label: (
-                <Flex>
-                  {t('common:support.wallet.subscription.mode.Year')}
-                  <Box color={selectSubMode === SubModeEnum.month ? 'red.600' : 'auto'}>
-                    ({t('common:support.wallet.subscription.mode.Year sale')})
+    <>
+      <Flex flexDirection={'column'} alignItems={'center'} position={'relative'}>
+        <Box fontWeight={'600'} color={'myGray.900'} fontSize={['24px', '36px']}>
+          {t('common:support.wallet.subscription.Sub plan')}
+        </Box>
+        <Box mt={8} mb={10} fontWeight={'500'} color={'myGray.600'} fontSize={'md'}>
+          {t('common:support.wallet.subscription.Sub plan tip', {
+            title: feConfigs?.systemTitle
+          })}
+        </Box>
+        <Box>
+          <RowTabs
+            list={[
+              {
+                label: t('common:support.wallet.subscription.mode.Month'),
+                value: SubModeEnum.month
+              },
+              {
+                label: (
+                  <Flex>
+                    {t('common:support.wallet.subscription.mode.Year')}
+                    <Box ml={1} color={selectSubMode === SubModeEnum.month ? 'red.600' : 'auto'}>
+                      ({t('common:support.wallet.subscription.mode.Year sale')})
+                    </Box>
+                  </Flex>
+                ),
+                value: SubModeEnum.year
+              }
+            ]}
+            value={selectSubMode}
+            onChange={(e) => setSelectSubMode(e as `${SubModeEnum}`)}
+          />
+        </Box>
+        {/* card */}
+        <Grid
+          mt={[10, '48px']}
+          gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(4,1fr)']}
+          gap={[4, 6, 8]}
+          w={'100%'}
+          maxW={'1440px'}
+          minH={'550px'}
+        >
+          {standardSubList.map((item) => {
+            const isCurrentPlan = item.level === myStandardPlan?.currentSubLevel;
+
+            const isHigherLevel =
+              standardSubLevelMap[item.level].weight >
+              standardSubLevelMap[myStandardPlan?.currentSubLevel || StandardSubLevelEnum.free]
+                .weight;
+
+            return (
+              <Box
+                key={item.level}
+                pos={'relative'}
+                flex={'1 0 0'}
+                bg={isCurrentPlan ? 'blue.50' : 'rgba(255, 255, 255, 0.90)'}
+                p={'28px'}
+                borderRadius={'xl'}
+                borderWidth={isCurrentPlan ? '4px' : '1.5px'}
+                boxShadow={'1.5'}
+                {...(isCurrentPlan
+                  ? {
+                      borderColor: 'primary.600'
+                    }
+                  : {
+                      borderColor: 'myGray.150'
+                    })}
+              >
+                {isCurrentPlan && (
+                  <Box
+                    position={'absolute'}
+                    right={0}
+                    top={'1.62rem'}
+                    px={3}
+                    py={'0.38rem'}
+                    color={'blue.700'}
+                    fontSize={'xs'}
+                    bg={'blue.200'}
+                    fontWeight={'500'}
+                    borderLeftRadius={'sm'}
+                  >
+                    {t('common:is_using')}
                   </Box>
-                </Flex>
-              ),
-              value: SubModeEnum.year
-            }
-          ]}
-          value={selectSubMode}
-          onChange={(e) => setSelectSubMode(e as `${SubModeEnum}`)}
-        />
-      </Box>
-      {/* card */}
-      <Grid
-        mt={[10, '48px']}
-        gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(4,1fr)']}
-        gap={[4, 6, 8]}
-        w={'100%'}
-        maxW={'1440px'}
-        minH={'550px'}
-      >
-        {standardSubList.map((item) => {
-          const isCurrentPlan = item.level === myStandardPlan?.currentSubLevel;
+                )}
+                <Box fontSize={'md'} fontWeight={'500'} color={'myGray.900'}>
+                  {t(item.label)}
+                </Box>
+                <Box fontSize={['32px', '42px']} fontWeight={'bold'} color={'myGray.900'}>
+                  ￥{item.price}
+                </Box>
+                <Box color={'myGray.500'} h={'40px'} fontSize={'xs'}>
+                  {t(item.desc as any, { title: feConfigs?.systemTitle })}
+                </Box>
 
-          return (
-            <Box
-              key={item.level}
-              flex={'1 0 0'}
-              bg={'rgba(255, 255, 255, 0.90)'}
-              p={'28px'}
-              borderRadius={'2xl'}
-              borderWidth={'1.5px'}
-              boxShadow={'1.5'}
-              {...(isCurrentPlan
-                ? {
-                    borderColor: 'primary.600'
+                {/* Button */}
+                {(() => {
+                  if (item.level === StandardSubLevelEnum.free) {
+                    return (
+                      <Button
+                        mt={4}
+                        mb={6}
+                        _active={{}}
+                        _hover={{}}
+                        boxShadow={'0'}
+                        cursor={'default'}
+                        w={'100%'}
+                        variant={isCurrentPlan ? 'whiteBase' : 'solid'}
+                      >
+                        {t('common:free')}
+                      </Button>
+                    );
                   }
-                : {
-                    borderColor: 'myGray.150'
-                  })}
-            >
-              <Box fontSize={'md'} fontWeight={'500'}>
-                {t(item.label)}
-              </Box>
-              <Box fontSize={['32px', '42px']} fontWeight={'bold'}>
-                ￥{item.price}
-              </Box>
-              <Box color={'myGray.500'} h={'40px'} fontSize={'xs'}>
-                {t(item.desc as any, { title: feConfigs?.systemTitle })}
-              </Box>
-
-              {/* Button */}
-              {(() => {
-                if (item.level === StandardSubLevelEnum.free) {
-                  return (
-                    <Button isDisabled mt={4} mb={6} w={'100%'} variant={'solid'}>
-                      {t('common:support.wallet.subscription.Nonsupport')}
-                    </Button>
-                  );
-                }
-                // feature:
-                // if (
-                //   item.level === myStandardPlan?.nextSubLevel &&
-                //   selectSubMode === myStandardPlan?.nextMode
-                // ) {
-                //   return (
-                //     <Button mt={4} mb={6} w={'100%'} variant={'whiteBase'} isDisabled>
-                //       {t('common:support.wallet.subscription.Next plan')}
-                //     </Button>
-                //   );
-                // }
-                if (isCurrentPlan) {
+                  // feature:
+                  // if (
+                  //   item.level === myStandardPlan?.nextSubLevel &&
+                  //   selectSubMode === myStandardPlan?.nextMode
+                  // ) {
+                  //   return (
+                  //     <Button mt={4} mb={6} w={'100%'} variant={'whiteBase'} isDisabled>
+                  //       {t('common:support.wallet.subscription.Next plan')}
+                  //     </Button>
+                  //   );
+                  // }
+                  if (isCurrentPlan) {
+                    return (
+                      <Button
+                        mt={4}
+                        mb={6}
+                        w={'100%'}
+                        variant={'primary'}
+                        isLoading={isLoading}
+                        onClick={() => {
+                          setPackageChange(PackageChangeStatusEnum.renewal);
+                          onPay({
+                            type: BillTypeEnum.standSubPlan,
+                            level: item.level,
+                            subMode: selectSubMode
+                          });
+                        }}
+                      >
+                        {t('user:bill.renew_plan')}
+                      </Button>
+                    );
+                  }
+                  if (isHigherLevel) {
+                    return (
+                      <Button
+                        mt={4}
+                        mb={6}
+                        w={'100%'}
+                        variant={'primaryGhost'}
+                        isLoading={isLoading}
+                        onClick={() => {
+                          setPackageChange(PackageChangeStatusEnum.upgrade);
+                          onPay({
+                            type: BillTypeEnum.standSubPlan,
+                            level: item.level,
+                            subMode: selectSubMode
+                          });
+                        }}
+                      >
+                        {t('common:support.wallet.subscription.Upgrade plan')}
+                      </Button>
+                    );
+                  }
                   return (
                     <Button
                       mt={4}
                       mb={6}
                       w={'100%'}
-                      variant={'primary'}
+                      variant={'primaryGhost'}
                       isLoading={isLoading}
                       onClick={() => {
+                        setPackageChange(PackageChangeStatusEnum.buy);
                         onPay({
                           type: BillTypeEnum.standSubPlan,
                           level: item.level,
@@ -170,40 +252,29 @@ const Standard = ({
                         });
                       }}
                     >
-                      {t('user:bill.renew_plan')}
+                      {t('user:bill.buy_plan')}
                     </Button>
                   );
-                }
+                })()}
 
-                return (
-                  <Button
-                    mt={4}
-                    mb={6}
-                    w={'100%'}
-                    variant={'primaryGhost'}
-                    isLoading={isLoading}
-                    onClick={() =>
-                      onPay({
-                        type: BillTypeEnum.standSubPlan,
-                        level: item.level,
-                        subMode: selectSubMode
-                      })
-                    }
-                  >
-                    {t('user:bill.buy_plan')}
-                  </Button>
-                );
-              })()}
+                {/* function list */}
+                <StandardPlanContentList level={item.level} mode={selectSubMode} />
+              </Box>
+            );
+          })}
+        </Grid>
 
-              {/* function list */}
-              <StandardPlanContentList level={item.level} mode={selectSubMode} />
-            </Box>
-          );
-        })}
-      </Grid>
-
-      {!!qrPayData && <QRCodePayModal tip="您正在购买订阅套餐" {...qrPayData} />}
-    </Flex>
+        {!!qrPayData && packageChange && (
+          <QRCodePayModal tip={t(packagePayTextMap[packageChange])} {...qrPayData} />
+        )}
+      </Flex>
+      <HStack mt={8} color={'blue.700'} ml={8}>
+        <MyIcon name={'infoRounded'} w={'1rem'} />
+        <Box fontSize={'sm'} fontWeight={'500'}>
+          {t('user:bill.standard_valid_tip')}
+        </Box>
+      </HStack>
+    </>
   );
 };
 
@@ -239,7 +310,7 @@ const RowTabs = ({
           alignItems={'center'}
           justifyContent={'center'}
           cursor={'pointer'}
-          borderRadius={'md'}
+          borderRadius={'sm'}
           px={'12px'}
           py={'7px'}
           userSelect={'none'}
@@ -255,7 +326,7 @@ const RowTabs = ({
               })}
         >
           {item.icon && <MyIcon name={item.icon as any} mr={1} w={'14px'} />}
-          <Box>{item.label}</Box>
+          <Box fontWeight={'500'}>{item.label}</Box>
         </Flex>
       ))}
     </Box>

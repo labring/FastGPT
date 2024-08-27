@@ -53,17 +53,17 @@ export const standardSubLevelMap = {
   },
   [StandardSubLevelEnum.experience]: {
     label: i18nT('common:support.wallet.subscription.standardSubLevel.experience'),
-    desc: '',
+    desc: i18nT('common:support.wallet.subscription.standardSubLevel.experience_desc'),
     weight: 2
   },
   [StandardSubLevelEnum.team]: {
     label: i18nT('common:support.wallet.subscription.standardSubLevel.team'),
-    desc: '',
+    desc: i18nT('common:support.wallet.subscription.standardSubLevel.team_desc'),
     weight: 3
   },
   [StandardSubLevelEnum.enterprise]: {
     label: i18nT('common:support.wallet.subscription.standardSubLevel.enterprise'),
-    desc: '',
+    desc: i18nT('common:support.wallet.subscription.standardSubLevel.enterprise_desc'),
     weight: 4
   },
   [StandardSubLevelEnum.custom]: {
@@ -71,4 +71,16 @@ export const standardSubLevelMap = {
     desc: '',
     weight: 5
   }
+};
+
+export enum PackageChangeStatusEnum {
+  buy = 'buy',
+  renewal = 'renewal',
+  upgrade = 'upgrade'
+}
+
+export const packagePayTextMap = {
+  [PackageChangeStatusEnum.buy]: i18nT('common:pay.package_tip.buy'),
+  [PackageChangeStatusEnum.renewal]: i18nT('common:pay.package_tip.renewal'),
+  [PackageChangeStatusEnum.upgrade]: i18nT('common:pay.package_tip.upgrade')
 };

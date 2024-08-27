@@ -17,14 +17,20 @@
     "free_user_clean_a": "免费版团队（免费版且未购买额外套餐）连续 30 天未登录系统，系统会自动清除该团队下所有知识库内容。",
     "free_user_clean_q": "免费版数据会清除么？",
     "package_overlay_a": "可以的。每次购买的资源包都是独立的，在其有效期内将会叠加使用。AI积分会优先扣除最先过期的资源包。",
-    "package_overlay_q": "额外资源包可以叠加么？"
+    "package_overlay_q": "额外资源包可以叠加么？",
+    "switch_package_q": "是否切换订阅套餐？",
+    "switch_package_a": "套餐使用规则为优先使用更高级的套餐，因此，购买的新套餐若比当前套餐更高级，则新套餐立即生效：否则将继续使用当前套餐。",
+    "check_subscription_q": "在哪里查看已订阅的套餐？",
+    "check_subscription_a": "账号-个人信息-套餐详情-使用情况。您可以查看所拥有套餐的生效和到期时间。当付费套餐到期后将自动切换免费版。"
   },
   "Folder": "文件夹",
   "Login": "登录",
+  "is_using": "正在使用",
   "Move": "移动",
   "Name": "名称",
   "Rename": "重命名",
   "Resume": "恢复",
+  "free": "免费",
   "Running": "运行中",
   "UnKnow": "未知",
   "Warning": "提示",
@@ -631,8 +637,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1119,7 +1124,12 @@
     "other": "其他金额，请取整数",
     "to_recharge": "余额不足，去充值",
     "wechat": "请微信扫码支付: {{price}}元\n请勿关闭页面",
-    "yuan": "{{amount}}元"
+    "yuan": "{{amount}}元",
+    "package_tip": {
+      "buy": "您购买的套餐等级低于当前套餐，该套餐将在当前套餐过期后生效。您可在账号—个人信息—套餐详情里，查看套餐使用情况。",
+      "renewal": "您正在续费套餐。您可在账号—个人信息—套餐详情里，查看套餐使用情况。",
+      "upgrade": "您购买的套餐等级高于当前套餐，该套餐将即刻生效，当前套餐将延后生效。您可在账号—个人信息—套餐详情里，查看套餐使用情况。"
+    }
   },
   "permission": {
     "Collaborator": "协作者",
@@ -1204,6 +1214,7 @@
     "standard": {
       "AI Bonus Points": "AI 积分",
       "Expired Time": "结束时间",
+      "due_date": "到期时间",
       "Start Time": "开始时间",
       "storage": "存储量",
       "type": "类型"
@@ -1320,6 +1331,11 @@
       "noBill": "无账单记录~",
       "no_invoice": "暂无开票记录",
       "subscription": {
+        "status": {
+          "expired": "已过期",
+          "active": "生效中",
+          "inactive": "待使用"
+        },
         "AI points": "AI 积分",
         "AI points click to read tip": "每次调用 AI 模型时，都会消耗一定的 AI 积分（类似于 token）。点击可查看详细计算规则。",
         "AI points usage": "AI 积分使用量",
@@ -1368,7 +1384,10 @@
           "experience": "体验版",
           "free": "免费版",
           "free desc": "每月均可免费使用基础功能，连续 30 天未登录系统，将会自动清除知识库",
-          "team": "团队版"
+          "team": "团队版",
+          "experience_desc": "可解锁 FastGPT 完整功能",
+          "team_desc": "适合小团队构建知识库应用并提供对外服务",
+          "enterprise_desc": "适合中小企业在生产环境构建知识库应用"
         },
         "token_compute": "点击查看在线 Tokens 计算器",
         "type": {

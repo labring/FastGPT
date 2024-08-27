@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   ModalBody,
   ModalFooter,
@@ -11,7 +11,8 @@ import {
   TableContainer,
   ModalCloseButton,
   HStack,
-  Box
+  Box,
+  Flex
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -19,16 +20,47 @@ import { useQuery } from '@tanstack/react-query';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getTeamPlans } from '@/web/support/user/team/api';
-import { subTypeMap, standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
+import {
+  subTypeMap,
+  standardSubLevelMap,
+  SubTypeEnum
+} from '@fastgpt/global/support/wallet/sub/constants';
 import { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+
+type packageStatus = 'active' | 'inactive' | 'expired';
 
 const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { Loading } = useLoading();
   const { subPlans } = useSystemStore();
-  const { data: teamPlans = [], isLoading } = useQuery(['getTeamPlans'], getTeamPlans);
+  const { data: teamPlans = [], loading: isLoading } = useRequest2(
+    () =>
+      getTeamPlans().then((res) => {
+        return [
+          ...res.filter((plan) => plan.type === SubTypeEnum.standard),
+          ...res.filter((plan) => plan.type === SubTypeEnum.extraDatasetSize),
+          ...res.filter((plan) => plan.type === SubTypeEnum.extraPoints)
+        ].map((item, index) => {
+          return {
+            ...item,
+            status:
+              new Date(item.expiredTime).getTime() < new Date().getTime()
+                ? 'expired'
+                : item.type === SubTypeEnum.standard
+                  ? index === 0
+                    ? 'active'
+                    : 'inactive'
+                  : 'active'
+          };
+        });
+      }),
+    {
+      manual: false
+    }
+  );
 
   return (
     <MyModal
@@ -39,7 +71,7 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
       isCentered
     >
       <ModalCloseButton onClick={onClose} />
-      <ModalBody>
+      <ModalBody px={'3.25rem'} py={'2rem'}>
         <TableContainer mt={2} position={'relative'} minH={'300px'}>
           <Table>
             <Thead>
@@ -48,7 +80,7 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
                 <Th>{t('common:support.standard.storage')}</Th>
                 <Th>{t('common:support.standard.AI Bonus Points')}</Th>
                 <Th>{t('user:bill.valid_time')}</Th>
-                <Th>{t('common:support.standard.Expired Time')}</Th>
+                <Th>{t('common:support.standard.due_date')}</Th>
               </Tr>
             </Thead>
             <Tbody fontSize={'sm'}>
@@ -61,25 +93,36 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
                   surplusPoints = 0,
                   totalPoints = 0,
                   startTime,
-                  expiredTime
-                }: TeamSubSchema) => {
+                  expiredTime,
+                  status
+                }) => {
                   const standardPlan = currentSubLevel
                     ? subPlans?.standard?.[currentSubLevel]
                     : undefined;
                   const datasetSize = standardPlan?.maxDatasetSize || currentExtraDatasetSize;
+                  const now = new Date();
 
                   return (
-                    <Tr key={_id}>
+                    <Tr key={_id} fontWeight={500} fontSize={'mini'} color={'myGray.900'}>
                       <Td>
-                        <MyIcon
-                          mr={2}
-                          name={subTypeMap[type]?.icon as any}
-                          w={'20px'}
-                          color={'myGray.800'}
-                        />
-                        {t(subTypeMap[type]?.label as any)}
-                        {currentSubLevel &&
-                          `(${t(standardSubLevelMap[currentSubLevel]?.label as any)})`}
+                        <Flex>
+                          <Flex align={'center'}>
+                            <MyIcon
+                              mr={2}
+                              name={subTypeMap[type]?.icon as any}
+                              w={'20px'}
+                              h={'20px'}
+                              color={'myGray.600'}
+                              fontWeight={500}
+                            />
+                          </Flex>
+                          <Flex align={'center'} color={'myGray.900'}>
+                            {t(subTypeMap[type]?.label as any)}
+                            {currentSubLevel &&
+                              `(${t(standardSubLevelMap[currentSubLevel]?.label as any)})`}
+                          </Flex>
+                          <StatusTag status={status as packageStatus} />
+                        </Flex>
                       </Td>
                       <Td>
                         {datasetSize ? `${datasetSize + t('common:core.dataset.data.group')}` : '-'}
@@ -89,8 +132,8 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
                           ? `${Math.round(totalPoints - surplusPoints)} / ${totalPoints} ${t('common:support.wallet.subscription.point')}`
                           : '-'}
                       </Td>
-                      <Td>{formatTime2YMDHM(startTime)}</Td>
-                      <Td>{formatTime2YMDHM(expiredTime)}</Td>
+                      <Td color={'myGray.600'}>{formatTime2YMDHM(startTime)}</Td>
+                      <Td color={'myGray.600'}>{formatTime2YMDHM(expiredTime)}</Td>
                     </Tr>
                   );
                 }
@@ -100,14 +143,56 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
           </Table>
           <Loading loading={isLoading} fixed={false} />
         </TableContainer>
-        <HStack mt={4} color={'primary.600'}>
+        <HStack mt={4} color={'primary.700'}>
           <MyIcon name={'infoRounded'} w={'1rem'} />
-          <Box fontSize={'sm'}>{t('user:bill.standard_valid_tip')}</Box>
+          <Box fontSize={'mini'} fontWeight={'500'}>
+            {t('user:bill.standard_valid_tip')}
+          </Box>
         </HStack>
       </ModalBody>
-      <ModalFooter></ModalFooter>
     </MyModal>
   );
 };
+
+function StatusTag({ status }: { status: packageStatus }) {
+  const { t } = useTranslation();
+  const statusText = useMemo(() => {
+    return {
+      inactive: t('common:support.wallet.subscription.status.inactive'),
+      active: t('common:support.wallet.subscription.status.active'),
+      expired: t('common:support.wallet.subscription.status.expired')
+    };
+  }, [t]);
+  const styleMap = useMemo(() => {
+    return {
+      inactive: {
+        color: 'adora.600',
+        bg: 'adora.50'
+      },
+      active: {
+        color: 'green.600',
+        bg: 'green.50'
+      },
+      expired: {
+        color: 'myGray.700',
+        bg: 'myGray.100'
+      }
+    };
+  }, []);
+  return (
+    <Box
+      py={'0.25rem'}
+      ml={'0.375rem'}
+      px={'0.5rem'}
+      fontSize={'0.625rem'}
+      fontWeight={500}
+      borderRadius={'sm'}
+      bg={styleMap[status]?.bg}
+      color={styleMap[status]?.color}
+    >
+      {statusText[status]}
+    </Box>
+  );
+}
 
 export default StandDetailModal;
