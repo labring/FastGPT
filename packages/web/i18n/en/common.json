@@ -902,6 +902,7 @@
         "System Plugin": "System",
         "System input module": "System input",
         "Team Plugin": "Team",
+        "Team app": "Team",
         "Tool module": "Tool",
         "UnKnow Module": "Unknown module",
         "http body placeholder": "Same syntax as APIFox"
@@ -1162,6 +1163,7 @@
     "Please bind laf accout first": "Please bind laf account first",
     "Plugin List": "Plugin list",
     "Search plugin": "Search plugin",
+    "Search_app": "Search app",
     "Set Name": "Name the plugin",
     "contribute": "Contribute plugins",
     "go to laf": "Go to write",

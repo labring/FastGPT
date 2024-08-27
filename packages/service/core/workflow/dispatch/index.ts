@@ -1,4 +1,3 @@
-import { NextApiResponse } from 'next';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   DispatchNodeResponseKeyEnum,
@@ -21,7 +20,6 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { responseWrite, responseWriteNodeStatus } from '../../../common/response';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { replaceVariableLabel } from '@fastgpt/global/core/workflow/utils';
 
@@ -41,8 +39,7 @@ import { dispatchPluginOutput } from './plugin/runOutput';
 import { removeSystemVariable, valueTypeFormat } from './utils';
 import {
   filterWorkflowEdges,
-  checkNodeRunStatus,
-  getLastInteractiveValue
+  checkNodeRunStatus
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
@@ -62,12 +59,11 @@ import { dispatchTextEditor } from './tools/textEditor';
 import { dispatchCustomFeedback } from './tools/customFeedback';
 import { dispatchReadFiles } from './tools/readFiles';
 import { dispatchUserSelect } from './interactive/userSelect';
-import { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
   InteractiveNodeResponseItemType,
-  UserInteractiveType,
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
+import { dispatchRunAppNode } from './agent/runAppModule';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -79,6 +75,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
   [FlowNodeTypeEnum.httpRequest468]: dispatchHttp468Request,
   [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
+  [FlowNodeTypeEnum.appModule]: dispatchRunAppNode,
   [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
@@ -115,7 +112,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     variables = {},
     user,
     stream = false,
-    detail = false,
     ...props
   } = data;
 
@@ -261,13 +257,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       nodeOutputs
     };
 
-    if (stream && res) {
-      responseWrite({
-        res,
-        event: SseResponseEventEnum.interactive,
-        data: JSON.stringify({ interactive: interactiveResult })
-      });
-    }
+    props.workflowStreamResponse?.({
+      event: SseResponseEventEnum.interactive,
+      data: { interactive: interactiveResult }
+    });
 
     return {
       type: ChatItemValueTypeEnum.interactive,
@@ -401,11 +394,13 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   }
   async function nodeRunWithActive(node: RuntimeNodeItemType) {
     // push run status messages
-    if (res && stream && detail && node.showStatus) {
-      responseStatus({
-        res,
-        name: node.name,
-        status: 'running'
+    if (node.showStatus) {
+      props.workflowStreamResponse?.({
+        event: SseResponseEventEnum.flowNodeStatus,
+        data: {
+          status: 'running',
+          name: node.name
+        }
       });
     }
     const startTime = Date.now();
@@ -420,7 +415,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       histories,
       user,
       stream,
-      detail,
       node,
       runtimeNodes,
       runtimeEdges,
@@ -508,23 +502,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     [DispatchNodeResponseKeyEnum.toolResponses]: toolRunResponse,
     newVariables: removeSystemVariable(variables)
   };
-}
-
-/* sse response modules staus */
-export function responseStatus({
-  res,
-  status,
-  name
-}: {
-  res: NextApiResponse;
-  status?: 'running' | 'finish';
-  name?: string;
-}) {
-  if (!name) return;
-  responseWriteNodeStatus({
-    res,
-    name
-  });
 }
 
 /* get system variable */

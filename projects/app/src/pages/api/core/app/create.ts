@@ -114,7 +114,7 @@ export const onCreateApp = async ({
           type,
           version: 'v2',
           pluginData,
-          ...(type === AppTypeEnum.plugin && { 'pluginData.nodeVersion': defaultNodeVersion })
+          'pluginData.nodeVersion': defaultNodeVersion
         }
       ],
       { session }

@@ -48,8 +48,6 @@ import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
-import { dispatchWorkFlowV1 } from '@fastgpt/service/core/workflow/dispatchV1';
-import { setEntryEntries } from '@fastgpt/service/core/workflow/dispatchV1/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -65,6 +63,7 @@ import {
 } from '@fastgpt/global/core/app/plugin/utils';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -243,6 +242,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     runtimeNodes = rewriteNodeOutputByHistories(newHistories, runtimeNodes);
 
+    const workflowResponseWrite = getWorkflowResponseWrite({
+      res,
+      detail,
+      streamResponse: stream,
+      id: chatId || getNanoid(24)
+    });
+
     /* start flow controller */
     const { flowResponses, flowUsages, assistantResponses, newVariables } = await (async () => {
       if (app.version === 'v2') {
@@ -263,31 +269,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           chatConfig,
           histories: newHistories,
           stream,
-          detail,
-          maxRunTimes: 200
+          maxRunTimes: 200,
+          workflowStreamResponse: workflowResponseWrite
         });
       }
-      return dispatchWorkFlowV1({
-        res,
-        mode: 'chat',
-        user,
-        teamId: String(teamId),
-        tmbId: String(tmbId),
-        appId: String(app._id),
-        chatId,
-        responseChatItemId,
-        //@ts-ignore
-        modules: setEntryEntries(app.modules),
-        variables,
-        inputFiles: files,
-        histories: newHistories,
-        startParams: {
-          userChatInput: text
-        },
-        stream,
-        detail,
-        maxRunTimes: 200
-      });
+      return Promise.reject('请升级工作流');
     })();
 
     // save chat
@@ -346,9 +332,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       : filterPublicNodeResponseData({ flowResponses });
 
     if (stream) {
-      responseWrite({
-        res,
-        event: detail ? SseResponseEventEnum.answer : undefined,
+      workflowResponseWrite({
+        event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
           text: null,
           finish_reason: 'stop'
@@ -362,10 +347,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       if (detail) {
         if (responseDetail || isPlugin) {
-          responseWrite({
-            res,
+          workflowResponseWrite({
             event: SseResponseEventEnum.flowResponses,
-            data: JSON.stringify(feResponseData)
+            data: feResponseData
           });
         }
       }

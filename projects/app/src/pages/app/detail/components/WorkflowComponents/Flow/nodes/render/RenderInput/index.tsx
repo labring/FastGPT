@@ -21,6 +21,10 @@ const RenderList: {
     Component: dynamic(() => import('./templates/TextInput'))
   },
   {
+    types: [FlowNodeInputTypeEnum.select],
+    Component: dynamic(() => import('./templates/Select'))
+  },
+  {
     types: [FlowNodeInputTypeEnum.numberInput],
     Component: dynamic(() => import('./templates/NumberInput'))
   },

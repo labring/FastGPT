@@ -14,7 +14,6 @@ import type {
 } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
 import { updateUserSelectedResult } from '../../../chat/controller';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import { responseWrite } from '../../../../common/response';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 
 type Props = ModuleDispatchProps<{
@@ -29,10 +28,7 @@ type UserSelectResponse = DispatchNodeResultType<{
 
 export const dispatchUserSelect = async (props: Props): Promise<UserSelectResponse> => {
   const {
-    res,
-    detail,
-    histories,
-    stream,
+    workflowStreamResponse,
     app: { _id: appId },
     chatId,
     node: { nodeId, isEntry },
@@ -43,10 +39,9 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
   // Interactive node is not the entry node, return interactive result
   if (!isEntry) {
     const answerText = description ? `\n${description}` : undefined;
-    if (res && stream && answerText) {
-      responseWrite({
-        res,
-        event: detail ? SseResponseEventEnum.fastAnswer : undefined,
+    if (answerText) {
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.fastAnswer,
         data: textAdaptGptResponse({
           text: answerText
         })

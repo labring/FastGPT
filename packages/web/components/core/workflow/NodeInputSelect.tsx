@@ -45,7 +45,11 @@ const NodeInputSelect = ({
     {
       type: FlowNodeInputTypeEnum.switch,
       icon: FlowNodeInputMap[FlowNodeInputTypeEnum.switch].icon,
-
+      title: t('common:core.workflow.inputType.Manual select')
+    },
+    {
+      type: FlowNodeInputTypeEnum.select,
+      icon: FlowNodeInputMap[FlowNodeInputTypeEnum.select].icon,
       title: t('common:core.workflow.inputType.Manual select')
     },
     {

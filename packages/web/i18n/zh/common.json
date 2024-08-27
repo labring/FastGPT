@@ -902,6 +902,7 @@
         "System Plugin": "系统插件",
         "System input module": "系统输入",
         "Team Plugin": "团队插件",
+        "Team app": "团队应用",
         "Tool module": "工具",
         "UnKnow Module": "未知模块",
         "http body placeholder": "与 Apifox 相同的语法"
@@ -1162,6 +1163,7 @@
     "Please bind laf accout first": "请先绑定 laf 账号",
     "Plugin List": "插件列表",
     "Search plugin": "搜索插件",
+    "Search_app": "搜索应用",
     "Set Name": "给插件取个名字",
     "contribute": "贡献插件",
     "go to laf": "去编写",
