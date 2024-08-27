@@ -45,8 +45,8 @@ const systemNodes: FlowNodeTemplateType[] = [
   LafModule,
   IfElseNode,
   VariableUpdateNode,
-  CodeNode
-  // RunAppModule
+  CodeNode,
+  RunAppModule
 ];
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
