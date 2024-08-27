@@ -8,6 +8,7 @@ import { FeTeamPlanStatusType } from '@fastgpt/global/support/wallet/sub/type';
 import { getTeamPlanStatus } from './team/api';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type State = {
   systemMsgReadId: string;
@@ -22,7 +23,7 @@ type State = {
   initTeamPlanStatus: () => Promise<any>;
 
   teamMembers: TeamMemberItemType[];
-  loadAndGetTeamMembers: () => Promise<TeamMemberItemType[]>;
+  loadAndGetTeamMembers: (init?: boolean) => Promise<TeamMemberItemType[]>;
 };
 
 export const useUserStore = create<State>()(
@@ -85,8 +86,12 @@ export const useUserStore = create<State>()(
           });
         },
         teamMembers: [],
-        loadAndGetTeamMembers: async () => {
-          if (get().teamMembers.length) return Promise.resolve(get().teamMembers);
+        loadAndGetTeamMembers: async (init = false) => {
+          if (!useSystemStore.getState()?.feConfigs?.isPlus) return [];
+
+          const randomRefresh = Math.random() > 0.7;
+          if (!randomRefresh && !init && get().teamMembers.length)
+            return Promise.resolve(get().teamMembers);
 
           const res = await getTeamMembers();
           set((state) => {

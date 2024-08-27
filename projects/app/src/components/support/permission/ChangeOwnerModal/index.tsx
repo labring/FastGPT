@@ -1,4 +1,4 @@
-import { getTeamMembers } from '@/web/support/user/team/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   Box,
   Flex,
@@ -31,11 +31,13 @@ export function ChangeOwnerModal({
   onChangeOwner
 }: ChangeOwnerModalProps & { onClose: () => void }) {
   const { t } = useTranslation();
+  const { loadAndGetTeamMembers } = useUserStore();
+
   const [inputValue, setInputValue] = React.useState('');
-  const { data: teamMembers = [] } = useRequest2(getTeamMembers, {
+
+  const { data: teamMembers = [] } = useRequest2(loadAndGetTeamMembers, {
     manual: false
   });
-
   const memberList = teamMembers.filter((item) => {
     return item.memberName.includes(inputValue);
   });
