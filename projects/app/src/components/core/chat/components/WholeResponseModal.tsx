@@ -100,7 +100,7 @@ const WholeResponseModal = ({
 }) => {
   const { t } = useTranslation();
 
-  const { appId, chatId, getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
+  const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
   const { loading: isLoading, data: response } = useRequest2(
     () => getHistoryResponseData({ dataId }),
     {
