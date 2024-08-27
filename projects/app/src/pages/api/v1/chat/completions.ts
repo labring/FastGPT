@@ -20,7 +20,7 @@ import {
   textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { getChat, getChatItems } from '@fastgpt/service/core/chat/controller';
+import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { saveChat } from '@fastgpt/service/core/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { pushChatUsage } from '@/service/support/wallet/usage/push';
@@ -216,11 +216,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
       return latestHumanChat;
     })();
-    const { text, files } = chatValue2RuntimePrompt(userQuestion.value);
 
     // Get and concat history;
     const limit = getMaxHistoryLimitFromNodes(app.modules);
-    const [{ histories }, { nodes, edges, chatConfig }, { chat }] = await Promise.all([
+    const [{ histories }, { nodes, edges, chatConfig }, chatDetail] = await Promise.all([
       getChatItems({
         appId: app._id,
         chatId,
@@ -228,32 +227,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         field: `dataId obj value nodeOutputs`
       }),
       getAppLatestVersion(app._id, app),
-      getChat({
-        appId: app._id,
-        chatId,
-        field: 'source variableList variables'
-      })
+      MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
     ]);
-    // get chat histories
+
+    // Get chat histories
     const newHistories = concatHistories(histories, chatMessages);
 
-    // get global variables
-    if (chat && chat.variables) {
+    // Get store variables(Api variable precedence)
+    if (chatDetail?.variables) {
       variables = {
-        ...chat.variables,
+        ...chatDetail.variables,
         ...variables
       };
     }
 
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, newHistories));
-
     if (isPlugin) {
       // Rewrite plugin run params variables
       variables = removePluginInputVariables(variables, runtimeNodes);
       runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
     }
-
     runtimeNodes = rewriteNodeOutputByHistories(newHistories, runtimeNodes);
 
     const workflowResponseWrite = getWorkflowResponseWrite({
