@@ -52,7 +52,7 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         label: item.label
       };
     });
-  }, [nodeList, t]);
+  }, [nodeList, appDetail.chatConfig, t]);
 
   return (
     <NodeCard

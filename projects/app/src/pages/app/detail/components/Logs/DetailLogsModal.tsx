@@ -1,10 +1,8 @@
 import React from 'react';
 import { Flex, Box, useTheme } from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import { getInitChatInfo } from '@/web/core/chat/api';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -17,6 +15,8 @@ import CloseIcon from '@fastgpt/web/components/common/Icon/close';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useQuery } from '@tanstack/react-query';
+import { PcHeader } from '@/pages/chat/components/ChatHeader';
+
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
 const DetailLogsModal = ({
@@ -124,26 +124,7 @@ const DetailLogsModal = ({
           >
             {isPc ? (
               <>
-                <Box mr={3} color={'myGray.1000'}>
-                  {title}
-                </Box>
-                {chatRecords.length > 0 && (
-                  <>
-                    <MyTag colorSchema="blue">
-                      <MyIcon name={'history'} w={'14px'} />
-                      <Box ml={1}>
-                        {t('common:core.chat.History Amount', { amount: chatRecords.length })}
-                      </Box>
-                    </MyTag>
-                    {!!chatModels && (
-                      <MyTag ml={2} colorSchema={'green'}>
-                        <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
-                        <Box ml={1}>{chatModels.join(',')}</Box>
-                      </MyTag>
-                    )}
-                  </>
-                )}
-
+                <PcHeader title={title || ''} history={chatRecords} chatModels={chatModels} />
                 <Box flex={1} />
               </>
             ) : (

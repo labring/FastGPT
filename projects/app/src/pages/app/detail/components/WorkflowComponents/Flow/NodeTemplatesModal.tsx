@@ -408,7 +408,6 @@ const RenderList = React.memo(function RenderList({
     templates.forEach((item) => {
       const index = copy.findIndex((template) => template.type === item.templateType);
       if (index === -1) return;
-      if (item.flowNodeType === FlowNodeTypeEnum.runApp) return;
       copy[index].list.push(item);
     });
     return copy.filter((item) => item.list.length > 0);

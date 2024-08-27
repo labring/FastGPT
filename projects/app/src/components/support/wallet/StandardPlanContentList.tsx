@@ -43,7 +43,7 @@ const StandardPlanContentList = ({
   }, [subPlans?.standard, level, mode]);
 
   return planContent ? (
-    <Grid gap={4} fontSize={'sm'}>
+    <Grid gap={4} fontSize={'sm'} fontWeight={500}>
       <Flex alignItems={'center'}>
         <MyIcon name={'price/right'} w={'16px'} mr={3} />
         <Box color={'myGray.600'}>

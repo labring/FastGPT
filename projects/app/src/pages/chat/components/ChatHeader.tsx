@@ -248,7 +248,7 @@ const MobileHeader = ({
   );
 };
 
-const PcHeader = ({
+export const PcHeader = ({
   title,
   chatModels,
   history
@@ -260,7 +260,7 @@ const PcHeader = ({
   const { t } = useTranslation();
   return (
     <>
-      <Box mr={3} maxW={'160px'} className="textEllipsis" color={'myGray.1000'}>
+      <Box mr={3} maxW={'200px'} className="textEllipsis" color={'myGray.1000'}>
         {title}
       </Box>
       <MyTag>

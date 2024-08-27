@@ -75,7 +75,7 @@ const QRCodePayModal = ({
     <MyModal isOpen title={t('common:user.Pay')} iconSrc="/imgs/modal/pay.svg">
       <ModalBody textAlign={'center'} py={6} whiteSpace={'pre'}>
         {tip && (
-          <Box textAlign={'left'} whiteSpace={'normal'} mb={3}>
+          <Box fontSize={'sm'} whiteSpace={'normal'} mb={3}>
             {tip}
           </Box>
         )}
