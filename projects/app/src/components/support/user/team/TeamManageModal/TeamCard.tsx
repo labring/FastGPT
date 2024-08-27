@@ -11,19 +11,23 @@ import { DragHandleIcon } from '@chakra-ui/icons';
 import MemberTable from './components/MemberTable';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { TeamModalContext } from './context';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
 import dynamic from 'next/dynamic';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
+import { postCreateGroup } from '@/web/support/user/team/group/api';
 
 enum TabListEnum {
   member = 'member',
-  permission = 'permission'
+  permission = 'permission',
+  group = 'group'
 }
 
 const TeamTagModal = dynamic(() => import('../TeamTagModal'));
 const InviteModal = dynamic(() => import('./components/InviteModal'));
+const GroupCreateModal = dynamic(() => import('./components/GroupCreateModal'));
 const PermissionManage = dynamic(() => import('./components/PermissionManage/index'));
+const GroupManage = dynamic(() => import('./components/GroupManage'));
 
 function TeamCard() {
   const { toast } = useToast();
@@ -37,8 +41,9 @@ function TeamCard() {
   const { ConfirmModal: ConfirmLeaveTeamModal, openConfirm: openLeaveConfirm } = useConfirm({
     content: t('common:user.team.member.Confirm Leave')
   });
-  const { mutate: onLeaveTeam, isLoading: isLoadingLeaveTeam } = useRequest({
-    mutationFn: async (teamId?: string) => {
+
+  const { runAsync: onLeaveTeam, loading: isLoadingLeaveTeam } = useRequest2(
+    async (teamId?: string) => {
       if (!teamId) return;
       const defaultTeam = myTeams.find((item) => item.defaultTeam) || myTeams[0];
       // change to personal team
@@ -46,17 +51,39 @@ function TeamCard() {
       onSwitchTeam(defaultTeam.teamId);
       return delLeaveTeam(teamId);
     },
-    onSuccess() {
-      refetchTeams();
+    {
+      onSuccess() {
+        refetchTeams();
+      },
+      errorToast: t('common:user.team.Leave Team Failed')
+    }
+  );
+
+  const { runAsync: onCreateGroup, loading: isLoadingCreateGroup } = useRequest2(
+    async (name: string) => {
+      if (!name) return;
+      return postCreateGroup(name);
     },
-    errorToast: t('common:user.team.Leave Team Failed')
-  });
+    {
+      onSuccess() {
+        refetchTeams();
+      },
+      errorToast: t('user:team.group.create_failed')
+    }
+  );
 
   const {
     isOpen: isOpenTeamTagsAsync,
     onOpen: onOpenTeamTagsAsync,
     onClose: onCloseTeamTagsAsync
   } = useDisclosure();
+
+  const {
+    isOpen: isOpenCreateGroup,
+    onOpen: onOpenCreateGroup,
+    onClose: onCloseCreateGroup
+  } = useDisclosure();
+
   const { isOpen: isOpenInvite, onOpen: onOpenInvite, onClose: onCloseInvite } = useDisclosure();
 
   const Tablist = useMemo(
@@ -72,6 +99,11 @@ function TeamCard() {
           </Flex>
         ),
         value: TabListEnum.member
+      },
+      {
+        icon: 'support/team/group',
+        label: t('user:team.group.group'),
+        value: TabListEnum.group
       },
       {
         icon: 'support/team/key',
@@ -105,9 +137,9 @@ function TeamCard() {
         {userInfo?.team.role === TeamMemberRoleEnum.owner && (
           <MyIcon
             name="edit"
-            w={'14px'}
+            w="14px"
             ml={2}
-            cursor={'pointer'}
+            cursor="pointer"
             _hover={{
               color: 'primary.500'
             }}
@@ -124,12 +156,7 @@ function TeamCard() {
       </Flex>
 
       <Flex px={5} alignItems={'center'} justifyContent={'space-between'}>
-        <LightRowTabs<TabListEnum>
-          overflow={'auto'}
-          list={Tablist}
-          value={tab}
-          onChange={setTab}
-        ></LightRowTabs>
+        <LightRowTabs<TabListEnum> overflow={'auto'} list={Tablist} value={tab} onChange={setTab} />
         {/* ctrl buttons */}
         <Flex alignItems={'center'}>
           {tab === TabListEnum.member && userInfo?.team.permission.hasManagePer && (
@@ -187,12 +214,26 @@ function TeamCard() {
               {t('common:user.team.Leave Team')}
             </Button>
           )}
+          {userInfo?.team.permission.hasManagePer && tab === TabListEnum.group && (
+            <Button
+              variant={'primary'}
+              size="sm"
+              borderRadius={'md'}
+              ml={3}
+              leftIcon={<MyIcon name="support/permission/collaborator" w={'14px'} />}
+              isLoading={isLoadingCreateGroup}
+              onClick={onOpenCreateGroup}
+            >
+              {t('user:team.group.create')}
+            </Button>
+          )}
         </Flex>
       </Flex>
 
       <Box mt={3} flex={'1 0 0'} overflow={'auto'}>
         {tab === TabListEnum.member && <MemberTable />}
         {tab === TabListEnum.permission && <PermissionManage />}
+        {tab === TabListEnum.group && <GroupManage />}
       </Box>
 
       {isOpenInvite && userInfo?.team?.teamId && (
@@ -203,6 +244,7 @@ function TeamCard() {
         />
       )}
       {isOpenTeamTagsAsync && <TeamTagModal onClose={onCloseTeamTagsAsync} />}
+      {isOpenCreateGroup && <GroupCreateModal onClose={onCloseCreateGroup} />}
       <ConfirmLeaveTeamModal />
     </Flex>
   );

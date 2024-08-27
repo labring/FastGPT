@@ -1,6 +1,6 @@
 import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import { MemberGroupSchema, MemeberGroupCollectionName } from './memberGroupSchema';
+import { MemberGroupSchema, MemberGroupCollectionName } from './memberGroupSchema';
 const { Schema } = connectionMongo;
 
 export const GroupMemberCollectionName = 'group_member';
@@ -8,7 +8,7 @@ export const GroupMemberCollectionName = 'group_member';
 export const GroupMemberSchema = new Schema({
   groupId: {
     type: Schema.Types.ObjectId,
-    ref: MemeberGroupCollectionName,
+    ref: MemberGroupCollectionName,
     required: true
   },
   tmbId: {
@@ -31,6 +31,6 @@ try {
 }
 
 export const MongoGroupMemberModel = getMongoModel<GroupMemberSchemaType>(
-  MemeberGroupCollectionName,
+  GroupMemberCollectionName,
   MemberGroupSchema
 );

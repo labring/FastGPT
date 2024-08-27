@@ -96,7 +96,15 @@
     "Add manager": "添加管理员",
     "add_collaborator": "添加协作者",
     "manage_collaborators": "管理协作者",
-    "no_collaborators": "暂无协作者"
+    "no_collaborators": "暂无协作者",
+    "group": {
+      "group": "群组",
+      "name": "群组名称",
+      "members": "成员",
+      "create": "创建群组",
+      "create_failed": "创建群组失败",
+      "avatar": "群头像"
+    }
   },
   "usage": {
     "feishu": "飞书",
