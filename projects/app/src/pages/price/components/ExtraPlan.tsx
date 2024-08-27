@@ -143,7 +143,7 @@ const ExtraPlan = () => {
         >
           <Flex borderBottomWidth={'1px'} borderBottomColor={'myGray.200'}>
             <Box flex={'1 0 0'}>
-              <Box fontSize={'lg'} color={'blue.700'}>
+              <Box fontSize={'lg'} color={'primary.700'}>
                 {t('common:support.wallet.subscription.Extra dataset size')}
               </Box>
               <Box mt={3} fontSize={['28px', '32px']} fontWeight={'bold'} color={'black'}>
@@ -163,7 +163,7 @@ const ExtraPlan = () => {
           </Flex>
           <Box h={'120px'} w={'100%'}>
             <Flex mt={4} color={'myGray.900'}>
-              <MyIcon mr={2} name={'support/bill/shoppingCart'} w={'16px'} color={'blue.600'} />
+              <MyIcon mr={2} name={'support/bill/shoppingCart'} w={'16px'} color={'primary.600'} />
               {t('common:support.wallet.buy_resource')}
             </Flex>
             <Flex mt={4} alignItems={'center'}>
@@ -231,7 +231,7 @@ const ExtraPlan = () => {
             variant={'primaryGhost'}
             isLoading={loading}
             onClick={handleSubmitDatasetSize(onclickBuyDatasetSize)}
-            color={'blue.700'}
+            color={'primary.700'}
           >
             {t('common:support.wallet.Buy')}
           </Button>
@@ -249,7 +249,7 @@ const ExtraPlan = () => {
         >
           <Flex borderBottomWidth={'1px'} borderBottomColor={'myGray.200'}>
             <Box flex={'1 0 0'}>
-              <Box fontSize={'lg'} color={'blue.700'}>
+              <Box fontSize={'lg'} color={'primary.700'}>
                 {t('common:support.wallet.subscription.Extra ai points')}
               </Box>
               <Box mt={3} fontSize={['28px', '32px']} fontWeight={'bold'} color={'black'}>
@@ -269,7 +269,7 @@ const ExtraPlan = () => {
           </Flex>
           <Box h={'120px'} w={'100%'}>
             <Flex mt={4} color={'myGray.900'}>
-              <MyIcon mr={2} name={'support/bill/shoppingCart'} w={'16px'} color={'blue.600'} />
+              <MyIcon mr={2} name={'support/bill/shoppingCart'} w={'16px'} color={'primary.600'} />
               {t('common:support.wallet.buy_resource')}
             </Flex>
             {/* <Flex mt={4} alignItems={'center'}>
@@ -343,7 +343,7 @@ const ExtraPlan = () => {
             variant={'primaryGhost'}
             isLoading={loading}
             onClick={handleSubmitExtraPoints(onclickBuyExtraPoints)}
-            color={'blue.700'}
+            color={'primary.700'}
           >
             {t('common:support.wallet.Buy')}
           </Button>

@@ -1121,6 +1121,11 @@
     "notice": "Do not close the page",
     "old_package_price": "Old package price",
     "other": "For other amounts, please round up the whole number",
+    "package_tip": {
+      "buy": "The package level you purchased is lower than the current package, and the package will take effect after the current package expires. \nYou can check the package usage in Account—Personal Information—Package Details.",
+      "renewal": "You are renewing your plan. \nYou can check the package usage in Account—Personal Information—Package Details.",
+      "upgrade": "If the package you purchased is higher than the current package, the package will take effect immediately, and the current package will take effect later. \nYou can check the package usage in Account—Personal Information—Package Details."
+    },
     "to_recharge": "Insufficient balance, please recharge",
     "wechat": "Please scan the QR code on WeChat to pay:",
     "yuan": "Yuan"

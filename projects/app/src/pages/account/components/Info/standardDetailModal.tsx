@@ -20,10 +20,15 @@ import { useQuery } from '@tanstack/react-query';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getTeamPlans } from '@/web/support/user/team/api';
-import { subTypeMap, standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
+import {
+  subTypeMap,
+  standardSubLevelMap,
+  SubTypeEnum
+} from '@fastgpt/global/support/wallet/sub/constants';
 import { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 type packageStatus = 'active' | 'inactive' | 'expired';
 
@@ -31,7 +36,32 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { Loading } = useLoading();
   const { subPlans } = useSystemStore();
-  const { data: teamPlans = [], isLoading } = useQuery(['getTeamPlans'], getTeamPlans);
+  const { data: teamPlans = [], loading: isLoading } = useRequest2(
+    () =>
+      getTeamPlans().then((res) => {
+        return [
+          ...res.filter((plan) => plan.type === SubTypeEnum.standard),
+          ...res.filter((plan) => plan.type === SubTypeEnum.extraDatasetSize),
+          ...res.filter((plan) => plan.type === SubTypeEnum.extraPoints)
+        ].map((item, index) => {
+          return {
+            ...item,
+            status:
+              new Date(item.expiredTime).getTime() < new Date().getTime()
+                ? 'expired'
+                : item.type === SubTypeEnum.standard
+                  ? index === 0
+                    ? 'active'
+                    : 'inactive'
+                  : 'active'
+          };
+        });
+      }),
+    {
+      manual: false
+    }
+  );
+
   return (
     <MyModal
       isOpen
@@ -63,19 +93,14 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
                   surplusPoints = 0,
                   totalPoints = 0,
                   startTime,
-                  expiredTime
-                }: TeamSubSchema) => {
+                  expiredTime,
+                  status
+                }) => {
                   const standardPlan = currentSubLevel
                     ? subPlans?.standard?.[currentSubLevel]
                     : undefined;
                   const datasetSize = standardPlan?.maxDatasetSize || currentExtraDatasetSize;
                   const now = new Date();
-                  const status =
-                    now < new Date(startTime)
-                      ? 'inactive'
-                      : now <= new Date(expiredTime)
-                        ? 'active'
-                        : 'expired';
 
                   return (
                     <Tr key={_id} fontWeight={500} fontSize={'mini'} color={'myGray.900'}>
@@ -96,7 +121,7 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
                             {currentSubLevel &&
                               `(${t(standardSubLevelMap[currentSubLevel]?.label as any)})`}
                           </Flex>
-                          <StatusTag status={status} />
+                          <StatusTag status={status as packageStatus} />
                         </Flex>
                       </Td>
                       <Td>
@@ -118,7 +143,7 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
           </Table>
           <Loading loading={isLoading} fixed={false} />
         </TableContainer>
-        <HStack mt={4} color={'blue.700'}>
+        <HStack mt={4} color={'primary.700'}>
           <MyIcon name={'infoRounded'} w={'1rem'} />
           <Box fontSize={'mini'} fontWeight={'500'}>
             {t('user:bill.standard_valid_tip')}

@@ -2,7 +2,12 @@ import React, { useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Button, Flex, Grid, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import {
+  StandardSubLevelEnum,
+  SubModeEnum,
+  PackageChangeStatusEnum,
+  packagePayTextMap
+} from '@fastgpt/global/support/wallet/sub/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -24,7 +29,7 @@ const Standard = ({
   const { t } = useTranslation();
   const router = useRouter();
   const { toast } = useToast();
-
+  const [packageChange, setPackageChange] = useState<PackageChangeStatusEnum>();
   const { subPlans, feConfigs } = useSystemStore();
   const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
 
@@ -198,6 +203,7 @@ const Standard = ({
                         variant={'primary'}
                         isLoading={isLoading}
                         onClick={() => {
+                          setPackageChange(PackageChangeStatusEnum.renewal);
                           onPay({
                             type: BillTypeEnum.standSubPlan,
                             level: item.level,
@@ -217,13 +223,14 @@ const Standard = ({
                         w={'100%'}
                         variant={'primaryGhost'}
                         isLoading={isLoading}
-                        onClick={() =>
+                        onClick={() => {
+                          setPackageChange(PackageChangeStatusEnum.upgrade);
                           onPay({
                             type: BillTypeEnum.standSubPlan,
                             level: item.level,
                             subMode: selectSubMode
-                          })
-                        }
+                          });
+                        }}
                       >
                         {t('common:support.wallet.subscription.Upgrade plan')}
                       </Button>
@@ -236,13 +243,14 @@ const Standard = ({
                       w={'100%'}
                       variant={'primaryGhost'}
                       isLoading={isLoading}
-                      onClick={() =>
+                      onClick={() => {
+                        setPackageChange(PackageChangeStatusEnum.buy);
                         onPay({
                           type: BillTypeEnum.standSubPlan,
                           level: item.level,
                           subMode: selectSubMode
-                        })
-                      }
+                        });
+                      }}
                     >
                       {t('user:bill.buy_plan')}
                     </Button>
@@ -256,7 +264,9 @@ const Standard = ({
           })}
         </Grid>
 
-        {!!qrPayData && <QRCodePayModal tip="您正在购买订阅套餐" {...qrPayData} />}
+        {!!qrPayData && packageChange && (
+          <QRCodePayModal tip={t(packagePayTextMap[packageChange])} {...qrPayData} />
+        )}
       </Flex>
       <HStack mt={8} color={'blue.700'} ml={8}>
         <MyIcon name={'infoRounded'} w={'1rem'} />
