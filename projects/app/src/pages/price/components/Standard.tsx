@@ -2,12 +2,7 @@ import React, { useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Button, Flex, Grid, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import {
-  StandardSubLevelEnum,
-  SubModeEnum,
-  PackageChangeStatusEnum,
-  packagePayTextMap
-} from '@fastgpt/global/support/wallet/sub/constants';
+import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -16,8 +11,12 @@ import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRC
 import { getWxPayQRCode } from '@/web/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
-import { useRouter } from 'next/router';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+
+export enum PackageChangeStatusEnum {
+  buy = 'buy',
+  renewal = 'renewal',
+  upgrade = 'upgrade'
+}
 
 const Standard = ({
   standardPlan: myStandardPlan,
@@ -27,8 +26,13 @@ const Standard = ({
   refetchTeamSubPlan: () => void;
 }) => {
   const { t } = useTranslation();
-  const router = useRouter();
-  const { toast } = useToast();
+
+  const packagePayTextMap = {
+    [PackageChangeStatusEnum.buy]: t('common:pay.package_tip.buy'),
+    [PackageChangeStatusEnum.renewal]: t('common:pay.package_tip.renewal'),
+    [PackageChangeStatusEnum.upgrade]: t('common:pay.package_tip.upgrade')
+  };
+
   const [packageChange, setPackageChange] = useState<PackageChangeStatusEnum>();
   const { subPlans, feConfigs } = useSystemStore();
   const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
@@ -177,7 +181,8 @@ const Standard = ({
                         boxShadow={'0'}
                         cursor={'default'}
                         w={'100%'}
-                        variant={isCurrentPlan ? 'whiteBase' : 'solid'}
+                        isDisabled
+                        variant={'whiteBase'}
                       >
                         {t('common:free')}
                       </Button>
@@ -265,7 +270,7 @@ const Standard = ({
         </Grid>
 
         {!!qrPayData && packageChange && (
-          <QRCodePayModal tip={t(packagePayTextMap[packageChange])} {...qrPayData} />
+          <QRCodePayModal tip={packagePayTextMap[packageChange]} {...qrPayData} />
         )}
       </Flex>
       <HStack mt={8} color={'blue.700'} ml={8}>

@@ -72,15 +72,3 @@ export const standardSubLevelMap = {
     weight: 5
   }
 };
-
-export enum PackageChangeStatusEnum {
-  buy = 'buy',
-  renewal = 'renewal',
-  upgrade = 'upgrade'
-}
-
-export const packagePayTextMap = {
-  [PackageChangeStatusEnum.buy]: i18nT('common:pay.package_tip.buy'),
-  [PackageChangeStatusEnum.renewal]: i18nT('common:pay.package_tip.renewal'),
-  [PackageChangeStatusEnum.upgrade]: i18nT('common:pay.package_tip.upgrade')
-};
