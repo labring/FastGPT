@@ -6,12 +6,12 @@ const FAQ = () => {
   const { t } = useTranslation();
   const faqs = [
     {
-      title: t('common:FAQ.auto_renew_q'),
-      desc: t('common:FAQ.auto_renew_a')
+      title: t('common:FAQ.switch_package_q'),
+      desc: t('common:FAQ.switch_package_a')
     },
     {
-      title: t('common:FAQ.change_package_q'),
-      desc: t('common:FAQ.change_package_a')
+      title: t('common:FAQ.check_subscription_q'),
+      desc: t('common:FAQ.check_subscription_a')
     },
     {
       title: t('common:FAQ.ai_point_q'),
@@ -41,21 +41,21 @@ const FAQ = () => {
 
   return (
     <Flex
-      mt={['40px', '90px']}
+      mt={['40px', '200px']}
       pb={'10vh'}
       flexDirection={'column'}
       alignItems={'center'}
       position={'relative'}
     >
-      <Box fontWeight={'bold'} fontSize={['24px', '36px']}>
+      <Box fontWeight={'bold'} fontSize={['24px', '36px']} color={'myGray.900'}>
         {t('common:support.wallet.subscription.FAQ')}
       </Box>
-      <Grid mt={4} gridTemplateColumns={['1fr', '1fr 1fr']} gap={4} w={'100%'}>
+      <Grid mt={12} gridTemplateColumns={['1fr', '1fr 1fr']} gap={4} w={'100%'}>
         {faqs.map((item, i) => (
           <Box
             key={i}
-            py={4}
-            px={5}
+            py={8}
+            px={9}
             borderRadius={'lg'}
             borderWidth={'1px'}
             borderColor={'myGray.150'}
@@ -64,8 +64,10 @@ const FAQ = () => {
               borderColor: 'primary.300'
             }}
           >
-            <Box fontWeight={'bold'}>{item.title}</Box>
-            <Box fontSize={'sm'} color={'myGray.600'} whiteSpace={'pre-wrap'}>
+            <Box fontWeight={'bold'} pb={3} color={'myGray.900'}>
+              {item.title}
+            </Box>
+            <Box fontSize={'sm'} color={'myGray.600'}>
               {item.desc}
             </Box>
           </Box>
