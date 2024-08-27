@@ -357,7 +357,7 @@ async function streamResponse({
     const responseChoice = part.choices?.[0]?.delta;
     // console.log(responseChoice, '---===');
 
-    if (responseChoice.content) {
+    if (responseChoice?.content) {
       const content = responseChoice?.content || '';
       textAnswer += content;
 
