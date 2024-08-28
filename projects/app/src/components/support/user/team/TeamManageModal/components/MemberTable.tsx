@@ -55,7 +55,7 @@ function MemberTable() {
               <Tr key={item.userId} overflow={'unset'}>
                 <Td>
                   <HStack>
-                    <Avatar src={item.avatar} w={['18px', '22px']} />
+                    <Avatar src={item.avatar} w={['18px', '22px']} borderRadius={'50%'} />
                     <Box maxW={'150px'} className={'textEllipsis'}>
                       {item.memberName}
                     </Box>
@@ -76,14 +76,13 @@ function MemberTable() {
                     item.tmbId !== userInfo?.team.tmbId && (
                       <PermissionSelect
                         value={item.permission.value}
+                        trigger={'hover'}
                         Button={
                           <MenuButton
                             _hover={{
                               color: 'primary.600'
                             }}
                             borderRadius={'md'}
-                            px={2}
-                            py={1}
                             lineHeight={1}
                           >
                             <MyIcon name={'edit'} cursor={'pointer'} w="1rem" />

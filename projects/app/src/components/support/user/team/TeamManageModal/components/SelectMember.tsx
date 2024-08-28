@@ -79,7 +79,7 @@ function SelectMember({
                   isChecked={selectedMembers.includes(member)}
                   icon={<MyIcon name={'common/check'} w={'12px'} />}
                 />
-                <Avatar ml={2} src={member.avatar} w="1.5rem" />
+                <Avatar ml={2} src={member.avatar} w="1.5rem" borderRadius={'50%'} />
                 {member.memberName}
               </Flex>
             );

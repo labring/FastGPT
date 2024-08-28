@@ -12,7 +12,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { deleteGroup } from '@/web/support/user/team/group/api';
 
-function MemberTable() {
+function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
 
@@ -52,12 +52,6 @@ function MemberTable() {
                 </Td>
                 <Td>
                   <AvatarGroup avatars={members.map((v) => v.avatar)} />
-                  {/* TODO: avatar group */}
-                  {/* <AvatarGroup max={3} spacing={0}> */}
-                  {/*   {item.members.map((member) => ( */}
-                  {/*     <Avatar key={member} src={members.find((v) => v.tmbId === member)?.avatar} /> */}
-                  {/*   ))} */}
-                  {/* </AvatarGroup> */}
                 </Td>
                 <Td>
                   {userInfo?.team.permission.hasManagePer && (
@@ -70,8 +64,7 @@ function MemberTable() {
                               label: t('common:common.Edit'),
                               icon: 'edit',
                               onClick: () => {
-                                console.log('edit');
-                                // TODO: edit group
+                                onEditGroup(item._id);
                               }
                             },
                             {

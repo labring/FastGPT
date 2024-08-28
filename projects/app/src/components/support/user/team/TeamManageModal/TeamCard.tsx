@@ -24,9 +24,9 @@ enum TabListEnum {
 
 const TeamTagModal = dynamic(() => import('../TeamTagModal'));
 const InviteModal = dynamic(() => import('./components/InviteModal'));
-const GroupEditModal = dynamic(() => import('./components/GroupEditModal'));
 const PermissionManage = dynamic(() => import('./components/PermissionManage/index'));
 const GroupManage = dynamic(() => import('./components/GroupManage'));
+const GroupCreateModal = dynamic(() => import('./components/GroupEditModal'));
 
 function TeamCard() {
   const { toast } = useToast();
@@ -71,6 +71,12 @@ function TeamCard() {
   } = useDisclosure();
 
   const { isOpen: isOpenInvite, onOpen: onOpenInvite, onClose: onCloseInvite } = useDisclosure();
+
+  const [editGroupId, setEditGroupId] = useState<string>();
+  const onEditGroup = (groupId: string) => {
+    setEditGroupId(groupId);
+    onOpenCreateGroup();
+  };
 
   const Tablist = useMemo(
     () => [
@@ -218,7 +224,7 @@ function TeamCard() {
       <Box mt={3} flex={'1 0 0'} overflow={'auto'}>
         {tab === TabListEnum.member && <MemberTable />}
         {tab === TabListEnum.permission && <PermissionManage />}
-        {tab === TabListEnum.group && <GroupManage />}
+        {tab === TabListEnum.group && <GroupManage onEditGroup={onEditGroup} />}
       </Box>
 
       {isOpenInvite && userInfo?.team?.teamId && (
@@ -229,7 +235,9 @@ function TeamCard() {
         />
       )}
       {isOpenTeamTagsAsync && <TeamTagModal onClose={onCloseTeamTagsAsync} />}
-      {isOpenCreateGroup && <GroupEditModal onClose={onCloseCreateGroup} />}
+      {isOpenCreateGroup && (
+        <GroupCreateModal onClose={onCloseCreateGroup} editGroupId={editGroupId} />
+      )}
       <ConfirmLeaveTeamModal />
     </Flex>
   );

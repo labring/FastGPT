@@ -5,7 +5,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 import { useTranslation } from 'next-i18next';
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -15,7 +15,7 @@ import { useForm } from 'react-hook-form';
 import SelectMember from './SelectMember';
 import { useContextSelector } from 'use-context-selector';
 import { TeamModalContext } from '../context';
-import { postCreateGroup } from '@/web/support/user/team/group/api';
+import { postCreateGroup, putUpdateGroup } from '@/web/support/user/team/group/api';
 
 export type GroupFormType = {
   avatar: string;
@@ -23,22 +23,24 @@ export type GroupFormType = {
   members: string[];
 };
 
-function GroupCreateModal({
-  onClose,
-  defaultValues
-}: {
-  onClose: () => void;
-  defaultValues?: GroupFormType;
-}) {
-  const { members, refetchGroups } = useContextSelector(TeamModalContext, (v) => v);
+function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGroupId?: string }) {
+  const { members, refetchGroups, groups } = useContextSelector(TeamModalContext, (v) => v);
   const { t } = useTranslation();
   const { File: AvatarSelect, onOpen: onOpenSelectAvatar } = useSelectFile({
     fileType: '*.jpg;*.jpeg;*.png;',
     multiple: false
   });
 
+  const group = useMemo(() => {
+    return groups.find((item) => item._id === editGroupId);
+  }, [editGroupId, groups]);
+
   const { register, handleSubmit, getValues, setValue, control } = useForm<GroupFormType>({
-    defaultValues
+    defaultValues: {
+      name: group?.name || '',
+      avatar: group?.avatar || '',
+      members: group?.members || []
+    }
   });
 
   const { loading: uploadingAvatar, run: onSelectAvatar } = useRequest2(
@@ -58,7 +60,7 @@ function GroupCreateModal({
     }
   );
 
-  const { run: submit, loading: isLoading } = useRequest2(
+  const { run: onCreate, loading: isLoadingCreate } = useRequest2(
     async () => {
       postCreateGroup({
         members: getValues('members'),
@@ -71,20 +73,43 @@ function GroupCreateModal({
     }
   );
 
-  const { Loading } = useLoading();
+  const { run: onUpdate, loading: isLoadingUpdate } = useRequest2(
+    async () => {
+      if (!editGroupId) return;
+      return putUpdateGroup({
+        groupId: editGroupId,
+        name: getValues('name'),
+        avatar: getValues('avatar'),
+        members: getValues('members')
+      });
+    },
+    {
+      onSuccess: async () => await Promise.all([onClose(), refetchGroups()])
+    }
+  );
+
+  const isLoading = isLoadingUpdate || isLoadingCreate;
+
+  const submit = useCallback(() => {
+    if (editGroupId) {
+      onUpdate();
+    } else {
+      onCreate();
+    }
+  }, [editGroupId, onCreate, onUpdate]);
 
   return (
     <MyModal
       onClose={onClose}
-      title={t('user:team.group.create')}
+      title={editGroupId ? t('user:team.group.edit') : t('user:team.group.create')}
       iconSrc="support/permission/collaborator"
       iconColor="primary.600"
       minW={'1000px'}
+      isLoading={isLoading}
     >
       <ModalBody>
         <Flex flexDirection={'column'} gap={4}>
           <HStack>
-            {uploadingAvatar && <Loading />}
             <FormLabel w="80px">{t('user:team.group.avatar')}</FormLabel>
             <Avatar src={getValues('avatar')} w={'32px'} />
             <HStack
@@ -117,7 +142,7 @@ function GroupCreateModal({
       </ModalBody>
       <ModalFooter alignItems="flex-end">
         <Button isLoading={isLoading} onClick={handleSubmit(submit)}>
-          {t('common:new_create')}
+          {editGroupId ? t('common:common.Save') : t('common:new_create')}
         </Button>
       </ModalFooter>
       <AvatarSelect onSelect={onSelectAvatar} />
@@ -125,4 +150,4 @@ function GroupCreateModal({
   );
 }
 
-export default GroupCreateModal;
+export default GroupEditModal;
