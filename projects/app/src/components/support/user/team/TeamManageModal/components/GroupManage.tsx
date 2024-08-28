@@ -1,4 +1,5 @@
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import AvatarGroup from '@fastgpt/web/components/common/Avatar/AvatarGroup';
 import { Box, HStack, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -20,7 +21,7 @@ function MemberTable() {
     content: t('user:team.group.delete_confirm')
   });
 
-  const { groups, refetchGroups } = useContextSelector(TeamModalContext, (v) => v);
+  const { groups, refetchGroups, members } = useContextSelector(TeamModalContext, (v) => v);
 
   const { runAsync: delDeleteGroup, loading: isLoadingDeleteGroup } = useRequest2(deleteGroup, {
     manual: true,
@@ -50,8 +51,13 @@ function MemberTable() {
                   </HStack>
                 </Td>
                 <Td>
-                  {item.members}
-                  {/*TODO: member list*/}
+                  <AvatarGroup avatars={members.map((v) => v.avatar)} />
+                  {/* TODO: avatar group */}
+                  {/* <AvatarGroup max={3} spacing={0}> */}
+                  {/*   {item.members.map((member) => ( */}
+                  {/*     <Avatar key={member} src={members.find((v) => v.tmbId === member)?.avatar} /> */}
+                  {/*   ))} */}
+                  {/* </AvatarGroup> */}
                 </Td>
                 <Td>
                   {userInfo?.team.permission.hasManagePer && (
@@ -65,6 +71,7 @@ function MemberTable() {
                               icon: 'edit',
                               onClick: () => {
                                 console.log('edit');
+                                // TODO: edit group
                               }
                             },
                             {
