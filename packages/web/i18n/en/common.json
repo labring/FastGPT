@@ -221,6 +221,7 @@
       "Select Avatar": "Click to select avatar",
       "Select Failed": "Select avatar failed"
     },
+    "base_config": "Basic configuration",
     "choosable": "Choosable",
     "confirm": {
       "Common Tip": "Operation confirmation"
@@ -782,7 +783,8 @@
         "QA mode": "Question and answer split",
         "Vector queue": "Index queue",
         "Waiting": "Estimated 5 minutes",
-        "Website Sync": "Web site sync"
+        "Website Sync": "Web site sync",
+        "tag": "queue situation"
       },
       "website": {
         "Base Url": "Base URL",

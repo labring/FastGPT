@@ -12,17 +12,17 @@ export const DatasetTypeMap = {
     collectionLabel: 'common.Folder'
   },
   [DatasetTypeEnum.dataset]: {
-    icon: 'core/dataset/commonDataset',
+    icon: 'core/dataset/commonDatasetOutline',
     label: 'common_dataset',
     collectionLabel: 'common.File'
   },
   [DatasetTypeEnum.websiteDataset]: {
-    icon: 'core/dataset/websiteDataset',
+    icon: 'core/dataset/websiteDatasetOutline',
     label: 'website_dataset',
     collectionLabel: 'common.Website'
   },
   [DatasetTypeEnum.externalFile]: {
-    icon: 'core/dataset/externalDataset',
+    icon: 'core/dataset/externalDatasetOutline',
     label: 'external_file',
     collectionLabel: 'common.File'
   }

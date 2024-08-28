@@ -9,6 +9,7 @@ type Props<ValueType = string> = Omit<GridProps, 'onChange'> & {
   value: ValueType;
   size?: 'sm' | 'md' | 'lg';
   inlineStyles?: FlexProps;
+  activatedColor?: string;
   onChange: (value: ValueType) => void;
 };
 
@@ -16,6 +17,7 @@ const LightRowTabs = <ValueType = string,>({
   list,
   size = 'md',
   value,
+  activatedColor = 'primary.600',
   onChange,
   inlineStyles,
   ...props
@@ -64,13 +66,12 @@ const LightRowTabs = <ValueType = string,>({
             borderBottom={'2px solid transparent'}
             px={3}
             whiteSpace={'nowrap'}
-            {...inlineStyles}
             {...(value === item.value
               ? {
-                  color: 'primary.600',
+                  color: activatedColor,
                   cursor: 'default',
                   fontWeight: 'bold',
-                  borderBottomColor: 'primary.600'
+                  borderBottomColor: activatedColor
                 }
               : {
                   cursor: 'pointer'
@@ -79,13 +80,14 @@ const LightRowTabs = <ValueType = string,>({
               if (value === item.value) return;
               onChange(item.value);
             }}
+            {...inlineStyles}
           >
             {item.icon && (
               <>
-                <Avatar src={item.icon} alt={''} w={'1.25rem'} borderRadius={'sm'} />
+                <Avatar src={item.icon} alt={''} w={'1.25rem'} borderRadius={'sm'} mr={1} />
               </>
             )}
-            <Box ml={1}>{typeof item.label === 'string' ? t(item.label as any) : item.label}</Box>
+            <Box>{typeof item.label === 'string' ? t(item.label as any) : item.label}</Box>
           </Flex>
         ))}
       </Grid>

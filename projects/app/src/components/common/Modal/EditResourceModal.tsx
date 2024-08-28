@@ -85,7 +85,7 @@ const EditResourceModal = ({
                 w={'2rem'}
                 h={'2rem'}
                 cursor={'pointer'}
-                borderRadius={'md'}
+                borderRadius={'sm'}
                 onClick={onOpenSelectFile}
               />
             </MyTooltip>

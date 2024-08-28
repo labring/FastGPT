@@ -246,7 +246,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                     flex={'1'}
                     _hover={{ bg: 'myGray.100' }}
                     alignItems={'center'}
-                    borderRadius={'4px'}
+                    borderRadius={'xs'}
                   >
                     <Flex
                       flex={'1 0 0'}
@@ -263,7 +263,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                           bg={'#DBF3FF'}
                           color={'#0884DD'}
                           fontSize={'xs'}
-                          borderRadius={'6px'}
+                          borderRadius={'sm'}
                         >
                           {item.tag}
                         </Box>
@@ -299,7 +299,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                       _hover={{ bg: '#1118240D' }}
                       mr={2}
                       p={1}
-                      borderRadius={'6px'}
+                      borderRadius={'sm'}
                       onClick={() => {
                         setCurrentAddTag({ ...item, collections });
                       }}
@@ -313,7 +313,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                       _hover={{ bg: '#1118240D' }}
                       mr={2}
                       p={1}
-                      borderRadius={'6px'}
+                      borderRadius={'sm'}
                       cursor={'pointer'}
                       onClick={(e) => {
                         setCurrentEditTag(item);
@@ -332,7 +332,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                           display="none"
                           _hover={{ bg: '#1118240D' }}
                           p={1}
-                          borderRadius={'6px'}
+                          borderRadius={'sm'}
                           cursor={'pointer'}
                         >
                           <MyIcon name="delete" w={4} />
@@ -441,7 +441,7 @@ const AddTagToCollections = ({
               bg={'#DBF3FF'}
               color={'#0884DD'}
               fontSize={'sm'}
-              borderRadius={'6px'}
+              borderRadius={'sm'}
             >
               {currentAddTag.tag}
             </Box>
@@ -496,7 +496,7 @@ const AddTagToCollections = ({
                   : {})
               }}
               alignItems={'center'}
-              borderRadius={'4px'}
+              borderRadius={'xs'}
               key={collection.id}
               cursor={'pointer'}
               onClick={() => {
@@ -525,7 +525,7 @@ const AddTagToCollections = ({
                 isChecked={selectedCollections.includes(collection.id)}
               />
               <MyIcon name={collection.icon as any} w={'20px'} mr={2} />
-              <Box fontSize={'14px'} borderRadius={'6px'} color={'myGray.900'}>
+              <Box fontSize={'sm'} borderRadius={'sm'} color={'myGray.900'}>
                 {collection.name}
               </Box>
             </Flex>
