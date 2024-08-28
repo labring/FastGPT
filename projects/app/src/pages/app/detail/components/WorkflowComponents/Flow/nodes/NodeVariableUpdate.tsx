@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NodeCard from './render/NodeCard';
 import { NodeProps } from 'reactflow';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -199,11 +199,9 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                   }
                   if (valueType === WorkflowIOValueTypeEnum.string) {
                     return (
-                      <Textarea
-                        bg="white"
+                      <DebouncedTextarea
                         value={updateItem.value?.[1] || ''}
-                        w="300px"
-                        onChange={(e) => handleUpdate(e.target.value)}
+                        onChange={handleUpdate}
                       />
                     );
                   }
@@ -248,7 +246,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         })}
       </>
     );
-  }, [nodeId, nodeList, onUpdateList, t, updateList]);
+  }, [appDetail.chatConfig, nodeId, nodeList, onUpdateList, t, updateList]);
 
   return (
     <NodeCard selected={selected} maxW={'1000px'} {...data}>
@@ -306,6 +304,39 @@ const Reference = ({
       list={referenceList}
       value={formatValue}
       onSelect={onSelect}
+    />
+  );
+};
+
+const DebouncedTextarea = ({
+  value,
+  onChange
+}: {
+  value: string;
+  onChange: (newValue: ReferenceValueProps | string) => void;
+}) => {
+  const [textareaValue, setTextareaValue] = useState(value);
+
+  useEffect(() => {
+    setTextareaValue(value);
+  }, [value]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (textareaValue !== value) {
+        onChange(textareaValue);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [textareaValue, value, onChange]);
+
+  return (
+    <Textarea
+      bg="white"
+      value={textareaValue}
+      w="300px"
+      onChange={(e) => setTextareaValue(e.target.value)}
     />
   );
 };

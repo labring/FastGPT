@@ -188,6 +188,7 @@ type DebugDataType = {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   nextRunNodes: RuntimeNodeItemType[];
+  variables: Record<string, any>;
 };
 
 export const WorkflowContext = createContext<WorkflowContextType>({
@@ -676,13 +677,14 @@ const WorkflowContextProvider = ({
 
       try {
         // 4. Run one step
-        const { finishedEdges, finishedNodes, nextStepRunNodes, flowResponses } =
+        const { finishedEdges, finishedNodes, nextStepRunNodes, flowResponses, newVariables } =
           await postWorkflowDebug({
             nodes: runtimeNodes,
             edges: debugData.runtimeEdges,
             variables: {
               appId,
-              cTime: formatTime2YMDHMW()
+              cTime: formatTime2YMDHMW(),
+              ...debugData.variables
             },
             appId
           });
@@ -703,7 +705,8 @@ const WorkflowContextProvider = ({
               status
             };
           }),
-          nextRunNodes: nextStepRunNodes
+          nextRunNodes: nextStepRunNodes,
+          variables: newVariables
         };
         setWorkflowDebugData(newStoreDebugData);
 
@@ -794,7 +797,8 @@ const WorkflowContextProvider = ({
       const data = {
         runtimeNodes,
         runtimeEdges,
-        nextRunNodes: runtimeNodes.filter((node) => node.nodeId === entryNodeId)
+        nextRunNodes: runtimeNodes.filter((node) => node.nodeId === entryNodeId),
+        variables: {}
       };
       onStopNodeDebug();
       setWorkflowDebugData(data);
