@@ -20,6 +20,10 @@
     "current_token_price": "当前积分价格",
     "yuan": "元"
   },
+  "promotion": {
+    "register": "好友注册",
+    "pay": "好友充值"
+  },
   "bind_inform_account_error": "绑定通知账号异常",
   "bind_inform_account_success": "绑定通知账号成功",
   "delete": {

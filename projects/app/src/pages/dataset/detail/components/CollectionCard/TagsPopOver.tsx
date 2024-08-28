@@ -217,7 +217,7 @@ const TagsPopOver = ({
                       onCreateCollectionTag(searchTag);
                     }}
                   >
-                    <MyIcon name={'common/addLight'} w={'16px'} />
+                    <MyIcon name={'common/addLight'} w={'1rem'} />
                     <Box ml={1} py={1}>
                       {t('dataset:tag.add') + ` "${searchTag}"`}
                     </Box>
