@@ -81,22 +81,23 @@ export const AiChatModule: FlowNodeTemplateType = {
     // settings modal ---
     {
       ...Input_Template_System_Prompt,
-      label: 'core.ai.Prompt',
+      label: i18nT('common:core.ai.Prompt'),
       description: chatNodeSystemPromptTip,
       placeholder: chatNodeSystemPromptTip
     },
     Input_Template_History,
     Input_Template_Dataset_Quote,
     Input_Template_Text_Quote,
-    { ...Input_Template_UserChatInput, toolDescription: '用户问题' }
+
+    { ...Input_Template_UserChatInput, toolDescription: i18nT('workflow:user_question') }
   ],
   outputs: [
     {
       id: NodeOutputKeyEnum.history,
       key: NodeOutputKeyEnum.history,
       required: true,
-      label: 'core.module.output.label.New context',
-      description: 'core.module.output.description.New context',
+      label: i18nT('common:core.module.output.label.New context'),
+      description: i18nT('common:core.module.output.description.New context'),
       valueType: WorkflowIOValueTypeEnum.chatHistory,
       valueDesc: chatHistoryValueDesc,
       type: FlowNodeOutputTypeEnum.static
@@ -105,8 +106,8 @@ export const AiChatModule: FlowNodeTemplateType = {
       id: NodeOutputKeyEnum.answerText,
       key: NodeOutputKeyEnum.answerText,
       required: true,
-      label: 'core.module.output.label.Ai response content',
-      description: 'core.module.output.description.Ai response content',
+      label: i18nT('common:core.module.output.label.Ai response content'),
+      description: i18nT('common:core.module.output.description.Ai response content'),
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     }

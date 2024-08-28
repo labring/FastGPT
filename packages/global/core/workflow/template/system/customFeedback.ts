@@ -6,6 +6,7 @@ import {
   NodeInputKeyEnum
 } from '../../constants';
 import { getHandleConfig } from '../utils';
+import { i18nT } from '../../../../../web/i18n/utils';
 
 export const CustomFeedbackNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.customFeedback,
@@ -14,8 +15,8 @@ export const CustomFeedbackNode: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/customFeedback',
-  name: '自定义反馈',
-  intro: '该模块被触发时，会给当前的对话记录增加一条反馈。可用于自动记录对话效果等。',
+  name: i18nT('workflow:custom_feedback'),
+  intro: i18nT('workflow:intro_custom_feedback'),
   version: '486',
   inputs: [
     {
@@ -23,7 +24,7 @@ export const CustomFeedbackNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.string,
       required: true,
-      label: '反馈的文本'
+      label: i18nT('workflow:feedback_text')
     }
   ],
   outputs: []
