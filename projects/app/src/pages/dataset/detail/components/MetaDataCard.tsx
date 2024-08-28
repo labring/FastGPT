@@ -105,7 +105,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
       </Box>
       {metadataList.map((item, i) => (
         <Flex key={i} alignItems={'center'} mb={5} wordBreak={'break-all'} fontSize={'sm'}>
-          <Box color={'myGray.500'} flex={'0 0 100px'}>
+          <Box color={'myGray.500'} flex={'0 0 70px'}>
             {item.label}
           </Box>
           <Box>{item.value}</Box>

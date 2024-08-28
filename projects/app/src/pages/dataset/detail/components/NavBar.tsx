@@ -123,8 +123,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                 fontWeight: 500,
                 border: 'none',
                 _hover: {
-                  bg: 'myGray.05',
-                  color: 'blue.700'
+                  bg: 'myGray.05'
                 },
                 borderRadius: '6px'
               }}
@@ -148,7 +147,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                 }}
               >
                 <MyIcon name={'common/monitor'} w={'18px'} h={'18px'} color={'myGray.500'} />
-                <Box color={'myGray.600'} ml={1.5} fontWeight={500}>
+                <Box color={'myGray.600'} ml={1.5} fontWeight={500} userSelect={'none'}>
                   {t('common:core.dataset.training.tag')}
                 </Box>
               </Flex>
