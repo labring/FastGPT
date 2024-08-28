@@ -21,7 +21,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
@@ -119,23 +119,22 @@ const CollectionCard = () => {
       successToast: t('common:common.Update Success')
     }
   );
-  const { mutate: onDelCollection, isLoading: isDeleting } = useRequest({
-    mutationFn: (collectionId: string) => {
+  const { runAsync: onDelCollection, loading: isDeleting } = useRequest2(
+    (collectionId: string) => {
       return delDatasetCollectionById({
         id: collectionId
       });
     },
-    onSuccess() {
-      getData(pageNum);
-    },
-    successToast: t('common:common.Delete Success'),
-    errorToast: t('common:common.Delete Failed')
-  });
+    {
+      onSuccess() {
+        getData(pageNum);
+      },
+      successToast: t('common:common.Delete Success'),
+      errorToast: t('common:common.Delete Failed')
+    }
+  );
 
-  const { mutate: onclickStartSync, isLoading: isSyncing } = useRequest({
-    mutationFn: (collectionId: string) => {
-      return postLinkCollectionSync(collectionId);
-    },
+  const { runAsync: onclickStartSync, loading: isSyncing } = useRequest2(postLinkCollectionSync, {
     onSuccess(res: DatasetCollectionSyncResultEnum) {
       getData(pageNum);
       toast({
@@ -186,12 +185,12 @@ const CollectionCard = () => {
 
   return (
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]}>
-      <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'}>
+      <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'} px={[2, 6]}>
         {/* header */}
         <Header />
 
         {/* collection table */}
-        <TableContainer px={[2, 6]} mt={[0, 3]} overflowY={'auto'} fontSize={'sm'}>
+        <TableContainer mt={3} overflowY={'auto'} fontSize={'sm'}>
           <Table variant={'simple'} draggable={false}>
             <Thead draggable={false}>
               <Tr>
@@ -237,7 +236,7 @@ const CollectionCard = () => {
                 >
                   <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
                     <Flex alignItems={'center'}>
-                      <MyIcon name={collection.icon as any} w={'18px'} mr={2} />
+                      <MyIcon name={collection.icon as any} w={'1.25rem'} mr={2} />
                       <MyTooltip
                         label={t('common:common.folder.Drag Tip')}
                         shouldWrapChildren={false}
@@ -287,8 +286,8 @@ const CollectionCard = () => {
                         offset={[-70, 5]}
                         Button={
                           <MenuButton
-                            w={'22px'}
-                            h={'22px'}
+                            w={'1.5rem'}
+                            h={'1.5rem'}
                             borderRadius={'md'}
                             _hover={{
                               color: 'primary.500',
@@ -300,8 +299,8 @@ const CollectionCard = () => {
                             <MyIcon
                               className="icon"
                               name={'more'}
-                              h={'16px'}
-                              w={'16px'}
+                              h={'1rem'}
+                              w={'1rem'}
                               px={1}
                               py={1}
                               borderRadius={'md'}
@@ -317,7 +316,11 @@ const CollectionCard = () => {
                                     {
                                       label: (
                                         <Flex alignItems={'center'}>
-                                          <MyIcon name={'common/refreshLight'} w={'14px'} mr={2} />
+                                          <MyIcon
+                                            name={'common/refreshLight'}
+                                            w={'0.9rem'}
+                                            mr={2}
+                                          />
                                           {t('common:core.dataset.collection.Sync')}
                                         </Flex>
                                       ),
@@ -331,7 +334,7 @@ const CollectionCard = () => {
                               {
                                 label: (
                                   <Flex alignItems={'center'}>
-                                    <MyIcon name={'common/file/move'} w={'14px'} mr={2} />
+                                    <MyIcon name={'common/file/move'} w={'0.9rem'} mr={2} />
                                     {t('common:Move')}
                                   </Flex>
                                 ),
@@ -341,7 +344,7 @@ const CollectionCard = () => {
                               {
                                 label: (
                                   <Flex alignItems={'center'}>
-                                    <MyIcon name={'edit'} w={'14px'} mr={2} />
+                                    <MyIcon name={'edit'} w={'0.9rem'} mr={2} />
                                     {t('common:Rename')}
                                   </Flex>
                                 ),
@@ -365,7 +368,7 @@ const CollectionCard = () => {
                                     <MyIcon
                                       mr={1}
                                       name={'delete'}
-                                      w={'14px'}
+                                      w={'0.9rem'}
                                       _hover={{ color: 'red.600' }}
                                     />
                                     <Box>{t('common:common.Delete')}</Box>

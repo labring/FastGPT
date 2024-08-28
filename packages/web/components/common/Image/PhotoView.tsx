@@ -5,9 +5,14 @@ import { Box, Image, ImageProps } from '@chakra-ui/react';
 import { useSystem } from '../../../hooks/useSystem';
 import Loading from '../MyLoading';
 
-const MyPhotoView = (props: ImageProps) => {
+const MyPhotoView = ({
+  forbidImgPreview,
+  ...props
+}: ImageProps & { forbidImgPreview?: boolean }) => {
   const { isPc } = useSystem();
-  return (
+  return forbidImgPreview ? (
+    <Image {...props} />
+  ) : (
     <PhotoProvider
       maskOpacity={0.6}
       bannerVisible={!isPc}

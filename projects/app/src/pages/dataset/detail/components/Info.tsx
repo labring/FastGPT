@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, Button, IconButton, Input, Textarea, HStack } from '@chakra-ui/react';
-import { DeleteIcon } from '@chakra-ui/icons';
+import { Box, Flex, Input } from '@chakra-ui/react';
 import { delDatasetById } from '@/web/core/dataset/api';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -9,7 +8,6 @@ import { useForm } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -56,7 +54,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     defaultValues: datasetDetail
   });
 
-  const avatar = watch('avatar');
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
   const defaultPermission = watch('defaultPermission');
@@ -77,8 +74,20 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     multiple: false
   });
 
-  const { mutate: onSave, isLoading: isSaving } = useRequest({
-    mutationFn: (data: DatasetItemType) => {
+  /* 点击删除 */
+  const { mutate: onclickDelete, isLoading: isDeleting } = useRequest({
+    mutationFn: () => {
+      return delDatasetById(datasetId);
+    },
+    onSuccess() {
+      router.replace(`/dataset/list`);
+    },
+    successToast: t('common:common.Delete Success'),
+    errorToast: t('common:common.Delete Failed')
+  });
+
+  const { runAsync: onSave, loading: isSaving } = useRequest2(
+    (data: DatasetItemType) => {
       return updateDataset({
         id: datasetId,
         agentModel: data.agentModel,
@@ -86,12 +95,14 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         defaultPermission: data.defaultPermission
       });
     },
-    successToast: t('common:common.Update Success'),
-    errorToast: t('common:common.Update Failed')
-  });
+    {
+      successToast: t('common:common.Update Success'),
+      errorToast: t('common:common.Update Failed')
+    }
+  );
 
-  const { mutate: onSelectFile, isLoading: isSelecting } = useRequest({
-    mutationFn: (e: File[]) => {
+  const { runAsync: onSelectFile, loading: isSelecting } = useRequest2(
+    (e: File[]) => {
       const file = e[0];
       if (!file) return Promise.resolve(null);
       return compressImgFileAndUpload({
@@ -101,36 +112,40 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         maxH: 300
       });
     },
-    onSuccess(src: string | null) {
-      if (src) {
-        setValue('avatar', src);
-      }
-    },
-    errorToast: t('common:common.avatar.Select Failed')
-  });
+    {
+      onSuccess(src: string | null) {
+        if (src) {
+          setValue('avatar', src);
+        }
+      },
+      errorToast: t('common:common.avatar.Select Failed')
+    }
+  );
 
-  const { mutate: onRebuilding, isLoading: isRebuilding } = useRequest({
-    mutationFn: (vectorModel: VectorModelItemType) => {
+  const { runAsync: onRebuilding, loading: isRebuilding } = useRequest2(
+    (vectorModel: VectorModelItemType) => {
       return postRebuildEmbedding({
         datasetId,
         vectorModel: vectorModel.model
       });
     },
-    onSuccess() {
-      refetchDatasetTraining();
-      loadDatasetDetail(datasetId);
-    },
-    successToast: t('dataset:rebuild_embedding_start_tip'),
-    errorToast: t('common:common.Update Failed')
-  });
+    {
+      onSuccess() {
+        refetchDatasetTraining();
+        loadDatasetDetail(datasetId);
+      },
+      successToast: t('dataset:rebuild_embedding_start_tip'),
+      errorToast: t('common:common.Update Failed')
+    }
+  );
 
-  const { runAsync: onEditBaseInfo } = useRequest2((data) => updateDataset(data), {
-    manual: true,
+  const { runAsync: onEditBaseInfo } = useRequest2(updateDataset, {
+    onSuccess() {
+      setEditedDataset(undefined);
+    },
     successToast: t('common:common.Update Success'),
     errorToast: t('common:common.Update Failed')
   });
-
-  const totalLoading = isSelecting || isSaving || isRebuilding;
 
   return (
     <Box w={'100%'} h={'100%'} p={6}>
@@ -225,7 +240,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 if (!vectorModel) return;
                 return onOpenConfirmRebuild(() => {
                   setValue('vectorModel', vectorModel);
-                  onRebuilding(vectorModel);
+                  return onRebuilding(vectorModel);
                 })();
               }}
             />
@@ -260,7 +275,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 setValue('agentModel', agentModel);
                 return handleSubmit((data) => onSave({ ...data, agentModel: agentModel }))();
               }}
-              isDisabled={totalLoading}
             />
           </Box>
         </Box>
@@ -311,7 +325,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 fontSize={'mini'}
                 per={defaultPermission}
                 defaultPer={DatasetDefaultPermissionVal}
-                isDisabled={totalLoading}
                 onChange={(v) => {
                   setValue('defaultPermission', v);
                   return handleSubmit((data) => onSave({ ...data, defaultPermission: v }))();
@@ -349,18 +362,15 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         <EditResourceModal
           {...editedDataset}
           title={t('common:dataset.Edit Info')}
-          onClose={() => {
-            setEditedDataset(undefined);
-          }}
-          onEdit={async (data) => {
-            await onEditBaseInfo({
+          onClose={() => setEditedDataset(undefined)}
+          onEdit={(data) =>
+            onEditBaseInfo({
               id: editedDataset.id,
               name: data.name,
               intro: data.intro,
               avatar: data.avatar
-            });
-            setEditedDataset(undefined);
-          }}
+            })
+          }
         />
       )}
     </Box>
