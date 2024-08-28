@@ -18,6 +18,7 @@ import {
 import { Input_Template_System_Prompt } from '../../input';
 import { LLMModelTypeEnum } from '../../../../ai/constants';
 import { getHandleConfig } from '../../utils';
+import { i18nT } from '../../../../../../web/i18n/utils';
 
 export const ClassifyQuestionModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.classifyQuestion,
@@ -26,8 +27,8 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(false, false, false, false),
   targetHandle: getHandleConfig(true, false, true, true),
   avatar: 'core/workflow/template/questionClassify',
-  name: '问题分类',
-  intro: `根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：\n类型1: 打招呼\n类型2: 关于商品“使用”问题\n类型3: 关于商品“购买”问题\n类型4: 其他问题`,
+  name: i18nT('workflow:question_classification'),
+  intro: i18nT('workflow:intro_question_classification'),
   showStatus: true,
   version: '481',
   inputs: [
@@ -50,15 +51,15 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
       label: '',
       value: [
         {
-          value: '打招呼',
+          value: i18nT('workflow:greeting'),
           key: 'wqre'
         },
         {
-          value: '关于 xxx 的问题',
+          value: i18nT('workflow:about_xxx_question'),
           key: 'sdfa'
         },
         {
-          value: '其他问题',
+          value: i18nT('workflow:other_questions'),
           key: 'agex'
         }
       ]
@@ -69,7 +70,7 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
       id: NodeOutputKeyEnum.cqResult,
       key: NodeOutputKeyEnum.cqResult,
       required: true,
-      label: '分类结果',
+      label: i18nT('workflow:classification_result'),
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     }

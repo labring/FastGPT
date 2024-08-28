@@ -31,7 +31,7 @@ export const WorkflowStart: FlowNodeTemplateType = {
   forbidDelete: true,
   unique: true,
   version: '481',
-  inputs: [{ ...Input_Template_UserChatInput, toolDescription: '用户问题' }],
+  inputs: [{ ...Input_Template_UserChatInput, toolDescription: i18nT('workflow:user_question') }],
   outputs: [
     {
       id: NodeOutputKeyEnum.userChatInput,
