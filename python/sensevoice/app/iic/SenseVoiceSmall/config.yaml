@@ -1,0 +1,97 @@
+encoder: SenseVoiceEncoderSmall
+encoder_conf:
+    output_size: 512
+    attention_heads: 4
+    linear_units: 2048
+    num_blocks: 50
+    tp_blocks: 20
+    dropout_rate: 0.1
+    positional_dropout_rate: 0.1
+    attention_dropout_rate: 0.1
+    input_layer: pe
+    pos_enc_class: SinusoidalPositionEncoder
+    normalize_before: true
+    kernel_size: 11
+    sanm_shfit: 0
+    selfattention_layer_type: sanm
+
+
+model: SenseVoiceSmall
+model_conf:
+    length_normalized_loss: true
+    sos: 1
+    eos: 2
+    ignore_id: -1
+
+tokenizer: SentencepiecesTokenizer
+tokenizer_conf:
+  bpemodel: null
+  unk_symbol: <unk>
+  split_with_space: true
+
+frontend: WavFrontend
+frontend_conf:
+    fs: 16000
+    window: hamming
+    n_mels: 80
+    frame_length: 25
+    frame_shift: 10
+    lfr_m: 7
+    lfr_n: 6
+    cmvn_file: null
+
+
+dataset: SenseVoiceCTCDataset
+dataset_conf:
+  index_ds: IndexDSJsonl
+  batch_sampler: EspnetStyleBatchSampler
+  data_split_num: 32
+  batch_type: token
+  batch_size: 14000
+  max_token_length: 2000
+  min_token_length: 60
+  max_source_length: 2000
+  min_source_length: 60
+  max_target_length: 200
+  min_target_length: 0
+  shuffle: true
+  num_workers: 4
+  sos: ${model_conf.sos}
+  eos: ${model_conf.eos}
+  IndexDSJsonl: IndexDSJsonl
+  retry: 20
+
+train_conf:
+  accum_grad: 1
+  grad_clip: 5
+  max_epoch: 20
+  keep_nbest_models: 10
+  avg_nbest_model: 10
+  log_interval: 100
+  resume: true
+  validate_interval: 10000
+  save_checkpoint_interval: 10000
+
+optim: adamw
+optim_conf:
+  lr: 0.00002
+scheduler: warmuplr
+scheduler_conf:
+  warmup_steps: 25000
+
+specaug: SpecAugLFR
+specaug_conf:
+    apply_time_warp: false
+    time_warp_window: 5
+    time_warp_mode: bicubic
+    apply_freq_mask: true
+    freq_mask_width_range:
+    - 0
+    - 30
+    lfr_rate: 6
+    num_freq_mask: 1
+    apply_time_mask: true
+    time_mask_width_range:
+    - 0
+    - 12
+    num_time_mask: 1
