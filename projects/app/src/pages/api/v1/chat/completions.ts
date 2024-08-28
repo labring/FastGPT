@@ -368,6 +368,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         if (assistantResponses.length === 0) return '';
         if (assistantResponses.length === 1 && assistantResponses[0].text?.content)
           return assistantResponses[0].text?.content;
+
+        if (!detail) {
+          return assistantResponses
+            .map((item) => item?.text?.content)
+            .filter(Boolean)
+            .join('\n');
+        }
+
         return assistantResponses;
       })();
 
