@@ -8,7 +8,7 @@ import Loading from '../MyLoading';
 const MyPhotoView = ({
   forbidImgPreview,
   ...props
-}: ImageProps & { forbidImgPreview: boolean }) => {
+}: ImageProps & { forbidImgPreview?: boolean }) => {
   const { isPc } = useSystem();
   return forbidImgPreview ? (
     <Image {...props} />
