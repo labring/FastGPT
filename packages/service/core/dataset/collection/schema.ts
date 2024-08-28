@@ -68,6 +68,7 @@ const DatasetCollectionSchema = new Schema({
   qaPrompt: {
     type: String
   },
+  ocrParse: Boolean,
 
   tags: {
     type: [String],

@@ -24,4 +24,6 @@ export const getPreviewFileContent = (data: PreviewContextProps) =>
   POST<{
     previewContent: string;
     totalLength: number;
-  }>('/common/file/previewContent', data);
+  }>('/common/file/previewContent', data, {
+    timeout: 600000
+  });
