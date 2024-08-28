@@ -58,17 +58,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await connectToDatabase();
     await authCert({ req, authRoot: true });
+    const { start = -2, end = -360 * 24 } = req.body as { start: number; end: number };
 
     (async () => {
       try {
         console.log('执行脏数据清理任务');
         // 360天 ~ 2小时前
-        const end = addHours(new Date(), -2);
-        const start = addHours(new Date(), -360 * 24);
-        await checkInvalidDatasetFiles(start, end);
-        await checkInvalidImg(start, end);
-        await checkInvalidDatasetData(start, end);
-        await checkInvalidVector(start, end);
+        const endTime = addHours(new Date(), start);
+        const startTime = addHours(new Date(), end);
+        await checkInvalidDatasetFiles(startTime, endTime);
+        await checkInvalidImg(startTime, endTime);
+        await checkInvalidDatasetData(startTime, endTime);
+        await checkInvalidVector(startTime, endTime);
         console.log('执行脏数据清理任务完毕');
       } catch (error) {
         console.log('执行脏数据清理任务出错了');

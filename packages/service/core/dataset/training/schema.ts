@@ -1,5 +1,5 @@
 /* 模型的知识库 */
-import { connectionMongo, type Model } from '../../../common/mongo';
+import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import { TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
@@ -10,7 +10,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 
-export const DatasetTrainingCollectionName = 'dataset.trainings';
+export const DatasetTrainingCollectionName = 'dataset_trainings';
 
 const TrainingDataSchema = new Schema({
   teamId: {
@@ -35,8 +35,7 @@ const TrainingDataSchema = new Schema({
   },
   billId: {
     // concat bill
-    type: String,
-    default: ''
+    type: String
   },
   mode: {
     type: String,
@@ -78,6 +77,9 @@ const TrainingDataSchema = new Schema({
     type: Number,
     default: 0
   },
+  dataId: {
+    type: Schema.Types.ObjectId
+  },
   indexes: {
     type: [
       {
@@ -101,7 +103,7 @@ try {
   console.log(error);
 }
 
-export const MongoDatasetTraining: Model<DatasetTrainingSchemaType> =
-  models[DatasetTrainingCollectionName] || model(DatasetTrainingCollectionName, TrainingDataSchema);
-
-MongoDatasetTraining.syncIndexes();
+export const MongoDatasetTraining = getMongoModel<DatasetTrainingSchemaType>(
+  DatasetTrainingCollectionName,
+  TrainingDataSchema
+);

@@ -1,4 +1,4 @@
-import { ClassifyQuestionAgentItemType } from '../module/type';
+import { ClassifyQuestionAgentItemType } from '../workflow/template/system/classifyQuestion/type';
 import { SearchDataResponseItemType } from '../dataset/type';
 import {
   ChatFileTypeEnum,
@@ -7,14 +7,15 @@ import {
   ChatSourceEnum,
   ChatStatusEnum
 } from './constants';
-import { FlowNodeTypeEnum } from '../module/node/constant';
-import { ModuleOutputKeyEnum } from '../module/constants';
-import { DispatchNodeResponseKeyEnum } from '../module/runtime/constants';
-import { AppSchema } from '../app/type';
+import { FlowNodeTypeEnum } from '../workflow/node/constant';
+import { NodeOutputKeyEnum } from '../workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
+import { AppChatConfigType, AppSchema, VariableItemType } from '../app/type';
 import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
 import { DatasetSearchModeEnum } from '../dataset/constants';
-import { ChatBoxInputType } from '../../../../projects/app/src/components/ChatBox/type';
-import { DispatchNodeResponseType } from '../module/runtime/type.d';
+import { DispatchNodeResponseType } from '../workflow/runtime/type.d';
+import { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
+import { InteractiveNodeResponseItemType } from '../workflow/template/system/userSelect/type';
 
 export type ChatSchema = {
   _id: string;
@@ -27,11 +28,13 @@ export type ChatSchema = {
   title: string;
   customTitle: string;
   top: boolean;
-  variables: Record<string, any>;
   source: `${ChatSourceEnum}`;
   shareId?: string;
   outLinkUid?: string;
-  content: ChatItemType[];
+
+  variableList?: VariableItemType[];
+  welcomeText?: string;
+  variables: Record<string, any>;
   metadata?: Record<string, any>;
 };
 
@@ -65,11 +68,12 @@ export type SystemChatItemType = {
   value: SystemChatItemValueItemType[];
 };
 export type AIChatItemValueItemType = {
-  type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.tool;
+  type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.tool | ChatItemValueTypeEnum.interactive;
   text?: {
     content: string;
   };
   tools?: ToolModuleResponseItemType[];
+  interactive?: InteractiveNodeResponseItemType;
 };
 export type AIChatItemType = {
   obj: ChatRoleEnum.AI;
@@ -104,16 +108,26 @@ export type AdminFbkType = {
 };
 
 /* --------- chat item ---------- */
-export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
-  dataId?: string;
+export type ResponseTagItemType = {
+  totalRunningTime?: number;
+  totalQuoteList?: SearchDataResponseItemType[];
+  llmModuleAccount?: number;
+  historyPreviewLength?: number;
 };
 
+export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
+  dataId?: string;
+} & ResponseTagItemType;
+
+// Frontend type
 export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
   dataId: string;
   status: `${ChatStatusEnum}`;
   moduleName?: string;
   ttsBuffer?: Uint8Array;
-} & ChatBoxInputType;
+  responseData?: ChatHistoryItemResType[];
+} & ChatBoxInputType &
+  ResponseTagItemType;
 
 /* --------- team chat --------- */
 export type ChatAppListSchema = {
@@ -136,8 +150,16 @@ export type ChatHistoryItemType = HistoryItemType & {
 
 /* ------- response data ------------ */
 export type ChatHistoryItemResType = DispatchNodeResponseType & {
-  moduleType: `${FlowNodeTypeEnum}`;
+  nodeId: string;
+  moduleType: FlowNodeTypeEnum;
   moduleName: string;
+};
+
+/* ---------- node outputs ------------ */
+export type NodeOutputItemType = {
+  nodeId: string;
+  key: NodeOutputKeyEnum;
+  value: any;
 };
 
 /* One tool run response  */
@@ -154,6 +176,6 @@ export type ToolModuleResponseItemType = {
 
 /* dispatch run time */
 export type RuntimeUserPromptType = {
-  files?: UserChatItemValueItemType['file'][];
+  files: UserChatItemValueItemType['file'][];
   text: string;
 };

@@ -1,32 +1,33 @@
 import { ErrType } from '../errorCode';
-
+import { i18nT } from '../../../../web/i18n/utils';
 /* dataset: 505000 */
 export enum OutLinkErrEnum {
-  unExist = 'unExist',
+  unExist = 'outlinkUnExist',
   unAuthLink = 'unAuthLink',
   linkUnInvalid = 'linkUnInvalid',
-
   unAuthUser = 'unAuthUser'
 }
+
 const errList = [
   {
     statusText: OutLinkErrEnum.unExist,
-    message: '分享链接不存在'
+    message: i18nT('common:code_error.outlink_error.link_not_exist')
   },
   {
     statusText: OutLinkErrEnum.unAuthLink,
-    message: '分享链接无效'
+    message: i18nT('common:code_error.outlink_error.invalid_link')
   },
   {
     code: 501,
     statusText: OutLinkErrEnum.linkUnInvalid,
-    message: '分享链接无效'
+    message: i18nT('common:code_error.outlink_error.invalid_link') // 使用相同的错误消息
   },
   {
     statusText: OutLinkErrEnum.unAuthUser,
-    message: '身份校验失败'
+    message: i18nT('common:code_error.outlink_error.un_auth_user')
   }
 ];
+
 export default errList.reduce((acc, cur, index) => {
   return {
     ...acc,

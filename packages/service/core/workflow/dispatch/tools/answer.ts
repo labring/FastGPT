@@ -1,37 +1,38 @@
-import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
-import { responseWrite } from '../../../../common/response';
-import { textAdaptGptResponse } from '@fastgpt/global/core/module/runtime/utils';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
-import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
+import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 export type AnswerProps = ModuleDispatchProps<{
   text: string;
 }>;
 export type AnswerResponse = DispatchNodeResultType<{
-  [ModuleOutputKeyEnum.answerText]: string;
+  [NodeOutputKeyEnum.answerText]: string;
 }>;
 
 export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
   const {
-    res,
-    detail,
-    stream,
+    workflowStreamResponse,
     params: { text = '' }
   } = props as AnswerProps;
 
   const formatText = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
+  const responseText = `\n${formatText}`;
 
-  if (stream) {
-    responseWrite({
-      res,
-      event: detail ? SseResponseEventEnum.fastAnswer : undefined,
-      data: textAdaptGptResponse({
-        text: `\n${formatText}`
-      })
-    });
-  }
+  workflowStreamResponse?.({
+    event: SseResponseEventEnum.fastAnswer,
+    data: textAdaptGptResponse({
+      text: responseText
+    })
+  });
 
   return {
-    [ModuleOutputKeyEnum.answerText]: formatText
+    [NodeOutputKeyEnum.answerText]: responseText,
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      textOutput: formatText
+    }
   };
 };

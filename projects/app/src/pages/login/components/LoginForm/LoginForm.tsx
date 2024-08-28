@@ -1,7 +1,7 @@
 import React, { useState, Dispatch, useCallback } from 'react';
 import { FormControl, Flex, Input, Button, Box, Link } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { LoginPageTypeEnum } from '@/constants/user';
+import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { postLogin } from '@/web/support/user/api';
 import type { ResLogin } from '@/global/support/api/userRes';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -43,38 +43,46 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           })
         );
         toast({
-          title: '登录成功',
+          title: t('user:login.success'),
           status: 'success'
         });
       } catch (error: any) {
         toast({
-          title: error.message || '登录异常',
+          title: error.message || t('user:login.error'),
           status: 'error'
         });
       }
       setRequesting(false);
     },
-    [loginSuccess, toast]
+    [loginSuccess, t, toast]
   );
 
-  const isCommunityVersion = feConfigs?.show_register === false && !feConfigs?.isPlus;
+  const isCommunityVersion = !!(feConfigs?.register_method && !feConfigs?.isPlus);
 
-  const loginOptions = [
-    feConfigs?.show_phoneLogin ? t('support.user.login.Phone number') : '',
-    feConfigs?.show_emailLogin ? t('support.user.login.Email') : '',
-    t('support.user.login.Username')
-  ].filter(Boolean);
-
-  const placeholder = isCommunityVersion
-    ? t('support.user.login.Root login')
-    : loginOptions.join('/');
+  const placeholder = (() => {
+    if (isCommunityVersion) {
+      return t('common:support.user.login.Root login');
+    }
+    return [t('common:support.user.login.Username')]
+      .concat(
+        feConfigs?.login_method?.map((item) => {
+          switch (item) {
+            case 'email':
+              return t('common:support.user.login.Email');
+            case 'phone':
+              return t('common:support.user.login.Phone number');
+          }
+        }) ?? []
+      )
+      .join('/');
+  })();
 
   return (
     <FormLayout setPageType={setPageType} pageType={LoginPageTypeEnum.passwordLogin}>
       <Box
         mt={'42px'}
         onKeyDown={(e) => {
-          if (e.keyCode === 13 && !e.shiftKey && !requesting) {
+          if (e.key === 'Enter' && !e.shiftKey && !requesting) {
             handleSubmit(onclickLogin)();
           }
         }}
@@ -94,36 +102,36 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             type={'password'}
             placeholder={
               isCommunityVersion
-                ? t('support.user.login.Root password placeholder')
-                : t('support.user.login.Password')
+                ? t('common:support.user.login.Root password placeholder')
+                : t('common:support.user.login.Password')
             }
             {...register('password', {
               required: true,
               maxLength: {
                 value: 60,
-                message: '密码最多 60 位'
+                message: t('user:login.password_condition')
               }
             })}
           ></Input>
         </FormControl>
         {feConfigs?.docUrl && (
           <Flex alignItems={'center'} mt={7} fontSize={'sm'}>
-            {t('support.user.login.Policy tip')}
+            {t('common:support.user.login.Policy tip')}
             <Link
               ml={1}
               href={getDocPath('/docs/agreement/terms/')}
               target={'_blank'}
               color={'primary.500'}
             >
-              {t('support.user.login.Terms')}
+              {t('common:support.user.login.Terms')}
             </Link>
-            <Box mx={1}>{t('support.user.login.And')}</Box>
+            <Box mx={1}>{t('common:support.user.login.And')}</Box>
             <Link
               href={getDocPath('/docs/agreement/privacy/')}
               target={'_blank'}
               color={'primary.500'}
             >
-              {t('support.user.login.Privacy')}
+              {t('common:support.user.login.Privacy')}
             </Link>
           </Flex>
         )}
@@ -132,25 +140,27 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           type="submit"
           my={6}
           w={'100%'}
-          size={['md', 'lg']}
+          size={['md', 'md']}
           colorScheme="blue"
           isLoading={requesting}
           onClick={handleSubmit(onclickLogin)}
         >
-          {t('home.Login')}
+          {t('common:Login')}
         </Button>
 
-        {feConfigs?.show_register && (
-          <>
-            <Flex align={'center'} justifyContent={'flex-end'} color={'primary.700'}>
-              <Box
-                cursor={'pointer'}
-                _hover={{ textDecoration: 'underline' }}
-                onClick={() => setPageType('forgetPassword')}
-                fontSize="sm"
-              >
-                {t('support.user.login.Forget Password')}
-              </Box>
+        <Flex align={'center'} justifyContent={'flex-end'} color={'primary.700'}>
+          {feConfigs?.find_password_method && feConfigs.find_password_method.length > 0 && (
+            <Box
+              cursor={'pointer'}
+              _hover={{ textDecoration: 'underline' }}
+              onClick={() => setPageType('forgetPassword')}
+              fontSize="sm"
+            >
+              {t('common:support.user.login.Forget Password')}
+            </Box>
+          )}
+          {feConfigs?.register_method && feConfigs.register_method.length > 0 && (
+            <>
               <Box mx={3} h={'16px'} w={'1.5px'} bg={'myGray.250'}></Box>
               <Box
                 cursor={'pointer'}
@@ -158,11 +168,11 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
                 onClick={() => setPageType('register')}
                 fontSize="sm"
               >
-                {t('support.user.login.Register')}
+                {t('common:support.user.login.Register')}
               </Box>
-            </Flex>
-          </>
-        )}
+            </>
+          )}
+        </Flex>
       </Box>
     </FormLayout>
   );

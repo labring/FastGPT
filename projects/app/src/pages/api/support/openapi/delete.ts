@@ -1,27 +1,28 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { authOpenApiKeyCrud } from '@fastgpt/service/support/permission/auth/openapi';
+import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import { NextAPI } from '@/service/middleware/entry';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    await connectToDatabase();
-    const { id } = req.query as { id: string };
+export type OpenAPIDeleteQuery = { id: string };
+export type OpenAPIDeleteBody = {};
+export type OpenAPIDeleteResponse = {};
 
-    if (!id) {
-      throw new Error('缺少参数');
-    }
+async function handler(
+  req: ApiRequestProps<OpenAPIDeleteBody, OpenAPIDeleteQuery>,
+  _res: ApiResponseType<any>
+): Promise<OpenAPIDeleteResponse> {
+  const { id } = req.query as { id: string };
 
-    await authOpenApiKeyCrud({ req, authToken: true, id, per: 'owner' });
-
-    await MongoOpenApi.findOneAndRemove({ _id: id });
-
-    jsonRes(res);
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
+  if (!id) {
+    return Promise.reject(CommonErrEnum.missingParams);
   }
+
+  await authOpenApiKeyCrud({ req, authToken: true, id, per: OwnerPermissionVal });
+
+  await MongoOpenApi.deleteOne({ _id: id });
+  return {};
 }
+
+export default NextAPI(handler);

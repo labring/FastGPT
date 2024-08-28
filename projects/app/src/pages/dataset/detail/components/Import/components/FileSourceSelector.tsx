@@ -10,32 +10,32 @@ import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 const FileModeSelector = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const [value, setValue] = useState<`${ImportDataSourceEnum}`>(ImportDataSourceEnum.fileLocal);
+  const [value, setValue] = useState<ImportDataSourceEnum>(ImportDataSourceEnum.fileLocal);
 
   return (
     <MyModal
       isOpen
       onClose={onClose}
       iconSrc="modal/selectSource"
-      title={t('core.dataset.import.Select source')}
+      title={t('common:core.dataset.import.Select source')}
       w={'600px'}
     >
       <ModalBody px={6} py={4}>
         <LeftRadio
           list={[
             {
-              title: t('core.dataset.import.Local file'),
-              desc: t('core.dataset.import.Local file desc'),
+              title: t('common:core.dataset.import.Local file'),
+              desc: t('common:core.dataset.import.Local file desc'),
               value: ImportDataSourceEnum.fileLocal
             },
             {
-              title: t('core.dataset.import.Web link'),
-              desc: t('core.dataset.import.Web link desc'),
+              title: t('common:core.dataset.import.Web link'),
+              desc: t('common:core.dataset.import.Web link desc'),
               value: ImportDataSourceEnum.fileLink
             },
             {
-              title: t('core.dataset.import.Custom text'),
-              desc: t('core.dataset.import.Custom text desc'),
+              title: t('common:core.dataset.import.Custom text'),
+              desc: t('common:core.dataset.import.Custom text desc'),
               value: ImportDataSourceEnum.fileCustom
             }
           ]}
@@ -55,7 +55,7 @@ const FileModeSelector = ({ onClose }: { onClose: () => void }) => {
             })
           }
         >
-          {t('common.Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

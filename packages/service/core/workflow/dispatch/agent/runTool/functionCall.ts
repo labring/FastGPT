@@ -1,6 +1,6 @@
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getAIApi } from '../../../../ai/config';
-import { filterGPTMessageByMaxTokens } from '../../../../chat/utils';
+import { filterGPTMessageByMaxTokens, loadRequestMessages } from '../../../../chat/utils';
 import {
   ChatCompletion,
   StreamChatType,
@@ -9,51 +9,51 @@ import {
   ChatCompletionMessageFunctionCall,
   ChatCompletionFunctionMessageParam,
   ChatCompletionAssistantMessageParam
-} from '@fastgpt/global/core/ai/type';
+} from '@fastgpt/global/core/ai/type.d';
 import { NextApiResponse } from 'next';
-import {
-  responseWrite,
-  responseWriteController,
-  responseWriteNodeStatus
-} from '../../../../../common/response';
-import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
-import { textAdaptGptResponse } from '@fastgpt/global/core/module/runtime/utils';
+import { responseWriteController } from '../../../../../common/response';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { dispatchWorkFlow } from '../../index';
-import { DispatchToolModuleProps, RunToolResponse, ToolModuleItemType } from './type.d';
+import { DispatchToolModuleProps, RunToolResponse, ToolNodeItemType } from './type.d';
 import json5 from 'json5';
-import { DispatchFlowResponse } from '../../type';
-import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { AIChatItemType, AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { DispatchFlowResponse, WorkflowResponseType } from '../../type';
+import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
+import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
+import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { updateToolInputValue } from './utils';
+import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
 
 type FunctionRunResponseType = {
-  moduleRunResponse: DispatchFlowResponse;
+  toolRunResponse: DispatchFlowResponse;
   functionCallMsg: ChatCompletionFunctionMessageParam;
 }[];
 
 export const runToolWithFunctionCall = async (
   props: DispatchToolModuleProps & {
     messages: ChatCompletionMessageParam[];
-    toolModules: ToolModuleItemType[];
+    toolNodes: ToolNodeItemType[];
     toolModel: LLMModelItemType;
   },
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
   const {
     toolModel,
-    toolModules,
+    toolNodes,
     messages,
     res,
-    runtimeModules,
-    detail = false,
-    module,
-    stream
+    requestOrigin,
+    runtimeNodes,
+    node,
+    stream,
+    workflowStreamResponse,
+    params: { temperature = 0, maxToken = 4000, aiChatVision }
   } = props;
   const assistantResponses = response?.assistantResponses || [];
 
-  const functions: ChatCompletionCreateParams.Function[] = toolModules.map((module) => {
+  const functions: ChatCompletionCreateParams.Function[] = toolNodes.map((item) => {
     const properties: Record<
       string,
       {
@@ -62,70 +62,99 @@ export const runToolWithFunctionCall = async (
         required?: boolean;
       }
     > = {};
-    module.toolParams.forEach((item) => {
+    item.toolParams.forEach((item) => {
       properties[item.key] = {
-        type: 'string',
+        type: item.valueType || 'string',
         description: item.toolDescription || ''
       };
     });
 
     return {
-      name: module.moduleId,
-      description: module.intro,
+      name: item.nodeId,
+      description: item.intro,
       parameters: {
         type: 'object',
         properties,
-        required: module.toolParams.filter((item) => item.required).map((item) => item.key)
+        required: item.toolParams.filter((item) => item.required).map((item) => item.key)
       }
     };
   });
 
-  const filterMessages = filterGPTMessageByMaxTokens({
-    messages,
-    maxTokens: toolModel.maxContext - 500 // filter token. not response maxToken
+  const filterMessages = (
+    await filterGPTMessageByMaxTokens({
+      messages,
+      maxTokens: toolModel.maxContext - 300 // filter token. not response maxToken
+    })
+  ).map((item) => {
+    if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant && item.function_call) {
+      return {
+        ...item,
+        function_call: {
+          name: item.function_call?.name,
+          arguments: item.function_call?.arguments
+        },
+        content: ''
+      };
+    }
+    return item;
   });
+  const [requestMessages, max_tokens] = await Promise.all([
+    loadRequestMessages({
+      messages: filterMessages,
+      useVision: toolModel.vision && aiChatVision,
+      origin: requestOrigin
+    }),
+    computedMaxToken({
+      model: toolModel,
+      maxToken,
+      filterMessages
+    })
+  ]);
+  const requestBody: any = {
+    ...toolModel?.defaultConfig,
+    model: toolModel.model,
+    temperature: computedTemperature({
+      model: toolModel,
+      temperature
+    }),
+    max_tokens,
+    stream,
+    messages: requestMessages,
+    functions,
+    function_call: 'auto'
+  };
 
+  // console.log(JSON.stringify(requestBody, null, 2));
   /* Run llm */
   const ai = getAIApi({
     timeout: 480000
   });
-  const aiResponse = await ai.chat.completions.create(
-    {
-      ...toolModel?.defaultConfig,
-      model: toolModel.model,
-      temperature: 0,
-      stream,
-      messages: filterMessages,
-      functions,
-      function_call: 'auto'
-    },
-    {
-      headers: {
-        Accept: 'application/json, text/plain, */*'
-      }
+  const aiResponse = await ai.chat.completions.create(requestBody, {
+    headers: {
+      Accept: 'application/json, text/plain, */*'
     }
-  );
+  });
 
   const { answer, functionCalls } = await (async () => {
-    if (stream) {
+    if (res && stream) {
       return streamResponse({
         res,
-        detail,
-        toolModules,
-        stream: aiResponse
+        toolNodes,
+        stream: aiResponse,
+        workflowStreamResponse
       });
     } else {
       const result = aiResponse as ChatCompletion;
       const function_call = result.choices?.[0]?.message?.function_call;
-      const toolModule = toolModules.find((module) => module.moduleId === function_call?.name);
+      const toolNode = toolNodes.find((node) => node.nodeId === function_call?.name);
 
       const toolCalls = function_call
         ? [
             {
               ...function_call,
               id: getNanoid(),
-              toolName: toolModule?.name,
-              toolAvatar: toolModule?.avatar
+              toolName: toolNode?.name,
+              toolAvatar: toolNode?.avatar
             }
           ]
         : [];
@@ -143,9 +172,9 @@ export const runToolWithFunctionCall = async (
       functionCalls.map(async (tool) => {
         if (!tool) return;
 
-        const toolModule = toolModules.find((module) => module.moduleId === tool.name);
+        const toolNode = toolNodes.find((node) => node.nodeId === tool.name);
 
-        if (!toolModule) return;
+        if (!toolNode) return;
 
         const startParams = (() => {
           try {
@@ -155,21 +184,26 @@ export const runToolWithFunctionCall = async (
           }
         })();
 
-        const moduleRunResponse = await dispatchWorkFlow({
+        const toolRunResponse = await dispatchWorkFlow({
           ...props,
-          runtimeModules: runtimeModules.map((module) => ({
-            ...module,
-            isEntry: module.moduleId === toolModule.moduleId
-          })),
-          startParams
+          isToolCall: true,
+          runtimeNodes: runtimeNodes.map((item) =>
+            item.nodeId === toolNode.nodeId
+              ? {
+                  ...item,
+                  isEntry: true,
+                  inputs: updateToolInputValue({ params: startParams, inputs: item.inputs })
+                }
+              : item
+          )
         });
 
         const stringToolResponse = (() => {
-          if (typeof moduleRunResponse.toolResponses === 'object') {
-            return JSON.stringify(moduleRunResponse.toolResponses, null, 2);
+          if (typeof toolRunResponse.toolResponses === 'object') {
+            return JSON.stringify(toolRunResponse.toolResponses, null, 2);
           }
 
-          return moduleRunResponse.toolResponses ? String(moduleRunResponse.toolResponses) : 'none';
+          return toolRunResponse.toolResponses ? String(toolRunResponse.toolResponses) : 'none';
         })();
 
         const functionCallMsg: ChatCompletionFunctionMessageParam = {
@@ -178,61 +212,60 @@ export const runToolWithFunctionCall = async (
           content: stringToolResponse
         };
 
-        if (stream && detail) {
-          responseWrite({
-            res,
-            event: SseResponseEventEnum.toolResponse,
-            data: JSON.stringify({
-              tool: {
-                id: tool.id,
-                toolName: '',
-                toolAvatar: '',
-                params: '',
-                response: stringToolResponse
-              }
-            })
-          });
-        }
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.toolResponse,
+          data: {
+            tool: {
+              id: tool.id,
+              toolName: '',
+              toolAvatar: '',
+              params: '',
+              response: sliceStrStartEnd(stringToolResponse, 500, 500)
+            }
+          }
+        });
 
         return {
-          moduleRunResponse,
+          toolRunResponse,
           functionCallMsg
         };
       })
     )
   ).filter(Boolean) as FunctionRunResponseType;
 
-  const flatToolsResponseData = toolsRunResponse.map((item) => item.moduleRunResponse).flat();
+  const flatToolsResponseData = toolsRunResponse.map((item) => item.toolRunResponse).flat();
 
   const functionCall = functionCalls[0];
-  if (functionCall && !res.closed) {
+  if (functionCall && !res?.closed) {
     // Run the tool, combine its results, and perform another round of AI calls
     const assistantToolMsgParams: ChatCompletionAssistantMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.Assistant,
       function_call: functionCall
     };
     const concatToolMessages = [
-      ...filterMessages,
+      ...requestMessages,
       assistantToolMsgParams
     ] as ChatCompletionMessageParam[];
-    const tokens = countGptMessagesTokens(concatToolMessages, undefined, functions);
+    const tokens = await countGptMessagesTokens(concatToolMessages, undefined, functions);
     const completeMessages = [
       ...concatToolMessages,
       ...toolsRunResponse.map((item) => item?.functionCallMsg)
     ];
     // console.log(tokens, 'tool');
 
-    if (stream && detail) {
-      responseWriteNodeStatus({
-        res,
-        name: module.name
-      });
-    }
+    // Run tool status
+    workflowStreamResponse?.({
+      event: SseResponseEventEnum.flowNodeStatus,
+      data: {
+        status: 'running',
+        name: node.name
+      }
+    });
 
     // tool assistant
     const toolAssistants = toolsRunResponse
       .map((item) => {
-        const assistantResponses = item.moduleRunResponse.assistantResponses || [];
+        const assistantResponses = item.toolRunResponse.assistantResponses || [];
         return assistantResponses;
       })
       .flat();
@@ -282,7 +315,7 @@ export const runToolWithFunctionCall = async (
       content: answer
     };
     const completeMessages = filterMessages.concat(gptAssistantResponse);
-    const tokens = countGptMessagesTokens(completeMessages, undefined, functions);
+    const tokens = await countGptMessagesTokens(completeMessages, undefined, functions);
     // console.log(tokens, 'response token');
 
     // concat tool assistant
@@ -299,14 +332,14 @@ export const runToolWithFunctionCall = async (
 
 async function streamResponse({
   res,
-  detail,
-  toolModules,
-  stream
+  toolNodes,
+  stream,
+  workflowStreamResponse
 }: {
   res: NextApiResponse;
-  detail: boolean;
-  toolModules: ToolModuleItemType[];
+  toolNodes: ToolNodeItemType[];
   stream: StreamChatType;
+  workflowStreamResponse?: WorkflowResponseType;
 }) {
   const write = responseWriteController({
     res,
@@ -324,13 +357,14 @@ async function streamResponse({
     }
 
     const responseChoice = part.choices?.[0]?.delta;
+
     if (responseChoice.content) {
       const content = responseChoice?.content || '';
       textAnswer += content;
 
-      responseWrite({
+      workflowStreamResponse?.({
         write,
-        event: detail ? SseResponseEventEnum.answer : undefined,
+        event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
           text: content
         })
@@ -344,9 +378,9 @@ async function streamResponse({
       // 流响应中,每次只会返回一个函数，如果带了name，说明触发某个函数
       if (functionCall?.name) {
         functionId = getNanoid();
-        const toolModule = toolModules.find((module) => module.moduleId === functionCall?.name);
+        const toolNode = toolNodes.find((item) => item.nodeId === functionCall?.name);
 
-        if (toolModule) {
+        if (toolNode) {
           if (functionCall?.arguments === undefined) {
             functionCall.arguments = '';
           }
@@ -354,49 +388,48 @@ async function streamResponse({
             ...functionCall,
             id: functionId,
             name: functionCall.name,
-            toolName: toolModule.name,
-            toolAvatar: toolModule.avatar
+            toolName: toolNode.name,
+            toolAvatar: toolNode.avatar
           });
 
-          if (detail) {
-            responseWrite({
-              write,
-              event: SseResponseEventEnum.toolCall,
-              data: JSON.stringify({
-                tool: {
-                  id: functionId,
-                  toolName: toolModule.name,
-                  toolAvatar: toolModule.avatar,
-                  functionName: functionCall.name,
-                  params: functionCall.arguments,
-                  response: ''
-                }
-              })
-            });
-          }
+          workflowStreamResponse?.({
+            write,
+            event: SseResponseEventEnum.toolCall,
+            data: {
+              tool: {
+                id: functionId,
+                toolName: toolNode.name,
+                toolAvatar: toolNode.avatar,
+                functionName: functionCall.name,
+                params: functionCall.arguments,
+                response: ''
+              }
+            }
+          });
         }
+
+        continue;
       }
+
       /* arg 插入最后一个工具的参数里 */
       const arg: string = functionCall?.arguments || '';
       const currentTool = functionCalls[functionCalls.length - 1];
       if (currentTool) {
         currentTool.arguments += arg;
 
-        if (detail) {
-          responseWrite({
-            write,
-            event: SseResponseEventEnum.toolParams,
-            data: JSON.stringify({
-              tool: {
-                id: functionId,
-                toolName: '',
-                toolAvatar: '',
-                params: arg,
-                response: ''
-              }
-            })
-          });
-        }
+        workflowStreamResponse?.({
+          write,
+          event: SseResponseEventEnum.toolParams,
+          data: {
+            tool: {
+              id: functionId,
+              toolName: '',
+              toolAvatar: '',
+              params: arg,
+              response: ''
+            }
+          }
+        });
       }
     }
   }

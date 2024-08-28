@@ -47,7 +47,6 @@ const MySlider = ({
         max={max}
         min={min}
         step={step}
-        size={'lg'}
         value={value}
         width={width}
         onChange={onChange}

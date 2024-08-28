@@ -1,0 +1,18 @@
+{
+  "bucket_chat": "对话文件",
+  "bucket_file": "知识库文件",
+  "click_to_view_raw_source": "点击查看来源",
+  "file_name": "文件名",
+  "file_size": "文件大小",
+  "release_the_mouse_to_upload_the_file": "松开鼠标上传文件",
+  "select_and_drag_file_tip": "点击或拖动文件到此处上传",
+  "select_file_amount_limit": "最多选择 {{max}} 个文件",
+  "some_file_count_exceeds_limit": "超出 {{maxCount}} 个文件，已自动截取",
+  "some_file_size_exceeds_limit": "部分文件超出 {{maxSize}}，已被过滤",
+  "support_file_type": "支持 {{fileType}} 类型文件",
+  "support_max_count": "最多支持 {{maxCount}} 个文件",
+  "support_max_size": "单个文件最大 {{maxSize}}",
+  "upload_failed": "上传异常",
+  "reached_max_file_count": "已达到最大文件数量",
+  "upload_error_description": "单次只支持上传多个文件或者一个文件夹"
+}

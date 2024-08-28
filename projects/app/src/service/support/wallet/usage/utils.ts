@@ -8,7 +8,7 @@ export function authType2UsageSource({
 }: {
   authType?: `${AuthUserTypeEnum}`;
   shareId?: string;
-  source?: `${UsageSourceEnum}`;
+  source?: UsageSourceEnum;
 }) {
   if (source) return source;
   if (shareId) return UsageSourceEnum.shareLink;

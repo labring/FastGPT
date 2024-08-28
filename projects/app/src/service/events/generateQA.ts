@@ -12,8 +12,9 @@ import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { checkTeamAiPointsAndLock } from './utils';
 import { checkInvalidChunkAndLock } from '@fastgpt/service/core/dataset/training/utils';
 import { addMinutes } from 'date-fns';
-import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
+import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { pushDataListToTrainingQueueByCollectionId } from '@fastgpt/service/core/dataset/training/controller';
+import { loadRequestMessages } from '@fastgpt/service/core/chat/utils';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -46,7 +47,6 @@ export async function generateQA(): Promise<any> {
       )
         .select({
           _id: 1,
-          userId: 1,
           teamId: 1,
           tmbId: 1,
           datasetId: 1,
@@ -89,7 +89,7 @@ export async function generateQA(): Promise<any> {
   }
 
   // auth balance
-  if (!(await checkTeamAiPointsAndLock(data.teamId, data.tmbId))) {
+  if (!(await checkTeamAiPointsAndLock(data.teamId))) {
     reduceQueue();
     return generateQA();
   }
@@ -114,7 +114,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     const chatResponse = await ai.chat.completions.create({
       model,
       temperature: 0.3,
-      messages,
+      messages: await loadRequestMessages({ messages, useVision: false }),
       stream: false
     });
     const answer = chatResponse.choices?.[0].message?.content || '';
@@ -148,7 +148,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       pushQAUsage({
         teamId: data.teamId,
         tmbId: data.tmbId,
-        tokens: countGptMessagesTokens(messages),
+        tokens: await countGptMessagesTokens(messages),
         billId: data.billId,
         model
       });

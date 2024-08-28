@@ -6,15 +6,15 @@ const CloseIcon = (props: FlexProps) => {
   return (
     <Flex
       cursor={'pointer'}
-      w={'22px'}
-      h={'22px'}
+      w={'1.5rem'}
+      h={'1.5rem'}
       alignItems={'center'}
       justifyContent={'center'}
       borderRadius={'50%'}
       _hover={{ bg: 'myGray.200' }}
       {...props}
     >
-      <MyIcon name={'common/closeLight'} w={'12px'} color={'myGray.500'} />
+      <MyIcon name={'common/closeLight'} w={'80%'} h={'80%'} color={'myGray.500'} />
     </Flex>
   );
 };

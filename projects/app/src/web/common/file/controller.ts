@@ -3,6 +3,7 @@ import { UploadImgProps } from '@fastgpt/global/common/file/api';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { preUploadImgProps } from '@fastgpt/global/common/file/api';
 import { compressBase64Img, type CompressImgProps } from '@fastgpt/web/common/file/img';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 /**
  * upload file to mongo gridfs
@@ -10,11 +11,13 @@ import { compressBase64Img, type CompressImgProps } from '@fastgpt/web/common/fi
 export const uploadFile2DB = ({
   file,
   bucketName,
+  outLinkAuthData,
   metadata = {},
   percentListen
 }: {
   file: File;
   bucketName: `${BucketNameEnum}`;
+  outLinkAuthData?: OutLinkChatAuthProps;
   metadata?: Record<string, any>;
   percentListen?: (percent: number) => void;
 }) => {
@@ -22,6 +25,14 @@ export const uploadFile2DB = ({
   form.append('metadata', JSON.stringify(metadata));
   form.append('bucketName', bucketName);
   form.append('file', file, encodeURIComponent(file.name));
+
+  if (outLinkAuthData) {
+    for (const key in outLinkAuthData) {
+      // @ts-ignore
+      outLinkAuthData[key] && form.append(key, outLinkAuthData[key]);
+    }
+  }
+
   return postUploadFiles(form, (e) => {
     if (!e.total) return;
 

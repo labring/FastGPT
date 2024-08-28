@@ -1,27 +1,58 @@
-import React from 'react';
-import { Flex, Box, IconButton } from '@chakra-ui/react';
+import React, { useCallback } from 'react';
+import { Flex, Box, IconButton, HStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
+import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import MyPopover from '@fastgpt/web/components/common/MyPopover/index';
+import { getMyApps } from '@/web/core/app/api';
+import {
+  GetResourceFolderListProps,
+  GetResourceListItemResponse
+} from '@fastgpt/global/common/parentFolder/type';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import dynamic from 'next/dynamic';
 
-const SliderApps = ({
-  showExist = true,
-  apps,
-  activeAppId
-}: {
-  showExist?: boolean;
-  apps: AppListItemType[];
-  activeAppId: string;
-}) => {
+const SelectOneResource = dynamic(() => import('@/components/common/folder/SelectOneResource'));
+
+const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppId: string }) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const isTeamChat = router.pathname === '/chat/team';
+
+  const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
+    return getMyApps({
+      parentId,
+      type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin]
+    }).then((res) =>
+      res.map<GetResourceListItemResponse>((item) => ({
+        id: item._id,
+        name: item.name,
+        avatar: item.avatar,
+        isFolder: item.type === AppTypeEnum.folder
+      }))
+    );
+  }, []);
+
+  const onChangeApp = useCallback(
+    (appId: string) => {
+      router.replace({
+        query: {
+          ...router.query,
+          chatId: '',
+          appId
+        }
+      });
+    },
+    [router]
+  );
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <Box px={5} py={4}>
-        {showExist && (
+      <Box mt={4} px={4}>
+        {!isTeamChat && (
           <Flex
             alignItems={'center'}
             cursor={'pointer'}
@@ -33,19 +64,72 @@ const SliderApps = ({
           >
             <IconButton
               mr={3}
-              icon={<MyIcon name={'common/backFill'} w={'18px'} color={'primary.500'} />}
+              icon={<MyIcon name={'common/backFill'} w={'1rem'} color={'primary.500'} />}
               bg={'white'}
               boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
               size={'smSquare'}
               borderRadius={'50%'}
               aria-label={''}
             />
-            {t('core.chat.Exit Chat')}
+            {t('common:core.chat.Exit Chat')}
           </Flex>
         )}
       </Box>
 
-      <Box flex={'1 0 0'} h={0} px={5} overflow={'overlay'}>
+      {!isTeamChat && (
+        <>
+          <MyDivider h={2} my={1} />
+          <HStack
+            px={4}
+            my={2}
+            color={'myGray.500'}
+            fontSize={'sm'}
+            justifyContent={'space-between'}
+          >
+            <Box>{t('common:core.chat.Recent use')}</Box>
+            <MyPopover
+              placement="bottom-end"
+              offset={[20, 10]}
+              p={4}
+              trigger="hover"
+              Trigger={
+                <HStack
+                  spacing={0.5}
+                  cursor={'pointer'}
+                  px={2}
+                  py={'0.5'}
+                  borderRadius={'md'}
+                  mr={-2}
+                  userSelect={'none'}
+                  _hover={{
+                    bg: 'myGray.200'
+                  }}
+                >
+                  <Box>{t('common:common.More')}</Box>
+                  <MyIcon name={'common/select'} w={'1rem'} />
+                </HStack>
+              }
+            >
+              {({ onClose }) => (
+                <Box minH={'200px'}>
+                  <SelectOneResource
+                    maxH={'60vh'}
+                    value={activeAppId}
+                    onSelect={(id) => {
+                      if (!id) return;
+                      onChangeApp(id);
+                      onClose();
+                    }}
+                    server={getAppList}
+                  />
+                </Box>
+              )}
+            </MyPopover>
+          </HStack>
+        </>
+      )}
+
+      <Box flex={'1 0 0'} px={4} h={0} overflow={'overlay'}>
         {apps.map((item) => (
           <Flex
             key={item._id}
@@ -55,27 +139,21 @@ const SliderApps = ({
             cursor={'pointer'}
             borderRadius={'md'}
             alignItems={'center'}
+            fontSize={'sm'}
             {...(item._id === activeAppId
               ? {
                   bg: 'white',
-                  boxShadow: 'md'
+                  boxShadow: 'md',
+                  color: 'primary.600'
                 }
               : {
                   _hover: {
                     bg: 'myGray.200'
                   },
-                  onClick: () => {
-                    router.replace({
-                      query: {
-                        ...router.query,
-                        chatId: '',
-                        appId: item._id
-                      }
-                    });
-                  }
+                  onClick: () => onChangeApp(item._id)
                 })}
           >
-            <Avatar src={item.avatar} w={'24px'} />
+            <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'md'} />
             <Box ml={2} className={'textEllipsis'}>
               {item.name}
             </Box>

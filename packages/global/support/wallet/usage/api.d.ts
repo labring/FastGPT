@@ -19,6 +19,7 @@ export type CreateUsageProps = {
   tmbId: string;
   appName: string;
   appId?: string;
+  pluginId?: string;
   totalPoints: number;
   source: `${UsageSourceEnum}`;
   list: UsageListItemType[];

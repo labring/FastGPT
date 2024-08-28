@@ -1,68 +1,60 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
-import type { DatasetDataListItemType } from '@/global/core/dataset/type.d';
-import type { GetDatasetDataListProps } from '@/global/core/api/datasetReq';
-import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { PagingData } from '@/types';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { NextAPI } from '@/service/middleware/entry';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { PagingData, RequestPaging } from '@/types';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { DatasetDataListItemType } from '@/global/core/dataset/type';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  try {
-    await connectToDatabase();
-    let {
-      pageNum = 1,
-      pageSize = 10,
-      searchText = '',
-      collectionId
-    } = req.body as GetDatasetDataListProps;
+export type GetDatasetDataListProps = RequestPaging & {
+  searchText?: string;
+  collectionId: string;
+};
 
-    pageSize = Math.min(pageSize, 30);
+async function handler(
+  req: ApiRequestProps<GetDatasetDataListProps>
+): Promise<PagingData<DatasetDataListItemType>> {
+  let { pageNum = 1, pageSize = 10, searchText = '', collectionId } = req.body;
 
-    // 凭证校验
-    const { teamId, collection } = await authDatasetCollection({
-      req,
-      authToken: true,
-      authApiKey: true,
-      collectionId,
-      per: 'r'
-    });
+  pageSize = Math.min(pageSize, 30);
 
-    searchText = replaceRegChars(searchText).replace(/'/g, '');
+  // 凭证校验
+  const { teamId, collection } = await authDatasetCollection({
+    req,
+    authToken: true,
+    authApiKey: true,
+    collectionId,
+    per: ReadPermissionVal
+  });
 
-    const match = {
-      teamId,
-      datasetId: collection.datasetId._id,
-      collectionId,
-      ...(searchText
-        ? {
-            $or: [{ q: new RegExp(searchText, 'i') }, { a: new RegExp(searchText, 'i') }]
-          }
-        : {})
-    };
+  const queryReg = new RegExp(`${replaceRegChars(searchText)}`, 'i');
+  const match = {
+    teamId,
+    datasetId: collection.datasetId._id,
+    collectionId,
+    ...(searchText.trim()
+      ? {
+          $or: [{ q: queryReg }, { a: queryReg }]
+        }
+      : {})
+  };
 
-    const [data, total] = await Promise.all([
-      MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex')
-        .sort({ chunkIndex: 1, updateTime: -1 })
-        .skip((pageNum - 1) * pageSize)
-        .limit(pageSize)
-        .lean(),
-      MongoDatasetData.countDocuments(match)
-    ]);
+  const [data, total] = await Promise.all([
+    MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex')
+      .sort({ chunkIndex: 1, updateTime: -1 })
+      .skip((pageNum - 1) * pageSize)
+      .limit(pageSize)
+      .lean(),
+    MongoDatasetData.countDocuments(match)
+  ]);
 
-    jsonRes<PagingData<DatasetDataListItemType>>(res, {
-      data: {
-        pageNum,
-        pageSize,
-        data,
-        total
-      }
-    });
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
-  }
+  return {
+    pageNum,
+    pageSize,
+    data,
+    total
+  };
 }
+
+export default NextAPI(handler);

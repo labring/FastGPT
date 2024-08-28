@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import {
   Box,
   Flex,
@@ -8,7 +8,7 @@ import {
   Textarea,
   ModalFooter,
   ModalBody,
-  Image
+  useDisclosure
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
@@ -16,31 +16,41 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import Avatar from '@/components/Avatar';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
-import PermissionRadio from '@/components/support/permission/Radio';
 import { useTranslation } from 'next-i18next';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
+import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
+import {
+  postUpdateAppCollaborators,
+  deleteAppCollaborators,
+  getCollaboratorList
+} from '@/web/core/app/api/collaborator';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pages/app/detail/components/context';
+import {
+  AppDefaultPermissionVal,
+  AppPermissionList
+} from '@fastgpt/global/support/permission/app/constant';
+import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
+import { resumeInheritPer } from '@/web/core/app/api';
+import { useI18n } from '@/web/context/I18n';
+import ResumeInherit from '@/components/support/permission/ResumeInheritText';
 
-const InfoModal = ({
-  defaultApp,
-  onClose,
-  onSuccess
-}: {
-  defaultApp: AppSchema;
-  onClose: () => void;
-  onSuccess?: () => void;
-}) => {
+const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
+  const { commonT } = useI18n();
   const { toast } = useToast();
-  const { updateAppDetail } = useAppStore();
+  const { updateAppDetail, appDetail, reloadApp } = useContextSelector(AppContext, (v) => v);
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
     multiple: false
   });
+
   const {
     register,
     setValue,
@@ -48,35 +58,37 @@ const InfoModal = ({
     formState: { errors },
     handleSubmit
   } = useForm({
-    defaultValues: defaultApp
+    defaultValues: appDetail
   });
-  const [refresh, setRefresh] = useState(false);
+  const avatar = getValues('avatar');
+  const name = getValues('name');
 
   // submit config
-  const { mutate: saveSubmitSuccess, isLoading: btnLoading } = useRequest({
-    mutationFn: async (data: AppSchema) => {
-      await updateAppDetail(data._id, {
+  const { runAsync: saveSubmitSuccess, loading: btnLoading } = useRequest2(
+    async (data: AppSchema) => {
+      await updateAppDetail({
         name: data.name,
         avatar: data.avatar,
         intro: data.intro,
-        permission: data.permission
+        defaultPermission: data.defaultPermission
       });
     },
-    onSuccess() {
-      onSuccess && onSuccess();
-      onClose();
-      toast({
-        title: t('common.Update Success'),
-        status: 'success'
-      });
-    },
-    errorToast: t('common.Update Failed')
-  });
+    {
+      onSuccess() {
+        toast({
+          title: t('common:common.Update Success'),
+          status: 'success'
+        });
+        reloadApp();
+      },
+      errorToast: t('common:common.Update Failed')
+    }
+  );
 
   const saveSubmitError = useCallback(() => {
     // deep search message
     const deepSearch = (obj: any): string => {
-      if (!obj) return t('common.Submit failed');
+      if (!obj) return t('common:common.Submit failed');
       if (!!obj.message) {
         return obj.message;
       }
@@ -91,8 +103,8 @@ const InfoModal = ({
   }, [errors, t, toast]);
 
   const saveUpdateModel = useCallback(
-    () => handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)(),
-    [handleSubmit, saveSubmitError, saveSubmitSuccess]
+    () => handleSubmit((data) => saveSubmitSuccess(data).then(onClose), saveSubmitError)(),
+    [handleSubmit, onClose, saveSubmitError, saveSubmitSuccess]
   );
 
   const onSelectFile = useCallback(
@@ -107,10 +119,9 @@ const InfoModal = ({
           maxH: 300
         });
         setValue('avatar', src);
-        setRefresh((state) => !state);
       } catch (err: any) {
         toast({
-          title: getErrText(err, t('common.error.Select avatar failed')),
+          title: getErrText(err, t('common:common.error.Select avatar failed')),
           status: 'warning'
         });
       }
@@ -118,67 +129,151 @@ const InfoModal = ({
     [setValue, t, toast]
   );
 
+  const onUpdateCollaborators = async ({ tmbIds, permission }: UpdateClbPermissionProps) => {
+    await postUpdateAppCollaborators({
+      tmbIds,
+      permission,
+      appId: appDetail._id
+    });
+  };
+
+  const onDelCollaborator = async (tmbId: string) => {
+    await deleteAppCollaborators({
+      appId: appDetail._id,
+      tmbId
+    });
+  };
+
+  const { runAsync: resumeInheritPermission } = useRequest2(
+    () => resumeInheritPer(appDetail._id),
+    // () => putAppById(appDetail._id, { inheritPermission: true }),
+    {
+      errorToast: t('common:resume_failed'),
+      onSuccess: () => {
+        reloadApp();
+      }
+    }
+  );
+
   return (
     <MyModal
       isOpen={true}
       onClose={onClose}
-      iconSrc="/imgs/module/ai.svg"
-      title={t('core.app.setting')}
+      iconSrc="/imgs/workflow/ai.svg"
+      title={t('common:core.app.setting')}
     >
       <ModalBody>
-        <Box>{t('core.app.Name and avatar')}</Box>
+        <Box fontSize={'sm'}>{t('common:core.app.Name and avatar')}</Box>
         <Flex mt={2} alignItems={'center'}>
           <Avatar
-            src={getValues('avatar')}
+            src={avatar}
             w={['26px', '34px']}
             h={['26px', '34px']}
             cursor={'pointer'}
             borderRadius={'md'}
             mr={4}
-            title={t('common.Set Avatar')}
+            title={t('common:common.Set Avatar')}
             onClick={() => onOpenSelectFile()}
           />
           <FormControl>
             <Input
               bg={'myWhite.600'}
-              placeholder={t('core.app.Set a name for your app')}
+              placeholder={t('common:core.app.Set a name for your app')}
               {...register('name', {
                 required: true
               })}
             ></Input>
           </FormControl>
         </Flex>
-        <Box mt={4} mb={1}>
-          {t('core.app.App intro')}
+        <Box mt={4} mb={1} fontSize={'sm'}>
+          {t('common:core.app.App intro')}
         </Box>
-        {/* <Box color={'myGray.500'} mb={2} fontSize={'sm'}>
-            该介绍主要用于记忆和在应用市场展示
-          </Box> */}
         <Textarea
           rows={4}
           maxLength={500}
-          placeholder={t('core.app.Make a brief introduction of your app')}
+          placeholder={t('common:core.app.Make a brief introduction of your app')}
           bg={'myWhite.600'}
           {...register('intro')}
         />
-        <Box mt={4}>
-          <Box mb={1}>{t('user.Permission')}</Box>
-          <PermissionRadio
-            value={getValues('permission')}
-            onChange={(e) => {
-              setValue('permission', e);
-              setRefresh(!refresh);
-            }}
-          />
-        </Box>
+
+        {/* role */}
+        {appDetail.permission.hasManagePer && (
+          <>
+            {!appDetail.inheritPermission && appDetail.parentId && (
+              <Box mt={3}>
+                <ResumeInherit onResume={resumeInheritPermission} />
+              </Box>
+            )}
+            <Box mt="4">
+              <Box fontSize={'sm'}>{t('common:permission.Default permission')}</Box>
+              <DefaultPermissionList
+                mt="2"
+                per={appDetail.defaultPermission}
+                defaultPer={AppDefaultPermissionVal}
+                isInheritPermission={appDetail.inheritPermission}
+                onChange={(v) => {
+                  setValue('defaultPermission', v);
+                  return handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)();
+                }}
+                hasParent={!!appDetail.parentId}
+              />
+            </Box>
+            <Box mt={6}>
+              <CollaboratorContextProvider
+                permission={appDetail.permission}
+                onGetCollaboratorList={() => getCollaboratorList(appDetail._id)}
+                permissionList={AppPermissionList}
+                onUpdateCollaborators={onUpdateCollaborators}
+                onDelOneCollaborator={onDelCollaborator}
+                refreshDeps={[appDetail.inheritPermission]}
+                isInheritPermission={appDetail.inheritPermission}
+                hasParent={!!appDetail.parentId}
+              >
+                {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
+                  return (
+                    <>
+                      <Flex
+                        alignItems="center"
+                        flexDirection="row"
+                        justifyContent="space-between"
+                        w="full"
+                      >
+                        <Box fontSize={'sm'}>{commonT('permission.Collaborator')}</Box>
+                        <Flex flexDirection="row" gap="2">
+                          <Button
+                            size="sm"
+                            variant="whitePrimary"
+                            leftIcon={<MyIcon w="4" name="common/settingLight" />}
+                            onClick={onOpenManageModal}
+                          >
+                            {t('common:permission.Manage')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="whitePrimary"
+                            leftIcon={<MyIcon w="4" name="support/permission/collaborator" />}
+                            onClick={onOpenAddMember}
+                          >
+                            {t('common:common.Add')}
+                          </Button>
+                        </Flex>
+                      </Flex>
+                      <MemberListCard mt={2} p={1.5} bg="myGray.100" borderRadius="md" />
+                    </>
+                  );
+                }}
+              </CollaboratorContextProvider>
+            </Box>
+          </>
+        )}
       </ModalBody>
 
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common.Close')}
+          {t('common:common.Close')}
         </Button>
         <Button isLoading={btnLoading} onClick={saveUpdateModel}>
-          {t('common.Save')}
+          {t('common:common.Save')}
         </Button>
       </ModalFooter>
 

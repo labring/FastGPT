@@ -1,5 +1,6 @@
 @import './reactflow.scss';
 @import './default.scss';
+@import './chakraui.scss';
 
 body,
 h1,
@@ -57,7 +58,7 @@ div {
 
 input::placeholder,
 textarea::placeholder {
-  font-size: 0.85em;
+  font-size: var(--chakra-fontSizes-mini);
 }
 
 * {

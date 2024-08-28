@@ -1,18 +1,26 @@
 /* vector crud */
-import { PgVector } from './pg/class';
+import { PgVectorCtrl } from './pg/class';
 import { getVectorsByText } from '../../core/ai/embedding';
 import { InsertVectorProps } from './controller.d';
 import { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { MILVUS_ADDRESS, PG_ADDRESS } from './constants';
+import { MilvusCtrl } from './milvus/class';
 
 const getVectorObj = () => {
-  return new PgVector();
+  if (PG_ADDRESS) return new PgVectorCtrl();
+  if (MILVUS_ADDRESS) return new MilvusCtrl();
+
+  return new PgVectorCtrl();
 };
 
-export const initVectorStore = getVectorObj().init;
-export const deleteDatasetDataVector = getVectorObj().delete;
-export const recallFromVectorStore = getVectorObj().recall;
-export const getVectorDataByTime = getVectorObj().getVectorDataByTime;
-export const getVectorCountByTeamId = getVectorObj().getVectorCountByTeamId;
+const Vector = getVectorObj();
+
+export const initVectorStore = Vector.init;
+export const deleteDatasetDataVector = Vector.delete;
+export const recallFromVectorStore = Vector.embRecall;
+export const getVectorDataByTime = Vector.getVectorDataByTime;
+export const getVectorCountByTeamId = Vector.getVectorCountByTeamId;
+export const getVectorCountByDatasetId = Vector.getVectorCountByDatasetId;
 
 export const insertDatasetDataVector = async ({
   model,
@@ -27,9 +35,9 @@ export const insertDatasetDataVector = async ({
     input: query,
     type: 'db'
   });
-  const { insertId } = await getVectorObj().insert({
+  const { insertId } = await Vector.insert({
     ...props,
-    vectors
+    vector: vectors[0]
   });
 
   return {

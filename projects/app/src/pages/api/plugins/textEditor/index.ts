@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+//@ts-ignore
 import type { HttpBodyType } from '@fastgpt/global/core/module/api.d';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';

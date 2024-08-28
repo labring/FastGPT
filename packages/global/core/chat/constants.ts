@@ -1,3 +1,5 @@
+import { i18nT } from '../../../web/i18n/utils';
+
 export enum ChatRoleEnum {
   System = 'System',
   Human = 'Human',
@@ -22,7 +24,8 @@ export enum ChatFileTypeEnum {
 export enum ChatItemValueTypeEnum {
   text = 'text',
   file = 'file',
-  tool = 'tool'
+  tool = 'tool',
+  interactive = 'interactive'
 }
 
 export enum ChatSourceEnum {
@@ -30,23 +33,36 @@ export enum ChatSourceEnum {
   online = 'online',
   share = 'share',
   api = 'api',
-  team = 'team'
+  team = 'team',
+  feishu = 'feishu',
+  official_account = 'official_account',
+  wecom = 'wecom'
 }
+
 export const ChatSourceMap = {
   [ChatSourceEnum.test]: {
-    name: 'core.chat.logs.test'
+    name: i18nT('common:core.chat.logs.test')
   },
   [ChatSourceEnum.online]: {
-    name: 'core.chat.logs.online'
+    name: i18nT('common:core.chat.logs.online')
   },
   [ChatSourceEnum.share]: {
-    name: 'core.chat.logs.share'
+    name: i18nT('common:core.chat.logs.share')
   },
   [ChatSourceEnum.api]: {
-    name: 'core.chat.logs.api'
+    name: i18nT('common:core.chat.logs.api')
   },
   [ChatSourceEnum.team]: {
-    name: 'core.chat.logs.team'
+    name: i18nT('common:core.chat.logs.team')
+  },
+  [ChatSourceEnum.feishu]: {
+    name: i18nT('common:core.chat.logs.feishu')
+  },
+  [ChatSourceEnum.official_account]: {
+    name: i18nT('common:core.chat.logs.official_account')
+  },
+  [ChatSourceEnum.wecom]: {
+    name: i18nT('common:core.chat.logs.wecom')
   }
 };
 
@@ -55,8 +71,5 @@ export enum ChatStatusEnum {
   running = 'running',
   finish = 'finish'
 }
-
-export const IMG_BLOCK_KEY = 'img-block';
-export const FILE_BLOCK_KEY = 'file-block';
 
 export const MARKDOWN_QUOTE_SIGN = 'QUOTE SIGN';

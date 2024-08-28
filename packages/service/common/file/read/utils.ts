@@ -2,80 +2,137 @@ import { markdownProcess } from '@fastgpt/global/common/string/markdown';
 import { uploadMongoImg } from '../image/controller';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { addHours } from 'date-fns';
-import { ReadFileByBufferParams } from './type';
-import { readFileRawText } from '../read/rawText';
-import { readMarkdown } from '../read/markdown';
-import { readHtmlRawText } from '../read/html';
-import { readPdfFile } from '../read/pdf';
-import { readWordFile } from '../read/word';
-import { readCsvRawText } from '../read/csv';
-import { readPptxRawText } from '../read/pptx';
-import { readXlsxRawText } from '../read/xlsx';
+import FormData from 'form-data';
 
-export const initMarkdownText = ({
-  teamId,
-  md,
-  metadata
-}: {
-  md: string;
+import { WorkerNameEnum, runWorker } from '../../../worker/utils';
+import fs from 'fs';
+import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
+import type { ReadFileResponse } from '../../../worker/readFile/type';
+import axios from 'axios';
+import { addLog } from '../../system/log';
+
+export type readRawTextByLocalFileParams = {
   teamId: string;
+  path: string;
   metadata?: Record<string, any>;
-}) =>
-  markdownProcess({
-    rawText: md,
-    uploadImgController: (base64Img) =>
-      uploadMongoImg({
-        type: MongoImageTypeEnum.collectionImage,
-        base64Img,
-        teamId,
-        metadata,
-        expiredTime: addHours(new Date(), 2)
-      })
+};
+export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParams) => {
+  const { path } = params;
+
+  const extension = path?.split('.')?.pop()?.toLowerCase() || '';
+
+  const buffer = fs.readFileSync(path);
+  const encoding = detectFileEncoding(buffer);
+
+  const { rawText } = await readRawContentByFileBuffer({
+    extension,
+    isQAImport: false,
+    teamId: params.teamId,
+    encoding,
+    buffer,
+    metadata: params.metadata
   });
 
-export const readFileRawContent = async ({
+  return {
+    rawText
+  };
+};
+
+export const readRawContentByFileBuffer = async ({
   extension,
-  csvFormat,
-  params
+  isQAImport,
+  teamId,
+  buffer,
+  encoding,
+  metadata
 }: {
-  csvFormat?: boolean;
+  isQAImport?: boolean;
   extension: string;
-  params: ReadFileByBufferParams;
+  teamId: string;
+  buffer: Buffer;
+  encoding: string;
+  metadata?: Record<string, any>;
 }) => {
-  switch (extension) {
-    case 'txt':
-      return readFileRawText(params);
-    case 'md':
-      return readMarkdown(params);
-    case 'html':
-      return readHtmlRawText(params);
-    case 'pdf':
-      return readPdfFile(params);
-    case 'docx':
-      return readWordFile(params);
-    case 'pptx':
-      return readPptxRawText(params);
-    case 'xlsx':
-      const xlsxResult = await readXlsxRawText(params);
-      if (csvFormat) {
-        return {
-          rawText: xlsxResult.formatText || ''
-        };
-      }
-      return {
-        rawText: xlsxResult.rawText
+  // Upload image in markdown
+  const matchMdImgTextAndUpload = ({ teamId, md }: { md: string; teamId: string }) =>
+    markdownProcess({
+      rawText: md,
+      uploadImgController: (base64Img) =>
+        uploadMongoImg({
+          type: MongoImageTypeEnum.collectionImage,
+          base64Img,
+          teamId,
+          metadata,
+          expiredTime: addHours(new Date(), 1)
+        })
+    });
+
+  /* If */
+  const customReadfileUrl = process.env.CUSTOM_READ_FILE_URL;
+  const customReadFileExtension = process.env.CUSTOM_READ_FILE_EXTENSION || '';
+  const ocrParse = process.env.CUSTOM_READ_FILE_OCR || 'false';
+  const readFileFromCustomService = async (): Promise<ReadFileResponse | undefined> => {
+    if (
+      !customReadfileUrl ||
+      !customReadFileExtension ||
+      !customReadFileExtension.includes(extension)
+    )
+      return;
+
+    addLog.info('Use custom read file service');
+
+    const data = new FormData();
+    data.append('file', buffer, {
+      filename: `file.${extension}`
+    });
+    data.append('extension', extension);
+    data.append('ocr', ocrParse);
+    const { data: response } = await axios.post<{
+      success: boolean;
+      message: string;
+      data: {
+        page: number;
+        markdown: string;
       };
-    case 'csv':
-      const csvResult = await readCsvRawText(params);
-      if (csvFormat) {
-        return {
-          rawText: csvResult.formatText || ''
-        };
+    }>(customReadfileUrl, data, {
+      timeout: 600000,
+      headers: {
+        ...data.getHeaders()
       }
-      return {
-        rawText: csvResult.rawText
-      };
-    default:
-      return Promise.reject('Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx');
+    });
+
+    const rawText = response.data.markdown;
+
+    return {
+      rawText,
+      formatText: rawText
+    };
+  };
+
+  let { rawText, formatText } =
+    (await readFileFromCustomService()) ||
+    (await runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
+      extension,
+      encoding,
+      buffer
+    }));
+
+  // markdown data format
+  if (['md', 'html', 'docx', ...customReadFileExtension.split(',')].includes(extension)) {
+    rawText = await matchMdImgTextAndUpload({
+      teamId: teamId,
+      md: rawText
+    });
   }
+
+  if (['csv', 'xlsx'].includes(extension)) {
+    // qa data
+    if (isQAImport) {
+      rawText = rawText || '';
+    } else {
+      rawText = formatText || '';
+    }
+  }
+
+  return { rawText };
 };

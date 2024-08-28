@@ -44,6 +44,7 @@ export enum BillPayWayEnum {
   balance = 'balance',
   wx = 'wx'
 }
+
 export const billPayWayMap = {
   [BillPayWayEnum.balance]: {
     label: 'support.wallet.bill.payWay.balance'

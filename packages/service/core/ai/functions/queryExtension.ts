@@ -1,7 +1,7 @@
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getAIApi } from '../config';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
-import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
+import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 
@@ -10,12 +10,15 @@ import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
     可以根据上下文，消除指代性问题以及扩展问题，利于检索。
 */
 
-const defaultPrompt = `作为一个向量检索助手，你的任务是结合历史记录，从不同角度，为“原问题”生成个不同版本的“检索词”，从而提高向量检索的语义丰富度，提高向量检索的精度。生成的问题要求指向对象清晰明确，并与“原问题语言相同”。例如：
+const defaultPrompt = `作为一个向量检索助手，你的任务是结合历史记录，从不同角度，为“原问题”生成个不同版本的“检索词”，从而提高向量检索的语义丰富度，提高向量检索的精度。生成的问题要求指向对象清晰明确，并与“原问题语言相同”。
+参考 <Example></Example> 标中的示例来完成任务。
+
+<Example>
 历史记录: 
 """
 """
 原问题: 介绍下剧情。
-检索词: ["介绍下故事的背景和主要人物。","故事的主题是什么？","剧情是是如何发展的？"]
+检索词: ["介绍下故事的背景。","故事的主题是什么？","介绍下故事的主要人物。"]
 ----------------
 历史记录: 
 """
@@ -41,7 +44,7 @@ Q: 护产假多少天?
 A: 护产假的天数根据员工所在的城市而定。请提供您所在的城市，以便我回答您的问题。
 """
 原问题: 沈阳
-检索词: ["沈阳的护产假多少天？"]
+检索词: ["沈阳的护产假多少天？","沈阳的护产假政策。","沈阳的护产假标准。"]
 ----------------
 历史记录: 
 """
@@ -65,7 +68,7 @@ Q: FastGPT 如何收费？
 A: FastGPT 收费可以参考……
 """
 原问题: 你知道 laf 么？
-检索词: ["laf是什么？","如何使用laf？","laf的介绍。"]
+检索词: ["laf 的官网地址是多少？","laf 的使用教程。","laf 有什么特点和优势。"]
 ----------------
 历史记录:
 """
@@ -75,7 +78,7 @@ A: 1. 开源
    3. 扩展性强
 """
 原问题: 介绍下第2点。
-检索词: ["介绍下 FastGPT 简便的优势", "FastGPT 为什么使用起来简便？","FastGPT的有哪些简便的功能？"]。
+检索词: ["介绍下 FastGPT 简便的优势", "从哪些方面，可以体现出 FastGPT 的简便"]。
 ----------------
 历史记录:
 """
@@ -85,8 +88,12 @@ Q: 什么是 Laf？
 A: Laf 是一个云函数开发平台。
 """
 原问题: 它们有什么关系？
-检索词: ["FastGPT和Laf有什么关系？","FastGPT的RAG是用Laf实现的么？"]
+检索词: ["FastGPT和Laf有什么关系？","介绍下FastGPT","介绍下Laf"]
+</Example>
+
 ----------------
+下面是正式的任务：
+
 历史记录:
 """
 {{histories}}
@@ -163,7 +170,7 @@ A: ${chatBg}
       rawQuery: query,
       extensionQueries: Array.isArray(queries) ? queries : [],
       model,
-      tokens: countGptMessagesTokens(messages)
+      tokens: await countGptMessagesTokens(messages)
     };
   } catch (error) {
     console.log(error);

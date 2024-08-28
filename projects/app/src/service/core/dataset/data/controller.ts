@@ -11,6 +11,7 @@ import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/con
 import { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { ClientSession } from '@fastgpt/service/common/mongo';
 
 /* insert data.
  * 1. create data id
@@ -26,12 +27,13 @@ export async function insertData2Dataset({
   a = '',
   chunkIndex = 0,
   indexes,
-  model
+  model,
+  session
 }: CreateDatasetDataProps & {
   model: string;
+  session?: ClientSession;
 }) {
   if (!q || !datasetId || !collectionId || !model) {
-    console.log(q, a, datasetId, collectionId, model);
     return Promise.reject('q, datasetId, collectionId, model is required');
   }
   if (String(teamId) === String(tmbId)) {
@@ -52,6 +54,12 @@ export async function insertData2Dataset({
 
   if (!indexes.find((index) => index.defaultIndex)) {
     indexes.unshift(getDefaultIndex({ q, a }));
+  } else if (q && a && !indexes.find((index) => index.text === q)) {
+    // push a q index
+    indexes.push({
+      defaultIndex: false,
+      text: q
+    });
   }
 
   indexes = indexes.slice(0, 6);
@@ -70,20 +78,25 @@ export async function insertData2Dataset({
   );
 
   // create mongo data
-  const { _id } = await MongoDatasetData.create({
-    teamId,
-    tmbId,
-    datasetId,
-    collectionId,
-    q,
-    a,
-    fullTextToken: jiebaSplit({ text: qaStr }),
-    chunkIndex,
-    indexes: indexes?.map((item, i) => ({
-      ...item,
-      dataId: result[i].insertId
-    }))
-  });
+  const [{ _id }] = await MongoDatasetData.create(
+    [
+      {
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        q,
+        a,
+        fullTextToken: jiebaSplit({ text: qaStr }),
+        chunkIndex,
+        indexes: indexes?.map((item, i) => ({
+          ...item,
+          dataId: result[i].insertId
+        }))
+      }
+    ],
+    { session }
+  );
 
   return {
     insertId: _id,
@@ -101,7 +114,7 @@ export async function insertData2Dataset({
  */
 export async function updateData2Dataset({
   dataId,
-  q,
+  q = '',
   a,
   indexes,
   model

@@ -1,5 +1,5 @@
 import React, { Dispatch } from 'react';
-import { LoginPageTypeEnum } from '@/constants/user';
+import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import type { ResLogin } from '@/global/support/api/userRes';
 import { Box, Center, Image } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
@@ -24,7 +24,7 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
     onError(err) {
       toast({
         status: 'warning',
-        title: getErrText(err, '获取二维码失败')
+        title: getErrText(err, t('common:get_QR_failed'))
       });
     }
   });
@@ -41,7 +41,7 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
     <FormLayout setPageType={setPageType} pageType={LoginPageTypeEnum.wechat}>
       <Box>
         <Box w={'full'} textAlign={'center'} pt={5}>
-          {t('support.user.login.Wx qr login')}
+          {t('common:support.user.login.wx_qr_login')}
         </Box>
         <Box p={5} display={'flex'} w={'full'} justifyContent={'center'}>
           {wechatInfo?.codeUrl ? (

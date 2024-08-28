@@ -55,7 +55,7 @@ const LafAccountModal = ({
       const token = await postLafPat2Token(pat);
       setValue('token', token);
     },
-    errorToast: t('plugin.Invalid Env')
+    errorToast: t('common:plugin.Invalid Env')
   });
 
   const { data: appListData = [] } = useQuery(
@@ -67,13 +67,13 @@ const LafAccountModal = ({
       enabled: !!lafToken,
       onSuccess: (data) => {
         if (!getValues('appid') && data.length > 0) {
-          setValue('appid', data[0].appid);
+          setValue('appid', data.filter((app) => app.state === 'Running')[0]?.appid);
         }
       },
       onError: (err) => {
         onResetForm();
         toast({
-          title: getErrText(err, '获取应用列表失败'),
+          title: getErrText(err, t('common:get_app_failed')),
           status: 'error'
         });
       }
@@ -84,7 +84,6 @@ const LafAccountModal = ({
     mutationFn: async (data: LafAccountType) => {
       if (!userInfo?.team.teamId) return;
       return putUpdateTeam({
-        teamId: userInfo?.team.teamId,
         lafAccount: data
       });
     },
@@ -92,23 +91,25 @@ const LafAccountModal = ({
       initUserInfo();
       onClose();
     },
-    successToast: t('common.Update Success'),
-    errorToast: t('common.Update Failed')
+    successToast: t('common:common.Update Success'),
+    errorToast: t('common:common.Update Failed')
   });
 
   return (
-    <MyModal isOpen iconSrc="/imgs/module/laf.png" title={t('user.Laf Account Setting')}>
+    <MyModal isOpen iconSrc="/imgs/workflow/laf.png" title={t('common:user.Laf Account Setting')}>
       <ModalBody>
         <Box fontSize={'sm'} color={'myGray.500'}>
-          <Box>{t('support.user.Laf account intro')}</Box>
+          <Box>{t('common:support.user.Laf account intro')}</Box>
           <Box textDecoration={'underline'}>
             <Link href={getDocPath('/docs/workflow/modules/laf/')} isExternal>
-              {t('support.user.Laf account course')}
+              {t('common:support.user.Laf account course')}
             </Link>
           </Box>
           <Box>
             <Link textDecoration={'underline'} href={`${feConfigs.lafEnv}/`} isExternal>
-              {t('support.user.Go laf env')}
+              {t('support.user.Go laf env', {
+                env: feConfigs.lafEnv?.split('//')[1]
+              })}
             </Link>
           </Box>
         </Box>
@@ -120,7 +121,7 @@ const LafAccountModal = ({
                 flex={'1 0 0'}
                 size={'sm'}
                 {...register('pat')}
-                placeholder={t('plugin.Enter PAT')}
+                placeholder={t('common:plugin.Enter PAT')}
               />
               <Button
                 ml={2}
@@ -131,7 +132,7 @@ const LafAccountModal = ({
                 }}
                 isLoading={isPatLoading}
               >
-                验证
+                {t('common:verification')}
               </Button>
             </>
           ) : (
@@ -140,18 +141,17 @@ const LafAccountModal = ({
               onClick={() => {
                 onResetForm();
                 putUpdateTeam({
-                  teamId: userInfo?.team.teamId || '',
                   lafAccount: { token: '', appid: '', pat: '' }
                 });
               }}
             >
-              已验证，点击取消绑定
+              {t('common:has_verification')}
             </Button>
           )}
         </Flex>
         {!!lafToken && (
           <Flex alignItems={'center'} mt={5}>
-            <Box flex={'0 0 70px'}>{t('plugin.Currentapp')}</Box>
+            <Box flex={'0 0 70px'}>{t('common:plugin.Currentapp')}</Box>
             <MySelect
               minW={'200px'}
               list={
@@ -162,7 +162,7 @@ const LafAccountModal = ({
                     value: app.appid
                   })) || []
               }
-              placeholder={t('plugin.App')}
+              placeholder={t('common:plugin.App')}
               value={watch('appid')}
               onchange={(e) => {
                 setValue('appid', e);
@@ -173,12 +173,18 @@ const LafAccountModal = ({
         )}
       </ModalBody>
       <ModalFooter>
-        <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common.Close')}
+        <Button
+          variant={'whiteBase'}
+          onClick={() => {
+            initUserInfo();
+            onClose();
+          }}
+        >
+          {t('common:common.Close')}
         </Button>
         {appid && (
           <Button ml={3} isLoading={isUpdating} onClick={handleSubmit((data) => onSubmit(data))}>
-            {t('common.Update')}
+            {t('common:common.Update')}
           </Button>
         )}
       </ModalFooter>

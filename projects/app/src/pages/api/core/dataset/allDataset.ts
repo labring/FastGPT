@@ -1,45 +1,71 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
+import type { NextApiRequest } from 'next';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getVectorModel } from '@fastgpt/service/core/ai/model';
-import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
-import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
-import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
+import type { DatasetSimpleItemType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { NextAPI } from '@/service/middleware/entry';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 
 /* get all dataset by teamId or tmbId */
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  try {
-    await connectToDatabase();
-    // 凭证校验
-    const { teamId, tmbId, teamOwner, role } = await authUserRole({ req, authToken: true });
+async function handler(req: NextApiRequest): Promise<DatasetSimpleItemType[]> {
+  const {
+    teamId,
+    tmbId,
+    permission: tmbPer
+  } = await authUserPer({
+    req,
+    authToken: true,
+    authApiKey: true,
+    per: ReadPermissionVal
+  });
 
-    const datasets = await MongoDataset.find({
-      ...mongoRPermission({ teamId, tmbId, role }),
-      type: { $ne: DatasetTypeEnum.folder }
-    }).lean();
+  const [myDatasets, rpList] = await Promise.all([
+    MongoDataset.find({
+      teamId,
+      type: {
+        $ne: DatasetTypeEnum.folder
+      }
+    })
+      .sort({
+        updateTime: -1
+      })
+      .lean(),
+    MongoResourcePermission.find({
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId,
+      tmbId
+    }).lean()
+  ]);
 
-    const data = datasets.map((item) => ({
-      _id: item._id,
-      parentId: item.parentId,
-      avatar: item.avatar,
-      name: item.name,
-      intro: item.intro,
-      type: item.type,
-      permission: item.permission,
-      vectorModel: getVectorModel(item.vectorModel),
-      canWrite: String(item.tmbId) === tmbId,
-      isOwner: teamOwner || String(item.tmbId) === tmbId
-    }));
+  const filterDatasets = myDatasets
+    .map((dataset) => {
+      const perVal = rpList.find(
+        (item) => String(item.resourceId) === String(dataset._id)
+      )?.permission;
+      const Per = new DatasetPermission({
+        per: perVal ?? dataset.defaultPermission,
+        isOwner: String(dataset.tmbId) === tmbId || tmbPer.isOwner
+      });
 
-    jsonRes<DatasetListItemType[]>(res, {
-      data
-    });
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
-  }
+      return {
+        ...dataset,
+        permission: Per
+      };
+    })
+    .filter((app) => app.permission.hasReadPer);
+
+  return filterDatasets.map((item) => ({
+    _id: item._id,
+    avatar: item.avatar,
+    name: item.name,
+    vectorModel: getVectorModel(item.vectorModel)
+  }));
 }
+
+export default NextAPI(handler);

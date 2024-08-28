@@ -1,0 +1,17 @@
+{
+  "author": "",
+  "version": "489",
+  "name": "文本加工",
+  "avatar": "/imgs/workflow/textEditor.svg",
+  "intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。",
+  "showStatus": false,
+  "weight": 10,
+
+  "isTool": true,
+  "templateType": "tools",
+
+  "workflow": {
+    "nodes": [],
+    "edges": []
+  }
+}

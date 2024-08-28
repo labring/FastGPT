@@ -12,12 +12,17 @@ import {
   DatasetDataWithCollectionType,
   SearchDataResponseItemType
 } from '@fastgpt/global/core/dataset/type';
-import { MongoDatasetCollection } from '../collection/schema';
+import { DatasetColCollectionName, MongoDatasetCollection } from '../collection/schema';
 import { reRankRecall } from '../../../core/ai/rerank';
-import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
+import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { datasetSearchResultConcat } from '@fastgpt/global/core/dataset/search/utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { jiebaSplit } from '../../../common/string/jieba';
+import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
+import { Types } from '../../../common/mongo';
+import json5 from 'json5';
+import { MongoDatasetCollectionTags } from '../tag/schema';
+import { readFromSecondary } from '../../../common/mongo/utils';
 
 type SearchDatasetDataProps = {
   teamId: string;
@@ -29,6 +34,20 @@ type SearchDatasetDataProps = {
   usingReRank?: boolean;
   reRankQuery: string;
   queries: string[];
+
+  /* 
+    {
+      tags: {
+        $and: ["str1","str2"],
+        $or: ["str1","str2",null] null means no tags
+      },
+      createTime: {
+        $gte: 'xx',
+        $lte: 'xxx'
+      }
+    }
+  */
+  collectionFilterMatch?: string;
 };
 
 export async function searchDatasetData(props: SearchDatasetDataProps) {
@@ -41,7 +60,8 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     limit: maxTokens,
     searchMode = DatasetSearchModeEnum.embedding,
     usingReRank = false,
-    datasetIds = []
+    datasetIds = [],
+    collectionFilterMatch
   } = props;
 
   /* init params */
@@ -49,9 +69,6 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   usingReRank = usingReRank && global.reRankModels.length > 0;
 
   // Compatible with topk limit
-  if (maxTokens < 50) {
-    maxTokens = 1500;
-  }
   let set = new Set<string>();
   let usingSimilarityFilter = false;
 
@@ -59,22 +76,178 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   const countRecallLimit = () => {
     if (searchMode === DatasetSearchModeEnum.embedding) {
       return {
-        embeddingLimit: 150,
+        embeddingLimit: 100,
         fullTextLimit: 0
       };
     }
     if (searchMode === DatasetSearchModeEnum.fullTextRecall) {
       return {
         embeddingLimit: 0,
-        fullTextLimit: 150
+        fullTextLimit: 100
       };
     }
     return {
-      embeddingLimit: 100,
-      fullTextLimit: 80
+      embeddingLimit: 80,
+      fullTextLimit: 60
     };
   };
-  const embeddingRecall = async ({ query, limit }: { query: string; limit: number }) => {
+  const getForbidData = async () => {
+    const collections = await MongoDatasetCollection.find(
+      {
+        teamId,
+        datasetId: { $in: datasetIds },
+        forbid: true
+      },
+      '_id'
+    );
+
+    return {
+      forbidCollectionIdList: collections.map((item) => String(item._id))
+    };
+  };
+  /* 
+    Collection metadata filter
+    标签过滤：
+    1. and 先生效
+    2. and 标签和 null 不能共存，否则返回空数组
+  */
+  const filterCollectionByMetadata = async (): Promise<string[] | undefined> => {
+    if (!collectionFilterMatch || !global.feConfigs.isPlus) return;
+
+    let tagCollectionIdList: string[] | undefined = undefined;
+    let createTimeCollectionIdList: string[] | undefined = undefined;
+
+    try {
+      const jsonMatch = json5.parse(collectionFilterMatch);
+
+      // Tag
+      let andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
+      let orTags = jsonMatch?.tags?.$or as (string | null)[] | undefined;
+
+      // get andTagIds
+      if (andTags && andTags.length > 0) {
+        // tag 去重
+        andTags = Array.from(new Set(andTags));
+
+        if (andTags.includes(null) && andTags.some((tag) => typeof tag === 'string')) {
+          return [];
+        }
+
+        if (andTags.every((tag) => typeof tag === 'string')) {
+          // Get tagId by tag string
+          const andTagIdList = await MongoDatasetCollectionTags.find(
+            {
+              teamId,
+              datasetId: { $in: datasetIds },
+              tag: { $in: andTags }
+            },
+            '_id',
+            {
+              ...readFromSecondary
+            }
+          ).lean();
+
+          // If you enter a tag that does not exist, none will be found
+          if (andTagIdList.length !== andTags.length) return [];
+
+          // Get collectionId by tagId
+          const collections = await MongoDatasetCollection.find(
+            {
+              teamId,
+              datasetId: { $in: datasetIds },
+              tags: { $all: andTagIdList.map((item) => String(item._id)) }
+            },
+            '_id',
+            {
+              ...readFromSecondary
+            }
+          ).lean();
+          tagCollectionIdList = collections.map((item) => String(item._id));
+        } else if (andTags.every((tag) => tag === null)) {
+          const collections = await MongoDatasetCollection.find(
+            {
+              teamId,
+              datasetId: { $in: datasetIds },
+              $or: [{ tags: { $size: 0 } }, { tags: { $exists: false } }]
+            },
+            '_id',
+            {
+              ...readFromSecondary
+            }
+          ).lean();
+          tagCollectionIdList = collections.map((item) => String(item._id));
+        }
+      } else if (orTags && orTags.length > 0) {
+        // Get tagId by tag string
+        const orTagArray = await MongoDatasetCollectionTags.find(
+          {
+            teamId,
+            datasetId: { $in: datasetIds },
+            tag: { $in: orTags.filter((tag) => tag !== null) }
+          },
+          '_id',
+          { ...readFromSecondary }
+        ).lean();
+        const orTagIds = orTagArray.map((item) => String(item._id));
+
+        // Get collections by tagId
+        const collections = await MongoDatasetCollection.find(
+          {
+            teamId,
+            datasetId: { $in: datasetIds },
+            $or: [
+              { tags: { $in: orTagIds } },
+              ...(orTags.includes(null) ? [{ tags: { $size: 0 } }] : [])
+            ]
+          },
+          '_id',
+          { ...readFromSecondary }
+        ).lean();
+
+        tagCollectionIdList = collections.map((item) => String(item._id));
+      }
+
+      // time
+      const getCreateTime = jsonMatch?.createTime?.$gte as string | undefined;
+      const lteCreateTime = jsonMatch?.createTime?.$lte as string | undefined;
+      if (getCreateTime || lteCreateTime) {
+        const collections = await MongoDatasetCollection.find(
+          {
+            teamId,
+            datasetId: { $in: datasetIds },
+            createTime: {
+              ...(getCreateTime && { $gte: new Date(getCreateTime) }),
+              ...(lteCreateTime && {
+                $lte: new Date(lteCreateTime)
+              })
+            }
+          },
+          '_id'
+        );
+        createTimeCollectionIdList = collections.map((item) => String(item._id));
+      }
+
+      // Concat tag and time
+      if (tagCollectionIdList && createTimeCollectionIdList) {
+        return tagCollectionIdList.filter((id) => createTimeCollectionIdList!.includes(id));
+      } else if (tagCollectionIdList) {
+        return tagCollectionIdList;
+      } else if (createTimeCollectionIdList) {
+        return createTimeCollectionIdList;
+      }
+    } catch (error) {}
+  };
+  const embeddingRecall = async ({
+    query,
+    limit,
+    forbidCollectionIdList,
+    filterCollectionIdList
+  }: {
+    query: string;
+    limit: number;
+    forbidCollectionIdList: string[];
+    filterCollectionIdList?: string[];
+  }) => {
     const { vectors, tokens } = await getVectorsByText({
       model: getVectorModel(model),
       input: query,
@@ -82,10 +255,12 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     });
 
     const { results } = await recallFromVectorStore({
-      vectors,
-      limit,
+      teamId,
       datasetIds,
-      efSearch: global.systemEnv?.pgHNSWEfSearch
+      vector: vectors[0],
+      limit,
+      forbidCollectionIdList,
+      filterCollectionIdList
     });
 
     // get q and a
@@ -93,12 +268,12 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       {
         teamId,
         datasetId: { $in: datasetIds },
-        collectionId: { $in: results.map((item) => item.collectionId) },
+        collectionId: { $in: Array.from(new Set(results.map((item) => item.collectionId))) },
         'indexes.dataId': { $in: results.map((item) => item.id?.trim()) }
       },
       'datasetId collectionId q a chunkIndex indexes'
     )
-      .populate('collectionId', 'name fileId rawLink')
+      .populate('collectionId', 'name fileId rawLink externalFileId externalFileUrl')
       .lean()) as DatasetDataWithCollectionType[];
 
     // add score to data(It's already sorted. The first one is the one with the most points)
@@ -117,27 +292,24 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
 
     concatResults.sort((a, b) => b.score - a.score);
 
-    const formatResult = concatResults
-      .map((data, index) => {
-        if (!data.collectionId) {
-          console.log('Collection is not found', data);
-        }
+    const formatResult = concatResults.map((data, index) => {
+      if (!data.collectionId) {
+        console.log('Collection is not found', data);
+      }
 
-        const result: SearchDataResponseItemType = {
-          id: String(data._id),
-          q: data.q,
-          a: data.a,
-          chunkIndex: data.chunkIndex,
-          datasetId: String(data.datasetId),
-          collectionId: String(data.collectionId?._id),
-          sourceName: data.collectionId?.name || '',
-          sourceId: data.collectionId?.fileId || data.collectionId?.rawLink,
-          score: [{ type: SearchScoreTypeEnum.embedding, value: data.score, index }]
-        };
+      const result: SearchDataResponseItemType = {
+        id: String(data._id),
+        q: data.q,
+        a: data.a,
+        chunkIndex: data.chunkIndex,
+        datasetId: String(data.datasetId),
+        collectionId: String(data.collectionId?._id),
+        ...getCollectionSourceData(data.collectionId),
+        score: [{ type: SearchScoreTypeEnum.embedding, value: data.score, index }]
+      };
 
-        return result;
-      })
-      .filter((item) => item !== null) as SearchDataResponseItemType[];
+      return result;
+    });
 
     return {
       embeddingRecallResults: formatResult,
@@ -146,10 +318,12 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   };
   const fullTextRecall = async ({
     query,
-    limit
+    limit,
+    filterCollectionIdList
   }: {
     query: string;
     limit: number;
+    filterCollectionIdList?: string[];
   }): Promise<{
     fullTextRecallResults: SearchDataResponseItemType[];
     tokenLen: number;
@@ -163,27 +337,73 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
 
     let searchResults = (
       await Promise.all(
-        datasetIds.map((id) =>
-          MongoDatasetData.find(
+        datasetIds.map(async (id) => {
+          return MongoDatasetData.aggregate([
             {
-              teamId,
-              datasetId: id,
-              $text: { $search: jiebaSplit({ text: query }) }
+              $match: {
+                teamId: new Types.ObjectId(teamId),
+                datasetId: new Types.ObjectId(id),
+                $text: { $search: jiebaSplit({ text: query }) },
+                ...(filterCollectionIdList && filterCollectionIdList.length > 0
+                  ? {
+                      collectionId: {
+                        $in: filterCollectionIdList.map((id) => new Types.ObjectId(id))
+                      }
+                    }
+                  : {})
+              }
             },
             {
-              score: { $meta: 'textScore' },
-              _id: 1,
-              datasetId: 1,
-              collectionId: 1,
-              q: 1,
-              a: 1,
-              chunkIndex: 1
+              $addFields: {
+                score: { $meta: 'textScore' }
+              }
+            },
+            {
+              $sort: {
+                score: { $meta: 'textScore' }
+              }
+            },
+            {
+              $limit: limit
+            },
+            {
+              $lookup: {
+                from: DatasetColCollectionName,
+                let: { collectionId: '$collectionId' },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: { $eq: ['$_id', '$$collectionId'] },
+                      forbid: { $eq: true } // 匹配被禁用的数据
+                    }
+                  },
+                  {
+                    $project: {
+                      _id: 1 // 只需要_id字段来确认匹配
+                    }
+                  }
+                ],
+                as: 'collection'
+              }
+            },
+            {
+              $match: {
+                collection: { $eq: [] } // 没有 forbid=true 的数据
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                datasetId: 1,
+                collectionId: 1,
+                q: 1,
+                a: 1,
+                chunkIndex: 1,
+                score: 1
+              }
             }
-          )
-            .sort({ score: { $meta: 'textScore' } })
-            .limit(limit)
-            .lean()
-        )
+          ]);
+        })
       )
     ).flat() as (DatasetDataSchemaType & { score: number })[];
 
@@ -205,8 +425,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
           id: String(item._id),
           datasetId: String(item.datasetId),
           collectionId: String(item.collectionId),
-          sourceName: collection?.name || '',
-          sourceId: collection?.fileId || collection?.rawLink,
+          ...getCollectionSourceData(collection),
           q: item.q,
           a: item.a,
           chunkIndex: item.chunkIndex,
@@ -258,24 +477,6 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       return [];
     }
   };
-  const filterResultsByMaxTokens = (list: SearchDataResponseItemType[], maxTokens: number) => {
-    const results: SearchDataResponseItemType[] = [];
-    let totalTokens = 0;
-
-    for (let i = 0; i < list.length; i++) {
-      const item = list[i];
-      totalTokens += countPromptTokens(item.q + item.a);
-      if (totalTokens > maxTokens + 500) {
-        break;
-      }
-      results.push(item);
-      if (totalTokens > maxTokens) {
-        break;
-      }
-    }
-
-    return results.length === 0 ? list.slice(0, 1) : results;
-  };
   const multiQueryRecall = async ({
     embeddingLimit,
     fullTextLimit
@@ -288,16 +489,24 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     const fullTextRecallResList: SearchDataResponseItemType[][] = [];
     let totalTokens = 0;
 
+    const [{ forbidCollectionIdList }, filterCollectionIdList] = await Promise.all([
+      getForbidData(),
+      filterCollectionByMetadata()
+    ]);
+
     await Promise.all(
       queries.map(async (query) => {
         const [{ tokens, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([
           embeddingRecall({
             query,
-            limit: embeddingLimit
+            limit: embeddingLimit,
+            forbidCollectionIdList,
+            filterCollectionIdList
           }),
           fullTextRecall({
             query,
-            limit: fullTextLimit
+            limit: fullTextLimit,
+            filterCollectionIdList
           })
         ]);
         totalTokens += tokens;
@@ -397,8 +606,35 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     return filterSameDataResults;
   })();
 
+  // token filter
+  const filterMaxTokensResult = await (async () => {
+    const tokensScoreFilter = await Promise.all(
+      scoreFilter.map(async (item) => ({
+        ...item,
+        tokens: await countPromptTokens(item.q + item.a)
+      }))
+    );
+
+    const results: SearchDataResponseItemType[] = [];
+    let totalTokens = 0;
+
+    for await (const item of tokensScoreFilter) {
+      totalTokens += item.tokens;
+
+      if (totalTokens > maxTokens + 500) {
+        break;
+      }
+      results.push(item);
+      if (totalTokens > maxTokens) {
+        break;
+      }
+    }
+
+    return results.length === 0 ? scoreFilter.slice(0, 1) : results;
+  })();
+
   return {
-    searchRes: filterResultsByMaxTokens(scoreFilter, maxTokens),
+    searchRes: filterMaxTokensResult,
     tokens,
     searchMode,
     limit: maxTokens,

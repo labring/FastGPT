@@ -1,4 +1,3 @@
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Flex } from '@chakra-ui/react';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import React, { useMemo } from 'react';
@@ -14,7 +13,7 @@ const ParentPaths = (props: {
   const { t } = useTranslation();
   const {
     paths = [],
-    rootName = t('common.folder.Root Path'),
+    rootName = t('common:common.folder.Root Path'),
     FirstPathDom,
     onClick,
     fontSize
@@ -37,16 +36,19 @@ const ParentPaths = (props: {
       {concatPaths.map((item, i) => (
         <Flex key={item.parentId || i} alignItems={'center'}>
           <Box
-            fontSize={['sm', fontSize || 'lg']}
-            py={1}
-            px={[1, 2]}
+            fontSize={['sm', fontSize || 'sm']}
+            py={0.5}
+            px={1.5}
             borderRadius={'md'}
             {...(i === concatPaths.length - 1
               ? {
-                  cursor: 'default'
+                  cursor: 'default',
+                  color: 'myGray.700',
+                  fontWeight: 'bold'
                 }
               : {
                   cursor: 'pointer',
+                  color: 'myGray.600',
                   _hover: {
                     bg: 'myGray.100'
                   },
@@ -58,7 +60,9 @@ const ParentPaths = (props: {
             {item.parentName}
           </Box>
           {i !== concatPaths.length - 1 && (
-            <MyIcon name={'common/rightArrowLight'} color={'myGray.500'} w={'14px'} />
+            <Box mx={1.5} color={'myGray.500'}>
+              /
+            </Box>
           )}
         </Flex>
       ))}

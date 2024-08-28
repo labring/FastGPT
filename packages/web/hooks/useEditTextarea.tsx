@@ -85,16 +85,16 @@ export const useEditTextarea = ({
     ({
       maxLength = 30,
       iconSrc = 'modal/edit',
-      closeBtnText = t('common.Close')
+      closeBtnText = t('common:common.Close')
     }: {
       maxLength?: number;
       iconSrc?: string;
       closeBtnText?: string;
     }) => (
       <MyModal isOpen={isOpen} onClose={onClose} iconSrc={iconSrc} title={title} maxW={'500px'}>
-        <ModalBody>
+        <ModalBody pt={tip ? '3 !important' : '5 !important'}>
           {!!tip && (
-            <Box mb={2} color={'myGray.500'} fontSize={'sm'}>
+            <Box mb={3} color={'myGray.500'} fontSize={'sm'}>
               {tip}
             </Box>
           )}
@@ -115,7 +115,9 @@ export const useEditTextarea = ({
               {closeBtnText}
             </Button>
           )}
-          <Button onClick={onclickConfirm}>{t('common.Confirm')}</Button>
+          <Button onClick={onclickConfirm} px={6}>
+            {t('common:common.Confirm')}
+          </Button>
         </ModalFooter>
       </MyModal>
     ),

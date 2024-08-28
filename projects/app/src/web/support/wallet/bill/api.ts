@@ -6,7 +6,7 @@ import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type.d'
 
 export const getBills = (
   data: RequestPaging & {
-    type?: `${BillTypeEnum}`;
+    type?: BillTypeEnum;
   }
 ) => POST<BillSchemaType[]>(`/proApi/support/wallet/bill/list`, data);
 
@@ -20,3 +20,5 @@ export const checkBalancePayResult = (payId: string) =>
     } catch (error) {}
     return data;
   });
+
+export const balanceConversion = () => GET<string>(`/proApi/support/wallet/bill/balanceConversion`);

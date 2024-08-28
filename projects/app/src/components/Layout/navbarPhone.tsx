@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { Flex, Box } from '@chakra-ui/react';
-import { useChatStore } from '@/web/core/chat/storeChat';
+import { useChatStore } from '@/web/core/chat/context/storeChat';
 import { useTranslation } from 'next-i18next';
 import Badge from '../Badge';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -13,7 +13,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
   const navbarList = useMemo(
     () => [
       {
-        label: t('navbar.Chat'),
+        label: t('common:navbar.Chat'),
         icon: 'core/chat/chatLight',
         activeIcon: 'core/chat/chatFill',
         link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
@@ -21,7 +21,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread: 0
       },
       {
-        label: t('navbar.Apps'),
+        label: t('common:navbar.Studio'),
         icon: 'core/app/aiLight',
         activeIcon: 'core/app/aiFill',
         link: `/app/list`,
@@ -29,7 +29,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread: 0
       },
       {
-        label: t('navbar.Tools'),
+        label: t('common:navbar.Tools'),
         icon: 'phoneTabbar/tool',
         activeIcon: 'phoneTabbar/toolFill',
         link: '/tools',
@@ -37,7 +37,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread: 0
       },
       {
-        label: t('navbar.Account'),
+        label: t('common:navbar.Account'),
         icon: 'support/user/userLight',
         activeIcon: 'support/user/userFill',
         link: '/account',

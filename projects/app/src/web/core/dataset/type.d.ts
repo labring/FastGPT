@@ -1,12 +1,7 @@
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { ImportProcessWayEnum, ImportSourceTypeEnum } from './constants';
+import { ImportProcessWayEnum } from './constants';
 import { UseFormReturn } from 'react-hook-form';
-
-export type ImportDataComponentProps = {
-  activeStep: number;
-  goToNext: () => void;
-};
 
 export type ImportSourceItemType = {
   id: string;
@@ -17,10 +12,10 @@ export type ImportSourceItemType = {
 
   // source
   sourceName: string;
-  sourceSize?: string;
   icon: string;
 
   // file
+  sourceSize?: string;
   isUploading?: boolean;
   uploadedFileRate?: number;
   dbFileId?: string; // 存储在数据库里的文件Id，这个 ID 还是图片和集合的 metadata 中 relateId
@@ -31,6 +26,10 @@ export type ImportSourceItemType = {
 
   // custom text
   rawText?: string;
+
+  // external file
+  externalFileUrl?: string;
+  externalFileId?: string;
 };
 
 export type ImportSourceParamsType = UseFormReturn<

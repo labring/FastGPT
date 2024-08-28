@@ -1,22 +1,24 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Center, Flex, useDisclosure } from '@chakra-ui/react';
-import { LoginPageTypeEnum } from '@/constants/user';
+import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useChatStore } from '@/web/core/chat/storeChat';
+import { useChatStore } from '@/web/core/chat/context/storeChat';
 import LoginForm from './components/LoginForm/LoginForm';
 import dynamic from 'next/dynamic';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { clearToken, setToken } from '@/web/support/user/auth';
-import CommunityModal from '@/components/CommunityModal';
 import Script from 'next/script';
 import Loading from '@fastgpt/web/components/common/MyLoading';
+import { useMount } from 'ahooks';
+import { t } from 'i18next';
 
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 const WechatForm = dynamic(() => import('./components/LoginForm/WechatForm'));
+const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
 const Login = () => {
   const router = useRouter();
@@ -61,10 +63,11 @@ const Login = () => {
       feConfigs?.oauth?.wechat ? LoginPageTypeEnum.wechat : LoginPageTypeEnum.passwordLogin
     );
   }, [feConfigs.oauth]);
-  useEffect(() => {
+
+  useMount(() => {
     clearToken();
     router.prefetch('/app/list');
-  }, []);
+  });
 
   return (
     <>
@@ -113,7 +116,7 @@ const Login = () => {
               textAlign={'center'}
               onClick={onOpen}
             >
-              无法登录，点击联系
+              {t('common:support.user.login.can_not_login')}
             </Box>
           )}
         </Flex>
@@ -126,7 +129,7 @@ const Login = () => {
 
 export async function getServerSideProps(context: any) {
   return {
-    props: { ...(await serviceSideProps(context)) }
+    props: { ...(await serviceSideProps(context, ['app', 'user'])) }
   };
 }
 

@@ -1,46 +1,49 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
+import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
 import {
   CreateTeamProps,
-  DelMemberProps,
   InviteMemberProps,
   InviteMemberResponse,
   UpdateInviteProps,
-  UpdateTeamMemberProps,
   UpdateTeamProps
 } from '@fastgpt/global/support/user/team/controller.d';
 import type { TeamTagItemType, TeamTagSchema } from '@fastgpt/global/support/user/team/type';
 import {
-  TeamItemType,
+  TeamTmbItemType,
   TeamMemberItemType,
   TeamMemberSchema
 } from '@fastgpt/global/support/user/team/type.d';
 import { FeTeamPlanStatusType, TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
+import { TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
 
 /* --------------- team  ---------------- */
 export const getTeamList = (status: `${TeamMemberSchema['status']}`) =>
-  GET<TeamItemType[]>(`/proApi/support/user/team/list`, { status });
+  GET<TeamTmbItemType[]>(`/proApi/support/user/team/list`, { status });
 export const postCreateTeam = (data: CreateTeamProps) =>
   POST<string>(`/proApi/support/user/team/create`, data);
-export const putUpdateTeam = (data: UpdateTeamProps) =>
-  PUT(`/proApi/support/user/team/update`, data);
+export const putUpdateTeam = (data: UpdateTeamProps) => PUT(`/support/user/team/update`, data);
 export const putSwitchTeam = (teamId: string) =>
   PUT<string>(`/proApi/support/user/team/switch`, { teamId });
 
 /* --------------- team member ---------------- */
-export const getTeamMembers = (teamId: string) =>
-  GET<TeamMemberItemType[]>(`/proApi/support/user/team/member/list`, { teamId });
+export const getTeamMembers = () =>
+  GET<TeamMemberItemType[]>(`/proApi/support/user/team/member/list`);
 export const postInviteTeamMember = (data: InviteMemberProps) =>
   POST<InviteMemberResponse>(`/proApi/support/user/team/member/invite`, data);
-export const putUpdateMember = (data: UpdateTeamMemberProps) =>
-  PUT(`/proApi/support/user/team/member/update`, data);
 export const putUpdateMemberName = (name: string) =>
   PUT(`/proApi/support/user/team/member/updateName`, { name });
-export const delRemoveMember = (props: DelMemberProps) =>
-  DELETE(`/proApi/support/user/team/member/delete`, props);
+export const delRemoveMember = (tmbId: string) =>
+  DELETE(`/proApi/support/user/team/member/delete`, { tmbId });
 export const updateInviteResult = (data: UpdateInviteProps) =>
   PUT('/proApi/support/user/team/member/updateInvite', data);
 export const delLeaveTeam = (teamId: string) =>
   DELETE('/proApi/support/user/team/member/leave', { teamId });
+
+/* -------------- team collaborator -------------------- */
+export const updateMemberPermission = (data: UpdateClbPermissionProps) =>
+  PUT('/proApi/support/user/team/collaborator/update', data);
+export const delMemberPermission = (tmbId: string) =>
+  DELETE('/proApi/support/user/team/collaborator/delete', { tmbId });
 
 /* --------------- team tags ---------------- */
 export const getTeamsTags = () => GET<TeamTagSchema[]>(`/proApi/support/user/team/tag/list`);
@@ -59,3 +62,9 @@ export const getTeamPlanStatus = () =>
   GET<FeTeamPlanStatusType>(`/support/user/team/plan/getTeamPlanStatus`, { maxQuantity: 1 });
 export const getTeamPlans = () =>
   GET<TeamSubSchema[]>(`/proApi/support/user/team/plan/getTeamPlans`);
+
+export const getTeamInvoiceHeader = () =>
+  GET<TeamInvoiceHeaderType>(`/proApi/support/user/team/invoiceAccount/getTeamInvoiceHeader`);
+
+export const updateTeamInvoiceHeader = (data: TeamInvoiceHeaderType) =>
+  POST(`/proApi/support/user/team/invoiceAccount/update`, data);

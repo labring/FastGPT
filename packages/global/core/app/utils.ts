@@ -1,20 +1,15 @@
-import type { AppSimpleEditFormType } from '../app/type';
-import { FlowNodeTypeEnum } from '../module/node/constant';
-import {
-  ModuleOutputKeyEnum,
-  ModuleInputKeyEnum,
-  FlowNodeTemplateTypeEnum
-} from '../module/constants';
-import type { FlowNodeInputItemType } from '../module/node/type.d';
-import { getGuideModule, splitGuideModule } from '../module/utils';
-import { ModuleItemType } from '../module/type.d';
+import type { AppChatConfigType, AppSimpleEditFormType } from '../app/type';
+import { FlowNodeTypeEnum } from '../workflow/node/constant';
+import { NodeInputKeyEnum, FlowNodeTemplateTypeEnum } from '../workflow/constants';
+import type { FlowNodeInputItemType } from '../workflow/type/io.d';
+import { getAppChatConfig } from '../workflow/utils';
+import { StoreNodeItemType } from '../workflow/type/node';
 import { DatasetSearchModeEnum } from '../dataset/constants';
-import { defaultWhisperConfig } from './constants';
 
 export const getDefaultAppForm = (): AppSimpleEditFormType => {
   return {
     aiSettings: {
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o-mini',
       systemPrompt: '',
       temperature: 0,
       isResponseAnswerText: true,
@@ -31,105 +26,98 @@ export const getDefaultAppForm = (): AppSimpleEditFormType => {
       datasetSearchExtensionBg: ''
     },
     selectedTools: [],
-    userGuide: {
-      welcomeText: '',
-      variables: [],
-      questionGuide: false,
-      tts: {
-        type: 'web'
-      },
-      whisper: defaultWhisperConfig
-    }
+    chatConfig: {}
   };
 };
 
-/* format app modules to edit form */
-export const appModules2Form = ({ modules }: { modules: ModuleItemType[] }) => {
+/* format app nodes to edit form */
+export const appWorkflow2Form = ({
+  nodes,
+  chatConfig
+}: {
+  nodes: StoreNodeItemType[];
+  chatConfig: AppChatConfigType;
+}) => {
   const defaultAppForm = getDefaultAppForm();
-
   const findInputValueByKey = (inputs: FlowNodeInputItemType[], key: string) => {
     return inputs.find((item) => item.key === key)?.value;
   };
 
-  modules.forEach((module) => {
+  nodes.forEach((node) => {
     if (
-      module.flowType === FlowNodeTypeEnum.chatNode ||
-      module.flowType === FlowNodeTypeEnum.tools
+      node.flowNodeType === FlowNodeTypeEnum.chatNode ||
+      node.flowNodeType === FlowNodeTypeEnum.tools
     ) {
-      defaultAppForm.aiSettings.model = findInputValueByKey(
-        module.inputs,
-        ModuleInputKeyEnum.aiModel
-      );
+      defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
       defaultAppForm.aiSettings.systemPrompt = findInputValueByKey(
-        module.inputs,
-        ModuleInputKeyEnum.aiSystemPrompt
+        node.inputs,
+        NodeInputKeyEnum.aiSystemPrompt
       );
       defaultAppForm.aiSettings.temperature = findInputValueByKey(
-        module.inputs,
-        ModuleInputKeyEnum.aiChatTemperature
+        node.inputs,
+        NodeInputKeyEnum.aiChatTemperature
       );
       defaultAppForm.aiSettings.maxToken = findInputValueByKey(
-        module.inputs,
-        ModuleInputKeyEnum.aiChatMaxToken
+        node.inputs,
+        NodeInputKeyEnum.aiChatMaxToken
       );
       defaultAppForm.aiSettings.maxHistories = findInputValueByKey(
-        module.inputs,
-        ModuleInputKeyEnum.history
+        node.inputs,
+        NodeInputKeyEnum.history
       );
-    } else if (module.flowType === FlowNodeTypeEnum.datasetSearchNode) {
+    } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
-        module.inputs,
-        ModuleInputKeyEnum.datasetSelectList
+        node.inputs,
+        NodeInputKeyEnum.datasetSelectList
       );
       defaultAppForm.dataset.similarity = findInputValueByKey(
-        module.inputs,
-        ModuleInputKeyEnum.datasetSimilarity
+        node.inputs,
+        NodeInputKeyEnum.datasetSimilarity
       );
       defaultAppForm.dataset.limit = findInputValueByKey(
-        module.inputs,
-        ModuleInputKeyEnum.datasetMaxTokens
+        node.inputs,
+        NodeInputKeyEnum.datasetMaxTokens
       );
       defaultAppForm.dataset.searchMode =
-        findInputValueByKey(module.inputs, ModuleInputKeyEnum.datasetSearchMode) ||
+        findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchMode) ||
         DatasetSearchModeEnum.embedding;
       defaultAppForm.dataset.usingReRank = !!findInputValueByKey(
-        module.inputs,
-        ModuleInputKeyEnum.datasetSearchUsingReRank
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchUsingReRank
       );
       defaultAppForm.dataset.datasetSearchUsingExtensionQuery = findInputValueByKey(
-        module.inputs,
-        ModuleInputKeyEnum.datasetSearchUsingExtensionQuery
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchUsingExtensionQuery
       );
       defaultAppForm.dataset.datasetSearchExtensionModel = findInputValueByKey(
-        module.inputs,
-        ModuleInputKeyEnum.datasetSearchExtensionModel
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchExtensionModel
       );
       defaultAppForm.dataset.datasetSearchExtensionBg = findInputValueByKey(
-        module.inputs,
-        ModuleInputKeyEnum.datasetSearchExtensionBg
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchExtensionBg
       );
-    } else if (module.flowType === FlowNodeTypeEnum.userGuide) {
-      const { welcomeText, variableModules, questionGuide, ttsConfig, whisperConfig } =
-        splitGuideModule(getGuideModule(modules));
+    } else if (node.flowNodeType === FlowNodeTypeEnum.pluginModule) {
+      if (!node.pluginId) return;
 
-      defaultAppForm.userGuide = {
-        welcomeText: welcomeText,
-        variables: variableModules,
-        questionGuide: questionGuide,
-        tts: ttsConfig,
-        whisper: whisperConfig
-      };
-    } else if (module.flowType === FlowNodeTypeEnum.pluginModule) {
       defaultAppForm.selectedTools.push({
-        id: module.inputs.find((input) => input.key === ModuleInputKeyEnum.pluginId)?.value || '',
-        name: module.name,
-        avatar: module.avatar,
-        intro: module.intro || '',
-        flowType: module.flowType,
-        showStatus: module.showStatus,
-        inputs: module.inputs,
-        outputs: module.outputs,
+        id: node.nodeId,
+        pluginId: node.pluginId,
+        name: node.name,
+        avatar: node.avatar,
+        intro: node.intro || '',
+        flowNodeType: node.flowNodeType,
+        showStatus: node.showStatus,
+        version: '481',
+        inputs: node.inputs,
+        outputs: node.outputs,
         templateType: FlowNodeTemplateTypeEnum.other
+      });
+    } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
+      defaultAppForm.chatConfig = getAppChatConfig({
+        chatConfig,
+        systemConfigNode: node,
+        isPublicFetch: true
       });
     }
   });

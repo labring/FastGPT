@@ -15,7 +15,7 @@
 {{ end }}
 
 <!-- change -->
-{{ $repoURL = $repoURL | append "docSite/content" .Site.LanguagePrefix $filePath }}
+{{ $repoURL = $repoURL | append "docSite/content" .Site.Language.Lang $filePath }}
 {{ $repoURL = delimit $repoURL "/" }}
 {{ $editPageURL := replaceRE "(https?://)|(/)+" "$1$2" $repoURL }}
 

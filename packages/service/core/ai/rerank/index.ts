@@ -1,3 +1,4 @@
+import { addLog } from '../../../common/system/log';
 import { POST } from '../../../common/api/serverRequest';
 
 type PostReRankResponse = {
@@ -38,7 +39,11 @@ export function reRankRecall({
     }
   )
     .then((data) => {
-      console.log('rerank time:', Date.now() - start);
+      addLog.info('ReRank finish:', { time: Date.now() - start });
+
+      if (!data?.results || data?.results?.length === 0) {
+        addLog.error('ReRank error, empty result', data);
+      }
 
       return data?.results?.map((item) => ({
         id: documents[item.index].id,
@@ -46,7 +51,7 @@ export function reRankRecall({
       }));
     })
     .catch((err) => {
-      console.log('rerank error:', err);
+      addLog.error('rerank error', err);
 
       return [];
     });

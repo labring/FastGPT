@@ -1,0 +1,253 @@
+{
+  "author": "",
+  "version": "486",
+  "name": "数学公式执行",
+  "avatar": "core/workflow/template/mathCall",
+  "intro": "用于执行数学表达式的工具，通过 js 的 expr-eval 库运行表达式并返回结果。",
+  "showStatus": false,
+  "weight": 10,
+
+  "isTool": true,
+  "templateType": "tools",
+
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "ioNyiO62aWcG",
+        "name": "插件输入",
+        "intro": "可以配置插件需要哪些输入，利用这些输入来运行插件",
+        "avatar": "/imgs/workflow/input.png",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 494.7780128195933,
+          "y": -145.65080850146154
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": ["reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "key": "数学表达式",
+            "label": "数学表达式",
+            "description": "需要执行的数学表达式",
+            "required": true,
+            "toolDescription": "需要执行的数学表达式"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "数学表达式",
+            "valueType": "string",
+            "key": "数学表达式",
+            "label": "数学表达式",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "sowtxkCPjvb7",
+        "name": "自定义插件输出",
+        "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
+        "avatar": "/imgs/workflow/output.png",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 1850.4258139184146,
+          "y": -147.7125146361461
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "result",
+            "valueType": "string",
+            "label": "result",
+            "renderTypeList": ["reference"],
+            "required": false,
+            "description": "",
+            "canEdit": true,
+            "value": ["hzO1JnuLrKpK", "vJnW9JVLOJFT"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "sowtxkCPjvb7",
+            "key": "result",
+            "valueType": "string",
+            "label": "result",
+            "type": "static"
+          }
+        ]
+      },
+      {
+        "nodeId": "hzO1JnuLrKpK",
+        "name": "HTTP 请求",
+        "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
+        "avatar": "/imgs/workflow/http.png",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 1188.947986995841,
+          "y": -473.52694296182904
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "core.module.input.description.HTTP Dynamic Input",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": ["custom"],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "label": "",
+            "description": "core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "mathExprVal"
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": ["custom"],
+            "valueType": "any",
+            "value": [
+              {
+                "key": "Authorization",
+                "type": "string",
+                "value": "Bearer fb968ed1-b1dd-4fc1-8409-c9339cbeb14f"
+              }
+            ],
+            "label": "",
+            "description": "core.module.input.description.Http Request Header",
+            "placeholder": "core.module.input.description.Http Request Header",
+            "required": false
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": "{\n  \"expr\":\"{{expr}}\"\n}",
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "expr",
+            "valueType": "string",
+            "label": "expr",
+            "renderTypeList": ["reference"],
+            "canEdit": true,
+            "value": ["ioNyiO62aWcG", "数学表达式"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "请求错误",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "label": "原始响应",
+            "required": true,
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
+          {
+            "id": "vJnW9JVLOJFT",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "result",
+            "label": "result"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "ioNyiO62aWcG",
+        "target": "hzO1JnuLrKpK",
+        "sourceHandle": "ioNyiO62aWcG-source-right",
+        "targetHandle": "hzO1JnuLrKpK-target-left"
+      },
+      {
+        "source": "hzO1JnuLrKpK",
+        "target": "sowtxkCPjvb7",
+        "sourceHandle": "hzO1JnuLrKpK-source-right",
+        "targetHandle": "sowtxkCPjvb7-target-left"
+      }
+    ]
+  }
+}

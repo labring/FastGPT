@@ -2,23 +2,20 @@ export enum EventNameEnum {
   sendQuestion = 'sendQuestion',
   editQuestion = 'editQuestion',
 
-  // flow
-  requestFlowEvent = 'requestFlowEvent',
-  requestFlowStore = 'requestFlowStore',
-  receiveFlowStore = 'receiveFlowStore'
+  requestWorkflowStore = 'requestWorkflowStore',
+  receiveWorkflowStore = 'receiveWorkflowStore'
 }
-type EventNameType = `${EventNameEnum}`;
 
 export const eventBus = {
-  list: new Map<EventNameType, Function>(),
-  on: function (name: EventNameType, fn: Function) {
+  list: new Map<EventNameEnum, Function>(),
+  on: function (name: EventNameEnum, fn: Function) {
     this.list.set(name, fn);
   },
-  emit: function (name: EventNameType, data: Record<string, any> = {}) {
+  emit: function (name: EventNameEnum, data: Record<string, any> = {}) {
     const fn = this.list.get(name);
     fn && fn(data);
   },
-  off: function (name: EventNameType) {
+  off: function (name: EventNameEnum) {
     this.list.delete(name);
   }
 };

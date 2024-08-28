@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Chatbot Extension</title>
+  <meta charset="UTF-8">
+  <style>
+    body,
+    html {
+      height: 600px;
+      width: 800px;
+      margin: 0;
+      padding: 0;
+      display: flex;
+    }
+    ::-webkit-scrollbar {
+      width: 0;
+    }
+    h1 {
+      text-align: center;
+      cursor: pointer;
+      color: #007BFF;
+    }
+    #chatbot-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      flex-grow: 1;
+    }
+
+    #chatbot-iframe {
+      width: 100%;
+      height: 100%;
+      flex-grow: 1;
+      border: none;
+      box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .config-btn-icon {
+      position: absolute;
+      display: none;
+      top: 8px;
+      right: 50px;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+    }
+    .fullScreen-icon {
+      position: absolute;
+      display: none;
+      top: 8px;
+      right: 80px; /* Adjusted to position left of the config button */
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+    }
+    .overlay {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: opacity 0.3s ease;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .overlay-content {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      font-size: 18px;
+      color: #333;
+      font-weight: bold;
+      transition: transform 0.3s ease;
+      transform: scale(0.9);
+    }
+
+    .overlay-content.show {
+      transform: scale(1);
+    }
+  </style>
+</head>
+
+<body>
+<div id="chatbot-container">
+  <div id="configOverlay" class="overlay" style="display: none;">
+    <div class="overlay-content">
+      未配置机器人，请点击右上角【设置】
+    </div>
+  </div>
+  <iframe id="chatbot-iframe" allowfullscreen allow="microphone"></iframe>
+<!--  <webview id="chatbot-iframe" allowfullscreen></webview>-->
+  <img src="../img/fullScreen.png" class="fullScreen-icon" id="fullScreen">
+  <img src="../img/setting.png" class="config-btn-icon" id="config-btn">
+</div>
+<script src="popup.js"></script>
+
+</body>
+
+</html>

@@ -1,24 +1,27 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ImportDataComponentProps, ImportSourceItemType } from '@/web/core/dataset/type.d';
+import { ImportSourceItemType } from '@/web/core/dataset/type.d';
 import { Box, Button } from '@chakra-ui/react';
 import FileSelector from '../components/FileSelector';
 import { useTranslation } from 'next-i18next';
-import { useImportStore } from '../Provider';
 
 import dynamic from 'next/dynamic';
 import { fileDownload } from '@/web/common/file/utils';
 import { RenderUploadFiles } from '../components/RenderFiles';
+import { useContextSelector } from 'use-context-selector';
+import { DatasetImportContext } from '../Context';
 
 const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 
 const fileType = '.csv';
 
-const FileLocal = ({ activeStep, goToNext }: ImportDataComponentProps) => {
+const FileLocal = () => {
+  const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
+
   return (
     <>
-      {activeStep === 0 && <SelectFile goToNext={goToNext} />}
-      {activeStep === 1 && <PreviewData showPreviewChunks goToNext={goToNext} />}
+      {activeStep === 0 && <SelectFile />}
+      {activeStep === 1 && <PreviewData showPreviewChunks />}
       {activeStep === 2 && <Upload />}
     </>
   );
@@ -26,15 +29,16 @@ const FileLocal = ({ activeStep, goToNext }: ImportDataComponentProps) => {
 
 export default React.memo(FileLocal);
 
-const csvTemplate = `"第一列内容","第二列内容"
+const csvTemplate = `index,content
+"第一列内容","第二列内容"
 "必填列","可选列。CSV 中请注意内容不能包含双引号，双引号是列分割符号"
-"只会讲第一和第二列内容导入，其余列会被忽略",""
+"只会将第一和第二列内容导入，其余列会被忽略",""
 "结合人工智能的演进历程,AIGC的发展大致可以分为三个阶段，即:早期萌芽阶段(20世纪50年代至90年代中期)、沉淀积累阶段(20世纪90年代中期至21世纪10年代中期),以及快速发展展阶段(21世纪10年代中期至今)。",""
 "AIGC发展分为几个阶段？","早期萌芽阶段(20世纪50年代至90年代中期)、沉淀积累阶段(20世纪90年代中期至21世纪10年代中期)、快速发展展阶段(21世纪10年代中期至今)"`;
 
-const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () => void }) {
+const SelectFile = React.memo(function SelectFile() {
   const { t } = useTranslation();
-  const { sources, setSources } = useImportStore();
+  const { goToNext, sources, setSources } = useContextSelector(DatasetImportContext, (v) => v);
   const [selectFiles, setSelectFiles] = useState<ImportSourceItemType[]>(
     sources.map((source) => ({
       isUploading: false,
@@ -72,7 +76,7 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
           })
         }
       >
-        {t('core.dataset.import.Down load csv template')}
+        {t('common:core.dataset.import.Down load csv template')}
       </Box>
 
       {/* render files */}
@@ -89,7 +93,7 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
           {selectFiles.length > 0
             ? `${t('core.dataset.import.Total files', { total: selectFiles.length })} | `
             : ''}
-          {t('common.Next Step')}
+          {t('common:common.Next Step')}
         </Button>
       </Box>
     </Box>

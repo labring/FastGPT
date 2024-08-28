@@ -13,7 +13,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { getTeamList, updateInviteResult } from '@/web/support/user/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -35,7 +35,7 @@ const UpdateInviteModal = () => {
     onSuccess() {
       toast({
         status: 'success',
-        title: t('user.team.invite.Accepted')
+        title: t('common:user.team.invite.Accepted')
       });
       refetch();
     }
@@ -45,7 +45,7 @@ const UpdateInviteModal = () => {
     onSuccess() {
       toast({
         status: 'success',
-        title: t('user.team.invite.Reject')
+        title: t('common:user.team.invite.Reject')
       });
       refetch();
     }
@@ -57,7 +57,7 @@ const UpdateInviteModal = () => {
       iconSrc="/imgs/modal/team.svg"
       title={
         <Box>
-          <Box>{t('user.team.Processing invitations')}</Box>
+          <Box>{t('common:user.team.Processing invitations')}</Box>
           <Box fontWeight={'normal'} fontSize={'sm'} color={'myGray.500'}>
             {t('user.team.Processing invitations Tips', { amount: inviteList?.length })}
           </Box>
@@ -94,11 +94,11 @@ const UpdateInviteModal = () => {
                       status: TeamMemberStatusEnum.active
                     }),
                   undefined,
-                  t('user.team.invite.Accept Confirm')
+                  t('common:user.team.invite.Accept Confirm')
                 )();
               }}
             >
-              {t('user.team.invite.accept')}
+              {t('common:user.team.invite.accept')}
             </Button>
             <Button
               size="sm"
@@ -114,17 +114,17 @@ const UpdateInviteModal = () => {
                       status: TeamMemberStatusEnum.reject
                     }),
                   undefined,
-                  t('user.team.invite.Reject Confirm')
+                  t('common:user.team.invite.Reject Confirm')
                 )();
               }}
             >
-              {t('user.team.invite.reject')}
+              {t('common:user.team.invite.reject')}
             </Button>
           </Flex>
         ))}
       </ModalBody>
       <ModalFooter justifyContent={'center'}>
-        <Box>{t('user.team.invite.Deal Width Footer Tip')}</Box>
+        <Box>{t('common:user.team.invite.Deal Width Footer Tip')}</Box>
       </ModalFooter>
 
       <ConfirmModal />

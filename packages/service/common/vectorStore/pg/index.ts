@@ -2,6 +2,7 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import { addLog } from '../../system/log';
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
+import { PG_ADDRESS } from '../constants';
 
 export const connectPg = async (): Promise<Pool> => {
   if (global.pgClient) {
@@ -9,7 +10,7 @@ export const connectPg = async (): Promise<Pool> => {
   }
 
   global.pgClient = new Pool({
-    connectionString: process.env.PG_URL,
+    connectionString: PG_ADDRESS,
     max: Number(process.env.DB_MAX_LINK || 20),
     min: 10,
     keepAlive: true,
@@ -21,7 +22,7 @@ export const connectPg = async (): Promise<Pool> => {
   });
 
   global.pgClient.on('error', async (err) => {
-    console.log(err);
+    addLog.error(`pg error`, err);
     global.pgClient?.end();
     global.pgClient = null;
 
@@ -35,6 +36,7 @@ export const connectPg = async (): Promise<Pool> => {
     console.log('pg connected');
     return global.pgClient;
   } catch (error) {
+    addLog.error(`pg connect error`, error);
     global.pgClient?.end();
     global.pgClient = null;
 
@@ -169,7 +171,16 @@ class PgClass {
   }
   async query<T extends QueryResultRow = any>(sql: string) {
     const pg = await connectPg();
-    return pg.query<T>(sql);
+    const start = Date.now();
+    return pg.query<T>(sql).then((res) => {
+      const time = Date.now() - start;
+
+      if (time > 300) {
+        addLog.warn(`pg query time: ${time}ms, sql: ${sql}`);
+      }
+
+      return res;
+    });
   }
 }
 

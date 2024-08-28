@@ -1,40 +1,45 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { authApp } from '@fastgpt/service/support/permission/auth/app';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { customAlphabet } from 'nanoid';
-import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { NextAPI } from '@/service/middleware/entry';
 
 /* create a shareChat */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    await connectToDatabase();
-    const { appId, ...props } = req.body as OutLinkEditType & {
-      appId: string;
-      type: `${OutLinkTypeEnum}`;
-    };
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
-    const { teamId, tmbId } = await authApp({ req, authToken: true, appId, per: 'w' });
+export type OutLinkCreateQuery = {};
+export type OutLinkCreateBody = OutLinkEditType &
+  OutLinkEditType & {
+    appId: string;
+    type: PublishChannelEnum;
+  };
+export type OutLinkCreateResponse = string;
 
-    const shareId = nanoid();
-    await MongoOutLink.create({
-      shareId,
-      teamId,
-      tmbId,
-      appId,
-      ...props
-    });
+async function handler(
+  req: ApiRequestProps<OutLinkCreateBody, OutLinkCreateQuery>
+): Promise<OutLinkCreateResponse> {
+  const { appId, ...props } = req.body;
 
-    jsonRes(res, {
-      data: shareId
-    });
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
-  }
+  const { teamId, tmbId } = await authApp({
+    req,
+    authToken: true,
+    appId,
+    per: ManagePermissionVal
+  });
+
+  const shareId = nanoid();
+  await MongoOutLink.create({
+    shareId,
+    teamId,
+    tmbId,
+    appId,
+    ...props
+  });
+
+  return shareId;
 }
+
+export default NextAPI(handler);

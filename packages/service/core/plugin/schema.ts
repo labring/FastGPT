@@ -50,16 +50,31 @@ const PluginSchema = new Schema({
     type: Array,
     default: []
   },
+  edges: {
+    type: Array,
+    default: []
+  },
   metadata: {
     type: {
       pluginUid: String,
       apiSchemaStr: String,
       customHeaders: String
     }
-  }
+  },
+  version: {
+    type: String,
+    enum: ['v1', 'v2']
+  },
+  nodeVersion: {
+    type: String,
+    default: ''
+  },
+
+  inited: Boolean
 });
 
 try {
+  PluginSchema.index({ type: 1, init: 1 });
   PluginSchema.index({ teamId: 1, parentId: 1 });
   PluginSchema.index({ teamId: 1, name: 1, intro: 1 });
 } catch (error) {

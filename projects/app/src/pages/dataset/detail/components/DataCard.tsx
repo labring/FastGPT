@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -7,68 +7,70 @@ import {
   Grid,
   Button,
   useTheme,
-  Drawer,
-  DrawerBody,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerOverlay,
-  DrawerContent,
-  useDisclosure
+  useDisclosure,
+  HStack
 } from '@chakra-ui/react';
 import {
   getDatasetDataList,
   delOneDatasetDataById,
-  getDatasetCollectionById
+  getDatasetCollectionById,
+  putDatasetDataById
 } from '@/web/core/dataset/api';
 import { DeleteIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { debounce } from 'lodash';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
-import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import InputDataModal from '../components/InputDataModal';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import type { DatasetDataListItemType } from '@/global/core/dataset/type.d';
 import { TabEnum } from '..';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import {
-  DatasetCollectionTypeMap,
-  TrainingModeEnum,
-  TrainingTypeMap
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeMap, TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
-import { getFileAndOpen } from '@/web/core/dataset/utils';
-import MyTooltip from '@/components/MyTooltip';
+import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
+import { useI18n } from '@/web/context/I18n';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { useContextSelector } from 'use-context-selector';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import TagsPopOver from './CollectionCard/TagsPopOver';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import Markdown from '@/components/Markdown';
 
 const DataCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
   const lastSearch = useRef('');
   const router = useRouter();
-  const { userInfo } = useUserStore();
-  const { isPc } = useSystemStore();
+  const { isPc } = useSystem();
   const { collectionId = '', datasetId } = router.query as {
     collectionId: string;
     datasetId: string;
   };
-  const { Loading, setIsLoading } = useLoading({ defaultLoading: true });
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const { feConfigs } = useSystemStore();
+
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
   const { toast } = useToast();
   const { openConfirm, ConfirmModal } = useConfirm({
-    content: t('dataset.Confirm to delete the data'),
+    content: t('common:dataset.Confirm to delete the data'),
     type: 'delete'
   });
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const readSource = getCollectionSourceAndOpen(collectionId);
 
   const {
     data: datasetDataList,
@@ -76,16 +78,17 @@ const DataCard = () => {
     total,
     getData,
     pageNum,
-    pageSize
+    pageSize,
+    isLoading: isRequesting
   } = usePagination<DatasetDataListItemType>({
     api: getDatasetDataList,
     pageSize: 24,
+    defaultRequest: false,
     params: {
       collectionId,
       searchText
     },
     onChange() {
-      setIsLoading(false);
       if (BoxRef.current) {
         BoxRef.current.scrollTop = 0;
       }
@@ -95,12 +98,16 @@ const DataCard = () => {
   const [editDataId, setEditDataId] = useState<string>();
 
   // get first page data
-  const getFirstData = useCallback(
-    debounce(() => {
+  useRequest2(
+    async () => {
       getData(1);
       lastSearch.current = searchText;
-    }, 300),
-    []
+    },
+    {
+      manual: false,
+      debounceWait: 300,
+      refreshDeps: [searchText]
+    }
   );
 
   // get file info
@@ -118,103 +125,43 @@ const DataCard = () => {
     }
   );
 
-  const canWrite = useMemo(
-    () => userInfo?.team?.role !== TeamMemberRoleEnum.visitor && !!collection?.canWrite,
-    [collection?.canWrite, userInfo?.team?.role]
-  );
+  const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
 
-  const metadataList = useMemo(() => {
-    if (!collection) return [];
+  const { run: onUpdate, loading } = useRequest2(putDatasetDataById, {
+    onSuccess() {
+      getData(pageNum);
+    }
+  });
 
-    const webSelector =
-      collection?.datasetId?.websiteConfig?.selector || collection?.metadata?.webPageSelector;
-
-    return [
-      {
-        label: t('core.dataset.collection.metadata.source'),
-        value: t(DatasetCollectionTypeMap[collection.type]?.name)
-      },
-      {
-        label: t('core.dataset.collection.metadata.source name'),
-        value: collection.file?.filename || collection?.rawLink || collection?.name
-      },
-      {
-        label: t('core.dataset.collection.metadata.source size'),
-        value: collection.file ? formatFileSize(collection.file.length) : '-'
-      },
-      {
-        label: t('core.dataset.collection.metadata.Createtime'),
-        value: formatTime2YMDHM(collection.createTime)
-      },
-      {
-        label: t('core.dataset.collection.metadata.Updatetime'),
-        value: formatTime2YMDHM(collection.updateTime)
-      },
-      {
-        label: t('core.dataset.collection.metadata.Raw text length'),
-        value: collection.rawTextLength ?? '-'
-      },
-      {
-        label: t('core.dataset.collection.metadata.Training Type'),
-        value: t(TrainingTypeMap[collection.trainingType]?.label)
-      },
-      {
-        label: t('core.dataset.collection.metadata.Chunk Size'),
-        value: collection.chunkSize || '-'
-      },
-      ...(webSelector
-        ? [
-            {
-              label: t('core.dataset.collection.metadata.Web page selector'),
-              value: webSelector
-            }
-          ]
-        : [])
-    ];
-  }, [collection, t]);
+  const isLoading = isRequesting || loading;
 
   return (
-    <Box position={'relative'} py={[1, 5]} h={'100%'}>
+    <MyBox isLoading={isLoading} position={'relative'} py={[1, 5]} h={'100%'}>
       <Flex ref={BoxRef} flexDirection={'column'} h={'100%'}>
+        {/* Header */}
         <Flex alignItems={'center'} px={5}>
-          <IconButton
-            mr={3}
-            icon={<MyIcon name={'common/backFill'} w={['14px', '18px']} color={'primary.500'} />}
-            variant={'whitePrimary'}
-            size={'smSquare'}
-            borderRadius={'50%'}
-            aria-label={''}
-            onClick={() =>
-              router.replace({
-                query: {
-                  datasetId: router.query.datasetId,
-                  parentId: router.query.parentId,
-                  currentTab: TabEnum.collectionCard
-                }
-              })
-            }
-          />
           <Flex className="textEllipsis" flex={'1 0 0'} mr={[3, 5]} alignItems={'center'}>
-            <Box lineHeight={1.2}>
-              <RawSourceBox
-                sourceName={collection?.name}
-                sourceId={collection?.fileId || collection?.rawLink}
-                fontSize={['md', 'lg']}
-                color={'black'}
-                textDecoration={'none'}
-              />
-              <Box fontSize={'sm'} color={'myGray.500'}>
-                {t('core.dataset.collection.id')}:{' '}
-                <Box as={'span'} userSelect={'all'}>
-                  {collection?._id}
-                </Box>
+            <Box>
+              <Box alignItems={'center'} gap={2} display={isPc ? 'flex' : ''}>
+                {collection?._id && (
+                  <RawSourceBox
+                    collectionId={collection._id}
+                    {...getCollectionSourceData(collection)}
+                    fontSize={['sm', 'md']}
+                    color={'black'}
+                    textDecoration={'none'}
+                  />
+                )}
               </Box>
+              {feConfigs?.isPlus && !!collection?.tags?.length && (
+                <TagsPopOver currentCollection={collection} />
+              )}
             </Box>
           </Flex>
           {canWrite && (
             <Box>
               <Button
-                mx={2}
+                ml={2}
                 variant={'whitePrimary'}
                 size={['sm', 'md']}
                 onClick={() => {
@@ -222,28 +169,21 @@ const DataCard = () => {
                   setEditDataId('');
                 }}
               >
-                {t('dataset.Insert Data')}
+                {t('common:dataset.Insert Data')}
               </Button>
             </Box>
           )}
-          {isPc && (
-            <MyTooltip label={t('core.dataset.collection.metadata.Read Metadata')}>
-              <IconButton
-                variant={'whiteBase'}
-                size={['sm', 'md']}
-                icon={<MyIcon name={'menu'} w={'18px'} />}
-                aria-label={''}
-                onClick={onOpen}
-              />
-            </MyTooltip>
-          )}
         </Flex>
-        <Flex my={3} alignItems={'center'} px={5}>
-          <Box>
-            <Box as={'span'} fontSize={['md', 'lg']}>
+        <Box justifyContent={'center'} px={5} pos={'relative'} w={'100%'}>
+          <MyDivider my={'17px'} w={'100%'} />
+        </Box>
+        <Flex alignItems={'center'} px={5} pb={4}>
+          <Flex align={'center'} color={'myGray.500'}>
+            <MyIcon name="common/list" mr={2} w={'18px'} />
+            <Box as={'span'} fontSize={['sm', '14px']} fontWeight={'500'}>
               {t('core.dataset.data.Total Amount', { total })}
             </Box>
-          </Box>
+          </Flex>
           <Box flex={1} mr={1} />
           <MyInput
             leftIcon={
@@ -251,33 +191,23 @@ const DataCard = () => {
                 name="common/searchLight"
                 position={'absolute'}
                 w={'14px'}
-                color={'myGray.500'}
+                color={'myGray.600'}
               />
             }
+            bg={'myGray.25'}
+            borderColor={'myGray.200'}
+            color={'myGray.500'}
             w={['200px', '300px']}
-            placeholder={t('core.dataset.data.Search data placeholder')}
+            placeholder={t('common:core.dataset.data.Search data placeholder')}
             value={searchText}
             onChange={(e) => {
               setSearchText(e.target.value);
-              getFirstData();
-            }}
-            onBlur={() => {
-              if (searchText === lastSearch.current) return;
-              getFirstData();
-            }}
-            onKeyDown={(e) => {
-              if (searchText === lastSearch.current) return;
-              if (e.key === 'Enter') {
-                getFirstData();
-              }
             }}
           />
         </Flex>
+        {/* data */}
         <Box flex={'1 0 0'} overflow={'auto'} px={5}>
-          <Grid
-            gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
-            gridGap={4}
-          >
+          <Flex flexDir={'column'} gap={2}>
             {datasetDataList.map((item, index) => (
               <Card
                 key={item._id}
@@ -285,149 +215,138 @@ const DataCard = () => {
                 p={3}
                 userSelect={'none'}
                 boxShadow={'none'}
-                bg={'myWhite.500'}
+                bg={index % 2 === 1 ? 'myGray.50' : 'blue.50'}
                 border={theme.borders.sm}
                 position={'relative'}
                 overflow={'hidden'}
                 _hover={{
-                  borderColor: 'myGray.200',
+                  borderColor: 'blue.600',
                   boxShadow: 'lg',
-                  bg: 'white',
-                  '& .footer': { h: 'auto', p: 3 }
+                  '& .header': { visibility: 'visible' },
+                  '& .footer': { visibility: 'visible' },
+                  '& .forbid-switch': { display: 'flex' },
+                  bg: index % 2 === 1 ? 'myGray.200' : 'blue.100'
                 }}
                 onClick={() => {
                   if (!collection) return;
                   setEditDataId(item._id);
                 }}
               >
-                <Flex zIndex={1} alignItems={'center'} justifyContent={'space-between'}>
-                  <Box
-                    borderWidth={'1px'}
-                    borderColor={'primary.200'}
-                    bg={'primary.50'}
-                    color={'primary.600'}
-                    px={2}
-                    fontSize={'sm'}
-                    mr={1}
-                    borderRadius={'md'}
-                  >
-                    # {item.chunkIndex ?? '-'}
-                  </Box>
-                  <Box className={'textEllipsis'} fontSize={'xs'}>
-                    ID:{item._id}
-                  </Box>
-                </Flex>
-                <Box
-                  maxH={'135px'}
-                  minH={'90px'}
-                  overflow={'hidden'}
-                  wordBreak={'break-all'}
-                  pt={1}
-                  pb={3}
-                  fontSize={'13px'}
+                {/* Data tag */}
+                <Flex
+                  position={'absolute'}
+                  zIndex={1}
+                  alignItems={'center'}
+                  visibility={'hidden'}
+                  className="header"
                 >
-                  <Box color={'black'} mb={1}>
-                    {item.q}
-                  </Box>
-                  <Box color={'myGray.700'}>{item.a}</Box>
-
-                  <Flex
-                    className="footer"
-                    position={'absolute'}
-                    top={0}
-                    bottom={0}
-                    left={0}
-                    right={0}
-                    h={'0'}
-                    overflow={'hidden'}
-                    p={0}
-                    bg={'linear-gradient(to top, white,white 20%, rgba(255,255,255,0) 60%)'}
-                    alignItems={'flex-end'}
-                    fontSize={'sm'}
+                  <MyTag
+                    px={2}
+                    type="borderFill"
+                    borderRadius={'sm'}
+                    border={'1px'}
+                    color={'myGray.200'}
+                    bg={'white'}
+                    fontWeight={'500'}
                   >
-                    <Flex alignItems={'center'}>
-                      <MyIcon name="common/text/t" w={'14px'} mr={1} color={'myGray.500'} />
-                      {item.q.length + (item.a?.length || 0)}
-                    </Flex>
-                    <Box flex={1} />
-                    {canWrite && (
-                      <IconButton
-                        display={'flex'}
-                        icon={<DeleteIcon />}
-                        variant={'whiteDanger'}
-                        size={'xsSquare'}
-                        aria-label={'delete'}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openConfirm(async () => {
-                            try {
-                              setIsLoading(true);
-                              await delOneDatasetDataById(item._id);
-                              getData(pageNum);
-                            } catch (error) {
-                              toast({
-                                title: getErrText(error),
-                                status: 'error'
-                              });
-                            }
-                            setIsLoading(false);
-                          })();
-                        }}
-                      />
-                    )}
-                  </Flex>
+                    <Box color={'blue.600'}>#{item.chunkIndex ?? '-'} </Box>
+                    <Box
+                      ml={1.5}
+                      className={'textEllipsis'}
+                      fontSize={'mini'}
+                      textAlign={'right'}
+                      color={'myGray.500'}
+                    >
+                      ID:{item._id}
+                    </Box>
+                  </MyTag>
+                </Flex>
+
+                {/* Data content */}
+                <Box wordBreak={'break-all'} fontSize={'sm'}>
+                  <Markdown source={item.q} forbidImgPreview />
+                  {!!item.a && (
+                    <>
+                      <MyDivider />
+                      <Markdown source={item.a} forbidImgPreview />
+                    </>
+                  )}
                 </Box>
+
+                {/* Mask */}
+                <Flex
+                  className="footer"
+                  position={'absolute'}
+                  bottom={2}
+                  right={2}
+                  overflow={'hidden'}
+                  alignItems={'flex-end'}
+                  visibility={'hidden'}
+                  fontSize={'mini'}
+                >
+                  <Flex
+                    alignItems={'center'}
+                    bg={'white'}
+                    color={'myGray.600'}
+                    borderRadius={'sm'}
+                    border={'1px'}
+                    borderColor={'myGray.200'}
+                    h={'24px'}
+                    px={2}
+                    fontSize={'mini'}
+                    boxShadow={'1'}
+                    py={1}
+                    mr={2}
+                  >
+                    <MyIcon
+                      bg={'white'}
+                      color={'myGray.600'}
+                      borderRadius={'sm'}
+                      border={'1px'}
+                      borderColor={'myGray.200'}
+                      name="common/text/t"
+                      w={'14px'}
+                      mr={1}
+                    />
+                    {item.q.length + (item.a?.length || 0)}
+                  </Flex>
+                  {canWrite && (
+                    <IconButton
+                      display={'flex'}
+                      p={1}
+                      boxShadow={'1'}
+                      icon={<MyIcon name={'common/trash'} w={'14px'} />}
+                      variant={'whiteDanger'}
+                      size={'xsSquare'}
+                      aria-label={'delete'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openConfirm(async () => {
+                          try {
+                            await delOneDatasetDataById(item._id);
+                            getData(pageNum);
+                          } catch (error) {
+                            toast({
+                              title: getErrText(error),
+                              status: 'error'
+                            });
+                          }
+                        })();
+                      }}
+                    />
+                  )}
+                </Flex>
               </Card>
             ))}
-          </Grid>
+          </Flex>
           {total > pageSize && (
             <Flex mt={2} justifyContent={'center'}>
               <Pagination />
             </Flex>
           )}
-          {total === 0 && (
-            <Flex flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
-              <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-              <Box mt={2} color={'myGray.500'}>
-                {t('core.dataset.data.Empty Tip')}
-              </Box>
-            </Flex>
-          )}
+          {total === 0 && <EmptyTip text={t('common:core.dataset.data.Empty Tip')}></EmptyTip>}
         </Box>
       </Flex>
-
-      {/* metadata drawer */}
-      <Drawer isOpen={isOpen} placement="right" size={'md'} onClose={onClose}>
-        <DrawerOverlay />
-        <DrawerContent>
-          <DrawerHeader>{t('core.dataset.collection.metadata.metadata')}</DrawerHeader>
-
-          <DrawerBody>
-            {metadataList.map((item) => (
-              <Flex key={item.label} alignItems={'center'} mb={5} wordBreak={'break-all'}>
-                <Box color={'myGray.500'} flex={'0 0 100px'}>
-                  {item.label}
-                </Box>
-                <Box>{item.value}</Box>
-              </Flex>
-            ))}
-            {collection?.sourceId && (
-              <Button
-                variant={'whitePrimary'}
-                onClick={() => collection.sourceId && getFileAndOpen(collection.sourceId)}
-              >
-                {t('core.dataset.collection.metadata.read source')}
-              </Button>
-            )}
-          </DrawerBody>
-
-          <DrawerFooter>
-            <Button variant={'whitePrimary'} onClick={onClose}>
-              {t('common.Close')}
-            </Button>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
 
       {editDataId !== undefined && collection && (
         <InputDataModal
@@ -439,8 +358,7 @@ const DataCard = () => {
         />
       )}
       <ConfirmModal />
-      <Loading fixed={false} />
-    </Box>
+    </MyBox>
   );
 };
 

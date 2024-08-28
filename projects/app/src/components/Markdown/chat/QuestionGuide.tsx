@@ -4,7 +4,7 @@ import 'katex/dist/katex.min.css';
 import ChatBoxDivider from '@/components/core/chat/Divider';
 import { useTranslation } from 'next-i18next';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const QuestionGuide = ({ text }: { text: string }) => {
@@ -24,14 +24,14 @@ const QuestionGuide = ({ text }: { text: string }) => {
 
   return questionGuides.length > 0 ? (
     <Box mt={2}>
-      <ChatBoxDivider icon="core/chat/QGFill" text={t('core.chat.Question Guide')} />
+      <ChatBoxDivider icon="core/chat/QGFill" text={t('common:core.chat.Question Guide')} />
       <Flex alignItems={'center'} flexWrap={'wrap'} gap={2}>
         {questionGuides.map((text) => (
           <Flex
             key={text}
             alignItems={'center'}
             flexWrap={'wrap'}
-            fontSize={'sm'}
+            fontSize={'xs'}
             border={theme.borders.sm}
             py={'1px'}
             px={3}
@@ -60,7 +60,7 @@ const QuestionGuide = ({ text }: { text: string }) => {
               lineHeight={0}
               bg={`linear-gradient(to left, white,white min(60px,100%),rgba(255,255,255,0) 80%)`}
             >
-              <MyTooltip label={t('core.chat.markdown.Edit Question')}>
+              <MyTooltip label={t('common:core.chat.markdown.Edit Question')}>
                 <MyIcon
                   name={'edit'}
                   w={'14px'}
@@ -71,7 +71,7 @@ const QuestionGuide = ({ text }: { text: string }) => {
                   onClick={() => eventBus.emit(EventNameEnum.editQuestion, { text })}
                 />
               </MyTooltip>
-              <MyTooltip label={t('core.chat.markdown.Send Question')}>
+              <MyTooltip label={t('common:core.chat.markdown.Send Question')}>
                 <MyIcon
                   ml={4}
                   name={'core/chat/sendLight'}

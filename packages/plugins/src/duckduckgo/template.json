@@ -1,0 +1,17 @@
+{
+  "author": "",
+  "version": "486",
+  "name": "DuckDuckGo服务",
+  "avatar": "core/workflow/template/duckduckgo",
+  "intro": "DuckDuckGo 服务，包含网络搜索、图片搜索、新闻搜索等。",
+  "showStatus": false,
+  "weight": 100,
+
+  "isTool": true,
+  "templateType": "tools",
+
+  "workflow": {
+    "nodes": [],
+    "edges": []
+  }
+}

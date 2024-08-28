@@ -287,18 +287,18 @@ const codeLight: { [key: string]: React.CSSProperties } = {
 const CodeLight = ({
   children,
   className,
-  inline,
+  codeBlock,
   match
 }: {
   children: React.ReactNode & React.ReactNode[];
   className?: string;
-  inline?: boolean;
+  codeBlock?: boolean;
   match: RegExpExecArray | null;
 }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
 
-  if (!inline) {
+  if (codeBlock) {
     const codeBoxName = useMemo(() => {
       const input = match?.['input'] || '';
       if (!input) return match?.[1];
@@ -312,7 +312,6 @@ const CodeLight = ({
         my={3}
         borderRadius={'md'}
         overflow={'overlay'}
-        bg={'myGray.900'}
         boxShadow={
           '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)'
         }
@@ -329,7 +328,7 @@ const CodeLight = ({
           <Box flex={1}>{codeBoxName}</Box>
           <Flex cursor={'pointer'} onClick={() => copyData(String(children))} alignItems={'center'}>
             <Icon name={'copy'} width={15} height={15}></Icon>
-            <Box ml={1}>{t('common.Copy')}</Box>
+            <Box ml={1}>{t('common:common.Copy')}</Box>
           </Flex>
         </Flex>
         <SyntaxHighlighter style={codeLight as any} language={match?.[1]} PreTag="pre">

@@ -1,12 +1,13 @@
-import { ChatRoleEnum, IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
-import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
+import { countGptMessagesTokens } from '../../common/string/tiktoken/index';
 import type {
   ChatCompletionContentPart,
-  ChatCompletionMessageParam
+  ChatCompletionMessageParam,
+  SdkChatCompletionMessageParam
 } from '@fastgpt/global/core/ai/type.d';
 import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { guessBase64ImageType } from '../../common/file/utils';
+import { getFileContentTypeFromHeader, guessBase64ImageType } from '../../common/file/utils';
+import { serverRequestBaseUrl } from '../../common/api/serverRequest';
 
 /* slice chat context by tokens */
 const filterEmptyMessages = (messages: ChatCompletionMessageParam[]) => {
@@ -18,13 +19,14 @@ const filterEmptyMessages = (messages: ChatCompletionMessageParam[]) => {
     return true;
   });
 };
-export function filterGPTMessageByMaxTokens({
+
+export const filterGPTMessageByMaxTokens = async ({
   messages = [],
   maxTokens
 }: {
   messages: ChatCompletionMessageParam[];
   maxTokens: number;
-}) {
+}) => {
   if (!Array.isArray(messages)) {
     return [];
   }
@@ -59,7 +61,7 @@ export function filterGPTMessageByMaxTokens({
   const chatPrompts: ChatCompletionMessageParam[] = messages.slice(chatStartIndex);
 
   // reduce token of systemPrompt
-  maxTokens -= countGptMessagesTokens(systemPrompts);
+  maxTokens -= await countGptMessagesTokens(systemPrompts);
 
   // Save the last chat prompt(question)
   const question = chatPrompts.pop();
@@ -76,7 +78,7 @@ export function filterGPTMessageByMaxTokens({
       break;
     }
 
-    const tokens = countGptMessagesTokens([assistant, user]);
+    const tokens = await countGptMessagesTokens([assistant, user]);
     maxTokens -= tokens;
     /* 整体 tokens 超出范围，截断  */
     if (maxTokens < 0) {
@@ -92,163 +94,186 @@ export function filterGPTMessageByMaxTokens({
   }
 
   return filterEmptyMessages([...systemPrompts, ...chats]);
-}
-export const formatGPTMessagesInRequestBefore = (messages: ChatCompletionMessageParam[]) => {
-  return messages
-    .map((item) => {
-      if (!item.content) return;
-      if (typeof item.content === 'string') {
-        return {
-          ...item,
-          content: item.content.trim()
-        };
-      }
-
-      // array
-      if (item.content.length === 0) return;
-      if (item.content.length === 1 && item.content[0].type === 'text') {
-        return {
-          ...item,
-          content: item.content[0].text
-        };
-      }
-
-      return item;
-    })
-    .filter(Boolean) as ChatCompletionMessageParam[];
 };
 
-/**
-    string to vision model. Follow the markdown code block rule for interception:
-
-    @rule:
-    ```img-block
-        {src:""}
-        {src:""}
-    ```
-    ```file-block
-        {name:"",src:""},
-        {name:"",src:""}
-    ```
-    @example:
-        What’s in this image?
-        ```img-block
-            {src:"https://1.png"}
-        ```
-    @return 
-        [
-            { type: 'text', text: 'What’s in this image?' },
-            {
-              type: 'image_url',
-              image_url: {
-                url: 'https://1.png'
-              }
-            }
-        ]
- */
-export async function formatStr2ChatContent(str: string) {
-  const content: ChatCompletionContentPart[] = [];
-  let lastIndex = 0;
-  const regex = new RegExp(`\`\`\`(${IMG_BLOCK_KEY})\\n([\\s\\S]*?)\`\`\``, 'g');
-
-  const imgKey: 'image_url' = 'image_url';
-
-  let match;
-
-  while ((match = regex.exec(str)) !== null) {
-    // add previous text
-    if (match.index > lastIndex) {
-      const text = str.substring(lastIndex, match.index).trim();
-      if (text) {
-        content.push({ type: 'text', text });
-      }
+/* 
+  Format requested messages
+  1. If not useVision, only retain text.
+  2. Remove file_url
+  3. If useVision, parse url from question, and load image from url(Local url)
+*/
+export const loadRequestMessages = async ({
+  messages,
+  useVision = true,
+  origin
+}: {
+  messages: ChatCompletionMessageParam[];
+  useVision?: boolean;
+  origin?: string;
+}) => {
+  // Split question text and image
+  function parseStringWithImages(input: string): ChatCompletionContentPart[] {
+    if (!useVision) {
+      return [{ type: 'text', text: input || '' }];
     }
 
-    const blockType = match[1].trim();
+    // 正则表达式匹配图片URL
+    const imageRegex =
+      /(https?:\/\/[^\s/$.?#].[^\s]*\.(?:png|jpe?g|gif|webp|bmp|tiff?|svg|ico|heic|avif))/i;
 
-    if (blockType === IMG_BLOCK_KEY) {
-      const blockContentLines = match[2].trim().split('\n');
-      const jsonLines = blockContentLines.map((item) => {
-        try {
-          return JSON.parse(item) as { src: string };
-        } catch (error) {
-          return { src: '' };
+    const result: { type: 'text' | 'image'; value: string }[] = [];
+    let lastIndex = 0;
+    let match;
+
+    // 使用正则表达式查找所有匹配项
+    while ((match = imageRegex.exec(input.slice(lastIndex))) !== null) {
+      const textBefore = input.slice(lastIndex, lastIndex + match.index);
+
+      // 如果图片URL前有文本，添加文本部分
+      if (textBefore) {
+        result.push({ type: 'text', value: textBefore });
+      }
+
+      // 添加图片URL
+      result.push({ type: 'image', value: match[0] });
+
+      lastIndex += match.index + match[0].length;
+    }
+
+    // 添加剩余的文本（如果有的话）
+    if (lastIndex < input.length) {
+      result.push({ type: 'text', value: input.slice(lastIndex) });
+    }
+
+    return result
+      .map((item) => {
+        if (item.type === 'text') {
+          return { type: 'text', text: item.value };
         }
-      });
+        if (item.type === 'image') {
+          return {
+            type: 'image_url',
+            image_url: {
+              url: item.value
+            }
+          };
+        }
+        return { type: 'text', text: item.value };
+      })
+      .filter(Boolean) as ChatCompletionContentPart[];
+  }
+  // Load image
+  const parseUserContent = async (content: string | ChatCompletionContentPart[]) => {
+    if (typeof content === 'string') {
+      return parseStringWithImages(content);
+    }
 
-      for (const item of jsonLines) {
-        if (!item.src) throw new Error("image block's content error");
-      }
+    const result = await Promise.all(
+      content.map(async (item) => {
+        if (item.type === 'text') return parseStringWithImages(item.text);
+        if (item.type === 'file_url') return;
 
-      content.push(
-        ...jsonLines.map((item) => ({
-          type: imgKey,
-          image_url: {
-            url: item.src
+        if (!item.image_url.url) return item;
+
+        // Remove url origin
+        const imgUrl = (() => {
+          if (origin && item.image_url.url.startsWith(origin)) {
+            return item.image_url.url.replace(origin, '');
           }
-        }))
-      );
+          return item.image_url.url;
+        })();
+
+        /* Load local image */
+        if (imgUrl.startsWith('/')) {
+          const response = await axios.get(imgUrl, {
+            baseURL: serverRequestBaseUrl,
+            responseType: 'arraybuffer'
+          });
+          const base64 = Buffer.from(response.data, 'binary').toString('base64');
+          const imageType =
+            getFileContentTypeFromHeader(response.headers['content-type']) ||
+            guessBase64ImageType(base64);
+
+          return {
+            ...item,
+            image_url: {
+              ...item.image_url,
+              url: `data:${imageType};base64,${base64}`
+            }
+          };
+        }
+
+        return item;
+      })
+    );
+
+    return result.flat().filter(Boolean);
+  };
+  // format GPT messages, concat text messages
+  const clearInvalidMessages = (messages: ChatCompletionMessageParam[]) => {
+    return messages
+      .map((item) => {
+        if (item.role === ChatCompletionRequestMessageRoleEnum.System && !item.content) {
+          return;
+        }
+        if (item.role === ChatCompletionRequestMessageRoleEnum.User) {
+          if (!item.content) return;
+
+          if (typeof item.content === 'string') {
+            return {
+              ...item,
+              content: item.content.trim()
+            };
+          }
+
+          // array
+          if (item.content.length === 0) return;
+          if (item.content.length === 1 && item.content[0].type === 'text') {
+            return {
+              ...item,
+              content: item.content[0].text
+            };
+          }
+        }
+
+        return item;
+      })
+      .filter(Boolean) as ChatCompletionMessageParam[];
+  };
+
+  if (messages.length === 0) {
+    return Promise.reject('core.chat.error.Messages empty');
+  }
+
+  // filter messages file
+  const filterMessages = messages.map((item) => {
+    // If useVision=false, only retain text.
+    if (
+      item.role === ChatCompletionRequestMessageRoleEnum.User &&
+      Array.isArray(item.content) &&
+      !useVision
+    ) {
+      return {
+        ...item,
+        content: item.content.filter((item) => item.type === 'text')
+      };
     }
 
-    lastIndex = regex.lastIndex;
-  }
+    return item;
+  });
 
-  // add remaining text
-  if (lastIndex < str.length) {
-    const remainingText = str.substring(lastIndex).trim();
-    if (remainingText) {
-      content.push({ type: 'text', text: remainingText });
-    }
-  }
-
-  // Continuous text type content, if type=text, merge them
-  for (let i = 0; i < content.length - 1; i++) {
-    const currentContent = content[i];
-    const nextContent = content[i + 1];
-    if (currentContent.type === 'text' && nextContent.type === 'text') {
-      currentContent.text += nextContent.text;
-      content.splice(i + 1, 1);
-      i--;
-    }
-  }
-
-  if (content.length === 1 && content[0].type === 'text') {
-    return content[0].text;
-  }
-
-  if (!content) return null;
-  // load img to base64
-  for await (const item of content) {
-    if (item.type === imgKey && item[imgKey]?.url) {
-      const response = await axios.get(item[imgKey].url, {
-        responseType: 'arraybuffer'
-      });
-      const base64 = Buffer.from(response.data).toString('base64');
-      item[imgKey].url = `data:${response.headers['content-type']};base64,${base64}`;
-    }
-  }
-
-  return content ? content : null;
-}
-
-export const loadChatImgToBase64 = async (content: string | ChatCompletionContentPart[]) => {
-  if (typeof content === 'string') {
-    return content;
-  }
-  return Promise.all(
-    content.map(async (item) => {
-      if (item.type === 'text') return item;
-      // load image
-      const response = await axios.get(item.image_url.url, {
-        responseType: 'arraybuffer'
-      });
-      const base64 = Buffer.from(response.data).toString('base64');
-      let imageType = response.headers['content-type'];
-      if (imageType === undefined) {
-        imageType = guessBase64ImageType(base64);
+  const loadMessages = (await Promise.all(
+    filterMessages.map(async (item) => {
+      if (item.role === ChatCompletionRequestMessageRoleEnum.User) {
+        return {
+          ...item,
+          content: await parseUserContent(item.content)
+        };
+      } else {
+        return item;
       }
-      item.image_url.url = `data:${imageType};base64,${base64}`;
-      return item;
     })
-  );
+  )) as ChatCompletionMessageParam[];
+
+  return clearInvalidMessages(loadMessages) as SdkChatCompletionMessageParam[];
 };

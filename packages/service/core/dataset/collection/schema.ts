@@ -1,4 +1,4 @@
-import { connectionMongo, type Model } from '../../../common/mongo';
+import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import { TrainingTypeMap, DatasetCollectionTypeMap } from '@fastgpt/global/core/dataset/constants';
@@ -8,18 +8,13 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 
-export const DatasetColCollectionName = 'dataset.collections';
+export const DatasetColCollectionName = 'dataset_collections';
 
 const DatasetCollectionSchema = new Schema({
   parentId: {
     type: Schema.Types.ObjectId,
     ref: DatasetColCollectionName,
     default: null
-  },
-  userId: {
-    // abandoned
-    type: Schema.Types.ObjectId,
-    ref: 'user'
   },
   teamId: {
     type: Schema.Types.ObjectId,
@@ -53,11 +48,15 @@ const DatasetCollectionSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
+  forbid: {
+    type: Boolean,
+    default: false
+  },
 
+  // chunk filed
   trainingType: {
     type: String,
-    enum: Object.keys(TrainingTypeMap),
-    required: true
+    enum: Object.keys(TrainingTypeMap)
   },
   chunkSize: {
     type: Number,
@@ -69,21 +68,27 @@ const DatasetCollectionSchema = new Schema({
   qaPrompt: {
     type: String
   },
+  ocrParse: Boolean,
 
+  tags: {
+    type: [String],
+    default: []
+  },
+
+  // local file collection
   fileId: {
     type: Schema.Types.ObjectId,
     ref: 'dataset.files'
   },
-  rawLink: {
-    type: String
-  },
+  // web link collection
+  rawLink: String,
+  // external collection
+  externalFileId: String,
 
-  rawTextLength: {
-    type: Number
-  },
-  hashRawText: {
-    type: String
-  },
+  // metadata
+  rawTextLength: Number,
+  hashRawText: String,
+  externalFileUrl: String, // external import url
   metadata: {
     type: Object,
     default: {}
@@ -92,21 +97,25 @@ const DatasetCollectionSchema = new Schema({
 
 try {
   // auth file
-  DatasetCollectionSchema.index({ teamId: 1, fileId: 1 }, { background: true });
+  DatasetCollectionSchema.index({ teamId: 1, fileId: 1 });
 
   // list collection; deep find collections
-  DatasetCollectionSchema.index(
-    {
-      teamId: 1,
-      datasetId: 1,
-      parentId: 1,
-      updateTime: -1
-    },
-    { background: true }
-  );
+  DatasetCollectionSchema.index({
+    teamId: 1,
+    datasetId: 1,
+    parentId: 1,
+    updateTime: -1
+  });
+
+  // Tag filter
+  DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, tags: 1 });
+  // create time filter
+  DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, createTime: 1 });
 } catch (error) {
   console.log(error);
 }
 
-export const MongoDatasetCollection: Model<DatasetCollectionSchemaType> =
-  models[DatasetColCollectionName] || model(DatasetColCollectionName, DatasetCollectionSchema);
+export const MongoDatasetCollection = getMongoModel<DatasetCollectionSchemaType>(
+  DatasetColCollectionName,
+  DatasetCollectionSchema
+);

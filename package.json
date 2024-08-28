@@ -9,24 +9,26 @@
     "gen:theme-typings": "chakra-cli tokens packages/web/styles/theme.ts --out node_modules/.pnpm/node_modules/@chakra-ui/styled-system/dist/theming.types.d.ts",
     "postinstall": "sh ./scripts/postinstall.sh",
     "initIcon": "node ./scripts/icon/init.js",
-    "previewIcon": "node ./scripts/icon/index.js"
+    "previewIcon": "node ./scripts/icon/index.js",
+    "i18n:delete-unused-keys": "node ./scripts/i18n/delete-unused-keys.js",
+    "i18n:query": "node ./scripts/i18n/query.js"
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",
     "husky": "^8.0.3",
-    "i18next": "23.10.0",
-    "lint-staged": "^13.2.1",
-    "next-i18next": "15.2.0",
+    "lint-staged": "^13.3.0",
+    "i18next": "23.11.5",
+    "next-i18next": "15.3.0",
+    "react-i18next": "14.1.2",
     "prettier": "3.2.4",
-    "react-i18next": "13.5.0",
-    "zhlint": "^0.7.1"
+    "zhlint": "^0.7.4"
   },
   "lint-staged": {
     "./**/**/*.{ts,tsx,scss}": "npm run format-code",
-    "./**/**/*.md": "npm run format-doc"
+    "./docSite/**/**/*.md": "npm run format-doc"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "pnpm": ">=8.6.0"
+    "node": ">=18.16.0",
+    "pnpm": ">=9.0.0"
   }
 }

@@ -1,4 +1,11 @@
-import React, { useRef, forwardRef, useMemo } from 'react';
+import React, {
+  useRef,
+  forwardRef,
+  useMemo,
+  useEffect,
+  useImperativeHandle,
+  ForwardedRef
+} from 'react';
 import {
   Menu,
   MenuList,
@@ -12,27 +19,40 @@ import {
 } from '@chakra-ui/react';
 import type { ButtonProps, MenuItemProps } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
-import { useLoading } from '../../../hooks/useLoading';
 import MyIcon from '../Icon';
+import { useRequest2 } from '../../../hooks/useRequest';
 
-export type SelectProps = ButtonProps & {
-  value?: string;
+export type SelectProps<T = any> = ButtonProps & {
+  value?: T;
   placeholder?: string;
   list: {
     alias?: string;
     label: string | React.ReactNode;
-    value: string;
+    description?: string;
+    value: T;
   }[];
   isLoading?: boolean;
-  onchange?: (val: any) => void;
+  onchange?: (val: T) => any | Promise<any>;
 };
 
-const MySelect = (
-  { placeholder, value, width = '100%', list, onchange, isLoading = false, ...props }: SelectProps,
-  selectRef: any
+const MySelect = <T = any,>(
+  {
+    placeholder,
+    value,
+    width = '100%',
+    list = [],
+    onchange,
+    isLoading = false,
+    ...props
+  }: SelectProps<T>,
+  ref: ForwardedRef<{
+    focus: () => void;
+  }>
 ) => {
-  const ref = useRef<HTMLButtonElement>(null);
-  const { Loading } = useLoading();
+  const ButtonRef = useRef<HTMLButtonElement>(null);
+  const MenuListRef = useRef<HTMLDivElement>(null);
+  const SelectedItemRef = useRef<HTMLDivElement>(null);
+
   const menuItemStyles: MenuItemProps = {
     borderRadius: 'sm',
     py: 2,
@@ -48,6 +68,24 @@ const MySelect = (
   const { isOpen, onOpen, onClose } = useDisclosure();
   const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
 
+  useImperativeHandle(ref, () => ({
+    focus() {
+      onOpen();
+    }
+  }));
+
+  useEffect(() => {
+    if (isOpen && MenuListRef.current && SelectedItemRef.current) {
+      const menu = MenuListRef.current;
+      const selectedItem = SelectedItemRef.current;
+      menu.scrollTop = selectedItem.offsetTop - menu.offsetTop - 100;
+    }
+  }, [isOpen]);
+
+  const { runAsync: onChange, loading } = useRequest2((val: T) => onchange?.(val));
+
+  const isSelecting = loading || isLoading;
+
   return (
     <Box
       css={css({
@@ -58,7 +96,7 @@ const MySelect = (
     >
       <Menu
         autoSelect={false}
-        isOpen={isOpen}
+        isOpen={isOpen && !isSelecting}
         onOpen={onOpen}
         onClose={onClose}
         strategy={'fixed'}
@@ -66,7 +104,7 @@ const MySelect = (
       >
         <MenuButton
           as={Button}
-          ref={ref}
+          ref={ButtonRef}
           width={width}
           px={3}
           rightIcon={<ChevronDownIcon />}
@@ -84,14 +122,16 @@ const MySelect = (
           {...props}
         >
           <Flex alignItems={'center'}>
-            {isLoading && <MyIcon mr={2} name={'common/loading'} w={'16px'} />}
+            {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'16px'} />}
             {selectItem?.alias || selectItem?.label || placeholder}
           </Flex>
         </MenuButton>
 
         <MenuList
+          ref={MenuListRef}
+          className={props.className}
           minW={(() => {
-            const w = ref.current?.clientWidth;
+            const w = ButtonRef.current?.clientWidth;
             if (w) {
               return `${w}px !important`;
             }
@@ -110,24 +150,34 @@ const MySelect = (
           maxH={'40vh'}
           overflowY={'auto'}
         >
-          {list.map((item) => (
+          {list.map((item, i) => (
             <MenuItem
-              key={item.value}
+              key={i}
               {...menuItemStyles}
               {...(value === item.value
                 ? {
-                    color: 'primary.500',
-                    bg: 'myWhite.300'
+                    ref: SelectedItemRef,
+                    color: 'primary.600',
+                    bg: 'myGray.100'
                   }
-                : {})}
+                : {
+                    color: 'myGray.900'
+                  })}
               onClick={() => {
-                if (onchange && value !== item.value) {
-                  onchange(item.value);
+                if (onChange && value !== item.value) {
+                  onChange(item.value);
                 }
               }}
               whiteSpace={'pre-wrap'}
+              fontSize={'sm'}
+              display={'block'}
             >
-              {item.label}
+              <Box>{item.label}</Box>
+              {item.description && (
+                <Box color={'myGray.500'} fontSize={'xs'}>
+                  {item.description}
+                </Box>
+              )}
             </MenuItem>
           ))}
         </MenuList>
@@ -136,4 +186,6 @@ const MySelect = (
   );
 };
 
-export default React.memo(forwardRef(MySelect));
+export default forwardRef(MySelect) as <T>(
+  props: SelectProps<T> & { ref?: React.Ref<HTMLSelectElement> }
+) => JSX.Element;

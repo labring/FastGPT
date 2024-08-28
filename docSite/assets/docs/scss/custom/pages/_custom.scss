@@ -1,3 +1,16 @@
+:root {
+    --code-bg: rgba(0, 0, 0, 0.03);
+	--code-color: rgba(14, 116, 144, 0.95);
+	--inline-code-border: 0.5px solid var(--gray-400);
+
+}
+
+[data-dark-mode] {
+    --code-bg: hsla(0, 2%, 14%, 1);
+	--code-color: #f3f4f6ed;
+	--inline-code-border: 0.5px solid var(--gray-600);
+}
+
 #content {
 	font-family: JetBrains Mono, LXGW WenKai Screen, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", "Ubuntu";
 }
@@ -62,9 +75,31 @@ div.code-toolbar {
     z-index: 1;
 }
 
+.docs-content .main-content pre code {
+	padding: 0 2.5rem 1.25rem .9rem;
+  }
+
+.docs-content .main-content code {
+	font-size: .875em;
+	padding: 1px 2px;
+	background: var(--code-bg);
+	border: var(--inline-code-border);
+	padding-top: 3px;
+	padding-bottom: 3px;
+	padding-left: 5px;
+	padding-right: 5px;
+	border-radius: .25rem;
+	color: var(--code-color);
+}
+
 li p {
     margin-top: 1rem !important;
     margin-bottom: 1rem;
+}
+
+.docs-content .main-content ul > li {
+    margin-top: .3rem !important;
+    margin-bottom: .3rem;
 }
 
 footer {

@@ -1,8 +1,8 @@
 import React from 'react';
-import { Box, Flex, useTheme, Grid, type GridProps, theme, Image } from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import { Box, Flex, useTheme, Grid, type GridProps, Radio } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 
 // @ts-ignore
 interface Props extends GridProps {
@@ -36,7 +36,7 @@ const MyRadio = ({
   const { toast } = useToast();
 
   return (
-    <Grid gridGap={[3, 5]} fontSize={['sm', 'md']} {...props}>
+    <Grid gridGap={[3, 5]} {...props}>
       {list.map((item) => (
         <Flex
           key={item.value}
@@ -44,8 +44,7 @@ const MyRadio = ({
           cursor={'pointer'}
           userSelect={'none'}
           py={3}
-          pl={'14px'}
-          pr={hiddenCircle ? '14px' : '36px'}
+          px={'4'}
           p={p !== undefined ? `${p} !important` : undefined}
           border={theme.borders.sm}
           borderWidth={'1.5px'}
@@ -54,7 +53,8 @@ const MyRadio = ({
           {...(value === item.value
             ? {
                 borderColor: 'primary.400',
-                bg: 'primary.50'
+                bg: 'primary.50',
+                color: 'primary.600'
               }
             : {
                 bg: 'myWhite.300',
@@ -62,27 +62,6 @@ const MyRadio = ({
                   borderColor: 'primary.400'
                 }
               })}
-          _after={{
-            content: '""',
-            display: hiddenCircle ? 'none' : 'block',
-            position: 'absolute',
-            right: '14px',
-            w: '16px',
-            h: '16px',
-            mr: 1,
-            borderRadius: '16px',
-            transition: '0.2s',
-            boxSizing: 'border-box',
-            ...(value === item.value
-              ? {
-                  border: '5px solid',
-                  borderColor: 'primary.600'
-                }
-              : {
-                  border: '2px solid',
-                  borderColor: 'myGray.200'
-                })
-          }}
           onClick={() => {
             if (item.forbidTip) {
               toast({
@@ -96,21 +75,20 @@ const MyRadio = ({
         >
           {!!item.icon && (
             <>
-              {item.icon.startsWith('/') ? (
-                <Image src={item.icon} mr={'14px'} w={iconSize} alt={''} />
-              ) : (
-                <MyIcon mr={'14px'} name={item.icon as any} w={iconSize} />
-              )}
+              <Avatar src={item.icon} w={iconSize} mr={'14px'} />
             </>
           )}
-          <Box pr={hiddenCircle ? 0 : 2} color={'myGray.800'}>
-            <Box>{typeof item.title === 'string' ? t(item.title) : item.title}</Box>
+          <Box pr={hiddenCircle ? 0 : 2} flex={'1 0 0'}>
+            <Box fontSize={'sm'} color={'myGray.800'}>
+              {typeof item.title === 'string' ? t(item.title as any) : item.title}
+            </Box>
             {!!item.desc && (
-              <Box fontSize={'xs'} color={'myGray.500'} lineHeight={1.2}>
-                {t(item.desc)}
+              <Box fontSize={'mini'} color={'myGray.500'} lineHeight={1.2}>
+                {t(item.desc as any)}
               </Box>
             )}
           </Box>
+          {!hiddenCircle && <Radio isChecked={value === item.value} />}
         </Flex>
       ))}
     </Grid>

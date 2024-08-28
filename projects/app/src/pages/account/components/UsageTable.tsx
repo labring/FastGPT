@@ -17,7 +17,6 @@ import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import dayjs from 'dayjs';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
@@ -27,10 +26,11 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { getTeamMembers } from '@/web/support/user/team/api';
-import Avatar from '@/components/Avatar';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const UsageDetail = dynamic(() => import('./UsageDetail'));
 
 const UsageTable = () => {
@@ -40,26 +40,30 @@ const UsageTable = () => {
     from: addDays(new Date(), -7),
     to: new Date()
   });
-  const [usageSource, setUsageSource] = useState<`${UsageSourceEnum}` | ''>('');
-  const { isPc } = useSystemStore();
-  const { userInfo } = useUserStore();
+  const [usageSource, setUsageSource] = useState<UsageSourceEnum | ''>('');
+  const { isPc } = useSystem();
+  const { userInfo, loadAndGetTeamMembers } = useUserStore();
   const [usageDetail, setUsageDetail] = useState<UsageItemType>();
 
   const sourceList = useMemo(
-    () => [
-      { label: t('common.All'), value: '' },
-      ...Object.entries(UsageSourceMap).map(([key, value]) => ({
-        label: t(value.label),
-        value: key
-      }))
-    ],
+    () =>
+      [
+        { label: t('common:common.All'), value: '' },
+        ...Object.entries(UsageSourceMap).map(([key, value]) => ({
+          label: t(value.label as any),
+          value: key
+        }))
+      ] as {
+        label: never;
+        value: UsageSourceEnum | '';
+      }[],
     [t]
   );
 
   const [selectTmbId, setSelectTmbId] = useState(userInfo?.team?.tmbId);
   const { data: members = [] } = useQuery(['getMembers', userInfo?.team?.teamId], () => {
     if (!userInfo?.team?.teamId) return [];
-    return getTeamMembers(userInfo.team.teamId);
+    return loadAndGetTeamMembers();
   });
   const tmbList = useMemo(
     () =>
@@ -105,10 +109,10 @@ const UsageTable = () => {
         px={[3, 8]}
         alignItems={['flex-end', 'center']}
       >
-        {tmbList.length > 1 && userInfo?.team?.canWrite && (
+        {tmbList.length > 1 && userInfo?.team?.permission.hasManagePer && (
           <Flex alignItems={'center'}>
             <Box mr={2} flexShrink={0}>
-              {t('support.user.team.member')}
+              {t('common:support.user.team.member')}
             </Box>
             <MySelect
               size={'sm'}
@@ -130,14 +134,21 @@ const UsageTable = () => {
           <Pagination />
         </Flex>
       </Flex>
-      <TableContainer px={[3, 8]} position={'relative'} flex={'1 0 0'} h={0} overflowY={'auto'}>
+      <TableContainer
+        mt={2}
+        px={[3, 8]}
+        position={'relative'}
+        flex={'1 0 0'}
+        h={0}
+        overflowY={'auto'}
+      >
         <Table>
           <Thead>
             <Tr>
-              {/* <Th>{t('user.team.Member Name')}</Th> */}
-              <Th>{t('user.Time')}</Th>
+              {/* <Th>{t('common:user.team.Member Name')}</Th> */}
+              <Th>{t('common:user.Time')}</Th>
               <Th>
-                <MySelect
+                <MySelect<UsageSourceEnum | ''>
                   list={sourceList}
                   value={usageSource}
                   size={'sm'}
@@ -147,8 +158,8 @@ const UsageTable = () => {
                   w={'130px'}
                 ></MySelect>
               </Th>
-              <Th>{t('user.Application Name')}</Th>
-              <Th>{t('support.wallet.usage.Total points')}</Th>
+              <Th>{t('common:user.Application Name')}</Th>
+              <Th>{t('common:support.wallet.usage.Total points')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -157,12 +168,12 @@ const UsageTable = () => {
               <Tr key={item.id}>
                 {/* <Td>{item.memberName}</Td> */}
                 <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
-                <Td>{t(UsageSourceMap[item.source]?.label) || '-'}</Td>
-                <Td>{t(item.appName) || '-'}</Td>
+                <Td>{t(UsageSourceMap[item.source]?.label as any) || '-'}</Td>
+                <Td>{t(item.appName as any) || '-'}</Td>
                 <Td>{formatNumber(item.totalPoints) || 0}</Td>
                 <Td>
                   <Button size={'sm'} variant={'whitePrimary'} onClick={() => setUsageDetail(item)}>
-                    详情
+                    {t('common:common.Detail')}
                   </Button>
                 </Td>
               </Tr>
@@ -172,12 +183,7 @@ const UsageTable = () => {
       </TableContainer>
 
       {!isLoading && usages.length === 0 && (
-        <Flex flex={'1 0 0'} flexDirection={'column'} alignItems={'center'}>
-          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-          <Box mt={2} color={'myGray.500'}>
-            无使用记录~
-          </Box>
-        </Flex>
+        <EmptyTip text={t('common:user.no_usage_records')}></EmptyTip>
       )}
 
       <Loading loading={isLoading} fixed={false} />

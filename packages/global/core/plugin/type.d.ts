@@ -1,7 +1,9 @@
-import { ModuleTemplateTypeEnum } from 'core/module/constants';
-import type { FlowModuleTemplateType, ModuleItemType } from '../module/type.d';
+import { StoreEdgeItemType } from 'core/workflow/type/edge';
+import { ModuleTemplateTypeEnum } from '../workflow/constants';
+import type { StoreNodeItemType } from '../workflow/type/node';
 import { PluginSourceEnum, PluginTypeEnum } from './constants';
 import { MethodType } from './controller';
+import { FlowNodeTemplateType } from '../workflow/type/node';
 
 export type PluginItemSchema = {
   _id: string;
@@ -12,7 +14,8 @@ export type PluginItemSchema = {
   avatar: string;
   intro: string;
   updateTime: Date;
-  modules: ModuleItemType[];
+  modules: StoreNodeItemType[];
+  edges: StoreEdgeItemType[];
   parentId: string;
   type: `${PluginTypeEnum}`;
   metadata?: {
@@ -20,16 +23,19 @@ export type PluginItemSchema = {
     apiSchemaStr?: string;
     customHeaders?: string;
   };
+  version?: 'v1' | 'v2';
+  nodeVersion?: string;
+  inited?: boolean;
 };
 
 /* plugin template */
 export type PluginTemplateType = PluginRuntimeType & {
   author?: string;
   id: string;
-  source: `${PluginSourceEnum}`;
+  source: PluginSourceEnum;
   templateType: FlowNodeTemplateType['templateType'];
   intro: string;
-  modules: ModuleItemType[];
+  version: string;
 };
 
 export type PluginRuntimeType = {
@@ -38,5 +44,6 @@ export type PluginRuntimeType = {
   avatar: string;
   showStatus?: boolean;
   isTool?: boolean;
-  modules: ModuleItemType[];
+  nodes: StoreNodeItemType[];
+  edges: StoreEdgeItemType[];
 };

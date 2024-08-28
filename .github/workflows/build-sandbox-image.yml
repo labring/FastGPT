@@ -1,0 +1,96 @@
+name: Build fastgpt-sandbox images and copy image to docker hub
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'projects/sandbox/**'
+    tags:
+      - 'v*'
+jobs:
+  build-fastgpt-sandbox-images:
+    runs-on: ubuntu-20.04
+    steps:
+      # install env
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Install Dependencies
+        run: |
+          sudo apt update && sudo apt install -y nodejs npm
+      - name: Set up QEMU (optional)
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          driver-opts: network=host
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      # login docker
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GH_PAT }}
+      - name: Login to Ali Hub
+        uses: docker/login-action@v2
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALI_HUB_USERNAME }}
+          password: ${{ secrets.ALI_HUB_PASSWORD }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_NAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      # Set tag
+      - name: Set image name and tag
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Ali_Tag=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Ali_Latest=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+          else
+            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Ali_Tag=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Ali_Latest=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+          fi
+
+      - name: Build and publish image for main branch or tag push event
+        env:
+          Git_Tag: ${{ env.Git_Tag }}
+          Git_Latest: ${{ env.Git_Latest }}
+          Ali_Tag: ${{ env.Ali_Tag }}
+          Ali_Latest: ${{ env.Ali_Latest }}
+          Docker_Hub_Tag: ${{ env.Docker_Hub_Tag }}
+          Docker_Hub_Latest: ${{ env.Docker_Hub_Latest }}
+        run: |
+          docker buildx build \
+          -f projects/sandbox/Dockerfile \
+          --platform linux/amd64,linux/arm64 \
+          --label "org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/fastgpt-sandbox" \
+          --label "org.opencontainers.image.description=fastgpt-sandbox image" \
+          --push \
+          --cache-from=type=local,src=/tmp/.buildx-cache \
+          --cache-to=type=local,dest=/tmp/.buildx-cache \
+          -t ${Git_Tag} \
+          -t ${Git_Latest} \
+          -t ${Ali_Tag} \
+          -t ${Ali_Latest} \
+          -t ${Docker_Hub_Tag} \
+          -t ${Docker_Hub_Latest} \
+          .

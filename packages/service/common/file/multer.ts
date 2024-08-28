@@ -3,7 +3,6 @@ import multer from 'multer';
 import path from 'path';
 import { BucketNameEnum, bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { tmpFileDirPath } from './constants';
 
 type FileType = {
   fieldname: string;
@@ -15,8 +14,12 @@ type FileType = {
   size: number;
 };
 
+/* 
+  maxSize: File max size (MB)
+*/
 export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
   maxSize *= 1024 * 1024;
+
   class UploadModel {
     uploader = multer({
       limits: {

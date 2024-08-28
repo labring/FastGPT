@@ -1,27 +1,27 @@
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
-import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ModelTypeEnum, getLLMModel } from '../../../../core/ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { queryExtension } from '../../../../core/ai/functions/queryExtension';
 import { getHistories } from '../utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
+import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 
 type Props = ModuleDispatchProps<{
-  [ModuleInputKeyEnum.aiModel]: string;
-  [ModuleInputKeyEnum.aiSystemPrompt]?: string;
-  [ModuleInputKeyEnum.history]?: ChatItemType[] | number;
-  [ModuleInputKeyEnum.userChatInput]: string;
+  [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.aiSystemPrompt]?: string;
+  [NodeInputKeyEnum.history]?: ChatItemType[] | number;
+  [NodeInputKeyEnum.userChatInput]: string;
 }>;
 type Response = DispatchNodeResultType<{
-  [ModuleOutputKeyEnum.text]: string;
+  [NodeOutputKeyEnum.text]: string;
 }>;
 
 export const dispatchQueryExtension = async ({
   histories,
-  module,
+  node,
   params: { model, systemPrompt, history, userChatInput }
 }: Props): Promise<Response> => {
   if (!userChatInput) {
@@ -65,12 +65,12 @@ export const dispatchQueryExtension = async ({
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
-        moduleName: module.name,
+        moduleName: node.name,
         totalPoints,
         model: modelName,
         tokens
       }
     ],
-    [ModuleOutputKeyEnum.text]: JSON.stringify(filterSameQueries)
+    [NodeOutputKeyEnum.text]: JSON.stringify(filterSameQueries)
   };
 };

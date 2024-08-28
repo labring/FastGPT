@@ -1,10 +1,16 @@
 import { setCron } from '@fastgpt/service/common/system/cron';
 import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 import { clearTmpUploadFiles } from '@fastgpt/service/common/file/utils';
-import { checkInvalidDatasetFiles, checkInvalidDatasetData, checkInvalidVector } from './cronTask';
+import {
+  checkInvalidDatasetFiles,
+  checkInvalidDatasetData,
+  checkInvalidVector,
+  removeExpiredChatFiles
+} from './cronTask';
 import { checkTimerLock } from '@fastgpt/service/common/system/timerLock/utils';
 import { TimerIdEnum } from '@fastgpt/service/common/system/timerLock/constants';
 import { addHours } from 'date-fns';
+import { getScheduleTriggerApp } from '@/service/core/app/utils';
 
 const setTrainingQueueCron = () => {
   setCron('*/1 * * * *', () => {
@@ -27,7 +33,8 @@ const clearInvalidDataCron = () => {
         lockMinuted: 59
       })
     ) {
-      checkInvalidDatasetFiles(addHours(new Date(), 2), addHours(new Date(), 6));
+      await checkInvalidDatasetFiles(addHours(new Date(), -6), addHours(new Date(), -2));
+      removeExpiredChatFiles();
     }
   });
 
@@ -38,7 +45,7 @@ const clearInvalidDataCron = () => {
         lockMinuted: 59
       })
     ) {
-      checkInvalidDatasetData(addHours(new Date(), 2), addHours(new Date(), 6));
+      checkInvalidDatasetData(addHours(new Date(), -6), addHours(new Date(), -2));
     }
   });
 
@@ -49,7 +56,20 @@ const clearInvalidDataCron = () => {
         lockMinuted: 59
       })
     ) {
-      checkInvalidVector(addHours(new Date(), 2), addHours(new Date(), 6));
+      checkInvalidVector(addHours(new Date(), -6), addHours(new Date(), -2));
+    }
+  });
+};
+
+const scheduleTriggerAppCron = () => {
+  setCron('0 */1 * * *', async () => {
+    if (
+      await checkTimerLock({
+        timerId: TimerIdEnum.scheduleTriggerApp,
+        lockMinuted: 59
+      })
+    ) {
+      getScheduleTriggerApp();
     }
   });
 };
@@ -58,4 +78,5 @@ export const startCron = () => {
   setTrainingQueueCron();
   setClearTmpUploadFilesCron();
   clearInvalidDataCron();
+  scheduleTriggerAppCron();
 };

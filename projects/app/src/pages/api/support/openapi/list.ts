@@ -1,48 +1,42 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import type { GetApiKeyProps } from '@/global/support/openapi/api';
-import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
-import { authApp } from '@fastgpt/service/support/permission/auth/app';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { NextAPI } from '@/service/middleware/entry';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    await connectToDatabase();
-    const { appId } = req.query as GetApiKeyProps;
+async function handler(req: ApiRequestProps<any, GetApiKeyProps>) {
+  const { appId } = req.query;
 
-    if (appId) {
-      const { tmbId, teamOwner } = await authApp({ req, authToken: true, appId, per: 'w' });
-
-      const findResponse = await MongoOpenApi.find({
-        appId,
-        ...(!teamOwner && { tmbId })
-      }).sort({ _id: -1 });
-
-      return jsonRes(res, {
-        data: findResponse.map((item) => item.toObject())
-      });
-    }
-
-    const {
-      teamId,
-      tmbId,
-      isOwner: teamOwner
-    } = await authUserNotVisitor({ req, authToken: true });
+  if (appId) {
+    // app-level apikey
+    await authApp({
+      req,
+      authToken: true,
+      appId,
+      per: ManagePermissionVal
+    });
 
     const findResponse = await MongoOpenApi.find({
-      appId,
-      teamId,
-      ...(!teamOwner && { tmbId })
+      appId
     }).sort({ _id: -1 });
 
-    return jsonRes(res, {
-      data: findResponse.map((item) => item.toObject())
-    });
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
+    return findResponse.map((item) => item.toObject());
   }
+  // global apikey
+  const { teamId, tmbId, permission } = await authUserPer({
+    req,
+    authToken: true
+  });
+
+  const findResponse = await MongoOpenApi.find({
+    appId,
+    teamId,
+    ...(!permission.hasManagePer && { tmbId }) // if not manager, read own key
+  }).sort({ _id: -1 });
+
+  return findResponse.map((item) => item.toObject());
 }
+
+export default NextAPI(handler);

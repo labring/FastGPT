@@ -1,30 +1,17 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { DatasetItemType, DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
-import {
-  getAllDataset,
-  getDatasets,
-  getDatasetById,
-  putDatasetById,
-  postWebsiteSync
-} from '@/web/core/dataset/api';
-import { defaultDatasetDetail } from '@/constants/dataset';
-import type { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api.d';
-import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
-import { postCreateTrainingUsage } from '@/web/support/wallet/usage/api';
-import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
+import type {
+  DatasetListItemType,
+  DatasetSimpleItemType
+} from '@fastgpt/global/core/dataset/type.d';
+import { getAllDataset, getDatasets } from '@/web/core/dataset/api';
 
 type State = {
-  allDatasets: DatasetListItemType[];
-  loadAllDatasets: () => Promise<DatasetListItemType[]>;
+  allDatasets: DatasetSimpleItemType[];
+  loadAllDatasets: () => Promise<DatasetSimpleItemType[]>;
   myDatasets: DatasetListItemType[];
-  loadDatasets: (parentId?: string) => Promise<any>;
-  setDatasets(val: DatasetListItemType[]): void;
-  datasetDetail: DatasetItemType;
-  loadDatasetDetail: (id: string, init?: boolean) => Promise<DatasetItemType>;
-  updateDataset: (data: DatasetUpdateBody) => Promise<any>;
-  startWebsiteSync: () => Promise<any>;
+  loadMyDatasets: (parentId?: string) => Promise<DatasetListItemType[]>;
 };
 
 export const useDatasetStore = create<State>()(
@@ -40,66 +27,12 @@ export const useDatasetStore = create<State>()(
           return res;
         },
         myDatasets: [],
-        async loadDatasets(parentId = '') {
+        async loadMyDatasets(parentId = '') {
           const res = await getDatasets({ parentId });
           set((state) => {
             state.myDatasets = res;
           });
           return res;
-        },
-        setDatasets(val) {
-          set((state) => {
-            state.myDatasets = val;
-          });
-        },
-        datasetDetail: defaultDatasetDetail,
-        async loadDatasetDetail(id: string, init = false) {
-          if (!id || (id === get().datasetDetail._id && !init)) return get().datasetDetail;
-
-          const data = await getDatasetById(id);
-
-          set((state) => {
-            state.datasetDetail = data;
-          });
-
-          return data;
-        },
-        async updateDataset(data) {
-          await putDatasetById(data);
-
-          if (get().datasetDetail._id === data.id) {
-            set((state) => {
-              state.datasetDetail = {
-                ...get().datasetDetail,
-                ...data
-              };
-            });
-          }
-          set((state) => {
-            state.myDatasets = state.myDatasets = state.myDatasets.map((item) =>
-              item._id === data.id
-                ? {
-                    ...item,
-                    ...data
-                  }
-                : item
-            );
-          });
-        },
-        async startWebsiteSync() {
-          await checkTeamWebSyncLimit();
-
-          const billId = await postCreateTrainingUsage({
-            name: 'core.dataset.training.Website Sync',
-            datasetId: get().datasetDetail._id
-          });
-
-          return postWebsiteSync({ datasetId: get().datasetDetail._id, billId }).then(() => {
-            get().updateDataset({
-              id: get().datasetDetail._id,
-              status: DatasetStatusEnum.syncing
-            });
-          });
         }
       })),
       {

@@ -1,56 +1,81 @@
-import { NextApiResponse } from 'next';
-import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
-import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import type { ChatDispatchProps } from '@fastgpt/global/core/module/type.d';
-import type { RunningModuleItemType } from '@fastgpt/global/core/module/runtime/type.d';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type {
+  ChatDispatchProps,
+  ModuleDispatchProps
+} from '@fastgpt/global/core/workflow/runtime/type';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type.d';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
+  NodeOutputItemType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type.d';
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleItemType } from '@fastgpt/global/core/module/type';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { responseWriteNodeStatus } from '../../../common/response';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+import { replaceVariableLabel } from '@fastgpt/global/core/workflow/utils';
 
-import { dispatchHistory } from './init/history';
-import { dispatchChatInput } from './init/userChatInput';
+import { dispatchWorkflowStart } from './init/workflowStart';
 import { dispatchChatCompletion } from './chat/oneapi';
 import { dispatchDatasetSearch } from './dataset/search';
 import { dispatchDatasetConcat } from './dataset/concat';
 import { dispatchAnswer } from './tools/answer';
 import { dispatchClassifyQuestion } from './agent/classifyQuestion';
 import { dispatchContentExtract } from './agent/extract';
-import { dispatchHttpRequest } from './tools/http';
 import { dispatchHttp468Request } from './tools/http468';
 import { dispatchAppRequest } from './tools/runApp';
 import { dispatchQueryExtension } from './tools/queryExternsion';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
-import { checkTheModuleConnectedByTool, valueTypeFormat } from './utils';
+import { removeSystemVariable, valueTypeFormat } from './utils';
+import {
+  filterWorkflowEdges,
+  checkNodeRunStatus
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { DispatchFlowResponse } from './type';
 import { dispatchStopToolCall } from './agent/runTool/stopTool';
 import { dispatchLafRequest } from './tools/runLaf';
+import { dispatchIfElse } from './tools/runIfElse';
+import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { dispatchSystemConfig } from './init/systemConfig';
+import { dispatchUpdateVariable } from './tools/runUpdateVar';
+import { addLog } from '../../../common/system/log';
+import { surrenderProcess } from '../../../common/system/tools';
+import { dispatchRunCode } from './code/run';
+import { dispatchTextEditor } from './tools/textEditor';
+import { dispatchCustomFeedback } from './tools/customFeedback';
+import { dispatchReadFiles } from './tools/readFiles';
+import { dispatchUserSelect } from './interactive/userSelect';
+import {
+  InteractiveNodeResponseItemType,
+  UserSelectInteractive
+} from '@fastgpt/global/core/workflow/template/system/userSelect/type';
+import { dispatchRunAppNode } from './agent/runAppModule';
 
-const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
-  [FlowNodeTypeEnum.historyNode]: dispatchHistory,
-  [FlowNodeTypeEnum.questionInput]: dispatchChatInput,
+const callbackMap: Record<FlowNodeTypeEnum, Function> = {
+  [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
   [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
   [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
   [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
   [FlowNodeTypeEnum.datasetConcatNode]: dispatchDatasetConcat,
   [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
   [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
-  [FlowNodeTypeEnum.httpRequest]: dispatchHttpRequest,
   [FlowNodeTypeEnum.httpRequest468]: dispatchHttp468Request,
   [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
+  [FlowNodeTypeEnum.appModule]: dispatchRunAppNode,
   [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
@@ -58,30 +83,40 @@ const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.tools]: dispatchRunTools,
   [FlowNodeTypeEnum.stopTool]: dispatchStopToolCall,
   [FlowNodeTypeEnum.lafModule]: dispatchLafRequest,
+  [FlowNodeTypeEnum.ifElseNode]: dispatchIfElse,
+  [FlowNodeTypeEnum.variableUpdate]: dispatchUpdateVariable,
+  [FlowNodeTypeEnum.code]: dispatchRunCode,
+  [FlowNodeTypeEnum.textEditor]: dispatchTextEditor,
+  [FlowNodeTypeEnum.customFeedback]: dispatchCustomFeedback,
+  [FlowNodeTypeEnum.readFiles]: dispatchReadFiles,
+  [FlowNodeTypeEnum.userSelect]: dispatchUserSelect,
 
   // none
-  [FlowNodeTypeEnum.userGuide]: () => Promise.resolve()
+  [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,
+  [FlowNodeTypeEnum.emptyNode]: () => Promise.resolve(),
+  [FlowNodeTypeEnum.globalVariable]: () => Promise.resolve()
+};
+
+type Props = ChatDispatchProps & {
+  runtimeNodes: RuntimeNodeItemType[];
+  runtimeEdges: RuntimeEdgeItemType[];
 };
 
 /* running */
-export async function dispatchWorkFlow({
-  res,
-  modules = [],
-  runtimeModules,
-  startParams = {},
-  histories = [],
-  variables = {},
-  user,
-  stream = false,
-  detail = false,
-  ...props
-}: ChatDispatchProps & {
-  modules?: ModuleItemType[]; // app modules
-  runtimeModules?: RunningModuleItemType[];
-  startParams?: Record<string, any>; // entry module params
-}): Promise<DispatchFlowResponse> {
+export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowResponse> {
+  let {
+    res,
+    runtimeNodes = [],
+    runtimeEdges = [],
+    histories = [],
+    variables = {},
+    user,
+    stream = false,
+    ...props
+  } = data;
+
   // set sse response headers
-  if (stream) {
+  if (stream && res) {
     res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('X-Accel-Buffering', 'no');
@@ -89,20 +124,19 @@ export async function dispatchWorkFlow({
   }
 
   variables = {
-    ...getSystemVariable({ timezone: user.timezone }),
+    ...getSystemVariable(data),
     ...variables
   };
-  const runningModules = runtimeModules ? runtimeModules : loadModules(modules, variables);
 
   let chatResponses: ChatHistoryItemResType[] = []; // response request and save to database
   let chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user
   let chatNodeUsages: ChatNodeUsageType[] = [];
   let toolRunResponse: ToolRunResponseItemType;
-  let runningTime = Date.now();
+  let debugNextStepRunNodes: RuntimeNodeItemType[] = [];
 
   /* Store special response field  */
   function pushStore(
-    { inputs = [] }: RunningModuleItemType,
+    { inputs = [] }: RuntimeNodeItemType,
     {
       answerText = '',
       responseData,
@@ -110,24 +144,18 @@ export async function dispatchWorkFlow({
       toolResponses,
       assistantResponses
     }: {
-      [ModuleOutputKeyEnum.answerText]?: string;
+      [NodeOutputKeyEnum.answerText]?: string;
       [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
       [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[];
       [DispatchNodeResponseKeyEnum.toolResponses]?: ToolRunResponseItemType;
       [DispatchNodeResponseKeyEnum.assistantResponses]?: AIChatItemValueItemType[]; // tool module, save the response value
     }
   ) {
-    const time = Date.now();
-
     if (responseData) {
-      chatResponses.push({
-        ...responseData,
-        runningTime: +((time - runningTime) / 1000).toFixed(2)
-      });
+      chatResponses.push(responseData);
     }
     if (nodeDispatchUsages) {
       chatNodeUsages = chatNodeUsages.concat(nodeDispatchUsages);
-      props.maxRunTimes -= nodeDispatchUsages.length;
     }
     if (toolResponses !== undefined) {
       if (Array.isArray(toolResponses) && toolResponses.length === 0) return;
@@ -138,12 +166,10 @@ export async function dispatchWorkFlow({
     }
     if (assistantResponses) {
       chatAssistantResponse = chatAssistantResponse.concat(assistantResponses);
-    }
-
-    // save assistant text response
-    if (answerText) {
+    } else if (answerText) {
+      // save assistant text response
       const isResponseAnswerText =
-        inputs.find((item) => item.key === ModuleInputKeyEnum.aiChatIsResponseText)?.value ?? true;
+        inputs.find((item) => item.key === NodeInputKeyEnum.aiChatIsResponseText)?.value ?? true;
       if (isResponseAnswerText) {
         chatAssistantResponse.push({
           type: ChatItemValueTypeEnum.text,
@@ -153,88 +179,234 @@ export async function dispatchWorkFlow({
         });
       }
     }
-
-    runningTime = time;
   }
-  /* Inject data into module input */
-  function moduleInput(module: RunningModuleItemType, data: Record<string, any> = {}) {
-    const updateInputValue = (key: string, value: any) => {
-      const index = module.inputs.findIndex((item: any) => item.key === key);
-      if (index === -1) return;
-      module.inputs[index].value = value;
-    };
-    Object.entries(data).map(([key, val]: any) => {
-      updateInputValue(key, val);
-    });
-
-    return;
-  }
-  /* Pass the output of the module to the next stage */
-  function moduleOutput(
-    module: RunningModuleItemType,
+  /* Pass the output of the node, to get next nodes and update edge status */
+  function nodeOutput(
+    node: RuntimeNodeItemType,
     result: Record<string, any> = {}
-  ): Promise<any> {
-    pushStore(module, result);
+  ): RuntimeNodeItemType[] {
+    pushStore(node, result);
 
-    const nextRunModules: RunningModuleItemType[] = [];
-
-    // Assign the output value to the next module
-    module.outputs.map((outputItem) => {
+    // Assign the output value to the next node
+    node.outputs.forEach((outputItem) => {
       if (result[outputItem.key] === undefined) return;
       /* update output value */
       outputItem.value = result[outputItem.key];
-
-      /* update target */
-      outputItem.targets.map((target: any) => {
-        // find module
-        const targetModule = runningModules.find((item) => item.moduleId === target.moduleId);
-        if (!targetModule) return;
-
-        // push to running queue
-        nextRunModules.push(targetModule);
-
-        // update input
-        moduleInput(targetModule, { [target.key]: outputItem.value });
-      });
     });
 
-    // Ensure the uniqueness of running modules
-    const set = new Set<string>();
-    const filterModules = nextRunModules.filter((module) => {
-      if (set.has(module.moduleId)) return false;
-      set.add(module.moduleId);
-      return true;
-    });
-
-    return checkModulesCanRun(filterModules);
-  }
-  function checkModulesCanRun(modules: RunningModuleItemType[] = []) {
-    return Promise.all(
-      modules.map((module) => {
-        if (!module.inputs.find((item: any) => item.value === undefined)) {
-          // remove switch
-          moduleInput(module, { [ModuleInputKeyEnum.switch]: undefined });
-          return moduleRun(module);
-        }
-      })
+    // Get next source edges and update status
+    const skipHandleId = (result[DispatchNodeResponseKeyEnum.skipHandleId] || []) as string[];
+    const targetEdges = filterWorkflowEdges(runtimeEdges).filter(
+      (item) => item.source === node.nodeId
     );
-  }
-  async function moduleRun(module: RunningModuleItemType): Promise<any> {
-    if (res.closed || props.maxRunTimes <= 0) return Promise.resolve();
 
-    if (stream && detail && module.showStatus) {
-      responseStatus({
-        res,
-        name: module.name,
-        status: 'running'
-      });
+    // update edge status
+    targetEdges.forEach((edge) => {
+      if (skipHandleId.includes(edge.sourceHandle)) {
+        edge.status = 'skipped';
+      } else {
+        edge.status = 'active';
+      }
+    });
+
+    const nextStepNodes = runtimeNodes.filter((node) => {
+      return targetEdges.some((item) => item.target === node.nodeId);
+    });
+
+    if (props.mode === 'debug') {
+      debugNextStepRunNodes = debugNextStepRunNodes.concat(nextStepNodes);
+      return [];
     }
 
-    // get module running params
-    const params: Record<string, any> = {};
-    module.inputs.forEach((item) => {
-      params[item.key] = valueTypeFormat(item.value, item.valueType);
+    return nextStepNodes;
+  }
+
+  /* Have interactive result, computed edges and node outputs */
+  function handleInteractiveResult({
+    entryNodeIds,
+    interactiveResponse
+  }: {
+    entryNodeIds: string[];
+    interactiveResponse: UserSelectInteractive;
+  }): AIChatItemValueItemType {
+    // Get node outputs
+    const nodeOutputs: NodeOutputItemType[] = [];
+    runtimeNodes.forEach((node) => {
+      node.outputs.forEach((output) => {
+        if (output.value) {
+          nodeOutputs.push({
+            nodeId: node.nodeId,
+            key: output.key as NodeOutputKeyEnum,
+            value: output.value
+          });
+        }
+      });
     });
+
+    const interactiveResult: InteractiveNodeResponseItemType = {
+      ...interactiveResponse,
+      entryNodeIds,
+      memoryEdges: runtimeEdges.map((edge) => ({
+        ...edge,
+        status: entryNodeIds.includes(edge.target)
+          ? 'active'
+          : entryNodeIds.includes(edge.source)
+            ? 'waiting'
+            : edge.status
+      })),
+      nodeOutputs
+    };
+
+    props.workflowStreamResponse?.({
+      event: SseResponseEventEnum.interactive,
+      data: { interactive: interactiveResult }
+    });
+
+    return {
+      type: ChatItemValueTypeEnum.interactive,
+      interactive: interactiveResult
+    };
+  }
+
+  // 每个节点 运行/跳过 后，初始化边的状态
+  function nodeRunAfterHook(node: RuntimeNodeItemType) {
+    node.isEntry = false;
+
+    runtimeEdges.forEach((item) => {
+      if (item.target === node.nodeId) {
+        item.status = 'waiting';
+      }
+    });
+  }
+  /* Check node run/skip or wait */
+  function checkNodeCanRun(nodes: RuntimeNodeItemType[] = []): Promise<any> {
+    return Promise.all(
+      nodes.map(async (node) => {
+        const status = checkNodeRunStatus({
+          node,
+          runtimeEdges
+        });
+
+        if (res?.closed || props.maxRunTimes <= 0) return;
+
+        addLog.debug(`Run node`, { maxRunTimes: props.maxRunTimes, uid: user._id });
+
+        // Thread avoidance
+        await surrenderProcess();
+
+        if (status === 'run') {
+          addLog.debug(`[dispatchWorkFlow] nodeRunWithActive: ${node.name}`);
+          return nodeRunWithActive(node);
+        }
+        if (status === 'skip') {
+          addLog.debug(`[dispatchWorkFlow] nodeRunWithSkip: ${node.name}`);
+          return nodeRunWithSkip(node);
+        }
+
+        return;
+      })
+    ).then((result) => {
+      props.maxRunTimes--;
+
+      const flat = result.flat().filter(Boolean) as unknown as {
+        node: RuntimeNodeItemType;
+        result: Record<string, any>;
+      }[];
+      if (flat.length === 0) return;
+
+      // Update the node output at the end of the run and get the next nodes
+      const nextNodes = flat.map((item) => nodeOutput(item.node, item.result)).flat();
+      // Remove repeat nodes(Make sure that the node is only executed once)
+      const filterNextNodes = nextNodes.filter(
+        (node, index, self) => self.findIndex((t) => t.nodeId === node.nodeId) === index
+      );
+
+      // In the current version, only one interactive node is allowed at the same time
+      const haveInteractiveResponse = flat
+        .map((response) => {
+          const interactiveResponse = response.result?.[DispatchNodeResponseKeyEnum.interactive];
+          if (interactiveResponse) {
+            chatAssistantResponse.push(
+              handleInteractiveResult({
+                entryNodeIds: [response.node.nodeId],
+                interactiveResponse
+              })
+            );
+            return 1;
+          }
+        })
+        .filter(Boolean);
+      if (haveInteractiveResponse.length > 0) return;
+
+      return checkNodeCanRun(filterNextNodes);
+    });
+  }
+  /* Inject data into module input */
+  function getNodeRunParams(node: RuntimeNodeItemType) {
+    if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
+      // Format plugin input to object
+      return node.inputs.reduce<Record<string, any>>((acc, item) => {
+        acc[item.key] = valueTypeFormat(item.value, item.valueType);
+        return acc;
+      }, {});
+    }
+
+    // Dynamic input need to store a key.
+    const dynamicInput = node.inputs.find(
+      (item) => item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam
+    );
+    const params: Record<string, any> = dynamicInput
+      ? {
+          [dynamicInput.key]: {}
+        }
+      : {};
+
+    node.inputs.forEach((input) => {
+      if (input.key === dynamicInput?.key) return;
+
+      // replace {{xx}} variables
+      let value = replaceVariable(input.value, variables);
+
+      // replace {{$xx.xx$}} variables
+      value = replaceVariableLabel({
+        text: value,
+        nodes: runtimeNodes,
+        variables,
+        runningNode: node
+      });
+
+      // replace reference variables
+      value = getReferenceVariableValue({
+        value,
+        nodes: runtimeNodes,
+        variables
+      });
+
+      // Dynamic input is stored in the dynamic key
+      if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
+        params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
+      }
+
+      params[input.key] = valueTypeFormat(value, input.valueType);
+    });
+
+    return params;
+  }
+  async function nodeRunWithActive(node: RuntimeNodeItemType) {
+    // push run status messages
+    if (node.showStatus) {
+      props.workflowStreamResponse?.({
+        event: SseResponseEventEnum.flowNodeStatus,
+        data: {
+          status: 'running',
+          name: node.name
+        }
+      });
+    }
+    const startTime = Date.now();
+
+    // get node running params
+    const params = getNodeRunParams(node);
 
     const dispatchData: ModuleDispatchProps<Record<string, any>> = {
       ...props,
@@ -243,16 +415,17 @@ export async function dispatchWorkFlow({
       histories,
       user,
       stream,
-      detail,
-      module,
-      runtimeModules: runningModules,
-      params
+      node,
+      runtimeNodes,
+      runtimeEdges,
+      params,
+      mode: props.mode === 'debug' ? 'test' : props.mode
     };
 
     // run module
     const dispatchRes: Record<string, any> = await (async () => {
-      if (callbackMap[module.flowType]) {
-        return callbackMap[module.flowType](dispatchData);
+      if (callbackMap[node.flowNodeType]) {
+        return callbackMap[node.flowNodeType](dispatchData);
       }
       return {};
     })();
@@ -261,164 +434,95 @@ export async function dispatchWorkFlow({
     const formatResponseData: ChatHistoryItemResType = (() => {
       if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
       return {
-        moduleName: module.name,
-        moduleType: module.flowType,
+        nodeId: node.nodeId,
+        moduleName: node.name,
+        moduleType: node.flowNodeType,
+        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
         ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]
       };
     })();
 
     // Add output default value
-    module.outputs.forEach((item) => {
+    node.outputs.forEach((item) => {
       if (!item.required) return;
       if (dispatchRes[item.key] !== undefined) return;
       dispatchRes[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
     });
 
-    // Pass userChatInput
-    const hasUserChatInputTarget = !!module.outputs.find(
-      (item) => item.key === ModuleOutputKeyEnum.userChatInput
-    )?.targets?.length;
+    nodeRunAfterHook(node);
 
-    return moduleOutput(module, {
-      [ModuleOutputKeyEnum.finish]: true,
-      [ModuleOutputKeyEnum.userChatInput]: hasUserChatInputTarget
-        ? params[ModuleOutputKeyEnum.userChatInput]
-        : undefined,
-      ...dispatchRes,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: formatResponseData,
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]:
-        dispatchRes[DispatchNodeResponseKeyEnum.nodeDispatchUsages]
-    });
+    return {
+      node,
+      result: {
+        ...dispatchRes,
+        [DispatchNodeResponseKeyEnum.nodeResponse]: formatResponseData
+      }
+    };
   }
-  // start process width initInput
-  const initModules = runningModules.filter((item) => item.isEntry);
-  // reset entry
-  modules.forEach((item) => {
-    item.isEntry = false;
-  });
+  async function nodeRunWithSkip(node: RuntimeNodeItemType) {
+    // 其后所有target的节点，都设置为skip
+    const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);
+    nodeRunAfterHook(node);
 
-  initModules.map((module) =>
-    moduleInput(module, {
-      ...startParams,
-      history: [] // abandon history field. History module will get histories from other fields.
-    })
-  );
-  await checkModulesCanRun(initModules);
+    return {
+      node,
+      result: {
+        [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map((item) => item.sourceHandle)
+      }
+    };
+  }
+
+  // start process width initInput
+  const entryNodes = runtimeNodes.filter((item) => item.isEntry);
+
+  // reset entry
+  // runtimeNodes.forEach((item) => {
+  //   item.isEntry = false;
+  // });
+  await checkNodeCanRun(entryNodes);
 
   // focus try to run pluginOutput
-  const pluginOutputModule = runningModules.find(
-    (item) => item.flowType === FlowNodeTypeEnum.pluginOutput
+  const pluginOutputModule = runtimeNodes.find(
+    (item) => item.flowNodeType === FlowNodeTypeEnum.pluginOutput
   );
-  if (pluginOutputModule) {
-    await moduleRun(pluginOutputModule);
+  if (pluginOutputModule && props.mode !== 'debug') {
+    await nodeRunWithActive(pluginOutputModule);
   }
 
   return {
     flowResponses: chatResponses,
     flowUsages: chatNodeUsages,
+    debugResponse: {
+      finishedNodes: runtimeNodes,
+      finishedEdges: runtimeEdges,
+      nextStepRunNodes: debugNextStepRunNodes
+    },
     [DispatchNodeResponseKeyEnum.assistantResponses]:
-      concatAssistantResponseAnswerText(chatAssistantResponse),
-    [DispatchNodeResponseKeyEnum.toolResponses]: toolRunResponse
+      mergeAssistantResponseAnswerText(chatAssistantResponse),
+    [DispatchNodeResponseKeyEnum.toolResponses]: toolRunResponse,
+    newVariables: removeSystemVariable(variables)
   };
-}
-
-/* init store modules to running modules */
-function loadModules(
-  modules: ModuleItemType[],
-  variables: Record<string, any>
-): RunningModuleItemType[] {
-  return modules
-    .filter((item) => {
-      return ![FlowNodeTypeEnum.userGuide].includes(item.moduleId as any);
-    })
-    .map<RunningModuleItemType>((module) => {
-      return {
-        moduleId: module.moduleId,
-        name: module.name,
-        avatar: module.avatar,
-        intro: module.intro,
-        flowType: module.flowType,
-        showStatus: module.showStatus,
-        isEntry: module.isEntry,
-        inputs: module.inputs
-          .filter(
-            /* 
-              1. system input must be save
-              2. connected by source handle
-              3. manual input value or have default value
-              4. For the module connected by the tool, leave the toolDescription input
-            */
-            (item) => {
-              const isTool = checkTheModuleConnectedByTool(modules, module);
-
-              if (isTool && item.toolDescription) {
-                return true;
-              }
-
-              return (
-                item.type === FlowNodeInputTypeEnum.systemInput ||
-                item.connected ||
-                item.value !== undefined
-              );
-            }
-          ) // filter unconnected target input
-          .map((item) => {
-            const replace = ['string'].includes(typeof item.value);
-
-            return {
-              key: item.key,
-              // variables replace
-              value: replace ? replaceVariable(item.value, variables) : item.value,
-              valueType: item.valueType,
-              required: item.required,
-              toolDescription: item.toolDescription
-            };
-          }),
-        outputs: module.outputs
-          .map((item) => ({
-            key: item.key,
-            required: item.required,
-            defaultValue: item.defaultValue,
-            answer: item.key === ModuleOutputKeyEnum.answerText,
-            value: undefined,
-            valueType: item.valueType,
-            targets: item.targets
-          }))
-          .sort((a, b) => {
-            // finish output always at last
-            if (a.key === ModuleOutputKeyEnum.finish) return 1;
-            if (b.key === ModuleOutputKeyEnum.finish) return -1;
-            return 0;
-          })
-      };
-    });
-}
-
-/* sse response modules staus */
-export function responseStatus({
-  res,
-  status,
-  name
-}: {
-  res: NextApiResponse;
-  status?: 'running' | 'finish';
-  name?: string;
-}) {
-  if (!name) return;
-  responseWriteNodeStatus({
-    res,
-    name
-  });
 }
 
 /* get system variable */
-export function getSystemVariable({ timezone }: { timezone: string }) {
+export function getSystemVariable({
+  user,
+  app,
+  chatId,
+  responseChatItemId,
+  histories = []
+}: Props) {
   return {
-    cTime: getSystemTime(timezone)
+    appId: String(app._id),
+    chatId,
+    responseChatItemId,
+    histories,
+    cTime: getSystemTime(user.timezone)
   };
 }
 
-export const concatAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) => {
+/* Merge consecutive text messages into one */
+export const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) => {
   const result: AIChatItemValueItemType[] = [];
   // 合并连续的text
   for (let i = 0; i < response.length; i++) {

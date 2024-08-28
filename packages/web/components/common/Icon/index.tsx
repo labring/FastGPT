@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { IconProps } from '@chakra-ui/react';
-import { Icon } from '@chakra-ui/react';
+import { Box, Icon } from '@chakra-ui/react';
 import { iconPaths } from './constants';
 import type { IconNameType } from './type.d';
 
@@ -15,7 +15,7 @@ const MyIcon = ({ name, w = 'auto', h = 'auto', ...props }: { name: IconNameType
       .catch((error) => console.log(error));
   }, [name]);
 
-  return !!name && !!iconPaths[name] ? (
+  return !!IconComponent ? (
     <Icon
       {...IconComponent}
       w={w}
@@ -25,7 +25,9 @@ const MyIcon = ({ name, w = 'auto', h = 'auto', ...props }: { name: IconNameType
       fill={'currentcolor'}
       {...props}
     />
-  ) : null;
+  ) : (
+    <Box w={w} h={'1px'}></Box>
+  );
 };
 
 export default React.memo(MyIcon);

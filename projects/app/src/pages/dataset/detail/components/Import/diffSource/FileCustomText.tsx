@@ -1,24 +1,25 @@
 import React, { useCallback, useEffect } from 'react';
-import { ImportDataComponentProps } from '@/web/core/dataset/type.d';
 
 import dynamic from 'next/dynamic';
-import { useImportStore } from '../Provider';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { Box, Button, Flex, Input, Textarea } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import Loading from '@fastgpt/web/components/common/MyLoading';
+import { useContextSelector } from 'use-context-selector';
+import { DatasetImportContext } from '../Context';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
 });
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 
-const CustomTet = ({ activeStep, goToNext }: ImportDataComponentProps) => {
+const CustomTet = () => {
+  const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
   return (
     <>
-      {activeStep === 0 && <CustomTextInput goToNext={goToNext} />}
-      {activeStep === 1 && <DataProcess showPreviewChunks goToNext={goToNext} />}
+      {activeStep === 0 && <CustomTextInput />}
+      {activeStep === 1 && <DataProcess showPreviewChunks />}
       {activeStep === 2 && <Upload />}
     </>
   );
@@ -26,9 +27,9 @@ const CustomTet = ({ activeStep, goToNext }: ImportDataComponentProps) => {
 
 export default React.memo(CustomTet);
 
-const CustomTextInput = ({ goToNext }: { goToNext: () => void }) => {
+const CustomTextInput = () => {
   const { t } = useTranslation();
-  const { sources, setSources } = useImportStore();
+  const { sources, goToNext, setSources } = useContextSelector(DatasetImportContext, (v) => v);
   const { register, reset, handleSubmit } = useForm({
     defaultValues: {
       name: '',
@@ -68,7 +69,7 @@ const CustomTextInput = ({ goToNext }: { goToNext: () => void }) => {
     <Box maxW={['100%', '800px']}>
       <Box display={['block', 'flex']} alignItems={'center'}>
         <Box flex={'0 0 120px'} fontSize={'sm'}>
-          {t('core.dataset.collection.Collection name')}
+          {t('common:core.dataset.collection.Collection name')}
         </Box>
         <Input
           flex={'1 0 0'}
@@ -76,19 +77,19 @@ const CustomTextInput = ({ goToNext }: { goToNext: () => void }) => {
           {...register('name', {
             required: true
           })}
-          placeholder={t('core.dataset.collection.Collection name')}
+          placeholder={t('common:core.dataset.collection.Collection name')}
           bg={'myGray.50'}
         />
       </Box>
       <Box display={['block', 'flex']} alignItems={'flex-start'} mt={5}>
         <Box flex={'0 0 120px'} fontSize={'sm'}>
-          {t('core.dataset.collection.Collection raw text')}
+          {t('common:core.dataset.collection.Collection raw text')}
         </Box>
         <Textarea
           flex={'1 0 0'}
           w={'100%'}
           rows={15}
-          placeholder={t('core.dataset.collection.Collection raw text')}
+          placeholder={t('common:core.dataset.collection.Collection raw text')}
           {...register('value', {
             required: true
           })}
@@ -96,7 +97,9 @@ const CustomTextInput = ({ goToNext }: { goToNext: () => void }) => {
         />
       </Box>
       <Flex mt={5} justifyContent={'flex-end'}>
-        <Button onClick={handleSubmit((data) => onSubmit(data))}>{t('common.Next Step')}</Button>
+        <Button onClick={handleSubmit((data) => onSubmit(data))}>
+          {t('common:common.Next Step')}
+        </Button>
       </Flex>
     </Box>
   );

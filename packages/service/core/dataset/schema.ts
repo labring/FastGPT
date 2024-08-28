@@ -1,6 +1,4 @@
-import { connectionMongo, type Model } from '../../common/mongo';
-const { Schema, model, models } = connectionMongo;
-import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
+import { getMongoModel, Schema } from '../../common/mongo';
 import {
   DatasetStatusEnum,
   DatasetStatusMap,
@@ -11,7 +9,9 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { PermissionTypeEnum, PermissionTypeMap } from '@fastgpt/global/support/permission/constant';
+import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
+import { getPermissionSchema } from '@fastgpt/global/support/permission/utils';
+import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
 
 export const DatasetCollectionName = 'datasets';
 
@@ -62,21 +62,16 @@ const DatasetSchema = new Schema({
   vectorModel: {
     type: String,
     required: true,
-    default: 'text-embedding-ada-002'
+    default: 'text-embedding-3-small'
   },
   agentModel: {
     type: String,
     required: true,
-    default: 'gpt-3.5-turbo'
+    default: 'gpt-4o-mini'
   },
   intro: {
     type: String,
     default: ''
-  },
-  permission: {
-    type: String,
-    enum: Object.keys(PermissionTypeMap),
-    default: PermissionTypeEnum.private
   },
   websiteConfig: {
     type: {
@@ -89,7 +84,11 @@ const DatasetSchema = new Schema({
         default: 'body'
       }
     }
-  }
+  },
+  externalReadUrl: {
+    type: String
+  },
+  ...getPermissionSchema(DatasetDefaultPermissionVal)
 });
 
 try {
@@ -98,6 +97,4 @@ try {
   console.log(error);
 }
 
-export const MongoDataset: Model<DatasetSchemaType> =
-  models[DatasetCollectionName] || model(DatasetCollectionName, DatasetSchema);
-MongoDataset.syncIndexes();
+export const MongoDataset = getMongoModel<DatasetSchemaType>(DatasetCollectionName, DatasetSchema);

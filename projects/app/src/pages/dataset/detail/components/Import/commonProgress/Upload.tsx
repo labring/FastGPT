@@ -11,36 +11,39 @@ import {
   Flex,
   Button
 } from '@chakra-ui/react';
-import { useImportStore, type FormType } from '../Provider';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { TabEnum } from '../../../index';
 import {
   postCreateDatasetCsvTableCollection,
+  postCreateDatasetExternalFileCollection,
   postCreateDatasetFileCollection,
   postCreateDatasetLinkCollection,
   postCreateDatasetTextCollection
 } from '@/web/core/dataset/api';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import Tag from '@/components/Tag';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import { useI18n } from '@/web/context/I18n';
+import { useContextSelector } from 'use-context-selector';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { DatasetImportContext, type ImportFormType } from '../Context';
 
 const Upload = () => {
   const { t } = useTranslation();
+  const { fileT } = useI18n();
   const { toast } = useToast();
   const router = useRouter();
-  const { datasetDetail } = useDatasetStore();
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const { importSource, parentId, sources, setSources, processParamsForm, chunkSize } =
-    useImportStore();
+    useContextSelector(DatasetImportContext, (v) => v);
 
   const { handleSubmit } = processParamsForm;
 
   const { mutate: startUpload, isLoading } = useRequest({
-    mutationFn: async ({ mode, customSplitChar, qaPrompt, webSelector }: FormType) => {
+    mutationFn: async ({ mode, customSplitChar, qaPrompt, webSelector }: ImportFormType) => {
       if (sources.length === 0) return;
       const filterWaitingSources = sources.filter((item) => item.createStatus === 'waiting');
 
@@ -92,6 +95,13 @@ const Upload = () => {
             ...commonParams,
             fileId: item.dbFileId
           });
+        } else if (importSource === ImportDataSourceEnum.externalFile && item.externalFileUrl) {
+          await postCreateDatasetExternalFileCollection({
+            ...commonParams,
+            externalFileUrl: item.externalFileUrl,
+            externalFileId: item.externalFileId,
+            filename: item.sourceName
+          });
         }
 
         setSources((state) =>
@@ -108,7 +118,7 @@ const Upload = () => {
     },
     onSuccess() {
       toast({
-        title: t('core.dataset.import.Import success'),
+        title: t('common:core.dataset.import.Import success'),
         status: 'success'
       });
 
@@ -132,7 +142,7 @@ const Upload = () => {
         )
       );
     },
-    errorToast: t('common.file.Upload failed')
+    errorToast: fileT('upload_failed')
   });
 
   return (
@@ -142,10 +152,10 @@ const Upload = () => {
           <Thead draggable={false}>
             <Tr bg={'myGray.100'} mb={2}>
               <Th borderLeftRadius={'md'} overflow={'hidden'} borderBottom={'none'} py={4}>
-                {t('core.dataset.import.Source name')}
+                {t('common:core.dataset.import.Source name')}
               </Th>
               <Th borderBottom={'none'} py={4}>
-                {t('core.dataset.import.Upload status')}
+                {t('common:core.dataset.import.Upload status')}
               </Th>
             </Tr>
           </Thead>
@@ -163,13 +173,13 @@ const Upload = () => {
                 <Td>
                   <Box display={'inline-block'}>
                     {item.createStatus === 'waiting' && (
-                      <Tag colorSchema={'gray'}>{t('common.Waiting')}</Tag>
+                      <MyTag colorSchema={'gray'}>{t('common:common.Waiting')}</MyTag>
                     )}
                     {item.createStatus === 'creating' && (
-                      <Tag colorSchema={'blue'}>{t('common.Creating')}</Tag>
+                      <MyTag colorSchema={'blue'}>{t('common:common.Creating')}</MyTag>
                     )}
                     {item.createStatus === 'finish' && (
-                      <Tag colorSchema={'green'}>{t('common.Finish')}</Tag>
+                      <MyTag colorSchema={'green'}>{t('common:common.Finish')}</MyTag>
                     )}
                   </Box>
                 </Td>
@@ -184,7 +194,7 @@ const Upload = () => {
           {sources.length > 0
             ? `${t('core.dataset.import.Total files', { total: sources.length })} | `
             : ''}
-          {t('core.dataset.import.Start upload')}
+          {t('common:core.dataset.import.Start upload')}
         </Button>
       </Flex>
     </Box>

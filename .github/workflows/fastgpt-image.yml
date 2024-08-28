@@ -6,11 +6,12 @@ on:
       - 'projects/app/**'
       - 'packages/**'
     tags:
-      - 'v*.*.*'
+      - 'v*'
 jobs:
   build-fastgpt-images:
     runs-on: ubuntu-20.04
     steps:
+      # install env
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -31,82 +32,61 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-
+
+      # login docker
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GH_PAT }}
-      - name: Set DOCKER_REPO_TAGGED based on branch or tag
-        run: |
-          if [[ "${{ github.ref_name }}" == "main" ]]; then
-            echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt:latest" >> $GITHUB_ENV
-          else
-            echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt:${{ github.ref_name }}" >> $GITHUB_ENV
-          fi
-      - name: Build and publish image for main branch or tag push event
-        env:
-          DOCKER_REPO_TAGGED: ${{ env.DOCKER_REPO_TAGGED }}
-        run: |
-          docker buildx build \
-          --build-arg name=app \
-          --platform linux/amd64,linux/arm64 \
-          --label "org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT" \
-          --label "org.opencontainers.image.description=fastgpt image" \
-          --push \
-          --cache-from=type=local,src=/tmp/.buildx-cache \
-          --cache-to=type=local,dest=/tmp/.buildx-cache \
-          -t ${DOCKER_REPO_TAGGED} \
-          -f Dockerfile \
-          .
-  push-to-docker-hub:
-    needs: build-fastgpt-images
-    runs-on: ubuntu-20.04
-    if: github.repository == 'labring/FastGPT'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_HUB_NAME }}
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-      - name: Set DOCKER_REPO_TAGGED based on branch or tag
-        run: |
-          if [[ "${{ github.ref_name }}" == "main" ]]; then
-            echo "IMAGE_TAG=latest" >> $GITHUB_ENV
-          else
-            echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
-          fi
-      - name: Pull image from GitHub Container Registry
-        run: docker pull ghcr.io/${{ github.repository_owner }}/fastgpt:${{env.IMAGE_TAG}}
-      - name: Tag image with Docker Hub repository name and version tag
-        run: docker tag ghcr.io/${{ github.repository_owner }}/fastgpt:${{env.IMAGE_TAG}} ${{ secrets.DOCKER_IMAGE_NAME }}:${{env.IMAGE_TAG}}
-      - name: Push image to Docker Hub
-        run: docker push ${{ secrets.DOCKER_IMAGE_NAME }}:${{env.IMAGE_TAG}}
-  push-to-ali-hub:
-    needs: build-fastgpt-images
-    if: github.repository == 'labring/FastGPT'
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
       - name: Login to Ali Hub
         uses: docker/login-action@v2
         with:
           registry: registry.cn-hangzhou.aliyuncs.com
           username: ${{ secrets.ALI_HUB_USERNAME }}
           password: ${{ secrets.ALI_HUB_PASSWORD }}
-      - name: Set DOCKER_REPO_TAGGED based on branch or tag
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_NAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      # Set tag
+      - name: Set image name and tag
         run: |
           if [[ "${{ github.ref_name }}" == "main" ]]; then
-            echo "IMAGE_TAG=latest" >> $GITHUB_ENV
+            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt:latest" >> $GITHUB_ENV
+            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt:latest" >> $GITHUB_ENV
+            echo "Ali_Tag=${{ secrets.ALI_IMAGE_NAME }}/fastgpt:latest" >> $GITHUB_ENV
+            echo "Ali_Latest=${{ secrets.ALI_IMAGE_NAME }}/fastgpt:latest" >> $GITHUB_ENV
+            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt:latest" >> $GITHUB_ENV
+            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt:latest" >> $GITHUB_ENV
           else
-            echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt:latest" >> $GITHUB_ENV
+            echo "Ali_Tag=${{ secrets.ALI_IMAGE_NAME }}/fastgpt:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Ali_Latest=${{ secrets.ALI_IMAGE_NAME }}/fastgpt:latest" >> $GITHUB_ENV
+            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt:latest" >> $GITHUB_ENV
           fi
-      - name: Pull image from GitHub Container Registry
-        run: docker pull ghcr.io/${{ github.repository_owner }}/fastgpt:${{env.IMAGE_TAG}}
-      - name: Tag image with Docker Hub repository name and version tag
-        run: docker tag ghcr.io/${{ github.repository_owner }}/fastgpt:${{env.IMAGE_TAG}} ${{ secrets.ALI_IMAGE_NAME }}:${{env.IMAGE_TAG}}
-      - name: Push image to Docker Hub
-        run: docker push ${{ secrets.ALI_IMAGE_NAME }}:${{env.IMAGE_TAG}}
+
+      - name: Build and publish image for main branch or tag push event
+        env:
+          DOCKER_REPO_TAGGED: ${{ env.DOCKER_REPO_TAGGED }}
+        run: |
+          docker buildx build \
+          -f projects/app/Dockerfile \
+          --platform linux/amd64,linux/arm64 \
+          --label "org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT" \
+          --label "org.opencontainers.image.description=fastgpt image" \
+          --push \
+          --cache-from=type=local,src=/tmp/.buildx-cache \
+          --cache-to=type=local,dest=/tmp/.buildx-cache \
+          -t ${Git_Tag} \
+          -t ${Git_Latest} \
+          -t ${Ali_Tag} \
+          -t ${Ali_Latest} \
+          -t ${Docker_Hub_Tag} \
+          -t ${Docker_Hub_Latest} \
+          .

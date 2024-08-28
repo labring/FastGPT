@@ -4,12 +4,10 @@ on:
     paths:
       - 'projects/app/**'
       - 'packages/**'
-    branches:
-      - 'main'
   workflow_dispatch:
 
 jobs:
-  build-fastgpt-images:
+  preview-fastgpt-images:
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
@@ -44,15 +42,14 @@ jobs:
           DOCKER_REPO_TAGGED: ${{ env.DOCKER_REPO_TAGGED }}
         run: |
           docker buildx build \
-          --build-arg name=app \
-          --label "org.opencontainers.image.source=  https://github.com/  ${{ github.repository_owner }}/FastGPT" \
-          --label "org.opencontainers.image.description=fastgpt-pr image" \
+          -f projects/app/Dockerfile \
+          --label "org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT" \
+          --label "org.opencontainers.image.description=fastgpt-pr imae" \
           --label "org.opencontainers.image.licenses=Apache" \
           --push \
           --cache-from=type=local,src=/tmp/.buildx-cache \
           --cache-to=type=local,dest=/tmp/.buildx-cache \
           -t ${DOCKER_REPO_TAGGED} \
-          -f Dockerfile \
           .
 
   helm-check:

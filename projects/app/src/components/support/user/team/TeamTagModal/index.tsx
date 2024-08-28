@@ -57,20 +57,20 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
   // tags Async
   const { mutate: onclickUpdate, isLoading: isUpdating } = useRequest({
     mutationFn: async (data: FormType) => {
-      return putUpdateTeam({ teamDomain: data.teamDomain, teamId: teamInfo?.teamId });
+      return putUpdateTeam({ teamDomain: data.teamDomain });
     },
     onSuccess() {
       initUserInfo();
       onClose();
     },
-    errorToast: t('common.Create Failed')
+    errorToast: t('common:common.Create Failed')
   });
   const { mutate: onclickTagAsync, isLoading: isSyncing } = useRequest({
     mutationFn: (data: FormType) => loadTeamTagsByDomain(data.teamDomain),
     onSuccess(res) {
       replaceTeamTags(res);
     },
-    successToast: t('support.user.team.Team Tags Async Success')
+    successToast: t('common:support.user.team.Team Tags Async Success')
   });
 
   useQuery(['getTeamsTags'], getTeamsTags, {
@@ -95,7 +95,7 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
           <Box>
             <Box>{teamInfo?.teamName}</Box>
             <Box color={'myGray.500'} fontSize={'xs'} fontWeight={'normal'}>
-              {'填写标签同步链接，点击同步按钮即可同步'}
+              {t('user:synchronization.title')}
             </Box>
           </Box>
         }
@@ -103,14 +103,14 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
         <ModalBody style={{ padding: '10rpx' }}>
           <Flex mt={3} alignItems={'center'}>
             <Box mb={2} fontWeight="semibold">
-              {t('同步链接')}
+              {t('common:sync_link')}
             </Box>
             <Input
               flex={1}
               ml={4}
               autoFocus
               bg={'myWhite.600'}
-              placeholder="请输入同步标签"
+              placeholder={t('user:synchronization.placeholder')}
               {...register('teamDomain', {
                 required: true
               })}
@@ -118,7 +118,7 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
           </Flex>
           <Flex mt={3} alignItems={'center'}>
             <Box mb={2} fontWeight="semibold">
-              {t('分享链接')}
+              {t('common:share_link')}
             </Box>
             {/* code */}
             <Box ml={4} borderRadius={'md'} overflow={'hidden'}>
@@ -143,7 +143,7 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
           </Flex>
           <Flex mt={3} alignItems={'center'}>
             <Box mb={2} fontWeight="semibold">
-              {t('标签列表')}
+              {t('common:tag_list')}
             </Box>
             <HStack
               ml={4}
@@ -181,16 +181,16 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
               leftIcon={<RepeatIcon />}
               onClick={handleSubmit((data) => onclickTagAsync(data))}
             >
-              立即同步
+              {t('user:synchronization.button')}
             </Button>
           </Flex>
         </ModalBody>
         <ModalFooter mb={2}>
           <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-            {t('common.Close')}
+            {t('common:common.Close')}
           </Button>
           <Button isLoading={isUpdating} onClick={handleSubmit((data) => onclickUpdate(data))}>
-            {t('user.team.Tags Async')}
+            {t('common:user.team.Tags Async')}
           </Button>
         </ModalFooter>
       </MyModal>

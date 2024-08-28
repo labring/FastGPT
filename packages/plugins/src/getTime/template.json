@@ -1,0 +1,215 @@
+{
+  "author": "",
+  "version": "481",
+  "templateType": "tools",
+  "name": "获取当前时间",
+  "avatar": "core/workflow/template/getTime",
+  "intro": "获取用户当前时区的时间。",
+  "showStatus": false,
+  "isTool": true,
+  "weight": 10,
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "lmpb9v2lo2lk",
+        "name": "自定义插件输入",
+        "intro": "自定义配置外部输入，使用插件时，仅暴露自定义配置的输入",
+        "avatar": "/imgs/workflow/input.png",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 616.4226348688949,
+          "y": -165.05298493910115
+        },
+        "version": "481",
+        "inputs": [],
+        "outputs": []
+      },
+      {
+        "nodeId": "i7uow4wj2wdp",
+        "name": "自定义插件输出",
+        "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
+        "avatar": "/imgs/workflow/output.png",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 1607.7142331269129,
+          "y": -150.8808596935447
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "time",
+            "valueType": "string",
+            "label": "time",
+            "renderTypeList": ["reference"],
+            "required": false,
+            "description": "",
+            "canEdit": true,
+            "editField": {
+              "key": true,
+              "description": true,
+              "valueType": true
+            },
+            "value": ["ebLCxU43hHuZ", "rH4tMV02robs"]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "ebLCxU43hHuZ",
+        "name": "HTTP 请求",
+        "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
+        "avatar": "/imgs/workflow/http.png",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 1050.9890727421412,
+          "y": -415.2085119990912
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "core.module.input.description.HTTP Dynamic Input",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": ["custom"],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "label": "",
+            "description": "core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "getTime"
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": ["custom"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "description": "core.module.input.description.Http Request Header",
+            "placeholder": "core.module.input.description.Http Request Header",
+            "required": false
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": "{\n  \"time\": \"{{cTime}}\"\n}",
+            "label": "",
+            "required": false
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "请求错误",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "label": "原始响应",
+            "required": true,
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
+          {
+            "id": "rH4tMV02robs",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "time",
+            "label": "time"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "lmpb9v2lo2lk",
+        "target": "ebLCxU43hHuZ",
+        "sourceHandle": "lmpb9v2lo2lk-source-right",
+        "targetHandle": "ebLCxU43hHuZ-target-left"
+      },
+      {
+        "source": "ebLCxU43hHuZ",
+        "target": "i7uow4wj2wdp",
+        "sourceHandle": "ebLCxU43hHuZ-source-right",
+        "targetHandle": "i7uow4wj2wdp-target-left"
+      }
+    ]
+  }
+}

@@ -1,23 +1,28 @@
-import { Types, connectionMongo } from '../../mongo';
+import { Types, connectionMongo, ReadPreference } from '../../mongo';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import fsp from 'fs/promises';
 import fs from 'fs';
 import { DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
-import { MongoFileSchema } from './schema';
+import { MongoChatFileSchema, MongoDatasetFileSchema } from './schema';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { ReadFileByBufferParams } from '../read/type';
-import { MongoRwaTextBuffer } from '../../buffer/rawText/schema';
-import { readFileRawContent } from '../read/utils';
-import { PassThrough } from 'stream';
+import { MongoRawTextBuffer } from '../../buffer/rawText/schema';
+import { readRawContentByFileBuffer } from '../read/utils';
+import { gridFsStream2Buffer, stream2Encoding } from './utils';
+import { addLog } from '../../system/log';
+import { readFromSecondary } from '../../mongo/utils';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
-  MongoFileSchema;
+  MongoDatasetFileSchema;
+  MongoChatFileSchema;
+
   return connectionMongo.connection.db.collection(`${bucket}.files`);
 }
 export function getGridBucket(bucket: `${BucketNameEnum}`) {
   return new connectionMongo.mongo.GridFSBucket(connectionMongo.connection.db, {
-    bucketName: bucket
+    bucketName: bucket,
+    // @ts-ignore
+    readPreference: ReadPreference.SECONDARY_PREFERRED // Read from secondary node
   });
 }
 
@@ -45,8 +50,12 @@ export async function uploadFile({
   const stats = await fsp.stat(path);
   if (!stats.isFile()) return Promise.reject(`${path} is not a file`);
 
+  const { stream: readStream, encoding } = await stream2Encoding(fs.createReadStream(path));
+
+  // Add default metadata
   metadata.teamId = teamId;
   metadata.tmbId = tmbId;
+  metadata.encoding = encoding;
 
   // create a gridfs bucket
   const bucket = getGridBucket(bucketName);
@@ -58,7 +67,7 @@ export async function uploadFile({
 
   // save to gridfs
   await new Promise((resolve, reject) => {
-    fs.createReadStream(path)
+    readStream
       .pipe(stream as any)
       .on('finish', resolve)
       .on('error', reject);
@@ -98,7 +107,9 @@ export async function delFileByFileIdList({
   try {
     const bucket = getGridBucket(bucketName);
 
-    await Promise.all(fileIdList.map((id) => bucket.delete(new Types.ObjectId(id))));
+    for await (const fileId of fileIdList) {
+      await bucket.delete(new Types.ObjectId(fileId));
+    }
   } catch (error) {
     if (retry > 0) {
       return delFileByFileIdList({ bucketName, fileIdList, retry: retry - 1 });
@@ -114,56 +125,28 @@ export async function getDownloadStream({
   fileId: string;
 }) {
   const bucket = getGridBucket(bucketName);
-  const stream = bucket.openDownloadStream(new Types.ObjectId(fileId));
-  const copyStream = stream.pipe(new PassThrough());
 
-  /* get encoding */
-  const buffer = await (() => {
-    return new Promise<Buffer>((resolve, reject) => {
-      let tmpBuffer: Buffer = Buffer.from([]);
-
-      stream.on('data', (chunk) => {
-        if (tmpBuffer.length < 20) {
-          tmpBuffer = Buffer.concat([tmpBuffer, chunk]);
-        }
-        if (tmpBuffer.length >= 20) {
-          resolve(tmpBuffer);
-        }
-      });
-      stream.on('end', () => {
-        resolve(tmpBuffer);
-      });
-      stream.on('error', (err) => {
-        reject(err);
-      });
-    });
-  })();
-
-  const encoding = detectFileEncoding(buffer);
-
-  return {
-    fileStream: copyStream,
-    encoding
-    // encoding: 'utf-8'
-  };
+  return bucket.openDownloadStream(new Types.ObjectId(fileId));
 }
 
 export const readFileContentFromMongo = async ({
   teamId,
   bucketName,
   fileId,
-  csvFormat = false
+  isQAImport = false
 }: {
   teamId: string;
   bucketName: `${BucketNameEnum}`;
   fileId: string;
-  csvFormat?: boolean;
+  isQAImport?: boolean;
 }): Promise<{
   rawText: string;
   filename: string;
 }> => {
   // read buffer
-  const fileBuffer = await MongoRwaTextBuffer.findOne({ sourceId: fileId }).lean();
+  const fileBuffer = await MongoRawTextBuffer.findOne({ sourceId: fileId }, undefined, {
+    ...readFromSecondary
+  }).lean();
   if (fileBuffer) {
     return {
       rawText: fileBuffer.rawText,
@@ -171,49 +154,38 @@ export const readFileContentFromMongo = async ({
     };
   }
 
-  const [file, { encoding, fileStream }] = await Promise.all([
+  const [file, fileStream] = await Promise.all([
     getFileById({ bucketName, fileId }),
     getDownloadStream({ bucketName, fileId })
   ]);
-
+  // console.log('get file stream', Date.now() - start);
   if (!file) {
     return Promise.reject(CommonErrEnum.fileNotFound);
   }
 
   const extension = file?.filename?.split('.')?.pop()?.toLowerCase() || '';
 
-  const fileBuffers = await (() => {
-    return new Promise<Buffer>((resolve, reject) => {
-      let buffer = Buffer.from([]);
-      fileStream.on('data', (chunk) => {
-        buffer = Buffer.concat([buffer, chunk]);
-      });
-      fileStream.on('end', () => {
-        resolve(buffer);
-      });
-      fileStream.on('error', (err) => {
-        reject(err);
-      });
-    });
-  })();
+  const start = Date.now();
+  const fileBuffers = await gridFsStream2Buffer(fileStream);
+  addLog.debug('get file buffer', { time: Date.now() - start });
 
-  const params: ReadFileByBufferParams = {
+  const encoding = file?.metadata?.encoding || detectFileEncoding(fileBuffers);
+
+  // Get raw text
+  const { rawText } = await readRawContentByFileBuffer({
+    extension,
+    isQAImport,
     teamId,
     buffer: fileBuffers,
     encoding,
     metadata: {
       relatedId: fileId
     }
-  };
-
-  const { rawText } = await readFileRawContent({
-    extension,
-    csvFormat,
-    params
   });
 
-  if (rawText.trim()) {
-    MongoRwaTextBuffer.create({
+  // < 14M
+  if (fileBuffers.length < 14 * 1024 * 1024 && rawText.trim()) {
+    MongoRawTextBuffer.create({
       sourceId: fileId,
       rawText,
       metadata: {

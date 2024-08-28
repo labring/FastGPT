@@ -1,0 +1,57 @@
+{
+  "Code": "代码",
+  "add_new_input": "新增输入",
+  "code": {
+    "Reset template": "还原模板",
+    "Reset template confirm": "确认还原代码模板？将会重置所有输入和输出至模板值，请注意保存当前代码。"
+  },
+  "confirm_delete_field_tip": "确认删除该字段？",
+  "create_link_error": "创建链接异常",
+  "custom_input": "自定义输入",
+  "delete_api": "确认删除该API密钥？删除后该密钥立即失效，对应的对话日志不会删除，请确认！",
+  "edit_input": "编辑输入",
+  "field_description": "字段描述",
+  "field_description_placeholder": "描述该输入字段的功能，如果为工具调用参数，则该描述会影响模型生成的质量",
+  "field_name_already_exists": "字段名已经存在",
+  "field_required": "必填",
+  "field_used_as_tool_input": "作为工具调用参数",
+  "ifelse": {
+    "Input value": "输入值",
+    "Select value": "选择值"
+  },
+  "input_description": "字段描述",
+  "only_the_reference_type_is_supported": "仅支持引用类型",
+  "optional_value_type": "可选的数据类型",
+  "optional_value_type_tip": "可以指定 1 个或多个数据类型，用户在动态添加字段时，仅可选择配置的类型",
+  "response": {
+    "Code log": "Log 日志",
+    "Custom inputs": "自定义输入",
+    "Custom outputs": "自定义输出",
+    "Error": "错误信息",
+    "Read file result": "文档解析结果预览",
+    "User_select_description": "说明文字",
+    "User_select_result": "选择的结果",
+    "read files": "解析的文档"
+  },
+  "template": {
+    "ai_chat": "AI 对话",
+    "ai_chat_intro": "AI 大模型对话",
+    "dataset_search": "知识库搜索",
+    "dataset_search_intro": "调用“语义检索”和“全文检索”能力，从“知识库”中查找可能与问题相关的参考内容",
+    "system_config": "系统配置",
+    "tool_call": "工具调用",
+    "tool_call_intro": "通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。",
+    "workflow_start": "流程开始"
+  },
+  "tool_input": "工具参数",
+  "update_link_error": "更新链接异常",
+  "variable_picker_tips": "可输入节点名或变量名搜索",
+  "workflow": {
+    "Back_to_current_version": "回到初始状态",
+    "My edit": "我的编辑",
+    "Switch_failed": "切换失败",
+    "Switch_success": "切换成功",
+    "Team cloud": "团队云端",
+    "exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。"
+  }
+}

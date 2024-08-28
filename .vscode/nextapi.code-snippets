@@ -1,0 +1,54 @@
+{
+	// Place your FastGPT 工作区 snippets here. Each snippet is defined under a snippet name and has a scope, prefix, body and 
+	// description. Add comma separated ids of the languages where the snippet is applicable in the scope field. If scope 
+	// is left empty or omitted, the snippet gets applied to all languages. The prefix is what is 
+	// used to trigger the snippet and the body will be expanded and inserted. Possible variables are: 
+	// $1, $2 for tab stops, $0 for the final cursor position, and ${1:label}, ${2:another} for placeholders. 
+	// Placeholders with the same ids are connected.
+	// Example:
+	"Next api template": {
+		"scope": "javascript,typescript",
+		"prefix": "nextapi",
+		"body": [
+			"import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';",
+			"import { NextAPI } from '@/service/middleware/entry';",
+			"",
+			"export type ${TM_FILENAME_BASE}Query = {};",
+			"",
+			"export type ${TM_FILENAME_BASE}Body = {};",
+			"",
+			"export type ${TM_FILENAME_BASE}Response = {};",
+			"",
+			"async function handler(",
+			"  req: ApiRequestProps<${TM_FILENAME_BASE}Body, ${TM_FILENAME_BASE}Query>,",
+			"  res: ApiResponseType<any>",
+			"): Promise<${TM_FILENAME_BASE}Response> {",
+			"    $1",
+			"    return {}",
+			"}",
+			"",
+			"export default NextAPI(handler);"
+		],
+		"description": "FastGPT Next API template"
+	},
+	"use context template": {
+		"scope": "typescriptreact",
+		"prefix": "context",
+		"body": [
+			"import React, { ReactNode } from 'react';",
+			"import { createContext } from 'use-context-selector';",
+			"",
+			"type ContextType = {$1};",
+			"",
+			"export const Context = createContext<ContextType>({});",
+			"",
+			"const ContextProvider = ({ children }: { children: ReactNode }) => {",
+			"  const contextValue: ContextType = {};",
+			"  return <Context.Provider value={contextValue}>{children}</Context.Provider>;",
+			"};",
+			"",
+			"export default ContextProvider"
+		],
+		"description": "FastGPT usecontext template"
+	}
+}
