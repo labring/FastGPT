@@ -12,7 +12,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { postRebuildEmbedding } from '@/web/core/dataset/api';
@@ -77,18 +77,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     multiple: false
   });
 
-  /* 点击删除 */
-  const { mutate: onclickDelete, isLoading: isDeleting } = useRequest({
-    mutationFn: () => {
-      return delDatasetById(datasetId);
-    },
-    onSuccess() {
-      router.replace(`/dataset/list`);
-    },
-    successToast: t('common:common.Delete Success'),
-    errorToast: t('common:common.Delete Failed')
-  });
-
   const { mutate: onSave, isLoading: isSaving } = useRequest({
     mutationFn: (data: DatasetItemType) => {
       return updateDataset({
@@ -136,7 +124,13 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     errorToast: t('common:common.Update Failed')
   });
 
-  const totalLoading = isSelecting || isDeleting || isSaving || isRebuilding;
+  const { runAsync: onEditBaseInfo } = useRequest2((data) => updateDataset(data), {
+    manual: true,
+    successToast: t('common:common.Update Success'),
+    errorToast: t('common:common.Update Failed')
+  });
+
+  const totalLoading = isSelecting || isSaving || isRebuilding;
 
   return (
     <Box w={'100%'} h={'100%'} p={6}>
@@ -185,7 +179,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
       <Box overflow={'hidden'} h={openBaseConfig ? 'auto' : '24px'}>
         <Flex justify={'space-between'} alignItems={'center'} fontSize={'mini'} h={'24px'}>
-          <Box fontWeight={'500'} color={'myGray.900'}>
+          <Box fontWeight={'500'} color={'myGray.900'} userSelect={'none'}>
             {t('common:common.base_config')}
           </Box>
           <MyIcon
@@ -193,16 +187,23 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             _hover={{ color: 'primary.500', cursor: 'pointer' }}
             color={'myGray.500'}
             name={openBaseConfig ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
-            onClick={() => setOpenBaseConfig(!openBaseConfig)}
+            onClick={(e) => {
+              e.preventDefault();
+              setOpenBaseConfig(!openBaseConfig);
+            }}
           />
         </Flex>
-        <Flex mt={3} w={'100%'} flexDir={'column'}>
-          <FormLabel fontSize={'mini'}>{t('common:core.dataset.Dataset ID')}</FormLabel>
+        <Flex mt={3} w={'100%'} flexDir={'column'} userSelect={'none'}>
+          <FormLabel fontSize={'mini'} fontWeight={'500'}>
+            {t('common:core.dataset.Dataset ID')}
+          </FormLabel>
           <Box fontSize={'mini'}>{datasetDetail._id}</Box>
         </Flex>
 
         <Box mt={5} w={'100%'}>
-          <FormLabel fontSize={'mini'}>{t('common:core.ai.model.Vector Model')}</FormLabel>
+          <FormLabel fontSize={'mini'} fontWeight={'500'}>
+            {t('common:core.ai.model.Vector Model')}
+          </FormLabel>
           <Box pt={2} flex={[1, '0 0 320px']}>
             <AIModelSelector
               w={'100%'}
@@ -222,7 +223,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               onchange={(e) => {
                 const vectorModel = vectorModelList.find((item) => item.model === e);
                 if (!vectorModel) return;
-                onOpenConfirmRebuild(() => {
+                return onOpenConfirmRebuild(() => {
                   setValue('vectorModel', vectorModel);
                   onRebuilding(vectorModel);
                 })();
@@ -232,7 +233,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Box>
 
         <Flex mt={2} w={'100%'} alignItems={'center'}>
-          <FormLabel flex={['0 0 90px', '0 0 160px']} fontSize={'mini'} w={0}>
+          <FormLabel flex={['0 0 90px', '0 0 160px']} fontSize={'mini'} w={0} fontWeight={'500'}>
             {t('common:core.Max Token')}
           </FormLabel>
           <Box flex={[1, '0 0 320px']} fontSize={'mini'}>
@@ -241,7 +242,9 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Flex>
 
         <Box pt={5}>
-          <FormLabel fontSize={'mini'}>{t('common:core.ai.model.Dataset Agent Model')}</FormLabel>
+          <FormLabel fontSize={'mini'} fontWeight={'500'}>
+            {t('common:core.ai.model.Dataset Agent Model')}
+          </FormLabel>
           <Box pt={2}>
             <AIModelSelector
               w={'100%'}
@@ -255,7 +258,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 const agentModel = datasetModelList.find((item) => item.model === e);
                 if (!agentModel) return;
                 setValue('agentModel', agentModel);
-                handleSubmit((data) => onSave({ ...data, agentModel: agentModel }))();
+                return handleSubmit((data) => onSave({ ...data, agentModel: agentModel }))();
               }}
               isDisabled={totalLoading}
             />
@@ -267,7 +270,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         {datasetDetail.type === DatasetTypeEnum.externalFile && (
           <>
             <Box w={'100%'} alignItems={'center'} pt={4}>
-              <FormLabel display={'flex'} pb={2} fontSize={'mini'}>
+              <FormLabel display={'flex'} pb={2} fontSize={'mini'} fontWeight={'500'}>
                 <Box>{t('dataset:external_read_url')}</Box>
                 <QuestionTip label={t('dataset:external_read_url_tip')} />
               </FormLabel>
@@ -288,7 +291,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           <MyDivider my={4} h={'2px'} maxW={'500px'} />
           <Box overflow={'hidden'} h={openPermissionConfig ? 'auto' : '24px'}>
             <Flex justify={'space-between'} alignItems={'center'} fontSize={'mini'} h={'24px'}>
-              <Box fontWeight={'500'} color={'myGray.900'}>
+              <Box fontWeight={'500'} color={'myGray.900'} userSelect={'none'}>
                 {t('common:permission.Permission config')}
               </Box>
               <MyIcon
@@ -301,7 +304,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             </Flex>
 
             <Box mt={3}>
-              <FormLabel fontSize={'mini'} pb={3}>
+              <FormLabel fontWeight={'500'} fontSize={'mini'} pb={3} userSelect={'none'}>
                 {t('common:permission.Default permission')}
               </FormLabel>
               <DefaultPermissionList
@@ -311,12 +314,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 isDisabled={totalLoading}
                 onChange={(v) => {
                   setValue('defaultPermission', v);
-                  handleSubmit((data) => onSave({ ...data, defaultPermission: v }))();
+                  return handleSubmit((data) => onSave({ ...data, defaultPermission: v }))();
                 }}
               />
             </Box>
 
-            <Box mt={4}>
+            <Box py={4}>
               <MemberManager
                 managePer={{
                   permission: datasetDetail.permission,
@@ -350,7 +353,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             setEditedDataset(undefined);
           }}
           onEdit={async (data) => {
-            await updateDataset({
+            await onEditBaseInfo({
               id: editedDataset.id,
               name: data.name,
               intro: data.intro,
