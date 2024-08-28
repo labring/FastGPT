@@ -119,6 +119,7 @@
     "Cancel": "取消",
     "Choose": "选择",
     "Close": "关闭",
+    "base_config": "基础配置",
     "Config": "配置",
     "Confirm": "确认",
     "Confirm Create": "确认创建",
@@ -638,8 +639,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -775,6 +775,7 @@
         "test result tip": "根据知识库内容与测试文本的相似度进行排序，你可以根据测试结果调整对应的文本。\n注意：测试记录中的数据可能已经被修改过，点击某条测试数据后将展示最新的数据。"
       },
       "training": {
+        "tag": "排队情况",
         "Agent queue": "QA 训练排队",
         "Auto mode": "增强处理（实验）",
         "Auto mode Tip": "通过子索引以及调用模型生成相关问题与摘要，来增加数据块的语义丰富度，更利于检索。需要消耗更多的存储空间和增加 AI 调用次数。",

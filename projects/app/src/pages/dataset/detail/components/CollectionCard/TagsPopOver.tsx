@@ -161,7 +161,7 @@ const TagsPopOver = ({
                 fontWeight={'500'}
                 bg={'#F0FBFF'}
                 color={'#0884DD'}
-                borderRadius={'4px'}
+                borderRadius={'xs'}
               >
                 {item.tag}
               </Box>
@@ -197,7 +197,7 @@ const TagsPopOver = ({
                   onBlur={() => setIsFocusInput(false)}
                   pl={2}
                   h={7}
-                  borderRadius={'4px'}
+                  borderRadius={'xs'}
                   value={searchTag}
                   placeholder={t('dataset:tag.searchOrAddTag')}
                   onChange={(e) => setSearchTag(e.target.value)}
@@ -217,7 +217,7 @@ const TagsPopOver = ({
                       // setCheckedTags([...checkedTags, item]);
                     }}
                   >
-                    <MyIcon name={'common/addLight'} w={'14px'} />
+                    <MyIcon name={'common/addLight'} w={'sm'} />
                     <Box ml={1} py={1}>
                       {t('dataset:tag.add') + ` "${searchTag}"`}
                     </Box>
@@ -277,7 +277,7 @@ const TagsPopOver = ({
                   fontSize={'11px'}
                   bg={'#F0FBFF'}
                   color={'#0884DD'}
-                  borderRadius={'4px'}
+                  borderRadius={'xs'}
                 >
                   {tag.tag}
                 </Box>

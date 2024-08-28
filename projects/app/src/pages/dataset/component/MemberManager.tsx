@@ -1,4 +1,4 @@
-import { Box, Button, Flex } from '@chakra-ui/react';
+import { Box, Button, Flex, FormLabel } from '@chakra-ui/react';
 import React from 'react';
 import CollaboratorContextProvider, {
   MemberManagerInputPropsType
@@ -9,29 +9,38 @@ import { useTranslation } from 'next-i18next';
 function MemberManager({ managePer }: { managePer: MemberManagerInputPropsType }) {
   const { t } = useTranslation();
   return (
-    <Box mt={4}>
+    <Box>
       <CollaboratorContextProvider {...managePer}>
         {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
           return (
             <>
               <Flex alignItems="center" flexDirection="row" justifyContent="space-between" w="full">
-                <Flex flexDirection="row" gap="2">
-                  <Button
-                    size="sm"
-                    variant="whitePrimary"
-                    leftIcon={<MyIcon w="4" name="common/settingLight" />}
-                    onClick={onOpenManageModal}
-                  >
-                    {t('common:permission.Manage')}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="whitePrimary"
-                    leftIcon={<MyIcon w="4" name="support/permission/collaborator" />}
-                    onClick={onOpenAddMember}
-                  >
-                    {t('common:common.Add')}
-                  </Button>
+                <Box>
+                  <FormLabel fontSize={'mini'}>{t('common:permission.Collaborator')}</FormLabel>
+                </Box>
+                <Flex gap={0.5}>
+                  <Box p={1}>
+                    <MyIcon
+                      onClick={onOpenManageModal}
+                      name="common/setting"
+                      w={'1rem'}
+                      h={'1rem'}
+                      color={'myGray.600'}
+                      cursor={'pointer'}
+                      _hover={{ color: 'primary.500' }}
+                    />
+                  </Box>
+                  <Box p={1}>
+                    <MyIcon
+                      cursor={'pointer'}
+                      onClick={onOpenAddMember}
+                      name="common/addUser"
+                      _hover={{ color: 'primary.500' }}
+                      w={'1rem'}
+                      h={'1rem'}
+                      color={'myGray.600'}
+                    />
+                  </Box>
                 </Flex>
               </Flex>
               <MemberListCard mt={2} p={1.5} bg="myGray.100" borderRadius="md" />

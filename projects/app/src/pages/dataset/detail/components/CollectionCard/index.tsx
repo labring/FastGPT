@@ -186,12 +186,12 @@ const CollectionCard = () => {
 
   return (
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]}>
-      <Flex ref={BoxRef} flexDirection={'column'} py={[1, 3]} h={'100%'}>
+      <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'}>
         {/* header */}
         <Header />
 
         {/* collection table */}
-        <TableContainer px={[2, 6]} mt={[0, 3]} flex={'1 0 0'} overflowY={'auto'} fontSize={'sm'}>
+        <TableContainer px={[2, 6]} mt={[0, 3]} overflowY={'auto'} fontSize={'sm'}>
           <Table variant={'simple'} draggable={false}>
             <Thead draggable={false}>
               <Tr>
