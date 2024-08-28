@@ -1,8 +1,9 @@
-import React, { SetStateAction, useState } from 'react';
+import React, { useState } from 'react';
 import { Box, Checkbox, Flex, Grid, Input, InputGroup, InputLeftElement } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
+import { Control, Controller } from 'react-hook-form';
 
 type memberType = {
   tmbId: string;
@@ -11,21 +12,23 @@ type memberType = {
 };
 
 function SelectMember({
-  members,
-  selected,
+  allMembers,
+  selected = [],
   setSelected
 }: {
-  members: memberType[];
-  setSelected: React.Dispatch<SetStateAction<any>>;
-  selected: memberType[];
+  allMembers: memberType[];
+  selected?: string[];
+  setSelected: React.Dispatch<React.SetStateAction<string[]>>;
 }) {
   const [searchKey, setSearchKey] = useState('');
   const { t } = useTranslation();
 
-  const filterMembers = members.filter((member) => {
+  const filterMembers = allMembers.filter((member) => {
     if (member.memberName.includes(searchKey)) return true;
     return false;
   });
+
+  const selectedMembers = selected.map((item) => allMembers.find((member) => member.tmbId == item));
 
   return (
     <Grid
@@ -61,19 +64,19 @@ function SelectMember({
                 cursor={'pointer'}
                 _hover={{
                   bg: 'myGray.50',
-                  ...(!selected.includes(member) ? { svg: { color: 'myGray.50' } } : {})
+                  ...(!selectedMembers.includes(member) ? { svg: { color: 'myGray.50' } } : {})
                 }}
                 _notLast={{ mb: 2 }}
                 onClick={() => {
-                  if (selected.indexOf(member) == -1) {
-                    setSelected([...selected, member]);
+                  if (selectedMembers.indexOf(member) == -1) {
+                    setSelected([...selected, member.tmbId]);
                   } else {
-                    setSelected([...selected.filter((item) => item.tmbId != member.tmbId)]);
+                    setSelected([...selected.filter((item) => item != member.tmbId)]);
                   }
                 }}
               >
                 <Checkbox
-                  isChecked={selected.includes(member)}
+                  isChecked={selectedMembers.includes(member)}
                   icon={<MyIcon name={'common/check'} w={'12px'} />}
                 />
                 <Avatar ml={2} src={member.avatar} w="1.5rem" />
@@ -86,30 +89,32 @@ function SelectMember({
       <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4">
         <Box mt={3}>{t('common:chosen') + ': ' + selected.length} </Box>
         <Box mt={5}>
-          {selected.map((member) => {
+          {selectedMembers?.map((member) => {
             return (
-              <Flex
-                alignItems="center"
-                justifyContent="space-between"
-                py="2"
-                px={3}
-                borderRadius={'md'}
-                key={member.tmbId}
-                _hover={{ bg: 'myGray.50' }}
-                _notLast={{ mb: 2 }}
-              >
-                <Avatar src={member.avatar} w="1.5rem" />
-                <Box w="full">{member.memberName}</Box>
-                <MyIcon
-                  name={'common/closeLight'}
-                  w={'1rem'}
-                  cursor={'pointer'}
-                  _hover={{ color: 'red.600' }}
-                  onClick={() =>
-                    setSelected([...selected.filter((item) => item.tmbId != member.tmbId)])
-                  }
-                />
-              </Flex>
+              member && (
+                <Flex
+                  alignItems="center"
+                  justifyContent="space-between"
+                  py="2"
+                  px={3}
+                  borderRadius={'md'}
+                  key={member.tmbId}
+                  _hover={{ bg: 'myGray.50' }}
+                  _notLast={{ mb: 2 }}
+                >
+                  <Avatar src={member.avatar} w="1.5rem" />
+                  <Box w="full">{member.memberName}</Box>
+                  <MyIcon
+                    name={'common/closeLight'}
+                    w={'1rem'}
+                    cursor={'pointer'}
+                    _hover={{ color: 'red.600' }}
+                    onClick={() =>
+                      setSelected([...selected.filter((item) => item != member.tmbId)])
+                    }
+                  />
+                </Flex>
+              )
             );
           })}
         </Box>
@@ -118,4 +123,17 @@ function SelectMember({
   );
 }
 
-export default SelectMember;
+function controller({ control, allMembers }: { control: Control; allMembers: memberType[] }) {
+  return (
+    <Controller
+      control={control}
+      name="members"
+      render={({ field: { value: selected, onChange } }) => (
+        <SelectMember allMembers={allMembers} selected={selected} setSelected={onChange} />
+      )}
+    />
+  );
+}
+
+// export default SelectMember;
+export default controller;

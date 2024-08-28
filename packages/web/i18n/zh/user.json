@@ -103,7 +103,8 @@
       "members": "成员",
       "create": "创建群组",
       "create_failed": "创建群组失败",
-      "avatar": "群头像"
+      "avatar": "群头像",
+      "delete_confirm": "确认删除群组？"
     }
   },
   "usage": {

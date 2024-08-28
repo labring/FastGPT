@@ -5,7 +5,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 import { useTranslation } from 'next-i18next';
-import React, { useState } from 'react';
+import React from 'react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -17,50 +17,61 @@ import { useContextSelector } from 'use-context-selector';
 import { TeamModalContext } from '../context';
 import { postCreateGroup } from '@/web/support/user/team/group/api';
 
-function GroupCreateModal({ onClose }: { onClose: () => void }) {
+export type GroupFormType = {
+  avatar: string;
+  name: string;
+  members: string[];
+};
+
+function GroupCreateModal({
+  onClose,
+  defaultValues
+}: {
+  onClose: () => void;
+  defaultValues?: GroupFormType;
+}) {
+  const { members, refetchGroups } = useContextSelector(TeamModalContext, (v) => v);
   const { t } = useTranslation();
   const { File: AvatarSelect, onOpen: onOpenSelectAvatar } = useSelectFile({
     fileType: '*.jpg;*.jpeg;*.png;',
     multiple: false
   });
-  const { register, handleSubmit, getValues } = useForm({
-    defaultValues: {
-      name: ''
-    }
+
+  const { register, handleSubmit, getValues, setValue, control } = useForm<GroupFormType>({
+    defaultValues
   });
 
-  const {
-    data: avatar,
-    loading: uploadingAvatar,
-    run: onSelectAvatar
-  } = useRequest2(async (file: File[]) => {
-    const src = await compressImgFileAndUpload({
-      type: MongoImageTypeEnum.groupAvatar,
-      file: file[0],
-      maxW: 300,
-      maxH: 300
-    });
-    return src;
-  });
+  const { loading: uploadingAvatar, run: onSelectAvatar } = useRequest2(
+    async (file: File[]) => {
+      const src = await compressImgFileAndUpload({
+        type: MongoImageTypeEnum.groupAvatar,
+        file: file[0],
+        maxW: 300,
+        maxH: 300
+      });
+      return src;
+    },
+    {
+      onSuccess: (src: string) => {
+        setValue('avatar', src);
+      }
+    }
+  );
 
   const { run: submit, loading: isLoading } = useRequest2(
     async () => {
       postCreateGroup({
-        members: selected.map((item) => {
-          return item.tmbId;
-        }),
+        members: getValues('members'),
         name: getValues('name'),
-        avatar: avatar
+        avatar: getValues('avatar')
       });
     },
     {
-      onSuccess: onClose
+      onSuccess: async () => await Promise.all([onClose(), refetchGroups()])
     }
   );
 
   const { Loading } = useLoading();
-  const { members } = useContextSelector(TeamModalContext, (v) => v);
-  const [selected, setSelected] = useState<typeof members>([]);
 
   return (
     <MyModal
@@ -75,7 +86,7 @@ function GroupCreateModal({ onClose }: { onClose: () => void }) {
           <HStack>
             {uploadingAvatar && <Loading />}
             <FormLabel w="80px">{t('user:team.group.avatar')}</FormLabel>
-            <Avatar src={avatar} w={'32px'} />
+            <Avatar src={getValues('avatar')} w={'32px'} />
             <HStack
               ml={2}
               cursor={'pointer'}
@@ -99,7 +110,7 @@ function GroupCreateModal({ onClose }: { onClose: () => void }) {
           <Flex>
             <FormLabel w="80px">{t('user:team.group.members')}</FormLabel>
             <Box flexGrow={1}>
-              <SelectMember members={members} selected={selected} setSelected={setSelected} />
+              <SelectMember allMembers={members} control={control as any} />
             </Box>
           </Flex>
         </Flex>

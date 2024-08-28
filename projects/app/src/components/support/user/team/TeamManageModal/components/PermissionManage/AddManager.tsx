@@ -9,20 +9,19 @@ import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant
 import { TeamModalContext } from '../../context';
 import { useI18n } from '@/web/context/I18n';
 import SelectMember from '../SelectMember';
+import { useForm } from 'react-hook-form';
 
 function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const { t } = useTranslation();
   const { userT } = useI18n();
   const { members, refetchMembers } = useContextSelector(TeamModalContext, (v) => v);
-  const [selected, setSelected] = useState<typeof members>([]);
+  const { control, handleSubmit } = useForm<{ members: string[] }>();
 
   const { runAsync: submit, loading: isLoading } = useRequest2(
-    async () =>
+    async (members: string[]) =>
       updateMemberPermission({
         permission: ManagePermissionVal,
-        tmbIds: selected.map((item) => {
-          return item.tmbId;
-        })
+        tmbIds: members
       }),
     {
       onSuccess: () => {
@@ -43,10 +42,14 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     >
       <ModalCloseButton onClick={onClose} />
       <ModalBody py={6} px={10}>
-        <SelectMember members={members} selected={selected} setSelected={setSelected} />
+        <SelectMember allMembers={members} control={control as any} />
       </ModalBody>
       <ModalFooter alignItems="flex-end">
-        <Button h={'30px'} isLoading={isLoading} onClick={submit}>
+        <Button
+          h={'30px'}
+          isLoading={isLoading}
+          onClick={handleSubmit((data) => submit(data.members))}
+        >
           {t('common:common.Confirm')}
         </Button>
       </ModalFooter>

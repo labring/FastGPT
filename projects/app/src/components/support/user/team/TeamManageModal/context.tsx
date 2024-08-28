@@ -2,7 +2,6 @@ import React, { ReactNode, useCallback, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import type { EditTeamFormDataType } from './components/EditInfoModal';
 import dynamic from 'next/dynamic';
-import { useQuery } from '@tanstack/react-query';
 import {
   delMemberPermission,
   getTeamList,
@@ -12,7 +11,7 @@ import {
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
 import { TeamPermissionList } from '@fastgpt/global/support/permission/user/constant';
@@ -20,34 +19,42 @@ import {
   CollaboratorItemType,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
+import { getGroupList } from '@/web/support/user/team/group/api';
+import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
 
 const EditInfoModal = dynamic(() => import('./components/EditInfoModal'));
 
 type TeamModalContextType = {
   myTeams: TeamTmbItemType[];
-  refetchTeams: () => void;
+  members: TeamMemberItemType[];
+  groups: MemberGroupListType;
   isLoading: boolean;
   onSwitchTeam: (teamId: string) => void;
-
   setEditTeamData: React.Dispatch<React.SetStateAction<EditTeamFormDataType | undefined>>;
-  members: TeamMemberItemType[];
+
   refetchMembers: () => void;
+  refetchTeams: () => void;
+  refetchGroups: () => void;
 };
 
 export const TeamModalContext = createContext<TeamModalContextType>({
   myTeams: [],
-  isLoading: false,
-  onSwitchTeam: function (teamId: string): void {
-    throw new Error('Function not implemented.');
-  },
-  setEditTeamData: function (value: React.SetStateAction<EditTeamFormDataType | undefined>): void {
-    throw new Error('Function not implemented.');
-  },
+  groups: [],
   members: [],
+  isLoading: false,
+  onSwitchTeam: function (_teamId: string): void {
+    throw new Error('Function not implemented.');
+  },
+  setEditTeamData: function (_value: React.SetStateAction<EditTeamFormDataType | undefined>): void {
+    throw new Error('Function not implemented.');
+  },
   refetchTeams: function (): void {
     throw new Error('Function not implemented.');
   },
   refetchMembers: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  refetchGroups: function (): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -59,9 +66,12 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
 
   const {
     data: myTeams = [],
-    isFetching: isLoadingTeams,
-    refetch: refetchTeams
-  } = useQuery(['getTeams', userInfo?._id], () => getTeamList(TeamMemberStatusEnum.active));
+    loading: isLoadingTeams,
+    refresh: refetchTeams
+  } = useRequest2(() => getTeamList(TeamMemberStatusEnum.active), {
+    manual: false,
+    refreshDeps: [userInfo?._id]
+  });
 
   // member action
   const {
@@ -79,32 +89,45 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     }
   );
 
-  const onGetClbList = useCallback(() => {
-    return refetchMembers().then((res) =>
-      res.map<CollaboratorItemType>((member) => ({
-        teamId: member.teamId,
-        tmbId: member.tmbId,
-        permission: member.permission,
-        name: member.memberName,
-        avatar: member.avatar
-      }))
-    );
-  }, [refetchMembers]);
-  const { runAsync: onUpdatePer, loading: isUpdatingPer } = useRequest2(
-    (props: UpdateClbPermissionProps) => {
-      return updateMemberPermission(props);
-    }
+  const onGetClbList = useCallback(
+    () =>
+      refetchMembers().then((res) =>
+        res.map<CollaboratorItemType>((member) => ({
+          teamId: member.teamId,
+          tmbId: member.tmbId,
+          permission: member.permission,
+          name: member.memberName,
+          avatar: member.avatar
+        }))
+      ),
+    [refetchMembers]
   );
 
-  const { mutate: onSwitchTeam, isLoading: isSwitchingTeam } = useRequest({
-    mutationFn: async (teamId: string) => {
+  const { runAsync: onUpdatePer, loading: isUpdatingPer } = useRequest2(
+    (props: UpdateClbPermissionProps) => updateMemberPermission(props)
+  );
+
+  const { runAsync: onSwitchTeam, loading: isSwitchingTeam } = useRequest2(
+    async (teamId: string) => {
       await putSwitchTeam(teamId);
       return initUserInfo();
     },
-    errorToast: t('common:user.team.Switch Team Failed')
+    {
+      errorToast: t('common:user.team.Switch Team Failed')
+    }
+  );
+
+  const {
+    data: groups = [],
+    loading: isLoadingGroups,
+    refresh: refetchGroups
+  } = useRequest2(() => getGroupList(), {
+    manual: false,
+    refreshDeps: [userInfo?._id]
   });
 
-  const isLoading = isLoadingTeams || isSwitchingTeam || loadingMembers || isUpdatingPer;
+  const isLoading =
+    isLoadingTeams || isSwitchingTeam || loadingMembers || isUpdatingPer || isLoadingGroups;
 
   const contextValue = {
     myTeams,
@@ -115,7 +138,9 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     // create | update team
     setEditTeamData,
     members,
-    refetchMembers
+    refetchMembers,
+    groups,
+    refetchGroups
   };
 
   return (

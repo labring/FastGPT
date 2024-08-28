@@ -1,5 +1,6 @@
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { MemberGroupSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
 const { Schema } = connectionMongo;
 
 export const MemberGroupCollectionName = 'member_group';

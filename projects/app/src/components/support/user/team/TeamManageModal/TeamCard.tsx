@@ -11,11 +11,10 @@ import { DragHandleIcon } from '@chakra-ui/icons';
 import MemberTable from './components/MemberTable';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { TeamModalContext } from './context';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
 import dynamic from 'next/dynamic';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import { postCreateGroup } from '@/web/support/user/team/group/api';
 
 enum TabListEnum {
   member = 'member',
@@ -25,7 +24,7 @@ enum TabListEnum {
 
 const TeamTagModal = dynamic(() => import('../TeamTagModal'));
 const InviteModal = dynamic(() => import('./components/InviteModal'));
-const GroupCreateModal = dynamic(() => import('./components/GroupCreateModal'));
+const GroupEditModal = dynamic(() => import('./components/GroupEditModal'));
 const PermissionManage = dynamic(() => import('./components/PermissionManage/index'));
 const GroupManage = dynamic(() => import('./components/GroupManage'));
 
@@ -56,19 +55,6 @@ function TeamCard() {
         refetchTeams();
       },
       errorToast: t('common:user.team.Leave Team Failed')
-    }
-  );
-
-  const { runAsync: onCreateGroup, loading: isLoadingCreateGroup } = useRequest2(
-    async (name: string) => {
-      if (!name) return;
-      return postCreateGroup(name);
-    },
-    {
-      onSuccess() {
-        refetchTeams();
-      },
-      errorToast: t('user:team.group.create_failed')
     }
   );
 
@@ -221,7 +207,6 @@ function TeamCard() {
               borderRadius={'md'}
               ml={3}
               leftIcon={<MyIcon name="support/permission/collaborator" w={'14px'} />}
-              isLoading={isLoadingCreateGroup}
               onClick={onOpenCreateGroup}
             >
               {t('user:team.group.create')}
@@ -244,7 +229,7 @@ function TeamCard() {
         />
       )}
       {isOpenTeamTagsAsync && <TeamTagModal onClose={onCloseTeamTagsAsync} />}
-      {isOpenCreateGroup && <GroupCreateModal onClose={onCloseCreateGroup} />}
+      {isOpenCreateGroup && <GroupEditModal onClose={onCloseCreateGroup} />}
       <ConfirmLeaveTeamModal />
     </Flex>
   );
