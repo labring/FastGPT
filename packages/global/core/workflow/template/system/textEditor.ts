@@ -12,6 +12,7 @@ import {
 } from '../../constants';
 import { getHandleConfig } from '../utils';
 import { Input_Template_DynamicInput } from '../input';
+import { i18nT } from '../../../../../web/i18n/utils';
 
 export const TextEditorNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.textEditor,
@@ -20,13 +21,13 @@ export const TextEditorNode: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/textConcat',
-  name: '文本拼接',
-  intro: '可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。',
+  name: i18nT('workflow:text_concatenation'),
+  intro: i18nT('workflow:intro_text_concatenation'),
   version: '486',
   inputs: [
     {
       ...Input_Template_DynamicInput,
-      description: '可以引用其他节点的输出，作为文本拼接的变量，输入 / 唤起变量列表',
+      description: i18nT('workflow:dynamic_input_description_concat'),
       customInputConfig: {
         selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
         showDescription: false,
@@ -38,15 +39,15 @@ export const TextEditorNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.textarea],
       valueType: WorkflowIOValueTypeEnum.string,
       required: true,
-      label: '拼接文本',
-      placeholder: '可输入 / 唤起变量列表'
+      label: i18nT('workflow:concatenation_text'),
+      placeholder: i18nT('workflow:input_variable_list')
     }
   ],
   outputs: [
     {
       id: NodeOutputKeyEnum.text,
       key: NodeOutputKeyEnum.text,
-      label: '拼接结果',
+      label: i18nT('workflow:concatenation_result'),
       type: FlowNodeOutputTypeEnum.static,
       valueType: WorkflowIOValueTypeEnum.string
     }

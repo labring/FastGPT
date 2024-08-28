@@ -34,7 +34,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
     {
       key: NodeInputKeyEnum.datasetSelectList,
       renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
-      label: 'core.module.input.label.Select dataset',
+      label: i18nT('common:core.module.input.label.Select dataset'),
       value: [],
       valueType: WorkflowIOValueTypeEnum.selectDataset,
       required: true
@@ -90,34 +90,24 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
     },
     {
       ...Input_Template_UserChatInput,
-      toolDescription: '需要检索的内容'
+      toolDescription: i18nT('workflow:content_to_search')
     },
     {
       key: NodeInputKeyEnum.collectionFilterMatch,
       renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference],
-      label: '集合元数据过滤',
+      label: i18nT('workflow:collection_metadata_filter'),
+
       valueType: WorkflowIOValueTypeEnum.object,
       isPro: true,
-      description: `目前支持标签和创建时间过滤，需按照以下格式填写：
-{
-  "tags": {
-    "$and": ["标签 1","标签 2"],
-    "$or": ["有 $and 标签时，and 生效，or 不生效"]
-  },
-  "createTime": {
-      "$gte": "YYYY-MM-DD HH:mm 格式即可，集合的创建时间大于该时间",
-      "$lte": "YYYY-MM-DD HH:mm 格式即可，集合的创建时间小于该时间,可和 $gte 共同使用"
-  }
-}
-      `
+      description: i18nT('workflow:filter_description')
     }
   ],
   outputs: [
     {
       id: NodeOutputKeyEnum.datasetQuoteQA,
       key: NodeOutputKeyEnum.datasetQuoteQA,
-      label: 'core.module.Dataset quote.label',
-      description: '特殊数组格式，搜索结果为空时，返回空数组。',
+      label: i18nT('common:core.module.Dataset quote.label'),
+      description: i18nT('workflow:special_array_format'),
       type: FlowNodeOutputTypeEnum.static,
       valueType: WorkflowIOValueTypeEnum.datasetQuote,
       valueDesc: datasetQuoteValueDesc

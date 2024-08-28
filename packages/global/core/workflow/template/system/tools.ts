@@ -61,7 +61,7 @@ export const ToolModule: FlowNodeTemplateType = {
 
     {
       ...Input_Template_System_Prompt,
-      label: 'core.ai.Prompt',
+      label: i18nT('common:core.ai.Prompt'),
       description: chatNodeSystemPromptTip,
       placeholder: chatNodeSystemPromptTip
     },
@@ -72,8 +72,8 @@ export const ToolModule: FlowNodeTemplateType = {
     {
       id: NodeOutputKeyEnum.answerText,
       key: NodeOutputKeyEnum.answerText,
-      label: 'core.module.output.label.Ai response content',
-      description: 'core.module.output.description.Ai response content',
+      label: i18nT('common:core.module.output.label.Ai response content'),
+      description: i18nT('common:core.module.output.description.Ai response content'),
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     }

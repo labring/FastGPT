@@ -13,6 +13,7 @@ import {
 } from '../../../constants';
 import { Input_Template_History, Input_Template_UserChatInput } from '../../input';
 import { getHandleConfig } from '../../utils';
+import { i18nT } from '../../../../../../web/i18n/utils';
 
 export const RunAppModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.runApp,
@@ -21,8 +22,8 @@ export const RunAppModule: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/runApp',
-  name: '应用调用',
-  intro: '可以选择一个其他应用进行调用',
+  name: i18nT('workflow:application_call'),
+  intro: i18nT('workflow:select_another_application_to_call'),
   showStatus: true,
   version: '481',
   isTool: true,
@@ -31,22 +32,22 @@ export const RunAppModule: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.runAppSelectApp,
       renderTypeList: [FlowNodeInputTypeEnum.selectApp, FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.selectApp,
-      label: '选择一个应用',
-      description: '选择一个其他应用进行调用',
+      label: i18nT('workflow:select_an_application'),
+      description: i18nT('workflow:choose_another_application_to_call'),
       required: true
     },
     Input_Template_History,
     {
       ...Input_Template_UserChatInput,
-      toolDescription: '用户问题'
+      toolDescription: i18nT('workflow:user_question')
     }
   ],
   outputs: [
     {
       id: NodeOutputKeyEnum.history,
       key: NodeOutputKeyEnum.history,
-      label: '新的上下文',
-      description: '将该应用回复内容拼接到历史记录中，作为新的上下文返回',
+      label: i18nT('workflow:new_context'),
+      description: i18nT('workflow:append_application_reply_to_history_as_new_context'),
       valueType: WorkflowIOValueTypeEnum.chatHistory,
       valueDesc: chatHistoryValueDesc,
       required: true,
@@ -55,8 +56,8 @@ export const RunAppModule: FlowNodeTemplateType = {
     {
       id: NodeOutputKeyEnum.answerText,
       key: NodeOutputKeyEnum.answerText,
-      label: '回复的文本',
-      description: '将在应用完全结束后触发',
+      label: i18nT('workflow:reply_text'),
+      description: i18nT('workflow:trigger_after_application_completion'),
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     }
