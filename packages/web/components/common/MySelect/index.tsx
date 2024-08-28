@@ -19,8 +19,8 @@ import {
 } from '@chakra-ui/react';
 import type { ButtonProps, MenuItemProps } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
-import { useLoading } from '../../../hooks/useLoading';
 import MyIcon from '../Icon';
+import { useRequest2 } from '../../../hooks/useRequest';
 
 export type SelectProps<T = any> = ButtonProps & {
   value?: T;
@@ -32,7 +32,7 @@ export type SelectProps<T = any> = ButtonProps & {
     value: T;
   }[];
   isLoading?: boolean;
-  onchange?: (val: T) => void;
+  onchange?: (val: T) => any | Promise<any>;
 };
 
 const MySelect = <T = any,>(
@@ -82,6 +82,10 @@ const MySelect = <T = any,>(
     }
   }, [isOpen]);
 
+  const { runAsync: onChange, loading } = useRequest2((val: T) => onchange?.(val));
+
+  const isSelecting = loading || isLoading;
+
   return (
     <Box
       css={css({
@@ -92,7 +96,7 @@ const MySelect = <T = any,>(
     >
       <Menu
         autoSelect={false}
-        isOpen={isOpen}
+        isOpen={isOpen && !isSelecting}
         onOpen={onOpen}
         onClose={onClose}
         strategy={'fixed'}
@@ -118,7 +122,7 @@ const MySelect = <T = any,>(
           {...props}
         >
           <Flex alignItems={'center'}>
-            {isLoading && <MyIcon mr={2} name={'common/loading'} w={'16px'} />}
+            {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'16px'} />}
             {selectItem?.alias || selectItem?.label || placeholder}
           </Flex>
         </MenuButton>
@@ -160,8 +164,8 @@ const MySelect = <T = any,>(
                     color: 'myGray.900'
                   })}
               onClick={() => {
-                if (onchange && value !== item.value) {
-                  onchange(item.value);
+                if (onChange && value !== item.value) {
+                  onChange(item.value);
                 }
               }}
               whiteSpace={'pre-wrap'}

@@ -1,5 +1,14 @@
 import React, { useCallback, useRef } from 'react';
-import { Box, Flex, MenuButton, Button, Link, useTheme, useDisclosure } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  MenuButton,
+  Button,
+  Link,
+  useTheme,
+  useDisclosure,
+  HStack
+} from '@chakra-ui/react';
 import {
   getDatasetCollectionPathById,
   postDatasetCollection,
@@ -114,55 +123,55 @@ const Header = ({}: {}) => {
   const isWebSite = datasetDetail?.type === DatasetTypeEnum.websiteDataset;
 
   return (
-    <Flex px={[2, 6]} alignItems={'flex-start'} h={'35px'}>
-      <Box flex={1} fontWeight={'500'} color={'myGray.900'} h={'100%'}>
-        <ParentPath
-          paths={paths.map((path, i) => ({
-            parentId: path.parentId,
-            parentName: i === paths.length - 1 ? `${path.parentName}` : path.parentName
-          }))}
-          FirstPathDom={
-            <Flex
-              flexDir={'column'}
-              justify={'center'}
-              h={'100%'}
-              fontSize={isWebSite ? 'sm' : 'md'}
-              fontWeight={'500'}
-              color={'myGray.600'}
-            >
-              <Flex align={'center'}>
-                {!isWebSite && <MyIcon name="common/list" mr={2} w={'20px'} color={'black'} />}
-                {t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel as any)}({total})
-              </Flex>
-              {datasetDetail?.websiteConfig?.url && (
-                <Flex fontSize={'mini'}>
-                  {t('common:core.dataset.website.Base Url')}:
-                  <Link
-                    href={datasetDetail.websiteConfig.url}
-                    target="_blank"
-                    mr={2}
-                    color={'blue.700'}
-                  >
-                    {datasetDetail.websiteConfig.url}
-                  </Link>
+    <Box display={['block', 'flex']} alignItems={'center'} gap={2}>
+      <HStack flex={1}>
+        <Box flex={1} fontWeight={'500'} color={'myGray.900'}>
+          <ParentPath
+            paths={paths.map((path, i) => ({
+              parentId: path.parentId,
+              parentName: i === paths.length - 1 ? `${path.parentName}` : path.parentName
+            }))}
+            FirstPathDom={
+              <Flex
+                flexDir={'column'}
+                justify={'center'}
+                h={'100%'}
+                fontSize={isWebSite ? 'sm' : 'md'}
+                fontWeight={'500'}
+                color={'myGray.600'}
+              >
+                <Flex align={'center'}>
+                  {!isWebSite && <MyIcon name="common/list" mr={2} w={'20px'} color={'black'} />}
+                  {t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel as any)}({total})
                 </Flex>
-              )}
-            </Flex>
-          }
-          onClick={(e) => {
-            router.replace({
-              query: {
-                ...router.query,
-                parentId: e
-              }
-            });
-          }}
-        />
-      </Box>
+                {datasetDetail?.websiteConfig?.url && (
+                  <Flex fontSize={'mini'}>
+                    {t('common:core.dataset.website.Base Url')}:
+                    <Link
+                      href={datasetDetail.websiteConfig.url}
+                      target="_blank"
+                      mr={2}
+                      color={'blue.700'}
+                    >
+                      {datasetDetail.websiteConfig.url}
+                    </Link>
+                  </Flex>
+                )}
+              </Flex>
+            }
+            onClick={(e) => {
+              router.replace({
+                query: {
+                  ...router.query,
+                  parentId: e
+                }
+              });
+            }}
+          />
+        </Box>
 
-      {/* search input */}
-      {isPc && (
-        <Flex alignItems={'center'} mr={4}>
+        {/* search input */}
+        {isPc && (
           <MyInput
             w={['100%', '250px']}
             size={'sm'}
@@ -192,14 +201,15 @@ const Header = ({}: {}) => {
               }
             }}
           />
-        </Flex>
-      )}
+        )}
+
+        {/* Tag */}
+        {datasetDetail.permission.hasWritePer && feConfigs?.isPlus && <HeaderTagPopOver />}
+      </HStack>
 
       {/* diff collection button */}
       {datasetDetail.permission.hasWritePer && (
-        <Flex gap={3}>
-          {feConfigs?.isPlus && <HeaderTagPopOver />}
-
+        <Box textAlign={'end'} mt={[3, 0]}>
           {datasetDetail?.type === DatasetTypeEnum.dataset && (
             <MyMenu
               offset={[0, 5]}
@@ -396,7 +406,7 @@ const Header = ({}: {}) => {
               ]}
             />
           )}
-        </Flex>
+        </Box>
       )}
 
       {/* modal */}
@@ -427,7 +437,7 @@ const Header = ({}: {}) => {
       )}
       <EditCreateVirtualFileModal iconSrc={'modal/manualDataset'} closeBtnText={''} />
       {isOpenFileSourceSelector && <FileSourceSelector onClose={onCloseFileSourceSelector} />}
-    </Flex>
+    </Box>
   );
 };
 

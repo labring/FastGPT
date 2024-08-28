@@ -61,7 +61,7 @@ const AIModelSelector = ({ list, onchange, disableTip, ...props }: Props) => {
         router.push(AI_POINT_USAGE_CARD_ROUTE);
         return;
       }
-      onchange?.(e);
+      return onchange?.(e);
     },
     [onchange, router]
   );
