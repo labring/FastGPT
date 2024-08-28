@@ -29,7 +29,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const loadDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadDatasetTags);
   const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
-  const { getData, collections } = useContextSelector(CollectionPageContext, (v) => v);
+  const { getData, pageNum, collections } = useContextSelector(CollectionPageContext, (v) => v);
 
   const tagInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -73,42 +73,43 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     errorToast: t('common:common.Create Failed')
   });
 
-  const { mutate: onDeleteCollectionTag, isLoading: isDeleteCollectionTagLoading } = useRequest({
-    mutationFn: async (tag: string) => {
-      const id = await delDatasetCollectionTag({
+  const { runAsync: onDeleteCollectionTag, loading: isDeleteCollectionTagLoading } = useRequest2(
+    (tag: string) => {
+      return delDatasetCollectionTag({
         datasetId: datasetDetail._id,
         id: tag
       });
-      return id;
     },
+    {
+      onSuccess() {
+        fetchData(1);
+        loadDatasetTags({ id: datasetDetail._id, searchKey: '' });
+        loadAllDatasetTags({ id: datasetDetail._id });
+      },
+      successToast: t('common:common.Delete Success'),
+      errorToast: t('common:common.Delete Failed')
+    }
+  );
 
-    onSuccess() {
-      fetchData(1);
-      loadDatasetTags({ id: datasetDetail._id, searchKey: '' });
-      loadAllDatasetTags({ id: datasetDetail._id });
-    },
-    successToast: t('common:common.Delete Success'),
-    errorToast: t('common:common.Delete Failed')
-  });
-
-  const { mutate: onUpdateCollectionTag, isLoading: isUpdateCollectionTagLoading } = useRequest({
-    mutationFn: async (tag: DatasetTagType) => {
-      const id = await updateDatasetCollectionTag({
+  const { runAsync: onUpdateCollectionTag, loading: isUpdateCollectionTagLoading } = useRequest2(
+    async (tag: DatasetTagType) => {
+      return updateDatasetCollectionTag({
         datasetId: datasetDetail._id,
         tagId: tag._id,
         tag: tag.tag
       });
-      return id;
     },
-    onSuccess() {
-      fetchData(1);
-      loadDatasetTags({ id: datasetDetail._id, searchKey: '' });
-      loadAllDatasetTags({ id: datasetDetail._id });
+    {
+      onSuccess() {
+        fetchData(1);
+        loadDatasetTags({ id: datasetDetail._id, searchKey: '' });
+        loadAllDatasetTags({ id: datasetDetail._id });
+      }
     }
-  });
+  );
 
-  const { mutate: onSaveCollectionTag, isLoading: isSaveCollectionTagLoading } = useRequest({
-    mutationFn: async ({
+  const { runAsync: onSaveCollectionTag, loading: isSaveCollectionTagLoading } = useRequest2(
+    async ({
       tag,
       originCollectionIds,
       collectionIds
@@ -117,22 +118,21 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       originCollectionIds: string[];
       collectionIds: string[];
     }) => {
-      try {
-        await postAddTagsToCollections({
-          tag,
-          originCollectionIds,
-          collectionIds,
-          datasetId: datasetDetail._id
-        });
-      } catch (error) {}
+      return postAddTagsToCollections({
+        tag,
+        originCollectionIds,
+        collectionIds,
+        datasetId: datasetDetail._id
+      });
     },
-
-    onSuccess() {
-      getData(1);
-    },
-    successToast: t('common:common.Save Success'),
-    errorToast: t('common:common.Save Failed')
-  });
+    {
+      onFinally() {
+        getData(pageNum);
+      },
+      successToast: t('common:common.Save Success'),
+      errorToast: t('common:common.Save Failed')
+    }
+  );
 
   const {
     list,
@@ -379,11 +379,9 @@ const AddTagToCollections = ({
   const { t } = useTranslation();
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
-  const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
-
-  useEffect(() => {
-    setSelectedCollections(currentAddTag.collections);
-  }, []);
+  const [selectedCollections, setSelectedCollections] = useState<string[]>(
+    currentAddTag.collections
+  );
 
   const [searchText, setSearchText] = useState('');
 

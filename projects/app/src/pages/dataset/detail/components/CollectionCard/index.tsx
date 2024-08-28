@@ -21,7 +21,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
@@ -119,23 +119,22 @@ const CollectionCard = () => {
       successToast: t('common:common.Update Success')
     }
   );
-  const { mutate: onDelCollection, isLoading: isDeleting } = useRequest({
-    mutationFn: (collectionId: string) => {
+  const { runAsync: onDelCollection, loading: isDeleting } = useRequest2(
+    (collectionId: string) => {
       return delDatasetCollectionById({
         id: collectionId
       });
     },
-    onSuccess() {
-      getData(pageNum);
-    },
-    successToast: t('common:common.Delete Success'),
-    errorToast: t('common:common.Delete Failed')
-  });
+    {
+      onSuccess() {
+        getData(pageNum);
+      },
+      successToast: t('common:common.Delete Success'),
+      errorToast: t('common:common.Delete Failed')
+    }
+  );
 
-  const { mutate: onclickStartSync, isLoading: isSyncing } = useRequest({
-    mutationFn: (collectionId: string) => {
-      return postLinkCollectionSync(collectionId);
-    },
+  const { runAsync: onclickStartSync, loading: isSyncing } = useRequest2(postLinkCollectionSync, {
     onSuccess(res: DatasetCollectionSyncResultEnum) {
       getData(pageNum);
       toast({
