@@ -1,12 +1,73 @@
 import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
-import { useTranslation } from 'next-i18next';
+import { TFunction, useTranslation } from 'next-i18next';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
 import { computedNodeInputReference } from '@/web/core/workflow/utils';
 import { useCreation } from 'ahooks';
 import { AppContext } from '@/pages/app/detail/components/context';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { Edge } from 'reactflow';
+import { AppDetailType } from '@fastgpt/global/core/app/type';
+
+export const getVariables = ({
+  nodeId,
+  nodeList,
+  edges,
+  getNodeDynamicInputs,
+  appDetail,
+  t
+}: {
+  nodeId: string;
+  nodeList: FlowNodeItemType[];
+  edges: Edge<any>[];
+  getNodeDynamicInputs: (nodeId: string) => FlowNodeInputItemType[];
+  appDetail: AppDetailType;
+  t: TFunction;
+}) => {
+  const currentNode = nodeList.find((node) => node.nodeId === nodeId)!;
+  const nodeVariables = getNodeDynamicInputs(nodeId).map((item) => ({
+    key: item.key,
+    label: item.label,
+    parent: {
+      id: currentNode.nodeId,
+      label: currentNode.name,
+      avatar: currentNode.avatar
+    }
+  }));
+
+  const sourceNodes = computedNodeInputReference({
+    nodeId,
+    nodes: nodeList,
+    edges: edges,
+    chatConfig: appDetail.chatConfig,
+    t
+  });
+
+  const sourceNodeVariables = !sourceNodes
+    ? []
+    : sourceNodes
+        .map((node) => {
+          return node.outputs
+            .filter((output) => !!output.label)
+            .map((output) => {
+              return {
+                label: t((output.label as any) || ''),
+                key: output.id,
+                parent: {
+                  id: node.nodeId,
+                  label: node.name,
+                  avatar: node.avatar
+                }
+              };
+            });
+        })
+        .flat();
+
+  return [...nodeVariables, ...sourceNodeVariables];
+};
 
 const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -19,46 +80,14 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
 
   // get variable
   const variables = useCreation(() => {
-    const currentNode = nodeList.find((node) => node.nodeId === nodeId)!;
-    const nodeVariables = getNodeDynamicInputs(nodeId).map((item) => ({
-      key: item.key,
-      label: item.label,
-      parent: {
-        id: currentNode.nodeId,
-        label: currentNode.name,
-        avatar: currentNode.avatar
-      }
-    }));
-
-    const sourceNodes = computedNodeInputReference({
+    return getVariables({
       nodeId,
-      nodes: nodeList,
-      edges: edges,
-      chatConfig: appDetail.chatConfig,
+      nodeList,
+      edges,
+      getNodeDynamicInputs,
+      appDetail,
       t
     });
-
-    const sourceNodeVariables = !sourceNodes
-      ? []
-      : sourceNodes
-          .map((node) => {
-            return node.outputs
-              .filter((output) => !!output.label)
-              .map((output) => {
-                return {
-                  label: t((output.label as any) || ''),
-                  key: output.id,
-                  parent: {
-                    id: node.nodeId,
-                    label: node.name,
-                    avatar: node.avatar
-                  }
-                };
-              });
-          })
-          .flat();
-
-    return [...nodeVariables, ...sourceNodeVariables];
   }, [nodeList, edges, inputs, t]);
 
   const onChange = useCallback(

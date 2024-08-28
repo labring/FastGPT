@@ -15,6 +15,7 @@ const PromptEditor = ({
   variableLabels = [],
   value,
   onChange,
+  onChangeDeps = [],
   onBlur,
   h,
   maxLength,
@@ -29,6 +30,7 @@ const PromptEditor = ({
   variableLabels?: EditorVariableLabelPickerType[];
   value?: string;
   onChange?: (text: string) => void;
+  onChangeDeps?: any[];
   onBlur?: (text: string) => void;
   h?: number;
   maxLength?: number;
@@ -43,7 +45,7 @@ const PromptEditor = ({
   const onChangeInput = useCallback((editorState: EditorState, editor: LexicalEditor) => {
     const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
     onChange?.(text);
-  }, []);
+  }, onChangeDeps);
   const onBlurInput = useCallback((editor: LexicalEditor) => {
     const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
     onBlur?.(text);

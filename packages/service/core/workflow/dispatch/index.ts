@@ -21,7 +21,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
-import { replaceVariableLabel } from '@fastgpt/global/core/workflow/utils';
+import { getUpdateVariableValue, replaceVariableLabel } from '@fastgpt/global/core/workflow/utils';
 
 import { dispatchWorkflowStart } from './init/workflowStart';
 import { dispatchChatCompletion } from './chat/oneapi';
@@ -380,6 +380,14 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         value,
         nodes: runtimeNodes,
         variables
+      });
+
+      // replace update variable value
+      value = getUpdateVariableValue({
+        value,
+        nodes: runtimeNodes,
+        variables,
+        runningNode: node
       });
 
       // Dynamic input is stored in the dynamic key

@@ -276,6 +276,20 @@ export const isReferenceValue = (value: any): boolean => {
   return Array.isArray(value) && value.length === 2 && typeof value[0] === 'string';
 };
 
+export const isUpdateListValue = (value: any): boolean => {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    isReferenceValue(value.variable) &&
+    Array.isArray(value.value) &&
+    value.value.length === 2 &&
+    typeof value.value[0] === 'string' &&
+    typeof value.value[1] === 'string' &&
+    typeof value.valueType === 'string' &&
+    typeof value.renderType === 'string'
+  );
+};
+
 export const getElseIFLabel = (i: number) => {
   return i === 0 ? IfElseResultEnum.IF : `${IfElseResultEnum.ELSE_IF} ${i}`;
 };
@@ -400,4 +414,30 @@ export function replaceVariableLabel({
     }
   }
   return text || '';
+}
+
+export function getUpdateVariableValue({
+  value,
+  nodes,
+  variables,
+  runningNode
+}: {
+  value: any;
+  nodes: RuntimeNodeItemType[];
+  variables: Record<string, string | number>;
+  runningNode: RuntimeNodeItemType;
+}) {
+  if (!Array.isArray(value)) {
+    return value;
+  }
+
+  return value.map((item) => {
+    if (isUpdateListValue(item) && item.value[0] === '') {
+      return {
+        ...item,
+        value: ['', replaceVariableLabel({ text: item.value[1], nodes, variables, runningNode })]
+      };
+    }
+    return item;
+  });
 }

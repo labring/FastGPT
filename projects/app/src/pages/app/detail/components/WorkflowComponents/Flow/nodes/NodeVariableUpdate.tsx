@@ -12,8 +12,7 @@ import {
   NumberInput,
   NumberInputField,
   NumberInputStepper,
-  Switch,
-  Textarea
+  Switch
 } from '@chakra-ui/react';
 import { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -33,6 +32,9 @@ import { ReferSelector, useReference } from './render/RenderInput/templates/Refe
 import { getRefData } from '@/web/core/workflow/utils';
 import { isReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { AppContext } from '@/pages/app/detail/components/context';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import { useCreation } from 'ahooks';
+import { getVariables } from './render/RenderInput/templates/Textarea';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -41,6 +43,19 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+  const getNodeDynamicInputs = useContextSelector(WorkflowContext, (v) => v.getNodeDynamicInputs);
+
+  const variables = useCreation(() => {
+    return getVariables({
+      nodeId,
+      nodeList,
+      edges,
+      getNodeDynamicInputs,
+      appDetail,
+      t
+    });
+  }, [nodeList, edges, inputs, t]);
 
   const updateList = useMemo(
     () =>
@@ -199,10 +214,16 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                   }
                   if (valueType === WorkflowIOValueTypeEnum.string) {
                     return (
-                      <DebouncedTextarea
-                        value={updateItem.value?.[1] || ''}
-                        onChange={handleUpdate}
-                      />
+                      <Box w={'300px'}>
+                        <PromptEditor
+                          value={updateItem.value?.[1] || ''}
+                          onChange={(e) => handleUpdate(e)}
+                          onChangeDeps={[updateList]}
+                          showOpenModal={false}
+                          variableLabels={variables}
+                          h={100}
+                        />
+                      </Box>
                     );
                   }
                   if (valueType === WorkflowIOValueTypeEnum.number) {
@@ -246,7 +267,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         })}
       </>
     );
-  }, [appDetail.chatConfig, nodeId, nodeList, onUpdateList, t, updateList]);
+  }, [appDetail.chatConfig, nodeId, nodeList, onUpdateList, t, updateList, variables]);
 
   return (
     <NodeCard selected={selected} maxW={'1000px'} {...data}>
@@ -304,39 +325,6 @@ const Reference = ({
       list={referenceList}
       value={formatValue}
       onSelect={onSelect}
-    />
-  );
-};
-
-const DebouncedTextarea = ({
-  value,
-  onChange
-}: {
-  value: string;
-  onChange: (newValue: ReferenceValueProps | string) => void;
-}) => {
-  const [textareaValue, setTextareaValue] = useState(value);
-
-  useEffect(() => {
-    setTextareaValue(value);
-  }, [value]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (textareaValue !== value) {
-        onChange(textareaValue);
-      }
-    }, 200);
-
-    return () => clearTimeout(timer);
-  }, [textareaValue, value, onChange]);
-
-  return (
-    <Textarea
-      bg="white"
-      value={textareaValue}
-      w="300px"
-      onChange={(e) => setTextareaValue(e.target.value)}
     />
   );
 };
