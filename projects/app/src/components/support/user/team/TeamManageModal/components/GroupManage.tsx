@@ -40,18 +40,23 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
             </Tr>
           </Thead>
           <Tbody>
-            {groups?.map((item) => (
-              <Tr key={item._id} overflow={'unset'}>
+            {groups?.map((group) => (
+              <Tr key={group._id} overflow={'unset'}>
                 <Td>
                   <HStack>
-                    <Avatar src={item.avatar} w={['18px', '22px']} />
+                    <Avatar src={group.avatar} w={['18px', '22px']} />
                     <Box maxW={'150px'} className={'textEllipsis'}>
-                      {item.name}
+                      {group.name}
                     </Box>
                   </HStack>
                 </Td>
                 <Td>
-                  <AvatarGroup avatars={members.map((v) => v.avatar)} />
+                  <AvatarGroup
+                    avatars={group.members.map(
+                      (v) => members.find((m) => m.tmbId === v)?.avatar ?? ''
+                    )}
+                    key={group._id}
+                  />
                 </Td>
                 <Td>
                   {userInfo?.team.permission.hasManagePer && (
@@ -64,14 +69,14 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
                               label: t('common:common.Edit'),
                               icon: 'edit',
                               onClick: () => {
-                                onEditGroup(item._id);
+                                onEditGroup(group._id);
                               }
                             },
                             {
                               label: t('common:common.Delete'),
                               icon: 'delete',
                               type: 'danger',
-                              onClick: openDeleteGroupModal(() => delDeleteGroup(item._id))
+                              onClick: openDeleteGroupModal(() => delDeleteGroup(group._id))
                             }
                           ]
                         }

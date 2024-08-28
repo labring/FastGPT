@@ -10,7 +10,6 @@ import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useForm } from 'react-hook-form';
 import SelectMember from './SelectMember';
 import { useContextSelector } from 'use-context-selector';
@@ -88,7 +87,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
     }
   );
 
-  const isLoading = isLoadingUpdate || isLoadingCreate;
+  const isLoading = isLoadingUpdate || isLoadingCreate || uploadingAvatar;
 
   const submit = useCallback(() => {
     if (editGroupId) {
@@ -135,7 +134,13 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
           <Flex>
             <FormLabel w="80px">{t('user:team.group.members')}</FormLabel>
             <Box flexGrow={1}>
-              <SelectMember allMembers={members} control={control as any} />
+              <SelectMember
+                allMembers={{
+                  member: members.map((item) => ({ ...item, type: 'member' }))
+                }}
+                control={control as any}
+                mode="member"
+              />
             </Box>
           </Flex>
         </Flex>

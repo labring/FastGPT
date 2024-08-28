@@ -1,6 +1,6 @@
 import { Button, ModalBody, ModalCloseButton, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -14,8 +14,15 @@ import { useForm } from 'react-hook-form';
 function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const { t } = useTranslation();
   const { userT } = useI18n();
-  const { members, refetchMembers } = useContextSelector(TeamModalContext, (v) => v);
-  const { control, handleSubmit } = useForm<{ members: string[] }>();
+  const { members, refetchMembers, groups } = useContextSelector(TeamModalContext, (v) => v);
+  const { control, handleSubmit } = useForm({
+    defaultValues: {
+      managers: {
+        member: [],
+        group: []
+      }
+    }
+  });
 
   const { runAsync: submit, loading: isLoading } = useRequest2(
     async (members: string[]) =>
@@ -42,13 +49,20 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     >
       <ModalCloseButton onClick={onClose} />
       <ModalBody py={6} px={10}>
-        <SelectMember allMembers={members} control={control as any} />
+        <SelectMember
+          allMembers={{
+            member: members.map((item) => ({ ...item, type: 'member' })),
+            group: groups.map((item) => ({ ...item, type: 'group' }))
+          }}
+          control={control as any}
+          mode="both"
+        />
       </ModalBody>
       <ModalFooter alignItems="flex-end">
         <Button
           h={'30px'}
           isLoading={isLoading}
-          onClick={handleSubmit((data) => submit(data.members))}
+          onClick={handleSubmit((data) => submit(data.managers.member))} // TODO: 处理group
         >
           {t('common:common.Confirm')}
         </Button>

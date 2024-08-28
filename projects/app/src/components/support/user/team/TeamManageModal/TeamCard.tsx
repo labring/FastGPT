@@ -236,7 +236,13 @@ function TeamCard() {
       )}
       {isOpenTeamTagsAsync && <TeamTagModal onClose={onCloseTeamTagsAsync} />}
       {isOpenCreateGroup && (
-        <GroupCreateModal onClose={onCloseCreateGroup} editGroupId={editGroupId} />
+        <GroupCreateModal
+          onClose={() => {
+            onCloseCreateGroup();
+            setEditGroupId(undefined);
+          }}
+          editGroupId={editGroupId}
+        />
       )}
       <ConfirmLeaveTeamModal />
     </Flex>
