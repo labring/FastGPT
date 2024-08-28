@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, Grid, Image } from '@chakra-ui/react';
+import { Box, Flex, Grid } from '@chakra-ui/react';
 import type { FlexProps, GridProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '../Avatar';
@@ -9,7 +9,7 @@ type Props<ValueType = string> = Omit<GridProps, 'onChange'> & {
   value: ValueType;
   size?: 'sm' | 'md' | 'lg';
   inlineStyles?: FlexProps;
-  activatedColor?: string;
+  activeColor?: string;
   onChange: (value: ValueType) => void;
 };
 
@@ -17,7 +17,7 @@ const LightRowTabs = <ValueType = string,>({
   list,
   size = 'md',
   value,
-  activatedColor = 'primary.600',
+  activeColor = 'primary.600',
   onChange,
   inlineStyles,
   ...props
@@ -68,10 +68,10 @@ const LightRowTabs = <ValueType = string,>({
             whiteSpace={'nowrap'}
             {...(value === item.value
               ? {
-                  color: activatedColor,
+                  color: activeColor,
                   cursor: 'default',
                   fontWeight: 'bold',
-                  borderBottomColor: activatedColor
+                  borderBottomColor: activeColor
                 }
               : {
                   cursor: 'pointer'

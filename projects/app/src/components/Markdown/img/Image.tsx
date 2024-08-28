@@ -3,7 +3,7 @@ import { Box, ImageProps, Skeleton } from '@chakra-ui/react';
 import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
 import { useBoolean } from 'ahooks';
 
-const MdImage = ({ src, ...props }: { src?: string } & ImageProps) => {
+const MdImage = ({ src, ...props }: { src?: string; forbidImgPreview?: boolean } & ImageProps) => {
   const [isLoaded, { setTrue }] = useBoolean(false);
 
   const [renderSrc, setRenderSrc] = useState(src);
@@ -11,7 +11,6 @@ const MdImage = ({ src, ...props }: { src?: string } & ImageProps) => {
   if (src?.includes('base64') && !src.startsWith('data:image')) {
     return <Box>Invalid base64 image</Box>;
   }
-
   return (
     <Skeleton isLoaded={isLoaded}>
       <MyPhotoView

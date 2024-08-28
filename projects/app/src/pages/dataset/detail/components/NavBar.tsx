@@ -115,7 +115,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
               w={'100%'}
               list={tabList}
               value={currentTab}
-              activatedColor="blue.700"
+              activeColor="primary.700"
               onChange={setCurrentTab}
               inlineStyles={{
                 fontSize: '1rem',
@@ -193,7 +193,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           </MyPopover>
         </Flex>
       ) : (
-        <Box mb={3}>
+        <Box mb={2}>
           <LightRowTabs<TabEnum>
             m={'auto'}
             w={'full'}

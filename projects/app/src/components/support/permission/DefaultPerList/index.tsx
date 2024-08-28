@@ -1,4 +1,4 @@
-import { Box, BoxProps, ButtonProps } from '@chakra-ui/react';
+import { Box, BoxProps } from '@chakra-ui/react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import React from 'react';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
@@ -20,7 +20,6 @@ type Props = Omit<BoxProps, 'onChange'> & {
   writePer?: PermissionValueType;
   onChange: (v: PermissionValueType) => Promise<any> | any;
   isInheritPermission?: boolean;
-  isDisabled?: boolean;
   hasParent?: boolean;
 };
 
@@ -42,15 +41,12 @@ const DefaultPermissionList = ({
     { label: t('user:permission.team_write'), value: writePer }
   ];
 
-  const { runAsync: onRequestChange, loading } = useRequest2((v: PermissionValueType) =>
-    onChange(v)
-  );
+  const { runAsync: onRequestChange } = useRequest2((v: PermissionValueType) => onChange(v));
 
   return (
     <>
       <Box {...styles}>
         <MySelect
-          isLoading={loading}
           list={defaultPermissionSelectList}
           value={per}
           onchange={(per) => {

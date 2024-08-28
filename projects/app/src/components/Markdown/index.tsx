@@ -28,20 +28,22 @@ const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false
 
 const Markdown = ({
   source = '',
-  showAnimation = false
+  showAnimation = false,
+  forbidImgPreview = false
 }: {
   source?: string;
   showAnimation?: boolean;
+  forbidImgPreview?: boolean;
 }) => {
   const components = useMemo<any>(
     () => ({
-      img: Image,
+      img: (props: any) => <Image {...props} forbidImgPreview={forbidImgPreview} />,
       pre: RewritePre,
       p: (pProps: any) => <p {...pProps} dir="auto" />,
       code: Code,
       a: A
     }),
-    []
+    [forbidImgPreview]
   );
 
   const formatSource = useMemo(() => {
@@ -74,7 +76,7 @@ const Markdown = ({
 export default React.memo(Markdown);
 
 /* Custom dom */
-const Code = React.memo(function Code(e: any) {
+function Code(e: any) {
   const { className, codeBlock, children } = e;
   const match = /language-(\w+)/.exec(className || '');
   const codeType = match?.[1];
@@ -103,11 +105,13 @@ const Code = React.memo(function Code(e: any) {
   }, [codeType, className, codeBlock, match, children, strChildren]);
 
   return Component;
-});
-const Image = React.memo(function Image({ src }: { src?: string }) {
-  return <MdImage src={src} />;
-});
-const A = React.memo(function A({ children, ...props }: any) {
+}
+
+function Image({ src, forbidImgPreview }: { forbidImgPreview: boolean; src?: string }) {
+  return <MdImage forbidImgPreview={forbidImgPreview} src={src} />;
+}
+
+function A({ children, ...props }: any) {
   const { t } = useTranslation();
 
   // empty href link
@@ -152,7 +156,7 @@ const A = React.memo(function A({ children, ...props }: any) {
   }
 
   return <Link {...props}>{children}</Link>;
-});
+}
 
 function RewritePre({ children }: any) {
   const modifiedChildren = React.Children.map(children, (child) => {

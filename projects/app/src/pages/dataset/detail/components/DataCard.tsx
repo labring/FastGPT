@@ -47,7 +47,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import TagsPopOver from './CollectionCard/TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
-import index from '../../../index';
+import Markdown from '@/components/Markdown';
 
 const DataCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -232,6 +232,7 @@ const DataCard = () => {
                   setEditDataId(item._id);
                 }}
               >
+                {/* Data tag */}
                 <Flex
                   position={'absolute'}
                   zIndex={1}
@@ -259,118 +260,82 @@ const DataCard = () => {
                       ID:{item._id}
                     </Box>
                   </MyTag>
-
-                  {/* {item.forbid ? (
-                    <MyTag colorSchema="gray" bg={'transparent'} px={1} showDot>
-                      {datasetT('Disabled')}
-                    </MyTag>
-                  ) : (
-                    <MyTag colorSchema="green" bg={'transparent'} px={1} showDot>
-                      {datasetT('Enabled')}
-                    </MyTag>
-                  )}
-                  <HStack
-                    borderLeftWidth={'1.5px'}
-                    className="forbid-switch"
-                    display={['flex', 'none']}
-                    borderLeftColor={'myGray.200'}
-                    pl={1}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                    h={'12px'}
-                  >
-                    <Switch
-                      size={'sm'}
-                      isChecked={!item.forbid}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        onUpdate({
-                          dataId: item._id,
-                          forbid: !e.target.checked
-                        });
-                      }}
-                    />
-                  </HStack> */}
                 </Flex>
-                <Box
-                  maxH={'135px'}
-                  minH={'90px'}
-                  overflow={'hidden'}
-                  wordBreak={'break-all'}
-                  pt={1}
-                  pb={3}
-                  fontSize={'sm'}
-                >
-                  <Box color={'black'} mb={1}>
-                    {item.q}
-                  </Box>
-                  <Box color={'myGray.700'}>{item.a}</Box>
 
-                  {/* Mask */}
+                {/* Data content */}
+                <Box wordBreak={'break-all'} fontSize={'sm'}>
+                  <Markdown source={item.q} forbidImgPreview />
+                  {!!item.a && (
+                    <>
+                      <MyDivider />
+                      <Markdown source={item.a} forbidImgPreview />
+                    </>
+                  )}
+                </Box>
+
+                {/* Mask */}
+                <Flex
+                  className="footer"
+                  position={'absolute'}
+                  bottom={2}
+                  right={2}
+                  overflow={'hidden'}
+                  alignItems={'flex-end'}
+                  visibility={'hidden'}
+                  fontSize={'mini'}
+                >
                   <Flex
-                    className="footer"
-                    position={'absolute'}
-                    bottom={2}
-                    right={2}
-                    overflow={'hidden'}
-                    alignItems={'flex-end'}
-                    visibility={'hidden'}
+                    alignItems={'center'}
+                    bg={'white'}
+                    color={'myGray.600'}
+                    borderRadius={'sm'}
+                    border={'1px'}
+                    borderColor={'myGray.200'}
+                    h={'24px'}
+                    px={2}
                     fontSize={'mini'}
+                    boxShadow={'1'}
+                    py={1}
+                    mr={2}
                   >
-                    <Flex
-                      alignItems={'center'}
+                    <MyIcon
                       bg={'white'}
                       color={'myGray.600'}
                       borderRadius={'sm'}
                       border={'1px'}
                       borderColor={'myGray.200'}
-                      h={'24px'}
-                      px={2}
-                      fontSize={'mini'}
-                      boxShadow={'1'}
-                      py={1}
-                      mr={2}
-                    >
-                      <MyIcon
-                        bg={'white'}
-                        color={'myGray.600'}
-                        borderRadius={'sm'}
-                        border={'1px'}
-                        borderColor={'myGray.200'}
-                        name="common/text/t"
-                        w={'14px'}
-                        mr={1}
-                      />
-                      {item.q.length + (item.a?.length || 0)}
-                    </Flex>
-                    {canWrite && (
-                      <IconButton
-                        display={'flex'}
-                        p={1}
-                        boxShadow={'1'}
-                        icon={<MyIcon name={'common/trash'} w={'14px'} color={'myGray.600'} />}
-                        variant={'whiteDanger'}
-                        size={'xsSquare'}
-                        aria-label={'delete'}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openConfirm(async () => {
-                            try {
-                              await delOneDatasetDataById(item._id);
-                              getData(pageNum);
-                            } catch (error) {
-                              toast({
-                                title: getErrText(error),
-                                status: 'error'
-                              });
-                            }
-                          })();
-                        }}
-                      />
-                    )}
+                      name="common/text/t"
+                      w={'14px'}
+                      mr={1}
+                    />
+                    {item.q.length + (item.a?.length || 0)}
                   </Flex>
-                </Box>
+                  {canWrite && (
+                    <IconButton
+                      display={'flex'}
+                      p={1}
+                      boxShadow={'1'}
+                      icon={<MyIcon name={'common/trash'} w={'14px'} />}
+                      variant={'whiteDanger'}
+                      size={'xsSquare'}
+                      aria-label={'delete'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openConfirm(async () => {
+                          try {
+                            await delOneDatasetDataById(item._id);
+                            getData(pageNum);
+                          } catch (error) {
+                            toast({
+                              title: getErrText(error),
+                              status: 'error'
+                            });
+                          }
+                        })();
+                      }}
+                    />
+                  )}
+                </Flex>
               </Card>
             ))}
           </Flex>
