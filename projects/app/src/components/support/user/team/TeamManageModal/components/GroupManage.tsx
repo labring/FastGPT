@@ -55,7 +55,7 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
                     avatars={group.members.map(
                       (v) => members.find((m) => m.tmbId === v)?.avatar ?? ''
                     )}
-                    key={group._id}
+                    groupId={group._id}
                   />
                 </Td>
                 <Td>

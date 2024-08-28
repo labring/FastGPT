@@ -2,12 +2,28 @@ import React from 'react';
 import Avatar from '.';
 import { Box, Flex } from '@chakra-ui/react';
 
-function AvatarGroup({ avatars, max = 3, key }: { max?: number; avatars: string[]; key?: string }) {
+/**
+ * AvatarGroup
+ *
+ * @param avatars - avatars array
+ * @param max - max avatars to show
+ * @param [groupId] - group id to make the key unique
+ * @returns
+ */
+function AvatarGroup({
+  avatars,
+  max = 3,
+  groupId
+}: {
+  max?: number;
+  avatars: string[];
+  groupId?: string;
+}) {
   return (
     <Flex position="relative">
       {avatars.slice(0, max).map((avatar, index) => (
         <Avatar
-          key={avatar + key}
+          key={avatar + groupId}
           src={avatar}
           position={index > 0 ? 'absolute' : 'relative'}
           left={index > 0 ? `${index * 15}px` : 0}
