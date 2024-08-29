@@ -10,7 +10,7 @@ import RehypeExternalLinks from 'rehype-external-links';
 import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
 
-import { Link, Button } from '@chakra-ui/react';
+import { Link, Button, Box } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
@@ -29,21 +29,21 @@ const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false
 const Markdown = ({
   source = '',
   showAnimation = false,
-  forbidImgPreview = false
+  isDisabled = false
 }: {
   source?: string;
   showAnimation?: boolean;
-  forbidImgPreview?: boolean;
+  isDisabled?: boolean;
 }) => {
   const components = useMemo<any>(
     () => ({
-      img: (props: any) => <Image {...props} forbidImgPreview={forbidImgPreview} />,
+      img: Image,
       pre: RewritePre,
       p: (pProps: any) => <p {...pProps} dir="auto" />,
       code: Code,
       a: A
     }),
-    [forbidImgPreview]
+    []
   );
 
   const formatSource = useMemo(() => {
@@ -59,17 +59,20 @@ const Markdown = ({
   }, []);
 
   return (
-    <ReactMarkdown
-      className={`markdown ${styles.markdown}
+    <Box position={'relative'}>
+      <ReactMarkdown
+        className={`markdown ${styles.markdown}
       ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
     `}
-      remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
-      rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
-      components={components}
-      urlTransform={urlTransform}
-    >
-      {formatSource}
-    </ReactMarkdown>
+        remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
+        rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
+        components={components}
+        urlTransform={urlTransform}
+      >
+        {formatSource}
+      </ReactMarkdown>
+      {isDisabled && <Box position={'absolute'} top={0} right={0} left={0} bottom={0} />}
+    </Box>
   );
 };
 
@@ -107,8 +110,8 @@ function Code(e: any) {
   return Component;
 }
 
-function Image({ src, forbidImgPreview }: { forbidImgPreview: boolean; src?: string }) {
-  return <MdImage forbidImgPreview={forbidImgPreview} src={src} />;
+function Image({ src }: { src?: string }) {
+  return <MdImage src={src} />;
 }
 
 function A({ children, ...props }: any) {
