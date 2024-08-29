@@ -23,11 +23,6 @@ export const ResourcePermissionSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: MemberGroupCollectionName
   },
-  subjectType: {
-    type: String,
-    enum: Object.values(SubjectTypeEnum),
-    required: true
-  },
   resourceType: {
     type: String,
     enum: Object.values(PerResourceTypeEnum),
@@ -50,19 +45,8 @@ try {
       resourceType: 1,
       teamId: 1,
       tmbId: 1,
-      resourceId: 1
-    },
-    {
-      unique: true
-    }
-  );
-
-  ResourcePermissionSchema.index(
-    {
-      resourceType: 1,
-      teamId: 1,
-      groupId: 1,
-      resourceId: 1
+      resourceId: 1,
+      groupId: 1
     },
     {
       unique: true

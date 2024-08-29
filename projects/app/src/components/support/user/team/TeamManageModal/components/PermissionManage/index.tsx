@@ -1,10 +1,10 @@
 import React from 'react';
-import { Box, Button, Flex, Tag, TagLabel, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { delMemberPermission } from '@/web/support/user/team/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
@@ -19,7 +19,10 @@ const AddManagerModal = dynamic(() => import('./AddManager'));
 function PermissionManage() {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
-  const { members, refetchMembers } = useContextSelector(TeamModalContext, (v) => v);
+  const { members, groups, refetchMembers, refetchGroups, isLoading } = useContextSelector(
+    TeamModalContext,
+    (v) => v
+  );
 
   const {
     isOpen: isOpenAddManager,
@@ -27,19 +30,14 @@ function PermissionManage() {
     onClose: onCloseAddManager
   } = useDisclosure();
 
-  const { mutate: removeManager, isLoading: isRemovingManager } = useRequest({
-    mutationFn: async (memberId: string) => {
-      return delMemberPermission(memberId);
-    },
+  const { runAsync: removeManager, loading: isRemovingManager } = useRequest2(delMemberPermission, {
     successToast: t('user:delete.admin_success'),
     errorToast: t('user:delete.admin_failed'),
-    onSuccess: () => {
-      refetchMembers();
-    }
+    onSuccess: () => Promise.all([refetchMembers(), refetchGroups()])
   });
 
   return (
-    <MyBox h={'100%'} isLoading={isRemovingManager} bg={'white'}>
+    <MyBox h={'100%'} isLoading={isRemovingManager || isLoading} bg={'white'}>
       <Flex
         mx={'5'}
         flexDirection={'row'}
@@ -80,6 +78,33 @@ function PermissionManage() {
         )}
       </Flex>
       <Flex mt="4" mx="4" flexWrap={'wrap'} gap={3}>
+        {groups.map((group) => {
+          if (group.permission.hasManagePer) {
+            return (
+              <MyTag key={group._id} px="4" py="2" type="fill" colorSchema="gray">
+                <Avatar src={group.avatar} w="1.25rem" />
+                <Box fontSize={'sm'} ml={1}>
+                  {group.name}
+                </Box>
+                {userInfo?.team.role === 'owner' && (
+                  <MyIcon
+                    ml={4}
+                    name="common/trash"
+                    w="1rem"
+                    color="myGray.500"
+                    cursor="pointer"
+                    _hover={{ color: 'red.600' }}
+                    onClick={() => {
+                      removeManager({
+                        groupId: group._id
+                      });
+                    }}
+                  />
+                )}
+              </MyTag>
+            );
+          }
+        })}
         {members.map((member) => {
           if (member.permission.hasManagePer && !member.permission.isOwner) {
             return (
@@ -97,7 +122,9 @@ function PermissionManage() {
                     cursor="pointer"
                     _hover={{ color: 'red.600' }}
                     onClick={() => {
-                      removeManager(member.tmbId);
+                      removeManager({
+                        tmbId: member.tmbId
+                      });
                     }}
                   />
                 )}

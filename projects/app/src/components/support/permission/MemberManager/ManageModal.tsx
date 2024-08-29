@@ -1,15 +1,4 @@
-import {
-  ModalBody,
-  Table,
-  TableContainer,
-  Tbody,
-  Th,
-  Thead,
-  Tr,
-  Td,
-  Box,
-  Flex
-} from '@chakra-ui/react';
+import { ModalBody, Table, TableContainer, Tbody, Th, Thead, Tr, Td, Flex } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';
@@ -18,7 +7,7 @@ import PermissionTags from './PermissionTags';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { CollaboratorContext } from './context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -38,16 +27,17 @@ function ManageModal({ onClose }: ManageModalProps) {
     onDelOneCollaborator(tmbId)
   );
 
-  const { mutate: onUpdate, isLoading: isUpdating } = useRequest({
-    mutationFn: ({ tmbId, per }: { tmbId: string; per: PermissionValueType }) => {
-      return onUpdateCollaborators({
-        tmbIds: [tmbId],
+  const { runAsync: onUpdate, loading: isUpdating } = useRequest2(
+    ({ tmbId, per }: { tmbId: string; per: PermissionValueType }) =>
+      onUpdateCollaborators({
+        members: [tmbId],
         permission: per
-      });
-    },
-    successToast: t('common.Update Success'),
-    errorToast: 'Error'
-  });
+      }),
+    {
+      successToast: t('common.Update Success'),
+      errorToast: 'Error'
+    }
+  );
 
   const loading = isDeleting || isUpdating;
 

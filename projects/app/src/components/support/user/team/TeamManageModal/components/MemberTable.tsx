@@ -90,7 +90,7 @@ function MemberTable() {
                         }
                         onChange={(permission) => {
                           onUpdateCollaborators({
-                            tmbIds: [item.tmbId],
+                            members: [item.tmbId],
                             permission
                           });
                         }}

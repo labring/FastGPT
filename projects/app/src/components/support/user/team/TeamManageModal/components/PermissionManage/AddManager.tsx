@@ -14,7 +14,10 @@ import { useForm } from 'react-hook-form';
 function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const { t } = useTranslation();
   const { userT } = useI18n();
-  const { members, refetchMembers, groups } = useContextSelector(TeamModalContext, (v) => v);
+  const { members, refetchMembers, groups, refetchGroups } = useContextSelector(
+    TeamModalContext,
+    (v) => v
+  );
   const { control, handleSubmit } = useForm({
     defaultValues: {
       managers: {
@@ -25,16 +28,14 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   });
 
   const { runAsync: submit, loading: isLoading } = useRequest2(
-    async (members: string[]) =>
+    async ({ member, group }) =>
       updateMemberPermission({
-        permission: ManagePermissionVal,
-        tmbIds: members
+        members: member,
+        groups: group,
+        permission: ManagePermissionVal
       }),
     {
-      onSuccess: () => {
-        refetchMembers();
-        onSuccess();
-      }
+      onSuccess: () => Promise.all([refetchMembers(), refetchGroups(), onSuccess()])
     }
   );
 
@@ -56,13 +57,14 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           }}
           control={control as any}
           mode="both"
+          name="managers"
         />
       </ModalBody>
       <ModalFooter alignItems="flex-end">
         <Button
           h={'30px'}
           isLoading={isLoading}
-          onClick={handleSubmit((data) => submit(data.managers.member))} // TODO: 处理group
+          onClick={handleSubmit((data) => submit(data.managers))}
         >
           {t('common:common.Confirm')}
         </Button>

@@ -68,7 +68,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
       });
     },
     {
-      onSuccess: async () => await Promise.all([onClose(), refetchGroups()])
+      onSuccess: () => Promise.all([onClose(), refetchGroups()])
     }
   );
 

@@ -3,7 +3,11 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import jwt from 'jsonwebtoken';
 import { NextApiResponse } from 'next';
 import type { AuthModeType, ReqHeaderAuthType } from './type.d';
-import { AuthUserTypeEnum, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import {
+  AuthUserTypeEnum,
+  PerResourceTypeEnum,
+  SubjectTypeEnum
+} from '@fastgpt/global/support/permission/constant';
 import { authOpenApiKey } from '../openapi/auth';
 import { FileTokenQuery } from '@fastgpt/global/common/file/type';
 import { MongoResourcePermission } from './schema';
@@ -17,18 +21,32 @@ export const getResourcePermission = async ({
   resourceType,
   teamId,
   tmbId,
+  groupId,
   resourceId
 }: {
   resourceType: PerResourceTypeEnum;
   teamId: string;
-  tmbId: string;
+  tmbId?: string;
+  groupId?: string;
   resourceId?: string;
 }) => {
+  const subjectType = (() => {
+    if (tmbId) {
+      return SubjectTypeEnum.tmb;
+    }
+    if (groupId) {
+      return SubjectTypeEnum.group;
+    }
+    return SubjectTypeEnum.tmb;
+  })();
+
   const per = await MongoResourcePermission.findOne({
     tmbId,
     teamId,
     resourceType,
-    resourceId
+    groupId,
+    resourceId,
+    subjectType
   });
 
   if (!per) {

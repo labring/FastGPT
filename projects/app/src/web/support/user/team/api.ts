@@ -1,5 +1,8 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
-import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
+import {
+  DeleteClbPermissionProps,
+  UpdateClbPermissionProps
+} from '@fastgpt/global/support/permission/collaborator';
 import {
   CreateTeamProps,
   InviteMemberProps,
@@ -42,8 +45,8 @@ export const delLeaveTeam = (teamId: string) =>
 /* -------------- team collaborator -------------------- */
 export const updateMemberPermission = (data: UpdateClbPermissionProps) =>
   PUT('/proApi/support/user/team/collaborator/update', data);
-export const delMemberPermission = (tmbId: string) =>
-  DELETE('/proApi/support/user/team/collaborator/delete', { tmbId });
+export const delMemberPermission = (data: DeleteClbPermissionProps) =>
+  DELETE('/proApi/support/user/team/collaborator/delete', data);
 
 /* --------------- team tags ---------------- */
 export const getTeamsTags = () => GET<TeamTagSchema[]>(`/proApi/support/user/team/tag/list`);
