@@ -314,7 +314,7 @@ const FieldEditModal = ({
       w={'100%'}
     >
       <Flex h={'560px'}>
-        <Stack flex={1} gap={4} p={8}>
+        <Stack gap={4} p={8}>
           <Box alignItems={'center'}>
             <FormLabel color={'myGray.600'} fontWeight={'medium'}>
               {t('common:core.module.Input Type')}
