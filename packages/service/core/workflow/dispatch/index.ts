@@ -314,7 +314,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         result: Record<string, any>;
       }[];
       // If there are no running nodes, the workflow is complete
-      if (!flat.some((item) => item.runStatus === 'run')) return;
+      if (flat.length === 0) return;
 
       // Update the node output at the end of the run and get the next nodes
       const nextNodes = flat.map((item) => nodeOutput(item.node, item.result)).flat();
