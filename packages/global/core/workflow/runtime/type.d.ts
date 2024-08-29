@@ -96,6 +96,8 @@ export type DispatchNodeResponseType = {
   error?: Record<string, any>;
   customInputs?: Record<string, any>;
   customOutputs?: Record<string, any>;
+  nodeInputs?: Record<string, any>;
+  nodeOutputs?: Record<string, any>;
 
   // bill
   tokens?: number;

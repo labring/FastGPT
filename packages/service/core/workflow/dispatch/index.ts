@@ -310,9 +310,11 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
       const flat = result.flat().filter(Boolean) as unknown as {
         node: RuntimeNodeItemType;
+        runStatus: 'run' | 'skip';
         result: Record<string, any>;
       }[];
-      if (flat.length === 0) return;
+      // If there are no running nodes, the workflow is complete
+      if (!flat.some((item) => item.runStatus === 'run')) return;
 
       // Update the node output at the end of the run and get the next nodes
       const nextNodes = flat.map((item) => nodeOutput(item.node, item.result)).flat();
@@ -454,6 +456,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
     return {
       node,
+      runStatus: 'run',
       result: {
         ...dispatchRes,
         [DispatchNodeResponseKeyEnum.nodeResponse]: formatResponseData
@@ -467,6 +470,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
     return {
       node,
+      runStatus: 'skip',
       result: {
         [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map((item) => item.sourceHandle)
       }

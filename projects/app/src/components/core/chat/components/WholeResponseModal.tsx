@@ -326,7 +326,8 @@ export const WholeResponseContent = ({
               label={t('common:core.chat.response.context total length')}
               value={activeModule?.contextTotalLen}
             />
-            <Row label={workflowT('response.Error')} value={activeModule?.error} />
+            <Row label={t('workflow:response.Error')} value={activeModule?.error} />
+            <Row label={t('chat:response.node_inputs')} value={activeModule?.nodeInputs} />
           </>
           {/* ai chat */}
           <>
