@@ -40,14 +40,20 @@ const PromptEditor = ({
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
 
-  const onChangeInput = useCallback((editorState: EditorState, editor: LexicalEditor) => {
-    const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
-    onChange?.(text);
-  }, []);
-  const onBlurInput = useCallback((editor: LexicalEditor) => {
-    const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
-    onBlur?.(text);
-  }, []);
+  const onChangeInput = useCallback(
+    (editorState: EditorState, editor: LexicalEditor) => {
+      const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
+      onChange?.(text);
+    },
+    [onChange]
+  );
+  const onBlurInput = useCallback(
+    (editor: LexicalEditor) => {
+      const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
+      onBlur?.(text);
+    },
+    [onBlur]
+  );
 
   return (
     <>
