@@ -34,7 +34,7 @@ import { isReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { AppContext } from '@/pages/app/detail/components/context';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { useCreation } from 'ahooks';
-import { getVariables } from './render/RenderInput/templates/Textarea';
+import { getEditorVariables } from '../../utils';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -44,14 +44,12 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const edges = useContextSelector(WorkflowContext, (v) => v.edges);
-  const getNodeDynamicInputs = useContextSelector(WorkflowContext, (v) => v.getNodeDynamicInputs);
 
   const variables = useCreation(() => {
-    return getVariables({
+    return getEditorVariables({
       nodeId,
       nodeList,
       edges,
-      getNodeDynamicInputs,
       appDetail,
       t
     });
@@ -105,7 +103,6 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
             chatConfig: appDetail.chatConfig,
             t
           });
-
           const renderTypeData = menuList.find((item) => item.renderType === updateItem.renderType);
           const handleUpdate = (newValue: ReferenceValueProps | string) => {
             if (isReferenceValue(newValue)) {
@@ -217,8 +214,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                       <Box w={'300px'}>
                         <PromptEditor
                           value={updateItem.value?.[1] || ''}
-                          onChange={(e) => handleUpdate(e)}
-                          onChangeDeps={[updateList]}
+                          onChange={handleUpdate}
                           showOpenModal={false}
                           variableLabels={variables}
                           h={100}
