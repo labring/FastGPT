@@ -333,7 +333,8 @@ export const removePluginInputVariables = (
   );
 };
 
-export function replaceVariableLabel({
+// replace {{$xx.xx$}} variables for text
+export function replaceEditorVariable({
   text,
   nodes,
   variables,
@@ -341,7 +342,7 @@ export function replaceVariableLabel({
 }: {
   text: any;
   nodes: RuntimeNodeItemType[];
-  variables: Record<string, string | number>;
+  variables: Record<string, any>; // global variables
   runningNode: RuntimeNodeItemType;
 }) {
   if (typeof text !== 'string') return text;

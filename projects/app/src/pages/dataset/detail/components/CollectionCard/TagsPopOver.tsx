@@ -2,12 +2,11 @@ import { Box, Checkbox, Flex, Input } from '@chakra-ui/react';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { postCreateDatasetCollectionTag, putDatasetCollectionById } from '@/web/core/dataset/api';
+import { putDatasetCollectionById } from '@/web/core/dataset/api';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useTranslation } from 'next-i18next';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useMemo, useRef, useState } from 'react';
 import { useDeepCompareEffect } from 'ahooks';
 import { DatasetCollectionItemType, DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { isEqual } from 'lodash';
@@ -19,24 +18,19 @@ const TagsPopOver = ({
   currentCollection: DatasetCollectionItemType | DatasetCollectionsListItemType;
 }) => {
   const { t } = useTranslation();
-  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
-  const datasetTags = useContextSelector(DatasetPageContext, (v) => v.datasetTags);
-  const loadDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadDatasetTags);
-  const allDatasetTags = useContextSelector(DatasetPageContext, (v) => v.allDatasetTags);
-  const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
+  const {
+    searchTagKey,
+    setSearchTagKey,
+    searchDatasetTagsResult,
+    allDatasetTags,
+    onCreateCollectionTag,
+    isCreateCollectionTagLoading
+  } = useContextSelector(DatasetPageContext, (v) => v);
 
-  const [collectionTags, setCollectionTags] = useState<string[]>([]);
-  const [searchTag, setSearchTag] = useState('');
+  const [collectionTags, setCollectionTags] = useState<string[]>(currentCollection.tags ?? []);
   const [checkedTags, setCheckedTags] = useState<DatasetTagType[]>([]);
-
   const [showTagManage, setShowTagManage] = useState(false);
-  const [isFocusInput, setIsFocusInput] = useState(false);
   const [isUpdateLoading, setIsUpdateLoading] = useState(false);
-
-  useEffect(() => {
-    if (!currentCollection.tags) return;
-    setCollectionTags(currentCollection.tags);
-  }, [currentCollection]);
 
   const tagList = useMemo(
     () =>
@@ -51,12 +45,6 @@ const TagsPopOver = ({
       }[]) || [],
     [collectionTags, allDatasetTags]
   );
-
-  useEffect(() => {
-    if (!isFocusInput) return;
-    loadDatasetTags({ id: datasetDetail._id, searchKey: searchTag });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [datasetDetail._id, isFocusInput, searchTag]);
 
   const [visibleTags, setVisibleTags] = useState<DatasetTagType[]>(tagList);
   const [overflowTags, setOverflowTags] = useState<DatasetTagType[]>([]);
@@ -95,24 +83,6 @@ const TagsPopOver = ({
       window.removeEventListener('resize', calculateTags);
     };
   }, [tagList]);
-
-  const { mutate: onCreateCollectionTag, isLoading: isCreateCollectionTagLoading } = useRequest({
-    mutationFn: async (tag: string) => {
-      const id = await postCreateDatasetCollectionTag({
-        datasetId: datasetDetail._id,
-        tag
-      });
-      return id;
-    },
-
-    onSuccess() {
-      setSearchTag('');
-      loadDatasetTags({ id: datasetDetail._id, searchKey: '' });
-      loadAllDatasetTags({ id: datasetDetail._id });
-    },
-    successToast: t('common:common.Create Success'),
-    errorToast: t('common:common.Create Failed')
-  });
 
   return (
     <MyPopover
@@ -176,6 +146,8 @@ const TagsPopOver = ({
         </MyBox>
       }
       onCloseFunc={async () => {
+        setSearchTagKey('');
+
         setShowTagManage(false);
         if (isEqual(checkedTags, tagList) || !showTagManage) return;
         setIsUpdateLoading(true);
@@ -194,36 +166,33 @@ const TagsPopOver = ({
             <MyBox isLoading={isCreateCollectionTagLoading} onClick={(e) => e.stopPropagation()}>
               <Box px={1.5} pt={1.5}>
                 <Input
-                  onFocus={() => setIsFocusInput(true)}
-                  onBlur={() => setIsFocusInput(false)}
                   pl={2}
                   h={7}
                   borderRadius={'xs'}
-                  value={searchTag}
+                  value={searchTagKey}
                   placeholder={t('dataset:tag.searchOrAddTag')}
-                  onChange={(e) => setSearchTag(e.target.value)}
+                  onChange={(e) => setSearchTagKey(e.target.value)}
                 />
               </Box>
               <Box my={1} px={1.5} maxH={'200px'} overflow={'auto'}>
-                {searchTag && !datasetTags.map((item) => item.tag).includes(searchTag) && (
-                  <Flex
-                    alignItems={'center'}
-                    fontSize={'xs'}
-                    px={1}
-                    cursor={'pointer'}
-                    _hover={{ bg: '#1118240D', color: '#2B5FD9' }}
-                    borderRadius={'xs'}
-                    onClick={() => {
-                      onCreateCollectionTag(searchTag);
-                    }}
-                  >
-                    <MyIcon name={'common/addLight'} w={'16px'} />
-                    <Box ml={1} py={1}>
-                      {t('dataset:tag.add') + ` "${searchTag}"`}
-                    </Box>
-                  </Flex>
-                )}
-                {datasetTags?.map((item) => {
+                {searchTagKey &&
+                  !searchDatasetTagsResult.map((item) => item.tag).includes(searchTagKey) && (
+                    <Flex
+                      alignItems={'center'}
+                      fontSize={'xs'}
+                      px={1}
+                      cursor={'pointer'}
+                      _hover={{ bg: '#1118240D', color: '#2B5FD9' }}
+                      borderRadius={'xs'}
+                      onClick={() => onCreateCollectionTag(searchTagKey)}
+                    >
+                      <MyIcon name={'common/addLight'} w={'1rem'} />
+                      <Box ml={1} py={1}>
+                        {t('dataset:tag.add') + ` "${searchTagKey}"`}
+                      </Box>
+                    </Flex>
+                  )}
+                {searchDatasetTagsResult?.map((item) => {
                   const tagsList = checkedTags.map((tag) => tag.tag);
                   return (
                     <Flex

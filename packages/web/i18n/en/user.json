@@ -20,6 +20,10 @@
     "you_can_convert": "You can redeem",
     "yuan": "Yuan"
   },
+  "promotion": {
+    "register": "Register",
+    "pay": "Pay"
+  },
   "bind_inform_account_error": "Abnormal binding notification account",
   "bind_inform_account_success": "Binding notification account successful",
   "code_error": {
