@@ -30,6 +30,9 @@
   "plugins_output": "Plugin output",
   "question_tip": "From left to right, the response order of each module",
   "rearrangement": "Search results rearranged",
+  "response": {
+    "node_inputs": "Node input"
+  },
   "select_file": "Select file",
   "select_img": "Select images",
   "stream_output": "stream output",
