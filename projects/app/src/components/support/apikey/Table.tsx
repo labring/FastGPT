@@ -106,7 +106,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                 color={'primary.500'}
                 fontSize={'sm'}
               >
-                {t('common:common.Read document')}
+                {/* {t('common:common.Read document')} */}
               </Link>
             )}
           </Flex>

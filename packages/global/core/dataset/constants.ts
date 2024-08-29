@@ -94,7 +94,7 @@ export enum ImportDataSourceEnum {
 
 export enum TrainingModeEnum {
   chunk = 'chunk',
-  auto = 'auto',
+  //auto = 'auto',
   qa = 'qa'
 }
 
@@ -104,11 +104,11 @@ export const TrainingTypeMap = {
     tooltip: 'core.dataset.import.Chunk Split Tip',
     openSource: true
   },
-  [TrainingModeEnum.auto]: {
-    label: 'core.dataset.training.Auto mode',
-    tooltip: 'core.dataset.training.Auto mode Tip',
-    openSource: false
-  },
+  // [TrainingModeEnum.auto]: {
+  //   label: 'core.dataset.training.Auto mode',
+  //   tooltip: 'core.dataset.training.Auto mode Tip',
+  //   openSource: false
+  // },
   [TrainingModeEnum.qa]: {
     label: 'core.dataset.training.QA mode',
     tooltip: 'core.dataset.import.QA Import Tip',

@@ -171,20 +171,20 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
   const customSplitChar = processParamsForm.watch('customSplitChar');
 
   const modeStaticParams: Record<TrainingModeEnum, TrainingFiledType> = {
-    [TrainingModeEnum.auto]: {
-      chunkOverlapRatio: 0.2,
-      maxChunkSize: 2048,
-      minChunkSize: 100,
-      autoChunkSize: vectorModel?.defaultToken ? vectorModel?.defaultToken * 2 : 1024,
-      chunkSize: vectorModel?.defaultToken ? vectorModel?.defaultToken * 2 : 1024,
-      showChunkInput: false,
-      showPromptInput: false,
-      charsPointsPrice: agentModel.charsPointsPrice,
-      priceTip: t('core.dataset.import.Auto mode Estimated Price Tips', {
-        price: agentModel.charsPointsPrice
-      }),
-      uploadRate: 100
-    },
+    // [TrainingModeEnum.auto]: {
+    //   chunkOverlapRatio: 0.2,
+    //   maxChunkSize: 2048,
+    //   minChunkSize: 100,
+    //   autoChunkSize: vectorModel?.defaultToken ? vectorModel?.defaultToken * 2 : 1024,
+    //   chunkSize: vectorModel?.defaultToken ? vectorModel?.defaultToken * 2 : 1024,
+    //   showChunkInput: false,
+    //   showPromptInput: false,
+    //   charsPointsPrice: agentModel.charsPointsPrice,
+    //   priceTip: t('core.dataset.import.Auto mode Estimated Price Tips', {
+    //     price: agentModel.charsPointsPrice
+    //   }),
+    //   uploadRate: 100
+    // },
     [TrainingModeEnum.chunk]: {
       chunkSizeField: 'embeddingChunkSize' as ChunkSizeFieldType,
       chunkOverlapRatio: 0.2,

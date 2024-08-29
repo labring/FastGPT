@@ -1,4 +1,4 @@
-baseURL = "https://doc.fastgpt.in"
+baseURL = ""
 languageCode = "en-GB"
 contentDir = "content"
 enableEmoji = true
@@ -8,12 +8,12 @@ defaultContentLanguage = 'zh-cn'
 defaultContentLanguageInSubdir = false
 [languages]
   [languages.zh-cn]
-    title = "FastGPT"
+    title = "ChatGPT"
     languageName = "简体中文"
     contentDir = "content/zh-cn"
     weight = 10
   [languages.en]
-    title = "FastGPT Docs"
+    title = "ChatGPT Docs"
     languageName = "English"
     contentDir = "content/en"
     weight = 10

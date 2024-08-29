@@ -575,7 +575,7 @@ const Other = () => {
   );
   return (
     <Box>
-      <Grid gridGap={4} mt={3}>
+      {/* <Grid gridGap={4} mt={3}>
         {feConfigs?.docUrl && (
           <Link
             bg={'white'}
@@ -703,7 +703,7 @@ const Other = () => {
           onClose={onCloseOpenai}
         />
       )}
-      {isOpenConcat && <CommunityModal onClose={onCloseConcat} />}
+      {isOpenConcat && <CommunityModal onClose={onCloseConcat} />} */}
     </Box>
   );
 };

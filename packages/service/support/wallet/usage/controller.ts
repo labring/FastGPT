@@ -39,13 +39,14 @@ export const createTrainingUsage = async ({
             model: agentModel,
             tokens: 0,
             amount: 0
-          },
-          {
-            moduleName: 'core.dataset.training.Auto mode',
-            model: agentModel,
-            tokens: 0,
-            amount: 0
           }
+          // ,
+          // {
+          //   moduleName: 'core.dataset.training.Auto mode',
+          //   model: agentModel,
+          //   tokens: 0,
+          //   amount: 0
+          // }
         ]
       }
     ],

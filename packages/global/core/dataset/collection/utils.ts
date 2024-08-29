@@ -20,6 +20,6 @@ export const checkCollectionIsFolder = (type: DatasetCollectionTypeEnum) => {
 
 export const getTrainingTypeLabel = (type?: TrainingModeEnum) => {
   if (!type) return '';
-  if (!TrainingTypeMap[type]) return '';
-  return TrainingTypeMap[type].label;
+  //if (!TrainingTypeMap[type]) return '';
+  //return TrainingTypeMap[type].label;
 };

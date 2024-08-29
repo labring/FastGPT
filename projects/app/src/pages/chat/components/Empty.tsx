@@ -45,12 +45,12 @@ const Empty = ({
       {showChatProblem && (
         <>
           {/* version intro */}
-          <Card p={4} mb={10}>
+          {/* <Card p={4} mb={10}>
             <Markdown source={versionIntro} />
           </Card>
           <Card p={4}>
             <Markdown source={chatProblem} />
-          </Card>
+          </Card> */}
         </>
       )}
     </Box>
