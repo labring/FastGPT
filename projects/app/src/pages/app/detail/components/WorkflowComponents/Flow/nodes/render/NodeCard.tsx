@@ -578,7 +578,7 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
             </Box>
           )}
         </Flex>
-        {/* result */}
+        {/* Result card */}
         {debugResult.showResult && (
           <Card
             className="nowheel"
@@ -587,12 +587,11 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
             top={0}
             zIndex={10}
             w={'420px'}
-            minH={'300px'}
-            maxH={'100%'}
+            maxH={'max(100%,500px)'}
             border={'base'}
           >
             {/* Status header */}
-            <Flex h={'54x'} px={4} mb={1} py={3} alignItems={'center'} borderBottom={'base'}>
+            <Flex h={'54x'} px={4} py={3} alignItems={'center'}>
               <MyIcon mr={1} name={'core/workflow/debugResult'} w={'20px'} color={'primary.600'} />
               <Box fontWeight={'bold'} flex={'1'}>
                 {t('common:core.workflow.debug.Run result')}
@@ -627,18 +626,20 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
                 </Button>
               )}
             </Flex>
-            {/* Show result */}
-            <Box overflowY={'auto'}>
-              {!debugResult.message && !response && (
-                <EmptyTip text={t('common:core.workflow.debug.Not result')} pt={2} pb={5} />
-              )}
-              {debugResult.message && (
-                <Box color={'red.600'} px={3} py={4}>
-                  {debugResult.message}
-                </Box>
-              )}
-              {response && <WholeResponseContent activeModule={response} showDetail />}
-            </Box>
+            {/* Response list */}
+            {debugResult.status !== 'skipped' && (
+              <Box borderTop={'base'} mt={1} overflowY={'auto'} minH={'250px'}>
+                {!debugResult.message && !response && (
+                  <EmptyTip text={t('common:core.workflow.debug.Not result')} pt={2} pb={5} />
+                )}
+                {debugResult.message && (
+                  <Box color={'red.600'} px={3} py={4}>
+                    {debugResult.message}
+                  </Box>
+                )}
+                {response && <WholeResponseContent activeModule={response} showDetail />}
+              </Box>
+            )}
           </Card>
         )}
         <ConfirmModal />
