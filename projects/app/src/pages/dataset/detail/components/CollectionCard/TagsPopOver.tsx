@@ -55,7 +55,8 @@ const TagsPopOver = ({
   useEffect(() => {
     if (!isFocusInput) return;
     loadDatasetTags({ id: datasetDetail._id, searchKey: searchTag });
-  }, [datasetDetail._id, isFocusInput, loadDatasetTags, searchTag]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasetDetail._id, isFocusInput, searchTag]);
 
   const [visibleTags, setVisibleTags] = useState<DatasetTagType[]>(tagList);
   const [overflowTags, setOverflowTags] = useState<DatasetTagType[]>([]);
@@ -214,10 +215,9 @@ const TagsPopOver = ({
                     borderRadius={'xs'}
                     onClick={() => {
                       onCreateCollectionTag(searchTag);
-                      // setCheckedTags([...checkedTags, item]);
                     }}
                   >
-                    <MyIcon name={'common/addLight'} w={'sm'} />
+                    <MyIcon name={'common/addLight'} w={'16px'} />
                     <Box ml={1} py={1}>
                       {t('dataset:tag.add') + ` "${searchTag}"`}
                     </Box>
