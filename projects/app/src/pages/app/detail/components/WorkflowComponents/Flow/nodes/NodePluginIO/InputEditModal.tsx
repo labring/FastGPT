@@ -199,6 +199,8 @@ const FieldEditModal = ({
 
       if (isToolInput) {
         data.toolDescription = data.description;
+      } else {
+        data.toolDescription = undefined;
       }
 
       data.label = data.key;

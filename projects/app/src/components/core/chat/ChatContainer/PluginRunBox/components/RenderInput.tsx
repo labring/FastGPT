@@ -58,7 +58,7 @@ const RenderInput = () => {
   useEffect(() => {
     if (isEqual(getValues(), defaultFormValues)) return;
     reset(historyFormValues || defaultFormValues);
-  }, [defaultFormValues, historyFormValues]);
+  }, [defaultFormValues, getValues, historyFormValues, reset]);
 
   const isDisabledInput = histories.length > 0;
 
@@ -72,6 +72,7 @@ const RenderInput = () => {
             name={input.key}
             rules={{
               validate: (value) => {
+                if (!input.required) return true;
                 if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
                   return value !== undefined;
                 }
