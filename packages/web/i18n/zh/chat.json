@@ -30,6 +30,9 @@
   "plugins_output": "插件输出",
   "question_tip": "从上到下，为各个模块的响应顺序",
   "rearrangement": "检索结果重排",
+  "response": {
+    "node_inputs": "节点输入"
+  },
   "select_file": "选择文件",
   "select_img": "选择图片",
   "stream_output": "流输出",
