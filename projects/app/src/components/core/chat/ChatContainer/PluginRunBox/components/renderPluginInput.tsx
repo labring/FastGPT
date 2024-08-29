@@ -13,6 +13,7 @@ import {
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
@@ -41,21 +42,7 @@ const RenderPluginInput = ({
     }
     if (inputType === FlowNodeInputTypeEnum.select && input.list) {
       return (
-        <Select
-          value={value}
-          defaultValue={input.defaultValue}
-          onChange={onChange}
-          isDisabled={isDisabled}
-          bg={'myGray.50'}
-          isInvalid={isInvalid}
-          placeholder={t('common:Not_selected')}
-        >
-          {input.list.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
+        <MySelect list={input.list} value={value} onchange={onChange} isDisabled={isDisabled} />
       );
     }
     if (input.valueType === WorkflowIOValueTypeEnum.string) {
@@ -104,7 +91,7 @@ const RenderPluginInput = ({
     return (
       <JsonEditor
         bg={'myGray.50'}
-        placeholder={t(input.placeholder || ('' as any))}
+        placeholder={t(input.placeholder as any)}
         resize
         value={value}
         onChange={onChange}

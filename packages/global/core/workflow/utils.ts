@@ -301,7 +301,6 @@ export const updatePluginInputByVariables = (
           ...node,
           inputs: node.inputs.map((input) => {
             const parseValue = (() => {
-              console.log('===');
               try {
                 if (
                   input.valueType === WorkflowIOValueTypeEnum.string ||
@@ -315,7 +314,6 @@ export const updatePluginInputByVariables = (
                 return variables[input.key];
               }
             })();
-            console.log('====node====', input, parseValue);
 
             return {
               ...input,
