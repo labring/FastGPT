@@ -333,7 +333,8 @@ export const removePluginInputVariables = (
   );
 };
 
-export function replaceVariableLabel({
+// replace {{$xx.xx$}} variables for text
+export function replaceEditorVariable({
   text,
   nodes,
   variables,

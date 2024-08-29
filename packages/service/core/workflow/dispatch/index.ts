@@ -21,7 +21,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
-import { replaceVariableLabel } from '@fastgpt/global/core/workflow/utils';
+import { replaceEditorVariable } from '@fastgpt/global/core/workflow/utils';
 
 import { dispatchWorkflowStart } from './init/workflowStart';
 import { dispatchChatCompletion } from './chat/oneapi';
@@ -368,7 +368,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       let value = replaceVariable(input.value, variables);
 
       // replace {{$xx.xx$}} variables
-      value = replaceVariableLabel({
+      value = replaceEditorVariable({
         text: value,
         nodes: runtimeNodes,
         variables,
