@@ -342,7 +342,7 @@ export function replaceEditorVariable({
 }: {
   text: any;
   nodes: RuntimeNodeItemType[];
-  variables: Record<string, string | number>;
+  variables: Record<string, any>; // global variables
   runningNode: RuntimeNodeItemType;
 }) {
   if (typeof text !== 'string') return text;
