@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Input, Button, Flex, Box, Checkbox, BoxProps } from '@chakra-ui/react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Input, Button, Flex, Box, Checkbox } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -13,10 +13,9 @@ import {
   getScrollCollectionList,
   getTagUsage,
   postAddTagsToCollections,
-  postCreateDatasetCollectionTag,
   updateDatasetCollectionTag
 } from '@/web/core/dataset/api';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyInput from '@/components/MyInput';
 import { DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { ScrollListType, useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
@@ -26,9 +25,13 @@ import { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 
 const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
-  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
-  const loadDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadDatasetTags);
-  const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
+  const {
+    datasetDetail,
+    onCreateCollectionTag,
+    isCreateCollectionTagLoading,
+    loadAllDatasetTags,
+    setSearchTagKey
+  } = useContextSelector(DatasetPageContext, (v) => v);
   const { getData, pageNum, collections } = useContextSelector(CollectionPageContext, (v) => v);
 
   const tagInputRef = useRef<HTMLInputElement>(null);
@@ -56,36 +59,17 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   }, [currentEditTag]);
 
-  const { mutate: onCreateCollectionTag, isLoading: isCreateCollectionTagLoading } = useRequest({
-    mutationFn: async (tag: string) => {
-      const id = await postCreateDatasetCollectionTag({
-        datasetId: datasetDetail._id,
-        tag
-      });
-      return id;
-    },
-
-    onSuccess() {
-      fetchData(1);
-      loadDatasetTags({ id: datasetDetail._id, searchKey: '' });
-      loadAllDatasetTags({ id: datasetDetail._id });
-    },
-    successToast: t('common:common.Create Success'),
-    errorToast: t('common:common.Create Failed')
-  });
-
   const { runAsync: onDeleteCollectionTag, loading: isDeleteCollectionTagLoading } = useRequest2(
-    (tag: string) => {
-      return delDatasetCollectionTag({
+    (tag: string) =>
+      delDatasetCollectionTag({
         datasetId: datasetDetail._id,
         id: tag
-      });
-    },
+      }),
     {
       onSuccess() {
         fetchData(1);
-        loadDatasetTags({ id: datasetDetail._id, searchKey: '' });
-        loadAllDatasetTags({ id: datasetDetail._id });
+        setSearchTagKey('');
+        loadAllDatasetTags();
       },
       successToast: t('common:common.Delete Success'),
       errorToast: t('common:common.Delete Failed')
@@ -103,8 +87,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     {
       onSuccess() {
         fetchData(1);
-        loadDatasetTags({ id: datasetDetail._id, searchKey: '' });
-        loadAllDatasetTags({ id: datasetDetail._id });
+        setSearchTagKey('');
+        loadAllDatasetTags();
       }
     }
   );

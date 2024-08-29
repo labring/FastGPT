@@ -49,12 +49,8 @@ const Detail = ({ datasetId, currentTab }: Props) => {
   const { isPc } = useSystem();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const loadDatasetDetail = useContextSelector(DatasetPageContext, (v) => v.loadDatasetDetail);
-  const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
 
   useRequest2(() => loadDatasetDetail(datasetId), {
-    onSuccess: () => {
-      loadAllDatasetTags({ id: datasetId });
-    },
     onError(err: any) {
       router.replace(`/dataset/list`);
       toast({

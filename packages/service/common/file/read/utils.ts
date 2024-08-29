@@ -79,7 +79,7 @@ export const readRawContentByFileBuffer = async ({
     )
       return;
 
-    addLog.info('Use custom read file service');
+    const start = Date.now();
 
     const data = new FormData();
     data.append('file', buffer, {
@@ -100,6 +100,8 @@ export const readRawContentByFileBuffer = async ({
         ...data.getHeaders()
       }
     });
+
+    addLog.info(`Use custom read file service, time: ${Date.now() - start}ms`);
 
     const rawText = response.data.markdown;
 
