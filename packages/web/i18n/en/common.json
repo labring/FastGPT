@@ -565,6 +565,7 @@
         "plugin output": "Plugin output value",
         "search using reRank": "Result rearrangement",
         "text output": "text output",
+        "update_var_result": "Variable update results (display multiple variable update results in order)",
         "user_select_result": "User select result"
       },
       "retry": "Regenerate",

@@ -375,19 +375,20 @@ const ConditionSelect = ({
     return [];
   }, [valueType]);
   const filterQuiredConditionList = useMemo(() => {
-    if (required) {
-      return conditionList
-        .filter(
+    const list = (() => {
+      if (required) {
+        return conditionList.filter(
           (item) =>
             item.value !== VariableConditionEnum.isEmpty &&
             item.value !== VariableConditionEnum.isNotEmpty
-        )
-        .map((item) => ({
-          ...item,
-          label: t(item.label)
-        }));
-    }
-    return conditionList;
+        );
+      }
+      return conditionList;
+    })();
+    return list.map((item) => ({
+      ...item,
+      label: t(item.label)
+    }));
   }, [conditionList, required, t]);
 
   return (

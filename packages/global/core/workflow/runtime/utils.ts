@@ -184,9 +184,7 @@ export const checkNodeRunStatus = ({
     currentNode: node
   });
 
-  console.log(commonEdges, recursiveEdges);
-
-  // check skip
+  // check skip（其中一组边，全 skip）
   if (commonEdges.length > 0 && commonEdges.every((item) => item.status === 'skipped')) {
     return 'skip';
   }
@@ -194,7 +192,7 @@ export const checkNodeRunStatus = ({
     return 'skip';
   }
 
-  // check active
+  // check active（有一类边，不全是 wait 即可运行）
   if (commonEdges.length > 0 && commonEdges.every((item) => item.status !== 'waiting')) {
     return 'run';
   }

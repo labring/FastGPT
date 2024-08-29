@@ -453,11 +453,11 @@ export const WholeResponseContent = ({
           />
           {/* code */}
           <>
+            <Row label={t('workflow:response.Custom inputs')} value={activeModule?.customInputs} />
             <Row
               label={t('workflow:response.Custom outputs')}
               value={activeModule?.customOutputs}
             />
-            <Row label={t('workflow:response.Custom inputs')} value={activeModule?.customInputs} />
             <Row label={t('workflow:response.Code log')} value={activeModule?.codeLog} />
           </>
 
@@ -501,6 +501,12 @@ export const WholeResponseContent = ({
           <Row
             label={t('common:core.chat.response.user_select_result')}
             value={activeModule?.userSelectResult}
+          />
+
+          {/* update var */}
+          <Row
+            label={t('common:core.chat.response.update_var_result')}
+            value={activeModule?.updateVarResult}
           />
         </Box>
       )}
