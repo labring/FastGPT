@@ -8,6 +8,7 @@ import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime
 import { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { removeSystemVariable, valueTypeFormat } from '../utils';
+import { replaceVariableLabel } from '@fastgpt/global/core/workflow/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.updateList]: TUpdateListItem[];
@@ -15,7 +16,7 @@ type Props = ModuleDispatchProps<{
 type Response = DispatchNodeResultType<{}>;
 
 export const dispatchUpdateVariable = async (props: Props): Promise<Response> => {
-  const { params, variables, runtimeNodes, workflowStreamResponse } = props;
+  const { params, variables, runtimeNodes, workflowStreamResponse, node } = props;
 
   const { updateList } = params;
   updateList.forEach((item) => {
@@ -28,7 +29,16 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
 
     const value = (() => {
       if (!item.value?.[0]) {
-        return valueTypeFormat(item.value?.[1], item.valueType);
+        const formatValue = valueTypeFormat(item.value?.[1], item.valueType);
+
+        return typeof formatValue === 'string'
+          ? replaceVariableLabel({
+              text: formatValue,
+              nodes: runtimeNodes,
+              variables,
+              runningNode: node
+            })
+          : formatValue;
       } else {
         return getReferenceVariableValue({
           value: item.value,
