@@ -36,7 +36,9 @@ const VariableTable = ({
               <Tr key={item.key}>
                 <Td>
                   <Flex alignItems={'center'}>
-                    {!!item.icon && <MyIcon name={item.icon as any} w={'14px'} mr={1} />}
+                    {!!item.icon && (
+                      <MyIcon name={item.icon as any} w={'14px'} mr={1} color={'primary.600'} />
+                    )}
                     {item.label || item.key}
                   </Flex>
                 </Td>
@@ -48,6 +50,7 @@ const VariableTable = ({
                     name={'common/settingLight'}
                     w={'16px'}
                     cursor={'pointer'}
+                    _hover={{ color: 'primary.600' }}
                     onClick={() => onEdit(item.key)}
                   />
                   <MyIcon

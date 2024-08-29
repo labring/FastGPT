@@ -173,14 +173,17 @@ export const pluginData2FlowNodeIO = ({
   const pluginOutput = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginOutput);
 
   return {
-    inputs: pluginInput
-      ? pluginInput.inputs.map((item) => ({
-          ...item,
-          ...getModuleInputUiField(item),
-          value: getOrInitModuleInputValue(item),
-          canEdit: false
-        }))
-      : [],
+    inputs:
+      pluginInput?.inputs.map((item) => ({
+        ...item,
+        ...getModuleInputUiField(item),
+        value: getOrInitModuleInputValue(item),
+        canEdit: false,
+        renderTypeList:
+          item.renderTypeList[0] === FlowNodeInputTypeEnum.customVariable
+            ? [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input]
+            : item.renderTypeList
+      })) || [],
     outputs: pluginOutput
       ? [
           ...pluginOutput.inputs.map((item) => ({
@@ -298,6 +301,7 @@ export const updatePluginInputByVariables = (
           ...node,
           inputs: node.inputs.map((input) => {
             const parseValue = (() => {
+              console.log('===');
               try {
                 if (
                   input.valueType === WorkflowIOValueTypeEnum.string ||
@@ -311,6 +315,7 @@ export const updatePluginInputByVariables = (
                 return variables[input.key];
               }
             })();
+            console.log('====node====', input, parseValue);
 
             return {
               ...input,
