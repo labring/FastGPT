@@ -43,6 +43,11 @@ export const authDatasetByTmbId = async ({
     if (!dataset) {
       return Promise.reject(DatasetErrEnum.unExist);
     }
+
+    if (String(dataset.teamId) !== teamId) {
+      return Promise.reject(DatasetErrEnum.unAuthDataset);
+    }
+
     const isOwner = tmbPer.isOwner || String(dataset.tmbId) === String(tmbId);
 
     // get dataset permission or inherit permission from parent folder.
