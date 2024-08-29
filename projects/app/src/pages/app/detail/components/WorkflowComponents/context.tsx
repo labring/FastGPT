@@ -692,19 +692,7 @@ const WorkflowContextProvider = ({
         const newStoreDebugData = {
           runtimeNodes: finishedNodes,
           // edges need to save status
-          runtimeEdges: finishedEdges.map((edge) => {
-            const oldEdge = debugData.runtimeEdges.find(
-              (item) => item.source === edge.source && item.target === edge.target
-            );
-            const status =
-              oldEdge?.status && oldEdge.status !== RuntimeEdgeStatusEnum.waiting
-                ? oldEdge.status
-                : edge.status;
-            return {
-              ...edge,
-              status
-            };
-          }),
+          runtimeEdges: finishedEdges,
           nextRunNodes: nextStepRunNodes,
           variables: newVariables
         };
