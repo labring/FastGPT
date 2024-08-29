@@ -159,6 +159,9 @@ export type DispatchNodeResponseType = {
 
   // user select
   userSelectResult?: string;
+
+  // update var
+  updateVarResult?: any[];
 };
 
 export type DispatchNodeResultType<T> = {

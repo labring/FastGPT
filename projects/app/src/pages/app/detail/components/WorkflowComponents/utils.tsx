@@ -87,7 +87,9 @@ export const getEditorVariables = ({
   appDetail: AppDetailType;
   t: TFunction;
 }) => {
-  const currentNode = nodeList.find((node) => node.nodeId === nodeId)!;
+  const currentNode = nodeList.find((node) => node.nodeId === nodeId);
+  if (!currentNode) return [];
+
   const nodeVariables = currentNode.inputs
     .filter((input) => input.canEdit)
     .map((item) => ({
