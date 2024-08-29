@@ -154,7 +154,7 @@ const FieldEditModal = ({
   );
 
   const isEdit = !!defaultValue.key;
-  const { register, getValues, setValue, handleSubmit, watch, control } = useForm({
+  const { register, getValues, setValue, handleSubmit, watch, control, reset } = useForm({
     defaultValues: {
       ...defaultValue,
       list: defaultValue.list?.length ? defaultValue.list : [{ label: '', value: '' }]
@@ -218,7 +218,7 @@ const FieldEditModal = ({
     WorkflowIOValueTypeEnum.string;
 
   const onSubmitSuccess = useCallback(
-    (data: FlowNodeInputItemType) => {
+    (data: FlowNodeInputItemType, action: 'confirm' | 'continue') => {
       data.key = data?.key?.trim();
 
       if (!data.key) {
@@ -262,13 +262,32 @@ const FieldEditModal = ({
 
       data.label = data.key;
 
-      onSubmit({
-        data,
-        isChangeKey
-      });
-      onClose();
+      if (action === 'confirm') {
+        onSubmit({
+          data,
+          isChangeKey
+        });
+        onClose();
+      } else if (action === 'continue') {
+        onSubmit({
+          data,
+          isChangeKey
+        });
+        reset(defaultInput);
+      }
     },
-    [defaultValue.key, defaultValueType, isEdit, isToolInput, keys, onClose, onSubmit, t, toast]
+    [
+      defaultValue.key,
+      defaultValueType,
+      isEdit,
+      isToolInput,
+      keys,
+      onSubmit,
+      t,
+      toast,
+      onClose,
+      reset
+    ]
   );
   const onSubmitError = useCallback(
     (e: Object) => {
@@ -607,7 +626,7 @@ const FieldEditModal = ({
             <Button
               variant={'primaryOutline'}
               fontWeight={'medium'}
-              onClick={handleSubmit(onSubmitSuccess, onSubmitError)}
+              onClick={handleSubmit((data) => onSubmitSuccess(data, 'confirm'), onSubmitError)}
               w={20}
             >
               {t('common:common.Confirm')}
@@ -615,7 +634,7 @@ const FieldEditModal = ({
             {!isEdit && (
               <Button
                 fontWeight={'medium'}
-                onClick={handleSubmit(onSubmitSuccess, onSubmitError)}
+                onClick={handleSubmit((data) => onSubmitSuccess(data, 'continue'), onSubmitError)}
                 w={20}
               >
                 {t('common:comon.Continue_Adding')}
