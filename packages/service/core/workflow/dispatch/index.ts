@@ -19,7 +19,7 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
+import { getNanoid, replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { replaceEditorVariable } from '@fastgpt/global/core/workflow/utils';
 
@@ -434,6 +434,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     const formatResponseData: ChatHistoryItemResType = (() => {
       if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
       return {
+        id: getNanoid(),
         nodeId: node.nodeId,
         moduleName: node.name,
         moduleType: node.flowNodeType,

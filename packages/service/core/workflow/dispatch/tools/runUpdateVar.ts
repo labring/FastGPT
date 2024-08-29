@@ -19,12 +19,12 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
   const { params, variables, runtimeNodes, workflowStreamResponse, node } = props;
 
   const { updateList } = params;
-  updateList.forEach((item) => {
+  const result = updateList.map((item) => {
     const varNodeId = item.variable?.[0];
     const varKey = item.variable?.[1];
 
     if (!varNodeId || !varKey) {
-      return;
+      return null;
     }
 
     const value = (() => {
@@ -48,10 +48,11 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
       }
     })();
 
+    // Global variable
     if (varNodeId === VARIABLE_NODE_ID) {
-      // update global variable
       variables[varKey] = value;
     } else {
+      // Other nodes
       runtimeNodes
         .find((node) => node.nodeId === varNodeId)
         ?.outputs?.find((output) => {
@@ -61,6 +62,8 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
           }
         });
     }
+
+    return value;
   });
 
   workflowStreamResponse?.({
@@ -70,7 +73,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
 
   return {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      totalPoints: 0
+      updateVarResult: result
     }
   };
 };

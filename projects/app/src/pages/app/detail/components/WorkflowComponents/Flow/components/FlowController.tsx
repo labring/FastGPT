@@ -56,9 +56,9 @@ const FlowController = React.memo(function FlowController() {
       <>
         <MiniMap
           style={{
-            height: 98,
-            width: 184,
-            marginBottom: 72,
+            height: 92,
+            width: 150,
+            marginBottom: 62,
             borderRadius: '10px',
             boxShadow: '0px 0px 1px rgba(19, 51, 107, 0.10), 0px 4px 10px rgba(19, 51, 107, 0.10)'
           }}
@@ -68,7 +68,7 @@ const FlowController = React.memo(function FlowController() {
           position={'bottom-right'}
           style={{
             display: 'flex',
-            marginBottom: 24,
+            marginBottom: 16,
             padding: '5px 8px',
             background: 'white',
             borderRadius: '6px',

@@ -24,7 +24,8 @@ type sideTabItemType = {
   moduleName: string;
   runningTime?: number;
   moduleType: string;
-  nodeId: string;
+  // nodeId:string; // abandon
+  id: string;
   children: sideTabItemType[];
 };
 
@@ -149,18 +150,28 @@ export const ResponseBox = React.memo(function ResponseBox({
 }) {
   const { t } = useTranslation();
   const { isPc } = useSystem();
-  const flattedResponse = useMemo(() => flattenArray(response), [response]);
+
+  const flattedResponse = useMemo(
+    () =>
+      flattenArray(response).map((item) => ({
+        ...item,
+        id: item.id ?? item.nodeId
+      })),
+    [response]
+  );
   const [currentNodeId, setCurrentNodeId] = useState(
-    flattedResponse[0]?.nodeId ? flattedResponse[0].nodeId : ''
+    flattedResponse[0]?.id ?? flattedResponse[0]?.nodeId ?? ''
   );
 
   const activeModule = useMemo(
-    () => flattedResponse.find((item) => item.nodeId === currentNodeId) as ChatHistoryItemResType,
+    () => flattedResponse.find((item) => item.id === currentNodeId) as ChatHistoryItemResType,
     [currentNodeId, flattedResponse]
   );
-  const sideResponse: sideTabItemType[] = useMemo(() => {
+
+  const sliderResponseList: sideTabItemType[] = useMemo(() => {
     return pretreatmentResponse(response);
   }, [response]);
+
   const {
     isOpen: isOpenMobileModal,
     onOpen: onOpenMobileModal,
@@ -174,7 +185,7 @@ export const ResponseBox = React.memo(function ResponseBox({
           <Box flex={'2 0 0'} borderRight={'sm'} p={3}>
             <Box overflow={'auto'} height={'100%'}>
               <WholeResponseSideTab
-                response={sideResponse}
+                response={sliderResponseList}
                 value={currentNodeId}
                 onChange={setCurrentNodeId}
               />
@@ -192,7 +203,7 @@ export const ResponseBox = React.memo(function ResponseBox({
         <Box h={'100%'} overflow={'auto'}>
           {!isOpenMobileModal && (
             <WholeResponseSideTab
-              response={sideResponse}
+              response={sliderResponseList}
               value={currentNodeId}
               onChange={(item: string) => {
                 setCurrentNodeId(item);
@@ -442,11 +453,11 @@ export const WholeResponseContent = ({
           />
           {/* code */}
           <>
+            <Row label={t('workflow:response.Custom inputs')} value={activeModule?.customInputs} />
             <Row
               label={t('workflow:response.Custom outputs')}
               value={activeModule?.customOutputs}
             />
-            <Row label={t('workflow:response.Custom inputs')} value={activeModule?.customInputs} />
             <Row label={t('workflow:response.Code log')} value={activeModule?.codeLog} />
           </>
 
@@ -491,6 +502,12 @@ export const WholeResponseContent = ({
             label={t('common:core.chat.response.user_select_result')}
             value={activeModule?.userSelectResult}
           />
+
+          {/* update var */}
+          <Row
+            label={t('common:core.chat.response.update_var_result')}
+            value={activeModule?.updateVarResult}
+          />
         </Box>
       )}
     </>
@@ -512,7 +529,7 @@ const WholeResponseSideTab = ({
     <>
       {response.map((item) => (
         <Box
-          key={item.nodeId}
+          key={item.id}
           bg={isMobile ? 'myGray.100' : ''}
           m={isMobile ? 3 : 0}
           borderRadius={'md'}
@@ -532,7 +549,7 @@ const AccordionSideTabItem = ({
   index
 }: {
   sideBarItem: sideTabItemType;
-  onChange: (nodeId: string) => void;
+  onChange: (id: string) => void;
   value: string;
   index: number;
 }) => {
@@ -565,7 +582,7 @@ const AccordionSideTabItem = ({
           {sideBarItem.children.map((item) => (
             <SideTabItem
               value={value}
-              key={item.nodeId}
+              key={item.id}
               sideBarItem={item}
               onChange={onChange}
               index={index + 1}
@@ -585,7 +602,7 @@ const NormalSideTabItem = ({
   children
 }: {
   sideBarItem: sideTabItemType;
-  onChange: (nodeId: string) => void;
+  onChange: (id: string) => void;
   value: string;
   index: number;
   children?: React.ReactNode;
@@ -596,9 +613,9 @@ const NormalSideTabItem = ({
     <Flex
       alignItems={'center'}
       onClick={() => {
-        onChange(sideBarItem.nodeId);
+        onChange(sideBarItem.id);
       }}
-      background={value === sideBarItem.nodeId ? 'myGray.100' : ''}
+      background={value === sideBarItem.id ? 'myGray.100' : ''}
       _hover={{ background: 'myGray.100' }}
       p={2}
       width={'100%'}
@@ -647,7 +664,7 @@ const SideTabItem = ({
   index
 }: {
   sideBarItem: sideTabItemType;
-  onChange: (nodeId: string) => void;
+  onChange: (id: string) => void;
   value: string;
   index: number;
 }) => {
@@ -668,6 +685,7 @@ const SideTabItem = ({
   );
 };
 
+/* Format response data to slider data */
 function pretreatmentResponse(res: ChatHistoryItemResType[]): sideTabItemType[] {
   return res.map((item) => {
     let children: sideTabItemType[] = [];
@@ -681,12 +699,13 @@ function pretreatmentResponse(res: ChatHistoryItemResType[]): sideTabItemType[] 
       moduleName: item.moduleName,
       runningTime: item.runningTime,
       moduleType: item.moduleType,
-      nodeId: item.nodeId,
+      id: item.id ?? item.nodeId,
       children
     };
   });
 }
 
+/* Flat response */
 function flattenArray(arr: ChatHistoryItemResType[]) {
   const result: ChatHistoryItemResType[] = [];
 

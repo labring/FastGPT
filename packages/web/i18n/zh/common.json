@@ -10,6 +10,8 @@
     "auto_renew_q": "订阅套餐会自动续费么？",
     "change_package_a": "当前套餐价格大于新套餐时，无法立即切换，将会在当前套餐过期后以“续费”形式进行切换。\n当前套餐价格小于新套餐时，系统会自动计算当前套餐剩余余额，您可支付差价进行套餐切换。",
     "change_package_q": "能否切换订阅套餐？",
+    "check_subscription_a": "账号-个人信息-套餐详情-使用情况。您可以查看所拥有套餐的生效和到期时间。当付费套餐到期后将自动切换免费版。",
+    "check_subscription_q": "在哪里查看已订阅的套餐？",
     "dataset_compute_a": "1条知识库存储等于1条知识库索引。一条知识库数据可以包含1条或多条知识库索引。增强训练中，1条数据会生成5条索引。",
     "dataset_compute_q": "知识库存储怎么计算？",
     "dataset_index_a": "不会。但知识库索引超出时，无法插入和更新知识库内容。",
@@ -18,19 +20,15 @@
     "free_user_clean_q": "免费版数据会清除么？",
     "package_overlay_a": "可以的。每次购买的资源包都是独立的，在其有效期内将会叠加使用。AI积分会优先扣除最先过期的资源包。",
     "package_overlay_q": "额外资源包可以叠加么？",
-    "switch_package_q": "是否切换订阅套餐？",
     "switch_package_a": "套餐使用规则为优先使用更高级的套餐，因此，购买的新套餐若比当前套餐更高级，则新套餐立即生效：否则将继续使用当前套餐。",
-    "check_subscription_q": "在哪里查看已订阅的套餐？",
-    "check_subscription_a": "账号-个人信息-套餐详情-使用情况。您可以查看所拥有套餐的生效和到期时间。当付费套餐到期后将自动切换免费版。"
+    "switch_package_q": "是否切换订阅套餐？"
   },
   "Folder": "文件夹",
   "Login": "登录",
-  "is_using": "正在使用",
   "Move": "移动",
   "Name": "名称",
   "Rename": "重命名",
   "Resume": "恢复",
-  "free": "免费",
   "Running": "运行中",
   "UnKnow": "未知",
   "Warning": "提示",
@@ -119,7 +117,6 @@
     "Cancel": "取消",
     "Choose": "选择",
     "Close": "关闭",
-    "base_config": "基础配置",
     "Config": "配置",
     "Confirm": "确认",
     "Confirm Create": "确认创建",
@@ -224,6 +221,7 @@
       "Select Avatar": "点击选择头像",
       "Select Failed": "选择头像异常"
     },
+    "base_config": "基础配置",
     "choosable": "可选",
     "confirm": {
       "Common Tip": "操作确认"
@@ -567,6 +565,7 @@
         "plugin output": "插件输出值",
         "search using reRank": "结果重排",
         "text output": "文本输出",
+        "update_var_result": "变量更新结果(按顺序展示多个变量更新结果)",
         "user_select_result": "用户选择结果"
       },
       "retry": "重新生成",
@@ -639,7 +638,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -775,7 +775,6 @@
         "test result tip": "根据知识库内容与测试文本的相似度进行排序，你可以根据测试结果调整对应的文本。\n注意：测试记录中的数据可能已经被修改过，点击某条测试数据后将展示最新的数据。"
       },
       "training": {
-        "tag": "排队情况",
         "Agent queue": "QA 训练排队",
         "Auto mode": "增强处理（实验）",
         "Auto mode Tip": "通过子索引以及调用模型生成相关问题与摘要，来增加数据块的语义丰富度，更利于检索。需要消耗更多的存储空间和增加 AI 调用次数。",
@@ -785,7 +784,8 @@
         "QA mode": "问答拆分",
         "Vector queue": "索引排队",
         "Waiting": "预计 5 分钟",
-        "Website Sync": "Web 站点同步"
+        "Website Sync": "Web 站点同步",
+        "tag": "排队情况"
       },
       "website": {
         "Base Url": "根地址",
@@ -1078,6 +1078,7 @@
   },
   "extraction_results": "提取结果",
   "field_name": "字段名",
+  "free": "免费",
   "get_QR_failed": "获取二维码失败",
   "get_app_failed": "获取应用失败",
   "get_laf_failed": "获取Laf函数列表失败",
@@ -1097,6 +1098,7 @@
   },
   "invalid_variable": "无效变量",
   "is_open": "是否开启",
+  "is_using": "正在使用",
   "item_description": "字段描述",
   "item_name": "字段名",
   "key_repetition": "key 重复",
@@ -1125,14 +1127,14 @@
     "notice": "请勿关闭页面",
     "old_package_price": "旧套餐余额",
     "other": "其他金额，请取整数",
-    "to_recharge": "余额不足，去充值",
-    "wechat": "请微信扫码支付: {{price}}元\n请勿关闭页面",
-    "yuan": "{{amount}}元",
     "package_tip": {
       "buy": "您购买的套餐等级低于当前套餐，该套餐将在当前套餐过期后生效。您可在账号—个人信息—套餐详情里，查看套餐使用情况。",
       "renewal": "您正在续费套餐。您可在账号—个人信息—套餐详情里，查看套餐使用情况。",
       "upgrade": "您购买的套餐等级高于当前套餐，该套餐将即刻生效，当前套餐将延后生效。您可在账号—个人信息—套餐详情里，查看套餐使用情况。"
-    }
+    },
+    "to_recharge": "余额不足，去充值",
+    "wechat": "请微信扫码支付: {{price}}元\n请勿关闭页面",
+    "yuan": "{{amount}}元"
   },
   "permission": {
     "Collaborator": "协作者",
@@ -1217,8 +1219,8 @@
     "standard": {
       "AI Bonus Points": "AI 积分",
       "Expired Time": "结束时间",
-      "due_date": "到期时间",
       "Start Time": "开始时间",
+      "due_date": "到期时间",
       "storage": "存储量",
       "type": "类型"
     },
@@ -1334,11 +1336,6 @@
       "noBill": "无账单记录~",
       "no_invoice": "暂无开票记录",
       "subscription": {
-        "status": {
-          "expired": "已过期",
-          "active": "生效中",
-          "inactive": "待使用"
-        },
         "AI points": "AI 积分",
         "AI points click to read tip": "每次调用 AI 模型时，都会消耗一定的 AI 积分（类似于 token）。点击可查看详细计算规则。",
         "AI points usage": "AI 积分使用量",
@@ -1384,13 +1381,18 @@
         "standardSubLevel": {
           "custom": "自定义版",
           "enterprise": "企业版",
+          "enterprise_desc": "适合中小企业在生产环境构建知识库应用",
           "experience": "体验版",
+          "experience_desc": "可解锁 FastGPT 完整功能",
           "free": "免费版",
           "free desc": "每月均可免费使用基础功能，连续 30 天未登录系统，将会自动清除知识库",
           "team": "团队版",
-          "experience_desc": "可解锁 FastGPT 完整功能",
-          "team_desc": "适合小团队构建知识库应用并提供对外服务",
-          "enterprise_desc": "适合中小企业在生产环境构建知识库应用"
+          "team_desc": "适合小团队构建知识库应用并提供对外服务"
+        },
+        "status": {
+          "active": "生效中",
+          "expired": "已过期",
+          "inactive": "待使用"
         },
         "token_compute": "点击查看在线 Tokens 计算器",
         "type": {
