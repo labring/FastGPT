@@ -3,7 +3,8 @@ export enum DatasetTypeEnum {
   folder = 'folder',
   dataset = 'dataset',
   websiteDataset = 'websiteDataset', // depp link
-  externalFile = 'externalFile'
+  externalFile = 'externalFile',
+  putiFile = 'putiFile' //puti 文件库
 }
 export const DatasetTypeMap = {
   [DatasetTypeEnum.folder]: {
@@ -22,6 +23,11 @@ export const DatasetTypeMap = {
     collectionLabel: 'common.Website'
   },
   [DatasetTypeEnum.externalFile]: {
+    icon: 'core/dataset/externalDatasetOutline',
+    label: 'external_file',
+    collectionLabel: 'common.File'
+  },
+  [DatasetTypeEnum.putiFile]: {
     icon: 'core/dataset/externalDatasetOutline',
     label: 'external_file',
     collectionLabel: 'common.File'

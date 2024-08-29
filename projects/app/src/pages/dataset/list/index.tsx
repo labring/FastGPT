@@ -181,6 +181,12 @@ const Dataset = () => {
                         label: t('dataset:external_file'),
                         description: t('dataset:external_file_dataset_desc'),
                         onClick: () => setCreateDatasetType(DatasetTypeEnum.externalFile)
+                      },
+                      {
+                        icon: 'core/dataset/externalDatasetColor',
+                        label: t('dataset:external_file'),
+                        description: t('dataset:external_file_dataset_desc'),
+                        onClick: () => setCreateDatasetType(DatasetTypeEnum.putiFile)
                       }
                     ]
                   },
