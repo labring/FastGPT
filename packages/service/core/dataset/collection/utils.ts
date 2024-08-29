@@ -159,7 +159,8 @@ export const reloadCollectionChunks = async ({
   // split data
   const { chunks } = splitText2Chunks({
     text: newRawText,
-    chunkLen: col.chunkSize || 512
+    chunkLen: col.chunkSize || 512,
+    customReg: col.chunkSplitter ? [col.chunkSplitter] : [],
   });
 
   // insert to training queue
