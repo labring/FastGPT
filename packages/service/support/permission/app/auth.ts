@@ -52,6 +52,11 @@ export const authAppByTmbId = async ({
     if (!app) {
       return Promise.reject(AppErrEnum.unExist);
     }
+
+    if (String(app.teamId) !== teamId) {
+      return Promise.reject(AppErrEnum.unAuthApp);
+    }
+
     const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
 
     const { Per, defaultPermission } = await (async () => {
