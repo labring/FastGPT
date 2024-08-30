@@ -228,7 +228,8 @@ const DataCard = () => {
                     '& .forbid-switch': { display: 'flex' },
                     bg: index % 2 === 1 ? 'myGray.200' : 'blue.100'
                   }}
-                  onClick={() => {
+                  onClickCapture={(e) => {
+                    e.stopPropagation();
                     if (!collection) return;
                     setEditDataId(item._id);
                   }}
@@ -265,11 +266,11 @@ const DataCard = () => {
 
                   {/* Data content */}
                   <Box wordBreak={'break-all'} fontSize={'sm'}>
-                    <Markdown source={item.q} forbidImgPreview />
+                    <Markdown source={item.q} isDisabled />
                     {!!item.a && (
                       <>
                         <MyDivider />
-                        <Markdown source={item.a} forbidImgPreview />
+                        <Markdown source={item.a} isDisabled />
                       </>
                     )}
                   </Box>
