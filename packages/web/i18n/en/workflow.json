@@ -97,6 +97,10 @@
   "optional_value_type_tip": "One or more data types can be specified, and users can only select the configured type when adding fields in winter",
   "other_questions": "Other questions",
   "pass_returned_object_as_output_to_next_nodes": "Use the object returned in the code as output and pass it to subsequent nodes. \nThe variable name needs to correspond to the key of return",
+  "plugin": {
+    "Instruction_Tip": "You can configure a description to explain the purpose of this plugin. This description will be displayed each time before using the plugin. Standard Markdown syntax is supported.",
+    "Instructions": "Instructions"
+  },
   "plugin_input": "Plug-in input",
   "question_classification": "Problem classification",
   "question_optimization": "Problem optimization",

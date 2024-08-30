@@ -1,4 +1,5 @@
 import { SystemConfigNode } from './system/systemConfig';
+import { PluginConfigNode } from './system/pluginConfig';
 import { EmptyNode } from './system/emptyNode';
 import { WorkflowStart } from './system/workflowStart';
 import { AiChatModule } from './system/aiChat';
@@ -57,6 +58,7 @@ export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
 ];
 /* plugin flow module templates */
 export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
+  PluginConfigNode,
   PluginInputModule,
   PluginOutputModule,
   ...systemNodes

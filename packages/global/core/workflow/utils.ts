@@ -79,6 +79,10 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.chatInputGuide)?.value ||
     defaultChatInputGuideConfig;
 
+  // plugin
+  const instruction: string =
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.instruction)?.value || '';
+
   return {
     welcomeText,
     variables,
@@ -86,7 +90,8 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
     ttsConfig,
     whisperConfig,
     scheduledTriggerConfig,
-    chatInputGuide
+    chatInputGuide,
+    instruction
   };
 };
 
@@ -111,7 +116,8 @@ export const getAppChatConfig = ({
     ttsConfig,
     whisperConfig,
     scheduledTriggerConfig,
-    chatInputGuide
+    chatInputGuide,
+    instruction
   } = splitGuideModule(systemConfigNode);
 
   const config: AppChatConfigType = {
@@ -120,6 +126,7 @@ export const getAppChatConfig = ({
     whisperConfig,
     scheduledTriggerConfig,
     chatInputGuide,
+    instruction,
     ...chatConfig,
     variables: storeVariables ?? chatConfig?.variables ?? variables,
     welcomeText: storeWelcomeText ?? chatConfig?.welcomeText ?? welcomeText

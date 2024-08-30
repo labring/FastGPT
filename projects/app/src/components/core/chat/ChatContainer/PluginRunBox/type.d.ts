@@ -19,4 +19,5 @@ export type PluginRunBoxProps = OutLinkChatAuthProps & {
   chatId?: string;
   tab: PluginRunBoxTabEnum;
   setTab: React.Dispatch<React.SetStateAction<PluginRunBoxTabEnum>>;
+  chatConfig?: AppChatConfigType;
 };

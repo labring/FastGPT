@@ -97,6 +97,10 @@
   "optional_value_type_tip": "可以指定 1 个或多个数据类型，用户在动态添加字段时，仅可选择配置的类型",
   "other_questions": "其他问题",
   "pass_returned_object_as_output_to_next_nodes": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key",
+  "plugin": {
+    "Instruction_Tip": "可以配置一段说明，以解释该插件的用途。每次使用插件前，会显示该段说明。支持标准 Markdown 语法。",
+    "Instructions": "使用说明"
+  },
   "plugin_input": "插件输入",
   "question_classification": "问题分类",
   "question_optimization": "问题优化",

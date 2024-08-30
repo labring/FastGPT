@@ -260,6 +260,7 @@ export const checkWorkflowNodeAndConnection = ({
 
     if (
       data.flowNodeType === FlowNodeTypeEnum.systemConfig ||
+      data.flowNodeType === FlowNodeTypeEnum.pluginConfig ||
       data.flowNodeType === FlowNodeTypeEnum.pluginInput ||
       data.flowNodeType === FlowNodeTypeEnum.workflowStart
     ) {
@@ -554,7 +555,8 @@ export const compareSnapshot = (
         whisperConfig: clone1.chatConfig?.whisperConfig || undefined,
         scheduledTriggerConfig: clone1.chatConfig?.scheduledTriggerConfig || undefined,
         chatInputGuide: clone1.chatConfig?.chatInputGuide || undefined,
-        fileSelectConfig: clone1.chatConfig?.fileSelectConfig || undefined
+        fileSelectConfig: clone1.chatConfig?.fileSelectConfig || undefined,
+        instruction: clone1.chatConfig?.instruction || ''
       },
       {
         welcomeText: clone2.chatConfig?.welcomeText || '',
@@ -564,7 +566,8 @@ export const compareSnapshot = (
         whisperConfig: clone2.chatConfig?.whisperConfig || undefined,
         scheduledTriggerConfig: clone2.chatConfig?.scheduledTriggerConfig || undefined,
         chatInputGuide: clone2.chatConfig?.chatInputGuide || undefined,
-        fileSelectConfig: clone2.chatConfig?.fileSelectConfig || undefined
+        fileSelectConfig: clone2.chatConfig?.fileSelectConfig || undefined,
+        instruction: clone2.chatConfig?.instruction || ''
       }
     )
   ) {
