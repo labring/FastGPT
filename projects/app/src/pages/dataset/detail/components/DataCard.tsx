@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -72,6 +72,7 @@ const DataCard = () => {
   const elementRef = useRef<HTMLDivElement>(null);
   const {
     data: datasetDataList,
+    setData: setDataList,
     ScrollData,
     total,
     getData,
@@ -100,7 +101,7 @@ const DataCard = () => {
   // get first page data
   useRequest2(
     async () => {
-      getData(1);
+      flashPage();
       lastSearch.current = searchText;
     },
     {
@@ -125,11 +126,15 @@ const DataCard = () => {
     }
   );
 
+  const flashPage = useCallback(() => {
+    setDataList([]);
+    getData(1);
+  }, [getData, setDataList]);
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
 
   const { run: onUpdate, loading } = useRequest2(putDatasetDataById, {
     onSuccess() {
-      getData(pageNum);
+      flashPage();
     }
   });
 
@@ -228,7 +233,7 @@ const DataCard = () => {
                     '& .forbid-switch': { display: 'flex' },
                     bg: index % 2 === 1 ? 'myGray.200' : 'blue.100'
                   }}
-                  onClickCapture={(e) => {
+                  onClick={(e) => {
                     e.stopPropagation();
                     if (!collection) return;
                     setEditDataId(item._id);
@@ -326,7 +331,7 @@ const DataCard = () => {
                           openConfirm(async () => {
                             try {
                               await delOneDatasetDataById(item._id);
-                              getData(pageNum);
+                              flashPage();
                             } catch (error) {
                               toast({
                                 title: getErrText(error),
@@ -352,8 +357,7 @@ const DataCard = () => {
           collectionId={collection._id}
           dataId={editDataId}
           onClose={() => setEditDataId(undefined)}
-          onSuccess={() => getData(pageNum)}
-          onDelete={() => getData(pageNum)}
+          onSuccess={() => flashPage()}
         />
       )}
       <ConfirmModal />

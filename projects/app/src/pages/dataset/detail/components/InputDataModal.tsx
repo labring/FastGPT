@@ -57,15 +57,13 @@ const InputDataModal = ({
   dataId,
   defaultValue,
   onClose,
-  onSuccess,
-  onDelete
+  onSuccess
 }: {
   collectionId: string;
   dataId?: string;
   defaultValue?: { q: string; a?: string };
   onClose: () => void;
   onSuccess: (data: InputDataType & { dataId: string }) => void;
-  onDelete?: () => void;
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -88,7 +86,6 @@ const InputDataModal = ({
       label: (
         <Flex align={'center'}>
           <Box>{t('common:dataset.data.edit.divide_content')}</Box>
-          <MyIcon name="common/help" ml={'0.28rem'} w={'1rem'} color={'myGray.500'} />
         </Flex>
       ),
       value: TabEnum.content
@@ -96,7 +93,7 @@ const InputDataModal = ({
     {
       label: (
         <Flex align={'center'}>
-          <Box>{t('common:dataset.data.Index Edit')}</Box>
+          <Box>{t('common:dataset.data.edit.Index', { amount: indexes.length })}</Box>
           <MyTooltip label={t('common:core.app.tool_label.view_doc')}>
             <MyIcon
               name={'book'}
@@ -207,7 +204,7 @@ const InputDataModal = ({
         a: '',
         indexes: []
       });
-
+      console.log('执行onSuccess');
       onSuccess(e);
     },
     errorToast: t('common:common.error.unKnow')
@@ -241,22 +238,8 @@ const InputDataModal = ({
       }
     }
   );
-  // delete
-  const { mutate: onDeleteData, isLoading: isDeleting } = useRequest({
-    mutationFn: () => {
-      if (!onDelete || !dataId) return Promise.resolve(null);
-      return delOneDatasetDataById(dataId);
-    },
-    onSuccess() {
-      if (!onDelete) return;
-      onDelete();
-      onClose();
-    },
-    successToast: t('common:common.Delete Success'),
-    errorToast: t('common:common.error.unKnow')
-  });
 
-  const isLoading = isFetchingData || isDeleting;
+  const isLoading = isFetchingData;
 
   const icon = useMemo(
     () => getSourceNameIcon({ sourceName: collection.sourceName, sourceId: collection.sourceId }),
@@ -268,6 +251,7 @@ const InputDataModal = ({
       isCentered
       w={['20rem', '64rem']}
       onClose={() => onClose()}
+      closeOnOverlayClick={false}
       maxW={'1440px'}
       h={'46.25rem'}
       title={

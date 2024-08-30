@@ -1056,7 +1056,7 @@
         "Content": "数据内容",
         "Course": "说明文档",
         "Delete": "删除数据",
-        "Index": "数据索引（{{amount}}）",
+        "Index": "数据索引({{amount}})",
         "divide_content": "分块内容"
       },
       "input is empty": "数据内容不能为空 "
