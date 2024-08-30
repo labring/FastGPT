@@ -1,16 +1,26 @@
 import React, { useEffect, useMemo } from 'react';
 import { Controller } from 'react-hook-form';
 import RenderPluginInput from './renderPluginInput';
-import { Button, Flex } from '@chakra-ui/react';
+import { Box, Button, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { PluginRunContext } from '../context';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { isEqual } from 'lodash';
+import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import Markdown from '@/components/Markdown';
 
 const RenderInput = () => {
-  const { pluginInputs, variablesForm, histories, onStartChat, onNewChat, onSubmit, isChatting } =
-    useContextSelector(PluginRunContext, (v) => v);
+  const {
+    pluginInputs,
+    variablesForm,
+    histories,
+    onStartChat,
+    onNewChat,
+    onSubmit,
+    isChatting,
+    chatConfig
+  } = useContextSelector(PluginRunContext, (v) => v);
 
   const { t } = useTranslation();
   const {
@@ -64,6 +74,20 @@ const RenderInput = () => {
 
   return (
     <>
+      {/* instruction */}
+      {chatConfig?.instruction && (
+        <Box
+          border={'1px solid'}
+          borderColor={'myGray.250'}
+          p={4}
+          rounded={'md'}
+          fontSize={'sm'}
+          color={'myGray.600'}
+        >
+          <Markdown source={chatConfig.instruction} />
+        </Box>
+      )}
+
       {pluginInputs.map((input) => {
         return (
           <Controller

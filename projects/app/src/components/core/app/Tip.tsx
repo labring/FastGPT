@@ -11,18 +11,18 @@ enum FnTypeEnum {
   variable = 'variable',
   welcome = 'welcome',
   file = 'file',
-  visionModel = 'visionModel'
+  visionModel = 'visionModel',
+  instruction = 'instruction'
 }
 
 const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
   const { t } = useTranslation();
-  const { chatT } = useI18n();
 
   const map = useRef({
     [FnTypeEnum.inputGuide]: {
       icon: '/imgs/app/inputGuide-icon.svg',
-      title: chatT('input_guide'),
-      desc: chatT('input_guide_tip'),
+      title: t('chat:input_guide'),
+      desc: t('chat:input_guide_tip'),
       imgUrl: '/imgs/app/inputGuide.svg'
     },
     [FnTypeEnum.nextQuestion]: {
@@ -60,6 +60,12 @@ const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
       title: t('app:vision_model_title'),
       desc: t('app:llm_use_vision_tip'),
       imgUrl: '/imgs/app/visionModel.png'
+    },
+    [FnTypeEnum.instruction]: {
+      icon: '/imgs/app/help.svg',
+      title: t('workflow:plugin.Instructions'),
+      desc: t('workflow:plugin.Instruction_Tip'),
+      imgUrl: '/imgs/app/instruction.svg'
     }
   });
   const data = map.current[type];

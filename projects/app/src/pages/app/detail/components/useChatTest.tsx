@@ -77,6 +77,7 @@ export const useChatTest = ({
           histories={chatRecords}
           setHistories={setChatRecords}
           appId={appDetail._id}
+          chatConfig={appDetail.chatConfig}
           tab={pluginRunTab}
           setTab={setPluginRunTab}
           onNewChat={clearChatRecords}
