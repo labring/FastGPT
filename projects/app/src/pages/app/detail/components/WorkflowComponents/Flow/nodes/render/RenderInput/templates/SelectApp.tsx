@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box, Button, useDisclosure } from '@chakra-ui/react';
-import { SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/runApp/type';
+import type { SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/abandoned/runApp/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import SelectAppModal from '../../../../SelectAppModal';
 import { useTranslation } from 'next-i18next';
