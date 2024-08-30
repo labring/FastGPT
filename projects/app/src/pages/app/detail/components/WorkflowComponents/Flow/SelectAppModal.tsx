@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ModalBody, ModalFooter, Button } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/runApp/type';
+import type { SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/abandoned/runApp/type';
 import { useTranslation } from 'next-i18next';
 import SelectOneResource from '@/components/common/folder/SelectOneResource';
 import {

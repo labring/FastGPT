@@ -1,5 +1,7 @@
+/* Abandoned */
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import { SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/abandoned/runApp/type';
 import { dispatchWorkFlow } from '../index';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -20,41 +22,35 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
   [NodeInputKeyEnum.history]?: ChatItemType[] | number;
-  [NodeInputKeyEnum.fileUrlList]?: string[];
+  app: SelectAppItemType;
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
   [NodeOutputKeyEnum.history]: ChatItemType[];
 }>;
 
-export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
+export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const {
     app: workflowApp,
+    workflowStreamResponse,
     histories,
     query,
-    node: { pluginId },
-    workflowStreamResponse,
-    params
+    params: { userChatInput, history, app }
   } = props;
 
-  const { userChatInput, history, ...variables } = params;
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
-  if (!pluginId) {
-    return Promise.reject('pluginId is empty');
-  }
 
-  // Auth the app by tmbId(Not the user, but the workflow user)
+  // 检查该工作流的tmb是否有调用该app的权限（不是校验对话的人，是否有权限）
   const { app: appData } = await authAppByTmbId({
-    appId: pluginId,
+    appId: app.id,
     tmbId: workflowApp.tmbId,
     per: ReadPermissionVal
   });
 
-  // Auto line
   workflowStreamResponse?.({
-    event: SseResponseEventEnum.answer,
+    event: SseResponseEventEnum.fastAnswer,
     data: textAdaptGptResponse({
       text: '\n'
     })
@@ -76,7 +72,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       files,
       text: userChatInput
     }),
-    variables: variables
+    variables: props.variables
   });
 
   const completeMessages = chatHistories.concat([

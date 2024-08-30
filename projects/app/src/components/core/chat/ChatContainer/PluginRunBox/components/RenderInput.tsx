@@ -83,6 +83,7 @@ const RenderInput = () => {
           rounded={'md'}
           fontSize={'sm'}
           color={'myGray.600'}
+          mb={4}
         >
           <Markdown source={chatConfig.instruction} />
         </Box>

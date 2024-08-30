@@ -3,17 +3,17 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
-} from '../../../node/constant';
-import { FlowNodeTemplateType } from '../../../type/node.d';
+} from '../../../../node/constant';
+import { FlowNodeTemplateType } from '../../../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   FlowNodeTemplateTypeEnum
-} from '../../../constants';
-import { Input_Template_History, Input_Template_UserChatInput } from '../../input';
-import { getHandleConfig } from '../../utils';
-import { i18nT } from '../../../../../../web/i18n/utils';
+} from '../../../../constants';
+import { Input_Template_History, Input_Template_UserChatInput } from '../../../input';
+import { getHandleConfig } from '../../../utils';
+import { i18nT } from '../../../../../../../web/i18n/utils';
 
 export const RunAppModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.runApp,

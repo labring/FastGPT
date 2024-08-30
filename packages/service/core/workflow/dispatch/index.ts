@@ -31,7 +31,7 @@ import { dispatchAnswer } from './tools/answer';
 import { dispatchClassifyQuestion } from './agent/classifyQuestion';
 import { dispatchContentExtract } from './agent/extract';
 import { dispatchHttp468Request } from './tools/http468';
-import { dispatchAppRequest } from './tools/runApp';
+import { dispatchAppRequest } from './abandoned/runApp';
 import { dispatchQueryExtension } from './tools/queryExternsion';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
@@ -63,7 +63,7 @@ import {
   InteractiveNodeResponseItemType,
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
-import { dispatchRunAppNode } from './agent/runAppModule';
+import { dispatchRunAppNode } from './agent/runApp';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -74,7 +74,6 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
   [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
   [FlowNodeTypeEnum.httpRequest468]: dispatchHttp468Request,
-  [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
   [FlowNodeTypeEnum.appModule]: dispatchRunAppNode,
   [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
@@ -95,7 +94,9 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,
   [FlowNodeTypeEnum.pluginConfig]: () => Promise.resolve(),
   [FlowNodeTypeEnum.emptyNode]: () => Promise.resolve(),
-  [FlowNodeTypeEnum.globalVariable]: () => Promise.resolve()
+  [FlowNodeTypeEnum.globalVariable]: () => Promise.resolve(),
+
+  [FlowNodeTypeEnum.runApp]: dispatchAppRequest // abandoned
 };
 
 type Props = ChatDispatchProps & {
