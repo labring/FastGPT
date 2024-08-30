@@ -27,6 +27,7 @@
   "Login": "Login",
   "Move": "Move",
   "Name": "Name",
+  "Not_selected": "Not selected",
   "Rename": "Rename",
   "Resume": "Resume",
   "Running": "Running",
@@ -292,6 +293,9 @@
     "zoomin_tip_mac": "zoomIn ⌘  -",
     "zoomout_tip": "zoomOut  ctrl  +",
     "zoomout_tip_mac": "zoomOut  ⌘  +"
+  },
+  "comon": {
+    "Continue_Adding": "Continue Adding"
   },
   "confirm_choice": "Confirm selection",
   "contribute_app_template": "Contribution template",
@@ -982,9 +986,12 @@
         "Manual input": "Manual input",
         "Manual select": "Manual select",
         "Reference": "Variable reference",
+        "custom": "Custom",
         "dynamicTargetInput": "Dynamic external data",
+        "file_link": "File link",
         "input": "Single line input box",
         "number input": "Number input box",
+        "select": "Select",
         "selectApp": "App selection",
         "selectDataset": "Knowledge base selection",
         "selectLLMModel": "Dialogue model selection",

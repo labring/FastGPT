@@ -108,15 +108,9 @@ const RenderInput = () => {
                 <RenderPluginInput
                   value={value}
                   onChange={onChange}
-                  label={input.label}
-                  description={input.description}
                   isDisabled={isDisabledInput}
-                  valueType={input.valueType}
-                  placeholder={input.placeholder}
-                  required={input.required}
-                  min={input.min}
-                  max={input.max}
                   isInvalid={errors && Object.keys(errors).includes(input.key)}
+                  input={input}
                 />
               );
             }}

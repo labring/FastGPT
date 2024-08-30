@@ -411,7 +411,7 @@
           },
           {
             "key": "userChatInput",
-            "renderTypeList": ["FlowNodeInputTypeEnum.reference", "FlowNodeInputTypeEnum.textarea"],
+            "renderTypeList": ["reference", "FlowNodeInputTypeEnum.textarea"],
             "valueType": "WorkflowIOValueTypeEnum.string",
             "label": "用户问题",
             "required": true,
