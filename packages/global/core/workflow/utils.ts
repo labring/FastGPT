@@ -326,6 +326,9 @@ export const updatePluginInputByVariables = (
   );
 };
 
+/* Remove pluginInput variables from global variables
+  (completions api: Plugin input get value from global variables) 
+*/
 export const removePluginInputVariables = (
   variables: Record<string, any>,
   nodes: RuntimeNodeItemType[]
