@@ -52,6 +52,9 @@ export enum NodeInputKeyEnum {
   scheduleTrigger = 'scheduleTrigger',
   chatInputGuide = 'chatInputGuide',
 
+  // plugin config
+  instruction = 'instruction',
+
   // entry
   userChatInput = 'userChatInput',
   inputFiles = 'inputFiles',

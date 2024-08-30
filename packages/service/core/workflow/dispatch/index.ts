@@ -93,6 +93,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
 
   // none
   [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,
+  [FlowNodeTypeEnum.pluginConfig]: () => Promise.resolve(),
   [FlowNodeTypeEnum.emptyNode]: () => Promise.resolve(),
   [FlowNodeTypeEnum.globalVariable]: () => Promise.resolve()
 };

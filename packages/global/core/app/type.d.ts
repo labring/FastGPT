@@ -96,6 +96,9 @@ export type AppChatConfigType = {
   scheduledTriggerConfig?: AppScheduledTriggerConfigType;
   chatInputGuide?: ChatInputGuideConfigType;
   fileSelectConfig?: AppFileSelectConfigType;
+
+  // plugin
+  instruction?: string;
 };
 export type SettingAIDataType = {
   model: string;
