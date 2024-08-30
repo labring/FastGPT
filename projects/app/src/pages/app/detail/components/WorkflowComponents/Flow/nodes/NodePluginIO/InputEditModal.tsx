@@ -38,7 +38,9 @@ export const defaultInput: FlowNodeInputItemType = {
   valueType: WorkflowIOValueTypeEnum.string,
   canEdit: true,
   key: '',
-  label: ''
+  label: '',
+  description: '',
+  defaultValue: ''
 };
 
 const FieldEditModal = ({
@@ -273,6 +275,10 @@ const FieldEditModal = ({
           data,
           isChangeKey
         });
+        toast({
+          status: 'success',
+          title: t('common:common.Add Success')
+        });
         reset(defaultInput);
       }
     },
@@ -330,7 +336,7 @@ const FieldEditModal = ({
                     mt={5}
                   >
                     {list.map((item) => {
-                      const isSelected = watch('renderTypeList.0') === item.value;
+                      const isSelected = inputType === item.value;
                       return (
                         <Box
                           display={'flex'}
