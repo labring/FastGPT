@@ -28,7 +28,7 @@ export type WorkflowTemplateBasicType = {
 };
 export type WorkflowTemplateType = {
   id: string;
-  parentId?: string;
+  parentId?: ParentIdType;
   isFolder?: boolean;
 
   name: string;
@@ -62,6 +62,8 @@ export type TemplateMarketListItemType = {
 
 // system plugin
 export type SystemPluginTemplateItemType = WorkflowTemplateType & {
+  customWorkflow?: string;
+
   templateType: FlowNodeTemplateTypeEnum;
   isTool?: boolean;
 

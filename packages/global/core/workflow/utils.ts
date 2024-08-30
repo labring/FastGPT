@@ -32,6 +32,7 @@ import { IfElseResultEnum } from './template/system/ifElse/constant';
 import { RuntimeNodeItemType } from './runtime/type';
 import { getReferenceVariableValue } from './runtime/utils';
 import { Input_Template_History, Input_Template_UserChatInput } from './template/input';
+import { i18nT } from '../../../web/i18n/utils';
 
 export const getHandleId = (nodeId: string, type: 'source' | 'target', key: string) => {
   return `${nodeId}-${type}-${key}`;
@@ -254,8 +255,8 @@ export const appData2FlowNodeIO = ({
         id: NodeOutputKeyEnum.history,
         key: NodeOutputKeyEnum.history,
         required: true,
-        label: 'core.module.output.label.New context',
-        description: 'core.module.output.description.New context',
+        label: i18nT('common:core.module.output.label.New context'),
+        description: i18nT('common:core.module.output.description.New context'),
         valueType: WorkflowIOValueTypeEnum.chatHistory,
         valueDesc: chatHistoryValueDesc,
         type: FlowNodeOutputTypeEnum.static
@@ -264,8 +265,8 @@ export const appData2FlowNodeIO = ({
         id: NodeOutputKeyEnum.answerText,
         key: NodeOutputKeyEnum.answerText,
         required: false,
-        label: 'core.module.output.label.Ai response content',
-        description: 'core.module.output.description.Ai response content',
+        label: i18nT('common:core.module.output.label.Ai response content'),
+        description: i18nT('common:core.module.output.description.Ai response content'),
         valueType: WorkflowIOValueTypeEnum.string,
         type: FlowNodeOutputTypeEnum.static
       }
@@ -325,6 +326,9 @@ export const updatePluginInputByVariables = (
   );
 };
 
+/* Remove pluginInput variables from global variables
+  (completions api: Plugin input get value from global variables) 
+*/
 export const removePluginInputVariables = (
   variables: Record<string, any>,
   nodes: RuntimeNodeItemType[]
