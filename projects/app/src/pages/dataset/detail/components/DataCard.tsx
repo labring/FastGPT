@@ -69,12 +69,10 @@ const DataCard = () => {
     content: t('common:dataset.Confirm to delete the data'),
     type: 'delete'
   });
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const readSource = getCollectionSourceAndOpen(collectionId);
-
+  const elementRef = useRef<HTMLDivElement>(null);
   const {
     data: datasetDataList,
-    Pagination,
+    ScrollData,
     total,
     getData,
     pageNum,
@@ -92,7 +90,9 @@ const DataCard = () => {
       if (BoxRef.current) {
         BoxRef.current.scrollTop = 0;
       }
-    }
+    },
+    type: 'scroll',
+    elementRef
   });
 
   const [editDataId, setEditDataId] = useState<string>();
@@ -136,10 +136,10 @@ const DataCard = () => {
   const isLoading = isRequesting || loading;
 
   return (
-    <MyBox isLoading={isLoading} position={'relative'} py={[1, 5]} h={'100%'}>
+    <MyBox isLoading={isLoading} position={'relative'} py={[1, 0]} h={'100%'}>
       <Flex ref={BoxRef} flexDirection={'column'} h={'100%'}>
         {/* Header */}
-        <Flex alignItems={'center'} px={5}>
+        <Flex alignItems={'center'} px={6}>
           <Flex className="textEllipsis" flex={'1 0 0'} mr={[3, 5]} alignItems={'center'}>
             <Box>
               <Box alignItems={'center'} gap={2} display={isPc ? 'flex' : ''}>
@@ -174,10 +174,10 @@ const DataCard = () => {
             </Box>
           )}
         </Flex>
-        <Box justifyContent={'center'} px={5} pos={'relative'} w={'100%'}>
+        <Box justifyContent={'center'} px={6} pos={'relative'} w={'100%'}>
           <MyDivider my={'17px'} w={'100%'} />
         </Box>
-        <Flex alignItems={'center'} px={5} pb={4}>
+        <Flex alignItems={'center'} px={6} pb={4}>
           <Flex align={'center'} color={'myGray.500'}>
             <MyIcon name="common/list" mr={2} w={'18px'} />
             <Box as={'span'} fontSize={['sm', '14px']} fontWeight={'500'}>
@@ -206,146 +206,143 @@ const DataCard = () => {
           />
         </Flex>
         {/* data */}
-        <Box flex={'1 0 0'} overflow={'auto'} px={5}>
-          <Flex flexDir={'column'} gap={2}>
-            {datasetDataList.map((item, index) => (
-              <Card
-                key={item._id}
-                cursor={'pointer'}
-                p={3}
-                userSelect={'none'}
-                boxShadow={'none'}
-                bg={index % 2 === 1 ? 'myGray.50' : 'blue.50'}
-                border={theme.borders.sm}
-                position={'relative'}
-                overflow={'hidden'}
-                _hover={{
-                  borderColor: 'blue.600',
-                  boxShadow: 'lg',
-                  '& .header': { visibility: 'visible' },
-                  '& .footer': { visibility: 'visible' },
-                  '& .forbid-switch': { display: 'flex' },
-                  bg: index % 2 === 1 ? 'myGray.200' : 'blue.100'
-                }}
-                onClickCapture={(e) => {
-                  e.stopPropagation();
-                  if (!collection) return;
-                  setEditDataId(item._id);
-                }}
-              >
-                {/* Data tag */}
-                <Flex
-                  position={'absolute'}
-                  zIndex={1}
-                  alignItems={'center'}
-                  visibility={'hidden'}
-                  className="header"
-                >
-                  <MyTag
-                    px={2}
-                    type="borderFill"
-                    borderRadius={'sm'}
-                    border={'1px'}
-                    color={'myGray.200'}
-                    bg={'white'}
-                    fontWeight={'500'}
-                  >
-                    <Box color={'blue.600'}>#{item.chunkIndex ?? '-'} </Box>
-                    <Box
-                      ml={1.5}
-                      className={'textEllipsis'}
-                      fontSize={'mini'}
-                      textAlign={'right'}
-                      color={'myGray.500'}
-                    >
-                      ID:{item._id}
-                    </Box>
-                  </MyTag>
-                </Flex>
-
-                {/* Data content */}
-                <Box wordBreak={'break-all'} fontSize={'sm'}>
-                  <Markdown source={item.q} isDisabled />
-                  {!!item.a && (
-                    <>
-                      <MyDivider />
-                      <Markdown source={item.a} isDisabled />
-                    </>
-                  )}
-                </Box>
-
-                {/* Mask */}
-                <Flex
-                  className="footer"
-                  position={'absolute'}
-                  bottom={2}
-                  right={2}
+        <Box flex={'1 0 0'} overflow={'auto'} pl={6} pr={4} pb={2} ref={elementRef}>
+          <ScrollData>
+            <Flex flexDir={'column'} gap={2}>
+              {datasetDataList.map((item, index) => (
+                <Card
+                  key={item._id}
+                  cursor={'pointer'}
+                  p={3}
+                  userSelect={'none'}
+                  boxShadow={'none'}
+                  bg={index % 2 === 1 ? 'myGray.50' : 'blue.50'}
+                  border={theme.borders.sm}
+                  position={'relative'}
                   overflow={'hidden'}
-                  alignItems={'flex-end'}
-                  visibility={'hidden'}
-                  fontSize={'mini'}
+                  _hover={{
+                    borderColor: 'blue.600',
+                    boxShadow: 'lg',
+                    '& .header': { visibility: 'visible' },
+                    '& .footer': { visibility: 'visible' },
+                    '& .forbid-switch': { display: 'flex' },
+                    bg: index % 2 === 1 ? 'myGray.200' : 'blue.100'
+                  }}
+                  onClick={() => {
+                    if (!collection) return;
+                    setEditDataId(item._id);
+                  }}
                 >
+                  {/* Data tag */}
                   <Flex
+                    position={'absolute'}
+                    zIndex={1}
                     alignItems={'center'}
-                    bg={'white'}
-                    color={'myGray.600'}
-                    borderRadius={'sm'}
-                    border={'1px'}
-                    borderColor={'myGray.200'}
-                    h={'24px'}
-                    px={2}
-                    fontSize={'mini'}
-                    boxShadow={'1'}
-                    py={1}
-                    mr={2}
+                    visibility={'hidden'}
+                    className="header"
                   >
-                    <MyIcon
+                    <MyTag
+                      px={2}
+                      type="borderFill"
+                      borderRadius={'sm'}
+                      border={'1px'}
+                      color={'myGray.200'}
+                      bg={'white'}
+                      fontWeight={'500'}
+                    >
+                      <Box color={'blue.600'}>#{item.chunkIndex ?? '-'} </Box>
+                      <Box
+                        ml={1.5}
+                        className={'textEllipsis'}
+                        fontSize={'mini'}
+                        textAlign={'right'}
+                        color={'myGray.500'}
+                      >
+                        ID:{item._id}
+                      </Box>
+                    </MyTag>
+                  </Flex>
+
+                  {/* Data content */}
+                  <Box wordBreak={'break-all'} fontSize={'sm'}>
+                    <Markdown source={item.q} forbidImgPreview />
+                    {!!item.a && (
+                      <>
+                        <MyDivider />
+                        <Markdown source={item.a} forbidImgPreview />
+                      </>
+                    )}
+                  </Box>
+
+                  {/* Mask */}
+                  <Flex
+                    className="footer"
+                    position={'absolute'}
+                    bottom={2}
+                    right={2}
+                    overflow={'hidden'}
+                    alignItems={'flex-end'}
+                    visibility={'hidden'}
+                    fontSize={'mini'}
+                  >
+                    <Flex
+                      alignItems={'center'}
                       bg={'white'}
                       color={'myGray.600'}
                       borderRadius={'sm'}
                       border={'1px'}
                       borderColor={'myGray.200'}
-                      name="common/text/t"
-                      w={'14px'}
-                      mr={1}
-                    />
-                    {item.q.length + (item.a?.length || 0)}
-                  </Flex>
-                  {canWrite && (
-                    <IconButton
-                      display={'flex'}
-                      p={1}
+                      h={'24px'}
+                      px={2}
+                      fontSize={'mini'}
                       boxShadow={'1'}
-                      icon={<MyIcon name={'common/trash'} w={'14px'} />}
-                      variant={'whiteDanger'}
-                      size={'xsSquare'}
-                      aria-label={'delete'}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openConfirm(async () => {
-                          try {
-                            await delOneDatasetDataById(item._id);
-                            getData(pageNum);
-                          } catch (error) {
-                            toast({
-                              title: getErrText(error),
-                              status: 'error'
-                            });
-                          }
-                        })();
-                      }}
-                    />
-                  )}
-                </Flex>
-              </Card>
-            ))}
-          </Flex>
-          {total > pageSize && (
-            <Flex mt={2} justifyContent={'center'}>
-              <Pagination />
+                      py={1}
+                      mr={2}
+                    >
+                      <MyIcon
+                        bg={'white'}
+                        color={'myGray.600'}
+                        borderRadius={'sm'}
+                        border={'1px'}
+                        borderColor={'myGray.200'}
+                        name="common/text/t"
+                        w={'14px'}
+                        mr={1}
+                      />
+                      {item.q.length + (item.a?.length || 0)}
+                    </Flex>
+                    {canWrite && (
+                      <IconButton
+                        display={'flex'}
+                        p={1}
+                        boxShadow={'1'}
+                        icon={<MyIcon name={'common/trash'} w={'14px'} color={'myGray.600'} />}
+                        variant={'whiteDanger'}
+                        size={'xsSquare'}
+                        aria-label={'delete'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openConfirm(async () => {
+                            try {
+                              await delOneDatasetDataById(item._id);
+                              getData(pageNum);
+                            } catch (error) {
+                              toast({
+                                title: getErrText(error),
+                                status: 'error'
+                              });
+                            }
+                          })();
+                        }}
+                      />
+                    )}
+                  </Flex>
+                </Card>
+              ))}
             </Flex>
-          )}
-          {total === 0 && <EmptyTip text={t('common:core.dataset.data.Empty Tip')}></EmptyTip>}
+
+            {total === 0 && <EmptyTip text={t('common:core.dataset.data.Empty Tip')}></EmptyTip>}
+          </ScrollData>
         </Box>
       </Flex>
 

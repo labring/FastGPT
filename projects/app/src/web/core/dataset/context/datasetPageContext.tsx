@@ -6,6 +6,7 @@ import {
   getAllTags,
   getDatasetById,
   getDatasetCollectionTags,
+  getDatasetPaths,
   getDatasetTrainingQueue,
   getTrainingQueueLen,
   postCreateDatasetCollectionTag,
@@ -15,6 +16,7 @@ import { defaultDatasetDetail } from '../constants';
 import { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
 import { DatasetItemType, DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 type DatasetPageContextType = {
@@ -32,7 +34,8 @@ type DatasetPageContextType = {
   isCreateCollectionTagLoading: boolean;
   searchTagKey: string;
   setSearchTagKey: Dispatch<SetStateAction<string>>;
-
+  paths: ParentTreePathItemType[];
+  refetchPaths: () => void;
   vectorTrainingMap: {
     colorSchema: string;
     tip: string;
@@ -84,7 +87,9 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
   searchTagKey: '',
   setSearchTagKey: function (value: SetStateAction<string>): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  paths: [],
+  refetchPaths: () => {}
 });
 
 export const DatasetPageContextProvider = ({
@@ -99,12 +104,9 @@ export const DatasetPageContextProvider = ({
 
   // dataset detail
   const [datasetDetail, setDatasetDetail] = useState(defaultDatasetDetail);
-
   const loadDatasetDetail = async (id: string) => {
     const data = await getDatasetById(id);
-
     setDatasetDetail(data);
-
     return data;
   };
   const updateDataset = async (data: DatasetUpdateBody) => {
@@ -224,12 +226,28 @@ export const DatasetPageContextProvider = ({
       refetchInterval: 10000
     });
 
+  const { data: paths = [], runAsync: refetchPaths } = useRequest2(
+    () =>
+      getDatasetPaths(datasetDetail.parentId).then((res) => {
+        res.push({
+          parentId: '',
+          parentName: datasetDetail.name
+        });
+        return res;
+      }),
+    {
+      manual: false,
+      refreshDeps: [datasetDetail.parentId]
+    }
+  );
+
   const contextValue: DatasetPageContextType = {
     datasetId,
     datasetDetail,
     loadDatasetDetail,
     updateDataset,
-
+    paths,
+    refetchPaths,
     vectorTrainingMap,
     agentTrainingMap,
     rebuildingCount,
