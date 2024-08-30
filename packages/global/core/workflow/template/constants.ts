@@ -13,7 +13,7 @@ import { HttpNode468 } from './system/http468';
 import { ToolModule } from './system/tools';
 import { StopToolNode } from './system/stopTool';
 
-import { RunAppModule } from './system/runApp/index';
+import { RunAppModule } from './system/abandoned/runApp/index';
 import { PluginInputModule } from './system/pluginInput';
 import { PluginOutputModule } from './system/pluginOutput';
 import { RunPluginModule } from './system/runPlugin';

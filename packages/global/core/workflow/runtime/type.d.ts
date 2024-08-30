@@ -169,10 +169,10 @@ export type DispatchNodeResponseType = {
 export type DispatchNodeResultType<T> = {
   [DispatchNodeResponseKeyEnum.skipHandleId]?: string[]; // skip some edge handle id
   [DispatchNodeResponseKeyEnum.nodeResponse]?: DispatchNodeResponseType; // The node response detail
-  [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[]; //
-  [DispatchNodeResponseKeyEnum.childrenResponses]?: DispatchNodeResultType[];
-  [DispatchNodeResponseKeyEnum.toolResponses]?: ToolRunResponseItemType;
-  [DispatchNodeResponseKeyEnum.assistantResponses]?: ChatItemValueItemType[];
+  [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[]; // Node total usage
+  [DispatchNodeResponseKeyEnum.childrenResponses]?: DispatchNodeResultType[]; // Children node response
+  [DispatchNodeResponseKeyEnum.toolResponses]?: ToolRunResponseItemType; // Tool response
+  [DispatchNodeResponseKeyEnum.assistantResponses]?: ChatItemValueItemType[]; // Assistant response(Store to db)
 } & T;
 
 /* Single node props */

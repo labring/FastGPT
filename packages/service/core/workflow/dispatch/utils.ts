@@ -144,6 +144,15 @@ export const removeSystemVariable = (variables: Record<string, any>) => {
 
   return copyVariables;
 };
+export const filterSystemVariables = (variables: Record<string, any>) => {
+  return {
+    appId: variables.appId,
+    chatId: variables.chatId,
+    responseChatItemId: variables.responseChatItemId,
+    histories: variables.histories,
+    cTime: variables.cTime
+  };
+};
 
 export const formatHttpError = (error: any) => {
   return {
