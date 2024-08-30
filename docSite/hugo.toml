@@ -8,12 +8,12 @@ defaultContentLanguage = 'zh-cn'
 defaultContentLanguageInSubdir = false
 [languages]
   [languages.zh-cn]
-    title = "ChatGPT"
+    title = "SnimayGPT"
     languageName = "简体中文"
     contentDir = "content/zh-cn"
     weight = 10
   [languages.en]
-    title = "ChatGPT Docs"
+    title = "SnimayGPT Docs"
     languageName = "English"
     contentDir = "content/en"
     weight = 10
