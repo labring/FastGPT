@@ -24,7 +24,8 @@ const SystemPluginSchema = new Schema({
   currentCost: {
     type: Number,
     default: 0
-  }
+  },
+  customConfig: Object
 });
 
 SystemPluginSchema.index({ pluginId: 1 });

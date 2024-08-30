@@ -41,12 +41,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
   const plugin = await getPluginRuntimeById(pluginId);
 
-  // concat dynamic inputs
-  const inputModule = plugin.nodes.find(
-    (item) => item.flowNodeType === FlowNodeTypeEnum.pluginInput
-  );
-  if (!inputModule) return Promise.reject('Plugin error, It has no set input.');
-
   const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
     runtimeNodes: storeNodes2RuntimeNodes(plugin.nodes, getWorkflowEntryNodeIds(plugin.nodes)).map(
