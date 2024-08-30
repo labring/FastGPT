@@ -244,9 +244,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, newHistories));
     if (isPlugin) {
-      // Rewrite plugin run params variables
-      variables = removePluginInputVariables(variables, runtimeNodes);
+      // Assign values to runtimeNodes using variables
       runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
+      // Remove pluginInput fields from variables (they are not global variables)
+      variables = removePluginInputVariables(variables, runtimeNodes);
     }
     runtimeNodes = rewriteNodeOutputByHistories(newHistories, runtimeNodes);
 

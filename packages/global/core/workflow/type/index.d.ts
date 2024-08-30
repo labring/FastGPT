@@ -77,8 +77,6 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
     description: string;
     value?: any;
   }[];
-
-  workflow: WorkflowTemplateBasicType;
 };
 
 export type THelperLine = {

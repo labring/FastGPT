@@ -247,7 +247,7 @@ const ListItem = () => {
                         <Box color={'myGray.500'}>{formatTimeToChatTime(app.updateTime)}</Box>
                       </HStack>
                     )}
-                    {app.permission.hasManagePer && (
+                    {app.permission.hasWritePer && (
                       <Box className="more" display={['', 'none']}>
                         <MyMenu
                           Button={
@@ -289,50 +289,54 @@ const ListItem = () => {
                                   }
                                 ]
                               : []),
-                            {
-                              children: [
-                                {
-                                  icon: 'edit',
-                                  label: t('common:dataset.Edit Info'),
-                                  onClick: () => {
-                                    if (app.type === AppTypeEnum.httpPlugin) {
-                                      setEditHttpPlugin({
-                                        id: app._id,
-                                        name: app.name,
-                                        avatar: app.avatar,
-                                        intro: app.intro,
-                                        pluginData: app.pluginData
-                                      });
-                                    } else {
-                                      setEditedApp({
-                                        id: app._id,
-                                        avatar: app.avatar,
-                                        name: app.name,
-                                        intro: app.intro
-                                      });
-                                    }
-                                  }
-                                },
-                                ...(folderDetail?.type === AppTypeEnum.httpPlugin
-                                  ? []
-                                  : [
+                            ...(app.permission.hasManagePer
+                              ? [
+                                  {
+                                    children: [
                                       {
-                                        icon: 'common/file/move',
-                                        label: t('common:common.folder.Move to'),
-                                        onClick: () => setMoveAppId(app._id)
-                                      }
-                                    ]),
-                                ...(app.permission.hasManagePer
-                                  ? [
-                                      {
-                                        icon: 'support/team/key',
-                                        label: t('common:permission.Permission'),
-                                        onClick: () => setEditPerAppIndex(index)
-                                      }
+                                        icon: 'edit',
+                                        label: t('common:dataset.Edit Info'),
+                                        onClick: () => {
+                                          if (app.type === AppTypeEnum.httpPlugin) {
+                                            setEditHttpPlugin({
+                                              id: app._id,
+                                              name: app.name,
+                                              avatar: app.avatar,
+                                              intro: app.intro,
+                                              pluginData: app.pluginData
+                                            });
+                                          } else {
+                                            setEditedApp({
+                                              id: app._id,
+                                              avatar: app.avatar,
+                                              name: app.name,
+                                              intro: app.intro
+                                            });
+                                          }
+                                        }
+                                      },
+                                      ...(folderDetail?.type === AppTypeEnum.httpPlugin
+                                        ? []
+                                        : [
+                                            {
+                                              icon: 'common/file/move',
+                                              label: t('common:common.folder.Move to'),
+                                              onClick: () => setMoveAppId(app._id)
+                                            }
+                                          ]),
+                                      ...(app.permission.hasManagePer
+                                        ? [
+                                            {
+                                              icon: 'support/team/key',
+                                              label: t('common:permission.Permission'),
+                                              onClick: () => setEditPerAppIndex(index)
+                                            }
+                                          ]
+                                        : [])
                                     ]
-                                  : [])
-                              ]
-                            },
+                                  }
+                                ]
+                              : []),
                             ...(AppFolderTypeList.includes(app.type)
                               ? []
                               : [
@@ -347,7 +351,6 @@ const ListItem = () => {
                                     ]
                                   }
                                 ]),
-
                             ...(app.permission.isOwner
                               ? [
                                   {

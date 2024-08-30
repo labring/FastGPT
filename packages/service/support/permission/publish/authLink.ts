@@ -29,10 +29,14 @@ export async function authOutLinkCrud({
       return Promise.reject(OutLinkErrEnum.unExist);
     }
 
+    if (String(outLink.teamId) !== teamId) {
+      return Promise.reject(OutLinkErrEnum.unAuthLink);
+    }
+
     const { app } = await authAppByTmbId({
       tmbId,
       appId: outLink.appId,
-      per: per
+      per
     });
 
     return {

@@ -18,7 +18,7 @@ export const useCopyData = () => {
       duration = 1000
     ) => {
       try {
-        if (hasHttps() && !isProduction && navigator.clipboard) {
+        if ((hasHttps() || !isProduction) && navigator.clipboard) {
           await navigator.clipboard.writeText(data);
         } else {
           throw new Error('');
