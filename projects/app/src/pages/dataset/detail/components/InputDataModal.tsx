@@ -393,7 +393,8 @@ const InputTab = ({
           </Flex>
           <Box
             borderRadius={'md'}
-            border={'1.5px solid var(--Gray-Modern-200, #E8EBF0)'}
+            border={'1.5px solid '}
+            borderColor={'myGray.200'}
             bg={'myGray.25'}
             flex={1}
           >
