@@ -62,7 +62,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   docUrl: '#',
   openAPIDocUrl: '#',
   systemPluginCourseUrl: '#',
-  systemTitle: 'ChatGPT',
+  systemTitle: 'SnimayGPT',
   concatMd:
     'My项目',
   limit: {

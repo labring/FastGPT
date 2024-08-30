@@ -278,12 +278,12 @@ const MyInfo = () => {
             )}
           </Flex>
         )}
-        <Flex mt={6} alignItems={'center'}>
+        {/* <Flex mt={6} alignItems={'center'}>
           <Box {...labelStyles}>{t('common:user.Team')}:&nbsp;</Box>
           <Box flex={1}>
             <TeamMenu />
           </Box>
-        </Flex>
+        </Flex> */}
         {feConfigs?.isPlus && (
           <Box mt={6} whiteSpace={'nowrap'}>
             <Flex alignItems={'center'}>
