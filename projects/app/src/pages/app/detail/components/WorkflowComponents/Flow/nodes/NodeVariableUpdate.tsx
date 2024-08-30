@@ -174,6 +174,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                       bg={'white'}
                       borderRadius={'xs'}
                       mx={2}
+                      color={'primary.600'}
                       onClick={() => {
                         onUpdateList(
                           updateList.map((update, i) => {

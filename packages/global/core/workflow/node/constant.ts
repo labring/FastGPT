@@ -15,6 +15,7 @@ export enum FlowNodeInputTypeEnum { // render ui
 
   // special input
   selectApp = 'selectApp',
+  customVariable = 'customVariable',
 
   // ai model select
   selectLLMModel = 'selectLLMModel',
@@ -44,7 +45,7 @@ export const FlowNodeInputMap: Record<
     icon: 'core/workflow/inputType/numberInput'
   },
   [FlowNodeInputTypeEnum.select]: {
-    icon: 'core/workflow/inputType/input'
+    icon: 'core/workflow/inputType/option'
   },
   [FlowNodeInputTypeEnum.switch]: {
     icon: 'core/workflow/inputType/switch'
@@ -79,8 +80,11 @@ export const FlowNodeInputMap: Record<
   [FlowNodeInputTypeEnum.hidden]: {
     icon: 'core/workflow/inputType/select'
   },
+  [FlowNodeInputTypeEnum.customVariable]: {
+    icon: 'core/workflow/inputType/customVariable'
+  },
   [FlowNodeInputTypeEnum.custom]: {
-    icon: 'core/workflow/inputType/select'
+    icon: 'core/workflow/inputType/custom'
   }
 };
 

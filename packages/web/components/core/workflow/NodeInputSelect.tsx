@@ -151,7 +151,7 @@ const NodeInputSelect = ({
       Button={
         <Button
           size={'xs'}
-          leftIcon={<MyIcon name={renderTypeData.icon as any} w={'0.8rem'} />}
+          leftIcon={<MyIcon name={renderTypeData.icon as any} w={'0.8rem'} color={'primary.600'} />}
           rightIcon={<MyIcon name={'common/select'} w={'0.8rem'} color={'myGray.500'} />}
           variant={'grayBase'}
           border={theme.borders.base}

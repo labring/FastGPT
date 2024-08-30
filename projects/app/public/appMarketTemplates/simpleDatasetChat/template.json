@@ -258,7 +258,7 @@
           },
           {
             "key": "limit",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "renderTypeList": ["hidden"],
             "label": "",
             "value": 1500,
             "valueType": "WorkflowIOValueTypeEnum.number"
