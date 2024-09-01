@@ -26,8 +26,8 @@ export type ChatDispatchProps = {
   res?: NextApiResponse;
   requestOrigin?: string;
   mode: 'test' | 'chat' | 'debug';
-  teamId: string;
-  tmbId: string;
+  teamId: string; // App teamId
+  tmbId: string; // App tmbId
   user: UserModelSchema;
   app: AppDetailType | AppSchema;
   chatId?: string;

@@ -64,7 +64,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
   const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
-    variables: filterSystemVariables(props.variables),
+
+    variables: {
+      ...filterSystemVariables(props.variables),
+      appId: String(plugin.id)
+    },
     runtimeNodes,
     runtimeEdges: initWorkflowEdgeStatus(plugin.edges)
   });
