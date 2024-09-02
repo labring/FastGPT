@@ -249,6 +249,8 @@ const Header = () => {
                             status: 'success',
                             title: t('app:saved_success')
                           });
+                          onClose();
+                          setIsSave(false);
                         }}
                       >
                         <MyIcon name={'core/workflow/upload'} w={'16px'} mr={2} />
@@ -266,6 +268,7 @@ const Header = () => {
                             onSaveAndPublishModalOpen();
                           }
                           onClose();
+                          setIsSave(false);
                         }}
                       >
                         <MyIcon name={'core/workflow/publish'} w={'16px'} mr={2} />
