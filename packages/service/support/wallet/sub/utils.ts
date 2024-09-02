@@ -50,7 +50,7 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
   };
 };
 
-export const initTeamStandardPlan2Free = async ({
+export const initTeamFreePlan = async ({
   teamId,
   session
 }: {
@@ -59,23 +59,28 @@ export const initTeamStandardPlan2Free = async ({
 }) => {
   const freePoints = global?.subPlans?.standard?.[StandardSubLevelEnum.free]?.totalPoints || 100;
 
-  const teamStandardSub = await MongoTeamSub.findOne({ teamId, type: SubTypeEnum.standard });
+  const freePlan = await MongoTeamSub.findOne({
+    teamId,
+    type: SubTypeEnum.standard,
+    currentSubLevel: StandardSubLevelEnum.free
+  });
 
-  if (teamStandardSub) {
-    teamStandardSub.currentMode = SubModeEnum.month;
-    teamStandardSub.nextMode = SubModeEnum.month;
-    teamStandardSub.startTime = new Date();
-    teamStandardSub.expiredTime = addMonths(new Date(), 1);
+  // Reset one month free plan
+  if (freePlan) {
+    freePlan.currentMode = SubModeEnum.month;
+    freePlan.nextMode = SubModeEnum.month;
+    freePlan.startTime = new Date();
+    freePlan.expiredTime = addMonths(new Date(), 1);
 
-    teamStandardSub.currentSubLevel = StandardSubLevelEnum.free;
-    teamStandardSub.nextSubLevel = StandardSubLevelEnum.free;
+    freePlan.currentSubLevel = StandardSubLevelEnum.free;
+    freePlan.nextSubLevel = StandardSubLevelEnum.free;
 
-    teamStandardSub.totalPoints = freePoints;
-    teamStandardSub.surplusPoints =
-      teamStandardSub.surplusPoints && teamStandardSub.surplusPoints < 0
-        ? teamStandardSub.surplusPoints + freePoints
+    freePlan.totalPoints = freePoints;
+    freePlan.surplusPoints =
+      freePlan.surplusPoints && freePlan.surplusPoints < 0
+        ? freePlan.surplusPoints + freePoints
         : freePoints;
-    return teamStandardSub.save({ session });
+    return freePlan.save({ session });
   }
 
   return MongoTeamSub.create(
@@ -123,13 +128,14 @@ export const getTeamPlanStatus = async ({
 
   // Free user, first login after expiration. The free subscription plan will be reset
   if (
-    standardPlan &&
-    standardPlan.expiredTime &&
-    standardPlan.currentSubLevel === StandardSubLevelEnum.free &&
-    dayjs(standardPlan.expiredTime).isBefore(new Date())
+    (standardPlan &&
+      standardPlan.expiredTime &&
+      standardPlan.currentSubLevel === StandardSubLevelEnum.free &&
+      dayjs(standardPlan.expiredTime).isBefore(new Date())) ||
+    teamStandardPlans.length === 0
   ) {
     console.log('Init free stand plan', { teamId });
-    await initTeamStandardPlan2Free({ teamId });
+    await initTeamFreePlan({ teamId });
     return getTeamPlanStatus({ teamId });
   }
 
