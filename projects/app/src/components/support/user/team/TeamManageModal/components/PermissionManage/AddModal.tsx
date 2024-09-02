@@ -5,16 +5,29 @@ import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { updateMemberPermission } from '@/web/support/user/team/api';
-import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  ManagePermissionVal,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { TeamModalContext } from '../../context';
 import { useI18n } from '@/web/context/I18n';
 import SelectMember from '../SelectMember';
 import { useForm } from 'react-hook-form';
 
-function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+type addType = 'writer' | 'manager';
+
+function AddManagerModal({
+  onClose,
+  onSuccess,
+  addType
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+  addType: addType;
+}) {
   const { t } = useTranslation();
   const { userT } = useI18n();
-  const { members, refetchMembers, groups, refetchGroups } = useContextSelector(
+  const { members, refetchMembers, groups, refetchGroups, refetchClbs } = useContextSelector(
     TeamModalContext,
     (v) => v
   );
@@ -32,10 +45,10 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       updateMemberPermission({
         members: member,
         groups: group,
-        permission: ManagePermissionVal
+        permission: addType === 'manager' ? ManagePermissionVal : WritePermissionVal
       }),
     {
-      onSuccess: () => Promise.all([refetchMembers(), refetchGroups(), onSuccess()])
+      onSuccess: () => Promise.all([refetchMembers(), refetchGroups(), onSuccess(), refetchClbs()])
     }
   );
 

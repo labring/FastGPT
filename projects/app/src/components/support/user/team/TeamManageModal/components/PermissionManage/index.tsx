@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
@@ -15,7 +15,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 
-const AddManagerModal = dynamic(() => import('./AddManager'));
+const AddModal = dynamic(() => import('./AddModal'));
 
 function PermissionManage() {
   const { t } = useTranslation();
@@ -23,22 +23,125 @@ function PermissionManage() {
   const { groups, refetchMembers, refetchGroups, isLoading, clbs, refetchClbs, members } =
     useContextSelector(TeamModalContext, (v) => v);
 
+  const [addType, setAddType] = useState<'writer' | 'manager'>('writer');
+
   const {
     isOpen: isOpenAddManager,
     onOpen: onOpenAddManager,
     onClose: onCloseAddManager
   } = useDisclosure();
 
-  const { runAsync: removeManager, loading: isRemovingManager } = useRequest2(delMemberPermission, {
-    successToast: t('user:delete.admin_success'),
-    errorToast: t('user:delete.admin_failed'),
-    onSuccess: () => Promise.all([refetchMembers(), refetchGroups(), refetchClbs()])
-  });
+  const { runAsync: removePermission, loading: isRemovingPermission } = useRequest2(
+    delMemberPermission,
+    {
+      successToast: t('user:delete.success'),
+      errorToast: t('user:delete.failed'),
+      onSuccess: () => Promise.all([refetchMembers(), refetchGroups(), refetchClbs()])
+    }
+  );
 
   return (
-    <MyBox h={'100%'} isLoading={isRemovingManager || isLoading} bg={'white'}>
+    <MyBox h={'100%'} isLoading={isRemovingPermission || isLoading} bg={'white'}>
       <Flex
         mx={'5'}
+        flexDirection={'row'}
+        alignItems={'center'}
+        rowGap={'8'}
+        justifyContent={'space-between'}
+      >
+        <Flex>
+          <Box fontSize={['sm', 'md']} fontWeight={'bold'} alignItems={'center'}>
+            {t('common:user.team.role.writer')}
+          </Box>
+          <Box
+            fontSize={['xs']}
+            color={'myGray.500'}
+            bgColor={'myGray.100'}
+            alignItems={'center'}
+            alignContent={'center'}
+            px={'3'}
+            ml={3}
+            borderRadius={'sm'}
+          >
+            {TeamPermissionList['write'].description}
+          </Box>
+        </Flex>
+        {userInfo?.team.role === 'owner' && (
+          <Button
+            variant={'whitePrimary'}
+            size="sm"
+            borderRadius={'md'}
+            ml={3}
+            leftIcon={<MyIcon name={'common/inviteLight'} w={'14px'} color={'primary.500'} />}
+            onClick={() => {
+              setAddType('writer');
+              onOpenAddManager();
+            }}
+          >
+            {t('user:team.add_writer')}
+          </Button>
+        )}
+      </Flex>
+      <Flex mt="4" mx="4" flexWrap={'wrap'} gap={3}>
+        {groups.map((group) => {
+          if (group.permission.hasWritePer && !group.permission.hasManagePer) {
+            return (
+              <MyTag key={group._id} px="4" py="2" type="fill" colorSchema="gray">
+                <Avatar src={group.avatar} w="1.25rem" />
+                <Box fontSize={'sm'} ml={1}>
+                  {group.name}
+                </Box>
+                {userInfo?.team.role === 'owner' && (
+                  <MyIcon
+                    ml={4}
+                    name="common/trash"
+                    w="1rem"
+                    color="myGray.500"
+                    cursor="pointer"
+                    _hover={{ color: 'red.600' }}
+                    onClick={() => {
+                      removePermission({
+                        groupId: group._id
+                      });
+                    }}
+                  />
+                )}
+              </MyTag>
+            );
+          }
+        })}
+        {clbs.map((clb) => {
+          const per = new TeamPermission({ per: clb.permission });
+          if (per.hasWritePer && !per.isOwner && !per.hasManagePer) {
+            return (
+              <MyTag key={clb.tmbId} px="4" py="2" type="fill" colorSchema="gray">
+                <Avatar src={members.find((m) => m.tmbId === clb.tmbId)?.avatar} w="1.25rem" />
+                <Box fontSize={'sm'} ml={1}>
+                  {members.find((m) => m.tmbId === clb.tmbId)?.memberName}
+                </Box>
+                {userInfo?.team.role === 'owner' && (
+                  <MyIcon
+                    ml={4}
+                    name="common/trash"
+                    w="1rem"
+                    color="myGray.500"
+                    cursor="pointer"
+                    _hover={{ color: 'red.600' }}
+                    onClick={() => {
+                      removePermission({
+                        tmbId: clb.tmbId
+                      });
+                    }}
+                  />
+                )}
+              </MyTag>
+            );
+          }
+        })}
+      </Flex>
+      <Flex
+        mx={'5'}
+        mt={'8'}
         flexDirection={'row'}
         alignItems={'center'}
         rowGap={'8'}
@@ -69,6 +172,7 @@ function PermissionManage() {
             ml={3}
             leftIcon={<MyIcon name={'common/inviteLight'} w={'14px'} color={'primary.500'} />}
             onClick={() => {
+              setAddType('manager');
               onOpenAddManager();
             }}
           >
@@ -94,7 +198,7 @@ function PermissionManage() {
                     cursor="pointer"
                     _hover={{ color: 'red.600' }}
                     onClick={() => {
-                      removeManager({
+                      removePermission({
                         groupId: group._id
                       });
                     }}
@@ -122,7 +226,7 @@ function PermissionManage() {
                     cursor="pointer"
                     _hover={{ color: 'red.600' }}
                     onClick={() => {
-                      removeManager({
+                      removePermission({
                         tmbId: clb.tmbId
                       });
                     }}
@@ -133,9 +237,8 @@ function PermissionManage() {
           }
         })}
       </Flex>
-
       {isOpenAddManager && (
-        <AddManagerModal onClose={onCloseAddManager} onSuccess={onCloseAddManager} />
+        <AddModal onClose={onCloseAddManager} onSuccess={onCloseAddManager} addType={addType} />
       )}
     </MyBox>
   );

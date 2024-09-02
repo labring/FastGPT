@@ -24,7 +24,9 @@
   "bind_inform_account_success": "绑定通知账号成功",
   "delete": {
     "admin_failed": "删除管理员失败",
-    "admin_success": "删除管理员成功"
+    "admin_success": "删除管理员成功",
+    "success": "删除成功",
+    "failed": "删除失败"
   },
   "has_chosen": "已选择",
   "individuation": "个性化",
@@ -94,6 +96,7 @@
   },
   "team": {
     "Add manager": "添加管理员",
+    "add_writer": "添加可写成员",
     "add_collaborator": "添加协作者",
     "manage_collaborators": "管理协作者",
     "no_collaborators": "暂无协作者",
