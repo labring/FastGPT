@@ -6,6 +6,19 @@ import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/cons
 
 export const userCollectionName = 'users';
 
+const defaultAvatars = [
+  '/icon/RoyalBlueAvatar.svg',
+  '/icon/PurpleAvatar.svg',
+  '/icon/AdoraAvatar.svg',
+  '/icon/OrangeAvatar.svg',
+  '/icon/RedAvatar.svg',
+  '/icon/GrayModernAvatar.svg',
+  '/icon/TealAvatar.svg',
+  '/icon/GreenAvatar.svg',
+  '/icon/BrightBlueAvatar.svg',
+  '/icon/BlueAvatar.svg'
+];
+
 const UserSchema = new Schema({
   status: {
     type: String,
@@ -34,7 +47,7 @@ const UserSchema = new Schema({
   },
   avatar: {
     type: String,
-    default: '/icon/human.svg'
+    default: defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)]
   },
   inviterId: {
     // 谁邀请注册的
