@@ -25,7 +25,7 @@ export type PermissionListType<T = {}> = Record<
   }
 >;
 
-export type ResourcePermissionType<T extends SubjectType> = {
+export type ResourcePermissionType<T extends SubjectType = SubjectType> = {
   teamId: string;
   tmbId: T extends 'tmb' ? string : never;
   groupId: T extends 'group' ? string : never;

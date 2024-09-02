@@ -20,10 +20,15 @@ export const MemberGroupSchema = new Schema({
 });
 
 try {
-  MemberGroupSchema.index({
-    teamId: 1,
-    tmbId: 1
-  });
+  MemberGroupSchema.index(
+    {
+      teamId: 1,
+      name: 1
+    },
+    {
+      unique: true
+    }
+  );
 } catch (error) {
   console.log(error);
 }

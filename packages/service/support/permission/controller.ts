@@ -16,20 +16,22 @@ import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import { bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { addMinutes } from 'date-fns';
+import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 
-export const getResourcePermission = async ({
+export const getResourcePermission = async <T extends `${PerResourceTypeEnum}`>({
   resourceType,
   teamId,
   tmbId,
   groupId,
   resourceId
 }: {
-  resourceType: PerResourceTypeEnum;
+  resourceType: T;
   teamId: string;
-  tmbId?: string;
-  groupId?: string;
-  resourceId?: string;
-}) => {
+} & (T extends 'team' ? { resourceId?: undefined } : { resourceId: string }) &
+  RequireOnlyOne<{
+    tmbId?: string;
+    groupId?: string;
+  }>) => {
   const subjectType = (() => {
     if (tmbId) {
       return SubjectTypeEnum.tmb;
@@ -54,23 +56,24 @@ export const getResourcePermission = async ({
   }
   return per;
 };
-export async function getResourceAllClbs({
+
+export async function getResourceAllClbs<T extends PerResourceTypeEnum>({
   resourceId,
   teamId,
   resourceType,
   session
 }: {
-  resourceId: ParentIdType;
   teamId: string;
-  resourceType: PerResourceTypeEnum;
+  resourceType: T;
   session?: ClientSession;
+  resourceId?: T extends 'team' ? undefined : string;
 }): Promise<ResourcePermissionType[]> {
-  if (!resourceId) return [];
   return MongoResourcePermission.find(
     {
       resourceId,
       resourceType: resourceType,
-      teamId: teamId
+      teamId: teamId,
+      groupId: null
     },
     null,
     {
@@ -78,6 +81,7 @@ export async function getResourceAllClbs({
     }
   ).lean();
 }
+
 export const delResourcePermissionById = (id: string) => {
   return MongoResourcePermission.findByIdAndRemove(id);
 };

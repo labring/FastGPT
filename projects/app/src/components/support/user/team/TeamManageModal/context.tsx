@@ -4,6 +4,7 @@ import type { EditTeamFormDataType } from './components/EditInfoModal';
 import dynamic from 'next/dynamic';
 import {
   delMemberPermission,
+  getTeamClbs,
   getTeamList,
   putSwitchTeam,
   updateMemberPermission
@@ -21,12 +22,14 @@ import {
 } from '@fastgpt/global/support/permission/collaborator';
 import { getGroupList } from '@/web/support/user/team/group/api';
 import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 
 const EditInfoModal = dynamic(() => import('./components/EditInfoModal'));
 
 type TeamModalContextType = {
   myTeams: TeamTmbItemType[];
   members: TeamMemberItemType[];
+  clbs: ResourcePermissionType[];
   groups: MemberGroupListType;
   isLoading: boolean;
   onSwitchTeam: (teamId: string) => void;
@@ -35,6 +38,7 @@ type TeamModalContextType = {
   refetchMembers: () => void;
   refetchTeams: () => void;
   refetchGroups: () => void;
+  refetchClbs: () => void;
 };
 
 export const TeamModalContext = createContext<TeamModalContextType>({
@@ -56,6 +60,10 @@ export const TeamModalContext = createContext<TeamModalContextType>({
   },
   refetchGroups: function (): void {
     throw new Error('Function not implemented.');
+  },
+  clbs: [],
+  refetchClbs: function (): void {
+    throw new Error('Function not implemented.');
   }
 });
 
@@ -63,6 +71,15 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
   const { t } = useTranslation();
   const [editTeamData, setEditTeamData] = useState<EditTeamFormDataType>();
   const { userInfo, initUserInfo, loadAndGetTeamMembers } = useUserStore();
+
+  const {
+    runAsync: refetchClbs,
+    loading: isLoadingClbs,
+    data: clbs = []
+  } = useRequest2(getTeamClbs, {
+    manual: false,
+    refreshDeps: [userInfo?.team?.teamId]
+  });
 
   const {
     data: myTeams = [],
@@ -127,7 +144,12 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
   });
 
   const isLoading =
-    isLoadingTeams || isSwitchingTeam || loadingMembers || isUpdatingPer || isLoadingGroups;
+    isLoadingTeams ||
+    isSwitchingTeam ||
+    loadingMembers ||
+    isUpdatingPer ||
+    isLoadingGroups ||
+    isLoadingClbs;
 
   const contextValue = {
     myTeams,
@@ -140,7 +162,9 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     members,
     refetchMembers,
     groups,
-    refetchGroups
+    refetchGroups,
+    clbs,
+    refetchClbs
   };
 
   return (

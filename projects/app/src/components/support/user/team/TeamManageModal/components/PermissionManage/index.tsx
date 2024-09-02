@@ -13,16 +13,15 @@ import { TeamPermissionList } from '@fastgpt/global/support/permission/user/cons
 import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 
 const AddManagerModal = dynamic(() => import('./AddManager'));
 
 function PermissionManage() {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
-  const { members, groups, refetchMembers, refetchGroups, isLoading } = useContextSelector(
-    TeamModalContext,
-    (v) => v
-  );
+  const { groups, refetchMembers, refetchGroups, isLoading, clbs, refetchClbs, members } =
+    useContextSelector(TeamModalContext, (v) => v);
 
   const {
     isOpen: isOpenAddManager,
@@ -33,7 +32,7 @@ function PermissionManage() {
   const { runAsync: removeManager, loading: isRemovingManager } = useRequest2(delMemberPermission, {
     successToast: t('user:delete.admin_success'),
     errorToast: t('user:delete.admin_failed'),
-    onSuccess: () => Promise.all([refetchMembers(), refetchGroups()])
+    onSuccess: () => Promise.all([refetchMembers(), refetchGroups(), refetchClbs()])
   });
 
   return (
@@ -105,13 +104,14 @@ function PermissionManage() {
             );
           }
         })}
-        {members.map((member) => {
-          if (member.permission.hasManagePer && !member.permission.isOwner) {
+        {clbs.map((clb) => {
+          const per = new TeamPermission({ per: clb.permission });
+          if (per.hasManagePer && !per.isOwner) {
             return (
-              <MyTag key={member.tmbId} px="4" py="2" type="fill" colorSchema="gray">
-                <Avatar src={member.avatar} w="1.25rem" />
+              <MyTag key={clb.tmbId} px="4" py="2" type="fill" colorSchema="gray">
+                <Avatar src={members.find((m) => m.tmbId === clb.tmbId)?.avatar} w="1.25rem" />
                 <Box fontSize={'sm'} ml={1}>
-                  {member.memberName}
+                  {members.find((m) => m.tmbId === clb.tmbId)?.memberName}
                 </Box>
                 {userInfo?.team.role === 'owner' && (
                   <MyIcon
@@ -123,7 +123,7 @@ function PermissionManage() {
                     _hover={{ color: 'red.600' }}
                     onClick={() => {
                       removeManager({
-                        tmbId: member.tmbId
+                        tmbId: clb.tmbId
                       });
                     }}
                   />

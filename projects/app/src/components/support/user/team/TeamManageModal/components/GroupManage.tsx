@@ -21,11 +21,14 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
     content: t('user:team.group.delete_confirm')
   });
 
-  const { groups, refetchGroups, members } = useContextSelector(TeamModalContext, (v) => v);
+  const { groups, refetchGroups, members, refetchMembers } = useContextSelector(
+    TeamModalContext,
+    (v) => v
+  );
 
   const { runAsync: delDeleteGroup, loading: isLoadingDeleteGroup } = useRequest2(deleteGroup, {
     manual: true,
-    onSuccess: refetchGroups
+    onSuccess: () => Promise.all([refetchGroups, refetchMembers])
   });
 
   return (
@@ -46,7 +49,7 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
                   <HStack>
                     <Avatar src={group.avatar} w={['18px', '22px']} />
                     <Box maxW={'150px'} className={'textEllipsis'}>
-                      {group.name}
+                      {group.name || t('user:team.group.default_group')}
                     </Box>
                   </HStack>
                 </Td>
@@ -59,7 +62,7 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
                   />
                 </Td>
                 <Td>
-                  {userInfo?.team.permission.hasManagePer && (
+                  {userInfo?.team.permission.hasManagePer && group.name && (
                     <MyMenu
                       Button={<MyIcon name={'edit'} cursor={'pointer'} w="1rem" />}
                       menuList={[

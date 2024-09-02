@@ -105,7 +105,8 @@
       "create_failed": "创建群组失败",
       "avatar": "群头像",
       "delete_confirm": "确认删除群组？",
-      "edit": "编辑群组"
+      "edit": "编辑群组",
+      "default_group": "默认群组"
     }
   },
   "usage": {

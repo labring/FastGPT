@@ -23,7 +23,10 @@ export type GroupFormType = {
 };
 
 function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGroupId?: string }) {
-  const { members, refetchGroups, groups } = useContextSelector(TeamModalContext, (v) => v);
+  const { members, refetchGroups, groups, refetchMembers } = useContextSelector(
+    TeamModalContext,
+    (v) => v
+  );
   const { t } = useTranslation();
   const { File: AvatarSelect, onOpen: onOpenSelectAvatar } = useSelectFile({
     fileType: '*.jpg;*.jpeg;*.png;',
@@ -68,7 +71,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
       });
     },
     {
-      onSuccess: () => Promise.all([onClose(), refetchGroups()])
+      onSuccess: () => Promise.all([onClose(), refetchGroups(), refetchMembers()])
     }
   );
 
@@ -83,7 +86,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
       });
     },
     {
-      onSuccess: async () => await Promise.all([onClose(), refetchGroups()])
+      onSuccess: async () => await Promise.all([onClose(), refetchGroups(), refetchMembers()])
     }
   );
 

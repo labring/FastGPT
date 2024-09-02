@@ -4,7 +4,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import { Control, Controller } from 'react-hook-form';
-import { RequireAtLeastOne } from '@fastgpt/service/support/permission/type';
+import { RequireAtLeastOne } from '@fastgpt/global/common/type/utils';
 
 type memberType = {
   type: 'member';
@@ -143,7 +143,8 @@ function SelectMember({
                   icon={<MyIcon name={'common/check'} w={'12px'} />}
                 />
                 <Avatar ml={2} src={member.avatar} w="1.5rem" borderRadius={'50%'} />
-                {member.type == 'member' ? member.memberName : member.name}
+                {(member.type == 'member' ? member.memberName : member.name) ||
+                  t('user:team.group.default_group')}
               </Flex>
             );
           })}
@@ -168,7 +169,10 @@ function SelectMember({
                   _notLast={{ mb: 2 }}
                 >
                   <Avatar src={member.avatar} w="1.5rem" />
-                  <Box w="full">{member.type == 'member' ? member.memberName : member.name}</Box>
+                  <Box w="full">
+                    {(member.type == 'member' ? member.memberName : member.name) ||
+                      t('user:team.group.default_group')}
+                  </Box>
                   <MyIcon
                     name={'common/closeLight'}
                     w={'1rem'}

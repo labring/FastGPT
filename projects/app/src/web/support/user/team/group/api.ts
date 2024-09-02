@@ -1,5 +1,5 @@
 import { DELETE, GET, POST } from '@/web/common/api/request';
-import { MemberGroupSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
 
 export type postCreateGroupData = {
   name: string;
@@ -14,8 +14,7 @@ export type postUpdateGroupData = {
   members?: string[];
 };
 
-export const getGroupList = () =>
-  GET<MemberGroupSchemaType[]>('/proApi/support/user/team/group/list');
+export const getGroupList = () => GET<MemberGroupListType>('/proApi/support/user/team/group/list');
 
 export const postCreateGroup = (data: postCreateGroupData) =>
   POST('/proApi/support/user/team/group/create', data);

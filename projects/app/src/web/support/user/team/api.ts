@@ -1,5 +1,6 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import {
+  CollaboratorItemType,
   DeleteClbPermissionProps,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
@@ -18,6 +19,7 @@ import {
 } from '@fastgpt/global/support/user/team/type.d';
 import { FeTeamPlanStatusType, TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import { TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
+import { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 
 /* --------------- team  ---------------- */
 export const getTeamList = (status: `${TeamMemberSchema['status']}`) =>
@@ -41,6 +43,9 @@ export const updateInviteResult = (data: UpdateInviteProps) =>
   PUT('/proApi/support/user/team/member/updateInvite', data);
 export const delLeaveTeam = (teamId: string) =>
   DELETE('/proApi/support/user/team/member/leave', { teamId });
+
+export const getTeamClbs = () =>
+  GET<ResourcePermissionType[]>(`/proApi/support/user/team/collaborator/list`);
 
 /* -------------- team collaborator -------------------- */
 export const updateMemberPermission = (data: UpdateClbPermissionProps) =>
