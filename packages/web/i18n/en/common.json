@@ -227,6 +227,7 @@
     "confirm": {
       "Common Tip": "Operation confirmation"
     },
+    "copy_to_clipboard": "copy to clipboard",
     "course": {
       "Read Course": "Read course"
     },
@@ -238,6 +239,7 @@
       "too_many_request": "Too many requests, please try again later.",
       "unKnow": "An unexpected error occurred~"
     },
+    "export_to_json": "Export to JSON",
     "failed": "fail",
     "folder": {
       "Drag Tip": "Drag me",
@@ -257,6 +259,7 @@
     "jsonEditor": {
       "Parse error": "JSON may be incorrect, please check carefully"
     },
+    "json_config": "JSON configuration",
     "link": {
       "UnValid": "Invalid link"
     },
@@ -289,6 +292,7 @@
     },
     "undo_tip": "unde ctrl z",
     "undo_tip_mac": "undo  ⌘  z  ",
+    "upload_file": "Upload files",
     "zoomin_tip": "zoomIn  ctrl  -",
     "zoomin_tip_mac": "zoomIn ⌘  -",
     "zoomout_tip": "zoomOut  ctrl  +",

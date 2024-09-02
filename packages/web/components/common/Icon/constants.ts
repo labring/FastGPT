@@ -5,6 +5,7 @@ export const iconPaths = {
   visible: () => import('./icons/visible.svg'),
   change: () => import('./icons/change.svg'),
   chatSend: () => import('./icons/chatSend.svg'),
+  configmap: () => import('./icons/configmap.svg'),
   closeSolid: () => import('./icons/closeSolid.svg'),
   collectionLight: () => import('./icons/collectionLight.svg'),
   collectionSolid: () => import('./icons/collectionSolid.svg'),

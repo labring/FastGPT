@@ -23,6 +23,7 @@ export type Props = {
   trigger?: 'hover' | 'click';
   iconSize?: string;
   iconRadius?: string;
+  menuItemStyles?: MenuItemProps;
   placement?: PlacementWithLogical;
   menuList: {
     label?: string;
@@ -45,7 +46,15 @@ const MyMenu = ({
   Button,
   menuList,
   iconRadius,
-  placement = 'bottom-start'
+  placement = 'bottom-start',
+  menuItemStyles = {
+    borderRadius: 'sm',
+    py: 2,
+    px: 3,
+    display: 'flex',
+    alignItems: 'center',
+    fontSize: 'sm'
+  }
 }: Props) => {
   const typeMapStyle: Record<MenuItemType, MenuItemProps> = {
     primary: {
@@ -74,14 +83,6 @@ const MyMenu = ({
         background: 'red.1'
       }
     }
-  };
-  const menuItemStyles: MenuItemProps = {
-    borderRadius: 'sm',
-    py: 2,
-    px: 3,
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: 'sm'
   };
 
   const { isPc } = useSystem();
@@ -167,7 +168,7 @@ const MyMenu = ({
                   <MenuItem
                     key={index}
                     {...menuItemStyles}
-                    onClickCapture={(e) => {
+                    onClick={(e) => {
                       e.stopPropagation();
                       setIsOpen(false);
                       child.onClick && child.onClick();
@@ -185,12 +186,16 @@ const MyMenu = ({
                         mr={3}
                       />
                     )}
-                    <Box>
-                      <Box color={child.description ? 'myGray.900' : 'inherit'} fontSize={'sm'}>
+                    <Box w={'100%'}>
+                      <Box
+                        w={'100%'}
+                        color={child.description ? 'myGray.900' : 'inherit'}
+                        fontSize={'sm'}
+                      >
                         {child.label}
                       </Box>
                       {child.description && (
-                        <Box color={'myGray.500'} fontSize={'mini'}>
+                        <Box color={'myGray.500'} fontSize={'mini'} w={'100%'}>
                           {child.description}
                         </Box>
                       )}
