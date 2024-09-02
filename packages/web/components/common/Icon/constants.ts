@@ -2,6 +2,7 @@
 
 export const iconPaths = {
   book: () => import('./icons/book.svg'),
+  visible: () => import('./icons/visible.svg'),
   change: () => import('./icons/change.svg'),
   chatSend: () => import('./icons/chatSend.svg'),
   closeSolid: () => import('./icons/closeSolid.svg'),

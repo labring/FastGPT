@@ -443,7 +443,8 @@
       "tool_label": {
         "doc": "使用文档",
         "github": "GitHub地址",
-        "price": "计费说明"
+        "price": "计费说明",
+        "view_doc": "查看说明文档"
       },
       "tts": {
         "Close": "不使用",
@@ -658,6 +659,7 @@
         "Search data placeholder": "搜索相关数据",
         "Too Long": "总长度超长了",
         "Total Amount": "{{total}} 组",
+        "empty_index": "无自定义索引",
         "group": "组",
         "unit": "条"
       },
@@ -1061,7 +1063,8 @@
         "Content": "数据内容",
         "Course": "说明文档",
         "Delete": "删除数据",
-        "Index": "数据索引（{{amount}}）"
+        "Index": "数据索引({{amount}})",
+        "divide_content": "分块内容"
       },
       "input is empty": "数据内容不能为空 "
     },
