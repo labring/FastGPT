@@ -125,7 +125,7 @@ const Header = () => {
     try {
       localStorage.removeItem(`${appDetail._id}-past`);
       localStorage.removeItem(`${appDetail._id}-future`);
-      router.push('/app/list');
+      router.back();
     } catch (error) {}
   }, [appDetail._id, router]);
 

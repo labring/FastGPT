@@ -74,8 +74,7 @@ const AppCard = ({
                         label: ExportPopover({
                           chatConfig: appDetail.chatConfig,
                           appName: appDetail.name
-                        }),
-                        onClick: () => {}
+                        })
                       }
                     ]
                   }
@@ -192,7 +191,7 @@ function ExportPopover({
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const { flowData2StoreDataAndCheck } = useContextSelector(WorkflowContext, (v) => v);
-  const data = flowData2StoreDataAndCheck();
+
   const onExportWorkflow = useCallback(async () => {
     const data = flowData2StoreDataAndCheck();
     if (data) {
@@ -251,7 +250,10 @@ function ExportPopover({
             }}
             borderRadius={'xs'}
             onClick={() => {
+              const data = flowData2StoreDataAndCheck();
+
               if (!data) return;
+
               fileDownload({
                 text: JSON.stringify(
                   {
