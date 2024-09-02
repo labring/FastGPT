@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Flex,
@@ -41,7 +41,6 @@ const Header = () => {
 
   const { appDetail, onSaveApp, currentTab } = useContextSelector(AppContext, (v) => v);
   const isV2Workflow = appDetail?.version === 'v2';
-
   const {
     isOpen: isOpenBackConfirm,
     onOpen: onOpenBackConfirm,
@@ -52,7 +51,6 @@ const Header = () => {
     onOpen: onSaveAndPublishModalOpen,
     onClose: onSaveAndPublishModalClose
   } = useDisclosure();
-
   const [isSave, setIsSave] = useState(false);
 
   const {
@@ -251,6 +249,8 @@ const Header = () => {
                             status: 'success',
                             title: t('app:saved_success')
                           });
+                          onClose();
+                          setIsSave(false);
                         }}
                       >
                         <MyIcon name={'core/workflow/upload'} w={'16px'} mr={2} />
@@ -268,6 +268,7 @@ const Header = () => {
                             onSaveAndPublishModalOpen();
                           }
                           onClose();
+                          setIsSave(false);
                         }}
                       >
                         <MyIcon name={'core/workflow/publish'} w={'16px'} mr={2} />
@@ -314,6 +315,10 @@ const Header = () => {
                 await onClickSave({});
                 onCloseBackConfirm();
                 onBack();
+                toast({
+                  status: 'success',
+                  title: t('app:saved_success')
+                });
               }}
             >
               {t('common:common.Save_and_exit')}
