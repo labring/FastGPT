@@ -7,16 +7,16 @@ import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/cons
 export const userCollectionName = 'users';
 
 const defaultAvatars = [
-  '/icon/RoyalBlueAvatar.svg',
-  '/icon/PurpleAvatar.svg',
-  '/icon/AdoraAvatar.svg',
-  '/icon/OrangeAvatar.svg',
-  '/icon/RedAvatar.svg',
-  '/icon/GrayModernAvatar.svg',
-  '/icon/TealAvatar.svg',
-  '/icon/GreenAvatar.svg',
-  '/icon/BrightBlueAvatar.svg',
-  '/icon/BlueAvatar.svg'
+  '/imgs/avatar/RoyalBlueAvatar.svg',
+  '/imgs/avatar/PurpleAvatar.svg',
+  '/imgs/avatar/AdoraAvatar.svg',
+  '/imgs/avatar/OrangeAvatar.svg',
+  '/imgs/avatar/RedAvatar.svg',
+  '/imgs/avatar/GrayModernAvatar.svg',
+  '/imgs/avatar/TealAvatar.svg',
+  '/imgs/avatar/GreenAvatar.svg',
+  '/imgs/avatar/BrightBlueAvatar.svg',
+  '/imgs/avatar/BlueAvatar.svg'
 ];
 
 const UserSchema = new Schema({
