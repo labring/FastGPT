@@ -1,10 +1,10 @@
 {
-  "author": "Menghuan1918",
-  "version": "488",
-  "name": "Doc2X 图像(文件)识别",
-  "avatar": "plugins/doc2x",
-  "intro": "将上传的图片文件发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
-  "inputExplanationUrl": "https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview",
+  "author": "吕老师/Sam",
+  "version": "v1",
+  "name": "小胰宝报告精灵",
+  "avatar": "plugins/xiaoyibao-report-genie/xiaoyibao.png",
+  "intro": "对于上传的病情报告进行识别，解析和提取关键指标如CA199，持久化存储并结合智能分析，生成报告，并返回给用户",
+  "inputExplanationUrl": "https://uei55ql5ok.feishu.cn/wiki/Yb6LwrowpioqfTkktPVcADnanEf", //飞书设计文档
   "showStatus": true,
   "weight": 10,
 
