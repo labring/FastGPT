@@ -5,7 +5,9 @@
     "duck-duck-scrape": "^2.2.5",
     "lodash": "^4.17.21",
     "axios": "^1.5.1",
-    "expr-eval": "^2.0.2"
+    "expr-eval": "^2.0.2",
+    "chart.js": "^4.4.0",  // 添加这一行,增加图形图库，支持折线图，柱状图等，支持ca199等指标展现
+    "mongoose": "^7.5.3"  // 添加这一行,增加mongoose来处理MongoDB数据库
   },
   "devDependencies": {
     "@fastgpt/global": "workspace:*",

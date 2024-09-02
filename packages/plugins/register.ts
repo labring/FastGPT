@@ -1,9 +1,9 @@
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+
 import { SystemPluginResponseType } from './type';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { cloneDeep } from 'lodash';
 import { WorkerNameEnum, runWorker } from '@fastgpt/service/worker/utils';
-
 // Run in main thread
 const staticPluginList = [
   'getTime',
@@ -13,7 +13,8 @@ const staticPluginList = [
   'Doc2X/URLImg2text',
   `Doc2X/FilePDF2text`,
   `Doc2X/FileImg2text`,
-  'feishu'
+  'feishu',
+  'xiaoyibao-report-genie' //sam添加
 ];
 // Run in worker thread (Have npm packages)
 const packagePluginList = [
@@ -22,7 +23,8 @@ const packagePluginList = [
   'duckduckgo/search',
   'duckduckgo/searchImg',
   'duckduckgo/searchNews',
-  'duckduckgo/searchVideo'
+  'duckduckgo/searchVideo',
+  'xiaoyibao-report-genie' //sam添加
 ];
 
 export const list = [...staticPluginList, ...packagePluginList];
