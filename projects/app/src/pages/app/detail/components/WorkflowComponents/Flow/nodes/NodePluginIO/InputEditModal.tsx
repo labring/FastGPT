@@ -108,12 +108,6 @@ const FieldEditModal = ({
         ],
         [
           {
-            icon: 'core/workflow/inputType/selectApp',
-            label: t('common:core.workflow.inputType.selectApp'),
-            value: FlowNodeInputTypeEnum.selectApp,
-            defaultValueType: WorkflowIOValueTypeEnum.selectApp
-          },
-          {
             icon: 'core/workflow/inputType/selectLLM',
             label: t('common:core.workflow.inputType.selectLLMModel'),
             value: FlowNodeInputTypeEnum.selectLLMModel,
