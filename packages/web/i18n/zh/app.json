@@ -48,6 +48,7 @@
   "export_config_successful": "已复制配置，自动过滤部分敏感信息，请注意检查是否仍有敏感数据",
   "export_configs": "导出配置",
   "feedback_count": "用户反馈",
+  "file_recover": "文件将覆盖当前内容",
   "file_upload": "文件上传",
   "file_upload_tip": "开启后，可以上传文档/图片。文档保留7天，图片保留15天。使用该功能可能产生较多额外费用。为保证使用体验，使用该功能时，请选择上下文长度较大的AI模型。",
   "go_to_chat": "去对话",
@@ -56,6 +57,7 @@
   "image_upload_tip": "请确保选择可处理图片的视觉模型",
   "import_configs": "导入配置",
   "import_configs_failed": "导入配置失败，请确保配置正常！",
+  "import_configs_success": "导入成功",
   "interval": {
     "12_hours": "每12小时",
     "2_hours": "每2小时",
@@ -85,7 +87,9 @@
     "unit": "号"
   },
   "move_app": "移动应用",
+  "not_json_file": "请选择JSON文件",
   "paste_config": "粘贴配置",
+  "or_drag_JSON": "或拖入JSON文件",
   "plugin_cost_per_times": "{{cost}}/次",
   "plugin_dispatch": "插件调用",
   "plugin_dispatch_tip": "给模型附加额外的能力，具体调用哪些插件，将由模型自主决定。\n若选择了插件，知识库调用将自动作为一个特殊的插件。",
