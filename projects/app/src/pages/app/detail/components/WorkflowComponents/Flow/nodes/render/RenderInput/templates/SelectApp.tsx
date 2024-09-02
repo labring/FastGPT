@@ -50,7 +50,7 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
       <>
         <Box onClick={onOpenSelectApp}>
           {!value ? (
-            <Button variant={'whiteFlow'} w={'100%'}>
+            <Button variant={'whiteBase'} w={'100%'}>
               {t('common:core.module.Select app')}
             </Button>
           ) : (
@@ -58,7 +58,7 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
               isLoading={loading}
               w={'100%'}
               justifyContent={loading ? 'center' : 'flex-start'}
-              variant={'whiteFlow'}
+              variant={'whiteBase'}
               leftIcon={<Avatar src={appDetail?.avatar} w={6} />}
             >
               {appDetail?.name}
