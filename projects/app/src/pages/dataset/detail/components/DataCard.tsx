@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -69,8 +69,6 @@ const DataCard = () => {
     content: t('common:dataset.Confirm to delete the data'),
     type: 'delete'
   });
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const readSource = getCollectionSourceAndOpen(collectionId);
 
   const {
     data: datasetDataList,
@@ -136,10 +134,10 @@ const DataCard = () => {
   const isLoading = isRequesting || loading;
 
   return (
-    <MyBox isLoading={isLoading} position={'relative'} py={[1, 5]} h={'100%'}>
+    <MyBox isLoading={isLoading} position={'relative'} py={[1, 0]} h={'100%'}>
       <Flex ref={BoxRef} flexDirection={'column'} h={'100%'}>
         {/* Header */}
-        <Flex alignItems={'center'} px={5}>
+        <Flex alignItems={'center'} px={6}>
           <Flex className="textEllipsis" flex={'1 0 0'} mr={[3, 5]} alignItems={'center'}>
             <Box>
               <Box alignItems={'center'} gap={2} display={isPc ? 'flex' : ''}>
@@ -174,10 +172,10 @@ const DataCard = () => {
             </Box>
           )}
         </Flex>
-        <Box justifyContent={'center'} px={5} pos={'relative'} w={'100%'}>
+        <Box justifyContent={'center'} px={6} pos={'relative'} w={'100%'}>
           <MyDivider my={'17px'} w={'100%'} />
         </Box>
-        <Flex alignItems={'center'} px={5} pb={4}>
+        <Flex alignItems={'center'} px={6} pb={4}>
           <Flex align={'center'} color={'myGray.500'}>
             <MyIcon name="common/list" mr={2} w={'18px'} />
             <Box as={'span'} fontSize={['sm', '14px']} fontWeight={'500'}>
@@ -227,7 +225,7 @@ const DataCard = () => {
                   '& .forbid-switch': { display: 'flex' },
                   bg: index % 2 === 1 ? 'myGray.200' : 'blue.100'
                 }}
-                onClickCapture={(e) => {
+                onClick={(e) => {
                   e.stopPropagation();
                   if (!collection) return;
                   setEditDataId(item._id);
@@ -316,7 +314,7 @@ const DataCard = () => {
                       display={'flex'}
                       p={1}
                       boxShadow={'1'}
-                      icon={<MyIcon name={'common/trash'} w={'14px'} />}
+                      icon={<MyIcon name={'common/trash'} w={'14px'} color={'myGray.600'} />}
                       variant={'whiteDanger'}
                       size={'xsSquare'}
                       aria-label={'delete'}
@@ -355,7 +353,6 @@ const DataCard = () => {
           dataId={editDataId}
           onClose={() => setEditDataId(undefined)}
           onSuccess={() => getData(pageNum)}
-          onDelete={() => getData(pageNum)}
         />
       )}
       <ConfirmModal />

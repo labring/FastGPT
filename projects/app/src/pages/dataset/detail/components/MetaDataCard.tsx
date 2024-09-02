@@ -10,6 +10,7 @@ import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { DatasetCollectionTypeMap, TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
@@ -94,26 +95,33 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
 
   return (
     <MyBox isLoading={isLoading} w={'100%'} h={'100%'} p={6}>
-      <Box fontSize={'lg'} pb={4}>
+      <Box fontSize={'md'} pb={4}>
         {t('common:core.dataset.collection.metadata.metadata')}
       </Box>
-      <Box fontSize={'sm'} color={'myGray.500'} mb={5}>
-        {t('common:core.dataset.collection.id')}:{' '}
-        <Box as={'span'} userSelect={'all'}>
-          {collection?._id}
+      <Flex mb={4} wordBreak={'break-all'} fontSize={'sm'}>
+        <Box color={'myGray.500'} flex={'0 0 70px'}>
+          {t('common:core.dataset.collection.id')}:
         </Box>
-      </Box>
-      {metadataList.map((item, i) => (
-        <Flex key={i} alignItems={'center'} mb={5} wordBreak={'break-all'} fontSize={'sm'}>
-          <Box color={'myGray.500'} flex={'0 0 70px'}>
-            {item.label}
-          </Box>
-          <Box>{item.value}</Box>
-        </Flex>
-      ))}
+        <Box>{collection?._id}</Box>
+      </Flex>
+      {metadataList.map(
+        (item, i) =>
+          item.label &&
+          item.value && (
+            <Flex key={i} alignItems={'center'} mb={4} wordBreak={'break-all'} fontSize={'sm'}>
+              <Box color={'myGray.500'} flex={'0 0 70px'}>
+                {item.label}
+              </Box>
+              <Box>{item.value}</Box>
+            </Flex>
+          )
+      )}
       {collection?.sourceId && (
         <Button variant={'whitePrimary'} onClick={readSource}>
-          {t('common:core.dataset.collection.metadata.read source')}
+          <Flex py={2} px={3}>
+            <MyIcon name="visible" w={'1rem'} mr={'0.38rem'} />
+            <Box>{t('common:core.dataset.collection.metadata.read source')}</Box>
+          </Flex>
         </Button>
       )}
     </MyBox>

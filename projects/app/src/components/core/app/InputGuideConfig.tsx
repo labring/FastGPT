@@ -150,7 +150,7 @@ const InputGuideConfig = ({
                     alignItems={'center'}
                     cursor={'pointer'}
                   >
-                    <MyIcon name={'book'} ml={4} mr={1} />
+                    <MyIcon name={'book'} w={'17px'} ml={4} mr={1} color={'myGray.600'} />
                     {commonT('common.Documents')}
                   </Flex>
                   <Box flex={'1 0 0'} />

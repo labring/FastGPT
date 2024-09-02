@@ -443,7 +443,8 @@
       "tool_label": {
         "doc": "Use documentation",
         "github": "GitHub address",
-        "price": "Billing instructions"
+        "price": "Billing instructions",
+        "view_doc": "View documentation"
       },
       "tts": {
         "Close": "Do not use",
@@ -659,6 +660,7 @@
         "Search data placeholder": "Search related data",
         "Too Long": "Total length too long",
         "Total Amount": "{{total}} sets",
+        "empty_index": "No custom index",
         "group": "Group",
         "unit": "items"
       },
@@ -1062,7 +1064,8 @@
         "Content": "Data content",
         "Course": "Documentation",
         "Delete": "Delete data",
-        "Index": "Data Index ({{amount}})"
+        "Index": "Data Index ({{amount}})",
+        "divide_content": "Chunked content"
       },
       "input is empty": "Data content cannot be empty"
     },
