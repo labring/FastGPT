@@ -1,5 +1,6 @@
 import ExtractDataNode from './extractDataNode';
 import StoreDataNode from './storeDataNode';
+import CalculateDeltaNode from './calculateDeltaNode';
 import * as moment from 'moment';
 
 // 定义 JSON 结构中的节点
@@ -66,32 +67,23 @@ const nodes = [
     version: "481",
     inputs: ["extractedData"],
     outputs: ["storedData"]
+  },
+  {
+    nodeId: "randomNodeId4",
+    name: "计算变动值和绘制折线图",
+    intro: "计算 ca199 在两个不同日期的变动值和变动比例，并绘制折线图。",
+    avatar: "/imgs/workflow/output.png",
+    flowNodeType: "pluginOutput",
+    showStatus: false,
+    version: "481",
+    inputs: ["storedData"],
+    outputs: ["chartData"]
   }
 ];
 
-// 实例化并使用 ExtractDataNode 和 StoreDataNode
-(async () => {
-  const nodeConfig1 = nodes.find(node => node.nodeId === "randomNodeId1");
-  const nodeConfig2 = nodes.find(node => node.nodeId === "randomNodeId2");
-  const nodeConfig3 = nodes.find(node => node.nodeId === "randomNodeId3");
-
-  const node1 = new ExtractDataNode(nodeConfig1);
-  const node2 = new ExtractDataNode(nodeConfig2);
-  const node3 = new StoreDataNode(nodeConfig3);
-
-  const input1 = {
-    result: "2023-09-15, ca199: 123" // 示例输入
-  };
-
-  // 处理第一个节点
-  const result1 = await node1.processInput(input1);
-  console.log("Extracted Data:", result1);
-
-  // 处理第二个节点
-  const result2 = await node2.processInput({ result: result1 });
-  console.log("Extracted Data:", result2);
-
-  // 存储数据到 MongoDB
-  const result3 = await node3.processInput({ extractedData: result2 });
-  console.log("Stored Data:", result3);
-})();
+// 定义 edges
+const edges = [
+  {
+    source: "randomNodeId1",
+    target: "randomNodeId2",
+    sourceHandle: "result
