@@ -1,4 +1,11 @@
 {
+  " i18nT('workflow": {
+    "use_user_id'),\n    required": {
+      "workflow": {
+        "use_user_id": "使用者 ID"
+      }
+    }
+  },
   "Code": "代码",
   "about_xxx_question": "关于 xxx 的问题",
   "add_new_input": "新增输入",
@@ -123,6 +130,7 @@
   "select_another_application_to_call": "可以选择一个其他应用进行调用",
   "special_array_format": "特殊数组格式，搜索结果为空时，返回空数组。",
   "start_with": "开始为",
+  "system_variables": "系统变量",
   "target_fields_description": "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
   "template": {
     "ai_chat": "AI 对话",
@@ -143,6 +151,7 @@
   "trigger_after_application_completion": "将在应用完全结束后触发",
   "update_link_error": "更新链接异常",
   "update_specified_node_output_or_global_variable": "可以更新指定节点的输出值或更新全局变量",
+  "use_user_id": "使用者 ID",
   "user_question": "用户问题",
   "variable_picker_tips": "可输入节点名或变量名搜索",
   "variable_update": "变量更新",

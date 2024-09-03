@@ -21,8 +21,7 @@ const JsonEditor = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const variables = useCreation(() => {
     const globalVariables = getWorkflowGlobalVariables({
       nodes: nodeList,
-      chatConfig: appDetail.chatConfig,
-      t
+      chatConfig: appDetail.chatConfig
     });
 
     const nodeVariables = formatEditorVariablePickerIcon(getNodeDynamicInputs(nodeId));

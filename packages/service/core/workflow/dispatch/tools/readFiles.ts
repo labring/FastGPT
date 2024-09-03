@@ -44,7 +44,7 @@ ${content.slice(0, 100)}${content.length > 100 ? '......' : ''}
 export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const {
     requestOrigin,
-    teamId,
+    runningAppInfo: { teamId },
     histories,
     chatConfig,
     params: { fileUrlList = [] }

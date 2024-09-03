@@ -26,10 +26,15 @@ export type ChatDispatchProps = {
   res?: NextApiResponse;
   requestOrigin?: string;
   mode: 'test' | 'chat' | 'debug';
-  teamId: string; // App teamId
-  tmbId: string; // App tmbId
   user: UserModelSchema;
-  app: AppDetailType | AppSchema;
+
+  runningAppInfo: {
+    id: string; // May be the id of the system plug-in (cannot be used directly to look up the table)
+    teamId: string;
+    tmbId: string; // App tmbId
+  };
+  uid: string; // Who run this workflow
+
   chatId?: string;
   responseChatItemId?: string;
   histories: ChatItemType[];
@@ -50,10 +55,12 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
 };
 
 export type SystemVariablesType = {
+  userId: string;
   appId: string;
   chatId?: string;
   responseChatItemId?: string;
   histories: ChatItemType[];
+  cTime: string;
 };
 
 /* node props */
@@ -69,7 +76,7 @@ export type RuntimeNodeItemType = {
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
 
-  pluginId?: string;
+  pluginId?: string; // workflow id / plugin id
 };
 
 export type PluginRuntimeType = {

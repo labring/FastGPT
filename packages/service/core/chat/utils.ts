@@ -121,46 +121,22 @@ export const loadRequestMessages = async ({
     const imageRegex =
       /(https?:\/\/[^\s/$.?#].[^\s]*\.(?:png|jpe?g|gif|webp|bmp|tiff?|svg|ico|heic|avif))/i;
 
-    const result: { type: 'text' | 'image'; value: string }[] = [];
-    let lastIndex = 0;
-    let match;
+    const result: ChatCompletionContentPart[] = [];
 
-    // 使用正则表达式查找所有匹配项
-    while ((match = imageRegex.exec(input.slice(lastIndex))) !== null) {
-      const textBefore = input.slice(lastIndex, lastIndex + match.index);
-
-      // 如果图片URL前有文本，添加文本部分
-      if (textBefore) {
-        result.push({ type: 'text', value: textBefore });
-      }
-
-      // 添加图片URL
-      result.push({ type: 'image', value: match[0] });
-
-      lastIndex += match.index + match[0].length;
-    }
-
-    // 添加剩余的文本（如果有的话）
-    if (lastIndex < input.length) {
-      result.push({ type: 'text', value: input.slice(lastIndex) });
-    }
-
-    return result
-      .map((item) => {
-        if (item.type === 'text') {
-          return { type: 'text', text: item.value };
+    // 提取所有HTTPS图片URL并添加到result开头
+    const httpsImages = input.match(imageRegex) || [];
+    httpsImages.forEach((url) => {
+      result.push({
+        type: 'image_url',
+        image_url: {
+          url: url
         }
-        if (item.type === 'image') {
-          return {
-            type: 'image_url',
-            image_url: {
-              url: item.value
-            }
-          };
-        }
-        return { type: 'text', text: item.value };
-      })
-      .filter(Boolean) as ChatCompletionContentPart[];
+      });
+    });
+
+    // 添加原始input作为文本
+    result.push({ type: 'text', text: input });
+    return result;
   }
   // Load image
   const parseUserContent = async (content: string | ChatCompletionContentPart[]) => {

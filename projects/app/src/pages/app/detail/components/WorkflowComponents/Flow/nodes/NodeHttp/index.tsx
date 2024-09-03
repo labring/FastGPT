@@ -276,14 +276,13 @@ export function RenderHttpProps({
   const variables = useMemo(() => {
     const globalVariables = getWorkflowGlobalVariables({
       nodes: nodeList,
-      chatConfig: appDetail.chatConfig,
-      t
+      chatConfig: appDetail.chatConfig
     });
 
     const nodeVariables = formatEditorVariablePickerIcon(getNodeDynamicInputs(nodeId));
 
     return [...nodeVariables, ...globalVariables];
-  }, [appDetail.chatConfig, getNodeDynamicInputs, nodeId, nodeList, t]);
+  }, [appDetail.chatConfig, getNodeDynamicInputs, nodeId, nodeList]);
 
   const variableText = useMemo(() => {
     return variables

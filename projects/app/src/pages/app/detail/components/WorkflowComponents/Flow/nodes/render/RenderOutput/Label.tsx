@@ -48,7 +48,7 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
         )}
       </Box>
     );
-  }, [output.type, output.key, t, label, description, valueType, nodeId]);
+  }, [output.type, output.key, t, label, description, valueType, valueDesc, nodeId]);
 
   return Render;
 };

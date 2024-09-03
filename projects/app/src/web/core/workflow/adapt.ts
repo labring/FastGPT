@@ -50,7 +50,7 @@ export const getGlobalVariableNode = ({
     outputs: []
   };
 
-  const globalVariables = getWorkflowGlobalVariables({ nodes, chatConfig, t });
+  const globalVariables = getWorkflowGlobalVariables({ nodes, chatConfig });
 
   const variableNode: FlowNodeItemType = {
     nodeId: VARIABLE_NODE_ID,
