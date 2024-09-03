@@ -160,17 +160,10 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   }, {});
 
   const requestBody = await (() => {
-    const isUseFormBody =
-      httpContentType === ContentTypes.formData ||
-      httpContentType === ContentTypes.xWwwFormUrlencoded;
-    if (
-      (isUseFormBody && !Array.isArray(httpFormBody)) ||
-      (!isUseFormBody && !httpJsonBody) ||
-      httpContentType === ContentTypes.none
-    )
-      return {};
+    if (httpContentType === ContentTypes.none) return {};
     try {
-      if (isUseFormBody) {
+      if (httpContentType === ContentTypes.formData) {
+        if (!Array.isArray(httpFormBody)) return {};
         httpFormBody = httpFormBody.map((item) => ({
           key: replaceVariable(
             replaceEditorVariable({
@@ -192,18 +185,6 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
             allVariables
           )
         }));
-      } else {
-        httpJsonBody = replaceVariable(
-          replaceEditorVariable({
-            text: httpJsonBody,
-            nodes: runtimeNodes,
-            variables,
-            runningNode: node
-          }),
-          allVariables
-        );
-      }
-      if (httpContentType === ContentTypes.formData) {
         const formData = new FormData();
         for (const { key, value } of httpFormBody) {
           formData.append(key, value);
@@ -211,18 +192,51 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         return formData;
       }
       if (httpContentType === ContentTypes.xWwwFormUrlencoded) {
+        if (!Array.isArray(httpFormBody)) return {};
+        httpFormBody = httpFormBody.map((item) => ({
+          key: replaceVariable(
+            replaceEditorVariable({
+              text: item.key,
+              nodes: runtimeNodes,
+              variables,
+              runningNode: node
+            }),
+            allVariables
+          ),
+          type: item.type,
+          value: replaceVariable(
+            replaceEditorVariable({
+              text: item.value,
+              nodes: runtimeNodes,
+              variables,
+              runningNode: node
+            }),
+            allVariables
+          )
+        }));
         const urlSearchParams = new URLSearchParams();
         for (const { key, value } of httpFormBody) {
           urlSearchParams.append(key, value);
         }
         return urlSearchParams;
       }
+      if (!httpJsonBody) return {};
       if (httpContentType === ContentTypes.json) {
+        httpJsonBody = replaceVariable(httpJsonBody, allVariables);
         // Json body, parse and return
         const jsonParse = JSON.parse(httpJsonBody);
         const removeSignJson = removeUndefinedSign(jsonParse);
         return removeSignJson;
       }
+      httpJsonBody = replaceVariable(
+        replaceEditorVariable({
+          text: httpJsonBody,
+          nodes: runtimeNodes,
+          variables,
+          runningNode: node
+        }),
+        allVariables
+      );
       return httpJsonBody.replaceAll(UNDEFINED_SIGN, 'null');
     } catch (error) {
       console.log(error);
