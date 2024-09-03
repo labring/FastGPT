@@ -628,9 +628,17 @@ const RenderBody = ({
               mb={2}
               borderRadius={'6px'}
               border={'1px solid'}
-              bg={typeInput?.value === item ? 'white' : 'myGray.50'}
-              borderColor={typeInput?.value === item ? 'myGray.200' : 'transparent'}
-              color={typeInput?.value === item ? 'primary.700' : 'myGray.500'}
+              {...(typeInput?.value === item
+                ? {
+                    bg: 'white',
+                    borderColor: 'myGray.200',
+                    color: 'primary.700'
+                  }
+                : {
+                    bg: 'myGray.50',
+                    borderColor: 'transparent',
+                    color: 'myGray.500'
+                  })}
               _hover={{ bg: 'white', borderColor: 'myGray.200', color: 'primary.700' }}
               onClick={() => {
                 onChangeNode({
