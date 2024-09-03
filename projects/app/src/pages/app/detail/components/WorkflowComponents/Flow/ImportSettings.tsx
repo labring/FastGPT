@@ -106,7 +106,7 @@ const ImportSettings = ({ onClose }: Props) => {
             </Flex>
           </Flex>
         ) : (
-          <Box w={'31rem'} minH={'17.5rem'}>
+          <Box w={'31rem'}>
             <Flex justify={'space-between'} align={'center'} pb={2}>
               <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'500'}>
                 {t('common:common.json_config')}
