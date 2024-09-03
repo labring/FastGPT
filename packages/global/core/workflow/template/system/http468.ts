@@ -83,6 +83,7 @@ export const HttpNode468: FlowNodeTemplateType = {
       label: '',
       required: false
     },
+    // json body data
     {
       key: NodeInputKeyEnum.httpJsonBody,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
@@ -91,6 +92,7 @@ export const HttpNode468: FlowNodeTemplateType = {
       label: '',
       required: false
     },
+    // form body data
     {
       key: NodeInputKeyEnum.httpFormBody,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
@@ -99,6 +101,7 @@ export const HttpNode468: FlowNodeTemplateType = {
       label: '',
       required: false
     },
+    // body data type
     {
       key: NodeInputKeyEnum.httpContentType,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],

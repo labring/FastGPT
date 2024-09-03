@@ -32,7 +32,7 @@ type HttpRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.httpParams]: PropsArrType[];
   [NodeInputKeyEnum.httpJsonBody]: string;
   [NodeInputKeyEnum.httpFormBody]: PropsArrType[];
-  [NodeInputKeyEnum.httpContentType]: string;
+  [NodeInputKeyEnum.httpContentType]: ContentTypes;
   [NodeInputKeyEnum.addInputParam]: Record<string, any>;
   [NodeInputKeyEnum.httpTimeout]?: number;
   [key: string]: any;
@@ -43,6 +43,15 @@ type HttpResponse = DispatchNodeResultType<{
 }>;
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
+
+const contentTypeMap = {
+  [ContentTypes.none]: '',
+  [ContentTypes.formData]: '',
+  [ContentTypes.xWwwFormUrlencoded]: 'application/x-www-form-urlencoded',
+  [ContentTypes.json]: 'application/json',
+  [ContentTypes.xml]: 'application/xml',
+  [ContentTypes.raw]: 'text/plain'
+};
 
 export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<HttpResponse> => {
   let {
@@ -93,15 +102,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   // parse header
   const headers = await (() => {
     try {
-      const contentTypeMap = {
-        [ContentTypes.none]: '',
-        [ContentTypes.formData]: '',
-        [ContentTypes.xWwwFormUrlencoded]: 'application/x-www-form-urlencoded',
-        [ContentTypes.json]: 'application/json',
-        [ContentTypes.xml]: 'application/xml',
-        [ContentTypes.raw]: 'text/plain'
-      };
-      const contentType = contentTypeMap[httpContentType as ContentTypes];
+      const contentType = contentTypeMap[httpContentType];
       if (contentType) {
         httpHeader = [{ key: 'Content-Type', value: contentType, type: 'string' }, ...httpHeader];
       }
