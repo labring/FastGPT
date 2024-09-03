@@ -470,15 +470,29 @@ const Checkbox = checkBoxMultiStyle({
 });
 
 const Modal = modalMultiStyle({
-  baseStyle: modalPart({
-    body: {
-      py: 4,
-      px: 7
-    },
-    footer: {
-      pt: 2
-    }
-  })
+  sizes: {
+    md: modalPart({
+      body: {
+        py: 4,
+        px: 7
+      },
+      footer: {
+        pt: 2
+      }
+    }),
+    lg: modalPart({
+      body: {
+        pt: 8,
+        pb: 6,
+        px: '3.25rem'
+      },
+      footer: {
+        pb: 8,
+        px: '3.25rem',
+        pt: 0
+      }
+    })
+  }
 });
 
 const Table = tableMultiStyle({

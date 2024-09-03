@@ -353,7 +353,7 @@ const InputTab = ({
 
   return (
     <>
-      <Flex h={'100%'} gap={6} flexDir={['column', 'row']} w={'100%'} pr={2}>
+      <Flex h={'100%'} gap={6} flexDir={['column', 'row']} w={'100%'}>
         <Flex flexDir={'column'} flex={1}>
           <Flex mb={2} fontWeight={'medium'} fontSize={'sm'} alignItems={'center'} h={8}>
             <Box color={'red.600'}>*</Box>
@@ -435,7 +435,7 @@ const DataIndex = ({
 
   return (
     <>
-      <Flex mt={3} gap={3} flexDir={'column'} pr={2}>
+      <Flex mt={3} gap={3} flexDir={'column'}>
         <Box
           p={4}
           borderRadius={'md'}
