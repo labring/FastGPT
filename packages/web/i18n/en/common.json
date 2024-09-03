@@ -866,7 +866,7 @@
         "Key already exists": "Key already exists",
         "Key cannot be empty": "Parameter name cannot be empty",
         "Props name": "Parameter name",
-        "Props tip": "Can set HTTP request related parameters\nCan use {{key}} to call global variables or external parameter input, currently available variables:\n{{variable}}",
+        "Props tip": "Can set HTTP request related parameters\nCan use / to call variables, currently available variables:\n{{variable}}",
         "Props value": "Parameter value",
         "ResponseChatItemId": "AI response ID",
         "Url and params have been split": "Path parameters have been automatically added to Params",

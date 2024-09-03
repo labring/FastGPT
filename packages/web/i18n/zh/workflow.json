@@ -58,6 +58,9 @@
   "greater_than": "大于",
   "greater_than_or_equal_to": "大于等于",
   "greeting": "打招呼",
+  "http": {
+    "body_none": "该请求没有 Body 体"
+  },
   "http_raw_response_description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
   "http_request": "HTTP 请求",
   "http_request_error_info": "HTTP请求错误信息，成功时返回空",
