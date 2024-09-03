@@ -2,9 +2,9 @@ import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
 import {
   ChatItemType,
   UserChatItemValueItemType,
-  ChatItemValueItemType,
   ToolRunResponseItemType,
-  NodeOutputItemType
+  NodeOutputItemType,
+  AIChatItemValueItemType
 } from '../../chat/type';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io.d';
 import { StoreNodeItemType } from '../type/node';
@@ -173,13 +173,14 @@ export type DispatchNodeResponseType = {
   updateVarResult?: any[];
 };
 
-export type DispatchNodeResultType<T> = {
+export type DispatchNodeResultType<T = {}> = {
   [DispatchNodeResponseKeyEnum.skipHandleId]?: string[]; // skip some edge handle id
   [DispatchNodeResponseKeyEnum.nodeResponse]?: DispatchNodeResponseType; // The node response detail
   [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[]; // Node total usage
   [DispatchNodeResponseKeyEnum.childrenResponses]?: DispatchNodeResultType[]; // Children node response
   [DispatchNodeResponseKeyEnum.toolResponses]?: ToolRunResponseItemType; // Tool response
-  [DispatchNodeResponseKeyEnum.assistantResponses]?: ChatItemValueItemType[]; // Assistant response(Store to db)
+  [DispatchNodeResponseKeyEnum.assistantResponses]?: AIChatItemValueItemType[]; // Assistant response(Store to db)
+  [DispatchNodeResponseKeyEnum.rewriteHistories]?: ChatItemType[];
 } & T;
 
 /* Single node props */

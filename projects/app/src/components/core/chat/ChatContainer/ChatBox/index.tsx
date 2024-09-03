@@ -45,7 +45,7 @@ import ChatBoxDivider from '../../Divider';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { formatChatValue2InputType } from './utils';
+import { checkIsInteractiveByHistories, formatChatValue2InputType } from './utils';
 import { textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext, ChatProviderProps } from './Provider';
@@ -156,15 +156,11 @@ const ChatBox = (
     isChatting
   } = useContextSelector(ChatBoxContext, (v) => v);
 
-  const isInteractive = useMemo(() => {
-    const lastAIHistory = chatHistories[chatHistories.length - 1];
-    if (!lastAIHistory) return false;
-    const lastAIMessage = lastAIHistory.value as AIChatItemValueItemType[];
-    const interactiveContent = lastAIMessage?.find(
-      (item) => item.type === ChatItemValueTypeEnum.interactive
-    )?.interactive?.params;
-    return !!interactiveContent;
-  }, [chatHistories]);
+  // Workflow running, there are user input or selection
+  const isInteractive = useMemo(
+    () => checkIsInteractiveByHistories(chatHistories),
+    [chatHistories]
+  );
 
   // compute variable input is finish.
   const chatForm = useForm<ChatBoxInputFormType>({
@@ -464,8 +460,9 @@ const ChatBox = (
             }
           ];
 
-          // 插入内容
-          setChatHistories(newChatList);
+          const isInteractive = checkIsInteractiveByHistories(history);
+          // Update histories(Interactive input does not require new session rounds)
+          setChatHistories(isInteractive ? newChatList.slice(0, -2) : newChatList);
 
           // 清空输入内容
           resetInputVal({});
@@ -476,6 +473,7 @@ const ChatBox = (
             const abortSignal = new AbortController();
             chatController.current = abortSignal;
 
+            // Last empty ai message will be removed
             const messages = chats2GPTMessages({ messages: newChatList, reserveId: true });
 
             const {
@@ -483,7 +481,7 @@ const ChatBox = (
               responseText,
               isNewChat = false
             } = await onStartChat({
-              messages: messages.slice(0, -1),
+              messages: messages,
               responseChatItemId: responseChatId,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
@@ -492,17 +490,21 @@ const ChatBox = (
 
             isNewChatReplace.current = isNewChat;
 
-            // set finish status
+            // Set last chat finish status
             setChatHistories((state) =>
               state.map((item, index) => {
                 if (index !== state.length - 1) return item;
                 return {
                   ...item,
                   status: 'finish',
-                  responseData
+                  responseData: item.responseData
+                    ? [...item.responseData, ...responseData]
+                    : responseData
                 };
               })
             );
+
+            // TODO: Adapt interactive
             setTimeout(() => {
               createQuestionGuide({
                 history: newChatList.map((item, i) =>
@@ -521,6 +523,7 @@ const ChatBox = (
                     : item
                 )
               });
+
               generatingScroll();
               isPc && TextareaDom.current?.focus();
             }, 100);
