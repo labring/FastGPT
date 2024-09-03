@@ -33,7 +33,7 @@ export type Props = {
       icon?: IconNameType | string;
       label: string | React.ReactNode;
       description?: string;
-      onClick: () => any;
+      onClick?: () => any;
     }[];
   }[];
 };
@@ -170,8 +170,10 @@ const MyMenu = ({
                     {...menuItemStyles}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setIsOpen(false);
-                      child.onClick && child.onClick();
+                      if (child.onClick) {
+                        setIsOpen(false);
+                        child.onClick();
+                      }
                     }}
                     color={child.isActive ? 'primary.700' : 'myGray.600'}
                     whiteSpace={'pre-wrap'}

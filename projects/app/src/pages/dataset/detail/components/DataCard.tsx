@@ -179,7 +179,7 @@ const DataCard = () => {
           <Flex align={'center'} color={'myGray.500'}>
             <MyIcon name="common/list" mr={2} w={'18px'} />
             <Box as={'span'} fontSize={['sm', '14px']} fontWeight={'500'}>
-              {t('core.dataset.data.Total Amount', { total })}
+              {t('common:core.dataset.data.Total Amount', { total })}
             </Box>
           </Flex>
           <Box flex={1} mr={1} />
@@ -204,7 +204,7 @@ const DataCard = () => {
           />
         </Flex>
         {/* data */}
-        <Box flex={'1 0 0'} overflow={'auto'} px={5}>
+        <Box flex={'1 0 0'} overflow={'auto'} px={5} pb={5}>
           <Flex flexDir={'column'} gap={2}>
             {datasetDataList.map((item, index) => (
               <Card
