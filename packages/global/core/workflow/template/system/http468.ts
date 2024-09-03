@@ -8,7 +8,8 @@ import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  FlowNodeTemplateTypeEnum
+  FlowNodeTemplateTypeEnum,
+  ContentTypes
 } from '../../constants';
 import { Input_Template_DynamicInput } from '../input';
 import { Output_Template_AddOutput } from '../output';
@@ -87,6 +88,22 @@ export const HttpNode468: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       valueType: WorkflowIOValueTypeEnum.any,
       value: '',
+      label: '',
+      required: false
+    },
+    {
+      key: NodeInputKeyEnum.httpFormBody,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      valueType: WorkflowIOValueTypeEnum.any,
+      value: [],
+      label: '',
+      required: false
+    },
+    {
+      key: NodeInputKeyEnum.httpContentType,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      valueType: WorkflowIOValueTypeEnum.string,
+      value: ContentTypes.json,
       label: '',
       required: false
     }
