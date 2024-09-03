@@ -1,58 +1,61 @@
-import React, { useEffect } from 'react';
-import { $getRoot, EditorState, type LexicalEditor } from 'lexical';
+import React from 'react';
+import { EditorState, type LexicalEditor } from 'lexical';
 import { useCallback } from 'react';
 import { editorStateToText } from '../../Textarea/PromptEditor/utils';
-import { EditorVariablePickerType } from '../../Textarea/PromptEditor/type';
+import {
+  EditorVariableLabelPickerType,
+  EditorVariablePickerType
+} from '../../Textarea/PromptEditor/type';
 import Editor from './Editor';
 
 const HttpInput = ({
-  hasVariablePlugin = true,
-  hasDropDownPlugin = false,
   variables = [],
+  variableLabels = [],
   value,
   onChange,
   onBlur,
   h,
   placeholder,
-  setDropdownValue,
   updateTrigger
 }: {
-  hasVariablePlugin?: boolean;
-  hasDropDownPlugin?: boolean;
   variables?: EditorVariablePickerType[];
+  variableLabels?: EditorVariableLabelPickerType[];
   value?: string;
   onChange?: (text: string) => void;
   onBlur?: (text: string) => void;
   h?: number;
   placeholder?: string;
-  setDropdownValue?: (value: string) => void;
   updateTrigger?: boolean;
 }) => {
   const [currentValue, setCurrentValue] = React.useState(value);
 
-  const onChangeInput = useCallback((editorState: EditorState, editor: LexicalEditor) => {
-    const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
-    setCurrentValue(text);
-    onChange?.(text);
-  }, []);
-  const onBlurInput = useCallback((editor: LexicalEditor) => {
-    const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
-    onBlur?.(text);
-  }, []);
+  const onChangeInput = useCallback(
+    (editorState: EditorState, editor: LexicalEditor) => {
+      const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
+      setCurrentValue(text);
+      onChange?.(text);
+    },
+    [onChange]
+  );
+  const onBlurInput = useCallback(
+    (editor: LexicalEditor) => {
+      const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
+      onBlur?.(text);
+    },
+    [onBlur]
+  );
 
   return (
     <>
       <Editor
-        hasVariablePlugin={hasVariablePlugin}
-        hasDropDownPlugin={hasDropDownPlugin}
         variables={variables}
+        variableLabels={variableLabels}
         h={h}
         value={value}
         currentValue={currentValue}
         onChange={onChangeInput}
         onBlur={onBlurInput}
         placeholder={placeholder}
-        setDropdownValue={setDropdownValue}
         updateTrigger={updateTrigger}
       />
     </>

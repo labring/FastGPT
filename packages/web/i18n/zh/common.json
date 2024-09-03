@@ -112,7 +112,6 @@
   "common": {
     "Action": "操作",
     "Add": "添加",
-    "copy_to_clipboard": "复制到剪贴板",
     "Add New": "新增",
     "Add Success": "添加成功",
     "All": "全部",
@@ -123,7 +122,6 @@
     "Confirm": "确认",
     "Confirm Create": "确认创建",
     "Confirm Import": "确认导入",
-    "export_to_json": "导出为 JSON",
     "Confirm Move": "移动到这",
     "Confirm Update": "确认更新",
     "Confirm to leave the page": "确认离开该页面？",
@@ -195,7 +193,6 @@
     "Save Success": "保存成功",
     "Save_and_exit": "保存并退出",
     "Search": "搜索",
-    "json_config": "JSON 配置",
     "Select File Failed": "选择文件异常",
     "Select template": "选择模板",
     "Set Avatar": "点击设置头像",
@@ -230,6 +227,7 @@
     "confirm": {
       "Common Tip": "操作确认"
     },
+    "copy_to_clipboard": "复制到剪贴板",
     "course": {
       "Read Course": "查看教程"
     },
@@ -241,6 +239,7 @@
       "too_many_request": "请求太频繁了，请稍后重试。",
       "unKnow": "出现了点意外~"
     },
+    "export_to_json": "导出为 JSON",
     "failed": "失败",
     "folder": {
       "Drag Tip": "点我可拖动",
@@ -260,6 +259,7 @@
     "jsonEditor": {
       "Parse error": "JSON 可能有误，请仔细检查"
     },
+    "json_config": "JSON 配置",
     "link": {
       "UnValid": "无效的链接"
     },
@@ -647,7 +647,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -865,7 +866,7 @@
         "Key already exists": "Key 已经存在",
         "Key cannot be empty": "参数名不能为空",
         "Props name": "参数名",
-        "Props tip": "可以设置 HTTP 请求的相关参数\n可通过 {{key}} 来调用全局变量或外部参数输入，当前可使用变量：\n{{variable}}",
+        "Props tip": "可以设置 HTTP 请求的相关参数\n可通过输入 / 来调用变量，当前可使用变量：\n{{variable}}",
         "Props value": "参数值",
         "ResponseChatItemId": "AI 回复的 ID",
         "Url and params have been split": "路径参数已被自动加入 Params 中",

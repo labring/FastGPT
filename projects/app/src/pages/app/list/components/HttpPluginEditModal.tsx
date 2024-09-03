@@ -34,7 +34,6 @@ import { str2OpenApiSchema } from '@fastgpt/global/core/app/httpPlugin/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
-import { HttpHeaders } from '../../detail/components/WorkflowComponents/Flow/nodes/NodeHttp';
 import { OpenApiJsonSchema } from '@fastgpt/global/core/app/httpPlugin/type';
 import { AppSchema } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
@@ -167,15 +166,6 @@ const HttpPluginEditModal = ({
     },
     errorToast: t('common:plugin.Invalid Schema')
   });
-
-  const leftVariables = useMemo(
-    () =>
-      HttpHeaders.filter((variable) => {
-        const existVariables = customHeaders.map((item) => item.key);
-        return !existVariables.includes(variable.key);
-      }),
-    [customHeaders]
-  );
 
   useEffect(() => {
     (async () => {
@@ -315,28 +305,8 @@ const HttpPluginEditModal = ({
                       <Tr key={`${index}`}>
                         <Td p={0} w={'150px'}>
                           <HttpInput
-                            hasVariablePlugin={false}
-                            hasDropDownPlugin={true}
-                            setDropdownValue={(val) => {
-                              setCustomHeaders((prev) => {
-                                const newHeaders = prev.map((item, i) =>
-                                  i === index ? { ...item, key: val } : item
-                                );
-                                setValue(
-                                  'pluginData.customHeaders',
-                                  '{\n' +
-                                    newHeaders
-                                      .map((item) => `"${item.key}":"${item.value}"`)
-                                      .join(',\n') +
-                                    '\n}'
-                                );
-                                return newHeaders;
-                              });
-                              setUpdateTrigger((prev) => !prev);
-                            }}
                             placeholder={t('common:core.module.http.Props name')}
                             value={item.key}
-                            variables={leftVariables}
                             onBlur={(val) => {
                               setCustomHeaders((prev) => {
                                 const newHeaders = prev.map((item, i) =>
@@ -360,7 +330,6 @@ const HttpPluginEditModal = ({
                           <Box display={'flex'} alignItems={'center'}>
                             <HttpInput
                               placeholder={t('common:core.module.http.Props value')}
-                              hasVariablePlugin={false}
                               value={item.value}
                               onBlur={(val) =>
                                 setCustomHeaders((prev) => {
@@ -406,26 +375,8 @@ const HttpPluginEditModal = ({
                     <Tr>
                       <Td p={0} w={'150px'}>
                         <HttpInput
-                          hasVariablePlugin={false}
-                          hasDropDownPlugin={true}
-                          setDropdownValue={(val) => {
-                            setCustomHeaders((prev) => {
-                              const newHeaders = [...prev, { key: val, value: '' }];
-                              setValue(
-                                'pluginData.customHeaders',
-                                '{\n' +
-                                  newHeaders
-                                    .map((item) => `"${item.key}":"${item.value}"`)
-                                    .join(',\n') +
-                                  '\n}'
-                              );
-                              return newHeaders;
-                            });
-                            setUpdateTrigger((prev) => !prev);
-                          }}
                           placeholder={t('common:core.module.http.Add props')}
                           value={''}
-                          variables={leftVariables}
                           updateTrigger={updateTrigger}
                           onBlur={(val) => {
                             if (!val) return;
