@@ -101,3 +101,5 @@ export const urlsFetch = async ({
 
   return response;
 };
+
+export const loadContent = async (content: string) => cheerio.load(content);
