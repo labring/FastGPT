@@ -105,7 +105,7 @@ const MultipleRowSelect = ({
         justifyContent={'space-between'}
         width={'100%'}
         rightIcon={<ChevronDownIcon />}
-        variant={'whiteFlow'}
+        variant={'whiteBase'}
         _active={{
           transform: 'none'
         }}

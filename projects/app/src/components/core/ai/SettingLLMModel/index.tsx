@@ -68,7 +68,7 @@ const SettingLLMModel = ({
         <Button
           w={'100%'}
           justifyContent={'flex-start'}
-          variant={'whiteFlow'}
+          variant={'whiteBase'}
           bg={bg}
           _active={{
             transform: 'none'

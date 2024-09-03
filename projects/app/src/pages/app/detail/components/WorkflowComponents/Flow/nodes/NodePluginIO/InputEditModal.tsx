@@ -312,6 +312,7 @@ const FieldEditModal = ({
       title={isEdit ? t('workflow:edit_input') : t('workflow:add_new_input')}
       maxW={['90vw', '1028px']}
       w={'100%'}
+      isCentered
     >
       <Flex h={'560px'}>
         <Stack gap={4} p={8}>
