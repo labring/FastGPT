@@ -74,7 +74,11 @@ const AppCard = ({
                         label: ExportPopover({
                           chatConfig: appDetail.chatConfig,
                           appName: appDetail.name
-                        })
+                        }),
+                        menuItemStyles: {
+                          p: 0,
+                          cursor: 'default'
+                        }
                       }
                     ]
                   }
@@ -213,12 +217,12 @@ function ExportPopover({
   return (
     <MyPopover
       placement={'right-start'}
-      offset={[-5, 20]}
+      offset={[-5, 5]}
       hasArrow={false}
       trigger={'hover'}
       w={'8.6rem'}
       Trigger={
-        <Flex align={'center'} w={'100%'}>
+        <Flex align={'center'} w={'100%'} py={2} px={3}>
           <Avatar src={'export'} borderRadius={'sm'} w={'1rem'} mr={3} />
           {t('app:export_configs')}
         </Flex>
@@ -232,7 +236,8 @@ function ExportPopover({
             color={'myGray.600'}
             _hover={{
               bg: 'myGray.05',
-              color: 'primary.600'
+              color: 'primary.600',
+              cursor: 'pointer'
             }}
             borderRadius={'xs'}
             onClick={onExportWorkflow}
@@ -246,7 +251,8 @@ function ExportPopover({
             color={'myGray.600'}
             _hover={{
               bg: 'myGray.05',
-              color: 'primary.600'
+              color: 'primary.600',
+              cursor: 'pointer'
             }}
             borderRadius={'xs'}
             onClick={() => {

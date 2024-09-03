@@ -21,6 +21,7 @@ export interface MyModalProps extends ModalContentProps {
   isOpen?: boolean;
   onClose?: () => void;
   closeOnOverlayClick?: boolean;
+  size?: 'md' | 'lg';
 }
 
 const MyModal = ({
@@ -35,6 +36,7 @@ const MyModal = ({
   maxW = ['90vw', '600px'],
   closeOnOverlayClick = true,
   iconColor,
+  size = 'md',
   ...props
 }: MyModalProps) => {
   const { isPc } = useSystem();
@@ -43,6 +45,7 @@ const MyModal = ({
     <Modal
       isOpen={isOpen}
       onClose={() => onClose && onClose()}
+      size={size}
       autoFocus={false}
       isCentered={isPc ? isCentered : true}
       blockScrollOnMount={false}

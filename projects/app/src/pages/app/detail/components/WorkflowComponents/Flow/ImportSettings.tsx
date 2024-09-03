@@ -73,7 +73,6 @@ const ImportSettings = ({ onClose }: Props) => {
   return (
     <MyModal
       isOpen
-      w={'600px'}
       onClose={onClose}
       title={
         <Flex align={'center'} ml={-3}>
@@ -81,15 +80,16 @@ const ImportSettings = ({ onClose }: Props) => {
           <Box lineHeight={'1.25rem'}>{appT('import_configs')}</Box>
         </Flex>
       }
+      size={isPc ? 'lg' : 'md'}
     >
-      <ModalBody py={'2rem'} px={'3.25rem'}>
+      <ModalBody>
         <File onSelect={onSelectFile} />
         {isDragging ? (
           <Flex
             align={'center'}
             justify={'center'}
             w={'31rem'}
-            h={'21.25rem'}
+            h={'17.5rem'}
             borderRadius={'md'}
             border={'1px dashed'}
             borderColor={'myGray.400'}
@@ -106,7 +106,7 @@ const ImportSettings = ({ onClose }: Props) => {
             </Flex>
           </Flex>
         ) : (
-          <Box w={'31rem'} minH={'21.25rem'}>
+          <Box w={['100%', '31rem']}>
             <Flex justify={'space-between'} align={'center'} pb={2}>
               <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'500'}>
                 {t('common:common.json_config')}
@@ -141,36 +141,36 @@ const ImportSettings = ({ onClose }: Props) => {
                 onChange={(e) => setValue(e.target.value)}
               />
             </Box>
-            <Flex justify={'flex-end'} pt={5}>
-              <Button
-                p={0}
-                onClick={() => {
-                  if (!value) {
-                    return onClose();
-                  }
-                  try {
-                    const data = JSON.parse(value);
-                    initData(data);
-                    onClose();
-                  } catch (error) {
-                    toast({
-                      title: appT('import_configs_failed')
-                    });
-                  }
-                  toast({
-                    title: t('app:import_configs_success'),
-                    status: 'success'
-                  });
-                }}
-              >
-                <Flex px={5} py={2} fontWeight={'500'}>
-                  {t('common:common.Save')}
-                </Flex>
-              </Button>
-            </Flex>
           </Box>
         )}
       </ModalBody>
+      <ModalFooter justifyItems={'flex-end'}>
+        <Button
+          px={5}
+          py={2}
+          onClick={async () => {
+            if (!value) {
+              return onClose();
+            }
+            try {
+              const data = JSON.parse(value);
+              await initData(data);
+              toast({
+                title: t('app:import_configs_success'),
+                status: 'success'
+              });
+              onClose();
+            } catch (error) {
+              toast({
+                title: t('app:import_configs_failed')
+              });
+            }
+          }}
+          fontWeight={'500'}
+        >
+          {t('common:common.Save')}
+        </Button>
+      </ModalFooter>
     </MyModal>
   );
 };

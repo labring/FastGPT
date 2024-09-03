@@ -23,7 +23,7 @@ export type Props = {
   trigger?: 'hover' | 'click';
   iconSize?: string;
   iconRadius?: string;
-  menuItemStyles?: MenuItemProps;
+
   placement?: PlacementWithLogical;
   menuList: {
     label?: string;
@@ -34,6 +34,7 @@ export type Props = {
       label: string | React.ReactNode;
       description?: string;
       onClick?: () => any;
+      menuItemStyles?: MenuItemProps;
     }[];
   }[];
 };
@@ -46,15 +47,7 @@ const MyMenu = ({
   Button,
   menuList,
   iconRadius,
-  placement = 'bottom-start',
-  menuItemStyles = {
-    borderRadius: 'sm',
-    py: 2,
-    px: 3,
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: 'sm'
-  }
+  placement = 'bottom-start'
 }: Props) => {
   const typeMapStyle: Record<MenuItemType, MenuItemProps> = {
     primary: {
@@ -167,7 +160,7 @@ const MyMenu = ({
                 {item.children.map((child, index) => (
                   <MenuItem
                     key={index}
-                    {...menuItemStyles}
+                    borderRadius={'sm'}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (child.onClick) {
@@ -175,10 +168,15 @@ const MyMenu = ({
                         child.onClick();
                       }
                     }}
+                    py={2}
+                    px={3}
+                    alignItems={'center'}
+                    fontSize={'sm'}
                     color={child.isActive ? 'primary.700' : 'myGray.600'}
                     whiteSpace={'pre-wrap'}
                     _notLast={{ mb: 0.5 }}
                     {...typeMapStyle[child.type || 'primary']}
+                    {...child.menuItemStyles}
                   >
                     {!!child.icon && (
                       <Avatar
