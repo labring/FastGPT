@@ -80,7 +80,7 @@ const ImportSettings = ({ onClose }: Props) => {
           <Box lineHeight={'1.25rem'}>{appT('import_configs')}</Box>
         </Flex>
       }
-      size="lg"
+      size={isPc ? 'lg' : 'md'}
     >
       <ModalBody>
         <File onSelect={onSelectFile} />
@@ -106,7 +106,7 @@ const ImportSettings = ({ onClose }: Props) => {
             </Flex>
           </Flex>
         ) : (
-          <Box w={'31rem'}>
+          <Box w={['100%', '31rem']}>
             <Flex justify={'space-between'} align={'center'} pb={2}>
               <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'500'}>
                 {t('common:common.json_config')}
@@ -144,34 +144,32 @@ const ImportSettings = ({ onClose }: Props) => {
           </Box>
         )}
       </ModalBody>
-      <ModalFooter>
-        <Flex justify={'flex-end'}>
-          <Button
-            p={0}
-            onClick={() => {
-              if (!value) {
-                return onClose();
-              }
-              try {
-                const data = JSON.parse(value);
-                initData(data);
-                onClose();
-              } catch (error) {
-                toast({
-                  title: appT('import_configs_failed')
-                });
-              }
+      <ModalFooter justifyItems={'flex-end'}>
+        <Button
+          px={5}
+          py={2}
+          onClick={() => {
+            if (!value) {
+              return onClose();
+            }
+            try {
+              const data = JSON.parse(value);
+              initData(data);
+              onClose();
+            } catch (error) {
               toast({
-                title: t('app:import_configs_success'),
-                status: 'success'
+                title: appT('import_configs_failed')
               });
-            }}
-          >
-            <Flex px={5} py={2} fontWeight={'500'}>
-              {t('common:common.Save')}
-            </Flex>
-          </Button>
-        </Flex>
+            }
+            toast({
+              title: t('app:import_configs_success'),
+              status: 'success'
+            });
+          }}
+          fontWeight={'500'}
+        >
+          {t('common:common.Save')}
+        </Button>
       </ModalFooter>
     </MyModal>
   );
