@@ -29,7 +29,7 @@ type UserSelectResponse = DispatchNodeResultType<{
 export const dispatchUserSelect = async (props: Props): Promise<UserSelectResponse> => {
   const {
     workflowStreamResponse,
-    app: { _id: appId },
+    runningAppInfo: { id: appId },
     chatId,
     node: { nodeId, isEntry },
     params: { description, userSelectOptions },

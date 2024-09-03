@@ -25,11 +25,13 @@ export const authPluginByTmbId = async ({
 }) => {
   const { source } = await splitCombinePluginId(appId);
   if (source === PluginSourceEnum.personal) {
-    await authAppByTmbId({
+    const { app } = await authAppByTmbId({
       appId,
       tmbId,
       per
     });
+
+    return app;
   }
 };
 

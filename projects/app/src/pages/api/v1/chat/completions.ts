@@ -52,18 +52,12 @@ import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import {
-  removePluginInputVariables,
-  updatePluginInputByVariables
-} from '@fastgpt/global/core/workflow/utils';
+import { updatePluginInputByVariables } from '@fastgpt/global/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import {
-  getPluginInputsFromStoreNodes,
-  getPluginRunContent
-} from '@fastgpt/global/core/app/plugin/utils';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { getPluginRunUserQuery } from '@fastgpt/service/core/workflow/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -193,21 +187,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Get obj=Human history
     const userQuestion: UserChatItemType = (() => {
       if (isPlugin) {
-        return {
-          dataId: getNanoid(24),
-          obj: ChatRoleEnum.Human,
-          value: [
-            {
-              type: ChatItemValueTypeEnum.text,
-              text: {
-                content: getPluginRunContent({
-                  pluginInputs: getPluginInputsFromStoreNodes(app.modules),
-                  variables
-                })
-              }
-            }
-          ]
-        };
+        return getPluginRunUserQuery(app.modules, variables);
       }
 
       const latestHumanChat = chatMessages.pop() as UserChatItemType | undefined;
@@ -246,8 +226,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (isPlugin) {
       // Assign values to runtimeNodes using variables
       runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
-      // Remove pluginInput fields from variables (they are not global variables)
-      variables = removePluginInputVariables(variables, runtimeNodes);
+      // Plugin runtime does not need global variables(It has been injected into the pluginInputNode)
+      variables = {};
     }
     runtimeNodes = rewriteNodeOutputByHistories(newHistories, runtimeNodes);
 
@@ -266,9 +246,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           requestOrigin: req.headers.origin,
           mode: 'chat',
           user,
-          teamId: String(teamId),
-          tmbId: String(tmbId),
-          app,
+
+          runningAppInfo: {
+            id: String(app._id),
+            teamId: String(app.teamId),
+            tmbId: String(app.tmbId)
+          },
+          uid: String(outLinkUserId || tmbId),
+
           chatId,
           responseChatItemId,
           runtimeNodes,

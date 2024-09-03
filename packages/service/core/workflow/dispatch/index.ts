@@ -554,13 +554,13 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 /* get system variable */
 export function getSystemVariable({
   user,
-  app,
+  runningAppInfo,
   chatId,
   responseChatItemId,
   histories = []
 }: Props) {
   return {
-    appId: String(app._id),
+    appId: String(runningAppInfo.id),
     chatId,
     responseChatItemId,
     histories,

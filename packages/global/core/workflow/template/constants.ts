@@ -17,7 +17,7 @@ import { RunAppModule } from './system/abandoned/runApp/index';
 import { PluginInputModule } from './system/pluginInput';
 import { PluginOutputModule } from './system/pluginOutput';
 import { RunPluginModule } from './system/runPlugin';
-import { RunAppPluginModule } from './system/runAppPlugin';
+import { RunAppNode } from './system/runApp';
 import { AiQueryExtension } from './system/queryExtension';
 
 import type { FlowNodeTemplateType } from '../type/node';
@@ -73,6 +73,6 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   ),
   EmptyNode,
   RunPluginModule,
-  RunAppPluginModule,
+  RunAppNode,
   RunAppModule
 ];

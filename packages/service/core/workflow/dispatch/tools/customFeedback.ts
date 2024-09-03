@@ -15,7 +15,7 @@ type Response = DispatchNodeResultType<{}>;
 
 export const dispatchCustomFeedback = (props: Record<string, any>): Response => {
   const {
-    app: { _id: appId },
+    runningAppInfo: { id: appId },
     chatId,
     responseChatItemId: chatItemId,
     stream,
