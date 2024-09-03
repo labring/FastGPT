@@ -37,7 +37,7 @@ export async function dispatchDatasetSearch(
   props: DatasetSearchProps
 ): Promise<DatasetSearchResponse> {
   const {
-    teamId,
+    runningAppInfo: { teamId },
     histories,
     node,
     params: {

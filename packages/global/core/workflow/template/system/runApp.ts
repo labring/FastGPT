@@ -3,7 +3,7 @@ import { FlowNodeTypeEnum } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type/node';
 import { getHandleConfig } from '../utils';
 
-export const RunAppPluginModule: FlowNodeTemplateType = {
+export const RunAppNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.appModule,
   templateType: FlowNodeTemplateTypeEnum.other,
   flowNodeType: FlowNodeTypeEnum.appModule,

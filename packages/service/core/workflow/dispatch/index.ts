@@ -6,7 +6,8 @@ import {
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
   ChatDispatchProps,
-  ModuleDispatchProps
+  ModuleDispatchProps,
+  SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type.d';
 import type {
@@ -554,13 +555,15 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 /* get system variable */
 export function getSystemVariable({
   user,
-  app,
+  runningAppInfo,
   chatId,
   responseChatItemId,
-  histories = []
-}: Props) {
+  histories = [],
+  uid
+}: Props): SystemVariablesType {
   return {
-    appId: String(app._id),
+    userId: uid,
+    appId: String(runningAppInfo.id),
     chatId,
     responseChatItemId,
     histories,

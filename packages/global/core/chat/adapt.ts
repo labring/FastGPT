@@ -151,12 +151,23 @@ export const GPTMessages2Chats = (
         obj === ChatRoleEnum.System &&
         item.role === ChatCompletionRequestMessageRoleEnum.System
       ) {
-        value.push({
-          type: ChatItemValueTypeEnum.text,
-          text: {
-            content: item.content
-          }
-        });
+        if (Array.isArray(item.content)) {
+          item.content.forEach((item) => [
+            value.push({
+              type: ChatItemValueTypeEnum.text,
+              text: {
+                content: item.text
+              }
+            })
+          ]);
+        } else {
+          value.push({
+            type: ChatItemValueTypeEnum.text,
+            text: {
+              content: item.content
+            }
+          });
+        }
       } else if (
         obj === ChatRoleEnum.Human &&
         item.role === ChatCompletionRequestMessageRoleEnum.User

@@ -43,10 +43,13 @@ async function handler(
     res,
     requestOrigin: req.headers.origin,
     mode: 'debug',
-    teamId,
-    tmbId,
+    runningAppInfo: {
+      id: appId,
+      teamId,
+      tmbId
+    },
+    uid: tmbId,
     user,
-    app,
     runtimeNodes: nodes,
     runtimeEdges: edges,
     variables,

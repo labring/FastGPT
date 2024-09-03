@@ -326,27 +326,6 @@ export const updatePluginInputByVariables = (
   );
 };
 
-/* Remove pluginInput variables from global variables
-  (completions api: Plugin input get value from global variables) 
-*/
-export const removePluginInputVariables = (
-  variables: Record<string, any>,
-  nodes: RuntimeNodeItemType[]
-) => {
-  const pluginInputNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput);
-
-  if (!pluginInputNode) return variables;
-  return Object.keys(variables).reduce(
-    (acc, key) => {
-      if (!pluginInputNode.inputs.find((input) => input.key === key)) {
-        acc[key] = variables[key];
-      }
-      return acc;
-    },
-    {} as Record<string, any>
-  );
-};
-
 // replace {{$xx.xx$}} variables for text
 export function replaceEditorVariable({
   text,

@@ -54,12 +54,11 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
   const variables = useCreation(() => {
     const globalVariables = getWorkflowGlobalVariables({
       nodes: nodeList,
-      chatConfig: appDetail.chatConfig,
-      t
+      chatConfig: appDetail.chatConfig
     });
 
     return globalVariables;
-  }, [nodeList, t]);
+  }, [nodeList]);
 
   const [selectTemplateData, setSelectTemplateData] = useState<{
     title: string;

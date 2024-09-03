@@ -5,7 +5,10 @@ import {
   WorkflowIOValueTypeEnum,
   NodeOutputKeyEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import {
+  RuntimeEdgeItemType,
+  SystemVariablesType
+} from '@fastgpt/global/core/workflow/runtime/type';
 import { responseWrite } from '../../../common/response';
 import { NextApiResponse } from 'next';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -144,8 +147,9 @@ export const removeSystemVariable = (variables: Record<string, any>) => {
 
   return copyVariables;
 };
-export const filterSystemVariables = (variables: Record<string, any>) => {
+export const filterSystemVariables = (variables: Record<string, any>): SystemVariablesType => {
   return {
+    userId: variables.userId,
     appId: variables.appId,
     chatId: variables.chatId,
     responseChatItemId: variables.responseChatItemId,
