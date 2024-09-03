@@ -75,9 +75,9 @@ const AppCard = ({
                           chatConfig: appDetail.chatConfig,
                           appName: appDetail.name
                         }),
-                        onClick: () => {},
                         menuItemStyles: {
-                          p: 0
+                          p: 0,
+                          cursor: 'default'
                         }
                       }
                     ]
@@ -236,7 +236,8 @@ function ExportPopover({
             color={'myGray.600'}
             _hover={{
               bg: 'myGray.05',
-              color: 'primary.600'
+              color: 'primary.600',
+              cursor: 'pointer'
             }}
             borderRadius={'xs'}
             onClick={onExportWorkflow}
@@ -250,7 +251,8 @@ function ExportPopover({
             color={'myGray.600'}
             _hover={{
               bg: 'myGray.05',
-              color: 'primary.600'
+              color: 'primary.600',
+              cursor: 'pointer'
             }}
             borderRadius={'xs'}
             onClick={() => {

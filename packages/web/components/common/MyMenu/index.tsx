@@ -33,7 +33,7 @@ export type Props = {
       icon?: IconNameType | string;
       label: string | React.ReactNode;
       description?: string;
-      onClick: () => any;
+      onClick?: () => any;
       menuItemStyles?: MenuItemProps;
     }[];
   }[];

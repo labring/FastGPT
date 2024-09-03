@@ -148,23 +148,23 @@ const ImportSettings = ({ onClose }: Props) => {
         <Button
           px={5}
           py={2}
-          onClick={() => {
+          onClick={async () => {
             if (!value) {
               return onClose();
             }
             try {
               const data = JSON.parse(value);
-              initData(data);
+              await initData(data);
+              toast({
+                title: t('app:import_configs_success'),
+                status: 'success'
+              });
               onClose();
             } catch (error) {
               toast({
-                title: appT('import_configs_failed')
+                title: t('app:import_configs_failed')
               });
             }
-            toast({
-              title: t('app:import_configs_success'),
-              status: 'success'
-            });
           }}
           fontWeight={'500'}
         >
