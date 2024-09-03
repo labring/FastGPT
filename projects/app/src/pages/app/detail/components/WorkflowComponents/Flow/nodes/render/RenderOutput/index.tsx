@@ -134,12 +134,12 @@ const RenderOutput = ({
     );
     return (
       <>
-        {renderOutputs.map((output) => {
+        {renderOutputs.map((output, i) => {
           return output.label ? (
             <FormLabel
               key={output.key}
               required={output.required}
-              _notLast={{ mb: 5 }}
+              mb={i === renderOutputs.length - 1 ? 0 : 5}
               position={'relative'}
             >
               <OutputLabel nodeId={nodeId} output={output} />
