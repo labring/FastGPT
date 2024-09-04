@@ -58,9 +58,6 @@
   "greater_than": "greater than",
   "greater_than_or_equal_to": "Greater than or equal to",
   "greeting": "greet",
-  "http": {
-    "body_none": "This request has no body parameters."
-  },
   "http_raw_response_description": "The raw response of the HTTP request. \nOnly string or JSON type response data can be accepted.",
   "http_request": "HTTP request",
   "http_request_error_info": "HTTP request error information, returns empty when successful",

@@ -106,6 +106,7 @@ export default function Editor({
       cursor={'text'}
       color={'myGray.700'}
       bg={focus ? 'white' : bg}
+      borderRadius={'md'}
     >
       <LexicalComposer initialConfig={initialConfig} key={key}>
         <PlainTextPlugin
