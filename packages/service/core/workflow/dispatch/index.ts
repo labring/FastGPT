@@ -6,6 +6,7 @@ import {
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
   ChatDispatchProps,
+  DispatchNodeResultType,
   ModuleDispatchProps,
   SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
@@ -145,14 +146,15 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       responseData,
       nodeDispatchUsages,
       toolResponses,
-      assistantResponses
-    }: {
-      [NodeOutputKeyEnum.answerText]?: string;
-      [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[];
-      [DispatchNodeResponseKeyEnum.toolResponses]?: ToolRunResponseItemType;
-      [DispatchNodeResponseKeyEnum.assistantResponses]?: AIChatItemValueItemType[]; // tool module, save the response value
-    }
+      assistantResponses,
+      rewriteHistories
+    }: Omit<
+      DispatchNodeResultType<{
+        [NodeOutputKeyEnum.answerText]?: string;
+        [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
+      }>,
+      'nodeResponse'
+    >
   ) {
     if (responseData) {
       chatResponses.push(responseData);
@@ -181,6 +183,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
           }
         });
       }
+    }
+
+    if (rewriteHistories) {
+      histories = rewriteHistories;
     }
   }
   /* Pass the output of the node, to get next nodes and update edge status */
