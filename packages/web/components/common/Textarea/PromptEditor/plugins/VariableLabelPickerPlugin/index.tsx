@@ -77,10 +77,7 @@ export default function VariableLabelPickerPlugin({
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
       options={variableFilter(variables, queryString || '')}
-      menuRenderFn={(
-        anchorElementRef,
-        { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }
-      ) => {
+      menuRenderFn={(anchorElementRef, { selectedIndex, selectOptionAndCleanUp }) => {
         if (anchorElementRef.current == null) {
           return null;
         }

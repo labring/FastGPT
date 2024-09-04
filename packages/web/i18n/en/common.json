@@ -858,6 +858,7 @@
       },
       "http": {
         "Add props": "Add parameters",
+        "Add props_and_tips": "Add parameter, enter \"/\" to call variable list",
         "AppId": "Application ID",
         "AppSecret": "AppSecret",
         "ChatId": "Current chat ID",
@@ -866,8 +867,10 @@
         "Key already exists": "Key already exists",
         "Key cannot be empty": "Parameter name cannot be empty",
         "Props name": "Parameter name",
+        "Props name_and_tips": "Parameter name, enter \"/\" to call variables list",
         "Props tip": "Can set HTTP request related parameters\nCan use / to call variables, currently available variables:\n{{variable}}",
         "Props value": "Parameter value",
+        "Props value_and_tips": "Parameter value, enter \"/\" to call variables list",
         "ResponseChatItemId": "AI response ID",
         "Url and params have been split": "Path parameters have been automatically added to Params",
         "curl import": "curl import",
