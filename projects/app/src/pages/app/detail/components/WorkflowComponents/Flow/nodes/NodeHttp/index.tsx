@@ -448,10 +448,10 @@ const RenderForm = ({
       setList((prevList) => {
         if (!newKey) {
           setUpdateTrigger((prev) => !prev);
-          toast({
-            status: 'warning',
-            title: t('common:core.module.http.Key cannot be empty')
-          });
+          // toast({
+          //   status: 'warning',
+          //   title: t('common:core.module.http.Key cannot be empty')
+          // });
           return prevList;
         }
         const checkExist = prevList.find((item, i) => i !== index && item.key == newKey);
@@ -520,11 +520,7 @@ const RenderForm = ({
                 <Tr key={`${input.key}${index}`}>
                   <Td p={0} w={'50%'} borderRight={'1px solid'} borderColor={'myGray.200'}>
                     <HttpInput
-                      placeholder={
-                        index !== list.length
-                          ? t('common:core.module.http.Props name_and_tips')
-                          : t('common:core.module.http.Add props_and_tips')
-                      }
+                      placeholder={t('common:textarea_variable_picker_tip')}
                       value={item.key}
                       variableLabels={variables}
                       variables={variables}
@@ -541,11 +537,7 @@ const RenderForm = ({
                   <Td p={0} w={'50%'}>
                     <Box display={'flex'} alignItems={'center'}>
                       <HttpInput
-                        placeholder={
-                          index !== list.length
-                            ? t('common:core.module.http.Props value_and_tips')
-                            : ''
-                        }
+                        placeholder={t('common:textarea_variable_picker_tip')}
                         value={item.value}
                         variables={variables}
                         variableLabels={variables}
@@ -694,6 +686,7 @@ const RenderBody = ({
         {(typeInput?.value === ContentTypes.xml || typeInput?.value === ContentTypes.raw) && (
           <PromptEditor
             value={jsonBody.value}
+            placeholder={t('common:textarea_variable_picker_tip')}
             onChange={(e) => {
               startSts(() => {
                 onChangeNode({
