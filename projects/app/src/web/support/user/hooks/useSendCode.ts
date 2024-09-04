@@ -12,10 +12,18 @@ export const useSendCode = () => {
   const [codeCountDown, setCodeCountDown] = useState(0);
 
   const { runAsync: sendCode, loading: codeSending } = useRequest2(
-    async ({ username, type }: { username: string; type: `${UserAuthTypeEnum}` }) => {
+    async ({
+      username,
+      type,
+      captcha
+    }: {
+      username: string;
+      type: `${UserAuthTypeEnum}`;
+      captcha: string;
+    }) => {
       if (codeCountDown > 0) return;
       const googleToken = await getClientToken(feConfigs.googleClientVerKey);
-      await sendAuthCode({ username, type, googleToken });
+      await sendAuthCode({ username, type, googleToken, captcha });
       setCodeCountDown(60);
 
       timer = setInterval(() => {

@@ -1257,6 +1257,7 @@
       "auth": {
         "Sending Code": "Sending"
       },
+      "captcha_placeholder": "Please enter the 6-digit verification code",
       "inform": {
         "System message": "System message"
       },
