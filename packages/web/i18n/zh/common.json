@@ -858,6 +858,7 @@
       },
       "http": {
         "Add props": "添加参数",
+        "Add props_and_tips": "添加参数，输入“/”唤起变量列表",
         "AppId": "应用 ID",
         "AppSecret": "AppSecret",
         "ChatId": "当前对话 ID",
@@ -866,8 +867,10 @@
         "Key already exists": "Key 已经存在",
         "Key cannot be empty": "参数名不能为空",
         "Props name": "参数名",
+        "Props name_and_tips": "参数名，输入”/“唤起变量列表",
         "Props tip": "可以设置 HTTP 请求的相关参数\n可通过输入 / 来调用变量，当前可使用变量：\n{{variable}}",
         "Props value": "参数值",
+        "Props value_and_tips": "参数值，输入“/”唤起变量列表",
         "ResponseChatItemId": "AI 回复的 ID",
         "Url and params have been split": "路径参数已被自动加入 Params 中",
         "curl import": "cURL 导入",
