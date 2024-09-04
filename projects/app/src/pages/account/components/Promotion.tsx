@@ -20,7 +20,6 @@ import { getPromotionInitData, getPromotionRecords } from '@/web/support/activit
 import { useUserStore } from '@/web/support/user/useUserStore';
 
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import type { PromotionRecordType } from '@/global/support/api/userRes.d';
 import dayjs from 'dayjs';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -40,7 +39,7 @@ const Promotion = () => {
     total,
     pageSize,
     Pagination
-  } = usePagination<PromotionRecordType>({
+  } = usePagination({
     api: getPromotionRecords,
     pageSize: 20
   });
