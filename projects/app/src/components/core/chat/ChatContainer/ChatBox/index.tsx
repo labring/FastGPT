@@ -339,16 +339,15 @@ const ChatBox = (
 
   // create question guide
   const createQuestionGuide = useCallback(
-    async ({ history }: { history: ChatSiteItemType[] }) => {
+    async ({ histories }: { histories: ChatSiteItemType[] }) => {
       if (!questionGuide || chatController.current?.signal?.aborted) return;
-
       try {
         const abortSignal = new AbortController();
         questionGuideController.current = abortSignal;
 
         const result = await postQuestionGuide(
           {
-            messages: chats2GPTMessages({ messages: history, reserveId: false }).slice(-6),
+            messages: chats2GPTMessages({ messages: histories, reserveId: false }).slice(-6),
             shareId,
             outLinkUid,
             teamId,
@@ -491,8 +490,9 @@ const ChatBox = (
             isNewChatReplace.current = isNewChat;
 
             // Set last chat finish status
-            setChatHistories((state) =>
-              state.map((item, index) => {
+            let newChatHistories: ChatSiteItemType[] = [];
+            setChatHistories((state) => {
+              newChatHistories = state.map((item, index) => {
                 if (index !== state.length - 1) return item;
                 return {
                   ...item,
@@ -501,28 +501,17 @@ const ChatBox = (
                     ? [...item.responseData, ...responseData]
                     : responseData
                 };
-              })
-            );
+              });
+              return newChatHistories;
+            });
 
             // TODO: Adapt interactive
             setTimeout(() => {
-              createQuestionGuide({
-                history: newChatList.map((item, i) =>
-                  i === newChatList.length - 1
-                    ? {
-                        ...item,
-                        value: [
-                          {
-                            type: ChatItemValueTypeEnum.text,
-                            text: {
-                              content: responseText
-                            }
-                          }
-                        ]
-                      }
-                    : item
-                )
-              });
+              if (!checkIsInteractiveByHistories(newChatHistories)) {
+                createQuestionGuide({
+                  histories: newChatHistories
+                });
+              }
 
               generatingScroll();
               isPc && TextareaDom.current?.focus();
