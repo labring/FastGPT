@@ -452,16 +452,12 @@ const RenderForm = ({
           //   status: 'warning',
           //   title: t('common:core.module.http.Key cannot be empty')
           // });
-          return prevList;
-        }
-        const checkExist = prevList.find((item, i) => i !== index && item.key == newKey);
-        if (checkExist) {
+        } else if (prevList.find((item, i) => i !== index && item.key == newKey)) {
           setUpdateTrigger((prev) => !prev);
           toast({
             status: 'warning',
             title: t('common:core.module.http.Key already exists')
           });
-          return prevList;
         }
         return prevList.map((item, i) => (i === index ? { ...item, key: newKey } : item));
       });
@@ -470,14 +466,15 @@ const RenderForm = ({
     [t, toast]
   );
 
+  // Add new params/headers key
   const handleAddNewProps = useCallback(
-    (key: string, value: string = '') => {
+    (value: string) => {
       setList((prevList) => {
-        if (!key) {
+        if (!value) {
           return prevList;
         }
 
-        const checkExist = prevList.find((item) => item.key === key);
+        const checkExist = prevList.find((item) => item.key === value);
         if (checkExist) {
           setUpdateTrigger((prev) => !prev);
           toast({
@@ -486,7 +483,7 @@ const RenderForm = ({
           });
           return prevList;
         }
-        return [...prevList, { key, type: 'string', value }];
+        return [...prevList, { key: value, type: 'string', value: '' }];
       });
 
       setShouldUpdateNode(true);
@@ -526,7 +523,9 @@ const RenderForm = ({
                       variables={variables}
                       onBlur={(val) => {
                         handleKeyChange(index, val);
-                        if (index === list.length) {
+
+                        // Last item blur, add the next item.
+                        if (index === list.length && val) {
                           handleAddNewProps(val);
                           setUpdateTrigger((prev) => !prev);
                         }

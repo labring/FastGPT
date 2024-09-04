@@ -49,7 +49,7 @@ const Markdown = ({
   const formatSource = useMemo(() => {
     const formatSource = source
       .replace(
-        /([\u4e00-\u9fa5\u3000-\u303f])([\w\u0020-\u007e])|([a-zA-Z0-9\u0020-\u007e])([\u4e00-\u9fa5\u3000-\u303f])/g,
+        /([\u4e00-\u9fa5\u3000-\u303f])([a-zA-Z0-9])|([a-zA-Z0-9])([\u4e00-\u9fa5\u3000-\u303f])/g,
         '$1$3 $2$4'
       ) // Chinese and english chars separated by space
       .replace(/\n*(\[QUOTE SIGN\]\(.*\))/g, '$1');
