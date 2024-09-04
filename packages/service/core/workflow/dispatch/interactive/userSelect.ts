@@ -12,8 +12,6 @@ import type {
   UserSelectInteractive,
   UserSelectOptionItemType
 } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
-import { updateUserSelectedResult } from '../../../chat/controller';
-import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 
 type Props = ModuleDispatchProps<{
@@ -30,6 +28,7 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
   const {
     workflowStreamResponse,
     runningAppInfo: { id: appId },
+    histories,
     chatId,
     node: { nodeId, isEntry },
     params: { description, userSelectOptions },
@@ -38,21 +37,11 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
 
   // Interactive node is not the entry node, return interactive result
   if (!isEntry) {
-    const answerText = description ? `\n${description}` : undefined;
-    if (answerText) {
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.fastAnswer,
-        data: textAdaptGptResponse({
-          text: answerText
-        })
-      });
-    }
-
     return {
-      [NodeOutputKeyEnum.answerText]: answerText,
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userSelect',
         params: {
+          description,
           userSelectOptions
         }
       }
@@ -70,14 +59,8 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     };
   }
 
-  // Update db
-  updateUserSelectedResult({
-    appId,
-    chatId,
-    userSelectedVal
-  });
-
   return {
+    [DispatchNodeResponseKeyEnum.rewriteHistories]: histories.slice(0, -2), // Removes the current session record as the history of subsequent nodes
     [DispatchNodeResponseKeyEnum.skipHandleId]: userSelectOptions
       .filter((item) => item.value !== userSelectedVal)
       .map((item: any) => getHandleId(nodeId, 'source', item.key)),

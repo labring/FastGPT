@@ -118,7 +118,7 @@ export const chats2GPTMessages = ({
               tool_calls
             })
             .concat(toolResponse);
-        } else if (value.text) {
+        } else if (value.text?.content) {
           results.push({
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -142,7 +142,7 @@ export const GPTMessages2Chats = (
   messages: ChatCompletionMessageParam[],
   reserveTool = true
 ): ChatItemType[] => {
-  return messages
+  const chatMessages = messages
     .map((item) => {
       const value: ChatItemType['value'] = [];
       const obj = GPT2Chat[item.role];
@@ -288,6 +288,22 @@ export const GPTMessages2Chats = (
       } as ChatItemType;
     })
     .filter((item) => item.value.length > 0);
+
+  // Merge data with the same dataId
+  const result = chatMessages.reduce((result: ChatItemType[], currentItem) => {
+    const lastItem = result[result.length - 1];
+
+    if (lastItem && lastItem.dataId === currentItem.dataId && lastItem.obj === currentItem.obj) {
+      // @ts-ignore
+      lastItem.value = lastItem.value.concat(currentItem.value);
+    } else {
+      result.push(currentItem);
+    }
+
+    return result;
+  }, []);
+
+  return result;
 };
 
 export const chatValue2RuntimePrompt = (value: ChatItemValueItemType[]): RuntimeUserPromptType => {

@@ -211,10 +211,39 @@ export const loadRequestMessages = async ({
             };
           }
         }
+        if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+          if (item.content !== undefined && !item.content) return;
+          if (Array.isArray(item.content) && item.content.length === 0) return;
+        }
 
         return item;
       })
       .filter(Boolean) as ChatCompletionMessageParam[];
+  };
+  /* 
+    Merge data for some consecutive roles
+    1. Contiguous assistant and both have content, merge content
+  */
+  const mergeConsecutiveMessages = (
+    messages: ChatCompletionMessageParam[]
+  ): ChatCompletionMessageParam[] => {
+    return messages.reduce((mergedMessages: ChatCompletionMessageParam[], currentMessage) => {
+      const lastMessage = mergedMessages[mergedMessages.length - 1];
+
+      if (
+        lastMessage &&
+        currentMessage.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
+        lastMessage.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
+        typeof lastMessage.content === 'string' &&
+        typeof currentMessage.content === 'string'
+      ) {
+        lastMessage.content += currentMessage ? `\n${currentMessage.content}` : '';
+      } else {
+        mergedMessages.push(currentMessage);
+      }
+
+      return mergedMessages;
+    }, []);
   };
 
   if (messages.length === 0) {
@@ -245,11 +274,22 @@ export const loadRequestMessages = async ({
           ...item,
           content: await parseUserContent(item.content)
         };
+      } else if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+        return {
+          role: item.role,
+          content: item.content,
+          function_call: item.function_call,
+          name: item.name,
+          refusal: item.refusal,
+          tool_calls: item.tool_calls
+        };
       } else {
         return item;
       }
     })
   )) as ChatCompletionMessageParam[];
 
-  return clearInvalidMessages(loadMessages) as SdkChatCompletionMessageParam[];
+  return mergeConsecutiveMessages(
+    clearInvalidMessages(loadMessages)
+  ) as SdkChatCompletionMessageParam[];
 };

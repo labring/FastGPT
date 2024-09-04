@@ -59,6 +59,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const chatMessages = GPTMessages2Chats(messages);
 
+    // console.log(JSON.stringify(chatMessages, null, 2), '====', chatMessages.length);
+
     const userInput = chatMessages.pop()?.value as UserChatItemValueItemType[] | undefined;
 
     /* user auth */

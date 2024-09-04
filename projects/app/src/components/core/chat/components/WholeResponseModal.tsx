@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Flex, BoxProps, useDisclosure, HStack } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useTranslation } from 'next-i18next';
@@ -29,114 +29,472 @@ type sideTabItemType = {
   children: sideTabItemType[];
 };
 
-function RowRender({
-  children,
-  mb,
-  label,
-  ...props
-}: { children: React.ReactNode; label: string } & BoxProps) {
-  return (
-    <Box mb={3}>
-      <Box fontSize={'sm'} mb={mb} color={'myGray.800'} flex={'0 0 90px'}>
-        {label}:
-      </Box>
-      <Box borderRadius={'sm'} fontSize={['xs', 'sm']} bg={'myGray.50'} {...props}>
-        {children}
-      </Box>
-    </Box>
-  );
-}
-function Row({
-  label,
-  value,
-  rawDom
+/* Per response value */
+export const WholeResponseContent = ({
+  activeModule,
+  hideTabs,
+  showDetail
 }: {
-  label: string;
-  value?: string | number | boolean | object;
-  rawDom?: React.ReactNode;
-}) {
-  const val = value || rawDom;
-  const isObject = typeof value === 'object';
-
-  const formatValue = useMemo(() => {
-    if (isObject) {
-      return `~~~json\n${JSON.stringify(value, null, 2)}`;
-    }
-    return `${value}`;
-  }, [isObject, value]);
-
-  if (rawDom) {
-    return (
-      <RowRender label={label} mb={1}>
-        {rawDom}
-      </RowRender>
-    );
-  }
-
-  if (val === undefined || val === '' || val === 'undefined') return null;
-
-  return (
-    <RowRender
-      label={label}
-      mb={isObject ? 0 : 1}
-      {...(isObject
-        ? { py: 2, transform: 'translateY(-3px)' }
-        : value
-          ? { px: 3, py: 2, border: 'base' }
-          : {})}
-    >
-      <Markdown source={formatValue} />
-    </RowRender>
-  );
-}
-
-const WholeResponseModal = ({
-  showDetail,
-  onClose,
-  dataId
-}: {
+  activeModule: ChatHistoryItemResType;
+  hideTabs?: boolean;
   showDetail: boolean;
-  onClose: () => void;
-  dataId: string;
 }) => {
   const { t } = useTranslation();
 
-  const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
-  const { loading: isLoading, data: response } = useRequest2(
-    () => getHistoryResponseData({ dataId }),
-    {
-      manual: false
+  // Auto scroll to top
+  const ContentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (ContentRef.current) {
+      ContentRef.current.scrollTop = 0;
     }
+  }, [activeModule]);
+
+  const RowRender = useCallback(
+    ({
+      children,
+      mb,
+      label,
+      ...props
+    }: { children: React.ReactNode; label: string } & BoxProps) => {
+      return (
+        <Box mb={3}>
+          <Box fontSize={'sm'} mb={mb} color={'myGray.800'} flex={'0 0 90px'}>
+            {label}:
+          </Box>
+          <Box borderRadius={'sm'} fontSize={['xs', 'sm']} bg={'myGray.50'} {...props}>
+            {children}
+          </Box>
+        </Box>
+      );
+    },
+    []
+  );
+  const Row = useCallback(
+    ({
+      label,
+      value,
+      rawDom
+    }: {
+      label: string;
+      value?: string | number | boolean | object;
+      rawDom?: React.ReactNode;
+    }) => {
+      const val = value || rawDom;
+      const isObject = typeof value === 'object';
+
+      const formatValue = useMemo(() => {
+        if (isObject) {
+          return `~~~json\n${JSON.stringify(value, null, 2)}`;
+        }
+        return `${value}`;
+      }, [isObject, value]);
+
+      if (rawDom) {
+        return (
+          <RowRender label={label} mb={1}>
+            {rawDom}
+          </RowRender>
+        );
+      }
+
+      if (val === undefined || val === '' || val === 'undefined') return null;
+
+      return (
+        <RowRender
+          label={label}
+          mb={isObject ? 0 : 1}
+          {...(isObject
+            ? { py: 2, transform: 'translateY(-3px)' }
+            : value
+              ? { px: 3, py: 2, border: 'base' }
+              : {})}
+        >
+          <Markdown source={formatValue} />
+        </RowRender>
+      );
+    },
+    [RowRender]
   );
 
-  return (
-    <MyModal
-      isCentered
-      isOpen={true}
-      onClose={onClose}
-      h={['90vh', '80vh']}
-      isLoading={isLoading}
-      maxH={['90vh', '700px']}
-      minW={['90vw', '880px']}
-      iconSrc="/imgs/modal/wholeRecord.svg"
-      title={
-        <Flex alignItems={'center'}>
-          {t('common:core.chat.response.Complete Response')}
-          <QuestionTip ml={2} label={t('chat:question_tip')}></QuestionTip>
-        </Flex>
-      }
+  return activeModule ? (
+    <Box
+      h={'100%'}
+      ref={ContentRef}
+      py={2}
+      px={4}
+      {...(hideTabs
+        ? {}
+        : {
+            flex: '1 0 0',
+            overflow: 'auto'
+          })}
     >
-      {!!response?.length ? (
-        <ResponseBox response={response} showDetail={showDetail} />
-      ) : (
-        <EmptyTip text={t('chat:no_workflow_response')} />
-      )}
-    </MyModal>
+      {/* common info */}
+      <>
+        <Row
+          label={t('common:core.chat.response.module name')}
+          value={t(activeModule.moduleName as any)}
+        />
+        {activeModule?.totalPoints !== undefined && (
+          <Row
+            label={t('common:support.wallet.usage.Total points')}
+            value={formatNumber(activeModule.totalPoints)}
+          />
+        )}
+        <Row
+          label={t('common:core.chat.response.module time')}
+          value={`${activeModule?.runningTime || 0}s`}
+        />
+        <Row label={t('common:core.chat.response.module model')} value={activeModule?.model} />
+        <Row
+          label={t('common:core.chat.response.module tokens')}
+          value={`${activeModule?.tokens}`}
+        />
+        <Row
+          label={t('common:core.chat.response.Tool call tokens')}
+          value={`${activeModule?.toolCallTokens}`}
+        />
+
+        <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
+        <Row
+          label={t('common:core.chat.response.context total length')}
+          value={activeModule?.contextTotalLen}
+        />
+        <Row label={t('workflow:response.Error')} value={activeModule?.error} />
+        <Row label={t('chat:response.node_inputs')} value={activeModule?.nodeInputs} />
+      </>
+      {/* ai chat */}
+      <>
+        <Row
+          label={t('common:core.chat.response.module temperature')}
+          value={activeModule?.temperature}
+        />
+        <Row
+          label={t('common:core.chat.response.module maxToken')}
+          value={activeModule?.maxToken}
+        />
+        <Row
+          label={t('common:core.chat.response.module historyPreview')}
+          rawDom={
+            activeModule.historyPreview ? (
+              <Box px={3} py={2} border={'base'} borderRadius={'md'}>
+                {activeModule.historyPreview?.map((item, i) => (
+                  <Box
+                    key={i}
+                    _notLast={{
+                      borderBottom: '1px solid',
+                      borderBottomColor: 'myWhite.700',
+                      mb: 2
+                    }}
+                    pb={2}
+                  >
+                    <Box fontWeight={'bold'}>{item.obj}</Box>
+                    <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              ''
+            )
+          }
+        />
+      </>
+      {/* dataset search */}
+      <>
+        {activeModule?.searchMode && (
+          <Row
+            label={t('common:core.dataset.search.search mode')}
+            // @ts-ignore
+            value={t(DatasetSearchModeMap[activeModule.searchMode]?.title)}
+          />
+        )}
+        <Row
+          label={t('common:core.chat.response.module similarity')}
+          value={activeModule?.similarity}
+        />
+        <Row label={t('common:core.chat.response.module limit')} value={activeModule?.limit} />
+        <Row
+          label={t('common:core.chat.response.search using reRank')}
+          value={`${activeModule?.searchUsingReRank}`}
+        />
+        <Row
+          label={t('common:core.chat.response.Extension model')}
+          value={activeModule?.extensionModel}
+        />
+        <Row
+          label={t('common:support.wallet.usage.Extension result')}
+          value={`${activeModule?.extensionResult}`}
+        />
+        {activeModule.quoteList && activeModule.quoteList.length > 0 && (
+          <Row
+            label={t('common:core.chat.response.module quoteList')}
+            rawDom={<QuoteList showDetail={showDetail} rawSearch={activeModule.quoteList} />}
+          />
+        )}
+      </>
+      {/* classify question */}
+      <>
+        <Row
+          label={t('common:core.chat.response.module cq result')}
+          value={activeModule?.cqResult}
+        />
+        <Row
+          label={t('common:core.chat.response.module cq')}
+          value={(() => {
+            if (!activeModule?.cqList) return '';
+            return activeModule.cqList.map((item) => `* ${item.value}`).join('\n');
+          })()}
+        />
+      </>
+      {/* if-else */}
+      <>
+        <Row
+          label={t('common:core.chat.response.module if else Result')}
+          value={activeModule?.ifElseResult}
+        />
+      </>
+      {/* extract */}
+      <>
+        <Row
+          label={t('common:core.chat.response.module extract description')}
+          value={activeModule?.extractDescription}
+        />
+        <Row
+          label={t('common:core.chat.response.module extract result')}
+          value={activeModule?.extractResult}
+        />
+      </>
+      {/* http */}
+      <>
+        <Row label={'Headers'} value={activeModule?.headers} />
+        <Row label={'Params'} value={activeModule?.params} />
+        <Row label={'Body'} value={activeModule?.body} />
+        <Row
+          label={t('common:core.chat.response.module http result')}
+          value={activeModule?.httpResult}
+        />
+      </>
+      {/* plugin */}
+      <>
+        <Row
+          label={t('common:core.chat.response.plugin output')}
+          value={activeModule?.pluginOutput}
+        />
+      </>
+      {/* text output */}
+      <Row label={t('common:core.chat.response.text output')} value={activeModule?.textOutput} />
+      {/* code */}
+      <>
+        <Row label={t('workflow:response.Custom inputs')} value={activeModule?.customInputs} />
+        <Row label={t('workflow:response.Custom outputs')} value={activeModule?.customOutputs} />
+        <Row label={t('workflow:response.Code log')} value={activeModule?.codeLog} />
+      </>
+
+      {/* read files */}
+      <>
+        {activeModule?.readFiles && activeModule?.readFiles.length > 0 && (
+          <Row
+            label={t('workflow:response.read files')}
+            rawDom={
+              <Flex flexWrap={'wrap'} gap={3} px={4} py={2}>
+                {activeModule?.readFiles.map((file, i) => (
+                  <HStack
+                    key={i}
+                    bg={'white'}
+                    boxShadow={'base'}
+                    borderRadius={'sm'}
+                    py={1}
+                    px={2}
+                    {...(file.url
+                      ? {
+                          cursor: 'pointer',
+                          onClick: () => window.open(file.url)
+                        }
+                      : {})}
+                  >
+                    <MyIcon name={getFileIcon(file.name) as any} w={'1rem'} />
+                    <Box>{file.name}</Box>
+                  </HStack>
+                ))}
+              </Flex>
+            }
+          />
+        )}
+        <Row
+          label={t('workflow:response.Read file result')}
+          value={activeModule?.readFilesResult}
+        />
+      </>
+
+      {/* user select */}
+      <Row
+        label={t('common:core.chat.response.user_select_result')}
+        value={activeModule?.userSelectResult}
+      />
+
+      {/* update var */}
+      <Row
+        label={t('common:core.chat.response.update_var_result')}
+        value={activeModule?.updateVarResult}
+      />
+    </Box>
+  ) : null;
+};
+
+/* Side tab: With and without children */
+const SideTabItem = ({
+  sideBarItem,
+  onChange,
+  value,
+  index
+}: {
+  sideBarItem: sideTabItemType;
+  onChange: (id: string) => void;
+  value: string;
+  index: number;
+}) => {
+  const { t } = useTranslation();
+
+  if (!sideBarItem) return null;
+
+  const AccordionSideTabItem = useCallback(
+    ({
+      sideBarItem,
+      onChange,
+      value,
+      index
+    }: {
+      sideBarItem: sideTabItemType;
+      onChange: (id: string) => void;
+      value: string;
+      index: number;
+    }) => {
+      const { isOpen: isShowAccordion, onToggle: onToggleShowAccordion } = useDisclosure({
+        defaultIsOpen: false
+      });
+      return (
+        <>
+          <Flex align={'center'} position={'relative'}>
+            <NormalSideTabItem
+              index={index}
+              value={value}
+              onChange={onChange}
+              sideBarItem={sideBarItem}
+            >
+              <MyIcon
+                h={'20px'}
+                w={'20px'}
+                name={isShowAccordion ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleShowAccordion();
+                }}
+                _hover={{ color: 'primary.600', cursor: 'pointer' }}
+              />
+            </NormalSideTabItem>
+          </Flex>
+          {isShowAccordion && (
+            <Box position={'relative'}>
+              {sideBarItem.children.map((item) => (
+                <SideTabItem
+                  value={value}
+                  key={item.id}
+                  sideBarItem={item}
+                  onChange={onChange}
+                  index={index + 1}
+                />
+              ))}
+            </Box>
+          )}
+        </>
+      );
+    },
+    []
+  );
+
+  const NormalSideTabItem = useCallback(
+    ({
+      sideBarItem,
+      onChange,
+      value,
+      index,
+      children
+    }: {
+      sideBarItem: sideTabItemType;
+      onChange: (id: string) => void;
+      value: string;
+      index: number;
+      children?: React.ReactNode;
+    }) => {
+      const leftIndex = index > 3 ? 3 : index;
+      return (
+        <Flex
+          alignItems={'center'}
+          onClick={() => {
+            onChange(sideBarItem.id);
+          }}
+          background={value === sideBarItem.id ? 'myGray.100' : ''}
+          _hover={{ background: 'myGray.100' }}
+          p={2}
+          width={'100%'}
+          cursor={'pointer'}
+          pl={leftIndex === 0 ? '0.5rem' : `${1.5 * leftIndex + 0.5}rem`}
+          borderRadius={'md'}
+          position={'relative'}
+        >
+          <Avatar
+            src={
+              sideBarItem.moduleLogo ||
+              moduleTemplatesFlat.find(
+                (template) => sideBarItem.moduleType === template.flowNodeType
+              )?.avatar
+            }
+            alt={''}
+            w={'1.5rem'}
+            h={'1.5rem'}
+            borderRadius={'sm'}
+          />
+          <Box ml={2}>
+            <Box fontSize={'xs'} fontWeight={'bold'}>
+              {t(sideBarItem.moduleName as any)}
+            </Box>
+            <Box fontSize={'2xs'} color={'myGray.500'}>
+              {t(sideBarItem.runningTime as any) + 's'}
+            </Box>
+          </Box>
+          <Box
+            h={'20px'}
+            w={'20px'}
+            position={'absolute'}
+            right={2}
+            top={'50%'}
+            transform={'translateY(-50%)'}
+          >
+            {children}
+          </Box>
+        </Flex>
+      );
+    },
+    [t]
+  );
+
+  return sideBarItem.children.length !== 0 ? (
+    <>
+      <Box>
+        <AccordionSideTabItem
+          sideBarItem={sideBarItem}
+          onChange={onChange}
+          value={value}
+          index={index}
+        />
+      </Box>
+    </>
+  ) : (
+    <NormalSideTabItem index={index} value={value} onChange={onChange} sideBarItem={sideBarItem} />
   );
 };
 
-export default WholeResponseModal;
-
+/* Modal main container */
 export const ResponseBox = React.memo(function ResponseBox({
   response,
   showDetail,
@@ -151,14 +509,35 @@ export const ResponseBox = React.memo(function ResponseBox({
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
-  const flattedResponse = useMemo(
-    () =>
-      flattenArray(response).map((item) => ({
-        ...item,
-        id: item.id ?? item.nodeId
-      })),
-    [response]
-  );
+  const flattedResponse = useMemo(() => {
+    /* Flat response */
+    function flattenArray(arr: ChatHistoryItemResType[]) {
+      const result: ChatHistoryItemResType[] = [];
+
+      function helper(currentArray: ChatHistoryItemResType[]) {
+        currentArray.forEach((item) => {
+          if (item && typeof item === 'object') {
+            result.push(item);
+
+            if (Array.isArray(item.toolDetail)) {
+              helper(item.toolDetail);
+            }
+            if (Array.isArray(item.pluginDetail)) {
+              helper(item.pluginDetail);
+            }
+          }
+        });
+      }
+
+      helper(arr);
+      return result;
+    }
+
+    return flattenArray(response).map((item) => ({
+      ...item,
+      id: item.id ?? item.nodeId
+    }));
+  }, [response]);
   const [currentNodeId, setCurrentNodeId] = useState(
     flattedResponse[0]?.id ?? flattedResponse[0]?.nodeId ?? ''
   );
@@ -169,6 +548,25 @@ export const ResponseBox = React.memo(function ResponseBox({
   );
 
   const sliderResponseList: sideTabItemType[] = useMemo(() => {
+    /* Format response data to slider data */
+    function pretreatmentResponse(res: ChatHistoryItemResType[]): sideTabItemType[] {
+      return res.map((item) => {
+        let children: sideTabItemType[] = [];
+        if (!!(item?.toolDetail || item?.pluginDetail)) {
+          if (item?.toolDetail) children.push(...pretreatmentResponse(item?.toolDetail));
+          if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));
+        }
+
+        return {
+          moduleLogo: item.moduleLogo,
+          moduleName: item.moduleName,
+          runningTime: item.runningTime,
+          moduleType: item.moduleType,
+          id: item.id ?? item.nodeId,
+          children
+        };
+      });
+    }
     return pretreatmentResponse(response);
   }, [response]);
 
@@ -177,6 +575,37 @@ export const ResponseBox = React.memo(function ResponseBox({
     onOpen: onOpenMobileModal,
     onClose: onCloseMobileModal
   } = useDisclosure();
+
+  const WholeResponseSideTab = useCallback(
+    ({
+      response,
+      value,
+      onChange,
+      isMobile = false
+    }: {
+      response: sideTabItemType[];
+      value: string;
+      onChange: (index: string) => void;
+      isMobile?: boolean;
+    }) => {
+      return (
+        <>
+          {response.map((item) => (
+            <Box
+              key={item.id}
+              bg={isMobile ? 'myGray.100' : ''}
+              m={isMobile ? 3 : 0}
+              borderRadius={'md'}
+              minW={'12rem'}
+            >
+              <SideTabItem value={value} onChange={onChange} sideBarItem={item} index={0} />
+            </Box>
+          ))}
+        </>
+      );
+    },
+    []
+  );
 
   return (
     <>
@@ -191,7 +620,7 @@ export const ResponseBox = React.memo(function ResponseBox({
               />
             </Box>
           </Box>
-          <Box flex={'5 0 0'} overflowY={'auto'} overflowX={'hidden'} height={'100%'}>
+          <Box flex={'5 0 0'} height={'100%'}>
             <WholeResponseContent
               activeModule={activeModule}
               hideTabs={hideTabs}
@@ -255,7 +684,7 @@ export const ResponseBox = React.memo(function ResponseBox({
                   {t(activeModule.moduleName as any)}
                 </Box>
               </Flex>
-              <Box flex={'1 0 0'} overflow={'auto'}>
+              <Box flex={'1 0 0'}>
                 <WholeResponseContent
                   activeModule={activeModule}
                   hideTabs={hideTabs}
@@ -270,461 +699,49 @@ export const ResponseBox = React.memo(function ResponseBox({
   );
 });
 
-export const WholeResponseContent = ({
-  activeModule,
-  hideTabs,
-  showDetail
+const WholeResponseModal = ({
+  showDetail,
+  onClose,
+  dataId
 }: {
-  activeModule: ChatHistoryItemResType;
-  hideTabs?: boolean;
   showDetail: boolean;
+  onClose: () => void;
+  dataId: string;
 }) => {
   const { t } = useTranslation();
-  const { workflowT } = useI18n();
 
-  return (
-    <>
-      {activeModule && (
-        <Box
-          py={2}
-          px={4}
-          {...(hideTabs
-            ? {}
-            : {
-                flex: '1 0 0',
-                overflow: 'auto'
-              })}
-        >
-          {/* common info */}
-          <>
-            <Row
-              label={t('common:core.chat.response.module name')}
-              value={t(activeModule.moduleName as any)}
-            />
-            {activeModule?.totalPoints !== undefined && (
-              <Row
-                label={t('common:support.wallet.usage.Total points')}
-                value={formatNumber(activeModule.totalPoints)}
-              />
-            )}
-            <Row
-              label={t('common:core.chat.response.module time')}
-              value={`${activeModule?.runningTime || 0}s`}
-            />
-            <Row label={t('common:core.chat.response.module model')} value={activeModule?.model} />
-            <Row
-              label={t('common:core.chat.response.module tokens')}
-              value={`${activeModule?.tokens}`}
-            />
-            <Row
-              label={t('common:core.chat.response.Tool call tokens')}
-              value={`${activeModule?.toolCallTokens}`}
-            />
-
-            <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
-            <Row
-              label={t('common:core.chat.response.context total length')}
-              value={activeModule?.contextTotalLen}
-            />
-            <Row label={t('workflow:response.Error')} value={activeModule?.error} />
-            <Row label={t('chat:response.node_inputs')} value={activeModule?.nodeInputs} />
-          </>
-          {/* ai chat */}
-          <>
-            <Row
-              label={t('common:core.chat.response.module temperature')}
-              value={activeModule?.temperature}
-            />
-            <Row
-              label={t('common:core.chat.response.module maxToken')}
-              value={activeModule?.maxToken}
-            />
-            <Row
-              label={t('common:core.chat.response.module historyPreview')}
-              rawDom={
-                activeModule.historyPreview ? (
-                  <Box px={3} py={2} border={'base'} borderRadius={'md'}>
-                    {activeModule.historyPreview?.map((item, i) => (
-                      <Box
-                        key={i}
-                        _notLast={{
-                          borderBottom: '1px solid',
-                          borderBottomColor: 'myWhite.700',
-                          mb: 2
-                        }}
-                        pb={2}
-                      >
-                        <Box fontWeight={'bold'}>{item.obj}</Box>
-                        <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
-                      </Box>
-                    ))}
-                  </Box>
-                ) : (
-                  ''
-                )
-              }
-            />
-          </>
-          {/* dataset search */}
-          <>
-            {activeModule?.searchMode && (
-              <Row
-                label={t('common:core.dataset.search.search mode')}
-                // @ts-ignore
-                value={t(DatasetSearchModeMap[activeModule.searchMode]?.title)}
-              />
-            )}
-            <Row
-              label={t('common:core.chat.response.module similarity')}
-              value={activeModule?.similarity}
-            />
-            <Row label={t('common:core.chat.response.module limit')} value={activeModule?.limit} />
-            <Row
-              label={t('common:core.chat.response.search using reRank')}
-              value={`${activeModule?.searchUsingReRank}`}
-            />
-            <Row
-              label={t('common:core.chat.response.Extension model')}
-              value={activeModule?.extensionModel}
-            />
-            <Row
-              label={t('common:support.wallet.usage.Extension result')}
-              value={`${activeModule?.extensionResult}`}
-            />
-            {activeModule.quoteList && activeModule.quoteList.length > 0 && (
-              <Row
-                label={t('common:core.chat.response.module quoteList')}
-                rawDom={<QuoteList showDetail={showDetail} rawSearch={activeModule.quoteList} />}
-              />
-            )}
-          </>
-          {/* classify question */}
-          <>
-            <Row
-              label={t('common:core.chat.response.module cq result')}
-              value={activeModule?.cqResult}
-            />
-            <Row
-              label={t('common:core.chat.response.module cq')}
-              value={(() => {
-                if (!activeModule?.cqList) return '';
-                return activeModule.cqList.map((item) => `* ${item.value}`).join('\n');
-              })()}
-            />
-          </>
-          {/* if-else */}
-          <>
-            <Row
-              label={t('common:core.chat.response.module if else Result')}
-              value={activeModule?.ifElseResult}
-            />
-          </>
-          {/* extract */}
-          <>
-            <Row
-              label={t('common:core.chat.response.module extract description')}
-              value={activeModule?.extractDescription}
-            />
-            <Row
-              label={t('common:core.chat.response.module extract result')}
-              value={activeModule?.extractResult}
-            />
-          </>
-          {/* http */}
-          <>
-            <Row label={'Headers'} value={activeModule?.headers} />
-            <Row label={'Params'} value={activeModule?.params} />
-            <Row label={'Body'} value={activeModule?.body} />
-            <Row
-              label={t('common:core.chat.response.module http result')}
-              value={activeModule?.httpResult}
-            />
-          </>
-          {/* plugin */}
-          <>
-            <Row
-              label={t('common:core.chat.response.plugin output')}
-              value={activeModule?.pluginOutput}
-            />
-          </>
-          {/* text output */}
-          <Row
-            label={t('common:core.chat.response.text output')}
-            value={activeModule?.textOutput}
-          />
-          {/* code */}
-          <>
-            <Row label={t('workflow:response.Custom inputs')} value={activeModule?.customInputs} />
-            <Row
-              label={t('workflow:response.Custom outputs')}
-              value={activeModule?.customOutputs}
-            />
-            <Row label={t('workflow:response.Code log')} value={activeModule?.codeLog} />
-          </>
-
-          {/* read files */}
-          <>
-            {activeModule?.readFiles && activeModule?.readFiles.length > 0 && (
-              <Row
-                label={t('workflow:response.read files')}
-                rawDom={
-                  <Flex flexWrap={'wrap'} gap={3} px={4} py={2}>
-                    {activeModule?.readFiles.map((file, i) => (
-                      <HStack
-                        key={i}
-                        bg={'white'}
-                        boxShadow={'base'}
-                        borderRadius={'sm'}
-                        py={1}
-                        px={2}
-                        {...(file.url
-                          ? {
-                              cursor: 'pointer',
-                              onClick: () => window.open(file.url)
-                            }
-                          : {})}
-                      >
-                        <MyIcon name={getFileIcon(file.name) as any} w={'1rem'} />
-                        <Box>{file.name}</Box>
-                      </HStack>
-                    ))}
-                  </Flex>
-                }
-              />
-            )}
-            <Row
-              label={t('workflow:response.Read file result')}
-              value={activeModule?.readFilesResult}
-            />
-          </>
-
-          {/* user select */}
-          <Row
-            label={t('common:core.chat.response.user_select_result')}
-            value={activeModule?.userSelectResult}
-          />
-
-          {/* update var */}
-          <Row
-            label={t('common:core.chat.response.update_var_result')}
-            value={activeModule?.updateVarResult}
-          />
-        </Box>
-      )}
-    </>
-  );
-};
-
-const WholeResponseSideTab = ({
-  response,
-  value,
-  onChange,
-  isMobile = false
-}: {
-  response: sideTabItemType[];
-  value: string;
-  onChange: (index: string) => void;
-  isMobile?: boolean;
-}) => {
-  return (
-    <>
-      {response.map((item) => (
-        <Box
-          key={item.id}
-          bg={isMobile ? 'myGray.100' : ''}
-          m={isMobile ? 3 : 0}
-          borderRadius={'md'}
-          minW={'12rem'}
-        >
-          <SideTabItem value={value} onChange={onChange} sideBarItem={item} index={0} />
-        </Box>
-      ))}
-    </>
-  );
-};
-
-const AccordionSideTabItem = ({
-  sideBarItem,
-  onChange,
-  value,
-  index
-}: {
-  sideBarItem: sideTabItemType;
-  onChange: (id: string) => void;
-  value: string;
-  index: number;
-}) => {
-  const { isOpen: isShowAccordion, onToggle: onToggleShowAccordion } = useDisclosure({
-    defaultIsOpen: false
-  });
-  return (
-    <>
-      <Flex align={'center'} position={'relative'}>
-        <NormalSideTabItem
-          index={index}
-          value={value}
-          onChange={onChange}
-          sideBarItem={sideBarItem}
-        >
-          <MyIcon
-            h={'20px'}
-            w={'20px'}
-            name={isShowAccordion ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleShowAccordion();
-            }}
-            _hover={{ color: 'primary.600', cursor: 'pointer' }}
-          />
-        </NormalSideTabItem>
-      </Flex>
-      {isShowAccordion && (
-        <Box position={'relative'}>
-          {sideBarItem.children.map((item) => (
-            <SideTabItem
-              value={value}
-              key={item.id}
-              sideBarItem={item}
-              onChange={onChange}
-              index={index + 1}
-            />
-          ))}
-        </Box>
-      )}
-    </>
-  );
-};
-
-const NormalSideTabItem = ({
-  sideBarItem,
-  onChange,
-  value,
-  index,
-  children
-}: {
-  sideBarItem: sideTabItemType;
-  onChange: (id: string) => void;
-  value: string;
-  index: number;
-  children?: React.ReactNode;
-}) => {
-  const { t } = useTranslation();
-  const leftIndex = index > 3 ? 3 : index;
-  return (
-    <Flex
-      alignItems={'center'}
-      onClick={() => {
-        onChange(sideBarItem.id);
-      }}
-      background={value === sideBarItem.id ? 'myGray.100' : ''}
-      _hover={{ background: 'myGray.100' }}
-      p={2}
-      width={'100%'}
-      cursor={'pointer'}
-      pl={leftIndex === 0 ? '0.5rem' : `${1.5 * leftIndex + 0.5}rem`}
-      borderRadius={'md'}
-      position={'relative'}
-    >
-      <Avatar
-        src={
-          sideBarItem.moduleLogo ||
-          moduleTemplatesFlat.find((template) => sideBarItem.moduleType === template.flowNodeType)
-            ?.avatar
-        }
-        alt={''}
-        w={'1.5rem'}
-        h={'1.5rem'}
-        borderRadius={'sm'}
-      />
-      <Box ml={2}>
-        <Box fontSize={'xs'} fontWeight={'bold'}>
-          {t(sideBarItem.moduleName as any)}
-        </Box>
-        <Box fontSize={'2xs'} color={'myGray.500'}>
-          {t(sideBarItem.runningTime as any) + 's'}
-        </Box>
-      </Box>
-      <Box
-        h={'20px'}
-        w={'20px'}
-        position={'absolute'}
-        right={2}
-        top={'50%'}
-        transform={'translateY(-50%)'}
-      >
-        {children}
-      </Box>
-    </Flex>
-  );
-};
-
-const SideTabItem = ({
-  sideBarItem,
-  onChange,
-  value,
-  index
-}: {
-  sideBarItem: sideTabItemType;
-  onChange: (id: string) => void;
-  value: string;
-  index: number;
-}) => {
-  if (!sideBarItem) return null;
-  return sideBarItem.children.length !== 0 ? (
-    <>
-      <Box>
-        <AccordionSideTabItem
-          sideBarItem={sideBarItem}
-          onChange={onChange}
-          value={value}
-          index={index}
-        />
-      </Box>
-    </>
-  ) : (
-    <NormalSideTabItem index={index} value={value} onChange={onChange} sideBarItem={sideBarItem} />
-  );
-};
-
-/* Format response data to slider data */
-function pretreatmentResponse(res: ChatHistoryItemResType[]): sideTabItemType[] {
-  return res.map((item) => {
-    let children: sideTabItemType[] = [];
-    if (!!(item?.toolDetail || item?.pluginDetail)) {
-      if (item?.toolDetail) children.push(...pretreatmentResponse(item?.toolDetail));
-      if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));
+  const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
+  const { loading: isLoading, data: response } = useRequest2(
+    () => getHistoryResponseData({ dataId }),
+    {
+      manual: false
     }
+  );
 
-    return {
-      moduleLogo: item.moduleLogo,
-      moduleName: item.moduleName,
-      runningTime: item.runningTime,
-      moduleType: item.moduleType,
-      id: item.id ?? item.nodeId,
-      children
-    };
-  });
-}
-
-/* Flat response */
-function flattenArray(arr: ChatHistoryItemResType[]) {
-  const result: ChatHistoryItemResType[] = [];
-
-  function helper(currentArray: ChatHistoryItemResType[]) {
-    currentArray.forEach((item) => {
-      if (item && typeof item === 'object') {
-        result.push(item);
-
-        if (Array.isArray(item.toolDetail)) {
-          helper(item.toolDetail);
-        }
-        if (Array.isArray(item.pluginDetail)) {
-          helper(item.pluginDetail);
-        }
+  return (
+    <MyModal
+      isCentered
+      isOpen={true}
+      onClose={onClose}
+      h={['90vh', '80vh']}
+      isLoading={isLoading}
+      maxH={['90vh', '700px']}
+      minW={['90vw', '880px']}
+      iconSrc="/imgs/modal/wholeRecord.svg"
+      title={
+        <Flex alignItems={'center'}>
+          {t('common:core.chat.response.Complete Response')}
+          <QuestionTip ml={2} label={t('chat:question_tip')}></QuestionTip>
+        </Flex>
       }
-    });
-  }
+    >
+      {!!response?.length ? (
+        <ResponseBox response={response} showDetail={showDetail} />
+      ) : (
+        <EmptyTip text={t('chat:no_workflow_response')} />
+      )}
+    </MyModal>
+  );
+};
 
-  helper(arr);
-  return result;
-}
+export default WholeResponseModal;

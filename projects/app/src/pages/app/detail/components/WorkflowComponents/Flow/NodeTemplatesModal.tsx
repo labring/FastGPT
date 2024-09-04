@@ -466,7 +466,21 @@ const RenderList = React.memo(function RenderList({
             flowNodeType: templateNode.flowNodeType,
             pluginId: templateNode.pluginId
           }),
-          intro: t(templateNode.intro as any)
+          intro: t(templateNode.intro as any),
+          inputs: templateNode.inputs.map((input) => ({
+            ...input,
+            valueDesc: t(input.valueDesc as any),
+            label: t(input.label as any),
+            description: t(input.description as any),
+            debugLabel: t(input.debugLabel as any),
+            toolDescription: t(input.toolDescription as any)
+          })),
+          outputs: templateNode.outputs.map((output) => ({
+            ...output,
+            valueDesc: t(output.valueDesc as any),
+            label: t(output.label as any),
+            description: t(output.description as any)
+          }))
         },
         position: { x: mouseX, y: mouseY - 20 },
         selected: true

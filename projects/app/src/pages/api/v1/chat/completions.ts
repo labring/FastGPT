@@ -17,11 +17,12 @@ import {
   getMaxHistoryLimitFromNodes,
   initWorkflowEdgeStatus,
   storeNodes2RuntimeNodes,
-  textAdaptGptResponse
+  textAdaptGptResponse,
+  getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
-import { saveChat } from '@fastgpt/service/core/chat/saveChat';
+import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { pushChatUsage } from '@/service/support/wallet/usage/push';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
@@ -45,7 +46,7 @@ import { AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { UserChatItemType } from '@fastgpt/global/core/chat/type';
+import { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import { NextAPI } from '@/service/middleware/entry';
@@ -210,9 +211,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
     ]);
 
-    // Get chat histories
-    const newHistories = concatHistories(histories, chatMessages);
-
     // Get store variables(Api variable precedence)
     if (chatDetail?.variables) {
       variables = {
@@ -220,6 +218,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         ...variables
       };
     }
+
+    // Get chat histories
+    const newHistories = concatHistories(histories, chatMessages);
 
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, newHistories));
@@ -286,36 +287,51 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return ChatSourceEnum.online;
       })();
 
+      const isInteractiveRequest = !!getLastInteractiveValue(histories);
+      const { text: userSelectedVal } = chatValue2RuntimePrompt(userQuestion.value);
+
       const newTitle = isPlugin
         ? variables.cTime ?? getSystemTime(user.timezone)
         : getChatTitleFromChatMessage(userQuestion);
 
-      await saveChat({
-        chatId,
-        appId: app._id,
-        teamId,
-        tmbId: tmbId,
-        nodes,
-        appChatConfig: chatConfig,
-        variables: newVariables,
-        isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
-        newTitle,
-        shareId,
-        outLinkUid: outLinkUserId,
-        source,
-        content: [
-          userQuestion,
-          {
-            dataId: responseChatItemId,
-            obj: ChatRoleEnum.AI,
-            value: assistantResponses,
-            [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
+      const aiResponse: AIChatItemType & { dataId?: string } = {
+        dataId: responseChatItemId,
+        obj: ChatRoleEnum.AI,
+        value: assistantResponses,
+        [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
+      };
+
+      if (isInteractiveRequest) {
+        await updateInteractiveChat({
+          chatId,
+          appId: app._id,
+          teamId,
+          tmbId: tmbId,
+          userSelectedVal,
+          aiResponse,
+          newVariables,
+          newTitle
+        });
+      } else {
+        await saveChat({
+          chatId,
+          appId: app._id,
+          teamId,
+          tmbId: tmbId,
+          nodes,
+          appChatConfig: chatConfig,
+          variables: newVariables,
+          isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
+          newTitle,
+          shareId,
+          outLinkUid: outLinkUserId,
+          source,
+          content: [userQuestion, aiResponse],
+          metadata: {
+            originIp
           }
-        ],
-        metadata: {
-          originIp
-        }
-      });
+        });
+      }
     }
 
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);

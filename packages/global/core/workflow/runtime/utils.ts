@@ -27,16 +27,24 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
   return limit * 2;
 };
 
+/* 
+  Get interaction information (if any) from the last AI message.
+  What can be done:
+  1. Get the interactive data
+  2. Check that the workflow starts at the interaction node
+*/
 export const getLastInteractiveValue = (histories: ChatItemType[]) => {
   const lastAIMessage = histories.findLast((item) => item.obj === ChatRoleEnum.AI);
 
   if (lastAIMessage) {
-    const interactiveValue = lastAIMessage.value.find(
-      (v) => v.type === ChatItemValueTypeEnum.interactive
-    );
+    const lastValue = lastAIMessage.value[lastAIMessage.value.length - 1];
 
-    if (interactiveValue && 'interactive' in interactiveValue) {
-      return interactiveValue.interactive;
+    if (
+      lastValue &&
+      lastValue.type === ChatItemValueTypeEnum.interactive &&
+      !!lastValue.interactive
+    ) {
+      return lastValue.interactive;
     }
   }
 

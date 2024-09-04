@@ -26,6 +26,7 @@ import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiCh
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { ReadFilesNodes } from '@fastgpt/global/core/workflow/template/system/readFiles';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import { Input_Template_UserChatInput } from '@fastgpt/global/core/workflow/template/input';
 
 type WorkflowType = {
   nodes: StoreNodeItemType[];
@@ -259,12 +260,8 @@ export function form2AppWorkflow(
           value: formData.dataset.datasetSearchExtensionBg
         },
         {
-          key: 'userChatInput',
-          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-          valueType: WorkflowIOValueTypeEnum.string,
-          label: '用户问题',
-          required: true,
-          toolDescription: '需要检索的内容',
+          ...Input_Template_UserChatInput,
+          toolDescription: i18nT('workflow:content_to_search'),
           value: question
         }
       ],
@@ -502,6 +499,18 @@ export function form2AppWorkflow(
         ...pluginTool.map((tool) => tool.edges).flat()
       ]
     };
+
+    // Add t
+    config.nodes.forEach((node) => {
+      node.name = t(node.name);
+      node.intro = t(node.intro);
+
+      node.inputs.forEach((input) => {
+        input.label = t(input.label);
+        input.description = t(input.description);
+        input.toolDescription = t(input.toolDescription);
+      });
+    });
 
     return config;
   }

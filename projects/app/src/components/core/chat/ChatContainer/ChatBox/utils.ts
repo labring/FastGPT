@@ -1,7 +1,11 @@
-import { ChatItemValueItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import {
+  AIChatItemValueItemType,
+  ChatItemValueItemType,
+  ChatSiteItemType
+} from '@fastgpt/global/core/chat/type';
 import { ChatBoxInputType, UserInputFileItemType } from './type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): ChatBoxInputType => {
   if (!value) {
@@ -38,6 +42,20 @@ export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): Chat
   };
 };
 
+export const checkIsInteractiveByHistories = (chatHistories: ChatSiteItemType[]) => {
+  const lastAIHistory = chatHistories[chatHistories.length - 1];
+  if (!lastAIHistory) return false;
+
+  const lastMessageValue = lastAIHistory.value[
+    lastAIHistory.value.length - 1
+  ] as AIChatItemValueItemType;
+
+  return (
+    lastMessageValue.type === ChatItemValueTypeEnum.interactive &&
+    !!lastMessageValue?.interactive?.params
+  );
+};
+
 export const setUserSelectResultToHistories = (
   histories: ChatSiteItemType[],
   selectVal: string
@@ -47,9 +65,14 @@ export const setUserSelectResultToHistories = (
   // @ts-ignore
   return histories.map((item, i) => {
     if (i !== histories.length - 1) return item;
-    item.value;
-    const value = item.value.map((val) => {
-      if (val.type !== ChatItemValueTypeEnum.interactive || !val.interactive) return val;
+
+    const value = item.value.map((val, i) => {
+      if (
+        i !== item.value.length - 1 ||
+        val.type !== ChatItemValueTypeEnum.interactive ||
+        !val.interactive
+      )
+        return val;
 
       return {
         ...val,
@@ -67,6 +90,7 @@ export const setUserSelectResultToHistories = (
 
     return {
       ...item,
+      status: ChatStatusEnum.loading,
       value
     };
   });
