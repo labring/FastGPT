@@ -33,6 +33,7 @@ const SendCodeAuthModal = ({
     <MyModal isOpen={true} isLoading={loading}>
       <ModalBody pt={8}>
         <Image
+          borderRadius={'md'}
           w={'400px'}
           h={'200px'}
           _hover={{ cursor: 'pointer' }}
