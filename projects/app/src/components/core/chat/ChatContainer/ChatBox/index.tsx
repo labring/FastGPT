@@ -505,7 +505,6 @@ const ChatBox = (
               return newChatHistories;
             });
 
-            // TODO: Adapt interactive
             setTimeout(() => {
               if (!checkIsInteractiveByHistories(newChatHistories)) {
                 createQuestionGuide({
