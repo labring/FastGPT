@@ -36,7 +36,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     mode: 'onBlur'
   });
 
-  const { codeSending, sendCodeText, sendCode, codeCountDown } = useSendCode();
+  const { sendCodeText, codeCountDown } = useSendCode();
   const {
     isOpen: openCodeAuthModal,
     onOpen: onOpenCodeAuthModal,
@@ -46,7 +46,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     const check = await trigger('username');
     if (!check) return;
     onOpenCodeAuthModal();
-  }, [getValues, sendCode, trigger]);
+  }, [onOpenCodeAuthModal, trigger]);
 
   const [requesting, setRequesting] = useState(false);
   const placeholder = feConfigs?.find_password_method
@@ -207,7 +207,6 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         <SendCodeAuthModal
           onClose={onCloseCodeAuthModal}
           username={getValues('username')}
-          sendCode={sendCode}
           type={UserAuthTypeEnum.findPassword}
         />
       )}

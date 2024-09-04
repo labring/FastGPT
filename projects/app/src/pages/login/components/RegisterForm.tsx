@@ -45,7 +45,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     onOpen: onOpenCodeAuthModal,
     onClose: onCloseCodeAuthModal
   } = useDisclosure();
-  const { sendCodeText, sendCode, codeCountDown } = useSendCode();
+  const { sendCodeText, codeCountDown } = useSendCode();
 
   const onclickSendCode = useCallback(async () => {
     const check = await trigger('username');
@@ -223,7 +223,6 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         <SendCodeAuthModal
           onClose={onCloseCodeAuthModal}
           username={getValues('username')}
-          sendCode={sendCode}
           type={UserAuthTypeEnum.register}
         />
       )}

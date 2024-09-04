@@ -57,13 +57,13 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const { sendCodeText, sendCode, codeCountDown } = useSendCode();
+  const { sendCodeText, codeCountDown } = useSendCode();
 
   const onclickSendCode = useCallback(async () => {
     const check = await trigger('account');
     if (!check) return;
     onOpenCodeAuthModal();
-  }, [getValues, sendCode, trigger]);
+  }, [onOpenCodeAuthModal, trigger]);
 
   const placeholder = feConfigs?.bind_notification_method
     ?.map((item) => {
@@ -144,7 +144,6 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
         <SendCodeAuthModal
           onClose={onCloseCodeAuthModal}
           username={getValues('account')}
-          sendCode={sendCode}
           type={UserAuthTypeEnum.bindNotification}
         />
       )}

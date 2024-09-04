@@ -1,4 +1,5 @@
 import { getCaptchaPic } from '@/web/support/user/api';
+import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import { Box, Button, Input, Image, ModalBody, ModalFooter } from '@chakra-ui/react';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -8,22 +9,16 @@ import { useState } from 'react';
 
 const SendCodeAuthModal = ({
   username,
-  sendCode,
   type,
   onClose
 }: {
   username: string;
-  sendCode: (params_0: {
-    username: string;
-    type: `${UserAuthTypeEnum}`;
-    captcha: string;
-  }) => Promise<void>;
   type: UserAuthTypeEnum;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
-  const [ans, setAns] = useState('');
-
+  const [captchaInput, setCaptchaInput] = useState('');
+  const { codeSending, sendCode } = useSendCode();
   const {
     data,
     loading,
@@ -34,26 +29,28 @@ const SendCodeAuthModal = ({
       <ModalBody pt={8}>
         <Image
           borderRadius={'md'}
-          w={'400px'}
+          w={'100%'}
           h={'200px'}
           _hover={{ cursor: 'pointer' }}
           mb={8}
           onClick={getCaptcha}
           src={data?.captchaImage}
+          alt="captcha"
         />
         <Input
           placeholder={t('common:support.user.captcha_placeholder')}
-          value={ans}
-          onChange={(e) => setAns(e.target.value)}
+          value={captchaInput}
+          onChange={(e) => setCaptchaInput(e.target.value)}
         />
       </ModalBody>
       <ModalFooter gap={2}>
-        <Button variant={'whiteBase'} onClick={onClose}>
+        <Button isLoading={codeSending} variant={'whiteBase'} onClick={onClose}>
           {t('common:common.Cancel')}
         </Button>
         <Button
+          isLoading={codeSending}
           onClick={async () => {
-            await sendCode({ username, type, captcha: ans });
+            await sendCode({ username, type, captcha: captchaInput });
             onClose();
           }}
         >
