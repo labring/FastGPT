@@ -87,4 +87,4 @@ export const getWXLoginResult = (code: string) =>
 export const getCaptchaPic = (username: string) =>
   GET<{
     captchaImage: string;
-  }>('/proApi/support/user/account/captcha', { username });
+  }>('/proApi/support/user/account/captcha/getImgCaptcha', { username });

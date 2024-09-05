@@ -4,26 +4,24 @@ import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { Box, BoxProps, useDisclosure } from '@chakra-ui/react';
+import SendCodeAuthModal from '@/components/support/user/safe/SendCodeAuthModal';
+import { useMemoizedFn } from 'ahooks';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 let timer: NodeJS.Timeout;
 
-export const useSendCode = () => {
+export const useSendCode = ({ type }: { type: `${UserAuthTypeEnum}` }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const { toast } = useToast();
   const [codeCountDown, setCodeCountDown] = useState(0);
 
   const { runAsync: sendCode, loading: codeSending } = useRequest2(
-    async ({
-      username,
-      type,
-      captcha
-    }: {
-      username: string;
-      type: `${UserAuthTypeEnum}`;
-      captcha: string;
-    }) => {
+    async ({ username, captcha }: { username: string; captcha: string }) => {
       if (codeCountDown > 0) return;
       const googleToken = await getClientToken(feConfigs.googleClientVerKey);
       await sendAuthCode({ username, type, googleToken, captcha });
+
       setCodeCountDown(60);
 
       timer = setInterval(() => {
@@ -38,7 +36,7 @@ export const useSendCode = () => {
     {
       successToast: t('user:password.code_sended'),
       errorToast: t('user:password.code_send_error'),
-      refreshDeps: [codeCountDown, feConfigs?.googleClientVerKey]
+      refreshDeps: [codeCountDown, type, feConfigs?.googleClientVerKey]
     }
   );
 
@@ -53,11 +51,60 @@ export const useSendCode = () => {
     return t('user:password.get_code');
   }, [codeCountDown, codeSending, t]);
 
+  const {
+    isOpen: openCodeAuthModal,
+    onOpen: onOpenCodeAuthModal,
+    onClose: onCloseCodeAuthModal
+  } = useDisclosure();
+
+  const SendCodeBox = useMemoizedFn(({ username, ...styles }: BoxProps & { username: string }) => {
+    return (
+      <>
+        <Box
+          position={'absolute'}
+          right={3}
+          zIndex={1}
+          fontSize={'sm'}
+          {...styles}
+          {...(codeCountDown > 0
+            ? {
+                color: 'myGray.500'
+              }
+            : {
+                color: 'primary.700',
+                cursor: 'pointer',
+                onClick: () => {
+                  if (!username) {
+                    toast({
+                      status: 'warning',
+                      title: t('common:error.username_empty')
+                    });
+                  } else {
+                    onOpenCodeAuthModal();
+                  }
+                }
+              })}
+        >
+          {sendCodeText}
+        </Box>
+        {openCodeAuthModal && (
+          <SendCodeAuthModal
+            onClose={onCloseCodeAuthModal}
+            username={username}
+            onSending={codeSending}
+            onSendCode={sendCode}
+          />
+        )}
+      </>
+    );
+  });
+
   return {
     codeSending,
     sendCode,
     sendCodeText,
-    codeCountDown
+    codeCountDown,
+    SendCodeBox
   };
 };
 

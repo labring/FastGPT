@@ -18,8 +18,6 @@ import Icon from '@fastgpt/web/components/common/Icon';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import SendCodeAuthModal from '@/components/support/user/safe/SendCodeAuthModal';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 
 type FormType = {
   account: string;
@@ -30,7 +28,8 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { initUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
-  const { register, handleSubmit, trigger, getValues, watch } = useForm<FormType>({
+
+  const { register, handleSubmit, watch } = useForm<FormType>({
     defaultValues: {
       account: '',
       verifyCode: ''
@@ -38,11 +37,7 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
   });
   const account = watch('account');
   const verifyCode = watch('verifyCode');
-  const {
-    isOpen: openCodeAuthModal,
-    onOpen: onOpenCodeAuthModal,
-    onClose: onCloseCodeAuthModal
-  } = useDisclosure();
+
   const { runAsync: onSubmit, loading: isLoading } = useRequest2(
     (data: FormType) => {
       return updateNotificationAccount(data);
@@ -57,13 +52,7 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const { sendCodeText, codeCountDown } = useSendCode();
-
-  const onclickSendCode = useCallback(async () => {
-    const check = await trigger('account');
-    if (!check) return;
-    onOpenCodeAuthModal();
-  }, [onOpenCodeAuthModal, trigger]);
+  const { SendCodeBox } = useSendCode({ type: 'bindNotification' });
 
   const placeholder = feConfigs?.bind_notification_method
     ?.map((item) => {
@@ -107,23 +96,7 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
                 {...register('verifyCode', { required: true })}
                 placeholder={t('user:password.code_required')}
               ></Input>
-              <Box
-                position={'absolute'}
-                right={2}
-                zIndex={1}
-                fontSize={'sm'}
-                {...(codeCountDown > 0
-                  ? {
-                      color: 'myGray.500'
-                    }
-                  : {
-                      color: 'primary.700',
-                      cursor: 'pointer',
-                      onClick: onclickSendCode
-                    })}
-              >
-                {sendCodeText}
-              </Box>
+              <SendCodeBox username={account} />
             </Flex>
           </Flex>
         </ModalBody>
@@ -140,13 +113,6 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
           </Button>
         </ModalFooter>
       </MyModal>
-      {openCodeAuthModal && (
-        <SendCodeAuthModal
-          onClose={onCloseCodeAuthModal}
-          username={getValues('account')}
-          type={UserAuthTypeEnum.bindNotification}
-        />
-      )}
     </>
   );
 };
