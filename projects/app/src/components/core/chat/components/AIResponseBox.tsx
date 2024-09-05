@@ -1,5 +1,4 @@
 import Markdown from '@/components/Markdown';
-import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import {
   Accordion,
   AccordionButton,
@@ -17,7 +16,7 @@ import {
   ToolModuleResponseItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
-import React, { useMemo } from 'react';
+import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { SendPromptFnType } from '../ChatContainer/ChatBox/type';
@@ -31,7 +30,7 @@ type props = {
   value: UserChatItemValueItemType | AIChatItemValueItemType;
   isLastChild: boolean;
   isChatting: boolean;
-  onSendMessage: SendPromptFnType;
+  onSendMessage?: SendPromptFnType;
 };
 
 const RenderText = React.memo(function RenderText({
@@ -139,7 +138,7 @@ const RenderInteractive = React.memo(
   }: {
     isChatting: boolean;
     interactive: InteractiveNodeResponseItemType;
-    onSendMessage: SendPromptFnType;
+    onSendMessage?: SendPromptFnType;
     chatHistories: ChatSiteItemType[];
   }) {
     return (
