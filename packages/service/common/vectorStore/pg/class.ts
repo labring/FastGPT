@@ -48,7 +48,7 @@ export class PgVectorCtrl {
     const { teamId, datasetId, collectionId, vector, retry = 3 } = props;
 
     try {
-      const { rows } = await PgClient.insert(DatasetVectorTableName, {
+      const { rowCount, rows } = await PgClient.insert(DatasetVectorTableName, {
         values: [
           [
             { key: 'vector', value: `[${vector}]` },
@@ -58,6 +58,11 @@ export class PgVectorCtrl {
           ]
         ]
       });
+
+      if (rowCount === 0) {
+        return Promise.reject('insertDatasetData: no insert');
+      }
+
       return {
         insertId: rows[0].id
       };
