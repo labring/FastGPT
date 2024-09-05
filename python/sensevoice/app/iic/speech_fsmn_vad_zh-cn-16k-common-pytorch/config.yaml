@@ -1,0 +1,56 @@
+frontend: WavFrontendOnline
+frontend_conf:
+    fs: 16000
+    window: hamming
+    n_mels: 80
+    frame_length: 25
+    frame_shift: 10
+    dither: 0.0
+    lfr_m: 5
+    lfr_n: 1
+
+model: FsmnVADStreaming
+model_conf:
+    sample_rate: 16000
+    detect_mode: 1 
+    snr_mode: 0
+    max_end_silence_time: 800
+    max_start_silence_time: 3000
+    do_start_point_detection: True
+    do_end_point_detection: True
+    window_size_ms: 200
+    sil_to_speech_time_thres: 150
+    speech_to_sil_time_thres: 150
+    speech_2_noise_ratio: 1.0
+    do_extend: 1
+    lookback_time_start_point: 200
+    lookahead_time_end_point: 100
+    max_single_segment_time: 60000
+    snr_thres: -100.0
+    noise_frame_num_used_for_snr: 100
+    decibel_thres: -100.0
+    speech_noise_thres: 0.6
+    fe_prior_thres: 0.0001
+    silence_pdf_num: 1
+    sil_pdf_ids: [0]
+    speech_noise_thresh_low: -0.1
+    speech_noise_thresh_high: 0.3
+    output_frame_probs: False
+    frame_in_ms: 10
+    frame_length_ms: 25
+    
+encoder: FSMN
+encoder_conf:
+    input_dim: 400
+    input_affine_dim: 140
+    fsmn_layers: 4
+    linear_dim: 250
+    proj_dim: 128
+    lorder: 20
+    rorder: 0
+    lstride: 1
+    rstride: 0
+    output_affine_dim: 140
+    output_dim: 248
+
+
