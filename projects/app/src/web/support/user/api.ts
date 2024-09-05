@@ -15,6 +15,7 @@ export const sendAuthCode = (data: {
   username: string;
   type: `${UserAuthTypeEnum}`;
   googleToken: string;
+  captcha: string;
 }) => POST(`/proApi/support/user/inform/sendAuthCode`, data);
 
 export const getTokenLogin = () =>
@@ -82,3 +83,8 @@ export const getWXLoginQR = () =>
 
 export const getWXLoginResult = (code: string) =>
   GET<ResLogin>(`/proApi/support/user/account/login/wx/getResult`, { code });
+
+export const getCaptchaPic = (username: string) =>
+  GET<{
+    captchaImage: string;
+  }>('/proApi/support/user/account/captcha', { username });
