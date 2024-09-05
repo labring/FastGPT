@@ -40,14 +40,14 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
   const tabList = [
     {
       icon: 'support/user/userLight',
-      label: t('common:user.Personal Information'),
+      label: t('user:personal_information'),
       value: TabEnum.info
     },
     ...(feConfigs?.isPlus
       ? [
           {
             icon: 'support/usage/usageRecordLight',
-            label: t('common:user.Usage Record'),
+            label: t('user:usage_record'),
             value: TabEnum.usage
           }
         ]
@@ -57,7 +57,7 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
       ? [
           {
             icon: 'support/bill/payRecordLight',
-            label: t('common:support.wallet.Bills'),
+            label: t('user:bill_and_invoices'),
             value: TabEnum.bill
           }
         ]
@@ -67,7 +67,7 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
       ? [
           {
             icon: 'support/account/promotionLight',
-            label: t('common:user.Promotion Record'),
+            label: t('user:promotion_records'),
             value: TabEnum.promotion
           }
         ]
@@ -83,14 +83,14 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
       : []),
     {
       icon: 'support/user/individuation',
-      label: t('common:support.account.Individuation'),
+      label: t('user:personalization'),
       value: TabEnum.individuation
     },
     ...(feConfigs.isPlus
       ? [
           {
             icon: 'support/user/informLight',
-            label: t('common:user.Notice'),
+            label: t('user:notice'),
             value: TabEnum.inform
           }
         ]
@@ -98,7 +98,7 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
 
     {
       icon: 'support/account/loginoutLight',
-      label: t('common:user.Sign Out'),
+      label: t('user:sign_out'),
       value: TabEnum.loginout
     }
   ];

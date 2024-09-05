@@ -7,8 +7,10 @@ import { UserType } from '@fastgpt/global/support/user/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
-import { langMap, setLngStore } from '@/web/common/utils/i18n';
+import { langMap } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';
+import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
+
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import TimezoneSelect from '@fastgpt/web/components/common/MySelect/TimezoneSelect';
 
@@ -16,7 +18,7 @@ const Individuation = () => {
   const { t, i18n } = useTranslation();
   const { userInfo, updateUserInfo } = useUserStore();
   const { toast } = useToast();
-  const router = useRouter();
+  const { onChangeLng } = useI18nLng();
 
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
@@ -55,14 +57,7 @@ const Individuation = () => {
               }))}
               onchange={(val: any) => {
                 const lang = val;
-                setLngStore(lang);
-                router.replace(
-                  {
-                    query: router.query
-                  },
-                  router.asPath,
-                  { locale: lang }
-                );
+                onChangeLng(lang);
               }}
             />
           </Box>

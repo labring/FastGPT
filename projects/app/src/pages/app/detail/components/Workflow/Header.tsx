@@ -125,9 +125,14 @@ const Header = () => {
     try {
       localStorage.removeItem(`${appDetail._id}-past`);
       localStorage.removeItem(`${appDetail._id}-future`);
-      router.back();
+      router.push({
+        pathname: '/app/list',
+        query: {
+          parentId: appDetail.parentId
+        }
+      });
     } catch (error) {}
-  }, [appDetail._id, router]);
+  }, [appDetail._id, appDetail.parentId, router]);
 
   const Render = useMemo(() => {
     return (

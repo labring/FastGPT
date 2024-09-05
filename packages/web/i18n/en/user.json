@@ -2,7 +2,6 @@
   "bill": {
     "balance": "Balance",
     "buy_plan": "Purchase Plan",
-    "buy_standard_plan_success": "Plan Purchase Successful",
     "contact_customer_service": "Contact Support",
     "conversion": "Conversion",
     "convert_error": "Conversion Failed",
@@ -20,6 +19,7 @@
     "you_can_convert": "You can convert",
     "yuan": "Yuan"
   },
+  "bill_and_invoices": "Bill & Invoice",
   "bind_inform_account_error": "Failed to Bind Notification Account",
   "bind_inform_account_success": "Notification Account Bound Successfully",
   "delete": {
@@ -27,28 +27,24 @@
     "admin_success": "Admin Deleted Successfully"
   },
   "has_chosen": "Selected",
+  "individuation": "Individuation",
   "login": {
     "error": "Login Error",
-    "failed": "Login Failed",
-    "login_account": "Login to {{account}} Account",
-    "login_error": "Incorrect Username or Password",
     "password_condition": "Password can be up to 60 characters",
-    "success": "Login Successful",
-    "to_register": "No account? Register"
+    "success": "Login Successful"
   },
   "name": "Name",
+  "notice": "Notice",
   "notification": {
     "Bind Notification Pipe Hint": "Please bind a notification receiving account to ensure you receive notifications such as plan expiration reminders, ensuring your service runs smoothly.",
     "remind_owner_bind": "Please remind the creator to bind a notification account"
   },
   "operations": "Actions",
   "password": {
-    "change_error": "Password Change Error",
     "code_required": "Verification Code Required",
     "code_send_error": "Failed to Send Verification Code",
     "code_sended": "Verification Code Sent",
     "confirm": "Confirm Password",
-    "email_phone": "Email/Phone Number",
     "email_phone_error": "Invalid Email/Phone Number Format",
     "email_phone_void": "Email/Phone Number Cannot Be Empty",
     "get_code": "Get Verification Code",
@@ -80,19 +76,17 @@
     "write": "In addition to readable resources, you can also create new resources"
   },
   "permissions": "Permissions",
-  "promotion": {
-    "pay": "Friend Payment",
-    "register": "Friend Registration"
-  },
+  "personal_information": "Me",
+  "personalization": "Personalization",
+  "promotion_records": "Promotion",
   "register": {
     "confirm": "Confirm Registration",
-    "error": "Registration Error",
-    "failed": "Registration Failed",
     "register_account": "Register {{account}} Account",
     "success": "Registration Successful",
     "to_login": "Already have an account? Login"
   },
   "search_user": "Search Username",
+  "sign_out": "Sign out",
   "synchronization": {
     "button": "Sync Now",
     "placeholder": "Enter Sync Tag",
@@ -109,5 +103,6 @@
     "official_account": "Official Account",
     "share": "Share Link",
     "wecom": "WeCom"
-  }
+  },
+  "usage_record": "Usages"
 }

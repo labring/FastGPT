@@ -15,8 +15,7 @@
     "version_initial_copy": "副本-初始状态",
     "version_name_tips": "版本名称不能为空",
     "version_past": "发布过",
-    "version_publish_tips": "该版本将被保存至团队云端，同步给整个团队，同时更新所有发布渠道的应用版本",
-    "version_save_tips": "该版本将被保存至团队云端，同步给整个团队"
+    "version_publish_tips": "该版本将被保存至团队云端，同步给整个团队，同时更新所有发布渠道的应用版本"
   },
   "app_detail": "应用详情",
   "chat_debug": "调试预览",
@@ -131,13 +130,11 @@
     "Create plugin bot": "创建插件",
     "Create simple bot": "创建简易应用",
     "Create simple bot tip": "通过填表单形式，创建简单的 AI 应用，适合新手",
-    "Create template tip": "在模板市场探索更多玩法，带你理解并上手各种应用",
     "Create workflow bot": "创建工作流",
     "Create workflow tip": "通过低代码的方式，构建逻辑复杂的多轮对话 AI 应用，推荐高级玩家使用",
     "Http plugin": "HTTP 插件",
     "Plugin": "插件",
     "Simple bot": "简易应用",
-    "Template": "通过模板创建",
     "Workflow bot": "工作流"
   },
   "upload_file_max_amount": "最大文件数量",
@@ -162,8 +159,6 @@
   "workflow": {
     "Input guide": "填写说明",
     "file_url": "文档链接",
-    "option1": "选项 1",
-    "option2": "选项 2",
     "read_files": "文档解析",
     "read_files_result": "文档解析结果",
     "read_files_result_desc": "文档原文，由文件名和文档内容组成，多个文件之间通过横线隔开。",

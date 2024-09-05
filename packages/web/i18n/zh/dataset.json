@@ -1,7 +1,5 @@
 {
-  "Disabled": "已禁用",
   "Enable": "启用",
-  "Enabled": "已启用",
   "collection": {
     "Create update time": "创建/更新时间",
     "Training type": "训练模式"

@@ -1,0 +1,13 @@
+{
+  "Login": "登录",
+  "forget_password": "忘记密码?",
+  "login_failed": "登录异常",
+  "login_success": "登录成功",
+  "password_condition": "密码最多 60 位",
+  "policy_tip": "使用即代表你同意我们的",
+  "privacy": "隐私协议",
+  "register": "注册账号",
+  "root_password_placeholder": "root 用户密码为环境变量 DEFAULT_ROOT_PSW 的值",
+  "terms": "服务协议",
+  "use_root_login": "使用 root 用户登录"
+}

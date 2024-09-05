@@ -1,11 +1,4 @@
 {
-  " i18nT('workflow": {
-    "use_user_id'),\n    required": {
-      "workflow": {
-        "use_user_id": ""
-      }
-    }
-  },
   "Code": "Code",
   "about_xxx_question": "Question regarding xxx",
   "add_new_input": "Add New Input",
@@ -122,15 +115,12 @@
     "Custom outputs": "Custom Outputs",
     "Error": "Error",
     "Read file result": "Read File Result",
-    "User_select_description": "Description",
-    "User_select_result": "Selected Result",
     "read files": "Read Files"
   },
   "select_an_application": "Select an Application",
   "select_another_application_to_call": "You can choose another application to call",
   "special_array_format": "Special array format, returns an empty array when the search result is empty.",
   "start_with": "Starts With",
-  "system_variables": "system variables",
   "target_fields_description": "A target field consists of 'description' and 'key'. Multiple target fields can be extracted.",
   "template": {
     "ai_chat": "AI Chat",
@@ -156,9 +146,7 @@
   "variable_picker_tips": "Type node name or variable name to search",
   "variable_update": "Variable Update",
   "workflow": {
-    "Back_to_current_version": "Back to Current Version",
     "My edit": "My Edit",
-    "Switch_failed": "Switch Failed",
     "Switch_success": "Switch Successful",
     "Team cloud": "Team Cloud",
     "exit_tips": "Your changes have not been saved. 'Exit directly' will not save your edits."
