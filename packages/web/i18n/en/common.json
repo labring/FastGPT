@@ -647,8 +647,7 @@
             "success": "Start syncing"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",
@@ -1257,6 +1256,7 @@
       "auth": {
         "Sending Code": "Sending"
       },
+      "captcha_placeholder": "Please enter the verification code",
       "inform": {
         "System message": "System message"
       },

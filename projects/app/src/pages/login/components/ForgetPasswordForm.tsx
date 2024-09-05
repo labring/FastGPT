@@ -1,5 +1,5 @@
 import React, { useState, Dispatch, useCallback } from 'react';
-import { FormControl, Box, Input, Button } from '@chakra-ui/react';
+import { FormControl, Box, Input, Button, useDisclosure } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { postFindPassword } from '@/web/support/user/api';
@@ -8,6 +8,8 @@ import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
+import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
+import SendCodeAuthModal from '@/components/support/user/safe/SendCodeAuthModal';
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
   loginSuccess: (e: ResLogin) => void;
@@ -34,16 +36,17 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     mode: 'onBlur'
   });
 
-  const { codeSending, sendCodeText, sendCode, codeCountDown } = useSendCode();
-
+  const { sendCodeText, codeCountDown } = useSendCode();
+  const {
+    isOpen: openCodeAuthModal,
+    onOpen: onOpenCodeAuthModal,
+    onClose: onCloseCodeAuthModal
+  } = useDisclosure();
   const onclickSendCode = useCallback(async () => {
     const check = await trigger('username');
     if (!check) return;
-    sendCode({
-      username: getValues('username'),
-      type: 'findPassword'
-    });
-  }, [getValues, sendCode, trigger]);
+    onOpenCodeAuthModal();
+  }, [onOpenCodeAuthModal, trigger]);
 
   const [requesting, setRequesting] = useState(false);
   const placeholder = feConfigs?.find_password_method
@@ -200,6 +203,13 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           {t('user:password.to_login')}
         </Box>
       </Box>
+      {openCodeAuthModal && (
+        <SendCodeAuthModal
+          onClose={onCloseCodeAuthModal}
+          username={getValues('username')}
+          type={UserAuthTypeEnum.findPassword}
+        />
+      )}
     </>
   );
 };

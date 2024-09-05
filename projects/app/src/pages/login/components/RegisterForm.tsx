@@ -1,5 +1,5 @@
 import React, { useState, Dispatch, useCallback } from 'react';
-import { FormControl, Box, Input, Button } from '@chakra-ui/react';
+import { FormControl, Box, Input, Button, useDisclosure } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { postRegister } from '@/web/support/user/api';
@@ -11,6 +11,9 @@ import { emptyTemplates } from '@/web/core/app/templates';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import SendCodeAuthModal from '@/components/support/user/safe/SendCodeAuthModal';
+import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 interface Props {
   loginSuccess: (e: ResLogin) => void;
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
@@ -37,17 +40,18 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   } = useForm<RegisterType>({
     mode: 'onBlur'
   });
-
-  const { sendCodeText, sendCode, codeCountDown } = useSendCode();
+  const {
+    isOpen: openCodeAuthModal,
+    onOpen: onOpenCodeAuthModal,
+    onClose: onCloseCodeAuthModal
+  } = useDisclosure();
+  const { sendCodeText, codeCountDown } = useSendCode();
 
   const onclickSendCode = useCallback(async () => {
     const check = await trigger('username');
     if (!check) return;
-    sendCode({
-      username: getValues('username'),
-      type: 'register'
-    });
-  }, [getValues, sendCode, trigger]);
+    onOpenCodeAuthModal();
+  }, [onOpenCodeAuthModal, trigger]);
 
   const [requesting, setRequesting] = useState(false);
 
@@ -215,6 +219,13 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           {t('user:register.to_login')}
         </Box>
       </Box>
+      {openCodeAuthModal && (
+        <SendCodeAuthModal
+          onClose={onCloseCodeAuthModal}
+          username={getValues('username')}
+          type={UserAuthTypeEnum.register}
+        />
+      )}
     </>
   );
 };
