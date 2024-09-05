@@ -1,7 +1,5 @@
 {
-  "Disabled": "Disabled",
   "Enable": "Enable",
-  "Enabled": "Enabled",
   "collection": {
     "Create update time": "Creation/Update Time",
     "Training type": "Training Mode"

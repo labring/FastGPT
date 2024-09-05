@@ -6,10 +6,6 @@
     "ai_point_expire_a": "会过期。当前套餐过期后，AI积分将会清空，并更新为新套餐的AI积分。年度套餐的AI积分时长为1年，而不是每个月。",
     "ai_point_expire_q": "AI积分会过期么？",
     "ai_point_q": "什么是AI积分？",
-    "auto_renew_a": "当前套餐过期后，系统会自动根据“未来套餐”进行续费，系统会尝试从账户余额进行扣费，如果您需要自动续费，请在账户余额中预留额度。",
-    "auto_renew_q": "订阅套餐会自动续费么？",
-    "change_package_a": "当前套餐价格大于新套餐时，无法立即切换，将会在当前套餐过期后以“续费”形式进行切换。\n当前套餐价格小于新套餐时，系统会自动计算当前套餐剩余余额，您可支付差价进行套餐切换。",
-    "change_package_q": "能否切换订阅套餐？",
     "check_subscription_a": "账号-个人信息-套餐详情-使用情况。您可以查看所拥有套餐的生效和到期时间。当付费套餐到期后将自动切换免费版。",
     "check_subscription_q": "在哪里查看已订阅的套餐？",
     "dataset_compute_a": "1条知识库存储等于1条知识库索引。一条知识库数据可以包含1条或多条知识库索引。增强训练中，1条数据会生成5条索引。",
@@ -27,7 +23,6 @@
   "Login": "登录",
   "Move": "移动",
   "Name": "名称",
-  "Not_selected": "未选择",
   "Rename": "重命名",
   "Resume": "恢复",
   "Running": "运行中",
@@ -146,7 +141,6 @@
     "Exit": "退出",
     "Exit Directly": "直接退出",
     "Expired Time": "过期时间",
-    "Field": "字段",
     "File": "文件",
     "Finish": "完成",
     "Import": "导入",
@@ -212,7 +206,6 @@
     "Update Failed": "更新异常",
     "Update Success": "更新成功",
     "Update Successful": "更新成功",
-    "Upload File Failed": "上传文件失败",
     "Username": "用户名",
     "Waiting": "等待中",
     "Warning": "警告",
@@ -236,7 +229,6 @@
     },
     "error": {
       "Select avatar failed": "头像选择异常",
-      "too_many_request": "请求太频繁了，请稍后重试。",
       "unKnow": "出现了点意外~"
     },
     "export_to_json": "导出为 JSON",
@@ -278,7 +270,6 @@
     },
     "submit_success": "提交成功",
     "submitted": "已提交",
-    "submitting": "提交中",
     "support": "支持",
     "system": {
       "Commercial version function": "请升级商业版后使用该功能：https://fastgpt.in",
@@ -335,8 +326,6 @@
       "Max histories": "聊天记录数量",
       "Max tokens": "回复上限",
       "Name and avatar": "头像 & 名称",
-      "Not saved": "未保存",
-      "Onclick to save": "点击保存",
       "Publish": "发布",
       "Publish Confirm": "确认发布应用？会立即更新所有发布渠道的应用状态。",
       "Publish app tip": "发布应用后，所有发布渠道将会立即使用该版本",
@@ -345,7 +334,6 @@
       "Quote prompt": "引用模板提示词",
       "Quote templates": "引用内容模板",
       "Random": "发散",
-      "Saved time": "已保存：{{time}}",
       "Search team tags": "搜索标签",
       "Select TTS": "选择语音播放模式",
       "Select app from template": "从模板中选择",
@@ -385,22 +373,12 @@
         "Custom feedback": "自定义反馈",
         "close custom feedback": "关闭反馈"
       },
-      "have_publish": "已发布",
       "have_saved": "已保存",
-      "loading": "加载中",
       "logs": {
         "Source And Time": "来源 & 时间"
       },
       "more": "查看更多",
-      "navbar": {
-        "External": "外部使用",
-        "Flow mode": "高级编排",
-        "Publish": "发布",
-        "Publish app": "发布应用",
-        "Simple mode": "简易配置"
-      },
       "no_app": "还没有应用，快去创建一个吧！",
-      "not_published": "未发布",
       "not_saved": "未保存",
       "outLink": {
         "Can Drag": "图标可拖拽",
@@ -415,7 +393,6 @@
         "Show History": "展示历史对话"
       },
       "publish": {
-        "Fei Shu Bot Desc": "接入到飞书机器人中",
         "Fei shu bot": "飞书",
         "Fei shu bot publish": "发布到飞书机器人"
       },
@@ -474,13 +451,11 @@
       "Audio Not Support": "设备不支持语音播放",
       "Audio Speech Error": "语音播报异常",
       "Cancel Speak": "取消语音输入",
-      "Chat API is error or undefined": "对话接口报错或返回为空",
       "Confirm to clear history": "确认清空该应用的在线聊天记录？分享和 API 调用的记录不会被清空。",
       "Confirm to clear share chat history": "确认删除所有聊天记录？",
       "Converting to text": "正在转换为文本...",
       "Custom History Title": "自定义历史记录标题",
       "Custom History Title Description": "如果设置为空，会自动跟随聊天记录。",
-      "Debug test": "调试预览",
       "Exit Chat": "退出聊天",
       "Failed to initialize chat": "初始化聊天失败",
       "Feedback Failed": "提交反馈异常",
@@ -504,7 +479,6 @@
       "Record": "语音输入",
       "Restart": "重开对话",
       "Run test": "运行预览",
-      "Select Image": "选择图片",
       "Select dataset": "选择知识库",
       "Select dataset Desc": "选择一个知识库存储预期答案",
       "Send Message": "发送",
@@ -529,9 +503,9 @@
       "logs": {
         "api": "API 调用",
         "feishu": "飞书",
+        "free_login": "免登录链接",
         "official_account": "公众号",
         "online": "在线使用",
-        "free_login": "免登录链接",
         "share": "外部链接调用",
         "team": "团队空间对话",
         "test": "测试",
@@ -549,10 +523,8 @@
       "response": {
         "Complete Response": "完整响应",
         "Extension model": "问题优化模型",
-        "Plugin response detail": "插件详情",
         "Read complete response": "查看详情",
         "Read complete response tips": "点击查看详细流程",
-        "Tool call response detail": "工具运行详情",
         "Tool call tokens": "工具调用 tokens 消耗",
         "context total length": "上下文总长度",
         "module cq": "问题分类列表",
@@ -589,14 +561,11 @@
       }
     },
     "dataset": {
-      "All Dataset": "全部知识库",
-      "Avatar": "知识库头像",
       "Choose Dataset": "关联知识库",
       "Collection": "数据集",
       "Create dataset": "创建一个{{name}}",
       "Dataset": "知识库",
       "Dataset ID": "知识库 ID",
-      "Dataset Type": "知识库类型",
       "Delete Confirm": "确认删除该知识库？删除后数据无法恢复，请确认！",
       "Empty Dataset": "空数据集",
       "Empty Dataset Tips": "还没有知识库，快去创建一个吧！",
@@ -605,7 +574,6 @@
       "Intro Placeholder": "这个知识库还没有介绍~",
       "Manual collection": "手动数据集",
       "My Dataset": "我的知识库",
-      "Name": "知识库名称",
       "Query extension intro": "开启问题优化功能，可以提高提高连续对话时，知识库搜索的精度。开启该功能后，在进行知识库搜索时，会根据对话记录，利用 AI 补全问题缺失的信息。",
       "Quote Length": "引用内容长度",
       "Read Dataset": "查看知识库详情",
@@ -629,7 +597,6 @@
           "Chunk Size": "分割大小",
           "Createtime": "创建时间",
           "Raw text length": "原文长度",
-          "Read Metadata": "查看元数据",
           "Training Type": "训练模式",
           "Updatetime": "更新时间",
           "Web page selector": "网站选择器",
@@ -664,7 +631,6 @@
         "Search data placeholder": "搜索相关数据",
         "Too Long": "总长度超长了",
         "Total Amount": "{{total}} 组",
-        "empty_index": "无自定义索引",
         "group": "组",
         "unit": "条"
       },
@@ -672,7 +638,6 @@
       "error": {
         "Data not found": "数据不存在或已被删除",
         "Start Sync Failed": "开始同步失败",
-        "Template does not exist": "模板不存在",
         "invalidVectorModelOrQAModel": "VectorModel 或 QA 模型错误",
         "unAuthDataset": "无权操作该知识库",
         "unAuthDatasetCollection": "无权操作该数据集",
@@ -813,7 +778,6 @@
       "Add question type": "添加问题类型",
       "Add_option": "添加选项",
       "Can not connect self": "不能连接自身",
-      "Confirm Delete Node": "确认删除该节点？",
       "Data Type": "数据类型",
       "Dataset quote": {
         "label": "知识库引用",
@@ -858,19 +822,15 @@
       },
       "http": {
         "Add props": "添加参数",
-        "Add props_and_tips": "添加参数，输入“/”唤起变量列表",
         "AppId": "应用 ID",
-        "AppSecret": "AppSecret",
         "ChatId": "当前对话 ID",
         "Current time": "当前时间",
         "Histories": "历史记录",
         "Key already exists": "Key 已经存在",
         "Key cannot be empty": "参数名不能为空",
         "Props name": "参数名",
-        "Props name_and_tips": "参数名，输入”/“唤起变量列表",
         "Props tip": "可以设置 HTTP 请求的相关参数\n可通过输入 / 来调用变量，当前可使用变量：\n{{variable}}",
         "Props value": "参数值",
-        "Props value_and_tips": "参数值，输入“/”唤起变量列表",
         "ResponseChatItemId": "AI 回复的 ID",
         "Url and params have been split": "路径参数已被自动加入 Params 中",
         "curl import": "cURL 导入",
@@ -922,22 +882,20 @@
         "Query extension": "问题优化",
         "System Plugin": "系统插件",
         "System input module": "系统输入",
-        "Team Plugin": "团队插件",
         "Team app": "团队应用",
         "Tool module": "工具",
         "UnKnow Module": "未知模块",
-        "http body placeholder": "与 Apifox 相同的语法",
-        "empty_workflow": "空白工作流",
-        "empty_app": "空白应用",
+        "ai_chat": "AI 对话",
+        "ai_chat_intro": "AI 大模型对话",
+        "config_params": "可以配置应用的系统参数",
         "empty_plugin": "空白插件",
-        "system_config": "系统配置",
-        "system_config_info": "可以配置应用的系统参数",
-        "work_start": "流程开始",
+        "empty_workflow": "空白工作流",
+        "http body placeholder": "与 Apifox 相同的语法",
         "self_input": "自定义插件输入",
         "self_output": "自定义插件输出",
-        "config_params": "可以配置应用的系统参数",
-        "ai_chat": "AI 对话",
-        "ai_chat_intro": "AI 大模型对话"
+        "system_config": "系统配置",
+        "system_config_info": "可以配置应用的系统参数",
+        "work_start": "流程开始"
       },
       "templates": {
         "Load plugin error": "加载插件失败"
@@ -958,9 +916,7 @@
         "variable option is value is required": "选项内容不能为空",
         "variable options": "选项"
       },
-      "variable add option": "添加选项",
-      "variable_update": "变量更新",
-      "variable_update_info": "可以更新指定节点的输出值或更新全局变量"
+      "variable add option": "添加选项"
     },
     "plugin": {
       "Custom headers": "自定义请求头",
@@ -1008,7 +964,6 @@
         "Reference": "变量引用",
         "custom": "自定义变量",
         "dynamicTargetInput": "动态外部数据",
-        "file_link": "文件上传",
         "input": "单行输入框",
         "number input": "数字输入框",
         "select": "单选框",
@@ -1023,7 +978,6 @@
         "OnRevert version confirm": "确认回退至该版本？会为您保存编辑中版本的配置，并为回退版本创建一个新的发布版本。",
         "histories": "发布记录"
       },
-      "run_test": "运行",
       "template": {
         "Interactive": "交互",
         "Multimodal": "多模态",
@@ -1067,21 +1021,14 @@
       "Select One Collection To Store": "选择一个文件进行存储"
     },
     "data": {
-      "Add Index": "新增自定义索引",
       "Can not edit": "无编辑权限",
       "Custom Index Number": "自定义索引{{number}}",
       "Default Index": "默认索引",
       "Delete Tip": "确认删除该条数据？",
-      "Index Edit": "数据索引",
       "Index Placeholder": "输入索引文本内容",
-      "Input Data": "导入新数据",
       "Input Success Tip": "导入数据成功",
-      "Update Data": "更新数据",
       "Update Success Tip": "更新数据成功",
       "edit": {
-        "Content": "数据内容",
-        "Course": "说明文档",
-        "Delete": "删除数据",
         "Index": "数据索引({{amount}})",
         "divide_content": "分块内容"
       },
@@ -1093,19 +1040,15 @@
       "noResult": "搜索结果为空"
     }
   },
-  "default_reply": "默认回复",
   "error": {
     "Create failed": "创建失败",
-    "code_error": "验证码错误",
     "fileNotFound": "文件找不到了~",
     "inheritPermissionError": "权限继承错误",
     "missingParams": "参数缺失",
-    "team": {
-      "overSize": "团队成员超出上限"
-    },
     "upload_file_error_filename": "{{name}} 上传失败",
     "username_empty": "账号不能为空"
   },
+  "error.code_error": "验证码错误",
   "extraction_results": "提取结果",
   "field_name": "字段名",
   "free": "免费",
@@ -1141,28 +1084,16 @@
   },
   "new_create": "新建",
   "no": "否",
-  "no_data": "暂无数据",
   "no_laf_env": "系统未配置Laf环境",
   "not_yet_introduced": "暂无介绍",
   "option": "选项",
   "pay": {
     "amount": "金额",
-    "balance": "账号余额",
-    "balance_notice": "账号余额不足",
-    "confirm_pay": "确认支付",
-    "get_pay_QR": "获取充值二维码",
-    "need_pay": "需支付",
-    "need_to_pay": "实付",
-    "new_package_price": "新套餐价格",
-    "notice": "请勿关闭页面",
-    "old_package_price": "旧套餐余额",
-    "other": "其他金额，请取整数",
     "package_tip": {
       "buy": "您购买的套餐等级低于当前套餐，该套餐将在当前套餐过期后生效。\n您可在账号—个人信息—套餐详情里，查看套餐使用情况。",
       "renewal": "您正在续费套餐。您可在账号—个人信息—套餐详情里，查看套餐使用情况。",
       "upgrade": "您购买的套餐等级高于当前套餐，该套餐将即刻生效，当前套餐将延后生效。您可在账号—个人信息—套餐详情里，查看套餐使用情况。"
     },
-    "to_recharge": "余额不足，去充值",
     "wechat": "请微信扫码支付: {{price}}元\n请勿关闭页面",
     "yuan": "{{amount}}元"
   },
@@ -1170,9 +1101,6 @@
     "Collaborator": "协作者",
     "Default permission": "默认权限",
     "Manage": "管理",
-    "manager": "管理员",
-    "read": "读权限",
-    "write": "写权限",
     "No InheritPermission": "已限制权限，不再继承父级文件夹的权限，",
     "Not collaborator": "暂无协作者",
     "Owner": "创建者",
@@ -1191,7 +1119,10 @@
     "change_owner_placeholder": "输入用户名查找账号",
     "change_owner_success": "成功转移所有权",
     "change_owner_tip": "转移后您的权限不会保留",
-    "change_owner_to": "转移给"
+    "change_owner_to": "转移给",
+    "manager": "管理员",
+    "read": "读权限",
+    "write": "写权限"
   },
   "plugin": {
     "App": "选择应用",
@@ -1217,7 +1148,6 @@
     "go to laf": "去编写",
     "path": "路径"
   },
-  "reply_now": "立即回复",
   "required": "必须",
   "resume_failed": "恢复失败",
   "select_reference_variable": "选择引用变量",
@@ -1251,8 +1181,6 @@
     },
     "standard": {
       "AI Bonus Points": "AI 积分",
-      "Expired Time": "结束时间",
-      "Start Time": "开始时间",
       "due_date": "到期时间",
       "storage": "存储量",
       "type": "类型"
@@ -1278,22 +1206,14 @@
         "System message": "系统消息"
       },
       "login": {
-        "And": "和",
         "Email": "邮箱",
-        "Forget Password": "忘记密码？",
         "Github": "GitHub 登录",
         "Google": "Google 登录",
         "Password": "密码",
         "Password login": "密码登录",
         "Phone": "手机号登录",
         "Phone number": "手机号",
-        "Policy tip": "使用即代表你同意我们的",
-        "Privacy": "隐私政策",
         "Provider error": "登录异常，请重试",
-        "Register": "注册账号",
-        "Root login": "使用 root 用户登录",
-        "Root password placeholder": "root 密码为你设置的环境变量",
-        "Terms": "服务协议",
         "Username": "用户名",
         "Wechat": "微信登录",
         "can_not_login": "无法登录，点击联系",
@@ -1313,12 +1233,9 @@
     "wallet": {
       "Ai point every thousand tokens": "{{points}} 积分/1K tokens",
       "Amount": "金额",
-      "Bills": "账单与开票",
       "Buy": "购买",
-      "Confirm pay": "支付确认",
       "Not sufficient": "您的 AI 积分不足，请先升级套餐或购买额外 AI 积分后继续使用。",
       "Plan expired time": "套餐到期时间",
-      "Plan reset time": "套餐重置时间",
       "Standard Plan Detail": "套餐详情",
       "To read plan": "查看套餐",
       "amount_0": "购买数量不能为0",
@@ -1355,7 +1272,6 @@
         "company_address": "公司地址",
         "company_phone": "公司电话",
         "email": "邮箱地址",
-        "in_valid": "存在空字段或邮箱格式错误",
         "need_special_invoice": "是否需要专票",
         "organization_name": "组织名称",
         "unit_code": "统一信用代码"
@@ -1375,7 +1291,6 @@
         "AI points usage": "AI 积分使用量",
         "AI points usage tip": "每次调用 AI 模型时，都会消耗一定的 AI 积分。具体的计算标准可参考上方的“计费标准”",
         "Ai points": "AI 积分计算标准",
-        "Buy now": "切换套餐",
         "Current plan": "当前套餐",
         "Extra ai points": "额外 AI 积分",
         "Extra dataset size": "额外知识库容量",
@@ -1384,10 +1299,7 @@
         "FAQ": "常见问题",
         "Month amount": "月数",
         "Next plan": "未来套餐",
-        "Nonsupport": "无需购买",
         "Stand plan level": "订阅套餐",
-        "Standard update fail": "修改订阅套餐异常",
-        "Standard update success": "变更订阅套餐成功！",
         "Sub plan": "订阅套餐",
         "Sub plan tip": "免费使用 {{title}} 或升级更高的套餐",
         "Team plan and usage": "套餐与用量",
@@ -1453,8 +1365,7 @@
         "Total points": "AI 积分消耗",
         "Usage Detail": "使用详情",
         "Whisper": "语音输入"
-      },
-      "use_default": "使用默认抬头"
+      }
     }
   },
   "sync_link": "同步链接",
@@ -1491,28 +1402,23 @@
     "Laf Account Setting": "laf 账号配置",
     "Language": "语言",
     "Member Name": "昵称",
-    "Notice": "通知",
     "Notification Receive": "通知接收",
     "Notification Receive Bind": "请先绑定通知接收途径",
     "Old password is error": "旧密码错误",
     "OpenAI Account Setting": "OpenAI 账号配置",
     "Password": "密码",
     "Pay": "充值",
-    "Personal Information": "个人信息",
     "Promotion": "促销",
     "Promotion Rate": "返现比例",
-    "Promotion Record": "推广记录",
     "Promotion rate tip": "好友充值时你将获得一定比例的余额奖励",
     "Replace": "更换",
     "Set OpenAI Account Failed": "设置 OpenAI 账号异常",
-    "Sign Out": "登出",
     "Team": "团队",
     "Time": "时间",
     "Timezone": "时区",
     "Update Password": "修改密码",
     "Update password failed": "修改密码异常",
     "Update password successful": "修改密码成功",
-    "Usage Record": "使用记录",
     "apikey": {
       "key": "API 密钥"
     },
@@ -1567,8 +1473,7 @@
       },
       "role": {
         "Admin": "管理员",
-        "Owner": "创建者",
-        "Visitor": "访客"
+        "Owner": "创建者"
       }
     },
     "type": "类型"
