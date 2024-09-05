@@ -37,7 +37,7 @@ const Individuation = () => {
     },
     [reset, t, toast, updateUserInfo]
   );
-  console.log(i18n.language);
+
   return (
     <Box py={[3, '28px']} px={['5vw', '64px']}>
       <Flex alignItems={'center'} fontSize={'lg'} h={'30px'}>
