@@ -448,20 +448,16 @@ const RenderForm = ({
       setList((prevList) => {
         if (!newKey) {
           setUpdateTrigger((prev) => !prev);
-          toast({
-            status: 'warning',
-            title: t('common:core.module.http.Key cannot be empty')
-          });
-          return prevList;
-        }
-        const checkExist = prevList.find((item, i) => i !== index && item.key == newKey);
-        if (checkExist) {
+          // toast({
+          //   status: 'warning',
+          //   title: t('common:core.module.http.Key cannot be empty')
+          // });
+        } else if (prevList.find((item, i) => i !== index && item.key == newKey)) {
           setUpdateTrigger((prev) => !prev);
           toast({
             status: 'warning',
             title: t('common:core.module.http.Key already exists')
           });
-          return prevList;
         }
         return prevList.map((item, i) => (i === index ? { ...item, key: newKey } : item));
       });
@@ -470,14 +466,15 @@ const RenderForm = ({
     [t, toast]
   );
 
+  // Add new params/headers key
   const handleAddNewProps = useCallback(
-    (key: string, value: string = '') => {
+    (value: string) => {
       setList((prevList) => {
-        if (!key) {
+        if (!value) {
           return prevList;
         }
 
-        const checkExist = prevList.find((item) => item.key === key);
+        const checkExist = prevList.find((item) => item.key === value);
         if (checkExist) {
           setUpdateTrigger((prev) => !prev);
           toast({
@@ -486,7 +483,7 @@ const RenderForm = ({
           });
           return prevList;
         }
-        return [...prevList, { key, type: 'string', value }];
+        return [...prevList, { key: value, type: 'string', value: '' }];
       });
 
       setShouldUpdateNode(true);
@@ -520,17 +517,15 @@ const RenderForm = ({
                 <Tr key={`${input.key}${index}`}>
                   <Td p={0} w={'50%'} borderRight={'1px solid'} borderColor={'myGray.200'}>
                     <HttpInput
-                      placeholder={
-                        index !== list.length
-                          ? t('common:core.module.http.Props name_and_tips')
-                          : t('common:core.module.http.Add props_and_tips')
-                      }
+                      placeholder={t('common:textarea_variable_picker_tip')}
                       value={item.key}
                       variableLabels={variables}
                       variables={variables}
                       onBlur={(val) => {
                         handleKeyChange(index, val);
-                        if (index === list.length) {
+
+                        // Last item blur, add the next item.
+                        if (index === list.length && val) {
                           handleAddNewProps(val);
                           setUpdateTrigger((prev) => !prev);
                         }
@@ -541,11 +536,7 @@ const RenderForm = ({
                   <Td p={0} w={'50%'}>
                     <Box display={'flex'} alignItems={'center'}>
                       <HttpInput
-                        placeholder={
-                          index !== list.length
-                            ? t('common:core.module.http.Props value_and_tips')
-                            : ''
-                        }
+                        placeholder={t('common:textarea_variable_picker_tip')}
                         value={item.value}
                         variables={variables}
                         variableLabels={variables}
@@ -694,6 +685,7 @@ const RenderBody = ({
         {(typeInput?.value === ContentTypes.xml || typeInput?.value === ContentTypes.raw) && (
           <PromptEditor
             value={jsonBody.value}
+            placeholder={t('common:textarea_variable_picker_tip')}
             onChange={(e) => {
               startSts(() => {
                 onChangeNode({
