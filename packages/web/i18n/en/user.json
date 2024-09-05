@@ -1,120 +1,113 @@
 {
   "bill": {
     "balance": "Balance",
-    "buy_plan": "Buy a package",
-    "buy_standard_plan_success": "Package purchased successfully",
-    "contact_customer_service": "Contact customer service",
-    "conversion": "exchange",
-    "convert_error": "Redemption failed",
-    "convert_success": "Redemption successful",
-    "current_token_price": "Current points price",
-    "not_need_invoice": "Balance payment, unable to issue invoice",
-    "price": "price",
-    "renew_plan": "Renewal package",
-    "standard_valid_tip": "Package usage rules: The system gives priority to using more advanced packages, and the original unused packages will take effect later.",
-    "token_expire_1year": "Points are valid for one year",
-    "tokens": "integral",
-    "use_balance": "Use balance",
-    "use_balance_hint": "Due to the system upgrade, the original \"automatic renewal and deduction from balance\" mode has been cancelled, and the balance recharge entrance has been closed. \nYour balance can be used to purchase points",
-    "valid_time": "Effective time",
-    "you_can_convert": "You can redeem",
+    "buy_plan": "Purchase Plan",
+    "buy_standard_plan_success": "Plan Purchase Successful",
+    "contact_customer_service": "Contact Support",
+    "conversion": "Conversion",
+    "convert_error": "Conversion Failed",
+    "convert_success": "Conversion Successful",
+    "current_token_price": "Current Token Price",
+    "not_need_invoice": "Balance payment, invoice not available",
+    "price": "Price",
+    "renew_plan": "Renew Plan",
+    "standard_valid_tip": "Plan Usage Rules: Higher-level plans will be used first. Unused plans will be activated later.",
+    "token_expire_1year": "Tokens are valid for one year",
+    "tokens": "Tokens",
+    "use_balance": "Use Balance",
+    "use_balance_hint": "Due to system upgrade, the 'Auto-renewal from balance' mode is canceled, and the balance recharge option is closed. Your balance can be used to purchase tokens.",
+    "valid_time": "Effective Time",
+    "you_can_convert": "You can convert",
     "yuan": "Yuan"
   },
-  "promotion": {
-    "register": "Register",
-    "pay": "Pay"
-  },
-  "bind_inform_account_error": "Abnormal binding notification account",
-  "bind_inform_account_success": "Binding notification account successful",
-  "code_error": {
-    "app_error": {
-      "invalid_app_type": "Wrong application type",
-      "invalid_owner": "Illegal app owner"
-    }
-  },
+  "bind_inform_account_error": "Failed to Bind Notification Account",
+  "bind_inform_account_success": "Notification Account Bound Successfully",
   "delete": {
-    "admin_failed": "Failed to delete administrator",
-    "admin_success": "Administrator deleted successfully"
+    "admin_failed": "Failed to Delete Admin",
+    "admin_success": "Admin Deleted Successfully"
   },
-  "has_chosen": "chosen",
+  "has_chosen": "Selected",
   "login": {
-    "error": "Login exception",
-    "failed": "Login failed",
-    "login_account": "Login to {{account}} account",
-    "login_error": "wrong user name or password",
-    "password_condition": "Password maximum 60 characters",
-    "success": "login successful",
-    "to_register": "If you don’t have an account, please register."
+    "error": "Login Error",
+    "failed": "Login Failed",
+    "login_account": "Login to {{account}} Account",
+    "login_error": "Incorrect Username or Password",
+    "password_condition": "Password can be up to 60 characters",
+    "success": "Login Successful",
+    "to_register": "No account? Register"
   },
-  "name": "name",
+  "name": "Name",
   "notification": {
-    "Bind Notification Pipe Hint": "Bind the email address or mobile phone number for receiving notifications to ensure that you receive important system notifications in a timely manner.",
-    "remind_owner_bind": "Please remind the creator to bind the notification account"
+    "Bind Notification Pipe Hint": "Please bind a notification receiving account to ensure you receive notifications such as plan expiration reminders, ensuring your service runs smoothly.",
+    "remind_owner_bind": "Please remind the creator to bind a notification account"
   },
-  "operations": "operate",
+  "operations": "Actions",
   "password": {
-    "change_error": "Exception when changing password",
-    "code_required": "verification code must be filled",
-    "code_send_error": "Verification code sending exception",
-    "code_sended": "Verification code sent",
+    "change_error": "Password Change Error",
+    "code_required": "Verification Code Required",
+    "code_send_error": "Failed to Send Verification Code",
+    "code_sended": "Verification Code Sent",
     "confirm": "Confirm Password",
-    "email_phone": "Email/Mobile phone number",
-    "email_phone_error": "Email/mobile phone number format error",
-    "email_phone_void": "Email/mobile phone number cannot be empty",
-    "get_code": "get verification code",
-    "get_code_again": "Reacquire after s",
-    "new_password": "New password (4~20 digits)",
-    "not_match": "Two passwords are inconsistent",
-    "password_condition": "Password must be at least 4 characters and at most 20 characters",
-    "password_required": "password can not be blank",
-    "retrieve": "Retrieve password",
-    "retrieved": "Password has been retrieved",
-    "retrieved_account": "Retrieve {{account}} account",
-    "to_login": "Go to login",
-    "verification_code": "Verification code"
+    "email_phone": "Email/Phone Number",
+    "email_phone_error": "Invalid Email/Phone Number Format",
+    "email_phone_void": "Email/Phone Number Cannot Be Empty",
+    "get_code": "Get Verification Code",
+    "get_code_again": "Get Again in s",
+    "new_password": "New Password (4-20 characters)",
+    "not_match": "Passwords Do Not Match",
+    "password_condition": "Password must be between 4 and 20 characters",
+    "password_required": "Password Cannot Be Empty",
+    "retrieve": "Retrieve Password",
+    "retrieved": "Password Retrieved",
+    "retrieved_account": "Retrieve {{account}} Account",
+    "to_login": "Go to Login",
+    "verification_code": "Verification Code"
   },
   "permission": {
-    "Manage": "administrator",
-    "Manage tip": "Team administrator, with full permissions",
-    "Read": "Read only",
-    "Read desc": "Members can only read related resources and cannot create new resources.",
+    "Manage": "Admin",
+    "Manage tip": "Team admin with full permissions",
+    "Read": "Read Only",
+    "Read desc": "Members can only read related resources, cannot create new resources",
     "Write": "Write",
-    "Write tip": "In addition to readable resources, you can also create new resources",
-    "change_owner": "transfer ownership",
-    "change_owner_failed": "Transfer ownership failed",
-    "change_owner_placeholder": "Enter username to find account",
-    "change_owner_success": "Successfully transferred ownership",
-    "change_owner_tip": "Your administrator rights will be retained after the transfer",
-    "change_owner_to": "transferred to",
-    "only_collaborators": "Collaborator access only",
-    "team_read": "Team accessible",
-    "team_write": "Team editable"
+    "Write tip": "In addition to read access, can create new resources",
+    "only_collaborators": "Collaborators Only",
+    "team_read": "Team Read Access",
+    "team_write": "Team Write Access"
+  },
+  "permission_des": {
+    "manage": "Can create resources, invite, and delete members",
+    "read": "Members can only read related resources and cannot create new resources.",
+    "write": "In addition to readable resources, you can also create new resources"
   },
   "permissions": "Permissions",
-  "register": {
-    "confirm": "Confirm registration",
-    "error": "Registration exception",
-    "failed": "registration failed",
-    "register_account": "Register {{account}} account",
-    "success": "registration success",
-    "to_login": "Already have an account? Log in"
+  "promotion": {
+    "pay": "Friend Payment",
+    "register": "Friend Registration"
   },
-  "search_user": "Search username",
+  "register": {
+    "confirm": "Confirm Registration",
+    "error": "Registration Error",
+    "failed": "Registration Failed",
+    "register_account": "Register {{account}} Account",
+    "success": "Registration Successful",
+    "to_login": "Already have an account? Login"
+  },
+  "search_user": "Search Username",
   "synchronization": {
-    "button": "Sync now",
-    "placeholder": "Please enter sync label",
-    "title": "Fill in the tag synchronization link and click the sync button to synchronize"
+    "button": "Sync Now",
+    "placeholder": "Enter Sync Tag",
+    "title": "Enter the sync tag link and click the sync button to synchronize"
   },
   "team": {
-    "Add manager": "Add manager",
-    "add_collaborator": "Add collaborators",
-    "manage_collaborators": "Manage collaborators",
-    "no_collaborators": "No collaborators yet"
+    "Add manager": "Add Admin",
+    "add_collaborator": "Add Collaborator",
+    "manage_collaborators": "Manage Collaborators",
+    "no_collaborators": "No Collaborators"
   },
   "usage": {
-    "feishu": "Lark",
-    "official_account": "Official account",
-    "share": "share link",
-    "wecom": "Enterprise WeChat"
+    "feishu": "Feishu",
+    "official_account": "Official Account",
+    "share": "Share Link",
+    "wecom": "WeCom"
   }
 }

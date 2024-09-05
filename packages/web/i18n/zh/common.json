@@ -531,6 +531,7 @@
         "feishu": "飞书",
         "official_account": "公众号",
         "online": "在线使用",
+        "free_login": "免登录链接",
         "share": "外部链接调用",
         "team": "团队空间对话",
         "test": "测试",
@@ -647,8 +648,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -926,7 +926,18 @@
         "Team app": "团队应用",
         "Tool module": "工具",
         "UnKnow Module": "未知模块",
-        "http body placeholder": "与 Apifox 相同的语法"
+        "http body placeholder": "与 Apifox 相同的语法",
+        "empty_workflow": "空白工作流",
+        "empty_app": "空白应用",
+        "empty_plugin": "空白插件",
+        "system_config": "系统配置",
+        "system_config_info": "可以配置应用的系统参数",
+        "work_start": "流程开始",
+        "self_input": "自定义插件输入",
+        "self_output": "自定义插件输出",
+        "config_params": "可以配置应用的系统参数",
+        "ai_chat": "AI 对话",
+        "ai_chat_intro": "AI 大模型对话"
       },
       "templates": {
         "Load plugin error": "加载插件失败"
@@ -1159,6 +1170,9 @@
     "Collaborator": "协作者",
     "Default permission": "默认权限",
     "Manage": "管理",
+    "manager": "管理员",
+    "read": "读权限",
+    "write": "写权限",
     "No InheritPermission": "已限制权限，不再继承父级文件夹的权限，",
     "Not collaborator": "暂无协作者",
     "Owner": "创建者",

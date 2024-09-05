@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
-import { change2DefaultLng, setLngStore } from '@/web/common/utils/i18n';
+import { change2DefaultLng, LangEnum, setLngStore } from '@/web/common/utils/i18n';
 import { useMemoizedFn, useMount } from 'ahooks';
 import { TrackEventName } from '../common/system/constants';
 
@@ -40,11 +40,13 @@ export const useInitApp = () => {
 
   const initUserLanguage = useMemoizedFn(() => {
     // get default language
-    const targetLng = change2DefaultLng(i18n.language);
-    if (targetLng) {
-      setLngStore(targetLng);
-      router.replace(router.asPath, undefined, { locale: targetLng });
-    }
+
+    const targetLng =
+      change2DefaultLng(i18n.language) ||
+      (['zh', 'zh-CN'].includes(navigator.language) ? 'zh' : 'en');
+
+    setLngStore(targetLng);
+    router.replace(router.asPath, undefined, { locale: targetLng });
   });
 
   useMount(() => {

@@ -162,16 +162,16 @@ export function form2AppWorkflow(
           key: 'userChatInput',
           renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
           valueType: WorkflowIOValueTypeEnum.string,
-          label: '用户问题',
+          label: i18nT('common:core.module.input.label.user question'),
           required: true,
-          toolDescription: '用户问题',
+          toolDescription: i18nT('common:core.module.input.label.user question'),
           value: [workflowStartNodeId, 'userChatInput']
         },
         {
           key: 'quoteQA',
           renderTypeList: [FlowNodeInputTypeEnum.settingDatasetQuotePrompt],
           label: '',
-          debugLabel: '知识库引用',
+          debugLabel: i18nT('common:core.module.Dataset quote.label'),
           description: '',
           valueType: WorkflowIOValueTypeEnum.datasetQuote,
           value: selectedDatasets ? [datasetNodeId, 'quoteQA'] : undefined
@@ -467,7 +467,7 @@ export function form2AppWorkflow(
               key: 'userChatInput',
               renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
               valueType: WorkflowIOValueTypeEnum.string,
-              label: '用户问题',
+              label: i18nT('common:core.module.input.label.user question'),
               required: true,
               value: [workflowStartNodeId, 'userChatInput']
             },
