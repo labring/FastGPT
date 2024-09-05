@@ -605,7 +605,7 @@ const RenderList = React.memo(function RenderList({
                         src={template.avatar}
                         w={gridStyle.avatarSize}
                         objectFit={'contain'}
-                        borderRadius={'md'}
+                        borderRadius={'sm'}
                       />
                       <Box ml={3} flex={'1'}>
                         <Box color={'myGray.900'} fontWeight={'500'} fontSize={'sm'} flex={'1 0 0'}>
