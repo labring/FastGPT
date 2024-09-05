@@ -75,8 +75,8 @@ COPY ./projects/app/data /app/data
 
 RUN chown -R nextjs:nodejs /app/data
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 
 EXPOSE 3000
