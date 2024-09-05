@@ -927,7 +927,18 @@
         "Team app": "Team App",
         "Tool module": "Tool",
         "UnKnow Module": "Unknown Module",
-        "http body placeholder": "Same syntax as Apifox"
+        "ai_chat": "AI conversation",
+        "ai_chat_intro": "AI large model dialogue",
+        "config_params": "Can configure application system parameters",
+        "empty_app": "Blank application",
+        "empty_plugin": "Blank plugin",
+        "empty_workflow": "Blank workflow",
+        "http body placeholder": "Same syntax as Apifox",
+        "self_input": "Custom plug-in input",
+        "self_output": "Custom plug-in output",
+        "system_config": "System configuration",
+        "system_config_info": "Can configure application system parameters",
+        "work_start": "Process starts"
       },
       "templates": {
         "Load plugin error": "Failed to Load Plugin"
