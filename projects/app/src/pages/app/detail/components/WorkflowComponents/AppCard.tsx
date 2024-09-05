@@ -217,8 +217,8 @@ function ExportPopover({
   return (
     <MyPopover
       placement={'right-start'}
-      offset={[-5, 5]}
-      hasArrow={false}
+      offset={[0, 0]}
+      hasArrow
       trigger={'hover'}
       w={'8.6rem'}
       Trigger={

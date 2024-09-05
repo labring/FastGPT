@@ -17,6 +17,8 @@ export const useCopyData = () => {
       title: string | null = t('common:common.Copy Successful'),
       duration = 1000
     ) => {
+      data = data.trim();
+
       try {
         if ((hasHttps() || !isProduction) && navigator.clipboard) {
           await navigator.clipboard.writeText(data);
