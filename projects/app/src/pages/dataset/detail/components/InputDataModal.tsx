@@ -204,7 +204,6 @@ const InputDataModal = ({
         a: '',
         indexes: []
       });
-      console.log('执行onSuccess');
       onSuccess(e);
     },
     errorToast: t('common:common.error.unKnow')
