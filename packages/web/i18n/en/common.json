@@ -647,7 +647,8 @@
             "success": "Start syncing"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",
@@ -1084,13 +1085,15 @@
   "default_reply": "Default reply",
   "error": {
     "Create failed": "Create failed",
+    "code_error": "Code error",
     "fileNotFound": "File not found~",
     "inheritPermissionError": "Inherit permission Error",
     "missingParams": "Insufficient parameters",
     "team": {
       "overSize": "Team members exceed the limit"
     },
-    "upload_file_error_filename": "{{name}} upload failed"
+    "upload_file_error_filename": "{{name}} upload failed",
+    "username_empty": "Account cannot be empty"
   },
   "extraction_results": "Extract results",
   "field_name": "Name",

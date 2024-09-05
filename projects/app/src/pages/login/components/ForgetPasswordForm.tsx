@@ -8,8 +8,8 @@ import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
-import SendCodeAuthModal from '@/components/support/user/safe/SendCodeAuthModal';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
   loginSuccess: (e: ResLogin) => void;
@@ -30,25 +30,15 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     register,
     handleSubmit,
     getValues,
-    trigger,
+    watch,
     formState: { errors }
   } = useForm<RegisterType>({
     mode: 'onBlur'
   });
+  const username = watch('username');
 
-  const { sendCodeText, codeCountDown } = useSendCode();
-  const {
-    isOpen: openCodeAuthModal,
-    onOpen: onOpenCodeAuthModal,
-    onClose: onCloseCodeAuthModal
-  } = useDisclosure();
-  const onclickSendCode = useCallback(async () => {
-    const check = await trigger('username');
-    if (!check) return;
-    onOpenCodeAuthModal();
-  }, [onOpenCodeAuthModal, trigger]);
+  const { SendCodeBox } = useSendCode({ type: 'findPassword' });
 
-  const [requesting, setRequesting] = useState(false);
   const placeholder = feConfigs?.find_password_method
     ?.map((item) => {
       switch (item) {
@@ -62,30 +52,23 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     })
     .join('/');
 
-  const onclickFindPassword = useCallback(
+  const { runAsync: onclickFindPassword, loading: requesting } = useRequest2(
     async ({ username, code, password }: RegisterType) => {
-      setRequesting(true);
-      try {
-        loginSuccess(
-          await postFindPassword({
-            username,
-            code,
-            password
-          })
-        );
-        toast({
-          title: t('user:password.retrieved'),
-          status: 'success'
-        });
-      } catch (error: any) {
-        toast({
-          title: error.message || t('user:password.change_error'),
-          status: 'error'
-        });
-      }
-      setRequesting(false);
+      loginSuccess(
+        await postFindPassword({
+          username,
+          code,
+          password
+        })
+      );
+      toast({
+        status: 'success',
+        title: t('user:password.retrieved')
+      });
     },
-    [loginSuccess, toast]
+    {
+      refreshDeps: [loginSuccess, t, toast]
+    }
   );
 
   return (
@@ -131,23 +114,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
               required: t('user:password.code_required')
             })}
           ></Input>
-          <Box
-            position={'absolute'}
-            right={3}
-            zIndex={1}
-            fontSize={'sm'}
-            {...(codeCountDown > 0
-              ? {
-                  color: 'myGray.500'
-                }
-              : {
-                  color: 'primary.700',
-                  cursor: 'pointer',
-                  onClick: onclickSendCode
-                })}
-          >
-            {sendCodeText}
-          </Box>
+          <SendCodeBox username={username} />
         </FormControl>
         <FormControl mt={6} isInvalid={!!errors.password}>
           <Input
@@ -203,13 +170,6 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           {t('user:password.to_login')}
         </Box>
       </Box>
-      {openCodeAuthModal && (
-        <SendCodeAuthModal
-          onClose={onCloseCodeAuthModal}
-          username={getValues('username')}
-          type={UserAuthTypeEnum.findPassword}
-        />
-      )}
     </>
   );
 };
