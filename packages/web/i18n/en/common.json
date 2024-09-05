@@ -6,10 +6,6 @@
     "ai_point_expire_a": "Yes, they will expire. After the current package expires, the AI points will be reset to the new package's AI points. Annual package AI points are valid for one year, not monthly.",
     "ai_point_expire_q": "Do AI points expire?",
     "ai_point_q": "What are AI points?",
-    "auto_renew_a": "After the current package expires, the system will automatically renew according to the 'Future Package'. The system will attempt to deduct the fee from your account balance. Please ensure there is sufficient balance for automatic renewal.",
-    "auto_renew_q": "Will the subscription package renew automatically?",
-    "change_package_a": "If the current package price is higher than the new package, it cannot be switched immediately and will switch upon renewal after the current package expires.\nIf the current package price is lower than the new package, the system will calculate the remaining balance of the current package, and you can pay the difference to switch packages.",
-    "change_package_q": "Can I switch subscription packages?",
     "check_subscription_a": "Go to Account - Personal Information - Package Details - Usage. You can view the effective and expiration dates of your subscribed packages. After the paid package expires, it will automatically switch to the free version.",
     "check_subscription_q": "Where can I view my subscribed packages?",
     "dataset_compute_a": "1 Dataset storage equals 1 Dataset index. A piece of Dataset data can contain one or more Dataset indexes. In enhanced training, 1 piece of data generates 5 indexes.",
@@ -27,7 +23,6 @@
   "Login": "Login",
   "Move": "Move",
   "Name": "Name",
-  "Not_selected": "Not selected",
   "Rename": "Rename",
   "Resume": "Resume",
   "Running": "Running",
@@ -146,7 +141,6 @@
     "Exit": "Exit",
     "Exit Directly": "Exit Directly",
     "Expired Time": "Expiration Time",
-    "Field": "Field",
     "File": "File",
     "Finish": "Finish",
     "Import": "Import",
@@ -212,7 +206,6 @@
     "Update Failed": "Update Failed",
     "Update Success": "Updated Successfully",
     "Update Successful": "Updated Successfully",
-    "Upload File Failed": "File Upload Failed",
     "Username": "Username",
     "Waiting": "Waiting",
     "Warning": "Warning",
@@ -225,7 +218,7 @@
     "base_config": "Basic Configuration",
     "choosable": "Choosable",
     "confirm": {
-      "Common Tip": "Operation Confirmation"
+      "Common Tip": "Confirm"
     },
     "copy_to_clipboard": "Copy to Clipboard",
     "course": {
@@ -236,7 +229,6 @@
     },
     "error": {
       "Select avatar failed": "Avatar Selection Failed",
-      "too_many_request": "Too Many Requests, Please Try Again Later.",
       "unKnow": "An Unexpected Error Occurred"
     },
     "export_to_json": "Export to JSON",
@@ -278,7 +270,6 @@
     },
     "submit_success": "Submitted Successfully",
     "submitted": "Submitted",
-    "submitting": "Submitting",
     "support": "Support",
     "system": {
       "Commercial version function": "Please Upgrade to the Commercial Version to Use This Feature: https://fastgpt.in",
@@ -335,8 +326,6 @@
       "Max histories": "Number of Chat Histories",
       "Max tokens": "Response Limit",
       "Name and avatar": "Avatar & Name",
-      "Not saved": "Not Saved",
-      "Onclick to save": "Click to Save",
       "Publish": "Publish",
       "Publish Confirm": "Confirm to Publish App? This Will Immediately Update the App Status on All Publishing Channels.",
       "Publish app tip": "After Publishing the App, All Publishing Channels Will Immediately Use This Version",
@@ -345,7 +334,6 @@
       "Quote prompt": "Quote Template Prompt",
       "Quote templates": "Quote Content Templates",
       "Random": "Divergent",
-      "Saved time": "Saved: {{time}}",
       "Search team tags": "Search Tags",
       "Select TTS": "Select Voice Playback Mode",
       "Select app from template": "Select from Template",
@@ -385,22 +373,12 @@
         "Custom feedback": "Custom Feedback",
         "close custom feedback": "Close Feedback"
       },
-      "have_publish": "Published",
       "have_saved": "Saved",
-      "loading": "Loading",
       "logs": {
         "Source And Time": "Source & Time"
       },
       "more": "View More",
-      "navbar": {
-        "External": "External Use",
-        "Flow mode": "Advanced Orchestration",
-        "Publish": "Publish",
-        "Publish app": "Publish App",
-        "Simple mode": "Simple Configuration"
-      },
       "no_app": "No Apps Yet, Create One Now!",
-      "not_published": "Not Published",
       "not_saved": "Not Saved",
       "outLink": {
         "Can Drag": "Icon Can Be Dragged",
@@ -415,7 +393,6 @@
         "Show History": "Show Chat History"
       },
       "publish": {
-        "Fei Shu Bot Desc": "Integrate into Feishu Bot",
         "Fei shu bot": "Feishu",
         "Fei shu bot publish": "Publish to Feishu Bot"
       },
@@ -474,13 +451,11 @@
       "Audio Not Support": "Device Does Not Support Voice Playback",
       "Audio Speech Error": "Voice Playback Error",
       "Cancel Speak": "Cancel Voice Input",
-      "Chat API is error or undefined": "Chat API Error or Undefined",
       "Confirm to clear history": "Confirm to Clear Online Chat History for This App? Share and API Call Records Will Not Be Cleared.",
       "Confirm to clear share chat history": "Confirm to Delete All Chat Records?",
       "Converting to text": "Converting to Text...",
       "Custom History Title": "Custom History Title",
       "Custom History Title Description": "If set to empty, it will automatically follow the chat record.",
-      "Debug test": "Debug Preview",
       "Exit Chat": "Exit Chat",
       "Failed to initialize chat": "Failed to Initialize Chat",
       "Feedback Failed": "Feedback Submission Failed",
@@ -504,7 +479,6 @@
       "Record": "Voice Input",
       "Restart": "Restart Chat",
       "Run test": "Run Preview",
-      "Select Image": "Select Image",
       "Select dataset": "Select Dataset",
       "Select dataset Desc": "Select a Dataset to store the expected answer",
       "Send Message": "Send",
@@ -549,10 +523,8 @@
       "response": {
         "Complete Response": "Complete Response",
         "Extension model": "Question Optimization Model",
-        "Plugin response detail": "Plugin Details",
         "Read complete response": "View Details",
         "Read complete response tips": "Click to View Detailed Process",
-        "Tool call response detail": "Tool Run Details",
         "Tool call tokens": "Tool Call Tokens Consumption",
         "context total length": "Total Context Length",
         "module cq": "Question Classification List",
@@ -589,14 +561,11 @@
       }
     },
     "dataset": {
-      "All Dataset": "All Datasets",
-      "Avatar": "Dataset Avatar",
       "Choose Dataset": "Associate Dataset",
       "Collection": "Dataset",
       "Create dataset": "Create a {{name}}",
       "Dataset": "Dataset",
       "Dataset ID": "Dataset ID",
-      "Dataset Type": "Dataset Type",
       "Delete Confirm": "Confirm to Delete This Dataset? Data Cannot Be Recovered After Deletion, Please Confirm!",
       "Empty Dataset": "Empty Dataset",
       "Empty Dataset Tips": "No Dataset Yet, Create One Now!",
@@ -605,7 +574,6 @@
       "Intro Placeholder": "This Dataset Has No Introduction Yet",
       "Manual collection": "Manual Dataset",
       "My Dataset": "My Dataset",
-      "Name": "Dataset Name",
       "Query extension intro": "Enabling the question optimization function can improve the accuracy of Dataset searches during continuous conversations. After enabling this function, when performing Dataset searches, the AI will complete the missing information of the question based on the conversation history.",
       "Quote Length": "Quote Content Length",
       "Read Dataset": "View Dataset Details",
@@ -629,7 +597,6 @@
           "Chunk Size": "Chunk Size",
           "Createtime": "Creation Time",
           "Raw text length": "Raw Text Length",
-          "Read Metadata": "View Metadata",
           "Training Type": "Training Mode",
           "Updatetime": "Update Time",
           "Web page selector": "Web Page Selector",
@@ -648,8 +615,7 @@
             "success": "Sync Started"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "Auxiliary Data",
@@ -665,7 +631,6 @@
         "Search data placeholder": "Search Related Data",
         "Too Long": "Total Length Exceeded",
         "Total Amount": "{{total}} Groups",
-        "empty_index": "No Custom Index",
         "group": "Group",
         "unit": "Items"
       },
@@ -673,7 +638,6 @@
       "error": {
         "Data not found": "Data Not Found or Deleted",
         "Start Sync Failed": "Failed to Start Sync",
-        "Template does not exist": "Template Does Not Exist",
         "invalidVectorModelOrQAModel": "Invalid Vector Model or QA Model",
         "unAuthDataset": "Unauthorized to Operate This Dataset",
         "unAuthDatasetCollection": "Unauthorized to Operate This Dataset",
@@ -814,7 +778,6 @@
       "Add question type": "Add Question Type",
       "Add_option": "Add Option",
       "Can not connect self": "Cannot Connect to Itself",
-      "Confirm Delete Node": "Confirm to Delete This Node?",
       "Data Type": "Data Type",
       "Dataset quote": {
         "label": "Dataset Quote",
@@ -859,19 +822,15 @@
       },
       "http": {
         "Add props": "Add Parameter",
-        "Add props_and_tips": "To add parameters, enter \"/\" to invoke the variable list",
         "AppId": "App ID",
-        "AppSecret": "AppSecret",
         "ChatId": "Current Chat ID",
         "Current time": "Current Time",
         "Histories": "History Records",
         "Key already exists": "Key Already Exists",
         "Key cannot be empty": "Parameter Name Cannot Be Empty",
         "Props name": "Parameter Name",
-        "Props name_and_tips": "Parameter name, enter \"/\" to call up the variable list",
         "Props tip": "You can set related parameters for the HTTP request\nYou can call global variables or external parameter inputs through {{key}}, currently available variables:\n{{variable}}",
         "Props value": "Parameter Value",
-        "Props value_and_tips": "Parameter value, enter \"/\" to invoke the variable list",
         "ResponseChatItemId": "AI Response ID",
         "Url and params have been split": "Path parameters have been automatically added to Params",
         "curl import": "cURL Import",
@@ -923,14 +882,12 @@
         "Query extension": "Question Optimization",
         "System Plugin": "System Plugin",
         "System input module": "System Input",
-        "Team Plugin": "Team Plugin",
         "Team app": "Team App",
         "Tool module": "Tool",
         "UnKnow Module": "Unknown Module",
         "ai_chat": "AI conversation",
         "ai_chat_intro": "AI large model dialogue",
         "config_params": "Can configure application system parameters",
-        "empty_app": "Blank application",
         "empty_plugin": "Blank plugin",
         "empty_workflow": "Blank workflow",
         "http body placeholder": "Same syntax as Apifox",
@@ -959,9 +916,7 @@
         "variable option is value is required": "Option Content Cannot Be Empty",
         "variable options": "Options"
       },
-      "variable add option": "Add Option",
-      "variable_update": "Variable Update",
-      "variable_update_info": "Can update the output value of the specified node or update global variables"
+      "variable add option": "Add Option"
     },
     "plugin": {
       "Custom headers": "Custom Request Headers",
@@ -1009,7 +964,6 @@
         "Reference": "Variable Reference",
         "custom": "Custom Variable",
         "dynamicTargetInput": "Dynamic External Data",
-        "file_link": "File Upload",
         "input": "Single Line Input Box",
         "number input": "Number Input Box",
         "select": "Single Select Box",
@@ -1024,7 +978,6 @@
         "OnRevert version confirm": "Confirm to Revert to This Version? The configuration of the editing version will be saved, and a new release version will be created for the reverted version.",
         "histories": "Release Records"
       },
-      "run_test": "Run",
       "template": {
         "Interactive": "Interactive",
         "Multimodal": "Multimodal",
@@ -1068,21 +1021,14 @@
       "Select One Collection To Store": "Select a File to Store"
     },
     "data": {
-      "Add Index": "Add Custom Index",
       "Can not edit": "No Edit Permission",
       "Custom Index Number": "Custom Index {{number}}",
       "Default Index": "Default Index",
       "Delete Tip": "Confirm to Delete This Data?",
-      "Index Edit": "Data Index",
       "Index Placeholder": "Enter Index Text Content",
-      "Input Data": "Import New Data",
       "Input Success Tip": "Data Imported Successfully",
-      "Update Data": "Update Data",
       "Update Success Tip": "Data Updated Successfully",
       "edit": {
-        "Content": "Data Content",
-        "Course": "Documentation",
-        "Delete": "Delete Data",
         "Index": "Data Index ({{amount}})",
         "divide_content": "Segment Content"
       },
@@ -1094,19 +1040,15 @@
       "noResult": "No Search Results"
     }
   },
-  "default_reply": "Default Reply",
   "error": {
     "Create failed": "Create failed",
-    "code_error": "Code error",
     "fileNotFound": "File not found~",
     "inheritPermissionError": "Inherit permission Error",
     "missingParams": "Insufficient parameters",
-    "team": {
-      "overSize": "Team Member Limit Exceeded"
-    },
     "upload_file_error_filename": "{{name}} Upload Failed",
     "username_empty": "Account cannot be empty"
   },
+  "error.code_error": "Verification code error",
   "extraction_results": "Extraction Results",
   "field_name": "Field Name",
   "free": "Free",
@@ -1142,28 +1084,16 @@
   },
   "new_create": "Create New",
   "no": "No",
-  "no_data": "No Data Available",
   "no_laf_env": "System Not Configured with Laf Environment",
   "not_yet_introduced": "No Introduction Yet",
   "option": "Option",
   "pay": {
     "amount": "Amount",
-    "balance": "Account Balance",
-    "balance_notice": "Insufficient Account Balance",
-    "confirm_pay": "Confirm Payment",
-    "get_pay_QR": "Get Payment QR Code",
-    "need_pay": "Need to Pay",
-    "need_to_pay": "Actual Payment",
-    "new_package_price": "New Package Price",
-    "notice": "Please Do Not Close the Page",
-    "old_package_price": "Old Package Balance",
-    "other": "Other Amount, Please Use Whole Numbers",
     "package_tip": {
       "buy": "The package you purchased is lower than the current package. This package will take effect after the current package expires.\nYou can view the package usage in Account - Personal Information - Package Details.",
       "renewal": "You are renewing the package. You can view the package usage in Account - Personal Information - Package Details.",
       "upgrade": "The package you purchased is higher than the current package. This package will take effect immediately, and the current package will take effect later. You can view the package usage in Account - Personal Information - Package Details."
     },
-    "to_recharge": "Insufficient Balance, Go to Recharge",
     "wechat": "Please Scan the QR Code with WeChat to Pay: {{price}} Yuan\nPlease Do Not Close the Page",
     "yuan": "{{amount}} Yuan"
   },
@@ -1218,7 +1148,6 @@
     "go to laf": "Go to Write",
     "path": "Path"
   },
-  "reply_now": "Reply Now",
   "required": "Required",
   "resume_failed": "Resume Failed",
   "select_reference_variable": "Select Reference Variable",
@@ -1252,8 +1181,6 @@
     },
     "standard": {
       "AI Bonus Points": "AI Points",
-      "Expired Time": "End Time",
-      "Start Time": "Start Time",
       "due_date": "Due Date",
       "storage": "Storage",
       "type": "Type"
@@ -1279,22 +1206,14 @@
         "System message": "System Message"
       },
       "login": {
-        "And": "and",
         "Email": "Email",
-        "Forget Password": "Forgot Password?",
         "Github": "GitHub Login",
         "Google": "Google Login",
         "Password": "Password",
         "Password login": "Password Login",
         "Phone": "Phone Login",
         "Phone number": "Phone Number",
-        "Policy tip": "By using, you agree to our",
-        "Privacy": "Privacy Policy",
         "Provider error": "Login Error, Please Try Again",
-        "Register": "Register Account",
-        "Root login": "Login with Root User",
-        "Root password placeholder": "Root password is the environment variable you set",
-        "Terms": "Terms of Service",
         "Username": "Username",
         "Wechat": "WeChat Login",
         "can_not_login": "Cannot Log In, Click to Contact",
@@ -1314,12 +1233,9 @@
     "wallet": {
       "Ai point every thousand tokens": "{{points}} Points/1K Tokens",
       "Amount": "Amount",
-      "Bills": "Bills and Invoices",
       "Buy": "Buy",
-      "Confirm pay": "Payment Confirmation",
       "Not sufficient": "Insufficient AI Points, Please Upgrade Your Package or Purchase Additional AI Points to Continue Using.",
       "Plan expired time": "Package Expiration Time",
-      "Plan reset time": "Package Reset Time",
       "Standard Plan Detail": "Package Details",
       "To read plan": "View Package",
       "amount_0": "Purchase Quantity Cannot Be 0",
@@ -1356,7 +1272,6 @@
         "company_address": "Company Address",
         "company_phone": "Company Phone",
         "email": "Email Address",
-        "in_valid": "There are empty fields or email format errors",
         "need_special_invoice": "Need Special Invoice",
         "organization_name": "Organization Name",
         "unit_code": "Unified Credit Code"
@@ -1376,7 +1291,6 @@
         "AI points usage": "AI Points Usage",
         "AI points usage tip": "Each time the AI model is called, a certain amount of AI points will be consumed. For specific calculation standards, please refer to the 'Pricing' above.",
         "Ai points": "AI Points Calculation Standards",
-        "Buy now": "Switch Package",
         "Current plan": "Current Package",
         "Extra ai points": "Extra AI Points",
         "Extra dataset size": "Extra Dataset Capacity",
@@ -1385,10 +1299,7 @@
         "FAQ": "FAQ",
         "Month amount": "Months",
         "Next plan": "Future Package",
-        "Nonsupport": "No Purchase Needed",
         "Stand plan level": "Subscription Package",
-        "Standard update fail": "Failed to Update Subscription Package",
-        "Standard update success": "Subscription Package Updated Successfully!",
         "Sub plan": "Subscription Package",
         "Sub plan tip": "Free to use {{title}} or upgrade to a higher package",
         "Team plan and usage": "Package and Usage",
@@ -1454,8 +1365,7 @@
         "Total points": "AI Points Consumption",
         "Usage Detail": "Usage Details",
         "Whisper": "Voice Input"
-      },
-      "use_default": "Use Default Header"
+      }
     }
   },
   "sync_link": "Sync Link",
@@ -1492,28 +1402,23 @@
     "Laf Account Setting": "Laf Account Configuration",
     "Language": "Language",
     "Member Name": "Nickname",
-    "Notice": "Notice",
     "Notification Receive": "Notification Receive",
     "Notification Receive Bind": "Please bind the notification receive method first",
     "Old password is error": "Old Password is Incorrect",
     "OpenAI Account Setting": "OpenAI Account Configuration",
     "Password": "Password",
     "Pay": "Recharge",
-    "Personal Information": "Profile",
     "Promotion": "Promotion",
     "Promotion Rate": "Cashback Rate",
-    "Promotion Record": "Promotion Record",
     "Promotion rate tip": "You will receive a balance reward when friends recharge",
     "Replace": "Replace",
     "Set OpenAI Account Failed": "Failed to Set OpenAI Account",
-    "Sign Out": "Sign Out",
     "Team": "Team",
     "Time": "Time",
     "Timezone": "Timezone",
     "Update Password": "Update Password",
     "Update password failed": "Failed to Update Password",
     "Update password successful": "Password Updated Successfully",
-    "Usage Record": "Usage Record",
     "apikey": {
       "key": "API Key"
     },
@@ -1568,8 +1473,7 @@
       },
       "role": {
         "Admin": "Admin",
-        "Owner": "Owner",
-        "Visitor": "Visitor"
+        "Owner": "Owner"
       }
     },
     "type": "Type"

@@ -2,13 +2,14 @@
   "bill": {
     "balance": "余额",
     "buy_plan": "购买套餐",
-    "buy_standard_plan_success": "购买套餐成功",
     "contact_customer_service": "联系客服",
     "conversion": "兑换",
     "convert_error": "兑换失败",
     "convert_success": "兑换成功",
+    "current_token_price": "当前积分价格",
     "not_need_invoice": "余额支付，无法开票",
     "price": "价格",
+    "renew_plan": "续费套餐",
     "standard_valid_tip": "套餐使用规则：系统优先使用更高级的套餐，原未用完的套餐将延后生效",
     "token_expire_1year": "积分有效期一年",
     "tokens": "积分",
@@ -16,14 +17,9 @@
     "use_balance_hint": "由于系统升级，原“自动续费从余额扣款”模式取消，余额充值入口关闭。您的余额可用于购买积分",
     "valid_time": "生效时间",
     "you_can_convert": "您可兑换",
-    "renew_plan": "续费套餐",
-    "current_token_price": "当前积分价格",
     "yuan": "元"
   },
-  "promotion": {
-    "register": "好友注册",
-    "pay": "好友充值"
-  },
+  "bill_and_invoices": "账单 & 发票",
   "bind_inform_account_error": "绑定通知账号异常",
   "bind_inform_account_success": "绑定通知账号成功",
   "delete": {
@@ -31,28 +27,24 @@
     "admin_success": "删除管理员成功"
   },
   "has_chosen": "已选择",
+  "individuation": "个性化",
   "login": {
     "error": "登录异常",
-    "failed": "登录失败",
-    "login_account": "登录 {{account}} 账号",
-    "login_error": "用户名或密码错误",
     "password_condition": "密码最多 60 位",
-    "success": "登录成功",
-    "to_register": "没有账号，去注册"
+    "success": "登录成功"
   },
   "name": "名称",
+  "notice": "通知",
   "notification": {
     "Bind Notification Pipe Hint": "请绑定通知接收账号，以确保您能正常接收套餐过期提醒等通知，保障您的服务正常运行。",
     "remind_owner_bind": "请提醒创建者绑定通知账号"
   },
   "operations": "操作",
   "password": {
-    "change_error": "修改密码异常",
     "code_required": "验证码不能为空",
     "code_send_error": "验证码发送异常",
     "code_sended": "验证码已发送",
     "confirm": "确认密码",
-    "email_phone": "邮箱/手机号",
     "email_phone_error": "邮箱/手机号格式错误",
     "email_phone_void": "邮箱/手机号不能为空",
     "get_code": "获取验证码",
@@ -78,16 +70,23 @@
     "team_read": "团队可访问",
     "team_write": "团队可编辑"
   },
+  "permission_des": {
+    "manage": "可创建资源、邀请、删除成员",
+    "read": "成员仅可阅读相关资源，无法新建资源",
+    "write": "除了可读资源外，还可以新建新的资源"
+  },
   "permissions": "权限",
+  "personal_information": "个人信息",
+  "personalization": "个性化",
+  "promotion_records": "推广记录",
   "register": {
     "confirm": "确认注册",
-    "error": "注册异常",
-    "failed": "注册失败",
     "register_account": "注册 {{account}} 账号",
     "success": "注册成功",
     "to_login": "已有账号，去登录"
   },
   "search_user": "搜索用户名",
+  "sign_out": "登出",
   "synchronization": {
     "button": "立即同步",
     "placeholder": "请输入同步标签",
@@ -105,9 +104,5 @@
     "share": "分享链接",
     "wecom": "企业微信"
   },
-  "permission_des": {
-    "read": "成员仅可阅读相关资源，无法新建资源",
-    "write": "除了可读资源外，还可以新建新的资源",
-    "manage": "可创建资源、邀请、删除成员"
-  }
+  "usage_record": "使用记录"
 }

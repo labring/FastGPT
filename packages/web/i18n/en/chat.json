@@ -24,12 +24,10 @@
   "items": "Items",
   "module_runtime_and": "Total Module Runtime",
   "multiple_AI_conversations": "Multiple AI Conversations",
-  "new_chat": "New Conversation",
   "new_input_guide_lexicon": "New Lexicon",
   "no_workflow_response": "No workflow data",
   "plugins_output": "Plugin Output",
   "question_tip": "From top to bottom, the response order of each module",
-  "rearrangement": "Rearrangement of Retrieval Results",
   "response": {
     "node_inputs": "Node Inputs"
   },

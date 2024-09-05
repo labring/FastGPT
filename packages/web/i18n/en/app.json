@@ -15,8 +15,7 @@
     "version_initial_copy": "Duplicate - Original State",
     "version_name_tips": "Version name cannot be empty",
     "version_past": "Previously Published",
-    "version_publish_tips": "This version will be saved to the team cloud, synchronized with the entire team, and update the app version on all release channels.",
-    "version_save_tips": "This version will be saved to the team cloud, synchronized with the entire team."
+    "version_publish_tips": "This version will be saved to the team cloud, synchronized with the entire team, and update the app version on all release channels."
   },
   "app_detail": "Application Details",
   "chat_debug": "Chat Preview",
@@ -138,13 +137,11 @@
     "Create plugin bot": "Create Plugin",
     "Create simple bot": "Create Simple App",
     "Create simple bot tip": "Create a simple AI app by filling out a form, suitable for beginners.",
-    "Create template tip": "Explore more features in the template market to help you understand and get started with various applications.",
     "Create workflow bot": "Create Workflow",
     "Create workflow tip": "Build complex multi-turn dialogue AI applications through low-code methods, recommended for advanced users.",
     "Http plugin": "HTTP Plugin",
     "Plugin": "Plugin",
     "Simple bot": "Simple App",
-    "Template": "Create via Template",
     "Workflow bot": "Workflow"
   },
   "upload_file_max_amount": "Maximum File Quantity",
@@ -169,8 +166,6 @@
   "workflow": {
     "Input guide": "Input Guide",
     "file_url": "Document Link",
-    "option1": "Option 1",
-    "option2": "Option 2",
     "read_files": "Document Parsing",
     "read_files_result": "Document Parsing Result",
     "read_files_result_desc": "Original document text, consisting of file names and document content, separated by hyphens between multiple files.",

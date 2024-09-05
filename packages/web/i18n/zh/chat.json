@@ -24,12 +24,10 @@
   "items": "条",
   "module_runtime_and": "模块运行时间和",
   "multiple_AI_conversations": "多组 AI 对话",
-  "new_chat": "新对话",
   "new_input_guide_lexicon": "新词库",
   "no_workflow_response": "没有运行数据",
   "plugins_output": "插件输出",
   "question_tip": "从上到下，为各个模块的响应顺序",
-  "rearrangement": "检索结果重排",
   "response": {
     "node_inputs": "节点输入"
   },
