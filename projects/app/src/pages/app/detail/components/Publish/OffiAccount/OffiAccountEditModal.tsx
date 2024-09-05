@@ -85,7 +85,7 @@ const OffiAccountEditModal = ({
                 fontSize={'sm'}
               >
                 <Flex alignItems={'center'}>
-                  <MyIcon name="book" mr="1" />
+                  <MyIcon name="book" w={'17px'} h={'17px'} mr="1" />
                   {t('common:common.Read document')}
                 </Flex>
               </Link>

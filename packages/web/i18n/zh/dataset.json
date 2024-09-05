@@ -34,9 +34,17 @@
     "delete_tag_confirm": "确定删除标签？",
     "manage": "标签管理",
     "searchOrAddTag": "搜索或添加标签",
-    "tags": "标签"
+    "tags": "标签",
+    "total_tags": "共{{total}}个标签"
   },
   "the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt": "知识库有训练中或正在重建的索引",
   "website_dataset": "Web 站点同步",
-  "website_dataset_desc": "Web 站点同步允许你直接使用一个网页链接构建知识库"
+  "website_dataset_desc": "Web 站点同步允许你直接使用一个网页链接构建知识库",
+  "permission": {
+    "des": {
+      "read": "可查看知识库内容",
+      "write": "可增加和变更知识库内容",
+      "manage": "可管理整个知识库数据和信息"
+    }
+  }
 }
