@@ -112,7 +112,6 @@
   "common": {
     "Action": "Action",
     "Add": "Add",
-    "copy_to_clipboard": "Copy to Clipboard",
     "Add New": "Add New",
     "Add Success": "Added Successfully",
     "All": "All",
@@ -123,7 +122,6 @@
     "Confirm": "Confirm",
     "Confirm Create": "Confirm Creation",
     "Confirm Import": "Confirm Import",
-    "export_to_json": "Export to JSON",
     "Confirm Move": "Move Here",
     "Confirm Update": "Confirm Update",
     "Confirm to leave the page": "Confirm to Leave This Page?",
@@ -195,7 +193,6 @@
     "Save Success": "Saved Successfully",
     "Save_and_exit": "Save and Exit",
     "Search": "Search",
-    "json_config": "JSON Configuration",
     "Select File Failed": "File Selection Failed",
     "Select template": "Select Template",
     "Set Avatar": "Click to Set Avatar",
@@ -230,6 +227,7 @@
     "confirm": {
       "Common Tip": "Operation Confirmation"
     },
+    "copy_to_clipboard": "Copy to Clipboard",
     "course": {
       "Read Course": "Read Course"
     },
@@ -241,6 +239,7 @@
       "too_many_request": "Too Many Requests, Please Try Again Later.",
       "unKnow": "An Unexpected Error Occurred"
     },
+    "export_to_json": "Export to JSON",
     "failed": "Failed",
     "folder": {
       "Drag Tip": "Click to Drag",
@@ -260,6 +259,7 @@
     "jsonEditor": {
       "Parse error": "Possible JSON Error, Please Check Carefully"
     },
+    "json_config": "JSON Configuration",
     "link": {
       "UnValid": "Invalid Link"
     },
@@ -529,6 +529,7 @@
       "logs": {
         "api": "API Call",
         "feishu": "Feishu",
+        "free_login": "No login link",
         "official_account": "Official Account",
         "online": "Online Use",
         "share": "External Link Call",
@@ -647,7 +648,8 @@
             "success": "Sync Started"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "Auxiliary Data",
@@ -857,6 +859,7 @@
       },
       "http": {
         "Add props": "Add Parameter",
+        "Add props_and_tips": "To add parameters, enter \"/\" to invoke the variable list",
         "AppId": "App ID",
         "AppSecret": "AppSecret",
         "ChatId": "Current Chat ID",
@@ -865,8 +868,10 @@
         "Key already exists": "Key Already Exists",
         "Key cannot be empty": "Parameter Name Cannot Be Empty",
         "Props name": "Parameter Name",
+        "Props name_and_tips": "Parameter name, enter \"/\" to call up the variable list",
         "Props tip": "You can set related parameters for the HTTP request\nYou can call global variables or external parameter inputs through {{key}}, currently available variables:\n{{variable}}",
         "Props value": "Parameter Value",
+        "Props value_and_tips": "Parameter value, enter \"/\" to invoke the variable list",
         "ResponseChatItemId": "AI Response ID",
         "Url and params have been split": "Path parameters have been automatically added to Params",
         "curl import": "cURL Import",
@@ -1173,7 +1178,10 @@
     "change_owner_placeholder": "Enter Username to Search Account",
     "change_owner_success": "Ownership Transferred Successfully",
     "change_owner_tip": "Your permissions will not be retained after the transfer",
-    "change_owner_to": "Transfer to"
+    "change_owner_to": "Transfer to",
+    "manager": "administrator",
+    "read": "Read permission",
+    "write": "write permission"
   },
   "plugin": {
     "App": "Select App",

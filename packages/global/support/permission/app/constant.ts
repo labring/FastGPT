@@ -1,19 +1,19 @@
 import { NullPermission, PermissionKeyEnum, PermissionList } from '../constant';
 import { PermissionListType } from '../type';
-
+import { i18nT } from '../../../../web/i18n/utils';
 export enum AppPermissionKeyEnum {}
 export const AppPermissionList: PermissionListType = {
   [PermissionKeyEnum.read]: {
     ...PermissionList[PermissionKeyEnum.read],
-    description: '可使用该应用进行对话'
+    description: i18nT('app:permission.des.read')
   },
   [PermissionKeyEnum.write]: {
     ...PermissionList[PermissionKeyEnum.write],
-    description: '可查看和编辑应用'
+    description: i18nT('app:permission.des.write')
   },
   [PermissionKeyEnum.manage]: {
     ...PermissionList[PermissionKeyEnum.manage],
-    description: '写权限基础上，可配置发布渠道、查看对话日志、分配该应用权限'
+    description: i18nT('app:permission.des.manage')
   }
 };
 

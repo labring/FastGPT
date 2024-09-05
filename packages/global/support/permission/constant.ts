@@ -1,6 +1,6 @@
 import { Permission } from './controller';
 import { PermissionListType } from './type';
-
+import { i18nT } from '../../../web/i18n/utils';
 export enum AuthUserTypeEnum {
   token = 'token',
   root = 'root',
@@ -27,15 +27,15 @@ export const PermissionTypeMap = {
   },
   [PermissionTypeEnum.publicRead]: {
     iconLight: 'support/permission/publicLight',
-    label: '团队可访问'
+    label: i18nT('user:permission.team_read')
   },
   [PermissionTypeEnum.publicWrite]: {
     iconLight: 'support/permission/publicLight',
-    label: '团队可编辑'
+    label: i18nT('user:permission.team_write')
   },
   [PermissionTypeEnum.clbPrivate]: {
     iconLight: 'support/permission/privateLight',
-    label: '仅协作者'
+    label: i18nT('user:permission.only_collaborators')
   }
 };
 
@@ -53,19 +53,19 @@ export enum PermissionKeyEnum {
 }
 export const PermissionList: PermissionListType = {
   [PermissionKeyEnum.read]: {
-    name: '读权限',
+    name: i18nT('common:permission.read'),
     description: '',
     value: 0b100,
     checkBoxType: 'single'
   },
   [PermissionKeyEnum.write]: {
-    name: '写权限',
+    name: i18nT('common:permission.write'),
     description: '',
     value: 0b110, // 如果某个资源有特殊要求，再重写这个值
     checkBoxType: 'single'
   },
   [PermissionKeyEnum.manage]: {
-    name: '管理员',
+    name: i18nT('common:permission.manager'),
     description: '',
     value: 0b111,
     checkBoxType: 'single'

@@ -306,7 +306,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
                 <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong>{' '}
                 {t('user:bill.yuan')}
               </Box>
-              {/* TODO:暂时隐藏 */}
+
               {userInfo?.permission.hasManagePer && !!standardPlan && (
                 <Button variant={'primary'} size={'sm'} ml={5} onClick={onOpenConversionModal}>
                   {t('user:bill.conversion')}

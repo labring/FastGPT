@@ -88,8 +88,15 @@
   },
   "move_app": "Move Application",
   "not_json_file": "Please select a JSON file",
-  "paste_config": "Paste Configuration",
   "or_drag_JSON": "or drag in JSON file",
+  "paste_config": "Paste Configuration",
+  "permission": {
+    "des": {
+      "manage": "Based on write permissions, you can configure publishing channels, view conversation logs, and assign permissions to the application.",
+      "read": "Use the app to have conversations",
+      "write": "Can view and edit apps"
+    }
+  },
   "plugin_cost_per_times": "{{cost}}/time",
   "plugin_dispatch": "Plugin Invocation",
   "plugin_dispatch_tip": "Adds extra capabilities to the model. The specific plugins to be invoked will be autonomously decided by the model.\nIf a plugin is selected, the Dataset invocation will automatically be treated as a special plugin.",

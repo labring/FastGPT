@@ -7,8 +7,10 @@
     "conversion": "Conversion",
     "convert_error": "Conversion Failed",
     "convert_success": "Conversion Successful",
+    "current_token_price": "Current Token Price",
     "not_need_invoice": "Balance payment, invoice not available",
     "price": "Price",
+    "renew_plan": "Renew Plan",
     "standard_valid_tip": "Plan Usage Rules: Higher-level plans will be used first. Unused plans will be activated later.",
     "token_expire_1year": "Tokens are valid for one year",
     "tokens": "Tokens",
@@ -16,13 +18,7 @@
     "use_balance_hint": "Due to system upgrade, the 'Auto-renewal from balance' mode is canceled, and the balance recharge option is closed. Your balance can be used to purchase tokens.",
     "valid_time": "Effective Time",
     "you_can_convert": "You can convert",
-    "renew_plan": "Renew Plan",
-    "current_token_price": "Current Token Price",
     "yuan": "Yuan"
-  },
-  "promotion": {
-    "register": "Friend Registration",
-    "pay": "Friend Payment"
   },
   "bind_inform_account_error": "Failed to Bind Notification Account",
   "bind_inform_account_success": "Notification Account Bound Successfully",
@@ -78,7 +74,16 @@
     "team_read": "Team Read Access",
     "team_write": "Team Write Access"
   },
+  "permission_des": {
+    "manage": "Can create resources, invite, and delete members",
+    "read": "Members can only read related resources and cannot create new resources.",
+    "write": "In addition to readable resources, you can also create new resources"
+  },
   "permissions": "Permissions",
+  "promotion": {
+    "pay": "Friend Payment",
+    "register": "Friend Registration"
+  },
   "register": {
     "confirm": "Confirm Registration",
     "error": "Registration Error",

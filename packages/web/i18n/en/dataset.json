@@ -23,6 +23,13 @@
   "file_model_function_tip": "Enhances indexing and QA generation",
   "filename": "Filename",
   "folder_dataset": "Folder",
+  "permission": {
+    "des": {
+      "manage": "Can manage the entire knowledge base data and information",
+      "read": "View knowledge base content",
+      "write": "Ability to add and change knowledge base content"
+    }
+  },
   "rebuild_embedding_start_tip": "Index model switching task has started",
   "rebuilding_index_count": "Number of indexes being rebuilt: {{count}}",
   "tag": {
@@ -34,7 +41,8 @@
     "delete_tag_confirm": "Confirm to delete the tag?",
     "manage": "Tagging",
     "searchOrAddTag": "Search or Add Tag",
-    "tags": "Tags"
+    "tags": "Tags",
+    "total_tags": "Total {{total}} tags"
   },
   "the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt": "The Dataset has indexes that are being trained or rebuilt",
   "website_dataset": "Website Sync",
