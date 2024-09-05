@@ -37,7 +37,7 @@ const SendCodeAuthModal = ({
         <Skeleton
           minH="200px"
           isLoaded={!loading}
-          fadeDuration={2}
+          fadeDuration={1}
           display={'flex'}
           justifyContent={'center'}
           my={1}
