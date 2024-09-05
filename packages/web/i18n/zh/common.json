@@ -647,7 +647,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1084,13 +1085,15 @@
   "default_reply": "默认回复",
   "error": {
     "Create failed": "创建失败",
+    "code_error": "验证码错误",
     "fileNotFound": "文件找不到了~",
     "inheritPermissionError": "权限继承错误",
     "missingParams": "参数缺失",
     "team": {
       "overSize": "团队成员超出上限"
     },
-    "upload_file_error_filename": "{{name}} 上传失败"
+    "upload_file_error_filename": "{{name}} 上传失败",
+    "username_empty": "账号不能为空"
   },
   "extraction_results": "提取结果",
   "field_name": "字段名",
@@ -1247,7 +1250,6 @@
     },
     "user": {
       "Avatar": "头像",
-      "captcha_placeholder": "请输入验证码",
       "Go laf env": "点击前往 {{env}} 获取 PAT 凭证。",
       "Laf account course": "查看绑定 laf 账号教程。",
       "Laf account intro": "绑定你的 laf 账号后，你将可以在工作流中使用 laf 模块，实现在线编写代码。",
@@ -1257,6 +1259,7 @@
       "auth": {
         "Sending Code": "正在发送"
       },
+      "captcha_placeholder": "请输入验证码",
       "inform": {
         "System message": "系统消息"
       },
