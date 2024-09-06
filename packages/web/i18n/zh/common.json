@@ -927,6 +927,7 @@
     },
     "view_chat_detail": "查看对话详情",
     "workflow": {
+      "dynamic_input": "动态输入",
       "Can not delete node": "该节点不允许删除",
       "Change input type tip": "修改输入类型会清空已填写的值，请确认！",
       "Check Failed": "工作流校验失败，请检查节点是否正确填值，以及连线是否正常",
