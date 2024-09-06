@@ -97,14 +97,6 @@ type Props = OutLinkChatAuthProps &
     onDelMessage?: (e: { contentId: string }) => void;
   };
 
-/* 
-  The input is divided into sections
-  1. text
-  2. img
-  3. file
-  4. ....
-*/
-
 const ChatBox = (
   {
     feedbackType = FeedbackTypeEnum.hidden,
@@ -864,12 +856,6 @@ const ChatBox = (
       abortRequest();
       setValue('chatStarted', false);
       scrollToBottom('smooth', 500);
-    },
-    scrollToBottom,
-    sendPrompt: (question: string) => {
-      sendPrompt({
-        text: question
-      });
     }
   }));
 
