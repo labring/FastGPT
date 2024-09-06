@@ -137,6 +137,13 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   let chatNodeUsages: ChatNodeUsageType[] = [];
   let toolRunResponse: ToolRunResponseItemType;
   let debugNextStepRunNodes: RuntimeNodeItemType[] = [];
+  // 记录交互节点，交互节点需要在工作流完全结束后再进行计算
+  let workflowInteractiveResponse:
+    | {
+        entryNodeIds: string[];
+        interactiveResponse: UserSelectInteractive;
+      }
+    | undefined;
 
   /* Store special response field  */
   function pushStore(
@@ -338,6 +345,16 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
     if (!nodeRunResult) return [];
 
+    // In the current version, only one interactive node is allowed at the same time
+    const interactiveResponse = nodeRunResult.result?.[DispatchNodeResponseKeyEnum.interactive];
+    if (interactiveResponse) {
+      workflowInteractiveResponse = {
+        entryNodeIds: [nodeRunResult.node.nodeId],
+        interactiveResponse
+      };
+      return [];
+    }
+
     // Update the node output at the end of the run and get the next nodes
     let { nextStepActiveNodes, nextStepSkipNodes } = nodeOutput(
       nodeRunResult.node,
@@ -350,18 +367,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     nextStepSkipNodes = nextStepSkipNodes.filter(
       (node, index, self) => self.findIndex((t) => t.nodeId === node.nodeId) === index
     );
-
-    // In the current version, only one interactive node is allowed at the same time
-    const interactiveResponse = nodeRunResult.result?.[DispatchNodeResponseKeyEnum.interactive];
-    if (interactiveResponse) {
-      chatAssistantResponse.push(
-        handleInteractiveResult({
-          entryNodeIds: [nodeRunResult.node.nodeId],
-          interactiveResponse
-        })
-      );
-      return [];
-    }
 
     // Run next nodes（先运行 run 的，再运行 skip 的）
     const nextStepActiveNodesResults = (
@@ -541,6 +546,15 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   );
   if (pluginOutputModule && props.mode !== 'debug') {
     await nodeRunWithActive(pluginOutputModule);
+  }
+
+  // Interactive node
+  if (workflowInteractiveResponse) {
+    const interactiveResult = handleInteractiveResult({
+      entryNodeIds: workflowInteractiveResponse.entryNodeIds,
+      interactiveResponse: workflowInteractiveResponse.interactiveResponse
+    });
+    chatAssistantResponse.push(interactiveResult);
   }
 
   return {
