@@ -99,7 +99,15 @@
   "setting_app": "应用配置",
   "setting_plugin": "插件配置",
   "template": {
-    "simple_robot": "简易机器人"
+    "simple_robot": "简易机器人",
+    "standard_template": "标准模板",
+    "standard_template_des": "标准提示词，用于结构不固定的知识库。",
+    "qa_template": "问答模板",
+    "qa_template_des": "适合 QA 问答结构的知识库，可以让AI较为严格的按预设内容回答",
+    "standard_strict": "标准严格模板",
+    "standard_strict_des": "在标准模板基础上，对模型的回答做更严格的要求。",
+    "hard_strict": "严格问答模板",
+    "hard_strict_des": "在问答模板基础上，对模型的回答做更严格的要求。"
   },
   "templateMarket": {
     "Search_template": "搜索模板",

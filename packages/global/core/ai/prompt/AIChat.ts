@@ -1,15 +1,15 @@
 import { PromptTemplateItem } from '../type.d';
-
+import { i18nT } from '../../../../web/i18n/utils';
 export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
   {
-    title: '标准模板',
-    desc: '标准提示词，用于结构不固定的知识库。',
+    title: i18nT('app:template.standard_template'),
+    desc: i18nT('app:template.standard_template_des'),
     value: `{{q}}
 {{a}}`
   },
   {
-    title: '问答模板',
-    desc: '适合 QA 问答结构的知识库，可以让AI较为严格的按预设内容回答',
+    title: i18nT('app:template.qa_template'),
+    desc: i18nT('app:template.qa_template_des'),
     value: `<Question>
 {{q}}
 </Question>
@@ -18,14 +18,14 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
 </Answer>`
   },
   {
-    title: '标准严格模板',
-    desc: '在标准模板基础上，对模型的回答做更严格的要求。',
+    title: i18nT('app:template.standard_strict'),
+    desc: i18nT('app:template.standard_strict_des'),
     value: `{{q}}
 {{a}}`
   },
   {
-    title: '严格问答模板',
-    desc: '在问答模板基础上，对模型的回答做更严格的要求。',
+    title: i18nT('app:template.hard_strict'),
+    desc: i18nT('app:template.hard_strict_des'),
     value: `<Question>
 {{q}}
 </Question>
@@ -37,7 +37,7 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
 
 export const Prompt_QuotePromptList: PromptTemplateItem[] = [
   {
-    title: '标准模板',
+    title: i18nT('app:template.standard_template'),
     desc: '',
     value: `使用 <Data></Data> 标记中的内容作为你的知识:
 
@@ -55,7 +55,7 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 问题:"""{{question}}"""`
   },
   {
-    title: '问答模板',
+    title: i18nT('app:template.qa_template'),
     desc: '',
     value: `使用 <QA></QA> 标记中的问答对进行回答。
 
@@ -72,7 +72,7 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 问题:"""{{question}}"""`
   },
   {
-    title: '标准严格模板',
+    title: i18nT('app:template.standard_strict'),
     desc: '',
     value: `忘记你已有的知识，仅使用 <Data></Data> 标记中的内容作为你的知识:
 
@@ -94,7 +94,7 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 问题:"""{{question}}"""`
   },
   {
-    title: '严格问答模板',
+    title: i18nT('app:template.hard_strict'),
     desc: '',
     value: `忘记你已有的知识，仅使用 <QA></QA> 标记中的问答对进行回答。
 
