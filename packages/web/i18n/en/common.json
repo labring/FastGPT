@@ -336,7 +336,7 @@
       "Random": "Divergent",
       "Search team tags": "Search Tags",
       "Select TTS": "Select Voice Playback Mode",
-      "Select app from template": "Select from Template",
+      "Select app from template": "Template",
       "Select quote template": "Select Quote Prompt Template",
       "Set a name for your app": "Set a Name for Your App",
       "Setting ai property": "Click to Configure AI Model Properties",
@@ -957,6 +957,7 @@
         "Run result": "Run Result",
         "Show result": "Show Result"
       },
+      "dynamic_input": "dynamic input",
       "inputType": {
         "JSON Editor": "JSON Input Box",
         "Manual input": "Manual Input",

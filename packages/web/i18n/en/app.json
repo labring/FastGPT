@@ -27,9 +27,9 @@
   "confirm_delete_folder_tip": "Confirm to delete this folder? All apps and corresponding conversation records under it will be deleted. Please confirm!",
   "copy_one_app": "Create Duplicate",
   "create_copy_success": "Duplicate Created Successfully",
-  "create_empty_app": "Create Blank App",
-  "create_empty_plugin": "Create Blank Plugin",
-  "create_empty_workflow": "Create Blank Workflow",
+  "create_empty_app": "Create Default App",
+  "create_empty_plugin": "Create Default Plugin",
+  "create_empty_workflow": "Create Default Workflow",
   "cron": {
     "every_day": "Run Daily",
     "every_month": "Run Monthly",
@@ -108,6 +108,15 @@
   "template": {
     "simple_robot": "Simple Robot"
   },
+  "template.hard_strict": "Strict Q&A template",
+  "template.hard_strict_des": "Based on the question and answer template, stricter requirements are imposed on the model's answers.",
+  "template.qa_template": "Q&A template",
+  "template.qa_template_des": "A knowledge base suitable for QA question and answer structure, which allows AI to answer strictly according to preset content",
+  "template.simple_robot": "Simple robot",
+  "template.standard_strict": "Standard strict template",
+  "template.standard_strict_des": "Based on the standard template, stricter requirements are imposed on the model's answers.",
+  "template.standard_template": "Standard template",
+  "template.standard_template_des": "Standard prompt words for knowledge bases with unfixed structures.",
   "templateMarket": {
     "Search_template": "Search Template",
     "Template_market": "Template Market",

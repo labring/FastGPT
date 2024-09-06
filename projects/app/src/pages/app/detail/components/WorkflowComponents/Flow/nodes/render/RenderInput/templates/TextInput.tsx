@@ -3,14 +3,15 @@ import type { RenderInputProps } from '../type';
 import { Input } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
+import { useTranslation } from 'next-i18next';
 
 const TextInput = ({ item, nodeId }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-
+  const { t } = useTranslation();
   const Render = useMemo(() => {
     return (
       <Input
-        placeholder={item.placeholder ?? item.description}
+        placeholder={t(item.placeholder as any) ?? t(item.description as any)}
         defaultValue={item.value}
         bg={'white'}
         px={3}
@@ -28,7 +29,7 @@ const TextInput = ({ item, nodeId }: RenderInputProps) => {
         }}
       />
     );
-  }, [item, nodeId, onChangeNode]);
+  }, [item, nodeId, onChangeNode, t]);
 
   return Render;
 };

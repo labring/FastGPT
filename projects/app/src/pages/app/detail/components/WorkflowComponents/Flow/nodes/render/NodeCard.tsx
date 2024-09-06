@@ -415,7 +415,7 @@ const MenuRender = React.memo(function MenuRender({
                 leftIcon={<MyIcon name={item.icon as any} w={'13px'} />}
                 onClick={item.onClick}
               >
-                {item.label}
+                {t(item.label as any)}
               </Button>
             </Box>
           ))}
