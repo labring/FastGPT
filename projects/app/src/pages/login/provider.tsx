@@ -11,7 +11,6 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
-import { useMount } from 'ahooks';
 
 const provider = () => {
   const { t } = useTranslation();
@@ -104,9 +103,15 @@ const provider = () => {
     } else {
       authCode(code);
     }
-  }, [code, error, loginStore, state]);
+  }, []);
 
   return <Loading />;
 };
 
 export default provider;
+
+export async function getServerSideProps(context: any) {
+  return {
+    props: { ...(await serviceSideProps(context)) }
+  };
+}
