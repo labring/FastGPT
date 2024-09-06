@@ -22,7 +22,6 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { SendPromptFnType } from '../ChatContainer/ChatBox/type';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
-import { setUserSelectResultToHistories } from '../ChatContainer/ChatBox/utils';
 import { InteractiveNodeResponseItemType } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
 import { isEqual } from 'lodash';
 
@@ -167,7 +166,7 @@ const RenderInteractive = React.memo(
                 onClick={() => {
                   onSendMessage?.({
                     text: option.value,
-                    history: setUserSelectResultToHistories(chatHistories, option.value)
+                    isInteractivePrompt: true
                   });
                 }}
               >

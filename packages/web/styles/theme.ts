@@ -715,11 +715,13 @@ export const theme = extendTheme({
     lg: '1px solid #D0E0E2'
   },
   radii: {
-    xs: '4px',
-    sm: '6px',
-    md: '8px',
-    lg: '12px',
-    xl: '16px'
+    none: '0',
+    xs: '0.25rem',
+    sm: '0.375rem',
+    md: '0.5rem',
+    semilg: '0.625rem',
+    lg: '0.75rem',
+    xl: '1rem'
   },
   shadows: {
     1: '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)',

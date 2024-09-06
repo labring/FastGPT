@@ -25,7 +25,7 @@ import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { updateToolInputValue } from './utils';
 import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
-import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
+import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../../../../common/system/log';
 
 type ToolRunResponseType = {
@@ -367,6 +367,7 @@ async function streamResponse({
   });
 
   let textAnswer = '';
+  let callingTool: { name: string; arguments: string } | null = null;
   let toolCalls: ChatCompletionMessageToolCall[] = [];
 
   for await (const part of stream) {
@@ -390,69 +391,71 @@ async function streamResponse({
       });
     } else if (responseChoice?.tool_calls?.[0]) {
       const toolCall: ChatCompletionMessageToolCall = responseChoice.tool_calls[0];
-
       // In a stream response, only one tool is returned at a time.  If have id, description is executing a tool
-      if (toolCall.id) {
-        const toolNode = toolNodes.find((item) => item.nodeId === toolCall.function?.name);
+      if (toolCall.id || callingTool) {
+        // Start call tool
+        if (toolCall.id) {
+          callingTool = {
+            name: toolCall.function.name || '',
+            arguments: toolCall.function.arguments || ''
+          };
+        } else if (callingTool) {
+          // Continue call
+          callingTool.name += toolCall.function.name || '';
+          callingTool.arguments += toolCall.function.arguments || '';
+        }
+
+        const toolFunction = callingTool!;
+
+        const toolNode = toolNodes.find((item) => item.nodeId === toolFunction.name);
 
         if (toolNode) {
-          if (toolCall.function?.arguments === undefined) {
-            toolCall.function.arguments = '';
-          }
+          // New tool, add to list.
+          const toolId = getNanoid();
+          toolCalls.push({
+            ...toolCall,
+            id: toolId,
+            function: toolFunction,
+            toolName: toolNode.name,
+            toolAvatar: toolNode.avatar
+          });
 
-          // Get last tool call
-          const lastToolCall = toolCalls[toolCalls.length - 1];
-
-          // new tool
-          if (lastToolCall?.id !== toolCall.id) {
-            toolCalls.push({
-              ...toolCall,
-              toolName: toolNode.name,
-              toolAvatar: toolNode.avatar
-            });
-
-            workflowStreamResponse?.({
-              event: SseResponseEventEnum.toolCall,
-              data: {
-                tool: {
-                  id: toolCall.id,
-                  toolName: toolNode.name,
-                  toolAvatar: toolNode.avatar,
-                  functionName: toolCall.function.name,
-                  params: toolCall.function.arguments,
-                  response: ''
-                }
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.toolCall,
+            data: {
+              tool: {
+                id: toolId,
+                toolName: toolNode.name,
+                toolAvatar: toolNode.avatar,
+                functionName: toolFunction.name,
+                params: toolFunction?.arguments ?? '',
+                response: ''
               }
-            });
-
-            continue;
-          }
-          // last tool, update params
-        } else {
-          continue;
-        }
-      }
-
-      /* arg 插入最后一个工具的参数里 */
-      const arg: string = toolCall?.function?.arguments ?? '';
-      const currentTool = toolCalls[toolCalls.length - 1];
-
-      if (currentTool) {
-        currentTool.function.arguments += arg;
-
-        workflowStreamResponse?.({
-          write,
-          event: SseResponseEventEnum.toolParams,
-          data: {
-            tool: {
-              id: currentTool.id,
-              toolName: '',
-              toolAvatar: '',
-              params: arg,
-              response: ''
             }
-          }
-        });
+          });
+          callingTool = null;
+        }
+      } else {
+        /* arg 插入最后一个工具的参数里 */
+        const arg: string = toolCall?.function?.arguments ?? '';
+        const currentTool = toolCalls[toolCalls.length - 1];
+        if (currentTool && arg) {
+          currentTool.function.arguments += arg;
+
+          workflowStreamResponse?.({
+            write,
+            event: SseResponseEventEnum.toolParams,
+            data: {
+              tool: {
+                id: currentTool.id,
+                toolName: '',
+                toolAvatar: '',
+                params: arg,
+                response: ''
+              }
+            }
+          });
+        }
       }
     }
   }

@@ -40,9 +40,17 @@ export const getLastInteractiveValue = (histories: ChatItemType[]) => {
     const lastValue = lastAIMessage.value[lastAIMessage.value.length - 1];
 
     if (
-      lastValue &&
-      lastValue.type === ChatItemValueTypeEnum.interactive &&
-      !!lastValue.interactive
+      !lastValue ||
+      lastValue.type !== ChatItemValueTypeEnum.interactive ||
+      !lastValue.interactive
+    ) {
+      return null;
+    }
+
+    // Check is user select
+    if (
+      lastValue.interactive.type === 'userSelect' &&
+      !lastValue.interactive.params.userSelectedVal
     ) {
       return lastValue.interactive;
     }
