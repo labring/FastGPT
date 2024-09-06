@@ -1,4 +1,38 @@
 import { ApiType } from './type';
+
+type OpenAPIParameter = {
+  name: string;
+  in: string;
+  description: string;
+  required: boolean;
+  schema: {
+    type: string;
+  };
+};
+
+type OpenAPIResponse = {
+  [code: string]: {
+    description?: string;
+    content: {
+      [mediaType: string]: {
+        schema: {
+          type: string;
+        };
+      };
+    };
+  };
+};
+
+type OpenAPIPath = {
+  [url: string]: {
+    [method: string]: {
+      description: string;
+      parameters: OpenAPIParameter[];
+      responses: OpenAPIResponse;
+    };
+  };
+};
+
 type PathType = {
   [method: string]: {
     description: string;
@@ -16,8 +50,12 @@ type OpenApiType = {
   info: {
     title: string;
     version: string;
+    author: string;
   };
   paths: PathsType;
+  servers?: {
+    url: string;
+  }[];
 };
 
 export function convertPath(api: ApiType): PathType {
@@ -28,6 +66,7 @@ export function convertPath(api: ApiType): PathType {
       api.query.forEach((item) => {
         parameters.push({
           name: item.key,
+          description: item.comment,
           in: 'query',
           required: item.required,
           schema: {
@@ -37,6 +76,7 @@ export function convertPath(api: ApiType): PathType {
       });
     } else {
       parameters.push({
+        description: api.query.comment,
         name: api.query.key,
         in: 'query',
         required: api.query.required,
@@ -49,6 +89,7 @@ export function convertPath(api: ApiType): PathType {
     if (Array.isArray(api.body)) {
       api.body.forEach((item) => {
         parameters.push({
+          description: item.comment,
           name: item.key,
           in: 'body',
           required: item.required,
@@ -82,5 +123,20 @@ export function convertPath(api: ApiType): PathType {
       parameters,
       responses
     }
+  };
+}
+export function convertOpenApi({
+  apis,
+  ...rest
+}: {
+  apis: ApiType[];
+} & Omit<OpenApiType, 'paths'>): OpenApiType {
+  const paths: PathsType = {};
+  apis.forEach((api) => {
+    paths[api.url] = convertPath(api);
+  });
+  return {
+    paths,
+    ...rest
   };
 }

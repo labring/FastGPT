@@ -45,7 +45,7 @@ function getMetadata(path: NodePath): ApiMetaData | undefined {
 }
 
 function getDescription(path: NodePath) {
-  if (path.isFunctionDeclaration()) {
+  if (path.isFunctionDeclaration() && path.node.id?.name === 'handler') {
     const comments = path.node.leadingComments?.map((item) => item.value.trim()).join('\n');
     return comments;
   }
@@ -110,7 +110,10 @@ function parseTypeLiteral(type: TSTypeLiteral): itemType[] {
 function getData(path: NodePath): ApiDataType | undefined {
   const type: ApiDataType = {};
   if (path.isExportNamedDeclaration()) {
-    const comments = path.node.leadingComments?.map((item) => item.value.trim()).join('\n');
+    const comments =
+      path.node.leadingComments?.map((item) => item.value.trim()).join('\n') ??
+      '' + '\n' + path.node.innerComments?.map((item) => item.value.trim()).join('\n') ??
+      '';
     if (comments) {
       type.comment = comments;
     }

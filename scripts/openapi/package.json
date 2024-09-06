@@ -1,6 +1,9 @@
 {
   "name": "test",
-  "module": "index.ts",
+  "module": "index.js",
+  "scripts": {
+    "build": "tsc index.ts"
+  },
   "devDependencies": {
     "@babel/types": "^7.25.6",
     "@types/babel__generator": "^7.6.8",
