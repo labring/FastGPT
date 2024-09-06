@@ -45,7 +45,11 @@ import ChatBoxDivider from '../../Divider';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { checkIsInteractiveByHistories, formatChatValue2InputType } from './utils';
+import {
+  checkIsInteractiveByHistories,
+  formatChatValue2InputType,
+  setUserSelectResultToHistories
+} from './utils';
 import { textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext, ChatProviderProps } from './Provider';
@@ -92,14 +96,6 @@ type Props = OutLinkChatAuthProps &
     >;
     onDelMessage?: (e: { contentId: string }) => void;
   };
-
-/* 
-  The input is divided into sections
-  1. text
-  2. img
-  3. file
-  4. ....
-*/
 
 const ChatBox = (
   {
@@ -377,7 +373,13 @@ const ChatBox = (
    * user confirm send prompt
    */
   const sendPrompt: SendPromptFnType = useCallback(
-    ({ text = '', files = [], history = chatHistories, autoTTSResponse = false }) => {
+    ({
+      text = '',
+      files = [],
+      history = chatHistories,
+      autoTTSResponse = false,
+      isInteractivePrompt = false
+    }) => {
       variablesForm.handleSubmit(
         async (variables) => {
           if (!onStartChat) return;
@@ -444,6 +446,7 @@ const ChatBox = (
               ] as UserChatItemValueItemType[],
               status: 'finish'
             },
+            // 普通 chat 模式，需要增加一个 AI 来接收响应消息
             {
               dataId: responseChatId,
               obj: ChatRoleEnum.AI,
@@ -459,20 +462,26 @@ const ChatBox = (
             }
           ];
 
-          const isInteractive = checkIsInteractiveByHistories(history);
           // Update histories(Interactive input does not require new session rounds)
-          setChatHistories(isInteractive ? newChatList.slice(0, -2) : newChatList);
+          setChatHistories(
+            isInteractivePrompt
+              ? // 把交互的结果存储到对话记录中，交互模式下，不需要新的会话轮次
+                setUserSelectResultToHistories(newChatList.slice(0, -2), text)
+              : newChatList
+          );
 
           // 清空输入内容
           resetInputVal({});
           setQuestionGuide([]);
           scrollToBottom('smooth', 100);
+
           try {
             // create abort obj
             const abortSignal = new AbortController();
             chatController.current = abortSignal;
 
-            // Last empty ai message will be removed
+            // 最后一条 AI 消息是空的，会被过滤掉，这里得到的 messages，不会包含最后一条 AI 消息，所以不需要 slice 了。
+            // 这里，无论是否为交互模式，最后都是 Human 的消息。
             const messages = chats2GPTMessages({ messages: newChatList, reserveId: true });
 
             const {
@@ -480,7 +489,7 @@ const ChatBox = (
               responseText,
               isNewChat = false
             } = await onStartChat({
-              messages: messages,
+              messages, // 保证最后一条是 Human 的消息
               responseChatItemId: responseChatId,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
@@ -847,12 +856,6 @@ const ChatBox = (
       abortRequest();
       setValue('chatStarted', false);
       scrollToBottom('smooth', 500);
-    },
-    scrollToBottom,
-    sendPrompt: (question: string) => {
-      sendPrompt({
-        text: question
-      });
     }
   }));
 

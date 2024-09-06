@@ -1,5 +1,5 @@
 import { useUserStore } from '@/web/support/user/useUserStore';
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getMaxHistoryLimitFromNodes } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -14,9 +14,9 @@ import dynamic from 'next/dynamic';
 import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 import { Box } from '@chakra-ui/react';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
-const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
 
 export const useChatTest = ({
   nodes,
@@ -56,8 +56,10 @@ export const useChatTest = ({
     }
   );
 
-  const pluginInputs =
-    nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs || [];
+  const pluginInputs = useMemo(() => {
+    return nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs || [];
+  }, [nodes]);
+
   const {
     ChatBoxRef,
     chatRecords,

@@ -57,11 +57,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     chatConfig
   } = req.body as Props;
   try {
+    if (!Array.isArray(nodes)) {
+      throw new Error('Nodes is not array');
+    }
+    if (!Array.isArray(edges)) {
+      throw new Error('Edges is not array');
+    }
     const chatMessages = GPTMessages2Chats(messages);
+    const userInput = chatMessages.pop()?.value as UserChatItemValueItemType[] | undefined;
 
     // console.log(JSON.stringify(chatMessages, null, 2), '====', chatMessages.length);
-
-    const userInput = chatMessages.pop()?.value as UserChatItemValueItemType[] | undefined;
 
     /* user auth */
     const [{ app }, { teamId, tmbId }] = await Promise.all([
@@ -75,13 +80,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
     const isPlugin = app.type === AppTypeEnum.plugin;
-
-    if (!Array.isArray(nodes)) {
-      throw new Error('Nodes is not array');
-    }
-    if (!Array.isArray(edges)) {
-      throw new Error('Edges is not array');
-    }
 
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, chatMessages));
 

@@ -8,6 +8,7 @@ import { ssoLogin } from '@/web/support/user/api';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { serviceSideProps } from '@/web/common/utils/i18n';
 
 const provider = () => {
   const { t } = useTranslation();
@@ -39,9 +40,15 @@ const provider = () => {
       clearToken();
       handleSSO();
     }
-  }, [handleSSO, query]);
+  }, []);
 
   return <Loading />;
 };
 
 export default provider;
+
+export async function getServerSideProps(context: any) {
+  return {
+    props: { ...(await serviceSideProps(context)) }
+  };
+}
