@@ -51,6 +51,7 @@ export const checkIsInteractiveByHistories = (chatHistories: ChatSiteItemType[])
   ] as AIChatItemValueItemType;
 
   return (
+    lastMessageValue &&
     lastMessageValue.type === ChatItemValueTypeEnum.interactive &&
     !!lastMessageValue?.interactive?.params &&
     // 如果用户选择了，则不认为是交互模式（可能是上一轮以交互结尾，发起的新的一轮对话）
