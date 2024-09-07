@@ -252,11 +252,22 @@ export const runToolWithToolChoice = async (
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         tool_calls: toolCalls
       };
+      /* 
+        ...
+        user
+        assistant: tool data
+      */
       const concatToolMessages = [
         ...requestMessages,
         assistantToolMsgParams
       ] as ChatCompletionMessageParam[];
       const tokens = await countGptMessagesTokens(concatToolMessages, tools);
+      /* 
+        ...
+        user
+        assistant: tool data
+        tool: tool response
+      */
       const completeMessages = [
         ...concatToolMessages,
         ...toolsRunResponse.map((item) => item?.toolMsgParams)
