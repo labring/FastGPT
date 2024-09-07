@@ -45,13 +45,12 @@ export const runToolWithToolChoice = async (
     messages: ChatCompletionMessageParam[];
     toolNodes: ToolNodeItemType[];
     toolModel: LLMModelItemType;
+    maxRunToolTimes: number;
   },
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
+  const { messages, toolNodes, toolModel, maxRunToolTimes, ...workflowProps } = props;
   const {
-    toolModel,
-    toolNodes,
-    messages,
     res,
     requestOrigin,
     runtimeNodes,
@@ -59,7 +58,12 @@ export const runToolWithToolChoice = async (
     stream,
     workflowStreamResponse,
     params: { temperature = 0, maxToken = 4000, aiChatVision }
-  } = props;
+  } = workflowProps;
+
+  if (maxRunToolTimes <= 0 && response) {
+    return response;
+  }
+
   const assistantResponses = response?.assistantResponses || [];
 
   const tools: ChatCompletionTool[] = toolNodes.map((item) => {
@@ -196,7 +200,7 @@ export const runToolWithToolChoice = async (
           })();
 
           const toolRunResponse = await dispatchWorkFlow({
-            ...props,
+            ...workflowProps,
             isToolCall: true,
             runtimeNodes: runtimeNodes.map((item) =>
               item.nodeId === toolNode.nodeId
@@ -252,11 +256,22 @@ export const runToolWithToolChoice = async (
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         tool_calls: toolCalls
       };
+      /* 
+        ...
+        user
+        assistant: tool data
+      */
       const concatToolMessages = [
         ...requestMessages,
         assistantToolMsgParams
       ] as ChatCompletionMessageParam[];
       const tokens = await countGptMessagesTokens(concatToolMessages, tools);
+      /* 
+        ...
+        user
+        assistant: tool data
+        tool: tool response
+      */
       const completeMessages = [
         ...concatToolMessages,
         ...toolsRunResponse.map((item) => item?.toolMsgParams)
@@ -314,6 +329,7 @@ export const runToolWithToolChoice = async (
       return runToolWithToolChoice(
         {
           ...props,
+          maxRunToolTimes: maxRunToolTimes - 1,
           messages: completeMessages
         },
         {

@@ -134,6 +134,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         ...props,
         toolNodes,
         toolModel,
+        maxRunToolTimes: 30,
         messages: adaptMessages
       });
     }
