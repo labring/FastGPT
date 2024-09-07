@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { ResLogin } from '@/global/support/api/userRes.d';
@@ -20,6 +20,7 @@ const provider = () => {
   const router = useRouter();
   const { code, state, error } = router.query as { code: string; state: string; error?: string };
   const { toast } = useToast();
+  const loading = useRef(false);
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
@@ -41,6 +42,10 @@ const provider = () => {
 
   const authCode = useCallback(
     async (code: string) => {
+      if (loading.current) return;
+
+      loading.current = true;
+
       if (!loginStore) {
         router.replace('/login');
         return;
@@ -73,7 +78,7 @@ const provider = () => {
         }, 1000);
       }
     },
-    [loginStore, loginSuccess, router, toast]
+    [loginStore, loginSuccess, router, t, toast]
   );
 
   useEffect(() => {
@@ -103,7 +108,7 @@ const provider = () => {
     } else {
       authCode(code);
     }
-  }, []);
+  }, [authCode, code, error, loginStore, router, state, t, toast]);
 
   return <Loading />;
 };
