@@ -67,7 +67,7 @@ const provider = () => {
       clearToken();
       handleSSO();
     }
-  }, [handleSSO, query]);
+  }, []);
 
   return <Loading />;
 };

@@ -12,6 +12,8 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
 
+let isOauthLogging = false;
+
 const provider = () => {
   const { t } = useTranslation();
   const { loginStore } = useSystemStore();
@@ -20,7 +22,6 @@ const provider = () => {
   const router = useRouter();
   const { code, state, error } = router.query as { code: string; state: string; error?: string };
   const { toast } = useToast();
-  const loading = useRef(false);
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
@@ -42,9 +43,9 @@ const provider = () => {
 
   const authCode = useCallback(
     async (code: string) => {
-      if (loading.current) return;
+      if (isOauthLogging) return;
 
-      loading.current = true;
+      isOauthLogging = true;
 
       if (!loginStore) {
         router.replace('/login');
@@ -90,8 +91,8 @@ const provider = () => {
       router.replace('/login');
       return;
     }
-
-    if (!code || !loginStore || !state) return;
+    console.log(code, loginStore, state, '===');
+    if (!code || !loginStore?.state || !state) return;
 
     clearToken();
     router.prefetch('/app/list');
@@ -108,7 +109,7 @@ const provider = () => {
     } else {
       authCode(code);
     }
-  }, [authCode, code, error, loginStore, router, state, t, toast]);
+  }, [loginStore?.state]);
 
   return <Loading />;
 };
