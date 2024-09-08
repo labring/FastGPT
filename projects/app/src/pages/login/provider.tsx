@@ -12,6 +12,8 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
 
+let isOauthLogging = false;
+
 const provider = () => {
   const { t } = useTranslation();
   const { loginStore } = useSystemStore();
@@ -20,7 +22,6 @@ const provider = () => {
   const router = useRouter();
   const { code, state, error } = router.query as { code: string; state: string; error?: string };
   const { toast } = useToast();
-  const loading = useRef(false);
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
@@ -31,21 +32,13 @@ const provider = () => {
       setLastChatId('');
       setLastChatAppId('');
 
-      setTimeout(() => {
-        router.push(
-          loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/app/list'
-        );
-      }, 100);
+      router.push(loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/app/list');
     },
     [setLastChatId, setLastChatAppId, setUserInfo, router, loginStore?.lastRoute]
   );
 
   const authCode = useCallback(
     async (code: string) => {
-      if (loading.current) return;
-
-      loading.current = true;
-
       if (!loginStore) {
         router.replace('/login');
         return;
@@ -91,24 +84,30 @@ const provider = () => {
       return;
     }
 
-    if (!code || !loginStore || !state) return;
+    if (!code || !loginStore?.state || !state) return;
 
-    clearToken();
-    router.prefetch('/app/list');
+    if (isOauthLogging) return;
 
-    if (state !== loginStore?.state) {
-      toast({
-        status: 'warning',
-        title: t('common:support.user.login.security_failed')
-      });
-      setTimeout(() => {
-        router.replace('/login');
-      }, 1000);
-      return;
-    } else {
-      authCode(code);
-    }
-  }, [authCode, code, error, loginStore, router, state, t, toast]);
+    isOauthLogging = true;
+
+    (async () => {
+      await clearToken();
+      router.prefetch('/app/list');
+
+      if (state !== loginStore?.state) {
+        toast({
+          status: 'warning',
+          title: t('common:support.user.login.security_failed')
+        });
+        setTimeout(() => {
+          router.replace('/login');
+        }, 1000);
+        return;
+      } else {
+        authCode(code);
+      }
+    })();
+  }, [authCode, code, error, loginStore, loginStore?.state, router, state, t, toast]);
 
   return <Loading />;
 };
