@@ -67,7 +67,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   useMount(() => {
     setUserDefaultLng();
   });
-  console.log(isPc);
+
   return (
     <>
       <Box h={'100%'} bg={'myGray.100'}>

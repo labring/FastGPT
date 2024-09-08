@@ -109,7 +109,7 @@ const provider = () => {
     } else {
       authCode(code);
     }
-  }, [loginStore?.state]);
+  }, [authCode, code, error, loginStore, loginStore?.state, router, state, t, toast]);
 
   return <Loading />;
 };
