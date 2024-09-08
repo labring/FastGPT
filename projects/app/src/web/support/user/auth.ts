@@ -3,8 +3,8 @@ import { loginOut } from '@/web/support/user/api';
 const tokenKey = 'token';
 export const clearToken = () => {
   try {
-    loginOut();
     localStorage.removeItem(tokenKey);
+    return loginOut();
   } catch (error) {
     error;
   }

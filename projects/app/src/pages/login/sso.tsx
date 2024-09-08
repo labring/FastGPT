@@ -11,13 +11,14 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
+let isOauthLogging = false;
+
 const provider = () => {
   const { t } = useTranslation();
   const { setLastChatId, setLastChatAppId } = useChatStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();
   const { query } = router;
-  const loading = useRef(false);
   const { toast } = useToast();
 
   const loginSuccess = useCallback(
@@ -34,8 +35,8 @@ const provider = () => {
   );
 
   const handleSSO = useCallback(async () => {
-    if (loading.current) return;
-    loading.current = true;
+    if (isOauthLogging) return;
+    isOauthLogging = true;
 
     try {
       const res = await ssoLogin(query);
@@ -64,8 +65,14 @@ const provider = () => {
 
   useEffect(() => {
     if (query && Object.keys(query).length > 0) {
-      clearToken();
-      handleSSO();
+      if (isOauthLogging) return;
+
+      isOauthLogging = true;
+
+      (async () => {
+        await clearToken();
+        handleSSO();
+      })();
     }
   }, [handleSSO, query]);
 
