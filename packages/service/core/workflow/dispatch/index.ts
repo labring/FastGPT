@@ -322,7 +322,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     // Thread avoidance
     await surrenderProcess();
 
-    addLog.debug(`Run node`, { maxRunTimes: props.maxRunTimes, uid: user._id });
+    addLog.debug(`Run node`, { maxRunTimes: props.maxRunTimes, appId: props.runningAppInfo.id });
 
     // Get node run status by edges
     const status = checkNodeRunStatus({
