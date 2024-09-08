@@ -65,8 +65,14 @@ const provider = () => {
 
   useEffect(() => {
     if (query && Object.keys(query).length > 0) {
-      clearToken();
-      handleSSO();
+      if (isOauthLogging) return;
+
+      isOauthLogging = true;
+
+      (async () => {
+        await clearToken();
+        handleSSO();
+      })();
     }
   }, [handleSSO, query]);
 

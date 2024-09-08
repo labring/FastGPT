@@ -32,21 +32,13 @@ const provider = () => {
       setLastChatId('');
       setLastChatAppId('');
 
-      setTimeout(() => {
-        router.push(
-          loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/app/list'
-        );
-      }, 100);
+      router.push(loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/app/list');
     },
     [setLastChatId, setLastChatAppId, setUserInfo, router, loginStore?.lastRoute]
   );
 
   const authCode = useCallback(
     async (code: string) => {
-      if (isOauthLogging) return;
-
-      isOauthLogging = true;
-
       if (!loginStore) {
         router.replace('/login');
         return;
@@ -91,24 +83,30 @@ const provider = () => {
       router.replace('/login');
       return;
     }
-    console.log(code, loginStore, state, '===');
+
     if (!code || !loginStore?.state || !state) return;
 
-    clearToken();
-    router.prefetch('/app/list');
+    if (isOauthLogging) return;
 
-    if (state !== loginStore?.state) {
-      toast({
-        status: 'warning',
-        title: t('common:support.user.login.security_failed')
-      });
-      setTimeout(() => {
-        router.replace('/login');
-      }, 1000);
-      return;
-    } else {
-      authCode(code);
-    }
+    isOauthLogging = true;
+
+    (async () => {
+      await clearToken();
+      router.prefetch('/app/list');
+
+      if (state !== loginStore?.state) {
+        toast({
+          status: 'warning',
+          title: t('common:support.user.login.security_failed')
+        });
+        setTimeout(() => {
+          router.replace('/login');
+        }, 1000);
+        return;
+      } else {
+        authCode(code);
+      }
+    })();
   }, [authCode, code, error, loginStore, loginStore?.state, router, state, t, toast]);
 
   return <Loading />;
