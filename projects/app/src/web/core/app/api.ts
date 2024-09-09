@@ -4,6 +4,8 @@ import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
 import { AppUpdateParams, AppChangeOwnerBody } from '@/global/core/app/api';
 import type { CreateAppBody } from '@/pages/api/core/app/create';
 import type { ListAppBody } from '@/pages/api/core/app/list';
+import { AppLogsListItemType } from '@/types/app';
+import { PagingData } from '@/types';
 
 /**
  * 获取模型列表
@@ -36,7 +38,8 @@ export const putAppById = (id: string, data: AppUpdateParams) =>
   PUT(`/core/app/update?appId=${id}`, data);
 
 // =================== chat logs
-export const getAppChatLogs = (data: GetAppChatLogsParams) => POST(`/core/app/getChatLogs`, data);
+export const getAppChatLogs = (data: GetAppChatLogsParams) =>
+  POST<PagingData<AppLogsListItemType>>(`/core/app/getChatLogs`, data);
 
 export const resumeInheritPer = (appId: string) =>
   GET(`/core/app/resumeInheritPermission`, { appId });

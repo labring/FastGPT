@@ -62,7 +62,7 @@ const BillTable = () => {
     Pagination,
     getData,
     total
-  } = usePagination<BillSchemaType>({
+  } = usePagination({
     api: getBills,
     pageSize: 20,
     params: {
