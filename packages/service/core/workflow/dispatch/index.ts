@@ -303,8 +303,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     };
   }
 
-  // 每个节点 运行/跳过 后，初始化边的状态
-  function nodeRunAfterHook(node: RuntimeNodeItemType) {
+  // 每个节点确定 运行/跳过 前，初始化边的状态
+  function nodeRunBeforeHook(node: RuntimeNodeItemType) {
     node.isEntry = false;
 
     runtimeEdges.forEach((item) => {
@@ -331,11 +331,13 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     });
     const nodeRunResult = await (() => {
       if (status === 'run') {
+        nodeRunBeforeHook(node);
         props.maxRunTimes--;
         addLog.debug(`[dispatchWorkFlow] nodeRunWithActive: ${node.name}`);
         return nodeRunWithActive(node);
       }
       if (status === 'skip' && !skippedNodeIdList.has(node.nodeId)) {
+        nodeRunBeforeHook(node);
         props.maxRunTimes -= 0.1;
         skippedNodeIdList.add(node.nodeId);
         addLog.debug(`[dispatchWorkFlow] nodeRunWithSkip: ${node.name}`);
@@ -502,8 +504,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       dispatchRes[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
     });
 
-    nodeRunAfterHook(node);
-
     return {
       node,
       runStatus: 'run',
@@ -520,7 +520,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   }> {
     // Set target edges status to skipped
     const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);
-    nodeRunAfterHook(node);
 
     return {
       node,

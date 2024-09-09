@@ -10,7 +10,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     data: {
       feConfigs: global.feConfigs,
       subPlans: global.subPlans,
-      llmModels: global.llmModels,
+      llmModels: global.llmModels.map((model) => ({
+        ...model,
+        customCQPrompt: '',
+        customExtractPrompt: '',
+        defaultSystemChatPrompt: ''
+      })),
       vectorModels: global.vectorModels,
       reRankModels:
         global.reRankModels?.map((item) => ({
