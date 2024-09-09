@@ -183,7 +183,7 @@ function Reference({
   return (
     <>
       <Flex alignItems={'center'} mb={1}>
-        <FormLabel required={inputChildren.required}>{inputChildren.label}</FormLabel>
+        <FormLabel required={inputChildren.required}>{t(inputChildren.label as any)}</FormLabel>
         {/* value */}
         <ValueTypeLabel valueType={inputChildren.valueType} valueDesc={inputChildren.valueDesc} />
 
