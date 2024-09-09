@@ -16,7 +16,7 @@ type PagingData<T> = {
   total?: number;
 };
 
-export function usePagination<T = any>({
+export function usePagination<ResT = any>({
   api,
   pageSize = 10,
   params = {},
@@ -25,7 +25,7 @@ export function usePagination<T = any>({
   onChange,
   elementRef
 }: {
-  api: (data: any) => any;
+  api: (data: any) => Promise<PagingData<ResT>>;
   pageSize?: number;
   params?: Record<string, any>;
   defaultRequest?: boolean;
@@ -41,7 +41,7 @@ export function usePagination<T = any>({
   const [total, setTotal] = useState(0);
   const totalRef = useRef(total);
   totalRef.current = total;
-  const [data, setData] = useState<T[]>([]);
+  const [data, setData] = useState<ResT[]>([]);
   const dataLengthRef = useRef(data.length);
   dataLengthRef.current = data.length;
   const maxPage = useMemo(() => Math.ceil(total / pageSize) || 1, [pageSize, total]);
@@ -49,7 +49,7 @@ export function usePagination<T = any>({
   const { mutate, isLoading } = useMutation({
     mutationFn: async (num: number = pageNum) => {
       try {
-        const res: PagingData<T> = await api({
+        const res: PagingData<ResT> = await api({
           pageNum: num,
           pageSize,
           ...params
@@ -107,7 +107,7 @@ export function usePagination<T = any>({
             onKeyDown={(e) => {
               // @ts-ignore
               const val = +e.target.value;
-              if (val && e.keyCode === 13) {
+              if (val && e.key === 'Enter') {
                 if (val === pageNum) return;
                 if (val >= maxPage) {
                   mutate(maxPage);

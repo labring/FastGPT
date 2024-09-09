@@ -34,7 +34,10 @@ import type { CreateDatasetParams, InsertOneDatasetDataProps } from '@/global/co
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
+import type {
+  DatasetCollectionsListItemType,
+  DatasetDataListItemType
+} from '@/global/core/dataset/type.d';
 import { PagingData } from '@/types';
 import type { getDatasetTrainingQueueResponse } from '@/pages/api/core/dataset/training/getDatasetTrainingQueue';
 import type { rebuildEmbeddingBody } from '@/pages/api/core/dataset/training/rebuildEmbedding';
@@ -153,7 +156,7 @@ export const getScrollCollectionList = (data: GetScrollCollectionsProps) =>
 /* =============================== data ==================================== */
 /* get dataset list */
 export const getDatasetDataList = (data: GetDatasetDataListProps) =>
-  POST(`/core/dataset/data/list`, data);
+  POST<PagingData<DatasetDataListItemType>>(`/core/dataset/data/list`, data);
 
 export const getDatasetDataItemById = (id: string) =>
   GET<DatasetDataItemType>(`/core/dataset/data/detail`, { id });

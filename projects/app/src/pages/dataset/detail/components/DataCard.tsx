@@ -1,22 +1,11 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
-import {
-  Box,
-  Card,
-  IconButton,
-  Flex,
-  Grid,
-  Button,
-  useTheme,
-  useDisclosure,
-  HStack
-} from '@chakra-ui/react';
+import React, { useState, useRef, useMemo } from 'react';
+import { Box, Card, IconButton, Flex, Button, useTheme } from '@chakra-ui/react';
 import {
   getDatasetDataList,
   delOneDatasetDataById,
   getDatasetCollectionById,
   putDatasetDataById
 } from '@/web/core/dataset/api';
-import { DeleteIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -27,16 +16,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
 import InputDataModal from '../components/InputDataModal';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
-import type { DatasetDataListItemType } from '@/global/core/dataset/type.d';
-import { TabEnum } from '..';
-import { DatasetCollectionTypeMap, TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
-import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
-import { formatFileSize } from '@fastgpt/global/common/file/tools';
-import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
-import { useI18n } from '@/web/context/I18n';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useContextSelector } from 'use-context-selector';
@@ -78,7 +59,7 @@ const DataCard = () => {
     pageNum,
     pageSize,
     isLoading: isRequesting
-  } = usePagination<DatasetDataListItemType>({
+  } = usePagination({
     api: getDatasetDataList,
     pageSize: 24,
     defaultRequest: false,
@@ -125,7 +106,7 @@ const DataCard = () => {
 
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
 
-  const { run: onUpdate, loading } = useRequest2(putDatasetDataById, {
+  const { loading } = useRequest2(putDatasetDataById, {
     onSuccess() {
       getData(pageNum);
     }

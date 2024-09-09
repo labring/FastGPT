@@ -24,11 +24,13 @@ import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 export const authDatasetByTmbId = async ({
   tmbId,
   datasetId,
-  per
+  per,
+  isRoot = false
 }: {
   tmbId: string;
   datasetId: string;
   per: PermissionValueType;
+  isRoot?: boolean;
 }): Promise<{
   dataset: DatasetSchemaType & {
     permission: DatasetPermission;
@@ -42,6 +44,15 @@ export const authDatasetByTmbId = async ({
 
     if (!dataset) {
       return Promise.reject(DatasetErrEnum.unExist);
+    }
+
+    if (isRoot) {
+      return {
+        ...dataset,
+        permission: new DatasetPermission({
+          isOwner: true
+        })
+      };
     }
 
     if (String(dataset.teamId) !== teamId) {
@@ -131,7 +142,8 @@ export const authDataset = async ({
   const { dataset } = await authDatasetByTmbId({
     tmbId,
     datasetId,
-    per
+    per,
+    isRoot: result.isRoot
   });
 
   return {
@@ -144,15 +156,17 @@ export const authDataset = async ({
 export async function authDatasetCollection({
   collectionId,
   per = NullPermission,
+  isRoot = false,
   ...props
 }: AuthModeType & {
   collectionId: string;
+  isRoot?: boolean;
 }): Promise<
   AuthResponseType<DatasetPermission> & {
     collection: CollectionWithDatasetType;
   }
 > {
-  const { teamId, tmbId } = await parseHeaderCert(props);
+  const { teamId, tmbId, isRoot: isRootFromHeader } = await parseHeaderCert(props);
   const collection = await getCollectionWithDataset(collectionId);
 
   if (!collection) {
@@ -162,7 +176,8 @@ export async function authDatasetCollection({
   const { dataset } = await authDatasetByTmbId({
     tmbId,
     datasetId: collection.datasetId._id,
-    per
+    per,
+    isRoot: isRootFromHeader || isRoot
   });
 
   return {
@@ -184,7 +199,7 @@ export async function authDatasetFile({
     file: DatasetFileSchema;
   }
 > {
-  const { teamId, tmbId } = await parseHeaderCert(props);
+  const { teamId, tmbId, isRoot } = await parseHeaderCert(props);
 
   const [file, collection] = await Promise.all([
     getFileById({ bucketName: BucketNameEnum.dataset, fileId }),
@@ -206,7 +221,8 @@ export async function authDatasetFile({
     const { permission } = await authDatasetCollection({
       ...props,
       collectionId: collection._id,
-      per
+      per,
+      isRoot
     });
 
     return {

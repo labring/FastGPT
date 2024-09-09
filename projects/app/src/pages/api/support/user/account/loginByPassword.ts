@@ -6,7 +6,6 @@ import { connectToDatabase } from '@/service/mongo';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { PostLoginProps } from '@fastgpt/global/support/user/api.d';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
-import { checkTeamAiPointsAndLock } from '@/service/events/utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -50,7 +49,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       lastLoginTmbId: userDetail.team.tmbId
     });
 
-    const token = createJWT(userDetail);
+    const token = createJWT({
+      ...userDetail,
+      isRoot: username === 'root'
+    });
+
     setCookie(res, token);
 
     jsonRes(res, {

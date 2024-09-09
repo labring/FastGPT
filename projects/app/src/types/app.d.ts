@@ -43,4 +43,6 @@ export type AppLogsListItemType = {
   userBadFeedbackCount: number;
   customFeedbacksCount: number;
   markCount: number;
+  outLinkUid?: string;
+  tmbId: string;
 };

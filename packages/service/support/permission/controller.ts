@@ -78,13 +78,18 @@ export const delResourcePermission = ({
 
 /* 下面代码等迁移 */
 /* create token */
-export function createJWT(user: { _id?: string; team?: { teamId?: string; tmbId: string } }) {
+export function createJWT(user: {
+  _id?: string;
+  team?: { teamId?: string; tmbId: string };
+  isRoot?: boolean;
+}) {
   const key = process.env.TOKEN_KEY as string;
   const token = jwt.sign(
     {
       userId: String(user._id),
       teamId: String(user.team?.teamId),
       tmbId: String(user.team?.tmbId),
+      isRoot: user.isRoot,
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7
     },
     key
@@ -98,6 +103,7 @@ export function authJWT(token: string) {
     userId: string;
     teamId: string;
     tmbId: string;
+    isRoot: boolean;
   }>((resolve, reject) => {
     const key = process.env.TOKEN_KEY as string;
 
@@ -110,7 +116,8 @@ export function authJWT(token: string) {
       resolve({
         userId: decoded.userId,
         teamId: decoded.teamId || '',
-        tmbId: decoded.tmbId
+        tmbId: decoded.tmbId,
+        isRoot: decoded.isRoot
       });
     });
   });
@@ -183,7 +190,7 @@ export async function parseHeaderCert({
 
   const { cookie, token, rootkey, authorization } = (req.headers || {}) as ReqHeaderAuthType;
 
-  const { uid, teamId, tmbId, appId, openApiKey, authType } = await (async () => {
+  const { uid, teamId, tmbId, appId, openApiKey, authType, isRoot } = await (async () => {
     if (authApiKey && authorization) {
       // apikey from authorization
       const authResponse = await parseAuthorization(authorization);
@@ -205,7 +212,8 @@ export async function parseHeaderCert({
         tmbId: res.tmbId,
         appId: '',
         openApiKey: '',
-        authType: AuthUserTypeEnum.token
+        authType: AuthUserTypeEnum.token,
+        isRoot: res.isRoot
       };
     }
     if (authRoot && rootkey) {
@@ -217,7 +225,8 @@ export async function parseHeaderCert({
         tmbId: '',
         appId: '',
         openApiKey: '',
-        authType: AuthUserTypeEnum.root
+        authType: AuthUserTypeEnum.root,
+        isRoot: true
       };
     }
 
@@ -234,7 +243,8 @@ export async function parseHeaderCert({
     tmbId: String(tmbId),
     appId,
     authType,
-    apikey: openApiKey
+    apikey: openApiKey,
+    isRoot: !!isRoot
   };
 }
 
