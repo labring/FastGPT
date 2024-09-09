@@ -91,10 +91,10 @@ function parseTypeLiteral(type: TSTypeLiteral): itemType[] {
     if (item.type === 'TSPropertySignature') {
       const key = item.key.type === 'Identifier' ? item.key.name : item.key.type;
       const value = parseType(item.typeAnnotation?.typeAnnotation);
-      const comments =
-        item.leadingComments?.map((item) => item.value.trim()).join('\n') ??
-        '' + '\n' + item.innerComments?.map((item) => item.value.trim()).join('\n') ??
-        '';
+      const comments = [
+        item.leadingComments?.map((item) => item.value.trim()).join('\n'),
+        item.trailingComments?.map((item) => item.value.trim()).join('\n')
+      ].join('\n');
       const required = item.optional ? false : true;
       items.push({
         type: value,
@@ -110,10 +110,10 @@ function parseTypeLiteral(type: TSTypeLiteral): itemType[] {
 function getData(path: NodePath): ApiDataType | undefined {
   const type: ApiDataType = {};
   if (path.isExportNamedDeclaration()) {
-    const comments =
-      path.node.leadingComments?.map((item) => item.value.trim()).join('\n') ??
-      '' + '\n' + path.node.innerComments?.map((item) => item.value.trim()).join('\n') ??
-      '';
+    const comments = [
+      path.node.leadingComments?.map((item) => item.value.trim()).join('\n'),
+      path.node.trailingComments?.map((item) => item.value.trim()).join('\n')
+    ].join('\n');
     if (comments) {
       type.comment = comments;
     }

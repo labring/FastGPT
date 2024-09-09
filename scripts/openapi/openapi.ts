@@ -17,18 +17,14 @@ type OpenAPIResponse = {
       [mediaType: string]: {
         schema: {
           type: string;
+          properties?: {
+            [key: string]: {
+              type: string;
+              description?: string;
+            };
+          };
         };
       };
-    };
-  };
-};
-
-type OpenAPIPath = {
-  [url: string]: {
-    [method: string]: {
-      description: string;
-      parameters: OpenAPIParameter[];
-      responses: OpenAPIResponse;
     };
   };
 };
@@ -36,8 +32,8 @@ type OpenAPIPath = {
 type PathType = {
   [method: string]: {
     description: string;
-    parameters: any[];
-    responses: any;
+    parameters: OpenAPIParameter[];
+    responses: OpenAPIResponse;
   };
 };
 
@@ -101,22 +97,65 @@ export function convertPath(api: ApiType): PathType {
     }
   }
 
-  const responses: any = {
-    200: {
-      'application/json': {
-        schema: {
-          type: 'object',
-          properties: {
-            data: {
-              type: 'object'
+  const responses: OpenAPIResponse = (() => {
+    if (api.response) {
+      if (Array.isArray(api.response)) {
+        const properties: {
+          [key: string]: {
+            type: string;
+            description?: string;
+          };
+        } = {};
+
+        api.response.forEach((item) => {
+          properties[item.type] = {
+            type: item.key ?? item.type,
+            description: item.comment
+          };
+        });
+        const res: OpenAPIResponse = {
+          '200': {
+            description: api.description ?? '',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties
+                }
+              }
             }
           }
-        },
-        description: 'success'
+        };
+        return res;
+      } else {
+        return {
+          '200': {
+            description: api.response.comment ?? '',
+            content: {
+              'application/json': {
+                schema: {
+                  type: api.response.type
+                }
+              }
+            }
+          }
+        };
       }
+    } else {
+      return {
+        '200': {
+          description: api.description ?? '',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object'
+              }
+            }
+          }
+        }
+      };
     }
-  };
-
+  })();
   return {
     [method]: {
       description: api.description ?? '',
