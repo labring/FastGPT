@@ -532,9 +532,12 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   const entryNodes = runtimeNodes.filter((item) => item.isEntry);
 
   // reset entry
-  // runtimeNodes.forEach((item) => {
-  //   item.isEntry = false;
-  // });
+  runtimeNodes.forEach((item) => {
+    // Interactive node is not the entry node, return interactive result
+    if (item.flowNodeType !== FlowNodeTypeEnum.userSelect) {
+      item.isEntry = false;
+    }
+  });
   await Promise.all(entryNodes.map((node) => checkNodeCanRun(node)));
 
   // focus try to run pluginOutput

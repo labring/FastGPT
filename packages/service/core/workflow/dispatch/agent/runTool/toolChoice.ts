@@ -209,7 +209,10 @@ export const runToolWithToolChoice = async (
                     isEntry: true,
                     inputs: updateToolInputValue({ params: startParams, inputs: item.inputs })
                   }
-                : item
+                : {
+                    ...item,
+                    isEntry: false
+                  }
             )
           });
 
@@ -359,6 +362,7 @@ export const runToolWithToolChoice = async (
       };
     }
   } catch (error) {
+    console.log(error);
     addLog.warn(`LLM response error`, {
       requestBody
     });

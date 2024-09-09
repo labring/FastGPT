@@ -194,7 +194,10 @@ export const runToolWithFunctionCall = async (
                   isEntry: true,
                   inputs: updateToolInputValue({ params: startParams, inputs: item.inputs })
                 }
-              : item
+              : {
+                  ...item,
+                  isEntry: false
+                }
           )
         });
 
