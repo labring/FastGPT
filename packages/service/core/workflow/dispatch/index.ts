@@ -305,8 +305,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
   // 每个节点确定 运行/跳过 前，初始化边的状态
   function nodeRunBeforeHook(node: RuntimeNodeItemType) {
-    node.isEntry = false;
-
     runtimeEdges.forEach((item) => {
       if (item.target === node.nodeId) {
         item.status = 'waiting';

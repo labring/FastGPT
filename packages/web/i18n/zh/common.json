@@ -543,7 +543,7 @@
         "module similarity": "相似度",
         "module temperature": "温度",
         "module time": "运行时长",
-        "module tokens": "总 tokens",
+        "module tokens": "AI Tokens 消耗",
         "plugin output": "插件输出值",
         "search using reRank": "结果重排",
         "text output": "文本输出",

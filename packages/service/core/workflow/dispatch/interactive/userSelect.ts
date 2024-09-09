@@ -1,7 +1,4 @@
-import {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   DispatchNodeResultType,
   ModuleDispatchProps
@@ -26,14 +23,12 @@ type UserSelectResponse = DispatchNodeResultType<{
 
 export const dispatchUserSelect = async (props: Props): Promise<UserSelectResponse> => {
   const {
-    workflowStreamResponse,
-    runningAppInfo: { id: appId },
     histories,
-    chatId,
-    node: { nodeId, isEntry },
+    node,
     params: { description, userSelectOptions },
     query
   } = props;
+  const { nodeId, isEntry } = node;
 
   // Interactive node is not the entry node, return interactive result
   if (!isEntry) {
@@ -47,6 +42,8 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
       }
     };
   }
+
+  node.isEntry = false;
 
   const { text: userSelectedVal } = chatValue2RuntimePrompt(query);
 
