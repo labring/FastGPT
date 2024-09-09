@@ -37,20 +37,20 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const quoteList = useMemo(() => inputs.filter((item) => item.canEdit), [inputs]);
 
   const tokenLimit = useMemo(() => {
-    let maxTokens = 3000;
+    let maxTokens = 13000;
 
     nodeList.forEach((item) => {
-      if (item.flowNodeType === FlowNodeTypeEnum.chatNode) {
+      if ([FlowNodeTypeEnum.chatNode, FlowNodeTypeEnum.tools].includes(item.flowNodeType)) {
         const model =
           item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
-        const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 3000;
+        const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 13000;
 
         maxTokens = Math.max(maxTokens, quoteMaxToken);
       }
     });
 
     return maxTokens;
-  }, [llmModelList, nodeList]);
+  }, [nodeList, llmModelList]);
 
   const CustomComponent = useMemo(() => {
     return {
