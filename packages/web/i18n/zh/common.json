@@ -601,11 +601,13 @@
       "Quote Length": "引用内容长度",
       "Read Dataset": "查看知识库详情",
       "Set Website Config": "开始配置网站信息",
+      "Set Putifile Config": "开始配置文件库信息",
       "Start export": "已开始导出",
       "Table collection": "表格数据集",
       "Text collection": "文本数据集",
       "collection": {
         "Click top config website": "点击配置网站",
+        "Click top config putifile": "点击配置文件库",
         "Collection name": "数据集名称",
         "Collection raw text": "数据集内容",
         "Empty Tip": "数据集空空如也",
@@ -785,7 +787,8 @@
         "QA mode": "问答拆分",
         "Vector queue": "索引排队",
         "Waiting": "预计 5 分钟",
-        "Website Sync": "Web 站点同步"
+        "Website Sync": "Web 站点同步",
+        "Putifile Sync": "Putifile 文件同步"
       },
       "website": {
         "Base Url": "根地址",
@@ -797,6 +800,16 @@
         "Selector Course": "使用教程",
         "Start Sync": "开始同步",
         "UnValid Website Tip": "您的站点可能非静态站点，无法同步"
+      },
+      "putifile": {
+        "Config": "Putifile 配置",
+        "Config Description": "Putifile 同步功能允许你同步一个 Putifile 下的文件夹，系统会自动同步该文件夹下的文件到知识库中。支持同步文件夹下的所有文件，包括子文件夹。",
+        "Confirm Create Tips": "确认同步该文件夹，同步任务将随后开启，请确认！",
+        "Confirm Update Tips": "确认更新文件夹配置？会立即按新的配置开始同步，请确认！",
+        "Start Sync": "开始同步",
+        "UnValid Config Tip": "你的配置可能有误，无法同步",
+        "biz": "业务(公共、项目、体系)",
+        "folder": "目录"
       }
     },
     "module": {

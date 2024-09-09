@@ -15,6 +15,7 @@ export type DatasetUpdateBody = {
 
   websiteConfig?: DatasetSchemaType['websiteConfig'];
   externalReadUrl?: DatasetSchemaType['externalReadUrl'];
+  putifileConfig?: DatasetSchemaType['putifileConfig'];
   defaultPermission?: DatasetSchemaType['defaultPermission'];
 };
 
@@ -43,6 +44,9 @@ export type CreateDatasetCollectionParams = DatasetCollectionChunkMetadataType &
   externalFileUrl?: string;
   rawTextLength?: number;
   hashRawText?: string;
+
+  // config
+  config?: Record<string, any>;
 };
 
 export type ApiCreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {
@@ -118,4 +122,16 @@ export type PushDatasetDataProps = {
 };
 export type PushDatasetDataResponse = {
   insertLen: number;
+};
+
+// putifile sync
+export type PostPutifileSyncParams = {
+  datasetId: string;
+  billId: string;
+};
+export type PutifileFileReCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
+  id: string;
+  externalFileId?: string;
+  externalFileUrl: string;
+  filename?: string;
 };

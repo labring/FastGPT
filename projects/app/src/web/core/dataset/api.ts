@@ -21,8 +21,10 @@ import type {
   FileIdCreateDatasetCollectionParams,
   LinkCreateDatasetCollectionParams,
   PostWebsiteSyncParams,
+  PostPutifileSyncParams,
   TextCreateDatasetCollectionParams,
-  UpdateDatasetCollectionTagParams
+  UpdateDatasetCollectionTagParams,
+  PutifileFileReCreateDatasetCollectionParams
 } from '@fastgpt/global/core/dataset/api.d';
 import type {
   GetTrainingQueueProps,
@@ -50,6 +52,7 @@ import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/contro
 import type { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { GetScrollCollectionsProps } from '@/pages/api/core/dataset/collection/scrollList';
+import { PutifileSTagItemResp } from '@/pages/api/putifile/utils';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -127,23 +130,23 @@ export const postLinkCollectionSync = (collectionId: string) =>
 /* =============================== tag ==================================== */
 
 export const postCreateDatasetCollectionTag = (data: CreateDatasetCollectionTagParams) =>
-  POST(`/proApi/core/dataset/tag/create`, data);
+  POST(`/core/dataset/tag/create`, data);
 export const postAddTagsToCollections = (data: AddTagsToCollectionsParams) =>
-  POST(`/proApi/core/dataset/tag/addToCollections`, data);
+  POST(`/core/dataset/tag/addToCollections`, data);
 export const delDatasetCollectionTag = (data: { id: string; datasetId: string }) =>
-  DELETE(`/proApi/core/dataset/tag/delete`, data);
+  DELETE(`/core/dataset/tag/delete`, data);
 export const updateDatasetCollectionTag = (data: UpdateDatasetCollectionTagParams) =>
-  POST(`/proApi/core/dataset/tag/update`, data);
+  POST(`/core/dataset/tag/update`, data);
 export const getDatasetCollectionTags = (
   data: PaginationProps<{
     datasetId: string;
     searchText?: string;
   }>
-) => GET<PaginationResponse<DatasetTagType>>(`/proApi/core/dataset/tag/list`, data);
+) => POST<PaginationResponse<DatasetTagType>>(`/core/dataset/tag/list`, data);
 export const getTagUsage = (datasetId: string) =>
-  GET<TagUsageType[]>(`/proApi/core/dataset/tag/tagUsage?datasetId=${datasetId}`);
+  GET<TagUsageType[]>(`/core/dataset/tag/tagUsage?datasetId=${datasetId}`);
 export const getAllTags = (datasetId: string) =>
-  GET<{ list: DatasetTagType[] }>(`/proApi/core/dataset/tag/getAllTags?datasetId=${datasetId}`);
+  GET<DatasetTagType[]>(`/core/dataset/tag/getAllTags?datasetId=${datasetId}`);
 export const getScrollCollectionList = (data: GetScrollCollectionsProps) =>
   GET<PaginationResponse<DatasetCollectionsListItemType>>(
     `/core/dataset/collection/scrollList`,
@@ -193,3 +196,24 @@ export const getPreviewChunks = (data: PostPreviewFilesChunksProps) =>
 /* ================== read source ======================== */
 export const getCollectionSource = (collectionId: string) =>
   GET<readCollectionSourceResponse>('/core/dataset/collection/read', { collectionId });
+
+/* ================== putifile ======================== */
+// putifile file sync
+export const postPutifileSync = (data: PostPutifileSyncParams) =>
+  POST(`/putifile/putifileSync`, data, {
+    timeout: 600000
+  }).catch();
+export const getPutiFolderFiles = (data: { folder: string }) =>
+  POST(`/putifile/getFolderFiles`, data, {
+    timeout: 600000
+  }).catch();
+export const getPutifileFileUrl = (fileId: string) =>
+  GET<string>(`/putifile/getFileUrl`, { fileId }).catch();
+export const getPutifileTags = () => GET<PutifileSTagItemResp[]>(`/putifile/listTags`).catch();
+
+export const postRecreateDatasetPutifileFileCollection = (
+  data: PutifileFileReCreateDatasetCollectionParams
+) =>
+  POST<{ collectionId: string }>(`/putifile/reCreateCollection`, data, {
+    timeout: 360000
+  });

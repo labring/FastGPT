@@ -28,7 +28,9 @@ import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import {
   DatasetCollectionTypeEnum,
   DatasetStatusEnum,
-  DatasetCollectionSyncResultMap
+  DatasetCollectionSyncResultMap,
+  TrainingStatusEnum,
+  ImportDataSourceEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import { TabEnum } from '../../index';
@@ -76,6 +78,10 @@ const CollectionCard = () => {
     title: t('common:Rename')
   });
 
+  const { onOpenModal: onOpenSetTagModal, EditModal: TagManageModal } = useEditTitle({
+    title: t('common:Rename')
+  });
+
   const [moveCollectionData, setMoveCollectionData] = useState<{ collectionId: string }>();
 
   const { collections, Pagination, total, getData, isGetting, pageNum, pageSize } =
@@ -87,6 +93,18 @@ const CollectionCard = () => {
       collections.map((collection) => {
         const icon = getCollectionIcon(collection.type, collection.name);
         const status = (() => {
+          if (collection.trainingStatus === TrainingStatusEnum.failed) {
+            return {
+              statusText: '失败',
+              colorSchema: 'red'
+            };
+          }
+          if (collection.trainingStatus === TrainingStatusEnum.pending) {
+            return {
+              statusText: '待处理',
+              colorSchema: 'blue'
+            };
+          }
           if (collection.trainingAmount > 0) {
             return {
               statusText: t('dataset.collections.Collection Embedding', {
@@ -212,11 +230,16 @@ const CollectionCard = () => {
                   cursor={'pointer'}
                   {...getBoxProps({
                     dataId: collection._id,
-                    isFolder: collection.type === DatasetCollectionTypeEnum.folder
+                    isFolder:
+                      collection.type === DatasetCollectionTypeEnum.folder ||
+                      collection.type === DatasetCollectionTypeEnum.putiFile
                   })}
                   draggable={false}
                   onClick={() => {
-                    if (collection.type === DatasetCollectionTypeEnum.folder) {
+                    if (
+                      collection.type === DatasetCollectionTypeEnum.folder ||
+                      collection.type === DatasetCollectionTypeEnum.putiFile
+                    ) {
                       router.push({
                         query: {
                           ...router.query,
@@ -246,9 +269,11 @@ const CollectionCard = () => {
                         </Box>
                       </MyTooltip>
                     </Flex>
-                    {feConfigs?.isPlus && !!collection.tags?.length && (
-                      <TagsPopOver currentCollection={collection} />
-                    )}
+                    {[
+                      DatasetCollectionTypeEnum.file,
+                      DatasetCollectionTypeEnum.externalFile,
+                      DatasetCollectionTypeEnum.virtual
+                    ].includes(collection.type) && <TagsPopOver currentCollection={collection} />}
                   </Td>
                   <Td py={2}>
                     {!checkCollectionIsFolder(collection.type) ? (
@@ -358,6 +383,40 @@ const CollectionCard = () => {
                                       })
                                   })
                               }
+                              // {
+                              //   label: (
+                              //     <Flex alignItems={'center'}>
+                              //       <MyIcon name={'export'} w={'0.9rem'} mr={2} />
+                              //       手动同步
+                              //     </Flex>
+                              //   ),
+                              //   onClick: () =>
+                              //     router.replace({
+                              //       query: {
+                              //         ...router.query,
+                              //         collectionId: collection._id,
+                              //         currentTab: TabEnum.import,
+                              //         source: ImportDataSourceEnum.putifile
+                              //       }
+                              //     })
+                              // },
+                              // {
+                              //   label: (
+                              //     <Flex alignItems={'center'}>
+                              //       {/* <MyIcon name={'tag'} w={'0.9rem'} mr={2} /> */}
+                              //       设置标签
+                              //     </Flex>
+                              //   ),
+                              //   onClick: () =>
+                              //     onOpenSetTagModal({
+                              //       defaultVal: collection.tags,
+                              //       onSuccess: (tags) =>
+                              //         onUpdateCollection({
+                              //           id: collection._id,
+                              //           tags: tags
+                              //         })
+                              //     })
+                              // }
                             ]
                           },
                           {

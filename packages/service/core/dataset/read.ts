@@ -10,18 +10,20 @@ import { readRawContentByFileBuffer } from '../../common/file/read/utils';
 export const readFileRawTextByUrl = async ({
   teamId,
   url,
-  relatedId
+  relatedId,
+  extension
 }: {
   teamId: string;
   url: string;
   relatedId?: string;
+  extension?: string;
 }) => {
   const response = await axios({
     method: 'get',
     url: url,
     responseType: 'arraybuffer'
   });
-  const extension = url.split('.')?.pop()?.toLowerCase() || '';
+  if (!extension) extension = url.split('.').pop()?.toLowerCase() || '';
 
   const buffer = Buffer.from(response.data, 'binary');
 

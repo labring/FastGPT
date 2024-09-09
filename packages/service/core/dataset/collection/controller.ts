@@ -1,4 +1,4 @@
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { TrainingModeEnum, TrainingStatusEnum } from '@fastgpt/global/core/dataset/constants';
 import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { MongoDatasetCollection } from './schema';
 import {
@@ -22,6 +22,7 @@ export async function createOneCollection({
   datasetId,
   type,
 
+  trainingStatus = TrainingStatusEnum.success,
   trainingType = TrainingModeEnum.chunk,
   chunkSize = 512,
   chunkSplitter,
@@ -32,6 +33,9 @@ export async function createOneCollection({
 
   externalFileId,
   externalFileUrl,
+
+  // config
+  config,
 
   hashRawText,
   rawTextLength,
@@ -57,6 +61,7 @@ export async function createOneCollection({
         name,
         type,
 
+        trainingStatus,
         trainingType,
         chunkSize,
         chunkSplitter,

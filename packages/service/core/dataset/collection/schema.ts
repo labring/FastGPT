@@ -1,7 +1,11 @@
 import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
-import { TrainingTypeMap, DatasetCollectionTypeMap } from '@fastgpt/global/core/dataset/constants';
+import {
+  TrainingTypeMap,
+  DatasetCollectionTypeMap,
+  TrainingStatusEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { DatasetCollectionName } from '../schema';
 import {
   TeamCollectionName,
@@ -57,6 +61,10 @@ const DatasetCollectionSchema = new Schema({
   trainingType: {
     type: String,
     enum: Object.keys(TrainingTypeMap)
+  },
+  trainingStatus: {
+    type: String,
+    enum: TrainingStatusEnum
   },
   chunkSize: {
     type: Number,

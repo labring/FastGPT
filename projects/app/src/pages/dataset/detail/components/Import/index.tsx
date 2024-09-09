@@ -9,7 +9,9 @@ const FileLocal = dynamic(() => import('./diffSource/FileLocal'));
 const FileLink = dynamic(() => import('./diffSource/FileLink'));
 const FileCustomText = dynamic(() => import('./diffSource/FileCustomText'));
 const TableLocal = dynamic(() => import('./diffSource/TableLocal'));
-const ExternalFileCollection = dynamic(() => import('./diffSource/ExternalFile'));
+// const ExternalFileCollection = dynamic(() => import('./diffSource/ExternalFile'));
+const PutifileFileCollection = dynamic(() => import('./diffSource/PutifileImport'));
+const PutifileFolderCollection = dynamic(() => import('./diffSource/PutifileFolderImport'));
 
 const ImportDataset = () => {
   const importSource = useContextSelector(DatasetImportContext, (v) => v.importSource);
@@ -19,7 +21,8 @@ const ImportDataset = () => {
     if (importSource === ImportDataSourceEnum.fileLink) return FileLink;
     if (importSource === ImportDataSourceEnum.fileCustom) return FileCustomText;
     if (importSource === ImportDataSourceEnum.csvTable) return TableLocal;
-    if (importSource === ImportDataSourceEnum.externalFile) return ExternalFileCollection;
+    if (importSource === ImportDataSourceEnum.externalFile) return PutifileFileCollection;
+    if (importSource === ImportDataSourceEnum.putifile) return PutifileFolderCollection;
   }, [importSource]);
 
   return ImportComponent ? (

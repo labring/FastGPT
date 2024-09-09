@@ -204,7 +204,7 @@ const Header = ({}: {}) => {
         )}
 
         {/* Tag */}
-        {datasetDetail.permission.hasWritePer && feConfigs?.isPlus && <HeaderTagPopOver />}
+        {/* {datasetDetail.permission.hasWritePer && <HeaderTagPopOver />} */}
       </HStack>
 
       {/* diff collection button */}
@@ -294,6 +294,28 @@ const Header = ({}: {}) => {
                             ...router.query,
                             currentTab: TabEnum.import,
                             source: ImportDataSourceEnum.csvTable
+                          }
+                        })
+                    },
+                    {
+                      label: <Flex>{'从文件系统同步'}</Flex>,
+                      onClick: () =>
+                        router.replace({
+                          query: {
+                            ...router.query,
+                            currentTab: TabEnum.import,
+                            source: ImportDataSourceEnum.putifile
+                          }
+                        })
+                    },
+                    {
+                      label: <Flex>{'从文件链接导入'}</Flex>,
+                      onClick: () =>
+                        router.replace({
+                          query: {
+                            ...router.query,
+                            currentTab: TabEnum.import,
+                            source: ImportDataSourceEnum.externalFile
                           }
                         })
                     }

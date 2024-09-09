@@ -11,7 +11,10 @@ import {
   Flex,
   Button
 } from '@chakra-ui/react';
-import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  ImportDataSourceEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -23,7 +26,9 @@ import {
   postCreateDatasetExternalFileCollection,
   postCreateDatasetFileCollection,
   postCreateDatasetLinkCollection,
-  postCreateDatasetTextCollection
+  postCreateDatasetTextCollection,
+  postDatasetCollection,
+  postRecreateDatasetPutifileFileCollection
 } from '@/web/core/dataset/api';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useI18n } from '@/web/context/I18n';
@@ -47,6 +52,22 @@ const Upload = () => {
       if (sources.length === 0) return;
       const filterWaitingSources = sources.filter((item) => item.createStatus === 'waiting');
 
+      // 如果时putifile文件，先创建对应的文件夹
+      let newPerentId = parentId;
+      if (importSource === ImportDataSourceEnum.putifile) {
+        const first = filterWaitingSources[0];
+        newPerentId = await postDatasetCollection({
+          datasetId: datasetDetail._id,
+          parentId,
+          name: first.name,
+          type: DatasetCollectionTypeEnum.putiFile,
+          config: {
+            policy: first.policy,
+            folder: first.folder
+          }
+        });
+      }
+
       // Batch create collection and upload chunks
       for await (const item of filterWaitingSources) {
         setSources((state) =>
@@ -62,7 +83,7 @@ const Upload = () => {
 
         // create collection
         const commonParams = {
-          parentId,
+          parentId: newPerentId,
           trainingType: mode,
           datasetId: datasetDetail._id,
           chunkSize,
@@ -96,8 +117,23 @@ const Upload = () => {
             fileId: item.dbFileId
           });
         } else if (importSource === ImportDataSourceEnum.externalFile && item.externalFileUrl) {
-          await postCreateDatasetExternalFileCollection({
+          // await postCreateDatasetExternalFileCollection({
+          //   ...commonParams,
+          //   externalFileUrl: item.externalFileUrl,
+          //   externalFileId: item.externalFileId,
+          //   filename: item.sourceName
+          // });
+          await postRecreateDatasetPutifileFileCollection({
             ...commonParams,
+            id: item.id,
+            externalFileUrl: item.externalFileUrl,
+            externalFileId: item.externalFileId,
+            filename: item.sourceName
+          });
+        } else if (importSource === ImportDataSourceEnum.putifile && item.externalFileUrl) {
+          await postRecreateDatasetPutifileFileCollection({
+            ...commonParams,
+            id: item.id,
             externalFileUrl: item.externalFileUrl,
             externalFileId: item.externalFileId,
             filename: item.sourceName

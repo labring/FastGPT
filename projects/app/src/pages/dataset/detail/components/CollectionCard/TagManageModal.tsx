@@ -154,10 +154,10 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   });
 
-  const { data: tagUsages } = useRequest2(() => getTagUsage(datasetDetail._id), {
-    manual: false,
-    refreshDeps: [collections]
-  });
+  // const { data: tagUsages } = useRequest2(() => getTagUsage(datasetDetail._id), {
+  //   manual: false,
+  //   refreshDeps: [collections]
+  // });
 
   return (
     <MyModal

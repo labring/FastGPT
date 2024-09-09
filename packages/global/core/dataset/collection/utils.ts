@@ -15,7 +15,11 @@ export const getCollectionSourceData = (
 };
 
 export const checkCollectionIsFolder = (type: DatasetCollectionTypeEnum) => {
-  return type === DatasetCollectionTypeEnum.folder || type === DatasetCollectionTypeEnum.virtual;
+  return (
+    type === DatasetCollectionTypeEnum.folder ||
+    type === DatasetCollectionTypeEnum.virtual ||
+    type === DatasetCollectionTypeEnum.putiFile
+  );
 };
 
 export const getTrainingTypeLabel = (type?: TrainingModeEnum) => {

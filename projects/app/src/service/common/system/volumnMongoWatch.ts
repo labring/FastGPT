@@ -3,11 +3,13 @@ import { initSystemConfig } from '.';
 import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training/utils';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { MongoSystemPluginSchema } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
+import { createDatasetCollectionMongoWatch } from '@/service/core/dataset/training/putifileWatch';
 
 export const startMongoWatch = async () => {
   reloadConfigWatch();
   refetchSystemPlugins();
   createDatasetTrainingMongoWatch();
+  createDatasetCollectionMongoWatch();
 };
 
 const reloadConfigWatch = () => {

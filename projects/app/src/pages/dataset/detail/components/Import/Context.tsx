@@ -140,6 +140,17 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       {
         title: t('common:core.dataset.import.Upload data')
       }
+    ],
+    [ImportDataSourceEnum.putifile]: [
+      {
+        title: t('common:core.dataset.import.Select file')
+      },
+      {
+        title: t('common:core.dataset.import.Data Preprocessing')
+      },
+      {
+        title: t('common:core.dataset.import.Upload data')
+      }
     ]
   };
   const steps = modeSteps[source];

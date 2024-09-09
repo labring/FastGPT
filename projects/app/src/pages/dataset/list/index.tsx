@@ -169,25 +169,25 @@ const Dataset = () => {
                         label: t('dataset:common_dataset'),
                         description: t('dataset:common_dataset_desc'),
                         onClick: () => setCreateDatasetType(DatasetTypeEnum.dataset)
-                      },
-                      {
-                        icon: 'core/dataset/websiteDatasetColor',
-                        label: t('dataset:website_dataset'),
-                        description: t('dataset:website_dataset_desc'),
-                        onClick: () => setCreateDatasetType(DatasetTypeEnum.websiteDataset)
-                      },
-                      {
-                        icon: 'core/dataset/externalDatasetColor',
-                        label: t('dataset:external_file'),
-                        description: t('dataset:external_file_dataset_desc'),
-                        onClick: () => setCreateDatasetType(DatasetTypeEnum.externalFile)
-                      },
-                      {
-                        icon: 'core/dataset/externalDatasetColor',
-                        label: t('dataset:external_file'),
-                        description: t('dataset:external_file_dataset_desc'),
-                        onClick: () => setCreateDatasetType(DatasetTypeEnum.putiFile)
                       }
+                      // {
+                      //   icon: 'core/dataset/websiteDatasetColor',
+                      //   label: t('dataset:website_dataset'),
+                      //   description: t('dataset:website_dataset_desc'),
+                      //   onClick: () => setCreateDatasetType(DatasetTypeEnum.websiteDataset)
+                      // },
+                      // {
+                      //   icon: 'core/dataset/externalDatasetColor',
+                      //   label: t('dataset:external_file'),
+                      //   description: t('dataset:external_file_dataset_desc'),
+                      //   onClick: () => setCreateDatasetType(DatasetTypeEnum.externalFile)
+                      // },
+                      // {
+                      //   icon: 'core/dataset/externalDatasetColor',
+                      //   label: t('dataset:external_file'),
+                      //   description: t('dataset:external_file_dataset_desc'),
+                      //   onClick: () => setCreateDatasetType(DatasetTypeEnum.putiFile)
+                      // }
                     ]
                   },
                   {

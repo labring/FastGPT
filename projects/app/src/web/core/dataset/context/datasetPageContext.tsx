@@ -125,10 +125,8 @@ export const DatasetPageContextProvider = ({
   const [allDatasetTags, setAllDatasetTags] = useState<DatasetTagType[]>([]);
 
   const loadAllDatasetTags = async ({ id }: { id: string }) => {
-    if (!feConfigs?.isPlus) return;
-
-    const { list } = await getAllTags(id);
-    setAllDatasetTags(list);
+    const list = await getAllTags(id);
+    setAllDatasetTags(list || []);
   };
 
   // global queue

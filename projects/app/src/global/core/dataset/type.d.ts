@@ -19,6 +19,7 @@ export type DatasetCollectionsListItemType = {
   updateTime: DatasetCollectionSchemaType['updateTime'];
   forbid?: DatasetCollectionSchemaType['forbid'];
   trainingType?: DatasetCollectionSchemaType['trainingType'];
+  trainingStatus?: DatasetCollectionSchemaType['trainingStatus'];
   tags?: string[];
 
   fileId?: string;

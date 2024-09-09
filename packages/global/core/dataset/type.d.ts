@@ -7,7 +7,8 @@ import {
   DatasetStatusEnum,
   DatasetTypeEnum,
   SearchScoreTypeEnum,
-  TrainingModeEnum
+  TrainingModeEnum,
+  TrainingStatusEnum
 } from './constants';
 import { DatasetPermission } from '../../support/permission/dataset/controller';
 import { Permission } from '../../support/permission/controller';
@@ -32,6 +33,15 @@ export type DatasetSchemaType = {
     selector: string;
   };
   externalReadUrl?: string;
+  // putifile config
+  putifileConfig?: {
+    // 业务标识
+    biz: string;
+    // 同步目录
+    folder: string;
+    // 最新同步时间
+    lastSyncTime?: number;
+  };
 } & PermissionSchemaType;
 // } & PermissionSchemaType;
 
@@ -47,6 +57,7 @@ export type DatasetCollectionSchemaType = {
   updateTime: Date;
   forbid?: boolean;
 
+  trainingStatus?: TrainingStatusEnum;
   trainingType: TrainingModeEnum;
   chunkSize: number;
   chunkSplitter?: string;
@@ -68,6 +79,9 @@ export type DatasetCollectionSchemaType = {
 
     [key: string]: any;
   };
+
+  // config
+  config?: Record<string, any>;
 };
 
 export type DatasetCollectionTagsSchemaType = {

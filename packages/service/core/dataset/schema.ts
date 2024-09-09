@@ -88,6 +88,22 @@ const DatasetSchema = new Schema({
   externalReadUrl: {
     type: String
   },
+  putifileConfig: {
+    type: {
+      biz: {
+        type: String,
+        required: true
+      },
+      folder: {
+        type: String,
+        default: ''
+      },
+      lastSyncTime: {
+        type: Number,
+        default: 0
+      }
+    }
+  },
   ...getPermissionSchema(DatasetDefaultPermissionVal)
 });
 

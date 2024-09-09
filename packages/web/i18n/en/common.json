@@ -599,11 +599,13 @@
       "Quote Length": "Quote content length",
       "Read Dataset": "View dataset details",
       "Set Website Config": "Start configuring website information",
+      "Set Putifile Config": "Start configuring putifile information",
       "Start export": "Export started",
       "Table collection": "Table dataset",
       "Text collection": "Text dataset",
       "collection": {
         "Click top config website": "Click to configure website",
+        "Click top config putifile": "Click to configure putifile",
         "Collection name": "Dataset name",
         "Collection raw text": "Dataset content",
         "Empty Tip": "The dataset is empty",
@@ -784,6 +786,7 @@
         "Vector queue": "Index queue",
         "Waiting": "Estimated 5 minutes",
         "Website Sync": "Web site sync",
+        "Putifile Sync": "Putifile sync",
         "tag": "queue situation"
       },
       "website": {
@@ -796,6 +799,14 @@
         "Selector Course": "Selector tutorial",
         "Start Sync": "Start sync",
         "UnValid Website Tip": "Your site may be a non-static site and cannot be synced"
+      },
+      "putifile": {
+        "Config": "Putifile configuration",
+        "Config Description": "The Putifle sync feature allows you to fill in a putifle's folder, and the system will automatically crawl related web file for knowledge base training.",
+        "Confirm Create Tips": "Confirm to sync this putifile-folder, the sync task will start subsequently, please confirm!",
+        "Confirm Update Tips": "Confirm to update the putifile-folder configuration? It will start syncing immediately according to the new configuration, please confirm!",
+        "Start Sync": "Start sync",
+        "UnValid Config Tip": "Your config cannot access, cannot be synced"
       }
     },
     "module": {

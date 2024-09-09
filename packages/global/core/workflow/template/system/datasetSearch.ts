@@ -98,7 +98,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       label: i18nT('workflow:collection_metadata_filter'),
 
       valueType: WorkflowIOValueTypeEnum.object,
-      isPro: true,
+      //isPro: true,
       description: i18nT('workflow:filter_description')
     }
   ],

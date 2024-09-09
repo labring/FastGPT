@@ -15,6 +15,9 @@ export function getCollectionIcon(
   if (type === DatasetCollectionTypeEnum.virtual) {
     return 'file/fill/manual';
   }
+  if (type === DatasetCollectionTypeEnum.putiFile) {
+    return 'core/dataset/externalDatasetColor';
+  }
   return getFileIcon(name);
 }
 export function getSourceNameIcon({

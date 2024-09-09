@@ -30,6 +30,11 @@ export type ImportSourceItemType = {
   // external file
   externalFileUrl?: string;
   externalFileId?: string;
+
+  // putifile
+  name: name;
+  policy: policy;
+  folder: folder;
 };
 
 export type ImportSourceParamsType = UseFormReturn<

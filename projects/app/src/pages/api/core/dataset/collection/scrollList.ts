@@ -72,6 +72,7 @@ async function handler(
     createTime: 1,
     updateTime: 1,
     trainingType: 1,
+    trainingStatus: 1,
     fileId: 1,
     rawLink: 1,
     tags: 1

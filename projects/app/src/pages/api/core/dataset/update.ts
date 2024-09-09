@@ -38,6 +38,7 @@ async function handler(
     agentModel,
     websiteConfig,
     externalReadUrl,
+    putifileConfig,
     defaultPermission,
     status
   } = req.body;
@@ -73,6 +74,7 @@ async function handler(
         ...(status && { status }),
         ...(intro !== undefined && { intro }),
         ...(externalReadUrl && { externalReadUrl }),
+        ...(putifileConfig && { putifileConfig }),
         // move
         ...(updatedDefaultPermission !== undefined && {
           defaultPermission: updatedDefaultPermission

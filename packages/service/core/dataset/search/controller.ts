@@ -112,7 +112,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     2. and 标签和 null 不能共存，否则返回空数组
   */
   const filterCollectionByMetadata = async (): Promise<string[] | undefined> => {
-    if (!collectionFilterMatch || !global.feConfigs.isPlus) return;
+    if (!collectionFilterMatch) return;
 
     let tagCollectionIdList: string[] | undefined = undefined;
     let createTimeCollectionIdList: string[] | undefined = undefined;
