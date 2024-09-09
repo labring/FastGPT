@@ -342,12 +342,13 @@ const MenuRender = React.memo(function MenuRender({
               outputs: template.outputs,
               version: template.version
             },
-            selected: true
+            selected: true,
+            t
           })
         );
       });
     },
-    [computedNewNodeName, setNodes]
+    [computedNewNodeName, setNodes, t]
   );
   const onDelNode = useCallback(
     (nodeId: string) => {

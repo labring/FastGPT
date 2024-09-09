@@ -62,10 +62,12 @@ export const nodeTemplate2FlowNode = ({
 };
 export const storeNode2FlowNode = ({
   item: storeNode,
-  selected = false
+  selected = false,
+  t
 }: {
   item: StoreNodeItemType;
   selected?: boolean;
+  t: TFunction;
 }): Node<FlowNodeItemType> => {
   // init some static data
   const template =
@@ -99,6 +101,9 @@ export const storeNode2FlowNode = ({
           ...storeInput,
           ...templateInput,
 
+          debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
+          toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
+
           selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
           value: storeInput.value ?? templateInput.value,
           label: storeInput.label ?? templateInput.label
@@ -125,6 +130,8 @@ export const storeNode2FlowNode = ({
         return {
           ...storeOutput,
           ...templateOutput,
+
+          description: t(templateOutput.description ?? (storeOutput.description as any)),
 
           id: storeOutput.id ?? templateOutput.id,
           label: storeOutput.label ?? templateOutput.label,
