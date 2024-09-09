@@ -1,0 +1,21 @@
+{
+  "name": "test",
+  "module": "index.js",
+  "scripts": {
+    "build": "tsc index.ts"
+  },
+  "devDependencies": {
+    "@babel/types": "^7.25.6",
+    "@types/babel__generator": "^7.6.8",
+    "@types/babel__traverse": "^7.20.6"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@babel/generator": "^7.25.6",
+    "@babel/parser": "^7.25.6",
+    "@babel/traverse": "^7.25.6",
+    "babel": "^6.23.0"
+  }
+}
