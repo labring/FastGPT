@@ -18,7 +18,8 @@ export const chatConfigType = {
   whisperConfig: Object,
   scheduledTriggerConfig: Object,
   chatInputGuide: Object,
-  fileSelectConfig: Object
+  fileSelectConfig: Object,
+  instruction: String
 };
 
 // schema

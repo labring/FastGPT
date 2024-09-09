@@ -1,6 +1,6 @@
 {
   "name": "app",
-  "version": "4.8.9",
+  "version": "4.8.10",
   "private": false,
   "scripts": {
     "dev": "next dev",
@@ -68,7 +68,6 @@
   "devDependencies": {
     "@svgr/webpack": "^6.5.1",
     "@types/formidable": "^2.0.5",
-    "@types/js-cookie": "^3.0.3",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.3",
     "@types/lodash": "^4.14.191",

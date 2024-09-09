@@ -2,12 +2,11 @@ import { Box, Checkbox, Flex, Input } from '@chakra-ui/react';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { postCreateDatasetCollectionTag, putDatasetCollectionById } from '@/web/core/dataset/api';
+import { putDatasetCollectionById } from '@/web/core/dataset/api';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useTranslation } from 'next-i18next';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useMemo, useRef, useState } from 'react';
 import { useDeepCompareEffect } from 'ahooks';
 import { DatasetCollectionItemType, DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { isEqual } from 'lodash';
@@ -25,12 +24,9 @@ const TagsPopOver = ({
   const allDatasetTags = useContextSelector(DatasetPageContext, (v) => v.allDatasetTags);
   const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
 
-  const [collectionTags, setCollectionTags] = useState<string[]>([]);
-  const [searchTag, setSearchTag] = useState('');
+  const [collectionTags, setCollectionTags] = useState<string[]>(currentCollection.tags ?? []);
   const [checkedTags, setCheckedTags] = useState<DatasetTagType[]>([]);
-
   const [showTagManage, setShowTagManage] = useState(false);
-  const [isFocusInput, setIsFocusInput] = useState(false);
   const [isUpdateLoading, setIsUpdateLoading] = useState(false);
 
   const [filterDatasetTags, setFilterDatasetTags] = useState<DatasetTagType[]>([]);
@@ -190,6 +186,8 @@ const TagsPopOver = ({
         </MyBox>
       }
       onCloseFunc={async () => {
+        setSearchTagKey('');
+
         setShowTagManage(false);
         if (isEqual(checkedTags, tagList) || !showTagManage) return;
         setIsUpdateLoading(true);
@@ -208,14 +206,12 @@ const TagsPopOver = ({
             <MyBox isLoading={isCreateCollectionTagLoading} onClick={(e) => e.stopPropagation()}>
               {/* <Box px={1.5} pt={1.5}>
                 <Input
-                  onFocus={() => setIsFocusInput(true)}
-                  onBlur={() => setIsFocusInput(false)}
                   pl={2}
                   h={7}
                   borderRadius={'xs'}
-                  value={searchTag}
+                  value={searchTagKey}
                   placeholder={t('dataset:tag.searchOrAddTag')}
-                  onChange={(e) => setSearchTag(e.target.value)}
+                  onChange={(e) => setSearchTagKey(e.target.value)}
                 />
               </Box> */}
               <Box my={1} px={1.5} maxH={'200px'} overflow={'auto'}>

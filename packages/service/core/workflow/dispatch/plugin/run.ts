@@ -9,10 +9,11 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { updateToolInputValue } from '../agent/runTool/utils';
 import { authPluginByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { computedPluginUsage } from '../../../app/plugin/utils';
+import { filterSystemVariables } from '../utils';
+import { getPluginRunUserQuery } from '../../utils';
 
 type RunPluginProps = ModuleDispatchProps<{
   [key: string]: any;
@@ -22,10 +23,9 @@ type RunPluginResponse = DispatchNodeResultType<{}>;
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
   const {
     node: { pluginId },
-    app: workflowApp,
+    runningAppInfo,
     mode,
-    teamId,
-    params: data
+    params: data // Plugin input
   } = props;
 
   if (!pluginId) {
@@ -33,40 +33,50 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   }
 
   // auth plugin
-  await authPluginByTmbId({
+  const pluginData = await authPluginByTmbId({
     appId: pluginId,
-    tmbId: workflowApp.tmbId,
+    tmbId: runningAppInfo.tmbId,
     per: ReadPermissionVal
   });
 
   const plugin = await getPluginRuntimeById(pluginId);
 
-  // concat dynamic inputs
-  const inputModule = plugin.nodes.find(
-    (item) => item.flowNodeType === FlowNodeTypeEnum.pluginInput
-  );
-  if (!inputModule) return Promise.reject('Plugin error, It has no set input.');
+  const runtimeNodes = storeNodes2RuntimeNodes(
+    plugin.nodes,
+    getWorkflowEntryNodeIds(plugin.nodes)
+  ).map((node) => {
+    // Update plugin input value
+    if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
+      return {
+        ...node,
+        showStatus: false,
+        inputs: node.inputs.map((input) => ({
+          ...input,
+          value: data[input.key] ?? input.value
+        }))
+      };
+    }
+    return {
+      ...node,
+      showStatus: false
+    };
+  });
+  const runtimeVariables = {
+    ...filterSystemVariables(props.variables),
+    appId: String(plugin.id)
+  };
 
   const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
-    runtimeNodes: storeNodes2RuntimeNodes(plugin.nodes, getWorkflowEntryNodeIds(plugin.nodes)).map(
-      (node) => {
-        if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
-          return {
-            ...node,
-            showStatus: false,
-            inputs: updateToolInputValue({
-              inputs: node.inputs,
-              params: data
-            })
-          };
-        }
-        return {
-          ...node,
-          showStatus: false
-        };
-      }
-    ),
+    runningAppInfo: {
+      id: String(plugin.id),
+      teamId: plugin.teamId || '',
+      tmbId: pluginData?.tmbId || ''
+    },
+    variables: runtimeVariables,
+    query: getPluginRunUserQuery(plugin.nodes, runtimeVariables).value,
+    chatConfig: {},
+    runtimeNodes,
     runtimeEdges: initWorkflowEdgeStatus(plugin.edges)
   });
 
@@ -87,7 +97,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       totalPoints: usagePoints,
       pluginOutput: output?.pluginOutput,
       pluginDetail:
-        mode === 'test' && plugin.teamId === teamId
+        mode === 'test' && plugin.teamId === runningAppInfo.teamId
           ? flowResponses.filter((item) => {
               const filterArr = [FlowNodeTypeEnum.pluginOutput];
               return !filterArr.includes(item.moduleType as any);

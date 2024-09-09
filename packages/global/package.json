@@ -11,7 +11,7 @@
     "jschardet": "3.1.1",
     "nanoid": "^4.0.1",
     "next": "14.2.5",
-    "openai": "4.53.0",
+    "openai": "4.57.0",
     "openapi-types": "^12.1.3",
     "timezones-list": "^3.0.2"
   },

@@ -1,7 +1,10 @@
+import { computedNodeInputReference } from '@/web/core/workflow/utils';
+import { AppDetailType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { TFunction } from 'i18next';
 import { type Node, type Edge } from 'reactflow';
 
 export const uiWorkflow2StoreWorkflow = ({
@@ -70,3 +73,62 @@ export const filterExportModules = (modules: StoreNodeItemType[]) => {
 export default function Dom() {
   return <></>;
 }
+
+export const getEditorVariables = ({
+  nodeId,
+  nodeList,
+  edges,
+  appDetail,
+  t
+}: {
+  nodeId: string;
+  nodeList: FlowNodeItemType[];
+  edges: Edge<any>[];
+  appDetail: AppDetailType;
+  t: TFunction;
+}) => {
+  const currentNode = nodeList.find((node) => node.nodeId === nodeId);
+  if (!currentNode) return [];
+
+  const nodeVariables = currentNode.inputs
+    .filter((input) => input.canEdit)
+    .map((item) => ({
+      key: item.key,
+      label: item.label,
+      parent: {
+        id: currentNode.nodeId,
+        label: currentNode.name,
+        avatar: currentNode.avatar
+      }
+    }));
+
+  const sourceNodes = computedNodeInputReference({
+    nodeId,
+    nodes: nodeList,
+    edges: edges,
+    chatConfig: appDetail.chatConfig,
+    t
+  });
+
+  const sourceNodeVariables = !sourceNodes
+    ? []
+    : sourceNodes
+        .map((node) => {
+          return node.outputs
+            .filter((output) => !!output.label)
+            .map((output) => {
+              return {
+                label: t((output.label as any) || ''),
+                key: output.id,
+                parent: {
+                  id: node.nodeId,
+                  label: node.name,
+                  avatar: node.avatar
+                }
+              };
+            });
+        })
+        .flat();
+
+  return [...nodeVariables, ...sourceNodeVariables];
+};

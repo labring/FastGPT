@@ -30,7 +30,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     });
     const { file, bucketName, metadata } = await upload.doUpload(req, res);
     filePaths.push(file.path);
-    const { teamId, tmbId, outLinkUid } = await authChatCert({ req, authToken: true });
+    const { teamId, tmbId, outLinkUid } = await authChatCert({
+      req,
+      authToken: true,
+      authApiKey: true
+    });
 
     await authUploadLimit(outLinkUid || tmbId);
 

@@ -1,7 +1,7 @@
 {
   "name": "问题分类 + 知识库",
   "intro": "先对用户的问题进行分类，再根据不同类型问题，执行不同的操作",
-  "author": "Fastgpt",
+  "author": "FastGPT",
   "avatar": "core/workflow/template/questionClassify",
   "tags": ["office-services"],
   "type": "advanced",
@@ -411,7 +411,7 @@
           },
           {
             "key": "userChatInput",
-            "renderTypeList": ["FlowNodeInputTypeEnum.reference", "FlowNodeInputTypeEnum.textarea"],
+            "renderTypeList": ["reference", "FlowNodeInputTypeEnum.textarea"],
             "valueType": "WorkflowIOValueTypeEnum.string",
             "label": "用户问题",
             "required": true,

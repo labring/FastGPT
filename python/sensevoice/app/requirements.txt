@@ -1,0 +1,5 @@
+torch>=1.13
+torchaudio
+funasr>=1.1.1
+fastapi
+modelscope

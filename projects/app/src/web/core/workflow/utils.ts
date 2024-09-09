@@ -24,7 +24,6 @@ import {
   getAppChatConfig,
   getGuideModule
 } from '@fastgpt/global/core/workflow/utils';
-import { getSystemVariables } from '../app/utils';
 import { TFunction } from 'next-i18next';
 import {
   FlowNodeInputItemType,
@@ -36,6 +35,7 @@ import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/sy
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash';
 import { getInputComponentProps } from '@fastgpt/global/core/workflow/node/io/utils';
+import { workflowSystemVariables } from '../app/utils';
 
 export const nodeTemplate2FlowNode = ({
   template,
@@ -203,13 +203,11 @@ export const computedNodeInputReference = ({
 export const getRefData = ({
   variable,
   nodeList,
-  chatConfig,
-  t
+  chatConfig
 }: {
   variable?: ReferenceValueProps;
   nodeList: FlowNodeItemType[];
   chatConfig: AppChatConfigType;
-  t: TFunction;
 }) => {
   if (!variable)
     return {
@@ -218,7 +216,7 @@ export const getRefData = ({
     };
 
   const node = nodeList.find((node) => node.nodeId === variable[0]);
-  const systemVariables = getWorkflowGlobalVariables({ nodes: nodeList, chatConfig, t });
+  const systemVariables = getWorkflowGlobalVariables({ nodes: nodeList, chatConfig });
 
   if (!node) {
     const globalVariable = systemVariables.find((item) => item.key === variable?.[1]);
@@ -260,6 +258,7 @@ export const checkWorkflowNodeAndConnection = ({
 
     if (
       data.flowNodeType === FlowNodeTypeEnum.systemConfig ||
+      data.flowNodeType === FlowNodeTypeEnum.pluginConfig ||
       data.flowNodeType === FlowNodeTypeEnum.pluginInput ||
       data.flowNodeType === FlowNodeTypeEnum.workflowStart
     ) {
@@ -361,12 +360,10 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
 /* get workflowStart output to global variables */
 export const getWorkflowGlobalVariables = ({
   nodes,
-  chatConfig,
-  t
+  chatConfig
 }: {
   nodes: FlowNodeItemType[];
   chatConfig: AppChatConfigType;
-  t: TFunction;
 }): EditorVariablePickerType[] => {
   const globalVariables = formatEditorVariablePickerIcon(
     getAppChatConfig({
@@ -376,9 +373,7 @@ export const getWorkflowGlobalVariables = ({
     })?.variables || []
   );
 
-  const systemVariables = getSystemVariables(t);
-
-  return [...globalVariables, ...systemVariables];
+  return [...globalVariables, ...workflowSystemVariables];
 };
 
 export type CombinedItemType = Partial<FlowNodeInputItemType> & Partial<FlowNodeOutputItemType>;
@@ -554,7 +549,8 @@ export const compareSnapshot = (
         whisperConfig: clone1.chatConfig?.whisperConfig || undefined,
         scheduledTriggerConfig: clone1.chatConfig?.scheduledTriggerConfig || undefined,
         chatInputGuide: clone1.chatConfig?.chatInputGuide || undefined,
-        fileSelectConfig: clone1.chatConfig?.fileSelectConfig || undefined
+        fileSelectConfig: clone1.chatConfig?.fileSelectConfig || undefined,
+        instruction: clone1.chatConfig?.instruction || ''
       },
       {
         welcomeText: clone2.chatConfig?.welcomeText || '',
@@ -564,7 +560,8 @@ export const compareSnapshot = (
         whisperConfig: clone2.chatConfig?.whisperConfig || undefined,
         scheduledTriggerConfig: clone2.chatConfig?.scheduledTriggerConfig || undefined,
         chatInputGuide: clone2.chatConfig?.chatInputGuide || undefined,
-        fileSelectConfig: clone2.chatConfig?.fileSelectConfig || undefined
+        fileSelectConfig: clone2.chatConfig?.fileSelectConfig || undefined,
+        instruction: clone2.chatConfig?.instruction || ''
       }
     )
   ) {

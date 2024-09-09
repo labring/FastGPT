@@ -1,4 +1,4 @@
-import React, { useState, Dispatch, useCallback } from 'react';
+import React, { Dispatch } from 'react';
 import { FormControl, Box, Input, Button } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
@@ -11,6 +11,8 @@ import { emptyTemplates } from '@/web/core/app/templates';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+
 interface Props {
   loginSuccess: (e: ResLogin) => void;
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
@@ -32,62 +34,47 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     register,
     handleSubmit,
     getValues,
-    trigger,
+    watch,
     formState: { errors }
   } = useForm<RegisterType>({
     mode: 'onBlur'
   });
+  const username = watch('username');
 
-  const { sendCodeText, sendCode, codeCountDown } = useSendCode();
+  const { SendCodeBox } = useSendCode({ type: 'register' });
 
-  const onclickSendCode = useCallback(async () => {
-    const check = await trigger('username');
-    if (!check) return;
-    sendCode({
-      username: getValues('username'),
-      type: 'register'
-    });
-  }, [getValues, sendCode, trigger]);
-
-  const [requesting, setRequesting] = useState(false);
-
-  const onclickRegister = useCallback(
+  const { runAsync: onclickRegister, loading: requesting } = useRequest2(
     async ({ username, password, code }: RegisterType) => {
-      setRequesting(true);
-      try {
-        loginSuccess(
-          await postRegister({
-            username,
-            code,
-            password,
-            inviterId: localStorage.getItem('inviterId') || undefined
-          })
-        );
-        toast({
-          title: t('user:register.success'),
-          status: 'success'
-        });
-        // auto register template app
-        setTimeout(() => {
-          Object.entries(emptyTemplates).map(([type, emptyTemplate]) => {
-            postCreateApp({
-              avatar: emptyTemplate.avatar,
-              name: t(emptyTemplate.name as any),
-              modules: emptyTemplate.nodes,
-              edges: emptyTemplate.edges,
-              type: type as AppTypeEnum
-            });
+      loginSuccess(
+        await postRegister({
+          username,
+          code,
+          password,
+          inviterId: localStorage.getItem('inviterId') || undefined
+        })
+      );
+
+      toast({
+        status: 'success',
+        title: t('user:register.success')
+      });
+
+      // auto register template app
+      setTimeout(() => {
+        Object.entries(emptyTemplates).map(([type, emptyTemplate]) => {
+          postCreateApp({
+            avatar: emptyTemplate.avatar,
+            name: t(emptyTemplate.name as any),
+            modules: emptyTemplate.nodes,
+            edges: emptyTemplate.edges,
+            type: type as AppTypeEnum
           });
-        }, 100);
-      } catch (error: any) {
-        toast({
-          title: error.message || t('user:register.error'),
-          status: 'error'
         });
-      }
-      setRequesting(false);
+      }, 100);
     },
-    [loginSuccess, t, toast]
+    {
+      refreshDeps: [loginSuccess, t, toast]
+    }
   );
 
   const placeholder = feConfigs?.register_method
@@ -144,23 +131,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
               required: t('user:password.code_required')
             })}
           ></Input>
-          <Box
-            position={'absolute'}
-            right={3}
-            zIndex={1}
-            fontSize={'sm'}
-            {...(codeCountDown > 0
-              ? {
-                  color: 'myGray.500'
-                }
-              : {
-                  color: 'primary.700',
-                  cursor: 'pointer',
-                  onClick: onclickSendCode
-                })}
-          >
-            {sendCodeText}
-          </Box>
+          <SendCodeBox username={username} />
         </FormControl>
         <FormControl mt={6} isInvalid={!!errors.password}>
           <Input

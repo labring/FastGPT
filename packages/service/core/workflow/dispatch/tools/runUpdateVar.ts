@@ -8,6 +8,7 @@ import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime
 import { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { removeSystemVariable, valueTypeFormat } from '../utils';
+import { replaceEditorVariable } from '@fastgpt/global/core/workflow/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.updateList]: TUpdateListItem[];
@@ -15,20 +16,29 @@ type Props = ModuleDispatchProps<{
 type Response = DispatchNodeResultType<{}>;
 
 export const dispatchUpdateVariable = async (props: Props): Promise<Response> => {
-  const { params, variables, runtimeNodes, workflowStreamResponse } = props;
+  const { params, variables, runtimeNodes, workflowStreamResponse, node } = props;
 
   const { updateList } = params;
-  updateList.forEach((item) => {
+  const result = updateList.map((item) => {
     const varNodeId = item.variable?.[0];
     const varKey = item.variable?.[1];
 
     if (!varNodeId || !varKey) {
-      return;
+      return null;
     }
 
     const value = (() => {
       if (!item.value?.[0]) {
-        return valueTypeFormat(item.value?.[1], item.valueType);
+        const formatValue = valueTypeFormat(item.value?.[1], item.valueType);
+
+        return typeof formatValue === 'string'
+          ? replaceEditorVariable({
+              text: formatValue,
+              nodes: runtimeNodes,
+              variables,
+              runningNode: node
+            })
+          : formatValue;
       } else {
         return getReferenceVariableValue({
           value: item.value,
@@ -38,10 +48,11 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
       }
     })();
 
+    // Global variable
     if (varNodeId === VARIABLE_NODE_ID) {
-      // update global variable
       variables[varKey] = value;
     } else {
+      // Other nodes
       runtimeNodes
         .find((node) => node.nodeId === varNodeId)
         ?.outputs?.find((output) => {
@@ -51,6 +62,8 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
           }
         });
     }
+
+    return value;
   });
 
   workflowStreamResponse?.({
@@ -60,7 +73,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
 
   return {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      totalPoints: 0
+      updateVarResult: result
     }
   };
 };

@@ -6,6 +6,7 @@ import {
 } from '@fastgpt/global/core/app/type';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import {
+  chatHistoryValueDesc,
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -14,7 +15,6 @@ import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
-import { TFunction } from 'next-i18next';
 import { ToolModule } from '@fastgpt/global/core/workflow/template/system/tools';
 import { useDatasetStore } from '../dataset/store/dataset';
 import {
@@ -25,6 +25,8 @@ import { SystemConfigNode } from '@fastgpt/global/core/workflow/template/system/
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { ReadFilesNodes } from '@fastgpt/global/core/workflow/template/system/readFiles';
+import { i18nT } from '@fastgpt/web/i18n/utils';
+import { Input_Template_UserChatInput } from '@fastgpt/global/core/workflow/template/input';
 
 type WorkflowType = {
   nodes: StoreNodeItemType[];
@@ -160,16 +162,16 @@ export function form2AppWorkflow(
           key: 'userChatInput',
           renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
           valueType: WorkflowIOValueTypeEnum.string,
-          label: '用户问题',
+          label: i18nT('common:core.module.input.label.user question'),
           required: true,
-          toolDescription: '用户问题',
+          toolDescription: i18nT('common:core.module.input.label.user question'),
           value: [workflowStartNodeId, 'userChatInput']
         },
         {
           key: 'quoteQA',
           renderTypeList: [FlowNodeInputTypeEnum.settingDatasetQuotePrompt],
           label: '',
-          debugLabel: '知识库引用',
+          debugLabel: i18nT('common:core.module.Dataset quote.label'),
           description: '',
           valueType: WorkflowIOValueTypeEnum.datasetQuote,
           value: selectedDatasets ? [datasetNodeId, 'quoteQA'] : undefined
@@ -258,12 +260,8 @@ export function form2AppWorkflow(
           value: formData.dataset.datasetSearchExtensionBg
         },
         {
-          key: 'userChatInput',
-          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-          valueType: WorkflowIOValueTypeEnum.string,
-          label: '用户问题',
-          required: true,
-          toolDescription: '需要检索的内容',
+          ...Input_Template_UserChatInput,
+          toolDescription: i18nT('workflow:content_to_search'),
           value: question
         }
       ],
@@ -469,7 +467,7 @@ export function form2AppWorkflow(
               key: 'userChatInput',
               renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
               valueType: WorkflowIOValueTypeEnum.string,
-              label: '用户问题',
+              label: i18nT('common:core.module.input.label.user question'),
               required: true,
               value: [workflowStartNodeId, 'userChatInput']
             },
@@ -502,6 +500,18 @@ export function form2AppWorkflow(
       ]
     };
 
+    // Add t
+    config.nodes.forEach((node) => {
+      node.name = t(node.name);
+      node.intro = t(node.intro);
+
+      node.inputs.forEach((input) => {
+        input.label = t(input.label);
+        input.description = t(input.description);
+        input.toolDescription = t(input.toolDescription);
+      });
+    });
+
     return config;
   }
 
@@ -519,38 +529,43 @@ export function form2AppWorkflow(
   };
 }
 
-export const getSystemVariables = (t: TFunction): EditorVariablePickerType[] => {
-  return [
-    {
-      key: 'appId',
-      label: t('common:core.module.http.AppId'),
-      required: true,
-      valueType: WorkflowIOValueTypeEnum.string
-    },
-    {
-      key: 'chatId',
-      label: t('common:core.module.http.ChatId'),
-      valueType: WorkflowIOValueTypeEnum.string
-    },
-    {
-      key: 'responseChatItemId',
-      label: t('common:core.module.http.ResponseChatItemId'),
-      valueType: WorkflowIOValueTypeEnum.string
-    },
-    {
-      key: 'histories',
-      label: t('common:core.module.http.Histories'),
-      required: true,
-      valueType: WorkflowIOValueTypeEnum.chatHistory
-    },
-    {
-      key: 'cTime',
-      label: t('common:core.module.http.Current time'),
-      required: true,
-      valueType: WorkflowIOValueTypeEnum.string
-    }
-  ];
-};
+export const workflowSystemVariables: EditorVariablePickerType[] = [
+  {
+    key: 'userId',
+    label: i18nT('workflow:use_user_id'),
+    required: true,
+    valueType: WorkflowIOValueTypeEnum.string
+  },
+  {
+    key: 'appId',
+    label: i18nT('common:core.module.http.AppId'),
+    required: true,
+    valueType: WorkflowIOValueTypeEnum.string
+  },
+  {
+    key: 'chatId',
+    label: i18nT('common:core.module.http.ChatId'),
+    valueType: WorkflowIOValueTypeEnum.string
+  },
+  {
+    key: 'responseChatItemId',
+    label: i18nT('common:core.module.http.ResponseChatItemId'),
+    valueType: WorkflowIOValueTypeEnum.string
+  },
+  {
+    key: 'histories',
+    label: i18nT('common:core.module.http.Histories'),
+    required: true,
+    valueType: WorkflowIOValueTypeEnum.chatHistory,
+    valueDesc: chatHistoryValueDesc
+  },
+  {
+    key: 'cTime',
+    label: i18nT('common:core.module.http.Current time'),
+    required: true,
+    valueType: WorkflowIOValueTypeEnum.string
+  }
+];
 
 export const getAppQGuideCustomURL = (appDetail: AppDetailType | AppSchema): string => {
   return (

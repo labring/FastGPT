@@ -15,6 +15,7 @@ import NextHead from '@/components/common/NextHead';
 function App({ Component, pageProps }: AppProps) {
   const { feConfigs, scripts, title } = useInitApp();
   const { t } = useTranslation();
+
   return (
     <>
       <NextHead

@@ -52,6 +52,9 @@ export enum NodeInputKeyEnum {
   scheduleTrigger = 'scheduleTrigger',
   chatInputGuide = 'chatInputGuide',
 
+  // plugin config
+  instruction = 'instruction',
+
   // entry
   userChatInput = 'userChatInput',
   inputFiles = 'inputFiles',
@@ -105,6 +108,8 @@ export enum NodeInputKeyEnum {
   httpMethod = 'system_httpMethod',
   httpParams = 'system_httpParams',
   httpJsonBody = 'system_httpJsonBody',
+  httpFormBody = 'system_httpFormBody',
+  httpContentType = 'system_httpContentType',
   httpTimeout = 'system_httpTimeout',
   abandon_httpUrl = 'url',
 
@@ -214,3 +219,13 @@ export enum RuntimeEdgeStatusEnum {
 
 export const VARIABLE_NODE_ID = 'VARIABLE_NODE_ID';
 export const DYNAMIC_INPUT_REFERENCE_KEY = 'DYNAMIC_INPUT_REFERENCE_KEY';
+
+// http node body content type
+export enum ContentTypes {
+  none = 'none',
+  formData = 'form-data',
+  xWwwFormUrlencoded = 'x-www-form-urlencoded',
+  json = 'json',
+  xml = 'xml',
+  raw = 'raw-text'
+}

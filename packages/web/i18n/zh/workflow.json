@@ -97,6 +97,10 @@
   "optional_value_type_tip": "可以指定 1 个或多个数据类型，用户在动态添加字段时，仅可选择配置的类型",
   "other_questions": "其他问题",
   "pass_returned_object_as_output_to_next_nodes": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key",
+  "plugin": {
+    "Instruction_Tip": "可以配置一段说明，以解释该插件的用途。每次使用插件前，会显示该段说明。支持标准 Markdown 语法。",
+    "Instructions": "使用说明"
+  },
   "plugin_input": "插件输入",
   "question_classification": "问题分类",
   "question_optimization": "问题优化",
@@ -111,8 +115,6 @@
     "Custom outputs": "自定义输出",
     "Error": "错误信息",
     "Read file result": "文档解析结果预览",
-    "User_select_description": "说明文字",
-    "User_select_result": "选择的结果",
     "read files": "解析的文档"
   },
   "select_an_application": "选择一个应用",
@@ -139,13 +141,12 @@
   "trigger_after_application_completion": "将在应用完全结束后触发",
   "update_link_error": "更新链接异常",
   "update_specified_node_output_or_global_variable": "可以更新指定节点的输出值或更新全局变量",
+  "use_user_id": "使用者 ID",
   "user_question": "用户问题",
   "variable_picker_tips": "可输入节点名或变量名搜索",
   "variable_update": "变量更新",
   "workflow": {
-    "Back_to_current_version": "回到初始状态",
     "My edit": "我的编辑",
-    "Switch_failed": "切换失败",
     "Switch_success": "切换成功",
     "Team cloud": "团队云端",
     "exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。"

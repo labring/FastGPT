@@ -125,7 +125,7 @@ const Header = ({}: {}) => {
   return (
     <Box display={['block', 'flex']} alignItems={'center'} gap={2}>
       <HStack flex={1}>
-        <Box flex={1} fontWeight={'500'} color={'myGray.900'}>
+        <Box flex={1} fontWeight={'500'} color={'myGray.900'} whiteSpace={'nowrap'}>
           <ParentPath
             paths={paths.map((path, i) => ({
               parentId: path.parentId,
@@ -173,7 +173,8 @@ const Header = ({}: {}) => {
         {/* search input */}
         {isPc && (
           <MyInput
-            w={['100%', '250px']}
+            maxW={'250px'}
+            flex={1}
             size={'sm'}
             h={'36px'}
             placeholder={t('common:common.Search') || ''}

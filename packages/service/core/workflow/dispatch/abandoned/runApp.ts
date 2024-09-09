@@ -1,6 +1,7 @@
+/* Abandoned */
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/runApp/type';
+import { SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/abandoned/runApp/type';
 import { dispatchWorkFlow } from '../index';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -30,7 +31,7 @@ type Response = DispatchNodeResultType<{
 
 export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const {
-    app: workflowApp,
+    runningAppInfo,
     workflowStreamResponse,
     histories,
     query,
@@ -44,7 +45,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   // 检查该工作流的tmb是否有调用该app的权限（不是校验对话的人，是否有权限）
   const { app: appData } = await authAppByTmbId({
     appId: app.id,
-    tmbId: workflowApp.tmbId,
+    tmbId: runningAppInfo.tmbId,
     per: ReadPermissionVal
   });
 
@@ -60,7 +61,11 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
-    app: appData,
+    runningAppInfo: {
+      id: String(appData._id),
+      teamId: String(appData.teamId),
+      tmbId: String(appData.tmbId)
+    },
     runtimeNodes: storeNodes2RuntimeNodes(
       appData.modules,
       getWorkflowEntryNodeIds(appData.modules)

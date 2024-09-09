@@ -187,7 +187,7 @@ function PermissionSelect({
               >
                 <Radio isChecked={selectedSingleValue === item.value} />
                 <Box ml={4}>
-                  <Box>{item.name}</Box>
+                  <Box>{t(item.name as any)}</Box>
                   <Box color={'myGray.500'} fontSize={'mini'}>
                     {t(item.description as any)}
                   </Box>

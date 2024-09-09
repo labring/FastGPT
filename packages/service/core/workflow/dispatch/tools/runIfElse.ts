@@ -13,7 +13,6 @@ import {
 import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
-import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.condition]: IfElseConditionType;

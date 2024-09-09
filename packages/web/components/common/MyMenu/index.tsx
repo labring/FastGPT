@@ -23,6 +23,7 @@ export type Props = {
   trigger?: 'hover' | 'click';
   iconSize?: string;
   iconRadius?: string;
+
   placement?: PlacementWithLogical;
   menuList: {
     label?: string;
@@ -32,7 +33,8 @@ export type Props = {
       icon?: IconNameType | string;
       label: string | React.ReactNode;
       description?: string;
-      onClick: () => any;
+      onClick?: () => any;
+      menuItemStyles?: MenuItemProps;
     }[];
   }[];
 };
@@ -74,14 +76,6 @@ const MyMenu = ({
         background: 'red.1'
       }
     }
-  };
-  const menuItemStyles: MenuItemProps = {
-    borderRadius: 'sm',
-    py: 2,
-    px: 3,
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: 'sm'
   };
 
   const { isPc } = useSystem();
@@ -166,16 +160,23 @@ const MyMenu = ({
                 {item.children.map((child, index) => (
                   <MenuItem
                     key={index}
-                    {...menuItemStyles}
-                    onClickCapture={(e) => {
+                    borderRadius={'sm'}
+                    onClick={(e) => {
                       e.stopPropagation();
-                      setIsOpen(false);
-                      child.onClick && child.onClick();
+                      if (child.onClick) {
+                        setIsOpen(false);
+                        child.onClick();
+                      }
                     }}
+                    py={2}
+                    px={3}
+                    alignItems={'center'}
+                    fontSize={'sm'}
                     color={child.isActive ? 'primary.700' : 'myGray.600'}
                     whiteSpace={'pre-wrap'}
                     _notLast={{ mb: 0.5 }}
                     {...typeMapStyle[child.type || 'primary']}
+                    {...child.menuItemStyles}
                   >
                     {!!child.icon && (
                       <Avatar
@@ -185,12 +186,16 @@ const MyMenu = ({
                         mr={3}
                       />
                     )}
-                    <Box>
-                      <Box color={child.description ? 'myGray.900' : 'inherit'} fontSize={'sm'}>
+                    <Box w={'100%'}>
+                      <Box
+                        w={'100%'}
+                        color={child.description ? 'myGray.900' : 'inherit'}
+                        fontSize={'sm'}
+                      >
                         {child.label}
                       </Box>
                       {child.description && (
-                        <Box color={'myGray.500'} fontSize={'mini'}>
+                        <Box color={'myGray.500'} fontSize={'mini'} w={'100%'}>
                           {child.description}
                         </Box>
                       )}

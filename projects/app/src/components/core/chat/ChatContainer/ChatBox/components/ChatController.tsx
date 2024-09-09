@@ -9,11 +9,13 @@ import { formatChatValue2InputType } from '../utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
+import { SendPromptFnType } from '../type';
 
 export type ChatControllerProps = {
   isLastChild: boolean;
   chat: ChatSiteItemType;
   showVoiceIcon?: boolean;
+  onSendMessage: SendPromptFnType;
   onRetry?: () => void;
   onDelete?: () => void;
   onMark?: () => void;
@@ -25,7 +27,6 @@ export type ChatControllerProps = {
 
 const ChatController = ({
   chat,
-  isLastChild,
   showVoiceIcon,
   onReadUserDislike,
   onCloseUserLike,

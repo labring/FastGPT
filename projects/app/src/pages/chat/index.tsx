@@ -240,6 +240,7 @@ const Chat = ({
                   histories={chatRecords}
                   setHistories={setChatRecords}
                   appId={chatData.appId}
+                  chatConfig={chatData.app.chatConfig}
                   tab={pluginRunTab}
                   setTab={setPluginRunTab}
                   onNewChat={() => onChangeChatId(getNanoid())}

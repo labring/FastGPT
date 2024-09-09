@@ -1,14 +1,18 @@
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type {
+  DispatchNodeResultType,
+  ModuleDispatchProps
+} from '@fastgpt/global/core/workflow/runtime/type';
 
 export type UserChatInputProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
 }>;
-type Response = {
+type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.userChatInput]: string;
   [NodeOutputKeyEnum.userFiles]: string[];
-};
+}>;
 
 export const dispatchWorkflowStart = (props: Record<string, any>): Response => {
   const {
@@ -19,6 +23,7 @@ export const dispatchWorkflowStart = (props: Record<string, any>): Response => {
   const { text, files } = chatValue2RuntimePrompt(query);
 
   return {
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {},
     [NodeInputKeyEnum.userChatInput]: text || userChatInput,
     [NodeOutputKeyEnum.userFiles]: files
       .map((item) => {

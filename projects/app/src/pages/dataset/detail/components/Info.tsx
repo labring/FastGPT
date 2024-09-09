@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, Input } from '@chakra-ui/react';
 import { delDatasetById } from '@/web/core/dataset/api';
@@ -50,7 +50,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     DatasetPageContext,
     (v) => v.refetchDatasetTraining
   );
-  const { setValue, register, handleSubmit, watch } = useForm<DatasetItemType>({
+  const { setValue, register, handleSubmit, watch, reset } = useForm<DatasetItemType>({
     defaultValues: datasetDetail
   });
 
@@ -146,6 +146,10 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     successToast: t('common:common.Update Success'),
     errorToast: t('common:common.Update Failed')
   });
+
+  useEffect(() => {
+    reset(datasetDetail);
+  }, [datasetDetail._id]);
 
   return (
     <Box w={'100%'} h={'100%'} p={6}>

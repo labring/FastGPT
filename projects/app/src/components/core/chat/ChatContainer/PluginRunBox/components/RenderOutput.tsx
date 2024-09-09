@@ -32,11 +32,8 @@ const RenderOutput = () => {
                   <AIResponseBox
                     key={key}
                     value={value}
-                    index={i}
-                    chat={histories[1]}
                     isLastChild={true}
                     isChatting={isChatting}
-                    questionGuides={[]}
                   />
                 );
               })}

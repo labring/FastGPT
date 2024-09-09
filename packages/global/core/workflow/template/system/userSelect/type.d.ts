@@ -15,7 +15,7 @@ type InteractiveBasicType = {
 type UserSelectInteractive = {
   type: 'userSelect';
   params: {
-    // description: string;
+    description: string;
     userSelectOptions: UserSelectOptionItemType[];
     userSelectedVal?: string;
   };

@@ -25,11 +25,13 @@ export const authPluginByTmbId = async ({
 }) => {
   const { source } = await splitCombinePluginId(appId);
   if (source === PluginSourceEnum.personal) {
-    await authAppByTmbId({
+    const { app } = await authAppByTmbId({
       appId,
       tmbId,
       per
     });
+
+    return app;
   }
 };
 
@@ -52,6 +54,11 @@ export const authAppByTmbId = async ({
     if (!app) {
       return Promise.reject(AppErrEnum.unExist);
     }
+
+    if (String(app.teamId) !== teamId) {
+      return Promise.reject(AppErrEnum.unAuthApp);
+    }
+
     const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
 
     const { Per, defaultPermission } = await (async () => {

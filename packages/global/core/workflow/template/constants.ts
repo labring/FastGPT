@@ -1,4 +1,5 @@
 import { SystemConfigNode } from './system/systemConfig';
+import { PluginConfigNode } from './system/pluginConfig';
 import { EmptyNode } from './system/emptyNode';
 import { WorkflowStart } from './system/workflowStart';
 import { AiChatModule } from './system/aiChat';
@@ -12,11 +13,11 @@ import { HttpNode468 } from './system/http468';
 import { ToolModule } from './system/tools';
 import { StopToolNode } from './system/stopTool';
 
-import { RunAppModule } from './system/runApp/index';
+import { RunAppModule } from './system/abandoned/runApp/index';
 import { PluginInputModule } from './system/pluginInput';
 import { PluginOutputModule } from './system/pluginOutput';
 import { RunPluginModule } from './system/runPlugin';
-import { RunAppPluginModule } from './system/runAppPlugin';
+import { RunAppNode } from './system/runApp';
 import { AiQueryExtension } from './system/queryExtension';
 
 import type { FlowNodeTemplateType } from '../type/node';
@@ -57,6 +58,7 @@ export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
 ];
 /* plugin flow module templates */
 export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
+  PluginConfigNode,
   PluginInputModule,
   PluginOutputModule,
   ...systemNodes
@@ -71,6 +73,6 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   ),
   EmptyNode,
   RunPluginModule,
-  RunAppPluginModule,
+  RunAppNode,
   RunAppModule
 ];

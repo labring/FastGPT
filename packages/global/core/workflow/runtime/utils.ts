@@ -27,16 +27,32 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
   return limit * 2;
 };
 
+/* 
+  Get interaction information (if any) from the last AI message.
+  What can be done:
+  1. Get the interactive data
+  2. Check that the workflow starts at the interaction node
+*/
 export const getLastInteractiveValue = (histories: ChatItemType[]) => {
   const lastAIMessage = histories.findLast((item) => item.obj === ChatRoleEnum.AI);
 
   if (lastAIMessage) {
-    const interactiveValue = lastAIMessage.value.find(
-      (v) => v.type === ChatItemValueTypeEnum.interactive
-    );
+    const lastValue = lastAIMessage.value[lastAIMessage.value.length - 1];
 
-    if (interactiveValue && 'interactive' in interactiveValue) {
-      return interactiveValue.interactive;
+    if (
+      !lastValue ||
+      lastValue.type !== ChatItemValueTypeEnum.interactive ||
+      !lastValue.interactive
+    ) {
+      return null;
+    }
+
+    // Check is user select
+    if (
+      lastValue.interactive.type === 'userSelect' &&
+      !lastValue.interactive.params.userSelectedVal
+    ) {
+      return lastValue.interactive;
     }
   }
 
@@ -118,39 +134,6 @@ export const filterWorkflowEdges = (edges: RuntimeEdgeItemType[]) => {
 };
 
 /* 
-  区分普通连线和递归连线
-  递归连线：可以通过往上查询 nodes，最终追溯到自身
-*/
-export const splitEdges2WorkflowEdges = ({
-  edges,
-  allEdges,
-  currentNode
-}: {
-  edges: RuntimeEdgeItemType[];
-  allEdges: RuntimeEdgeItemType[];
-  currentNode: RuntimeNodeItemType;
-}) => {
-  const commonEdges: RuntimeEdgeItemType[] = [];
-  const recursiveEdges: RuntimeEdgeItemType[] = [];
-
-  edges.forEach((edge) => {
-    const checkIsCurrentNode = (edge: RuntimeEdgeItemType): boolean => {
-      const sourceEdge = allEdges.find((item) => item.target === edge.source);
-      if (!sourceEdge) return false;
-      if (sourceEdge.source === currentNode.nodeId) return true;
-      return checkIsCurrentNode(sourceEdge);
-    };
-    if (checkIsCurrentNode(edge)) {
-      recursiveEdges.push(edge);
-    } else {
-      commonEdges.push(edge);
-    }
-  });
-
-  return { commonEdges, recursiveEdges };
-};
-
-/* 
   1. 输入线分类：普通线和递归线（可以追溯到自身）
   2. 起始线全部非 waiting 执行，或递归线全部非 waiting 执行
 */
@@ -161,31 +144,72 @@ export const checkNodeRunStatus = ({
   node: RuntimeNodeItemType;
   runtimeEdges: RuntimeEdgeItemType[];
 }) => {
-  const workflowEdges = filterWorkflowEdges(runtimeEdges).filter(
+  /* 
+    区分普通连线和递归连线
+    递归连线：可以通过往上查询 nodes，最终追溯到自身
+  */
+  const splitEdges2WorkflowEdges = ({
+    sourceEdges,
+    allEdges,
+    currentNode
+  }: {
+    sourceEdges: RuntimeEdgeItemType[];
+    allEdges: RuntimeEdgeItemType[];
+    currentNode: RuntimeNodeItemType;
+  }) => {
+    const commonEdges: RuntimeEdgeItemType[] = [];
+    const recursiveEdges: RuntimeEdgeItemType[] = [];
+
+    const checkIsCircular = (edge: RuntimeEdgeItemType, visited: Set<string>): boolean => {
+      if (edge.source === currentNode.nodeId) {
+        return true; // 检测到环,并且环中包含当前节点
+      }
+      if (visited.has(edge.source)) {
+        return false; // 检测到环,但不包含当前节点(子节点成环)
+      }
+      visited.add(edge.source);
+
+      const nextEdges = allEdges.filter((item) => item.target === edge.source);
+      return nextEdges.some((nextEdge) => checkIsCircular(nextEdge, new Set(visited)));
+    };
+
+    sourceEdges.forEach((edge) => {
+      if (checkIsCircular(edge, new Set([currentNode.nodeId]))) {
+        recursiveEdges.push(edge);
+      } else {
+        commonEdges.push(edge);
+      }
+    });
+
+    return { commonEdges, recursiveEdges };
+  };
+
+  const runtimeNodeSourceEdge = filterWorkflowEdges(runtimeEdges).filter(
     (item) => item.target === node.nodeId
   );
 
   // Entry
-  if (workflowEdges.length === 0) {
+  if (runtimeNodeSourceEdge.length === 0) {
     return 'run';
   }
 
+  // Classify edges
   const { commonEdges, recursiveEdges } = splitEdges2WorkflowEdges({
-    edges: workflowEdges,
+    sourceEdges: runtimeNodeSourceEdge,
     allEdges: runtimeEdges,
     currentNode: node
   });
 
-  // check skip
-  if (commonEdges.every((item) => item.status === 'skipped')) {
+  // check skip（其中一组边，全 skip）
+  if (commonEdges.length > 0 && commonEdges.every((item) => item.status === 'skipped')) {
     return 'skip';
   }
   if (recursiveEdges.length > 0 && recursiveEdges.every((item) => item.status === 'skipped')) {
     return 'skip';
   }
 
-  // check active
-  if (commonEdges.every((item) => item.status !== 'waiting')) {
+  // check active（有一类边，不全是 wait 即可运行）
+  if (commonEdges.length > 0 && commonEdges.every((item) => item.status !== 'waiting')) {
     return 'run';
   }
   if (recursiveEdges.length > 0 && recursiveEdges.every((item) => item.status !== 'waiting')) {

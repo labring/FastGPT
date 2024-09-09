@@ -61,7 +61,7 @@ function PermissionManage() {
             ml={3}
             borderRadius={'sm'}
           >
-            {TeamPermissionList['manage'].description}
+            {t(TeamPermissionList['manage'].description as any)}
           </Box>
         </Flex>
         {userInfo?.team.role === 'owner' && (

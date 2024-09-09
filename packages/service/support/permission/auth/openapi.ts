@@ -28,6 +28,10 @@ export async function authOpenApiKeyCrud({
       return Promise.reject(OpenApiErrEnum.unExist);
     }
 
+    if (String(openapi.teamId) !== teamId) {
+      return Promise.reject(OpenApiErrEnum.unAuth);
+    }
+
     if (!!openapi.appId) {
       // if is not global openapi, then auth app
       const { app } = await authAppByTmbId({ appId: openapi.appId!, tmbId, per });

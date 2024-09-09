@@ -11,11 +11,12 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getHistories } from '../utils';
+import { filterSystemVariables, getHistories } from '../utils';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getAppLatestVersion } from '../../../app/controller';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -29,15 +30,16 @@ type Response = DispatchNodeResultType<{
 
 export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const {
-    app: workflowApp,
+    runningAppInfo,
     histories,
     query,
     node: { pluginId },
     workflowStreamResponse,
-    params
+    params,
+    variables
   } = props;
 
-  const { userChatInput, history, ...variables } = params;
+  const { userChatInput, history, ...childrenAppVariables } = params;
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
@@ -48,9 +50,10 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   // Auth the app by tmbId(Not the user, but the workflow user)
   const { app: appData } = await authAppByTmbId({
     appId: pluginId,
-    tmbId: workflowApp.tmbId,
+    tmbId: runningAppInfo.tmbId,
     per: ReadPermissionVal
   });
+  const { nodes, edges, chatConfig } = await getAppLatestVersion(pluginId);
 
   // Auto line
   workflowStreamResponse?.({
@@ -63,20 +66,31 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const chatHistories = getHistories(history, histories);
   const { files } = chatValue2RuntimePrompt(query);
 
+  // Rewrite children app variables
+  const systemVariables = filterSystemVariables(variables);
+  const childrenRunVariables = {
+    ...systemVariables,
+    ...childrenAppVariables,
+    histories: chatHistories,
+    appId: String(appData._id)
+  };
+
   const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
-    app: appData,
-    runtimeNodes: storeNodes2RuntimeNodes(
-      appData.modules,
-      getWorkflowEntryNodeIds(appData.modules)
-    ),
-    runtimeEdges: initWorkflowEdgeStatus(appData.edges),
+    runningAppInfo: {
+      id: String(appData._id),
+      teamId: String(appData.teamId),
+      tmbId: String(appData.tmbId)
+    },
+    runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
+    runtimeEdges: initWorkflowEdgeStatus(edges),
     histories: chatHistories,
+    variables: childrenRunVariables,
     query: runtimePrompt2ChatsValue({
       files,
       text: userChatInput
     }),
-    variables: variables
+    chatConfig
   });
 
   const completeMessages = chatHistories.concat([

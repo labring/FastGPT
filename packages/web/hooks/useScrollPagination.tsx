@@ -14,6 +14,17 @@ import {
 import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 
+export type ScrollListType = ({
+  children,
+  EmptyChildren,
+  isLoading,
+  ...props
+}: {
+  children: React.ReactNode;
+  EmptyChildren?: React.ReactNode;
+  isLoading?: boolean;
+} & BoxProps) => React.JSX.Element;
+
 export function useScrollPagination<
   TParams extends PaginationProps,
   TData extends PaginationResponse

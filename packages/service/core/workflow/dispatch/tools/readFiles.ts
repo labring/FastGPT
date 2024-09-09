@@ -44,7 +44,7 @@ ${content.slice(0, 100)}${content.length > 100 ? '......' : ''}
 export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const {
     requestOrigin,
-    teamId,
+    runningAppInfo: { teamId },
     histories,
     chatConfig,
     params: { fileUrlList = [] }
@@ -73,25 +73,35 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   // Concat fileUrlList and filesFromHistories; remove not supported files
   const parseUrlList = [...fileUrlList, ...filesFromHistories]
     .map((url) => {
-      // System file
-      if (url.startsWith('/') || (requestOrigin && url.startsWith(requestOrigin))) {
-        // Parse url, get filename query. Keep only documents that can be parsed
-        const parseUrl = new URL(url);
-        const filenameQuery = parseUrl.searchParams.get('filename');
-        if (filenameQuery) {
-          const extensionQuery = filenameQuery.split('.').pop()?.toLowerCase() || '';
-          if (!documentFileType.includes(extensionQuery)) {
-            return '';
+      try {
+        // Avoid "/api/xxx" file error.
+        const origin = requestOrigin ?? 'http://localhost:3000';
+
+        // Check is system upload file
+        if (url.startsWith('/') || (requestOrigin && url.startsWith(requestOrigin))) {
+          // Parse url, get filename query. Keep only documents that can be parsed
+          const parseUrl = new URL(url, origin);
+          const filenameQuery = parseUrl.searchParams.get('filename');
+
+          // Not document
+          if (filenameQuery) {
+            const extensionQuery = filenameQuery.split('.').pop()?.toLowerCase() || '';
+            if (!documentFileType.includes(extensionQuery)) {
+              return '';
+            }
+          }
+
+          //  Remove the origin(Make intranet requests directly)
+          if (requestOrigin && url.startsWith(requestOrigin)) {
+            url = url.replace(requestOrigin, '');
           }
         }
 
-        //  Remove the origin(Make intranet requests directly)
-        if (requestOrigin && url.startsWith(requestOrigin)) {
-          url = url.replace(requestOrigin, '');
-        }
+        return url;
+      } catch (error) {
+        console.log(error);
+        return '';
       }
-
-      return url;
     })
     .filter(Boolean)
     .slice(0, maxFiles);

@@ -38,7 +38,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         return (
           <Box>
             <Flex mb={1} alignItems={'flex-end'}>
-              <Box flex={'1'}>Javascript{workflowT('Code')}</Box>
+              <Box flex={'1'}>{'Javascript ' + workflowT('Code')}</Box>
               <Box
                 cursor={'pointer'}
                 color={'primary.500'}

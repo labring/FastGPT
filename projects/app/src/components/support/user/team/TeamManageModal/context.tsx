@@ -71,7 +71,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
   } = useRequest2(
     () => {
       if (!userInfo?.team?.teamId) return Promise.resolve([]);
-      return loadAndGetTeamMembers();
+      return loadAndGetTeamMembers(true);
     },
     {
       manual: false,

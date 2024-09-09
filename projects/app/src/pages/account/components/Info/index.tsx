@@ -67,9 +67,9 @@ const Account = () => {
 
   return (
     <>
-      <Box py={[3, '28px']} maxW={['95vw', '1080px']} px={[5, 10]} mx={'auto'}>
+      <Box py={[3, '28px']} px={[5, 10]} mx={'auto'}>
         {isPc ? (
-          <Flex justifyContent={'center'}>
+          <Flex justifyContent={'center'} maxW={'1080px'}>
             <Box flex={'0 0 330px'}>
               <MyInfo onOpenContact={onOpenContact} />
               <Box mt={9}>
@@ -77,7 +77,7 @@ const Account = () => {
               </Box>
             </Box>
             {!!standardPlan && (
-              <Box ml={'45px'} flex={'1 0 0'} maxW={'600px'}>
+              <Box ml={'45px'} flex={'1'} maxW={'600px'}>
                 <PlanUsage />
               </Box>
             )}
@@ -306,7 +306,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
                 <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong>{' '}
                 {t('user:bill.yuan')}
               </Box>
-              {/* TODO:暂时隐藏 */}
+
               {userInfo?.permission.hasManagePer && !!standardPlan && (
                 <Button variant={'primary'} size={'sm'} ml={5} onClick={onOpenConversionModal}>
                   {t('user:bill.conversion')}
@@ -437,7 +437,7 @@ const PlanUsage = () => {
         borderColor={'borderColor.low'}
         borderRadius={'md'}
       >
-        <Flex px={[5, 7]} py={[3, 6]} whiteSpace={'nowrap'}>
+        <Flex px={[5, 7]} pt={[3, 6]}>
           <Box flex={'1 0 0'}>
             <Box color={'myGray.600'} fontSize="sm">
               {t('common:support.wallet.subscription.Current plan')}
@@ -445,24 +445,26 @@ const PlanUsage = () => {
             <Box fontWeight={'bold'} fontSize="lg">
               {t(planName as any)}
             </Box>
-
-            {isFreeTeam ? (
-              <>
-                <Box mt="2" color={'#485264'} fontSize="sm">
-                  {t('common:info.free_plan')}
-                </Box>
-              </>
-            ) : (
-              <Flex mt="2" color={'#485264'} fontSize="xs">
-                <Box>{t('common:support.wallet.Plan expired time')}:</Box>
-                <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>
-              </Flex>
-            )}
           </Box>
           <Button onClick={() => router.push('/price')} w={'8rem'} size="sm">
             {t('common:support.wallet.subscription.Upgrade plan')}
           </Button>
         </Flex>
+        <Box px={[5, 7]} pb={[3, 6]}>
+          {isFreeTeam ? (
+            <>
+              <Box mt="2" color={'#485264'} fontSize="sm">
+                {t('common:info.free_plan')}
+              </Box>
+            </>
+          ) : (
+            <Flex mt="2" color={'#485264'} fontSize="xs">
+              <Box>{t('common:support.wallet.Plan expired time')}:</Box>
+              <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>
+            </Flex>
+          )}
+        </Box>
+
         <Box py={3} borderTopWidth={'1px'} borderTopColor={'borderColor.base'}>
           <Box py={[0, 3]} px={[5, 7]} overflow={'auto'}>
             <StandardPlanContentList
@@ -479,7 +481,7 @@ const PlanUsage = () => {
         borderColor={'borderColor.low'}
         borderRadius={'md'}
         px={[5, 10]}
-        pt={[2, 4]}
+        pt={4}
         pb={[4, 7]}
       >
         <Flex>

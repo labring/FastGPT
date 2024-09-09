@@ -29,8 +29,10 @@ const refetchSystemPlugins = () => {
   const changeStream = MongoSystemPluginSchema.watch();
 
   changeStream.on('change', async (change) => {
-    try {
-      getSystemPlugins(true);
-    } catch (error) {}
+    setTimeout(() => {
+      try {
+        getSystemPlugins(true);
+      } catch (error) {}
+    }, 5000);
   });
 };
