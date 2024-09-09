@@ -539,7 +539,7 @@ const WorkflowContextProvider = ({
         return resetSnapshot(past[0]);
       }
 
-      setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item })) || []);
+      setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || []);
       setEdges(e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || []);
 
       const chatConfig = e.chatConfig;
@@ -553,7 +553,7 @@ const WorkflowContextProvider = ({
       // If it is the initial data, save the initial snapshot
       if (isInit) {
         saveSnapshot({
-          pastNodes: e.nodes?.map((item) => storeNode2FlowNode({ item })) || [],
+          pastNodes: e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [],
           pastEdges: e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [],
           customTitle: t(`app:app.version_initial`),
           chatConfig: appDetail.chatConfig,

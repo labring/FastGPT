@@ -205,7 +205,7 @@ const TeamCloud = () => {
       if (!versionDetail) return;
 
       const state = {
-        nodes: versionDetail.nodes?.map((item) => storeNode2FlowNode({ item })),
+        nodes: versionDetail.nodes?.map((item) => storeNode2FlowNode({ item, t })),
         edges: versionDetail.edges?.map((item) => storeEdgesRenderEdge({ edge: item })),
         title: versionItem.versionName,
         chatConfig: versionDetail.chatConfig
