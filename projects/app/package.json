@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "jest"
   },
   "dependencies": {
     "@bany/curl-to-json": "^1.2.8",
@@ -37,6 +38,7 @@
     "hyperdown": "^2.4.29",
     "i18next": "23.11.5",
     "immer": "^9.0.19",
+    "jest": "^29.5.0",
     "js-yaml": "^4.1.0",
     "json5": "^2.2.3",
     "jsonwebtoken": "^9.0.2",

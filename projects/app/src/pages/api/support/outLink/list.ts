@@ -43,4 +43,5 @@ async function handler(
 
   return data;
 }
+
 export default NextAPI(handler);
