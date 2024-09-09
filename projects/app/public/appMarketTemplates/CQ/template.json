@@ -462,6 +462,14 @@
         "sourceHandle": "rvbo634w3AYj-source-sdfa",
         "targetHandle": "7kwgL1dVlwG6-target-left"
       }
-    ]
+    ],
+    "chatConfig": {
+      "scheduledTriggerConfig": {
+        "cronString": "",
+        "timezone": "Asia/Shanghai",
+        "defaultPrompt": ""
+      },
+      "welcomeText": "你好，我是知识库助手，请不要忘记选择知识库噢~\n[你是谁]\n[如何使用]"
+    }
   }
 }
