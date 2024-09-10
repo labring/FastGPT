@@ -342,12 +342,13 @@ const MenuRender = React.memo(function MenuRender({
               outputs: template.outputs,
               version: template.version
             },
-            selected: true
+            selected: true,
+            t
           })
         );
       });
     },
-    [computedNewNodeName, setNodes]
+    [computedNewNodeName, setNodes, t]
   );
   const onDelNode = useCallback(
     (nodeId: string) => {
@@ -415,7 +416,7 @@ const MenuRender = React.memo(function MenuRender({
                 leftIcon={<MyIcon name={item.icon as any} w={'13px'} />}
                 onClick={item.onClick}
               >
-                {item.label}
+                {t(item.label as any)}
               </Button>
             </Box>
           ))}

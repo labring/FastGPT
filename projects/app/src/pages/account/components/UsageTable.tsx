@@ -180,11 +180,10 @@ const UsageTable = () => {
             ))}
           </Tbody>
         </Table>
+        {!isLoading && usages.length === 0 && (
+          <EmptyTip text={t('common:user.no_usage_records')}></EmptyTip>
+        )}
       </TableContainer>
-
-      {!isLoading && usages.length === 0 && (
-        <EmptyTip text={t('common:user.no_usage_records')}></EmptyTip>
-      )}
 
       <Loading loading={isLoading} fixed={false} />
       {!!usageDetail && (

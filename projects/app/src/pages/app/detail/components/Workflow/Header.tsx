@@ -125,9 +125,14 @@ const Header = () => {
     try {
       localStorage.removeItem(`${appDetail._id}-past`);
       localStorage.removeItem(`${appDetail._id}-future`);
-      router.push('/app/list');
+      router.push({
+        pathname: '/app/list',
+        query: {
+          parentId: appDetail.parentId
+        }
+      });
     } catch (error) {}
-  }, [appDetail._id, router]);
+  }, [appDetail._id, appDetail.parentId, router]);
 
   const Render = useMemo(() => {
     return (
@@ -249,6 +254,8 @@ const Header = () => {
                             status: 'success',
                             title: t('app:saved_success')
                           });
+                          onClose();
+                          setIsSave(false);
                         }}
                       >
                         <MyIcon name={'core/workflow/upload'} w={'16px'} mr={2} />
@@ -266,6 +273,7 @@ const Header = () => {
                             onSaveAndPublishModalOpen();
                           }
                           onClose();
+                          setIsSave(false);
                         }}
                       >
                         <MyIcon name={'core/workflow/publish'} w={'16px'} mr={2} />

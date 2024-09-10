@@ -1,5 +1,5 @@
 # --------- install dependence -----------
-FROM node:20.14.0-alpine AS mainDeps
+FROM node:20.14.0-alpine AS maindeps
 WORKDIR /app
 
 ARG proxy
@@ -26,10 +26,10 @@ ARG proxy
 
 # copy common node_modules and one project node_modules
 COPY package.json pnpm-workspace.yaml .npmrc tsconfig.json ./
-COPY --from=mainDeps /app/node_modules ./node_modules
-COPY --from=mainDeps /app/packages ./packages
+COPY --from=maindeps /app/node_modules ./node_modules
+COPY --from=maindeps /app/packages ./packages
 COPY ./projects/app ./projects/app
-COPY --from=mainDeps /app/projects/app/node_modules ./projects/app/node_modules
+COPY --from=maindeps /app/projects/app/node_modules ./projects/app/node_modules
 
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
 
@@ -63,9 +63,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/server/chunks 
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/server/worker /app/projects/app/.next/server/worker
 
 # copy standload packages
-COPY --from=mainDeps /app/node_modules/tiktoken ./node_modules/tiktoken
+COPY --from=maindeps /app/node_modules/tiktoken ./node_modules/tiktoken
 RUN rm -rf ./node_modules/tiktoken/encoders
-COPY --from=mainDeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@zilliz/milvus2-sdk-node
+COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@zilliz/milvus2-sdk-node
 
 
 # copy package.json to version file
@@ -75,8 +75,8 @@ COPY ./projects/app/data /app/data
 
 RUN chown -R nextjs:nodejs /app/data
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 
 EXPOSE 3000

@@ -15,8 +15,7 @@
     "version_initial_copy": "副本-初始状态",
     "version_name_tips": "版本名称不能为空",
     "version_past": "发布过",
-    "version_publish_tips": "该版本将被保存至团队云端，同步给整个团队，同时更新所有发布渠道的应用版本",
-    "version_save_tips": "该版本将被保存至团队云端，同步给整个团队"
+    "version_publish_tips": "该版本将被保存至团队云端，同步给整个团队，同时更新所有发布渠道的应用版本"
   },
   "app_detail": "应用详情",
   "chat_debug": "调试预览",
@@ -48,6 +47,7 @@
   "export_config_successful": "已复制配置，自动过滤部分敏感信息，请注意检查是否仍有敏感数据",
   "export_configs": "导出配置",
   "feedback_count": "用户反馈",
+  "file_recover": "文件将覆盖当前内容",
   "file_upload": "文件上传",
   "file_upload_tip": "开启后，可以上传文档/图片。文档保留7天，图片保留15天。使用该功能可能产生较多额外费用。为保证使用体验，使用该功能时，请选择上下文长度较大的AI模型。",
   "go_to_chat": "去对话",
@@ -56,6 +56,7 @@
   "image_upload_tip": "请确保选择可处理图片的视觉模型",
   "import_configs": "导入配置",
   "import_configs_failed": "导入配置失败，请确保配置正常！",
+  "import_configs_success": "导入成功",
   "interval": {
     "12_hours": "每12小时",
     "2_hours": "每2小时",
@@ -71,6 +72,7 @@
   "logs_empty": "还没有日志噢~",
   "logs_message_total": "消息总数",
   "logs_title": "标题",
+  "logs_chat_user": "使用者",
   "mark_count": "标注答案数量",
   "module": {
     "Confirm Sync": "将会更新至最新的模板配置，不存在模板中的字段将会被删除（包括所有自定义字段），建议您先复制一份节点，再更新原来节点的版本。",
@@ -85,7 +87,9 @@
     "unit": "号"
   },
   "move_app": "移动应用",
+  "not_json_file": "请选择JSON文件",
   "paste_config": "粘贴配置",
+  "or_drag_JSON": "或拖入JSON文件",
   "plugin_cost_per_times": "{{cost}}/次",
   "plugin_dispatch": "插件调用",
   "plugin_dispatch_tip": "给模型附加额外的能力，具体调用哪些插件，将由模型自主决定。\n若选择了插件，知识库调用将自动作为一个特殊的插件。",
@@ -96,7 +100,15 @@
   "setting_app": "应用配置",
   "setting_plugin": "插件配置",
   "template": {
-    "simple_robot": "简易机器人"
+    "simple_robot": "简易机器人",
+    "standard_template": "标准模板",
+    "standard_template_des": "标准提示词，用于结构不固定的知识库。",
+    "qa_template": "问答模板",
+    "qa_template_des": "适合 QA 问答结构的知识库，可以让AI较为严格的按预设内容回答",
+    "standard_strict": "标准严格模板",
+    "standard_strict_des": "在标准模板基础上，对模型的回答做更严格的要求。",
+    "hard_strict": "严格问答模板",
+    "hard_strict_des": "在问答模板基础上，对模型的回答做更严格的要求。"
   },
   "templateMarket": {
     "Search_template": "搜索模板",
@@ -127,13 +139,11 @@
     "Create plugin bot": "创建插件",
     "Create simple bot": "创建简易应用",
     "Create simple bot tip": "通过填表单形式，创建简单的 AI 应用，适合新手",
-    "Create template tip": "在模板市场探索更多玩法，带你理解并上手各种应用",
     "Create workflow bot": "创建工作流",
     "Create workflow tip": "通过低代码的方式，构建逻辑复杂的多轮对话 AI 应用，推荐高级玩家使用",
     "Http plugin": "HTTP 插件",
     "Plugin": "插件",
     "Simple bot": "简易应用",
-    "Template": "通过模板创建",
     "Workflow bot": "工作流"
   },
   "upload_file_max_amount": "最大文件数量",
@@ -158,8 +168,6 @@
   "workflow": {
     "Input guide": "填写说明",
     "file_url": "文档链接",
-    "option1": "选项 1",
-    "option2": "选项 2",
     "read_files": "文档解析",
     "read_files_result": "文档解析结果",
     "read_files_result_desc": "文档原文，由文件名和文档内容组成，多个文件之间通过横线隔开。",
@@ -175,5 +183,12 @@
     "user_file_input_desc": "用户上传的文档和图片链接",
     "user_select": "用户选择",
     "user_select_tip": "该模块可配置多个选项，以供对话时选择。不同选项可导向不同工作流支线"
+  },
+  "permission": {
+    "des": {
+      "read": "可使用该应用进行对话",
+      "write": "可查看和编辑应用",
+      "manage": "写权限基础上，可配置发布渠道、查看对话日志、分配该应用权限"
+    }
   }
 }

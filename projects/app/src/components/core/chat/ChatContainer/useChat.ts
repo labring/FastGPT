@@ -49,6 +49,7 @@ export const useChat = () => {
 
     ChatBoxRef.current?.restartChat?.();
   }, [variablesForm]);
+
   return {
     ChatBoxRef,
     chatRecords,

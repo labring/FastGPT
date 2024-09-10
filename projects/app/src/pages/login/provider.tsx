@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { ResLogin } from '@/global/support/api/userRes.d';
@@ -11,7 +11,8 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
-import { useMount } from 'ahooks';
+
+let isOauthLogging = false;
 
 const provider = () => {
   const { t } = useTranslation();
@@ -31,11 +32,7 @@ const provider = () => {
       setLastChatId('');
       setLastChatAppId('');
 
-      setTimeout(() => {
-        router.push(
-          loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/app/list'
-        );
-      }, 100);
+      router.push(loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/app/list');
     },
     [setLastChatId, setLastChatAppId, setUserInfo, router, loginStore?.lastRoute]
   );
@@ -74,7 +71,7 @@ const provider = () => {
         }, 1000);
       }
     },
-    [loginStore, loginSuccess, router, toast]
+    [loginStore, loginSuccess, router, t, toast]
   );
 
   useEffect(() => {
@@ -87,26 +84,38 @@ const provider = () => {
       return;
     }
 
-    if (!code || !loginStore || !state) return;
+    if (!code || !loginStore?.state || !state) return;
 
-    clearToken();
-    router.prefetch('/app/list');
+    if (isOauthLogging) return;
 
-    if (state !== loginStore?.state) {
-      toast({
-        status: 'warning',
-        title: t('common:support.user.login.security_failed')
-      });
-      setTimeout(() => {
-        router.replace('/login');
-      }, 1000);
-      return;
-    } else {
-      authCode(code);
-    }
-  }, [code, error, loginStore, state]);
+    isOauthLogging = true;
+
+    (async () => {
+      await clearToken();
+      router.prefetch('/app/list');
+
+      if (state !== loginStore?.state) {
+        toast({
+          status: 'warning',
+          title: t('common:support.user.login.security_failed')
+        });
+        setTimeout(() => {
+          router.replace('/login');
+        }, 1000);
+        return;
+      } else {
+        authCode(code);
+      }
+    })();
+  }, [authCode, code, error, loginStore, loginStore?.state, router, state, t, toast]);
 
   return <Loading />;
 };
 
 export default provider;
+
+export async function getServerSideProps(context: any) {
+  return {
+    props: { ...(await serviceSideProps(context)) }
+  };
+}

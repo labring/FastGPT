@@ -216,7 +216,7 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
               borderRadius={'md'}
               h={'32px'}
             >
-              {perLabel}
+              {t(perLabel as any)}
               <ChevronDownIcon fontSize={'md'} />
             </Flex>
           }

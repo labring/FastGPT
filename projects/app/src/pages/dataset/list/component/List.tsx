@@ -272,7 +272,7 @@ function List() {
                       {owner && (
                         <HStack spacing={1}>
                           <Avatar src={owner.avatar} w={'0.875rem'} borderRadius={'50%'} />
-                          <Box maxW={'150px'} className="textEllipsis">
+                          <Box maxW={'150px'} className="textEllipsis" fontSize={'mini'}>
                             {owner.memberName}
                           </Box>
                         </HStack>
@@ -288,7 +288,9 @@ function List() {
                       {isPc && (
                         <HStack spacing={1} className="time">
                           <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
-                          <Box color={'myGray.500'}>{formatTimeToChatTime(dataset.updateTime)}</Box>
+                          <Box color={'myGray.500'} fontSize={'mini'}>
+                            {formatTimeToChatTime(dataset.updateTime)}
+                          </Box>
                         </HStack>
                       )}
                       {dataset.permission.hasWritePer && (

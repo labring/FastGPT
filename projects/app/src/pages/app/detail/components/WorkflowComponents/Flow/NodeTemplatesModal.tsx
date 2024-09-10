@@ -466,7 +466,21 @@ const RenderList = React.memo(function RenderList({
             flowNodeType: templateNode.flowNodeType,
             pluginId: templateNode.pluginId
           }),
-          intro: t(templateNode.intro as any)
+          intro: t(templateNode.intro as any),
+          inputs: templateNode.inputs.map((input) => ({
+            ...input,
+            valueDesc: t(input.valueDesc as any),
+            label: t(input.label as any),
+            description: t(input.description as any),
+            debugLabel: t(input.debugLabel as any),
+            toolDescription: t(input.toolDescription as any)
+          })),
+          outputs: templateNode.outputs.map((output) => ({
+            ...output,
+            valueDesc: t(output.valueDesc as any),
+            label: t(output.label as any),
+            description: t(output.description as any)
+          }))
         },
         position: { x: mouseX, y: mouseY - 20 },
         selected: true
@@ -591,7 +605,7 @@ const RenderList = React.memo(function RenderList({
                         src={template.avatar}
                         w={gridStyle.avatarSize}
                         objectFit={'contain'}
-                        borderRadius={'md'}
+                        borderRadius={'sm'}
                       />
                       <Box ml={3} flex={'1'}>
                         <Box color={'myGray.900'} fontWeight={'500'} fontSize={'sm'} flex={'1 0 0'}>

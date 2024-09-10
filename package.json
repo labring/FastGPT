@@ -10,8 +10,7 @@
     "postinstall": "sh ./scripts/postinstall.sh",
     "initIcon": "node ./scripts/icon/init.js",
     "previewIcon": "node ./scripts/icon/index.js",
-    "i18n:delete-unused-keys": "node ./scripts/i18n/delete-unused-keys.js",
-    "i18n:query": "node ./scripts/i18n/query.js"
+    "api:gen": "tsc ./scripts/openapi/index.ts && node ./scripts/openapi/index.js && npx @redocly/cli build-docs ./scripts/openapi/openapi.json -o ./projects/app/public/openapi/index.html"
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",

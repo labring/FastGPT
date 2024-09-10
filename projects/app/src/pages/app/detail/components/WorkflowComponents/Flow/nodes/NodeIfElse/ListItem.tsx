@@ -348,10 +348,9 @@ const ConditionSelect = ({
     return getRefData({
       variable,
       nodeList,
-      chatConfig: appDetail.chatConfig,
-      t
+      chatConfig: appDetail.chatConfig
     });
-  }, [appDetail.chatConfig, nodeList, t, variable]);
+  }, [appDetail.chatConfig, nodeList, variable]);
 
   const conditionList = useMemo(() => {
     if (valueType === WorkflowIOValueTypeEnum.string) return stringConditionList;

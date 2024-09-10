@@ -1,5 +1,4 @@
 import Markdown from '@/components/Markdown';
-import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import {
   Accordion,
   AccordionButton,
@@ -14,6 +13,7 @@ import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   AIChatItemValueItemType,
   ChatSiteItemType,
+  ToolModuleResponseItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
 import React from 'react';
@@ -22,58 +22,41 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { SendPromptFnType } from '../ChatContainer/ChatBox/type';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
-import { setUserSelectResultToHistories } from '../ChatContainer/ChatBox/utils';
+import { InteractiveNodeResponseItemType } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
+import { isEqual } from 'lodash';
 
 type props = {
   value: UserChatItemValueItemType | AIChatItemValueItemType;
-  index: number;
-  chat: ChatSiteItemType;
   isLastChild: boolean;
   isChatting: boolean;
-  questionGuides: string[];
   onSendMessage?: SendPromptFnType;
 };
 
-const AIResponseBox = ({
-  value,
-  index,
-  chat,
-  isLastChild,
-  isChatting,
-  questionGuides,
-  onSendMessage
-}: props) => {
-  const chatHistories = useContextSelector(ChatBoxContext, (v) => v.chatHistories);
+const RenderText = React.memo(function RenderText({
+  showAnimation,
+  text
+}: {
+  showAnimation: boolean;
+  text?: string;
+}) {
+  let source = (text || '').trim();
 
-  if (value.type === ChatItemValueTypeEnum.text && value.text) {
-    let source = (value.text?.content || '').trim();
+  // First empty line
+  // if (!source && !isLastChild) return null;
 
-    // First empty line
-    if (!source && chat.value.length > 1) return null;
-
-    // computed question guide
-    if (
-      isLastChild &&
-      !isChatting &&
-      questionGuides.length > 0 &&
-      index === chat.value.length - 1
-    ) {
-      source = `${source}
-\`\`\`${CodeClassNameEnum.questionGuide}
-${JSON.stringify(questionGuides)}`;
-    }
-
-    return (
-      <Markdown
-        source={source}
-        showAnimation={isLastChild && isChatting && index === chat.value.length - 1}
-      />
-    );
-  }
-  if (value.type === ChatItemValueTypeEnum.tool && value.tools) {
+  return <Markdown source={source} showAnimation={showAnimation} />;
+});
+const RenderTool = React.memo(
+  function RenderTool({
+    showAnimation,
+    tools
+  }: {
+    showAnimation: boolean;
+    tools: ToolModuleResponseItemType[];
+  }) {
     return (
       <Box>
-        {value.tools.map((tool) => {
+        {tools.map((tool) => {
           const toolParams = (() => {
             try {
               return JSON.stringify(JSON.parse(tool.params), null, 2);
@@ -109,7 +92,7 @@ ${JSON.stringify(questionGuides)}`;
                   <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
                     {tool.toolName}
                   </Box>
-                  {isChatting && !tool.response && <MyIcon name={'common/loading'} w={'14px'} />}
+                  {showAnimation && !tool.response && <MyIcon name={'common/loading'} w={'14px'} />}
                   <AccordionIcon color={'myGray.600'} ml={5} />
                 </AccordionButton>
                 <AccordionPanel
@@ -142,47 +125,87 @@ ${toolResponse}`}
         })}
       </Box>
     );
-  }
+  },
+  (prevProps, nextProps) => isEqual(prevProps, nextProps)
+);
+const RenderInteractive = React.memo(
+  function RenderInteractive({
+    isChatting,
+    interactive,
+    onSendMessage,
+    chatHistories
+  }: {
+    isChatting: boolean;
+    interactive: InteractiveNodeResponseItemType;
+    onSendMessage?: SendPromptFnType;
+    chatHistories: ChatSiteItemType[];
+  }) {
+    return (
+      <>
+        {interactive?.params?.description && <Markdown source={interactive.params.description} />}
+        <Flex flexDirection={'column'} gap={2} w={'250px'}>
+          {interactive.params.userSelectOptions?.map((option) => {
+            const selected = option.value === interactive?.params?.userSelectedVal;
+
+            return (
+              <Button
+                key={option.key}
+                variant={'whitePrimary'}
+                whiteSpace={'pre-wrap'}
+                isDisabled={interactive?.params?.userSelectedVal !== undefined}
+                {...(selected
+                  ? {
+                      _disabled: {
+                        cursor: 'default',
+                        borderColor: 'primary.300',
+                        bg: 'primary.50 !important',
+                        color: 'primary.600'
+                      }
+                    }
+                  : {})}
+                onClick={() => {
+                  onSendMessage?.({
+                    text: option.value,
+                    isInteractivePrompt: true
+                  });
+                }}
+              >
+                {option.value}
+              </Button>
+            );
+          })}
+        </Flex>
+      </>
+    );
+  },
+  (
+    prevProps,
+    nextProps // isChatting 更新时候，onSendMessage 和 chatHistories 肯定都更新了，这里不需要额外的刷新
+  ) =>
+    prevProps.isChatting === nextProps.isChatting &&
+    isEqual(prevProps.interactive, nextProps.interactive)
+);
+
+const AIResponseBox = ({ value, isLastChild, isChatting, onSendMessage }: props) => {
+  const chatHistories = useContextSelector(ChatBoxContext, (v) => v.chatHistories);
+
+  if (value.type === ChatItemValueTypeEnum.text && value.text)
+    return <RenderText showAnimation={isChatting && isLastChild} text={value.text.content} />;
+  if (value.type === ChatItemValueTypeEnum.tool && value.tools)
+    return <RenderTool showAnimation={isChatting && isLastChild} tools={value.tools} />;
   if (
     value.type === ChatItemValueTypeEnum.interactive &&
     value.interactive &&
     value.interactive.type === 'userSelect'
-  ) {
+  )
     return (
-      <Flex flexDirection={'column'} gap={2} minW={'200px'} maxW={'250px'}>
-        {value.interactive.params.userSelectOptions?.map((option) => {
-          const selected = option.value === value.interactive?.params?.userSelectedVal;
-
-          return (
-            <Button
-              key={option.key}
-              variant={'whitePrimary'}
-              isDisabled={!isLastChild && value.interactive?.params?.userSelectedVal !== undefined}
-              {...(selected
-                ? {
-                    _disabled: {
-                      cursor: 'default',
-                      borderColor: 'primary.300',
-                      bg: 'primary.50 !important',
-                      color: 'primary.600'
-                    }
-                  }
-                : {})}
-              onClick={() => {
-                onSendMessage?.({
-                  text: option.value,
-                  history: setUserSelectResultToHistories(chatHistories, option.value)
-                });
-              }}
-            >
-              {option.value}
-            </Button>
-          );
-        })}
-      </Flex>
+      <RenderInteractive
+        isChatting={isChatting}
+        interactive={value.interactive}
+        onSendMessage={onSendMessage}
+        chatHistories={chatHistories}
+      />
     );
-  }
-  return null;
 };
 
 export default React.memo(AIResponseBox);

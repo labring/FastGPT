@@ -32,8 +32,8 @@ export const emptyTemplates: Record<
     nodes: [
       {
         nodeId: 'userGuide',
-        name: '系统配置',
-        intro: '可以配置应用的系统参数',
+        name: i18nT('common:core.module.template.system_config'),
+        intro: i18nT('common:core.module.template.config_params'),
         avatar: 'core/workflow/template/systemConfig',
         flowNodeType: FlowNodeTypeEnum.systemConfig,
         position: {
@@ -95,7 +95,7 @@ export const emptyTemplates: Record<
       },
       {
         nodeId: '448745',
-        name: '流程开始',
+        name: i18nT('common:core.module.template.work_start'),
         intro: '',
         avatar: 'core/workflow/template/workflowStart',
         flowNodeType: FlowNodeTypeEnum.workflowStart,
@@ -109,9 +109,9 @@ export const emptyTemplates: Record<
             key: 'userChatInput',
             renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
             valueType: WorkflowIOValueTypeEnum.string,
-            label: '用户问题',
+            label: i18nT('common:core.module.input.label.user question'),
             required: true,
-            toolDescription: '用户问题'
+            toolDescription: i18nT('common:core.module.input.label.user question')
           }
         ],
         outputs: [
@@ -126,8 +126,8 @@ export const emptyTemplates: Record<
       },
       {
         nodeId: 'loOvhld2ZTKa',
-        name: 'AI 对话',
-        intro: 'AI 大模型对话',
+        name: i18nT('common:core.module.template.ai_chat'),
+        intro: i18nT('common:core.module.template.ai_chat_intro'),
         avatar: 'core/workflow/template/aiChat',
         flowNodeType: FlowNodeTypeEnum.chatNode,
         showStatus: true,
@@ -210,16 +210,16 @@ export const emptyTemplates: Record<
             key: 'userChatInput',
             renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
             valueType: WorkflowIOValueTypeEnum.string,
-            label: '用户问题',
+            label: i18nT('common:core.module.input.label.user question'),
             required: true,
-            toolDescription: '用户问题',
+            toolDescription: i18nT('common:core.module.input.label.user question'),
             value: ['448745', 'userChatInput']
           },
           {
             key: 'quoteQA',
             renderTypeList: [FlowNodeInputTypeEnum.settingDatasetQuotePrompt],
             label: '',
-            debugLabel: '知识库引用',
+            debugLabel: i18nT('common:core.module.Dataset quote.label'),
             description: '',
             valueType: WorkflowIOValueTypeEnum.datasetQuote
           }
@@ -255,12 +255,12 @@ export const emptyTemplates: Record<
   },
   [AppTypeEnum.workflow]: {
     avatar: 'core/app/type/workflowFill',
-    name: '空白工作流',
+    name: i18nT('common:core.module.template.empty_workflow'),
     nodes: [
       {
         nodeId: 'userGuide',
-        name: '系统配置',
-        intro: '可以配置应用的系统参数',
+        name: i18nT('common:core.module.template.system_config'),
+        intro: i18nT('common:core.module.template.system_config_info'),
         avatar: 'core/workflow/template/systemConfig',
         flowNodeType: 'userGuide',
         position: {
@@ -322,7 +322,7 @@ export const emptyTemplates: Record<
       },
       {
         nodeId: '448745',
-        name: '流程开始',
+        name: i18nT('common:core.module.template.work_start'),
         intro: '',
         avatar: 'core/workflow/template/workflowStart',
         flowNodeType: 'workflowStart',
@@ -336,9 +336,9 @@ export const emptyTemplates: Record<
             key: 'userChatInput',
             renderTypeList: ['reference', 'textarea'],
             valueType: 'string',
-            label: '用户问题',
+            label: i18nT('common:core.module.input.label.user question'),
             required: true,
-            toolDescription: '用户问题'
+            toolDescription: i18nT('common:core.module.input.label.user question')
           }
         ],
         outputs: [
@@ -356,11 +356,11 @@ export const emptyTemplates: Record<
   },
   [AppTypeEnum.plugin]: {
     avatar: 'core/app/type/pluginFill',
-    name: '空白插件',
+    name: i18nT('common:core.module.template.empty_plugin'),
     nodes: [
       {
         nodeId: 'pluginInput',
-        name: '自定义插件输入',
+        name: i18nT('common:core.module.template.self_input'),
         avatar: 'core/workflow/template/workflowStart',
         flowNodeType: FlowNodeTypeEnum.pluginInput,
         showStatus: false,
@@ -374,7 +374,7 @@ export const emptyTemplates: Record<
       },
       {
         nodeId: 'pluginOutput',
-        name: '自定义插件输出',
+        name: i18nT('common:core.module.template.self_output'),
         avatar: '/imgs/workflow/output.png',
         flowNodeType: FlowNodeTypeEnum.pluginOutput,
         showStatus: false,

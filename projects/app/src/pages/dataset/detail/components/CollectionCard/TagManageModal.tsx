@@ -194,7 +194,11 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
             pt={6}
           >
             <MyIcon name="menu" w={5} />
-            <Box ml={2} fontWeight={'semibold'} flex={'1 0 0'}>{`共${tagsTotal}个标签`}</Box>
+            <Box ml={2} fontWeight={'semibold'} flex={'1 0 0'}>
+              {t('dataset:tag.total_tags', {
+                total: tagsTotal
+              })}
+            </Box>
             <Button
               size={'sm'}
               leftIcon={<MyIcon name="common/addLight" w={4} />}

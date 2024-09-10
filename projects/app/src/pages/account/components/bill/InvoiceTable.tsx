@@ -31,7 +31,7 @@ const InvoiceTable = () => {
     Pagination,
     getData,
     total
-  } = usePagination<InvoiceSchemaType>({
+  } = usePagination({
     api: getInvoiceRecords,
     pageSize: 20,
     defaultRequest: false

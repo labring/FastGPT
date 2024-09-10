@@ -1,0 +1,11 @@
+.scrollbar {
+  &::-webkit-scrollbar-thumb {
+    background: var(--chakra-colors-myGray-150) !important;
+    transition: background 1s;
+    margin-left: 5px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--chakra-colors-myGray-250) !important;
+  }
+}

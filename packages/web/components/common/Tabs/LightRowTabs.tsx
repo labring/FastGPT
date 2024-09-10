@@ -10,6 +10,7 @@ type Props<ValueType = string> = Omit<GridProps, 'onChange'> & {
   size?: 'sm' | 'md' | 'lg';
   inlineStyles?: FlexProps;
   activeColor?: string;
+  defaultColor?: string;
   onChange: (value: ValueType) => void;
 };
 
@@ -18,6 +19,7 @@ const LightRowTabs = <ValueType = string,>({
   size = 'md',
   value,
   activeColor = 'primary.600',
+  defaultColor = 'transparent',
   onChange,
   inlineStyles,
   ...props
@@ -63,7 +65,8 @@ const LightRowTabs = <ValueType = string,>({
             py={sizeMap.inlineP}
             alignItems={'center'}
             justifyContent={'center'}
-            borderBottom={'2px solid transparent'}
+            borderBottom={'2px solid'}
+            borderColor={defaultColor}
             px={3}
             whiteSpace={'nowrap'}
             {...(value === item.value

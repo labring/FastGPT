@@ -1,6 +1,10 @@
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { MongoApp } from '../app/schema';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatItemValueTypeEnum,
+  ChatRoleEnum,
+  ChatSourceEnum
+} from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { addLog } from '../../common/system/log';
@@ -111,3 +115,85 @@ export async function saveChat({
     addLog.error(`update chat history error`, error);
   }
 }
+
+export const updateInteractiveChat = async ({
+  chatId,
+  appId,
+  teamId,
+  tmbId,
+  userSelectedVal,
+  aiResponse,
+  newVariables,
+  newTitle
+}: {
+  chatId: string;
+  appId: string;
+  teamId: string;
+  tmbId: string;
+  userSelectedVal: string;
+  aiResponse: AIChatItemType & { dataId?: string };
+  newVariables?: Record<string, any>;
+  newTitle: string;
+}) => {
+  if (!chatId) return;
+
+  const chatItem = await MongoChatItem.findOne({ appId, chatId, obj: ChatRoleEnum.AI }).sort({
+    _id: -1
+  });
+
+  if (!chatItem || chatItem.obj !== ChatRoleEnum.AI) return;
+
+  const interactiveValue = chatItem.value[chatItem.value.length - 1];
+
+  if (
+    !interactiveValue ||
+    interactiveValue.type !== ChatItemValueTypeEnum.interactive ||
+    !interactiveValue.interactive?.params
+  ) {
+    return;
+  }
+
+  interactiveValue.interactive = {
+    ...interactiveValue.interactive,
+    params: {
+      ...interactiveValue.interactive.params,
+      userSelectedVal
+    }
+  };
+
+  if (aiResponse.customFeedbacks) {
+    chatItem.customFeedbacks = chatItem.customFeedbacks
+      ? [...chatItem.customFeedbacks, ...aiResponse.customFeedbacks]
+      : aiResponse.customFeedbacks;
+  }
+
+  if (aiResponse.responseData) {
+    chatItem.responseData = chatItem.responseData
+      ? [...chatItem.responseData, ...aiResponse.responseData]
+      : aiResponse.responseData;
+  }
+
+  if (aiResponse.value) {
+    chatItem.value = chatItem.value ? [...chatItem.value, ...aiResponse.value] : aiResponse.value;
+  }
+
+  await mongoSessionRun(async (session) => {
+    await chatItem.save({ session });
+    await MongoChat.updateOne(
+      {
+        appId,
+        chatId
+      },
+      {
+        $set: {
+          variables: newVariables,
+          title: newTitle,
+          updateTime: new Date()
+        }
+      },
+      {
+        session
+      }
+    );
+  });
+};

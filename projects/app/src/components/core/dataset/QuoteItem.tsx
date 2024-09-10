@@ -275,9 +275,6 @@ const QuoteItem = ({
           onSuccess={() => {
             console.log('更新引用成功');
           }}
-          onDelete={() => {
-            console.log('删除引用成功');
-          }}
           dataId={editInputData.dataId}
           collectionId={editInputData.collectionId}
         />

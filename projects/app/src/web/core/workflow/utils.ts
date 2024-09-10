@@ -24,7 +24,6 @@ import {
   getAppChatConfig,
   getGuideModule
 } from '@fastgpt/global/core/workflow/utils';
-import { getSystemVariables } from '../app/utils';
 import { TFunction } from 'next-i18next';
 import {
   FlowNodeInputItemType,
@@ -36,6 +35,7 @@ import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/sy
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash';
 import { getInputComponentProps } from '@fastgpt/global/core/workflow/node/io/utils';
+import { workflowSystemVariables } from '../app/utils';
 
 export const nodeTemplate2FlowNode = ({
   template,
@@ -62,10 +62,12 @@ export const nodeTemplate2FlowNode = ({
 };
 export const storeNode2FlowNode = ({
   item: storeNode,
-  selected = false
+  selected = false,
+  t
 }: {
   item: StoreNodeItemType;
   selected?: boolean;
+  t: TFunction;
 }): Node<FlowNodeItemType> => {
   // init some static data
   const template =
@@ -99,6 +101,9 @@ export const storeNode2FlowNode = ({
           ...storeInput,
           ...templateInput,
 
+          debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
+          toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
+
           selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
           value: storeInput.value ?? templateInput.value,
           label: storeInput.label ?? templateInput.label
@@ -125,6 +130,8 @@ export const storeNode2FlowNode = ({
         return {
           ...storeOutput,
           ...templateOutput,
+
+          description: t(templateOutput.description ?? (storeOutput.description as any)),
 
           id: storeOutput.id ?? templateOutput.id,
           label: storeOutput.label ?? templateOutput.label,
@@ -203,13 +210,11 @@ export const computedNodeInputReference = ({
 export const getRefData = ({
   variable,
   nodeList,
-  chatConfig,
-  t
+  chatConfig
 }: {
   variable?: ReferenceValueProps;
   nodeList: FlowNodeItemType[];
   chatConfig: AppChatConfigType;
-  t: TFunction;
 }) => {
   if (!variable)
     return {
@@ -218,7 +223,7 @@ export const getRefData = ({
     };
 
   const node = nodeList.find((node) => node.nodeId === variable[0]);
-  const systemVariables = getWorkflowGlobalVariables({ nodes: nodeList, chatConfig, t });
+  const systemVariables = getWorkflowGlobalVariables({ nodes: nodeList, chatConfig });
 
   if (!node) {
     const globalVariable = systemVariables.find((item) => item.key === variable?.[1]);
@@ -362,12 +367,10 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
 /* get workflowStart output to global variables */
 export const getWorkflowGlobalVariables = ({
   nodes,
-  chatConfig,
-  t
+  chatConfig
 }: {
   nodes: FlowNodeItemType[];
   chatConfig: AppChatConfigType;
-  t: TFunction;
 }): EditorVariablePickerType[] => {
   const globalVariables = formatEditorVariablePickerIcon(
     getAppChatConfig({
@@ -377,9 +380,7 @@ export const getWorkflowGlobalVariables = ({
     })?.variables || []
   );
 
-  const systemVariables = getSystemVariables(t);
-
-  return [...globalVariables, ...systemVariables];
+  return [...globalVariables, ...workflowSystemVariables];
 };
 
 export type CombinedItemType = Partial<FlowNodeInputItemType> & Partial<FlowNodeOutputItemType>;

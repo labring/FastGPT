@@ -21,8 +21,7 @@ const JsonEditor = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const variables = useCreation(() => {
     const globalVariables = getWorkflowGlobalVariables({
       nodes: nodeList,
-      chatConfig: appDetail.chatConfig,
-      t
+      chatConfig: appDetail.chatConfig
     });
 
     const nodeVariables = formatEditorVariablePickerIcon(getNodeDynamicInputs(nodeId));
@@ -57,7 +56,7 @@ const JsonEditor = ({ inputs = [], item, nodeId }: RenderInputProps) => {
       <JSONEditor
         bg={'white'}
         borderRadius={'sm'}
-        placeholder={item.placeholder}
+        placeholder={t(item.placeholder as any)}
         resize
         value={value}
         onChange={(e) => {
@@ -66,7 +65,7 @@ const JsonEditor = ({ inputs = [], item, nodeId }: RenderInputProps) => {
         variables={variables}
       />
     );
-  }, [item.placeholder, update, value, variables]);
+  }, [item.placeholder, t, update, value, variables]);
 
   return Render;
 };

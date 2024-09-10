@@ -108,12 +108,6 @@ const FieldEditModal = ({
         ],
         [
           {
-            icon: 'core/workflow/inputType/selectApp',
-            label: t('common:core.workflow.inputType.selectApp'),
-            value: FlowNodeInputTypeEnum.selectApp,
-            defaultValueType: WorkflowIOValueTypeEnum.selectApp
-          },
-          {
             icon: 'core/workflow/inputType/selectLLM',
             label: t('common:core.workflow.inputType.selectLLMModel'),
             value: FlowNodeInputTypeEnum.selectLLMModel,
@@ -318,6 +312,7 @@ const FieldEditModal = ({
       title={isEdit ? t('workflow:edit_input') : t('workflow:add_new_input')}
       maxW={['90vw', '1028px']}
       w={'100%'}
+      isCentered
     >
       <Flex h={'560px'}>
         <Stack gap={4} p={8}>
