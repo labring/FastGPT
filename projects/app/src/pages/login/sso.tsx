@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useChatStore } from '@/web/core/chat/context/storeChat';
@@ -35,9 +35,6 @@ const provider = () => {
   );
 
   const handleSSO = useCallback(async () => {
-    if (isOauthLogging) return;
-    isOauthLogging = true;
-
     try {
       const res = await ssoLogin(query);
 
