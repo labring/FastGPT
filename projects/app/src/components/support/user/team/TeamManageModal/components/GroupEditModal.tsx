@@ -65,7 +65,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
   const { run: onCreate, loading: isLoadingCreate } = useRequest2(
     async () => {
       postCreateGroup({
-        members: getValues('members'),
+        memberIdList: getValues('members'),
         name: getValues('name'),
         avatar: getValues('avatar')
       });
@@ -82,7 +82,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
         groupId: editGroupId,
         name: getValues('name'),
         avatar: getValues('avatar'),
-        members: getValues('members')
+        memberIdList: getValues('members')
       });
     },
     {

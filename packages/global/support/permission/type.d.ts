@@ -1,4 +1,4 @@
-import { RequireOnlyOne } from 'common/type/utils';
+import { RequireOnlyOne } from '../../common/type/utils';
 import { TeamMemberWithUserSchema } from '../user/team/type';
 import {
   AuthUserTypeEnum,
@@ -25,15 +25,15 @@ export type PermissionListType<T = {}> = Record<
   }
 >;
 
-export type ResourcePermissionType<T extends SubjectType = SubjectType> = {
+export type ResourcePermissionType = {
   teamId: string;
-  tmbId: T extends 'tmb' ? string : never;
-  groupId: T extends 'group' ? string : never;
-  subjectType: T;
   resourceType: ResourceType;
   permission: PermissionValueType;
   resourceId: string;
-};
+} & RequireOnlyOne<{
+  tmbId: string;
+  groupId: string;
+}>;
 
 export type ResourcePerWithTmbWithUser = Omit<ResourcePermissionType, 'tmbId'> & {
   tmbId: TeamMemberWithUserSchema;

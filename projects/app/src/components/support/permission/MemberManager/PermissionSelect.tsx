@@ -50,8 +50,8 @@ function PermissionSelect({
 }: PermissionSelectProps) {
   const { t } = useTranslation();
   const { permission, permissionList } = useContextSelector(CollaboratorContext, (v) => v);
-  const ref = useRef<any>(null);
-  const closeTimer = useRef<any>();
+  const ref = useRef<HTMLButtonElement>(null);
+  const closeTimer = useRef<NodeJS.Timeout>();
 
   const [isOpen, setIsOpen] = useState(false);
 

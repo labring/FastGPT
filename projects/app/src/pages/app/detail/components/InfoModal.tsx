@@ -7,8 +7,7 @@ import {
   Input,
   Textarea,
   ModalFooter,
-  ModalBody,
-  useDisclosure
+  ModalBody
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
@@ -35,10 +34,10 @@ import {
 } from '@fastgpt/global/support/permission/app/constant';
 import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
 import { resumeInheritPer } from '@/web/core/app/api';
 import { useI18n } from '@/web/context/I18n';
 import ResumeInherit from '@/components/support/permission/ResumeInheritText';
+import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -61,7 +60,6 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     defaultValues: appDetail
   });
   const avatar = getValues('avatar');
-  const name = getValues('name');
 
   // submit config
   const { runAsync: saveSubmitSuccess, loading: btnLoading } = useRequest2(
@@ -129,9 +127,15 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     [setValue, t, toast]
   );
 
-  const onUpdateCollaborators = async ({ tmbIds, permission }: UpdateClbPermissionProps) => {
+  const onUpdateCollaborators = async ({
+    members,
+    permission
+  }: {
+    members: string[];
+    permission: PermissionValueType;
+  }) => {
     await postUpdateAppCollaborators({
-      tmbIds,
+      members,
       permission,
       appId: appDetail._id
     });
@@ -144,16 +148,12 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     });
   };
 
-  const { runAsync: resumeInheritPermission } = useRequest2(
-    () => resumeInheritPer(appDetail._id),
-    // () => putAppById(appDetail._id, { inheritPermission: true }),
-    {
-      errorToast: t('common:resume_failed'),
-      onSuccess: () => {
-        reloadApp();
-      }
+  const { runAsync: resumeInheritPermission } = useRequest2(() => resumeInheritPer(appDetail._id), {
+    errorToast: t('common:resume_failed'),
+    onSuccess: () => {
+      reloadApp();
     }
-  );
+  });
 
   return (
     <MyModal
@@ -223,7 +223,14 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                 permission={appDetail.permission}
                 onGetCollaboratorList={() => getCollaboratorList(appDetail._id)}
                 permissionList={AppPermissionList}
-                onUpdateCollaborators={onUpdateCollaborators}
+                onUpdateCollaborators={(props) => {
+                  if (props.members) {
+                    return onUpdateCollaborators({
+                      permission: props.permission,
+                      members: props.members
+                    });
+                  }
+                }}
                 onDelOneCollaborator={onDelCollaborator}
                 refreshDeps={[appDetail.inheritPermission]}
                 isInheritPermission={appDetail.inheritPermission}

@@ -441,14 +441,14 @@ function List() {
             onGetCollaboratorList: () => getCollaboratorList(editPerDataset._id),
             permissionList: DatasetPermissionList,
             onUpdateCollaborators: ({
-              tmbIds,
+              members = [], // TODO: remove default value after group is ready
               permission
             }: {
-              tmbIds: string[];
+              members?: string[];
               permission: number;
             }) => {
               return postUpdateDatasetCollaborators({
-                tmbIds,
+                members,
                 permission,
                 datasetId: editPerDataset._id
               });

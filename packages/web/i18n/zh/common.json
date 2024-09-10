@@ -92,7 +92,10 @@
       "plugin_amount_not_enough": "插件数量已达上限~",
       "re_rank_not_enough": "无权使用检索重排~",
       "un_auth": "无权操作该团队",
-      "website_sync_not_enough": "无权使用Web站点同步~"
+      "website_sync_not_enough": "无权使用Web站点同步~",
+      "group_name_empty": "群组名称不能为空",
+      "group_not_exist": "群组不存在",
+      "cannot_delete_default_group": "不能删除默认群组"
     },
     "token_error_code": {
       "403": "登录状态无效，请重新登录"

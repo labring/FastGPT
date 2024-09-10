@@ -1,4 +1,4 @@
-import { RequireAtLeastOne, RequireOnlyOne } from 'common/type/utils';
+import { RequireAtLeastOne, RequireOnlyOne } from '../../common/type/utils';
 import { Permission } from './controller';
 import { PermissionValueType } from './type';
 
@@ -10,14 +10,11 @@ export type CollaboratorItemType = {
   avatar: string;
 };
 
-export type UpdateClbPermissionProps = RequireAtLeastOne<
-  {
-    members: string[];
-    groups: string[];
-    permission: PermissionValueType;
-  },
-  'members' | 'groups'
->;
+export type UpdateClbPermissionProps = {
+  members?: string[];
+  groups?: string[];
+  permission: PermissionValueType;
+};
 
 export type DeleteClbPermissionProps = RequireOnlyOne<{
   tmbId: string;

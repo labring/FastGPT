@@ -1,11 +1,9 @@
 import { MemberGroupSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { MongoGroupMemberModel } from './groupMemberSchema';
 import { TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
-import { getResourcePermission } from '../controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '../schema';
-import { MongoMemberGroupModel } from './memberGroupSchema';
-import { Permission } from '@fastgpt/global/support/permission/controller';
+import { getMaxGroupPer } from '../controller';
 
 export const getGroupsByTmbId = async (tmbId: string) => {
   return (
@@ -56,17 +54,28 @@ export const getGroupMembersWithInfoByGroupId = async (groupId: string) => {
 /**
  * Get tmb's group permission: the maximum permission of the group
  * @param tmbId
- * @returns
+ * @param resourceId
+ * @param resourceType
+ * @returns the maximum permission of the group
  */
 export const getGroupPermission = async ({
   tmbId,
   resourceId,
+  teamId,
   resourceType
 }: {
   tmbId: string;
-  resourceId: string;
-  resourceType: `${PerResourceTypeEnum}`;
-}) => {
+  teamId: string;
+} & (
+  | {
+      resourceId?: undefined;
+      resourceType: 'team';
+    }
+  | {
+      resourceId: string;
+      resourceType: Omit<PerResourceTypeEnum, 'team'>;
+    }
+)) => {
   const groupIds = (await getGroupsByTmbId(tmbId)).map((item) => item._id);
   const groupPermissions = (
     await MongoResourcePermission.find({
@@ -74,45 +83,9 @@ export const getGroupPermission = async ({
         $in: groupIds
       },
       resourceType,
-      resourceId: resourceType === 'team' ? undefined : resourceId,
-      teamId: resourceType === 'team' ? resourceId : undefined
+      resourceId,
+      teamId
     })
   ).map((item) => item.permission);
-  const maxPermission = groupPermissions.length > 0 ? Math.max(...groupPermissions) : undefined;
-
-  return maxPermission;
-};
-
-export const getGroupsByTeamId = async (teamId: string) => {
-  const groups = await MongoMemberGroupModel.find({
-    teamId
-  }).lean();
-
-  const members = await MongoGroupMemberModel.find({
-    groupId: {
-      $in: groups.map((item) => item._id)
-    }
-  }).lean();
-
-  const permissions = await MongoResourcePermission.find({
-    teamId,
-    resourceType: PerResourceTypeEnum.team,
-    groupId: {
-      $in: groups.map((item) => item._id)
-    }
-  }).lean();
-
-  return groups.map((group) => {
-    const memberInGroup = members
-      .filter((member) => String(member.groupId) === String(group._id))
-      .map((item) => String(item.tmbId));
-    const permission = permissions.find(
-      (permission) => String(permission.groupId) === String(group._id)
-    )?.permission;
-    return {
-      ...group,
-      members: memberInGroup,
-      permission
-    };
-  });
+  return getMaxGroupPer(groupPermissions);
 };

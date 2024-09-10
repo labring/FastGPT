@@ -4,7 +4,7 @@ import { MemberGroupCollectionName } from './memberGroupSchema';
 import { GroupMemberSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
 const { Schema } = connectionMongo;
 
-export const GroupMemberCollectionName = 'group_member';
+export const GroupMemberCollectionName = 'group_members';
 
 export const GroupMemberSchema = new Schema({
   groupId: {

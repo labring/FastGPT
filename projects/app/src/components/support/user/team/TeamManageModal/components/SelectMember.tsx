@@ -28,8 +28,8 @@ type selectedType = {
 function SelectMember({
   allMembers,
   selected = { member: [], group: [] },
-  setSelected,
-  mode = 'both'
+  setSelected
+  // mode = 'both'
 }: {
   allMembers: {
     member: memberType[];
@@ -190,8 +190,8 @@ function SelectMember({
   );
 }
 
-// This function is for use with react-hook-form
-function controller({
+// This function is for using with react-hook-form
+function ControllerWrapper({
   control,
   allMembers,
   mode = 'both',
@@ -252,4 +252,4 @@ function controller({
   );
 }
 export const UnControlledSelectMember = SelectMember;
-export default controller;
+export default ControllerWrapper;

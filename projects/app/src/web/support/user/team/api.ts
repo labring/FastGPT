@@ -1,6 +1,5 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import {
-  CollaboratorItemType,
   DeleteClbPermissionProps,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';

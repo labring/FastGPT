@@ -15,7 +15,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 
-const AddModal = dynamic(() => import('./AddModal'));
+const AddMemberWithPermissionModal = dynamic(() => import('./AddMemberWithPermissionModal'));
 
 function PermissionManage() {
   const { t } = useTranslation();
@@ -31,7 +31,7 @@ function PermissionManage() {
     onClose: onCloseAddManager
   } = useDisclosure();
 
-  const { runAsync: removePermission, loading: isRemovingPermission } = useRequest2(
+  const { runAsync: onRemovePermission, loading: isRemovingPermission } = useRequest2(
     delMemberPermission,
     {
       successToast: t('user:delete.success'),
@@ -100,7 +100,7 @@ function PermissionManage() {
                     cursor="pointer"
                     _hover={{ color: 'red.600' }}
                     onClick={() => {
-                      removePermission({
+                      onRemovePermission({
                         groupId: group._id
                       });
                     }}
@@ -128,9 +128,10 @@ function PermissionManage() {
                     cursor="pointer"
                     _hover={{ color: 'red.600' }}
                     onClick={() => {
-                      removePermission({
-                        tmbId: clb.tmbId
-                      });
+                      if (clb.tmbId)
+                        onRemovePermission({
+                          tmbId: clb.tmbId
+                        });
                     }}
                   />
                 )}
@@ -198,7 +199,7 @@ function PermissionManage() {
                     cursor="pointer"
                     _hover={{ color: 'red.600' }}
                     onClick={() => {
-                      removePermission({
+                      onRemovePermission({
                         groupId: group._id
                       });
                     }}
@@ -226,9 +227,11 @@ function PermissionManage() {
                     cursor="pointer"
                     _hover={{ color: 'red.600' }}
                     onClick={() => {
-                      removePermission({
-                        tmbId: clb.tmbId
-                      });
+                      if (clb.tmbId) {
+                        onRemovePermission({
+                          tmbId: clb.tmbId
+                        });
+                      }
                     }}
                   />
                 )}
@@ -238,7 +241,11 @@ function PermissionManage() {
         })}
       </Flex>
       {isOpenAddManager && (
-        <AddModal onClose={onCloseAddManager} onSuccess={onCloseAddManager} addType={addType} />
+        <AddMemberWithPermissionModal
+          onClose={onCloseAddManager}
+          onSuccess={onCloseAddManager}
+          addType={addType}
+        />
       )}
     </MyBox>
   );

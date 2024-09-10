@@ -3,12 +3,12 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { connectionMongo, getMongoModel } from '../../common/mongo';
-import type { ResourcePermissionType, SubjectType } from '@fastgpt/global/support/permission/type';
-import { PerResourceTypeEnum, SubjectTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { MemberGroupSchema, MemberGroupCollectionName } from './memberGroup/memberGroupSchema';
+import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { MemberGroupCollectionName } from './memberGroup/memberGroupSchema';
 const { Schema } = connectionMongo;
 
-export const ResourcePermissionCollectionName = 'resource_permission';
+export const ResourcePermissionCollectionName = 'resource_permissions';
 
 export const ResourcePermissionSchema = new Schema({
   teamId: {
@@ -62,7 +62,7 @@ try {
   console.log(error);
 }
 
-export const MongoResourcePermission = getMongoModel<ResourcePermissionType<SubjectType>>(
+export const MongoResourcePermission = getMongoModel<ResourcePermissionType>(
   ResourcePermissionCollectionName,
   ResourcePermissionSchema
 );

@@ -140,7 +140,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     refresh: refetchGroups
   } = useRequest2(() => getGroupList(), {
     manual: false,
-    refreshDeps: [userInfo?._id]
+    refreshDeps: [userInfo?.team?.teamId]
   });
 
   const isLoading =
@@ -175,7 +175,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
           permissionList={TeamPermissionList}
           onGetCollaboratorList={onGetClbList}
           onUpdateCollaborators={onUpdatePer}
-          onDelOneCollaborator={delMemberPermission}
+          onDelOneCollaborator={(tmbId) => delMemberPermission({ tmbId })}
         >
           {() => (
             <>
