@@ -45,6 +45,7 @@ export type ChatDispatchProps = {
   maxRunTimes: number;
   isToolCall?: boolean;
   workflowStreamResponse?: WorkflowResponseType;
+  workflowDispatchDeep?: number;
 };
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {
@@ -181,6 +182,7 @@ export type DispatchNodeResultType<T = {}> = {
   [DispatchNodeResponseKeyEnum.toolResponses]?: ToolRunResponseItemType; // Tool response
   [DispatchNodeResponseKeyEnum.assistantResponses]?: AIChatItemValueItemType[]; // Assistant response(Store to db)
   [DispatchNodeResponseKeyEnum.rewriteHistories]?: ChatItemType[];
+  [DispatchNodeResponseKeyEnum.runTimes]?: number;
 } & T;
 
 /* Single node props */

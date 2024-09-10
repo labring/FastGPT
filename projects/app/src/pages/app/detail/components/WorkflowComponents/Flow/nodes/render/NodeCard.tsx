@@ -248,6 +248,14 @@ const NodeCard = (props: Props) => {
     onChangeNode,
     toast
   ]);
+  const RenderHandle = useMemo(() => {
+    return (
+      <>
+        <ConnectionSourceHandle nodeId={nodeId} />
+        <ConnectionTargetHandle nodeId={nodeId} />
+      </>
+    );
+  }, [nodeId]);
 
   return (
     <Box
@@ -283,8 +291,7 @@ const NodeCard = (props: Props) => {
       <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />
       {Header}
       {children}
-      <ConnectionSourceHandle nodeId={nodeId} />
-      <ConnectionTargetHandle nodeId={nodeId} />
+      {RenderHandle}
 
       <EditTitleModal maxLength={20} />
     </Box>

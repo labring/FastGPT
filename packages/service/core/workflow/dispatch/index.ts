@@ -119,6 +119,31 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     ...props
   } = data;
 
+  // 初始化深度和自动增加深度，避免无限嵌套
+  if (!props.workflowDispatchDeep) {
+    props.workflowDispatchDeep = 1;
+  } else {
+    props.workflowDispatchDeep += 1;
+  }
+
+  if (props.workflowDispatchDeep > 20) {
+    return {
+      flowResponses: [],
+      flowUsages: [],
+      debugResponse: {
+        finishedNodes: [],
+        finishedEdges: [],
+        nextStepRunNodes: []
+      },
+      [DispatchNodeResponseKeyEnum.runTimes]: 1,
+      [DispatchNodeResponseKeyEnum.assistantResponses]: [],
+      [DispatchNodeResponseKeyEnum.toolResponses]: null,
+      newVariables: removeSystemVariable(variables)
+    };
+  }
+
+  let workflowRunTimes = 0;
+
   // set sse response headers
   if (stream && res) {
     res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
@@ -154,7 +179,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       nodeDispatchUsages,
       toolResponses,
       assistantResponses,
-      rewriteHistories
+      rewriteHistories,
+      runTimes = 1
     }: Omit<
       DispatchNodeResultType<{
         [NodeOutputKeyEnum.answerText]?: string;
@@ -163,6 +189,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       'nodeResponse'
     >
   ) {
+    // Add run times
+    workflowRunTimes += runTimes;
+    props.maxRunTimes -= runTimes;
+
     if (responseData) {
       chatResponses.push(responseData);
     }
@@ -330,7 +360,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     const nodeRunResult = await (() => {
       if (status === 'run') {
         nodeRunBeforeHook(node);
-        props.maxRunTimes--;
         addLog.debug(`[dispatchWorkFlow] nodeRunWithActive: ${node.name}`);
         return nodeRunWithActive(node);
       }
@@ -565,6 +594,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       finishedEdges: runtimeEdges,
       nextStepRunNodes: debugNextStepRunNodes
     },
+    [DispatchNodeResponseKeyEnum.runTimes]: workflowRunTimes,
     [DispatchNodeResponseKeyEnum.assistantResponses]:
       mergeAssistantResponseAnswerText(chatAssistantResponse),
     [DispatchNodeResponseKeyEnum.toolResponses]: toolRunResponse,
