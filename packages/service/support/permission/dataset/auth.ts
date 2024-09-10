@@ -90,13 +90,15 @@ export const authDatasetByTmbId = async ({
         const { dataset: parent } = await authDatasetByTmbId({
           tmbId,
           datasetId: dataset.parentId,
-          per
+          per,
+          isRoot
         });
 
         const Per = new DatasetPermission({
           per: parent.permission.value,
           isOwner
         });
+
         return {
           Per,
           defaultPermission: parent.defaultPermission
