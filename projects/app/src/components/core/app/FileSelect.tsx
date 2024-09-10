@@ -6,7 +6,6 @@ import {
   Flex,
   ModalBody,
   useDisclosure,
-  Image,
   HStack,
   Switch,
   ModalFooter
