@@ -13,6 +13,9 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { getChatHistories } from '@/web/core/chat/api';
+import index from '../../index';
 
 type HistoryItemType = {
   id: string;

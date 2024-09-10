@@ -13,6 +13,8 @@ import {
   useThrottleEffect
 } from 'ahooks';
 
+const thresholdVal = 100;
+
 type PagingData<T> = {
   pageNum: number;
   pageSize: number;
@@ -27,7 +29,10 @@ export function usePagination<ResT = any>({
   defaultRequest = true,
   type = 'button',
   onChange,
-  refreshDeps
+  elementRef,
+  refreshDeps,
+  debounceWait,
+  throttleWait
 }: {
   api: (data: any) => Promise<PagingData<ResT>>;
   pageSize?: number;
@@ -35,7 +40,10 @@ export function usePagination<ResT = any>({
   defaultRequest?: boolean;
   type?: 'button' | 'scroll';
   onChange?: (pageNum: number) => void;
+  elementRef?: React.RefObject<HTMLDivElement>;
   refreshDeps?: any[];
+  debounceWait?: number;
+  throttleWait?: number;
 }) {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -47,6 +55,8 @@ export function usePagination<ResT = any>({
 
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
 
+  const pageNumRef = useRef(pageNum);
+  pageNumRef.current = pageNum;
   const [total, setTotal] = useState(0);
   const [data, setData] = useState<ResT[]>([]);
 
