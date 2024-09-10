@@ -53,7 +53,6 @@ const NodePluginConfig = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       selected={selected}
       menuForbid={{
         debug: true,
-        rename: true,
         copy: true,
         delete: true
       }}
