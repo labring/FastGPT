@@ -30,6 +30,9 @@ type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
   minW?: string | number;
   maxW?: string | number;
+  minH?: string | number;
+  w?: string | number;
+  h?: string | number;
   selected?: boolean;
   menuForbid?: {
     debug?: boolean;
@@ -50,6 +53,9 @@ const NodeCard = (props: Props) => {
     intro,
     minW = '300px',
     maxW = '600px',
+    minH = 0,
+    w,
+    h,
     nodeId,
     selected,
     menuForbid,
@@ -255,13 +261,17 @@ const NodeCard = (props: Props) => {
   }, [nodeId]);
 
   return (
-    <Box
+    <Flex
+      flexDirection={'column'}
       minW={minW}
       maxW={maxW}
+      minH={minH}
       bg={'white'}
       borderWidth={'1px'}
       borderRadius={'md'}
       boxShadow={'1'}
+      w={w || 'full'}
+      h={h || 'full'}
       _hover={{
         boxShadow: '4',
         '& .controller-menu': {
@@ -291,7 +301,7 @@ const NodeCard = (props: Props) => {
       {RenderHandle}
 
       <EditTitleModal maxLength={20} />
-    </Box>
+    </Flex>
   );
 };
 
@@ -331,32 +341,76 @@ const MenuRender = React.memo(function MenuRender({
           pluginId: node.data.pluginId,
           version: node.data.version
         };
-        return state.concat(
-          storeNode2FlowNode({
-            item: {
-              flowNodeType: template.flowNodeType,
-              avatar: template.avatar,
-              name: template.name,
-              intro: template.intro,
-              nodeId: getNanoid(),
-              position: { x: node.position.x + 200, y: node.position.y + 50 },
-              showStatus: template.showStatus,
-              pluginId: template.pluginId,
-              inputs: template.inputs,
-              outputs: template.outputs,
-              version: template.version
-            },
-            selected: true,
-            t
-          })
-        );
+        const childNodes = state.filter((item) => item.data.parentNodeId === nodeId);
+
+        const childNodeTemplates = childNodes.map((item) => ({
+          avatar: item.data.avatar,
+          name: computedNewNodeName({
+            templateName: item.data.name,
+            flowNodeType: item.data.flowNodeType,
+            pluginId: item.data.pluginId
+          }),
+          intro: item.data.intro,
+          flowNodeType: item.data.flowNodeType,
+          inputs: item.data.inputs,
+          outputs: item.data.outputs,
+          showStatus: item.data.showStatus,
+          pluginId: item.data.pluginId,
+          version: item.data.version,
+          position: { x: item.position.x + 200, y: item.position.y + 50 }
+        }));
+        const currentNodeId = getNanoid();
+        return state
+          .concat(
+            storeNode2FlowNode({
+              item: {
+                flowNodeType: template.flowNodeType,
+                avatar: template.avatar,
+                name: template.name,
+                intro: template.intro,
+                nodeId: currentNodeId,
+                position: { x: node.position.x + 200, y: node.position.y + 50 },
+                showStatus: template.showStatus,
+                pluginId: template.pluginId,
+                inputs: template.inputs,
+                outputs: template.outputs,
+                version: template.version
+              },
+              selected: true,
+              zIndex: childNodes.length > 0 ? -1001 : 0,
+              t
+            })
+          )
+          .concat(
+            childNodeTemplates.map((template) =>
+              storeNode2FlowNode({
+                item: {
+                  flowNodeType: template.flowNodeType,
+                  avatar: template.avatar,
+                  name: template.name,
+                  intro: template.intro,
+                  nodeId: getNanoid(),
+                  position: template.position,
+                  showStatus: template.showStatus,
+                  pluginId: template.pluginId,
+                  inputs: template.inputs,
+                  outputs: template.outputs,
+                  version: template.version
+                },
+                parentNodeId: currentNodeId,
+                t
+              })
+            )
+          );
       });
     },
     [computedNewNodeName, setNodes, t]
   );
   const onDelNode = useCallback(
     (nodeId: string) => {
-      setNodes((state) => state.filter((item) => item.data.nodeId !== nodeId));
+      setNodes((state) =>
+        state.filter((item) => item.data.nodeId !== nodeId && item.data.parentNodeId !== nodeId)
+      );
       setEdges((state) => state.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
     },
     [setEdges, setNodes]

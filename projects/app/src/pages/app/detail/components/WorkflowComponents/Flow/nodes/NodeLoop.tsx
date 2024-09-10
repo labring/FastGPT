@@ -1,0 +1,66 @@
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import React, { useCallback } from 'react';
+import { Background, NodeProps, NodeResizeControl, NodeResizer, OnResize } from 'reactflow';
+import NodeCard from './render/NodeCard';
+import Container from '../components/Container';
+import IOTitle from '../components/IOTitle';
+import { useTranslation } from 'react-i18next';
+import RenderInput from './render/RenderInput';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { Box, Center, Flex } from '@chakra-ui/react';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import RenderOutput from './render/RenderOutput';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+
+const NodeLoop = ({ data, selected, zIndex }: NodeProps<FlowNodeItemType>) => {
+  const { t } = useTranslation();
+  const { nodeId, inputs, outputs, isIntersecting } = data;
+
+  const loopFlowData = inputs.find((input) => input.key === NodeInputKeyEnum.loopFlow);
+
+  return (
+    <NodeCard
+      selected={selected}
+      maxW={'full'}
+      minW={900}
+      minH={900}
+      w={loopFlowData?.value?.width}
+      h={loopFlowData?.value?.height}
+      {...data}
+    >
+      <Container position={'relative'} flex={1}>
+        <IOTitle text={t('common:common.Input')} />
+        <Box mb={6} maxW={'360'}>
+          <RenderInput nodeId={nodeId} flowInputList={inputs} />
+        </Box>
+        <FormLabel required fontWeight={'medium'} mb={3} color={'myGray.600'}>
+          {t('workflow:loop_body')}
+        </FormLabel>
+        <Box flex={1} position={'relative'} border={'base'} bg={'myGray.100'} rounded={'8px'}>
+          <Background />
+        </Box>
+        {/* <NodeResizeControl
+          position="bottom-right"
+          style={{ border: 'none', background: 'none' }}
+          minHeight={900}
+          minWidth={900}
+          children={
+            <MyIcon
+              name="common/editor/resizer"
+              w={4}
+              position={'absolute'}
+              right={1}
+              bottom={1}
+              cursor={'nwse-resize'}
+            />
+          }
+        /> */}
+      </Container>
+      <Container>
+        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+      </Container>
+    </NodeCard>
+  );
+};
+
+export default React.memo(NodeLoop);

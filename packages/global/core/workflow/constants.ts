@@ -24,6 +24,7 @@ export enum WorkflowIOValueTypeEnum {
   arrayNumber = 'arrayNumber',
   arrayBoolean = 'arrayBoolean',
   arrayObject = 'arrayObject',
+  arrayAny = 'arrayAny',
   any = 'any',
 
   chatHistory = 'chatHistory',
@@ -135,7 +136,12 @@ export enum NodeInputKeyEnum {
   fileUrlList = 'fileUrlList',
 
   // user select
-  userSelectOptions = 'userSelectOptions'
+  userSelectOptions = 'userSelectOptions',
+
+  // loop
+  loopInputArray = 'loopInputArray',
+  loopFlow = 'loopFlow',
+  loopOutputArray = 'loopOutputArray'
 }
 
 export enum NodeOutputKeyEnum {
@@ -178,7 +184,10 @@ export enum NodeOutputKeyEnum {
   ifElseResult = 'ifElseResult',
 
   //user select
-  selectResult = 'selectResult'
+  selectResult = 'selectResult',
+
+  // loop
+  loopArray = 'loopArray'
 }
 
 export enum VariableInputEnum {

@@ -14,7 +14,7 @@ import type {
   NodeTemplateListItemType,
   NodeTemplateListType
 } from '@fastgpt/global/core/workflow/type/node.d';
-import { useViewport, XYPosition } from 'reactflow';
+import { useReactFlow, useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
@@ -397,7 +397,7 @@ const RenderList = React.memo(function RenderList({
   const { isPc } = useSystem();
   const isSystemPlugin = type === TemplateTypeEnum.systemPlugin;
 
-  const { x, y, zoom } = useViewport();
+  const { screenToFlowPosition } = useReactFlow();
   const { toast } = useToast();
   const reactFlowWrapper = useContextSelector(WorkflowContext, (v) => v.reactFlowWrapper);
   const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
@@ -454,11 +454,11 @@ const RenderList = React.memo(function RenderList({
         }
       })();
 
-      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-      const mouseX = (position.x - reactFlowBounds.left - x) / zoom - 100;
-      const mouseY = (position.y - reactFlowBounds.top - y) / zoom;
+      const nodePosition = screenToFlowPosition(position);
+      const mouseX = nodePosition.x - 100;
+      const mouseY = nodePosition.y - 20;
 
-      const node = nodeTemplate2FlowNode({
+      const newNode = nodeTemplate2FlowNode({
         template: {
           ...templateNode,
           name: computedNewNodeName({
@@ -482,9 +482,37 @@ const RenderList = React.memo(function RenderList({
             description: t(output.description as any)
           }))
         },
-        position: { x: mouseX, y: mouseY - 20 },
-        selected: true
+        position: { x: mouseX, y: mouseY },
+        selected: true,
+        zIndex: templateNode.flowNodeType === FlowNodeTypeEnum.loop ? -1001 : 0
       });
+      const newNodes = [newNode];
+
+      if (templateNode.flowNodeType === FlowNodeTypeEnum.loop) {
+        const loopStartNode = moduleTemplatesFlat.find(
+          (item) => item.flowNodeType === FlowNodeTypeEnum.loopStart
+        );
+        const loopEndNode = moduleTemplatesFlat.find(
+          (item) => item.flowNodeType === FlowNodeTypeEnum.loopEnd
+        );
+
+        if (!loopStartNode || !loopEndNode) {
+          return;
+        }
+
+        const startNode = nodeTemplate2FlowNode({
+          template: loopStartNode,
+          position: { x: mouseX + 60, y: mouseY + 280 },
+          parentNodeId: newNode.id
+        });
+        const endNode = nodeTemplate2FlowNode({
+          template: { ...loopEndNode },
+          position: { x: mouseX + 420, y: mouseY + 680 },
+          parentNodeId: newNode.id
+        });
+
+        newNodes.push(startNode, endNode);
+      }
 
       setNodes((state) => {
         const newState = state
@@ -493,11 +521,11 @@ const RenderList = React.memo(function RenderList({
             selected: false
           }))
           // @ts-ignore
-          .concat(node);
+          .concat(newNodes);
         return newState;
       });
     },
-    [computedNewNodeName, reactFlowWrapper, setLoading, setNodes, t, toast, x, y, zoom]
+    [computedNewNodeName, reactFlowWrapper, setLoading, setNodes, t, toast, screenToFlowPosition]
   );
 
   const gridStyle = useMemo(() => {

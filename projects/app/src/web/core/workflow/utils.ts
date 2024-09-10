@@ -40,16 +40,21 @@ import { workflowSystemVariables } from '../app/utils';
 export const nodeTemplate2FlowNode = ({
   template,
   position,
-  selected
+  selected,
+  parentNodeId,
+  zIndex
 }: {
   template: FlowNodeTemplateType;
   position: XYPosition;
   selected?: boolean;
+  parentNodeId?: string;
+  zIndex?: number;
 }): Node<FlowNodeItemType> => {
   // replace item data
   const moduleItem: FlowNodeItemType = {
     ...template,
-    nodeId: getNanoid()
+    nodeId: getNanoid(),
+    parentNodeId
   };
 
   return {
@@ -57,16 +62,21 @@ export const nodeTemplate2FlowNode = ({
     type: moduleItem.flowNodeType,
     data: moduleItem,
     position: position,
-    selected
+    selected,
+    zIndex
   };
 };
 export const storeNode2FlowNode = ({
   item: storeNode,
   selected = false,
+  zIndex,
+  parentNodeId,
   t
 }: {
   item: StoreNodeItemType;
   selected?: boolean;
+  zIndex?: number;
+  parentNodeId?: string;
   t: TFunction;
 }): Node<FlowNodeItemType> => {
   // init some static data
@@ -88,7 +98,7 @@ export const storeNode2FlowNode = ({
     ...storeNode,
     avatar: template.avatar ?? storeNode.avatar,
     version: storeNode.version ?? template.version ?? defaultNodeVersion,
-
+    parentNodeId,
     /* 
       Inputs and outputs, New fields are added, not reduced
     */
@@ -150,7 +160,8 @@ export const storeNode2FlowNode = ({
     type: storeNode.flowNodeType,
     data: nodeItem,
     selected,
-    position: storeNode.position || { x: 0, y: 0 }
+    position: storeNode.position || { x: 0, y: 0 },
+    zIndex
   };
 };
 export const storeEdgesRenderEdge = ({ edge }: { edge: StoreEdgeItemType }) => {

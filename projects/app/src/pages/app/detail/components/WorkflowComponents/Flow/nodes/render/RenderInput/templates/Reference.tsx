@@ -130,7 +130,10 @@ export const useReference = ({
               (output) =>
                 valueType === WorkflowIOValueTypeEnum.any ||
                 output.valueType === WorkflowIOValueTypeEnum.any ||
-                output.valueType === valueType
+                output.valueType === valueType ||
+                // When valueType is arrayAny, return all array type outputs
+                (valueType === WorkflowIOValueTypeEnum.arrayAny &&
+                  output.valueType?.includes('array'))
             )
             .filter((output) => output.id !== NodeOutputKeyEnum.addOutputParam)
             .map((output) => {

@@ -95,6 +95,7 @@ export type NodeTemplateListType = {
 // react flow node type
 export type FlowNodeItemType = FlowNodeTemplateType & {
   nodeId: string;
+  parentNodeId?: string;
   isError?: boolean;
   debugResult?: {
     status: 'running' | 'success' | 'skipped' | 'failed';
@@ -103,6 +104,7 @@ export type FlowNodeItemType = FlowNodeTemplateType & {
     response?: ChatHistoryItemResType;
     isExpired?: boolean;
   };
+  isIntersecting?: boolean;
 };
 
 // store node type

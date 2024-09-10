@@ -8,9 +8,16 @@ import {
   Edge,
   Node,
   NodePositionChange,
-  XYPosition
+  XYPosition,
+  useReactFlow,
+  getNodesBounds,
+  Rect
 } from 'reactflow';
-import { EDGE_TYPE } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  EDGE_TYPE,
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
@@ -18,6 +25,7 @@ import { useKeyboard } from './useKeyboard';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { THelperLine } from '@fastgpt/global/core/workflow/type';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 /* 
     Compute helper lines for snapping nodes to each other
@@ -259,8 +267,49 @@ export const useWorkflow = () => {
   const { t } = useTranslation();
 
   const { isDowningCtrl } = useKeyboard();
-  const { setConnectingEdge, nodes, onNodesChange, setEdges, onEdgesChange, setHoverEdgeId } =
-    useContextSelector(WorkflowContext, (v) => v);
+  const {
+    setConnectingEdge,
+    nodes,
+    onNodesChange,
+    setEdges,
+    setNodes,
+    onChangeNode,
+    onEdgesChange,
+    setHoverEdgeId
+  } = useContextSelector(WorkflowContext, (v) => v);
+  const { getIntersectingNodes } = useReactFlow();
+
+  const resetNodeSizeAndPosition = (rect: Rect, parentId: string) => {
+    onChangeNode({
+      nodeId: parentId || '',
+      type: 'updateInput',
+      key: NodeInputKeyEnum.loopFlow,
+      value: {
+        key: NodeInputKeyEnum.loopFlow,
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        valueType: WorkflowIOValueTypeEnum.any,
+        label: '',
+        value: {
+          width: rect.width + 110 > 900 ? rect.width + 110 : 900,
+          height: rect.height + 380 > 900 ? rect.height + 380 : 900
+        }
+      }
+    });
+    setNodes((nodes) => {
+      return nodes.map((node) => {
+        if (node.id === parentId) {
+          return {
+            ...node,
+            position: {
+              x: rect.x - 50,
+              y: rect.y - 280
+            }
+          };
+        }
+        return node;
+      });
+    });
+  };
 
   /* helper line */
   const [helperLineHorizontal, setHelperLineHorizontal] = useState<THelperLine>();
@@ -315,6 +364,20 @@ export const useWorkflow = () => {
             status: 'warning',
             title: t('common:core.workflow.Can not delete node')
           });
+        } else if (node && nodes.find((item) => item.data.parentNodeId === node.id)) {
+          const childNodes = nodes.filter((n) => n.data.parentNodeId === node.id);
+          const childNodesChange = childNodes.map((node) => {
+            return {
+              ...change,
+              id: node.id
+            };
+          });
+          return (() => {
+            onNodesChange(changes.concat(childNodesChange));
+            setEdges((state) =>
+              state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
+            );
+          })();
         } else {
           return (() => {
             onNodesChange(changes);
@@ -325,6 +388,55 @@ export const useWorkflow = () => {
         }
       } else if (change.type === 'select' && change.selected === false && isDowningCtrl) {
         change.selected = true;
+      } else if (change.type === 'position' && change.position) {
+        const node = nodes.find((n) => n.id === change.id);
+        if (node && node.data.parentNodeId) {
+          const parentId = node.data.parentNodeId;
+          const parentNode = nodes.find((n) => n.id === parentId);
+          const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
+
+          if (!parentNode) return;
+          const rect = getNodesBounds(childNodes);
+          return (() => {
+            customApplyNodeChanges(changes, childNodes);
+            onNodesChange(changes);
+            resetNodeSizeAndPosition(rect, parentId);
+          })();
+        } else if (node && nodes.find((item) => item.data.parentNodeId === node.id)) {
+          const parentId = node.id;
+          const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
+          const initPosition = node.position;
+          const deltaX = change.position.x - initPosition.x;
+          const deltaY = change.position.y - initPosition.y;
+          const childNodesChange = childNodes.map((node) => {
+            if (change.dragging) {
+              return {
+                ...change,
+                id: node.id,
+                position: {
+                  x: node.position.x + deltaX,
+                  y: node.position.y + deltaY
+                },
+                positionAbsolute: {
+                  x: node.position.x + deltaX,
+                  y: node.position.y + deltaY
+                }
+              };
+            } else {
+              return {
+                ...change,
+                id: node.id
+              };
+            }
+          });
+          return (() => {
+            // customApplyNodeChanges(
+            //   changes,
+            //   nodes.filter((node) => !node.data.parentNodeId)
+            // );
+            onNodesChange(changes.concat(childNodesChange));
+          })();
+        }
       }
     }
 
@@ -338,6 +450,42 @@ export const useWorkflow = () => {
     },
     [onEdgesChange]
   );
+  // const onNodeDrag = useCallback((_: any, node: Node) => {}, []);
+
+  const onNodeDragStop = useCallback((_: any, node: Node) => {
+    const intersections = getIntersectingNodes(node);
+    const parentNode = intersections.find((item) => item.type === 'loop');
+
+    const unSupportedTypes = [
+      FlowNodeTypeEnum.workflowStart,
+      FlowNodeTypeEnum.loop,
+      FlowNodeTypeEnum.pluginInput,
+      FlowNodeTypeEnum.pluginOutput,
+      FlowNodeTypeEnum.systemConfig
+    ];
+
+    if (parentNode && !node.data.parentNodeId) {
+      if (unSupportedTypes.includes(node.type as FlowNodeTypeEnum)) {
+        return toast({
+          status: 'warning',
+          title: t('workflow:can_not_loop')
+        });
+      }
+      onChangeNode({
+        nodeId: node.id,
+        type: 'attr',
+        key: 'parentNodeId',
+        value: parentNode.id
+      });
+      setEdges((state) =>
+        state.filter((edge) => edge.source !== node.id && edge.target !== node.id)
+      );
+
+      const childNodes = nodes.filter((n) => n.data.parentNodeId === parentNode.id).concat(node);
+      const rect = getNodesBounds(childNodes);
+      resetNodeSizeAndPosition(rect, parentNode.id);
+    }
+  }, []);
 
   /* connect */
   const onConnectStart = useCallback(
@@ -403,7 +551,9 @@ export const useWorkflow = () => {
     onEdgeMouseEnter,
     onEdgeMouseLeave,
     helperLineHorizontal,
-    helperLineVertical
+    helperLineVertical,
+    // onNodeDrag,
+    onNodeDragStop
   };
 };
 
