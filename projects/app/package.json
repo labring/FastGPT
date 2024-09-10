@@ -26,6 +26,7 @@
     "@fortaine/fetch-event-source": "^3.0.6",
     "@node-rs/jieba": "1.10.0",
     "@tanstack/react-query": "^4.24.10",
+    "@types/jest": "^29.5.2",
     "@types/nprogress": "^0.2.0",
     "ahooks": "^3.7.11",
     "axios": "^1.5.1",
@@ -64,6 +65,7 @@
     "remark-math": "^6.0.0",
     "request-ip": "^3.3.0",
     "sass": "^1.58.3",
+    "ts-jest": "^29.1.0",
     "use-context-selector": "^1.4.4",
     "zustand": "^4.3.5"
   },
