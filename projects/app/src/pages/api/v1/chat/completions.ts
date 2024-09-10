@@ -59,6 +59,7 @@ import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { getPluginRunUserQuery } from '@fastgpt/service/core/workflow/utils';
+import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -264,7 +265,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           chatConfig,
           histories: newHistories,
           stream,
-          maxRunTimes: 200,
+          maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
           workflowStreamResponse: workflowResponseWrite
         });
       }

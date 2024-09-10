@@ -66,7 +66,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     appId: String(plugin.id)
   };
 
-  const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
+  const { flowResponses, flowUsages, assistantResponses, runTimes } = await dispatchWorkFlow({
     ...props,
     runningAppInfo: {
       id: String(plugin.id),
@@ -92,6 +92,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   return {
     assistantResponses,
     // responseData, // debug
+    [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: plugin.avatar,
       totalPoints: usagePoints,

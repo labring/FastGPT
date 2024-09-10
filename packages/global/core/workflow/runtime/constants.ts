@@ -24,7 +24,8 @@ export enum DispatchNodeResponseKeyEnum {
   assistantResponses = 'assistantResponses', // assistant response
   rewriteHistories = 'rewriteHistories', // If have the response, workflow histories will be rewrite
 
-  interactive = 'INTERACTIVE' // is interactive
+  interactive = 'INTERACTIVE', // is interactive
+  runTimes = 'runTimes' // run times
 }
 
 export const needReplaceReferenceInputTypeList = [
