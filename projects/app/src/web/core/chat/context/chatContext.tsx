@@ -47,6 +47,7 @@ type ChatContextType = {
     data: ChatHistoryItemType;
   }[];
   histories: ChatHistoryItemType[];
+  newChatTitle: ({ chatId, newTitle }: { chatId: string; newTitle: string }) => void;
 };
 
 export const ChatContext = createContext<ChatContextType>({
@@ -54,6 +55,9 @@ export const ChatContext = createContext<ChatContextType>({
   // forbidLoadChat: undefined,
   historyList: [],
   histories: [],
+  newChatTitle: function (): void {
+    throw new Error('Function not implemented.');
+  },
   ScrollList: function (): ReactNode {
     throw new Error('Function not implemented.');
   },
@@ -202,7 +206,16 @@ const ChatContextProvider = ({
       }
     }
   );
-
+  const newChatTitle = useCallback(
+    ({ chatId, newTitle }: { chatId: string; newTitle: string }) => {
+      histories.find((item) => item.chatId === chatId)
+        ? setHistories((state) =>
+            state.map((item) => (item.chatId === chatId ? { ...item, title: newTitle } : item))
+          )
+        : loadHistories();
+    },
+    [histories, loadHistories, setHistories]
+  );
   const isLoading =
     isUpdatingHistory || isDeletingHistory || isClearingHistory || isPaginationLoading;
 
@@ -222,7 +235,8 @@ const ChatContextProvider = ({
     setHistories,
     ScrollList,
     loadHistories,
-    histories
+    histories,
+    newChatTitle
   };
   return <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>;
 };
