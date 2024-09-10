@@ -325,7 +325,10 @@ export const runToolWithToolChoice = async (
           dispatchFlowResponse,
           totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
           completeMessages,
-          assistantResponses: toolNodeAssistants
+          assistantResponses: toolNodeAssistants,
+          runTimes:
+            (response?.runTimes || 0) +
+            flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0)
         };
       }
 
@@ -338,7 +341,10 @@ export const runToolWithToolChoice = async (
         {
           dispatchFlowResponse,
           totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
-          assistantResponses: toolNodeAssistants
+          assistantResponses: toolNodeAssistants,
+          runTimes:
+            (response?.runTimes || 0) +
+            flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0)
         }
       );
     } else {
@@ -358,7 +364,8 @@ export const runToolWithToolChoice = async (
         dispatchFlowResponse: response?.dispatchFlowResponse || [],
         totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
         completeMessages,
-        assistantResponses: [...assistantResponses, ...toolNodeAssistant.value]
+        assistantResponses: [...assistantResponses, ...toolNodeAssistant.value],
+        runTimes: (response?.runTimes || 0) + 1
       };
     }
   } catch (error) {

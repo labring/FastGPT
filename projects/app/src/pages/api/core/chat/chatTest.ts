@@ -27,6 +27,7 @@ import {
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -120,7 +121,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       chatConfig,
       histories: chatMessages,
       stream: true,
-      maxRunTimes: 200,
+      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
       workflowStreamResponse: workflowResponseWrite
     });
 

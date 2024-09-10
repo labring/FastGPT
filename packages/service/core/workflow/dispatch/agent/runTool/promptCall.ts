@@ -180,7 +180,8 @@ export const runToolWithPromptCall = async (
       dispatchFlowResponse: response?.dispatchFlowResponse || [],
       totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
       completeMessages,
-      assistantResponses: [...assistantResponses, ...toolNodeAssistant.value]
+      assistantResponses: [...assistantResponses, ...toolNodeAssistant.value],
+      runTimes: (response?.runTimes || 0) + 1
     };
   }
 
@@ -318,7 +319,8 @@ ANSWER: `;
       dispatchFlowResponse,
       totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
       completeMessages: filterMessages,
-      assistantResponses: toolNodeAssistants
+      assistantResponses: toolNodeAssistants,
+      runTimes: (response?.runTimes || 0) + toolsRunResponse.moduleRunResponse.runTimes
     };
   }
 
@@ -330,7 +332,8 @@ ANSWER: `;
     {
       dispatchFlowResponse,
       totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
-      assistantResponses: toolNodeAssistants
+      assistantResponses: toolNodeAssistants,
+      runTimes: (response?.runTimes || 0) + toolsRunResponse.moduleRunResponse.runTimes
     }
   );
 };

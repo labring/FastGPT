@@ -9,6 +9,7 @@ import { PostWorkflowDebugProps, PostWorkflowDebugResponse } from '@/global/core
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { defaultApp } from '@/web/core/app/constants';
+import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 
 async function handler(
   req: NextApiRequest,
@@ -57,7 +58,7 @@ async function handler(
     chatConfig: defaultApp.chatConfig,
     histories: [],
     stream: false,
-    maxRunTimes: 200
+    maxRunTimes: WORKFLOW_MAX_RUN_TIMES
   });
 
   pushChatUsage({

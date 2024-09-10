@@ -75,7 +75,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     appId: String(appData._id)
   };
 
-  const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
+  const { flowResponses, flowUsages, assistantResponses, runTimes } = await dispatchWorkFlow({
     ...props,
     runningAppInfo: {
       id: String(appData._id),
@@ -107,6 +107,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const { text } = chatValue2RuntimePrompt(assistantResponses);
 
   return {
+    [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: appData.avatar,
       query: userChatInput,
