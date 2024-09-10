@@ -10,7 +10,6 @@ import {
   HStack
 } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -79,7 +78,6 @@ const EditForm = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const { allDatasets } = useDatasetStore();
-  const { llmModelList } = useSystemStore();
   const [, startTst] = useTransition();
 
   const selectDatasets = useMemo(
@@ -506,6 +504,8 @@ const EditForm = ({
                 ...e
               }
             }));
+
+            console.dir(e);
           }}
         />
       )}
