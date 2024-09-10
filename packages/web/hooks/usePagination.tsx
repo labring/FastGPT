@@ -6,6 +6,7 @@ import { useTranslation } from 'next-i18next';
 import { throttle } from 'lodash';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { useRequest } from 'ahooks';
 
 const thresholdVal = 100;
 
@@ -23,7 +24,10 @@ export function usePagination<ResT = any>({
   defaultRequest = true,
   type = 'button',
   onChange,
-  elementRef
+  elementRef,
+  refreshDeps,
+  debounceWait,
+  throttleWait
 }: {
   api: (data: any) => Promise<PagingData<ResT>>;
   pageSize?: number;
@@ -32,10 +36,14 @@ export function usePagination<ResT = any>({
   type?: 'button' | 'scroll';
   onChange?: (pageNum: number) => void;
   elementRef?: React.RefObject<HTMLDivElement>;
+  refreshDeps?: any[];
+  debounceWait?: number;
+  throttleWait?: number;
 }) {
   const { toast } = useToast();
   const { t } = useTranslation();
   const [pageNum, setPageNum] = useState(1);
+  const noMore = useRef(false);
   const pageNumRef = useRef(pageNum);
   pageNumRef.current = pageNum;
   const [total, setTotal] = useState(0);
@@ -48,14 +56,19 @@ export function usePagination<ResT = any>({
 
   const { mutate, isLoading } = useMutation({
     mutationFn: async (num: number = pageNum) => {
+      if (noMore.current) return;
       try {
         const res: PagingData<ResT> = await api({
           pageNum: num,
           pageSize,
           ...params
         });
-        setPageNum(num);
         res.total !== undefined && setTotal(res.total);
+
+        if (res.total !== undefined && res.total <= data.length + res.data.length) {
+          noMore.current = true;
+        }
+        setPageNum(num);
         if (type === 'scroll') {
           setData((prevData) => [...prevData, ...res.data]);
         } else {
@@ -166,6 +179,19 @@ export function usePagination<ResT = any>({
     [data.length, isLoading, mutate, pageNum, total]
   );
 
+  const { runAsync: refresh } = useRequest(
+    async () => {
+      setData([]);
+      defaultRequest && mutate(1);
+    },
+    {
+      manual: false,
+      refreshDeps,
+      debounceWait: data.length === 0 ? 0 : debounceWait,
+      throttleWait
+    }
+  );
+
   useEffect(() => {
     if (!elementRef?.current || type !== 'scroll') return;
 
@@ -179,10 +205,7 @@ export function usePagination<ResT = any>({
       // 内容总高度
       const scrollHeight = element.scrollHeight;
       // 判断是否滚动到底部
-      if (
-        scrollTop + clientHeight + thresholdVal >= scrollHeight &&
-        dataLengthRef.current < totalRef.current
-      ) {
+      if (scrollTop + clientHeight + thresholdVal >= scrollHeight && !noMore.current) {
         mutate(pageNumRef.current + 1);
       }
     }, 100);
@@ -197,10 +220,6 @@ export function usePagination<ResT = any>({
     };
   }, [elementRef, mutate, pageNum, type, total, data.length]);
 
-  useEffect(() => {
-    defaultRequest && mutate(1);
-  }, []);
-
   return {
     pageNum,
     pageSize,
@@ -210,6 +229,7 @@ export function usePagination<ResT = any>({
     isLoading,
     Pagination,
     ScrollData,
-    getData: mutate
+    getData: mutate,
+    refresh
   };
 }

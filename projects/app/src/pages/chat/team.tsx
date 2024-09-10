@@ -58,6 +58,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
 
   const {
+    newChatTitle,
     loadHistories,
     onUpdateHistory,
     onClearHistories,
@@ -114,7 +115,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       if (completionChatId !== chatId) {
         onChangeChatId(completionChatId, true);
       }
-      loadHistories();
+      newChatTitle({ chatId: completionChatId, newTitle });
 
       // update chat window
       setChatData((state) => ({
@@ -302,19 +303,6 @@ const Render = (props: Props) => {
     }
   );
 
-  const { data: histories = [], runAsync: loadHistories } = useRequest2(
-    async () => {
-      if (teamId && appId && teamToken) {
-        return getChatHistories({ teamId, appId, teamToken: teamToken });
-      }
-      return [];
-    },
-    {
-      manual: false,
-      refreshDeps: [appId, teamId, teamToken]
-    }
-  );
-
   // 初始化聊天框
   useEffect(() => {
     (async () => {
@@ -331,7 +319,7 @@ const Render = (props: Props) => {
   }, [appId, loadMyApps, myApps, router, t, toast]);
 
   return (
-    <ChatContextProvider histories={histories} loadHistories={loadHistories}>
+    <ChatContextProvider params={{ teamId, appId, teamToken: teamToken }}>
       <Chat {...props} myApps={myApps} />
     </ChatContextProvider>
   );

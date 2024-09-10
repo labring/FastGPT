@@ -20,6 +20,7 @@ import type {
 import { UpdateChatFeedbackProps } from '@fastgpt/global/core/chat/api';
 import { AuthTeamTagTokenProps } from '@fastgpt/global/support/user/team/tag';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
+import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 /**
  * 获取初始化聊天内容
@@ -33,8 +34,8 @@ export const getTeamChatInfo = (data: InitTeamChatProps) =>
 /**
  * get current window history(appid or shareId)
  */
-export const getChatHistories = (data: GetHistoriesProps) =>
-  POST<ChatHistoryItemType[]>('/core/chat/getHistories', data);
+export const getChatHistories = (data: PaginationProps<GetHistoriesProps>) =>
+  POST<PaginationResponse<ChatHistoryItemType>>('/core/chat/getHistories', data);
 /**
  * get detail responseData by dataId appId chatId
  */

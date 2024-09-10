@@ -53,14 +53,17 @@ const Chat = ({
 
   const { setLastChatAppId } = useChatStore();
   const {
-    loadHistories,
+    setHistories: setRecordHistories,
+    loadHistories: loadRecordHistories,
+    histories: recordHistories,
     onUpdateHistory,
     onClearHistories,
     onDelHistory,
     isOpenSlider,
     onCloseSlider,
     forbidLoadChat,
-    onChangeChatId
+    onChangeChatId,
+    newChatTitle
   } = useContextSelector(ChatContext, (v) => v);
   const {
     ChatBoxRef,
@@ -151,8 +154,7 @@ const Chat = ({
           onChangeChatId(completionChatId, true);
         }
       }
-      loadHistories();
-
+      newChatTitle({ chatId: completionChatId, newTitle });
       // update chat window
       setChatData((state) => ({
         ...state,
@@ -161,7 +163,7 @@ const Chat = ({
 
       return { responseText, responseData, isNewChat: forbidLoadChat.current };
     },
-    [appId, chatId, forbidLoadChat, loadHistories, onChangeChatId]
+    [chatId, appId, newChatTitle, forbidLoadChat, onChangeChatId]
   );
 
   return (
@@ -286,14 +288,6 @@ const Render = (props: Props) => {
     }
   );
 
-  const { data: histories = [], runAsync: loadHistories } = useRequest2(
-    () => (appId ? getChatHistories({ appId }) : Promise.resolve([])),
-    {
-      manual: false,
-      refreshDeps: [appId]
-    }
-  );
-
   // 初始化聊天框
   useMount(async () => {
     // pc: redirect to latest model chat
@@ -328,7 +322,7 @@ const Render = (props: Props) => {
   });
 
   return (
-    <ChatContextProvider histories={histories} loadHistories={loadHistories}>
+    <ChatContextProvider params={{ appId }}>
       <Chat {...props} myApps={myApps} />
     </ChatContextProvider>
   );

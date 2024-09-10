@@ -75,6 +75,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
   const outLinkUid: string = authToken || localUId;
 
   const {
+    newChatTitle,
     loadHistories,
     onUpdateHistory,
     onClearHistories,
@@ -140,7 +141,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
       if (completionChatId !== chatId) {
         onChangeChatId(completionChatId, true);
       }
-      loadHistories();
+      newChatTitle({ chatId: completionChatId, newTitle });
 
       // update chat window
       setChatData((state) => ({
@@ -354,16 +355,8 @@ const Render = (props: Props) => {
   const { localUId } = useShareChatStore();
   const outLinkUid: string = authToken || localUId;
 
-  const { data: histories = [], runAsync: loadHistories } = useRequest2(
-    () => (shareId && outLinkUid ? getChatHistories({ shareId, outLinkUid }) : Promise.resolve([])),
-    {
-      manual: false,
-      refreshDeps: [shareId, outLinkUid]
-    }
-  );
-
   return (
-    <ChatContextProvider histories={histories} loadHistories={loadHistories}>
+    <ChatContextProvider params={{ shareId, outLinkUid }}>
       <OutLink {...props} />;
     </ChatContextProvider>
   );
