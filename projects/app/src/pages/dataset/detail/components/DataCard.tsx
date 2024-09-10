@@ -29,6 +29,7 @@ import TagsPopOver from './CollectionCard/TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import Markdown from '@/components/Markdown';
+import { DatasetDataListItemType } from '@/global/core/dataset/type';
 
 const DataCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
