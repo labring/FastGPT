@@ -41,11 +41,11 @@ const PublishHistoriesSlider = ({
 
   const [selectedHistoryId, setSelectedHistoryId] = useState<string>();
 
-  const { list, ScrollList, isLoading } = useScrollPagination(getPublishList, {
+  const { scrollDataList, ScrollList, isLoading } = useScrollPagination(getPublishList, {
     itemHeight: 49,
     overscan: 20,
 
-    pageSize: 30,
+    pageSize: 20,
     defaultParams: {
       appId
     }
@@ -132,7 +132,7 @@ const PublishHistoriesSlider = ({
           {appT('current_settings')}
         </Button>
         <ScrollList isLoading={showLoading} flex={'1 0 0'} px={5}>
-          {list.map((data, index) => {
+          {scrollDataList.map((data, index) => {
             const item = data.data;
 
             return (
@@ -159,7 +159,7 @@ const PublishHistoriesSlider = ({
                   borderColor={'primary.600'}
                   borderRadius={'50%'}
                   position={'relative'}
-                  {...(index !== list.length - 1 && {
+                  {...(index !== scrollDataList.length - 1 && {
                     _after: {
                       content: '""',
                       height: '40px',

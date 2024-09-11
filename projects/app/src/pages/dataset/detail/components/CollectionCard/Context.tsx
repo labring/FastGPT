@@ -120,11 +120,9 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       searchText,
       filterTags
     },
-    defaultRequest: false
+    // defaultRequest: false,
+    refreshDeps: [parentId, searchText, filterTags]
   });
-  useEffect(() => {
-    getData(1);
-  }, [parentId]);
 
   const contextValue: CollectionPageContextType = {
     openWebSyncConfirm: openWebSyncConfirm(onUpdateDatasetWebsiteConfig),

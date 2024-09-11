@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
@@ -75,6 +75,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
   const outLinkUid: string = authToken || localUId;
 
   const {
+    onUpdateHistoryTitle,
     loadHistories,
     onUpdateHistory,
     onClearHistories,
@@ -140,7 +141,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
       if (completionChatId !== chatId) {
         onChangeChatId(completionChatId, true);
       }
-      loadHistories();
+      onUpdateHistoryTitle({ chatId: completionChatId, newTitle });
 
       // update chat window
       setChatData((state) => ({
@@ -168,9 +169,9 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
       shareId,
       chatData.app.type,
       outLinkUid,
+      onUpdateHistoryTitle,
       forbidLoadChat,
-      onChangeChatId,
-      loadHistories
+      onChangeChatId
     ]
   );
 
@@ -354,16 +355,12 @@ const Render = (props: Props) => {
   const { localUId } = useShareChatStore();
   const outLinkUid: string = authToken || localUId;
 
-  const { data: histories = [], runAsync: loadHistories } = useRequest2(
-    () => (shareId && outLinkUid ? getChatHistories({ shareId, outLinkUid }) : Promise.resolve([])),
-    {
-      manual: false,
-      refreshDeps: [shareId, outLinkUid]
-    }
-  );
+  const contextParams = useMemo(() => {
+    return { shareId, outLinkUid };
+  }, [shareId, outLinkUid]);
 
   return (
-    <ChatContextProvider histories={histories} loadHistories={loadHistories}>
+    <ChatContextProvider params={contextParams}>
       <OutLink {...props} />;
     </ChatContextProvider>
   );

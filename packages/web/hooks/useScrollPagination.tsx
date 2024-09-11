@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -9,10 +9,13 @@ import {
   useMemoizedFn,
   useScroll,
   useVirtualList,
-  useRequest
+  useRequest,
+  useThrottleEffect
 } from 'ahooks';
 import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
+
+type ItemHeight<T> = (index: number, data: T) => number;
 
 export type ScrollListType = ({
   children,
@@ -31,8 +34,6 @@ export function useScrollPagination<
 >(
   api: (data: TParams) => Promise<TData>,
   {
-    debounceWait,
-    throttleWait,
     refreshDeps,
     itemHeight = 50,
     overscan = 10,
@@ -40,11 +41,9 @@ export function useScrollPagination<
     pageSize = 10,
     defaultParams = {}
   }: {
-    debounceWait?: number;
-    throttleWait?: number;
     refreshDeps?: any[];
 
-    itemHeight: number;
+    itemHeight: number | ItemHeight<TData['list'][0]>;
     overscan?: number;
 
     pageSize?: number;
@@ -123,43 +122,56 @@ export function useScrollPagination<
       isLoading?: boolean;
     } & BoxProps) => {
       return (
-        <>
-          <MyBox isLoading={isLoading} ref={containerRef} overflow={'overlay'} {...props}>
-            <Box ref={wrapperRef}>{children}</Box>
+        <MyBox isLoading={isLoading} ref={containerRef} overflow={'overlay'} {...props}>
+          <Box ref={wrapperRef}>
+            {children}
             {noMore.current && list.length > 0 && (
               <Box py={4} textAlign={'center'} color={'myGray.600'} fontSize={'xs'}>
                 {t('common:common.No more data')}
               </Box>
             )}
-            {list.length === 0 && !isLoading && EmptyChildren && <>{EmptyChildren}</>}
-          </MyBox>
-        </>
+          </Box>
+
+          {list.length === 0 && !isLoading && EmptyChildren && <>{EmptyChildren}</>}
+        </MyBox>
       );
     }
   );
 
-  useRequest(() => loadData(1), {
-    refreshDeps,
-    debounceWait: data.length === 0 ? 0 : debounceWait,
-    throttleWait
-  });
-
-  const scroll = useScroll(containerRef);
-  useEffect(() => {
-    if (!containerRef.current || list.length === 0) return;
-
-    const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-
-    if (scrollTop + clientHeight >= scrollHeight - 100) {
-      loadData(current + 1);
+  // Reload data
+  useRequest(
+    async () => {
+      console.log('reload', 11111);
+      loadData(1);
+    },
+    {
+      manual: false,
+      refreshDeps
     }
-  }, [scroll]);
+  );
+
+  // Check if scroll to bottom
+  const scroll = useScroll(containerRef);
+  useThrottleEffect(
+    () => {
+      if (!containerRef.current || list.length === 0) return;
+      const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+      console.log('=======', 111111);
+      if (scrollTop + clientHeight >= scrollHeight - 100) {
+        loadData(current + 1);
+      }
+    },
+    [scroll],
+    {
+      wait: 50
+    }
+  );
 
   return {
     containerRef,
-    list,
+    scrollDataList: list,
     total,
-    data,
+    totalData: data,
     setData,
     isLoading,
     ScrollList,

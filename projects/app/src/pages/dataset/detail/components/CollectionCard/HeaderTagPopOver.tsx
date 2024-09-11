@@ -5,15 +5,13 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useTranslation } from 'next-i18next';
-import { useCallback, useState } from 'react';
 import { CollectionPageContext } from './Context';
-import { debounce, isEqual } from 'lodash';
+import { isEqual } from 'lodash';
 import TagManageModal from './TagManageModal';
 import { DatasetTagType } from '@fastgpt/global/core/dataset/type';
 
 const HeaderTagPopOver = () => {
   const { t } = useTranslation();
-  const [checkedTags, setCheckedTags] = useState<string[]>([]);
 
   const {
     searchDatasetTagsResult,
@@ -29,12 +27,8 @@ const HeaderTagPopOver = () => {
     CollectionPageContext,
     (v) => v
   );
-  const debounceRefetch = useCallback(
-    debounce(() => {
-      getData(1);
-    }, 300),
-    []
-  );
+
+  const checkedTags = filterTags;
 
   const {
     isOpen: isTagManageModalOpen,
@@ -46,16 +40,13 @@ const HeaderTagPopOver = () => {
     let currentCheckedTags = [];
     if (checkedTags.includes(tag._id)) {
       currentCheckedTags = checkedTags.filter((t) => t !== tag._id);
-      setCheckedTags(currentCheckedTags);
       setCheckedDatasetTag(checkedDatasetTag.filter((t) => t._id !== tag._id));
     } else {
       currentCheckedTags = [...checkedTags, tag._id];
-      setCheckedTags([...checkedTags, tag._id]);
       setCheckedDatasetTag([...checkedDatasetTag, tag]);
     }
     if (isEqual(currentCheckedTags, filterTags)) return;
     setFilterTags(currentCheckedTags);
-    debounceRefetch();
   };
 
   return (
@@ -181,9 +172,7 @@ const HeaderTagPopOver = () => {
                 variant={'unstyled'}
                 onClick={() => {
                   setSearchTagKey('');
-                  setCheckedTags([]);
                   setFilterTags([]);
-                  debounceRefetch();
                   onClose();
                 }}
               >
@@ -211,7 +200,7 @@ const HeaderTagPopOver = () => {
         <TagManageModal
           onClose={() => {
             onCloseTagManageModal();
-            debounceRefetch();
+            getData(1);
           }}
         />
       )}
