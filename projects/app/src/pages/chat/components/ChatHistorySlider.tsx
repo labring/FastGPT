@@ -9,8 +9,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { AppListItemType } from '@fastgpt/global/core/app/type';
-import { useI18n } from '@/web/context/I18n';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
@@ -52,19 +50,19 @@ const ChatHistorySlider = ({
   const { userInfo } = useUserStore();
 
   const {
-    histories,
     onChangeChatId,
     chatId: activeChatId,
-    isLoading
+    isLoading,
+    ScrollList,
+    historyList,
+    histories
   } = useContextSelector(ChatContext, (v) => v);
 
   const concatHistory = useMemo(() => {
-    const formatHistories: HistoryItemType[] = histories.map((item) => ({
-      id: item.chatId,
-      title: item.title,
-      customTitle: item.customTitle,
-      top: item.top
-    }));
+    const formatHistories: HistoryItemType[] = historyList.map((data) => {
+      const item = data.data;
+      return { id: item.chatId, title: item.title, customTitle: item.customTitle, top: item.top };
+    });
     const newChat: HistoryItemType = {
       id: activeChatId,
       title: t('common:core.chat.New Chat')
@@ -72,7 +70,7 @@ const ChatHistorySlider = ({
     const activeChat = histories.find((item) => item.chatId === activeChatId);
 
     return !activeChat ? [newChat].concat(formatHistories) : formatHistories;
-  }, [activeChatId, histories, t]);
+  }, [activeChatId, histories, historyList, t]);
 
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
@@ -175,20 +173,19 @@ const ChatHistorySlider = ({
         )}
       </Flex>
 
-      <Box flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
+      <ScrollList flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
         {/* chat history */}
         <>
           {concatHistory.map((item, i) => (
             <Flex
               position={'relative'}
-              key={item.id || `${i}`}
+              key={item.id}
               alignItems={'center'}
-              py={2.5}
               px={4}
+              h={'44px'}
               cursor={'pointer'}
               userSelect={'none'}
               borderRadius={'md'}
-              mb={2}
               fontSize={'sm'}
               _hover={{
                 bg: 'myGray.50',
@@ -207,6 +204,9 @@ const ChatHistorySlider = ({
                       onChangeChatId(item.id);
                     }
                   })}
+              {...(i !== concatHistory.length - 1 && {
+                mb: '8px'
+              })}
             >
               <MyIcon
                 name={item.id === activeChatId ? 'core/chat/chatFill' : 'core/chat/chatLight'}
@@ -283,7 +283,7 @@ const ChatHistorySlider = ({
             </Flex>
           ))}
         </>
-      </Box>
+      </ScrollList>
 
       {/* exec */}
       {!isPc && isUserChatPage && (
