@@ -2,10 +2,8 @@
 
 export const iconPaths = {
   book: () => import('./icons/book.svg'),
-  visible: () => import('./icons/visible.svg'),
   change: () => import('./icons/change.svg'),
   chatSend: () => import('./icons/chatSend.svg'),
-  configmap: () => import('./icons/configmap.svg'),
   closeSolid: () => import('./icons/closeSolid.svg'),
   collectionLight: () => import('./icons/collectionLight.svg'),
   collectionSolid: () => import('./icons/collectionSolid.svg'),
@@ -80,6 +78,7 @@ export const iconPaths = {
   'common/voiceLight': () => import('./icons/common/voiceLight.svg'),
   'common/warn': () => import('./icons/common/warn.svg'),
   'common/wechatFill': () => import('./icons/common/wechatFill.svg'),
+  configmap: () => import('./icons/configmap.svg'),
   copy: () => import('./icons/copy.svg'),
   'core/app/aiFill': () => import('./icons/core/app/aiFill.svg'),
   'core/app/aiLight': () => import('./icons/core/app/aiLight.svg'),
@@ -176,6 +175,7 @@ export const iconPaths = {
   'core/workflow/debugBlue': () => import('./icons/core/workflow/debugBlue.svg'),
   'core/workflow/debugNext': () => import('./icons/core/workflow/debugNext.svg'),
   'core/workflow/debugResult': () => import('./icons/core/workflow/debugResult.svg'),
+  'core/workflow/dragIcon': () => import('./icons/core/workflow/dragIcon.svg'),
   'core/workflow/edgeArrow': () => import('./icons/core/workflow/edgeArrow.svg'),
   'core/workflow/grout': () => import('./icons/core/workflow/grout.svg'),
   'core/workflow/inputType/customVariable': () =>
@@ -332,5 +332,6 @@ export const iconPaths = {
   text: () => import('./icons/text.svg'),
   union: () => import('./icons/union.svg'),
   user: () => import('./icons/user.svg'),
+  visible: () => import('./icons/visible.svg'),
   wx: () => import('./icons/wx.svg')
 };

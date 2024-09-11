@@ -6,7 +6,7 @@ import {
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -48,7 +48,8 @@ import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { formatTime2YMDHMS, formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import type { InitProps } from '@/pages/app/detail/components/PublishHistoriesSlider';
-import { cloneDeep, isEqual } from 'lodash';
+import { cloneDeep } from 'lodash';
+import { SetState } from 'ahooks/lib/createUseStorageState';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -182,6 +183,10 @@ type WorkflowContextType = {
       | undefined
     >
   >;
+
+  //
+  workflowControlMode?: 'drag' | 'select';
+  setWorkflowControlMode: (value?: SetState<'drag' | 'select'> | undefined) => void;
 };
 
 type DebugDataType = {
@@ -323,7 +328,11 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     throw new Error('Function not implemented.');
   },
   canRedo: false,
-  canUndo: false
+  canUndo: false,
+  workflowControlMode: 'drag',
+  setWorkflowControlMode: function (value?: SetState<'drag' | 'select'> | undefined): void {
+    throw new Error('Function not implemented.');
+  }
 });
 
 const WorkflowContextProvider = ({
@@ -339,6 +348,14 @@ const WorkflowContextProvider = ({
 
   const { appDetail, setAppDetail, updateAppDetail } = useContextSelector(AppContext, (v) => v);
   const appId = appDetail._id;
+
+  const [workflowControlMode, setWorkflowControlMode] = useLocalStorageState<'drag' | 'select'>(
+    'workflow-control-mode',
+    {
+      defaultValue: 'select',
+      listenStorageChange: true
+    }
+  );
 
   /* edge */
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -944,6 +961,9 @@ const WorkflowContextProvider = ({
     appId,
     reactFlowWrapper,
     basicNodeTemplates,
+    workflowControlMode,
+    setWorkflowControlMode,
+
     // node
     nodes,
     setNodes,

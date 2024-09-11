@@ -9,10 +9,17 @@ import { useTranslation } from 'react-i18next';
 import styles from './index.module.scss';
 import { maxZoom, minZoom } from '../index';
 
+const buttonStyle = {
+  border: 'none',
+  borderRadius: '6px',
+  padding: '7px'
+};
+
 const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { zoom } = useViewport();
-  const { undo, redo, canRedo, canUndo } = useContextSelector(WorkflowContext, (v) => v);
+  const { undo, redo, canRedo, canUndo, workflowControlMode, setWorkflowControlMode } =
+    useContextSelector(WorkflowContext, (v) => v);
   const { t } = useTranslation();
 
   const isMac = !window ? false : window.navigator.userAgent.toLocaleLowerCase().includes('mac');
@@ -45,12 +52,6 @@ const FlowController = React.memo(function FlowController() {
     };
   }, [undo, redo, zoomIn, zoomOut]);
 
-  const buttonStyle = {
-    border: 'none',
-    borderRadius: '6px',
-    padding: '7px'
-  };
-
   const Render = useMemo(() => {
     return (
       <>
@@ -79,6 +80,26 @@ const FlowController = React.memo(function FlowController() {
               '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 12px 16px -4px rgba(19, 51, 107, 0.20)'
           }}
         >
+          {/* Control Mode */}
+          <ControlButton
+            onClick={() => {
+              setWorkflowControlMode(workflowControlMode === 'select' ? 'drag' : 'select');
+            }}
+            style={{
+              ...buttonStyle,
+              ...(workflowControlMode === 'drag'
+                ? {
+                    backgroundColor: '#E1EAFF',
+                    color: '#3370FF'
+                  }
+                : {})
+            }}
+            className={`${styles.customControlButton}`}
+          >
+            <MyIcon name={'core/workflow/dragIcon'} />
+          </ControlButton>
+          <Box w="1px" h="20px" bg="gray.200" mx={1.5}></Box>
+
           {/* undo */}
           <MyTooltip label={isMac ? t('common:common.undo_tip_mac') : t('common:common.undo_tip')}>
             <ControlButton
@@ -149,7 +170,20 @@ const FlowController = React.memo(function FlowController() {
         <Background />
       </>
     );
-  }, [isMac, t, undo, buttonStyle, canUndo, redo, canRedo, zoom, zoomOut, zoomIn, fitView]);
+  }, [
+    workflowControlMode,
+    isMac,
+    t,
+    undo,
+    canUndo,
+    redo,
+    canRedo,
+    zoom,
+    setWorkflowControlMode,
+    zoomOut,
+    zoomIn,
+    fitView
+  ]);
 
   return Render;
 });
