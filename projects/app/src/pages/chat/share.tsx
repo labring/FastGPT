@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
@@ -169,9 +169,9 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
       shareId,
       chatData.app.type,
       outLinkUid,
+      onUpdateHistoryTitle,
       forbidLoadChat,
-      onChangeChatId,
-      loadHistories
+      onChangeChatId
     ]
   );
 
@@ -355,8 +355,12 @@ const Render = (props: Props) => {
   const { localUId } = useShareChatStore();
   const outLinkUid: string = authToken || localUId;
 
+  const contextParams = useMemo(() => {
+    return { shareId, outLinkUid };
+  }, [shareId, outLinkUid]);
+
   return (
-    <ChatContextProvider params={{ shareId, outLinkUid }}>
+    <ChatContextProvider params={contextParams}>
       <OutLink {...props} />;
     </ChatContextProvider>
   );

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { delChatRecordById, getChatHistories, getTeamChatInfo } from '@/web/core/chat/api';
 import { useRouter } from 'next/router';
@@ -126,15 +126,15 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       return { responseText, responseData, isNewChat: forbidLoadChat.current };
     },
     [
-      chatData.app.type,
       chatId,
       customVariables,
       appId,
       teamId,
       teamToken,
+      chatData.app.type,
+      onUpdateHistoryTitle,
       forbidLoadChat,
-      onChangeChatId,
-      loadHistories
+      onChangeChatId
     ]
   );
 
@@ -318,8 +318,12 @@ const Render = (props: Props) => {
     })();
   }, [appId, loadMyApps, myApps, router, t, toast]);
 
+  const contextParams = useMemo(() => {
+    return { teamId, appId, teamToken };
+  }, [teamId, appId, teamToken]);
+
   return (
-    <ChatContextProvider params={{ teamId, appId, teamToken: teamToken }}>
+    <ChatContextProvider params={contextParams}>
       <Chat {...props} myApps={myApps} />
     </ChatContextProvider>
   );
