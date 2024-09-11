@@ -60,7 +60,7 @@ import dynamic from 'next/dynamic';
 import type { StreamResponseType } from '@/web/common/api/fetch';
 import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useCreation, useMemoizedFn, useThrottleFn, useTrackedEffect } from 'ahooks';
+import { useCreation, useMemoizedFn, useThrottleFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
@@ -832,12 +832,10 @@ const ChatBox = (
     };
     window.addEventListener('message', windowMessage);
 
-    eventBus.on(EventNameEnum.sendQuestion, ({ text }: { text: string }) => {
-      if (!text) return;
-      sendPrompt({
-        text
-      });
-    });
+    const fn: SendPromptFnType = (e) => {
+      sendPrompt(e);
+    };
+    eventBus.on(EventNameEnum.sendQuestion, fn);
     eventBus.on(EventNameEnum.editQuestion, ({ text }: { text: string }) => {
       if (!text) return;
       resetInputVal({ text });
@@ -881,7 +879,6 @@ const ChatBox = (
                     onRetry={retryInput(item.dataId)}
                     onDelete={delOneMessage(item.dataId)}
                     isLastChild={index === chatHistories.length - 1}
-                    onSendMessage={sendPrompt}
                   />
                 )}
                 {item.obj === ChatRoleEnum.AI && (
@@ -891,7 +888,6 @@ const ChatBox = (
                       avatar={appAvatar}
                       chat={item}
                       isLastChild={index === chatHistories.length - 1}
-                      onSendMessage={sendPrompt}
                       {...{
                         showVoiceIcon,
                         shareId,
@@ -977,7 +973,6 @@ const ChatBox = (
     outLinkUid,
     questionGuides,
     retryInput,
-    sendPrompt,
     shareId,
     showEmpty,
     showMarkIcon,

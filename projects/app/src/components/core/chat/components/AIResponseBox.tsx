@@ -12,24 +12,20 @@ import {
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   AIChatItemValueItemType,
-  ChatSiteItemType,
   ToolModuleResponseItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { SendPromptFnType } from '../ChatContainer/ChatBox/type';
-import { useContextSelector } from 'use-context-selector';
-import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
 import { InteractiveNodeResponseItemType } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
 import { isEqual } from 'lodash';
+import { onSendPrompt } from '../ChatContainer/useChat';
 
 type props = {
   value: UserChatItemValueItemType | AIChatItemValueItemType;
   isLastChild: boolean;
   isChatting: boolean;
-  onSendMessage?: SendPromptFnType;
 };
 
 const RenderText = React.memo(function RenderText({
@@ -128,67 +124,51 @@ ${toolResponse}`}
   },
   (prevProps, nextProps) => isEqual(prevProps, nextProps)
 );
-const RenderInteractive = React.memo(
-  function RenderInteractive({
-    isChatting,
-    interactive,
-    onSendMessage,
-    chatHistories
-  }: {
-    isChatting: boolean;
-    interactive: InteractiveNodeResponseItemType;
-    onSendMessage?: SendPromptFnType;
-    chatHistories: ChatSiteItemType[];
-  }) {
-    return (
-      <>
-        {interactive?.params?.description && <Markdown source={interactive.params.description} />}
-        <Flex flexDirection={'column'} gap={2} w={'250px'}>
-          {interactive.params.userSelectOptions?.map((option) => {
-            const selected = option.value === interactive?.params?.userSelectedVal;
+const RenderInteractive = React.memo(function RenderInteractive({
+  interactive
+}: {
+  interactive: InteractiveNodeResponseItemType;
+}) {
+  return (
+    <>
+      {interactive?.params?.description && <Markdown source={interactive.params.description} />}
+      <Flex flexDirection={'column'} gap={2} w={'250px'}>
+        {interactive.params.userSelectOptions?.map((option) => {
+          const selected = option.value === interactive?.params?.userSelectedVal;
 
-            return (
-              <Button
-                key={option.key}
-                variant={'whitePrimary'}
-                whiteSpace={'pre-wrap'}
-                isDisabled={interactive?.params?.userSelectedVal !== undefined}
-                {...(selected
-                  ? {
-                      _disabled: {
-                        cursor: 'default',
-                        borderColor: 'primary.300',
-                        bg: 'primary.50 !important',
-                        color: 'primary.600'
-                      }
+          return (
+            <Button
+              key={option.key}
+              variant={'whitePrimary'}
+              whiteSpace={'pre-wrap'}
+              isDisabled={interactive?.params?.userSelectedVal !== undefined}
+              {...(selected
+                ? {
+                    _disabled: {
+                      cursor: 'default',
+                      borderColor: 'primary.300',
+                      bg: 'primary.50 !important',
+                      color: 'primary.600'
                     }
-                  : {})}
-                onClick={() => {
-                  onSendMessage?.({
-                    text: option.value,
-                    isInteractivePrompt: true
-                  });
-                }}
-              >
-                {option.value}
-              </Button>
-            );
-          })}
-        </Flex>
-      </>
-    );
-  },
-  (
-    prevProps,
-    nextProps // isChatting 更新时候，onSendMessage 和 chatHistories 肯定都更新了，这里不需要额外的刷新
-  ) =>
-    prevProps.isChatting === nextProps.isChatting &&
-    isEqual(prevProps.interactive, nextProps.interactive)
-);
+                  }
+                : {})}
+              onClick={() => {
+                onSendPrompt({
+                  text: option.value,
+                  isInteractivePrompt: true
+                });
+              }}
+            >
+              {option.value}
+            </Button>
+          );
+        })}
+      </Flex>
+    </>
+  );
+});
 
-const AIResponseBox = ({ value, isLastChild, isChatting, onSendMessage }: props) => {
-  const chatHistories = useContextSelector(ChatBoxContext, (v) => v.chatHistories);
-
+const AIResponseBox = ({ value, isLastChild, isChatting }: props) => {
   if (value.type === ChatItemValueTypeEnum.text && value.text)
     return <RenderText showAnimation={isChatting && isLastChild} text={value.text.content} />;
   if (value.type === ChatItemValueTypeEnum.tool && value.tools)
@@ -198,14 +178,7 @@ const AIResponseBox = ({ value, isLastChild, isChatting, onSendMessage }: props)
     value.interactive &&
     value.interactive.type === 'userSelect'
   )
-    return (
-      <RenderInteractive
-        isChatting={isChatting}
-        interactive={value.interactive}
-        onSendMessage={onSendMessage}
-        chatHistories={chatHistories}
-      />
-    );
+    return <RenderInteractive interactive={value.interactive} />;
 };
 
 export default React.memo(AIResponseBox);
