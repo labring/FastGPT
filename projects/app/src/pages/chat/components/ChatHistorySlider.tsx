@@ -15,6 +15,9 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { getChatHistories } from '@/web/core/chat/api';
+import index from '../../index';
 
 type HistoryItemType = {
   id: string;
@@ -52,19 +55,19 @@ const ChatHistorySlider = ({
   const { userInfo } = useUserStore();
 
   const {
-    histories,
     onChangeChatId,
     chatId: activeChatId,
-    isLoading
+    isLoading,
+    ScrollList,
+    historyList,
+    histories
   } = useContextSelector(ChatContext, (v) => v);
 
   const concatHistory = useMemo(() => {
-    const formatHistories: HistoryItemType[] = histories.map((item) => ({
-      id: item.chatId,
-      title: item.title,
-      customTitle: item.customTitle,
-      top: item.top
-    }));
+    const formatHistories: HistoryItemType[] = historyList.map((data) => {
+      const item = data.data;
+      return { id: item.chatId, title: item.title, customTitle: item.customTitle, top: item.top };
+    });
     const newChat: HistoryItemType = {
       id: activeChatId,
       title: t('common:core.chat.New Chat')
@@ -72,7 +75,7 @@ const ChatHistorySlider = ({
     const activeChat = histories.find((item) => item.chatId === activeChatId);
 
     return !activeChat ? [newChat].concat(formatHistories) : formatHistories;
-  }, [activeChatId, histories, t]);
+  }, [activeChatId, histories, historyList, t]);
 
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
@@ -175,7 +178,7 @@ const ChatHistorySlider = ({
         )}
       </Flex>
 
-      <Box flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
+      <ScrollList flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
         {/* chat history */}
         <>
           {concatHistory.map((item, i) => (
@@ -283,7 +286,7 @@ const ChatHistorySlider = ({
             </Flex>
           ))}
         </>
-      </Box>
+      </ScrollList>
 
       {/* exec */}
       {!isPc && isUserChatPage && (

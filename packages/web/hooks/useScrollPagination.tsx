@@ -13,7 +13,7 @@ import {
 } from 'ahooks';
 import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
-
+type ItemHeight<T> = (index: number, data: T) => number;
 export type ScrollListType = ({
   children,
   EmptyChildren,
@@ -44,7 +44,7 @@ export function useScrollPagination<
     throttleWait?: number;
     refreshDeps?: any[];
 
-    itemHeight: number;
+    itemHeight: number | ItemHeight<TData['list'][0]>;
     overscan?: number;
 
     pageSize?: number;
@@ -125,12 +125,15 @@ export function useScrollPagination<
       return (
         <>
           <MyBox isLoading={isLoading} ref={containerRef} overflow={'overlay'} {...props}>
-            <Box ref={wrapperRef}>{children}</Box>
-            {noMore.current && list.length > 0 && (
-              <Box py={4} textAlign={'center'} color={'myGray.600'} fontSize={'xs'}>
-                {t('common:common.No more data')}
-              </Box>
-            )}
+            <Box ref={wrapperRef}>
+              {children}
+              {noMore.current && list.length > 0 && (
+                <Box py={4} textAlign={'center'} color={'myGray.600'} fontSize={'xs'}>
+                  {t('common:common.No more data')}
+                </Box>
+              )}
+            </Box>
+
             {list.length === 0 && !isLoading && EmptyChildren && <>{EmptyChildren}</>}
           </MyBox>
         </>
