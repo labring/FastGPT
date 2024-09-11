@@ -124,6 +124,7 @@ const Workflow = () => {
           connectionLineStyle={connectionLineStyle}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
+          connectionRadius={50}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgeChange}
           onConnect={customOnConnect}
