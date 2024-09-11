@@ -42,17 +42,20 @@ export const nodeTemplate2FlowNode = ({
   position,
   selected,
   parentNodeId,
-  zIndex
+  zIndex,
+  t
 }: {
   template: FlowNodeTemplateType;
   position: XYPosition;
   selected?: boolean;
   parentNodeId?: string;
   zIndex?: number;
+  t: TFunction;
 }): Node<FlowNodeItemType> => {
   // replace item data
   const moduleItem: FlowNodeItemType = {
     ...template,
+    name: t(template.name as any),
     nodeId: getNanoid(),
     parentNodeId
   };

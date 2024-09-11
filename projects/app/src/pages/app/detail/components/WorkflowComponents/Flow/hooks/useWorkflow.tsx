@@ -13,11 +13,7 @@ import {
   getNodesBounds,
   Rect
 } from 'reactflow';
-import {
-  EDGE_TYPE,
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
@@ -26,6 +22,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { THelperLine } from '@fastgpt/global/core/workflow/type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 /* 
     Compute helper lines for snapping nodes to each other
@@ -280,16 +277,20 @@ export const useWorkflow = () => {
   const { getIntersectingNodes } = useReactFlow();
 
   const resetNodeSizeAndPosition = (rect: Rect, parentId: string) => {
+    const parentNode = nodes.find((node) => node.id === parentId);
+    const loopFlow = parentNode?.data.inputs.find(
+      (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.loopFlow
+    );
+
+    if (!loopFlow) return;
     onChangeNode({
       nodeId: parentId || '',
       type: 'updateInput',
       key: NodeInputKeyEnum.loopFlow,
       value: {
-        key: NodeInputKeyEnum.loopFlow,
-        renderTypeList: [FlowNodeInputTypeEnum.hidden],
-        valueType: WorkflowIOValueTypeEnum.any,
-        label: '',
+        ...loopFlow,
         value: {
+          ...loopFlow?.value,
           width: rect.width + 110 > 900 ? rect.width + 110 : 900,
           height: rect.height + 380 > 900 ? rect.height + 380 : 900
         }
@@ -384,6 +385,30 @@ export const useWorkflow = () => {
             setEdges((state) =>
               state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
             );
+            if (node?.data.parentNodeId) {
+              const parentId = node.data.parentNodeId;
+              const childNodes = nodes.filter(
+                (n) => n.data.parentNodeId === parentId && n.id !== node.id
+              );
+              const parentNode = nodes.find((n) => n.id === parentId);
+              const rect = getNodesBounds(childNodes);
+              const updatedLoopFlow = parentNode?.data.inputs.find(
+                (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.loopFlow
+              );
+              if (updatedLoopFlow) {
+                updatedLoopFlow.value.childNodes = updatedLoopFlow.value.childNodes.filter(
+                  (nodeId: string) => nodeId !== node.id
+                );
+              }
+              resetNodeSizeAndPosition(rect, parentId);
+              updatedLoopFlow &&
+                onChangeNode({
+                  nodeId: parentId,
+                  type: 'updateInput',
+                  key: NodeInputKeyEnum.loopFlow,
+                  value: updatedLoopFlow
+                });
+            }
           })();
         }
       } else if (change.type === 'select' && change.selected === false && isDowningCtrl) {
@@ -450,42 +475,56 @@ export const useWorkflow = () => {
     },
     [onEdgesChange]
   );
-  // const onNodeDrag = useCallback((_: any, node: Node) => {}, []);
 
-  const onNodeDragStop = useCallback((_: any, node: Node) => {
-    const intersections = getIntersectingNodes(node);
-    const parentNode = intersections.find((item) => item.type === 'loop');
+  const onNodeDragStop = useCallback(
+    (_: any, node: Node) => {
+      const intersections = getIntersectingNodes(node);
+      const parentNode = intersections.find((item) => item.type === 'loop');
 
-    const unSupportedTypes = [
-      FlowNodeTypeEnum.workflowStart,
-      FlowNodeTypeEnum.loop,
-      FlowNodeTypeEnum.pluginInput,
-      FlowNodeTypeEnum.pluginOutput,
-      FlowNodeTypeEnum.systemConfig
-    ];
+      const unSupportedTypes = [
+        FlowNodeTypeEnum.workflowStart,
+        FlowNodeTypeEnum.loop,
+        FlowNodeTypeEnum.pluginInput,
+        FlowNodeTypeEnum.pluginOutput,
+        FlowNodeTypeEnum.systemConfig
+      ];
 
-    if (parentNode && !node.data.parentNodeId) {
-      if (unSupportedTypes.includes(node.type as FlowNodeTypeEnum)) {
-        return toast({
-          status: 'warning',
-          title: t('workflow:can_not_loop')
+      if (parentNode && !node.data.parentNodeId) {
+        if (unSupportedTypes.includes(node.type as FlowNodeTypeEnum)) {
+          return toast({
+            status: 'warning',
+            title: t('workflow:can_not_loop')
+          });
+        }
+        const updatedLoopFlow = parentNode.data.inputs.find(
+          (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.loopFlow
+        );
+        if (updatedLoopFlow) {
+          updatedLoopFlow.value.childNodes = updatedLoopFlow.value.childNodes.concat(node.id);
+        }
+        onChangeNode({
+          nodeId: node.id,
+          type: 'attr',
+          key: 'parentNodeId',
+          value: parentNode.id
         });
-      }
-      onChangeNode({
-        nodeId: node.id,
-        type: 'attr',
-        key: 'parentNodeId',
-        value: parentNode.id
-      });
-      setEdges((state) =>
-        state.filter((edge) => edge.source !== node.id && edge.target !== node.id)
-      );
+        onChangeNode({
+          nodeId: parentNode.id,
+          type: 'updateInput',
+          key: NodeInputKeyEnum.loopFlow,
+          value: updatedLoopFlow
+        });
+        setEdges((state) =>
+          state.filter((edge) => edge.source !== node.id && edge.target !== node.id)
+        );
 
-      const childNodes = nodes.filter((n) => n.data.parentNodeId === parentNode.id).concat(node);
-      const rect = getNodesBounds(childNodes);
-      resetNodeSizeAndPosition(rect, parentNode.id);
-    }
-  }, []);
+        const childNodes = nodes.filter((n) => n.data.parentNodeId === parentNode.id).concat(node);
+        const rect = getNodesBounds(childNodes);
+        resetNodeSizeAndPosition(rect, parentNode.id);
+      }
+    },
+    [getIntersectingNodes, onChangeNode, setEdges, nodes, toast, t, resetNodeSizeAndPosition]
+  );
 
   /* connect */
   const onConnectStart = useCallback(
@@ -552,7 +591,6 @@ export const useWorkflow = () => {
     onEdgeMouseLeave,
     helperLineHorizontal,
     helperLineVertical,
-    // onNodeDrag,
     onNodeDragStop
   };
 };

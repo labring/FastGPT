@@ -16,11 +16,11 @@ import { useEffect } from 'react';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const typeMap = {
-  [WorkflowIOValueTypeEnum.arrayString]: 'String',
-  [WorkflowIOValueTypeEnum.arrayNumber]: 'Number',
-  [WorkflowIOValueTypeEnum.arrayBoolean]: 'Boolean',
-  [WorkflowIOValueTypeEnum.arrayObject]: 'Object',
-  [WorkflowIOValueTypeEnum.arrayAny]: 'Any'
+  [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.string,
+  [WorkflowIOValueTypeEnum.arrayNumber]: WorkflowIOValueTypeEnum.number,
+  [WorkflowIOValueTypeEnum.arrayBoolean]: WorkflowIOValueTypeEnum.boolean,
+  [WorkflowIOValueTypeEnum.arrayObject]: WorkflowIOValueTypeEnum.object,
+  [WorkflowIOValueTypeEnum.arrayAny]: WorkflowIOValueTypeEnum.any
 };
 
 const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
@@ -42,26 +42,30 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   useEffect(() => {
     if (
       !outputValueType &&
-      loopStartNode?.data.outputs.find((output) => output.key === NodeOutputKeyEnum.loopArray)
+      loopStartNode?.data.outputs.find(
+        (output) => output.key === NodeOutputKeyEnum.loopArrayElement
+      )
     ) {
       onChangeNode({
         nodeId,
         type: 'delOutput',
-        key: NodeOutputKeyEnum.loopArray
+        key: NodeOutputKeyEnum.loopArrayElement
       });
     } else if (
       outputValueType &&
-      !loopStartNode?.data.outputs.find((output) => output.key === NodeOutputKeyEnum.loopArray)
+      !loopStartNode?.data.outputs.find(
+        (output) => output.key === NodeOutputKeyEnum.loopArrayElement
+      )
     ) {
       onChangeNode({
         nodeId,
         type: 'addOutput',
         value: {
-          id: NodeOutputKeyEnum.loopArray,
-          key: NodeOutputKeyEnum.loopArray,
+          id: NodeOutputKeyEnum.loopArrayElement,
+          key: NodeOutputKeyEnum.loopArrayElement,
           label: t('workflow:Array_element'),
           type: FlowNodeOutputTypeEnum.static,
-          valueType: WorkflowIOValueTypeEnum.arrayAny
+          valueType: typeMap[outputValueType as keyof typeof typeMap]
         }
       });
     }

@@ -8,8 +8,8 @@ import { Box } from '@chakra-ui/react';
 
 const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs } = data;
-  const inputItem = inputs.find((input) => input.key === 'loopOutputArray');
+  const { nodeId, inputs } = data;
+  const inputItem = inputs.find((input) => input.key === 'loopOutputArrayElement');
 
   return (
     <NodeCard

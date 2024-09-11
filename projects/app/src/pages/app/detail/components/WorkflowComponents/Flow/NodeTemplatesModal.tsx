@@ -484,7 +484,8 @@ const RenderList = React.memo(function RenderList({
         },
         position: { x: mouseX, y: mouseY },
         selected: true,
-        zIndex: templateNode.flowNodeType === FlowNodeTypeEnum.loop ? -1001 : 0
+        zIndex: templateNode.flowNodeType === FlowNodeTypeEnum.loop ? -1001 : 0,
+        t
       });
       const newNodes = [newNode];
 
@@ -503,12 +504,14 @@ const RenderList = React.memo(function RenderList({
         const startNode = nodeTemplate2FlowNode({
           template: loopStartNode,
           position: { x: mouseX + 60, y: mouseY + 280 },
-          parentNodeId: newNode.id
+          parentNodeId: newNode.id,
+          t
         });
         const endNode = nodeTemplate2FlowNode({
-          template: { ...loopEndNode },
+          template: loopEndNode,
           position: { x: mouseX + 420, y: mouseY + 680 },
-          parentNodeId: newNode.id
+          parentNodeId: newNode.id,
+          t
         });
 
         newNodes.push(startNode, endNode);

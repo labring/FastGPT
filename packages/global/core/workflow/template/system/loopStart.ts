@@ -1,6 +1,10 @@
-import { FlowNodeTypeEnum } from '../../node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type/node.d';
-import { FlowNodeTemplateTypeEnum } from '../../constants';
+import {
+  FlowNodeTemplateTypeEnum,
+  NodeInputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '../../constants';
 import { getHandleConfig } from '../utils';
 import { i18nT } from '../../../../../web/i18n/utils';
 
@@ -16,6 +20,15 @@ export const LoopStartNode: FlowNodeTemplateType = {
   forbidDelete: true,
   showStatus: false,
   version: '4811',
-  inputs: [],
+  inputs: [
+    {
+      key: NodeInputKeyEnum.loopArrayElement,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      valueType: WorkflowIOValueTypeEnum.any,
+      label: '',
+      required: true,
+      value: ''
+    }
+  ],
   outputs: []
 };

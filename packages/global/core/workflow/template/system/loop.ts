@@ -30,7 +30,8 @@ export const LoopNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.arrayAny,
       required: true,
-      label: i18nT('workflow:loop_input_array')
+      label: i18nT('workflow:loop_input_array'),
+      value: []
     },
     {
       key: NodeInputKeyEnum.loopFlow,
@@ -39,7 +40,8 @@ export const LoopNode: FlowNodeTemplateType = {
       label: '',
       value: {
         width: 0,
-        height: 0
+        height: 0,
+        childNodes: []
       }
     }
   ],

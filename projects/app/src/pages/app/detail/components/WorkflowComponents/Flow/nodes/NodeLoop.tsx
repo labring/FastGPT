@@ -1,22 +1,41 @@
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Background, NodeProps, NodeResizeControl, NodeResizer, OnResize } from 'reactflow';
 import NodeCard from './render/NodeCard';
 import Container from '../components/Container';
 import IOTitle from '../components/IOTitle';
 import { useTranslation } from 'react-i18next';
 import RenderInput from './render/RenderInput';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Center, Flex } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RenderOutput from './render/RenderOutput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../context';
 
-const NodeLoop = ({ data, selected, zIndex }: NodeProps<FlowNodeItemType>) => {
+const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs, isIntersecting } = data;
+  const { nodeId, inputs, outputs } = data;
+  const { onChangeNode, nodeList } = useContextSelector(WorkflowContext, (v) => v);
 
   const loopFlowData = inputs.find((input) => input.key === NodeInputKeyEnum.loopFlow);
+  const childNodes = nodeList.filter((node) => node.parentNodeId === nodeId);
+
+  useEffect(() => {
+    loopFlowData &&
+      onChangeNode({
+        nodeId,
+        type: 'updateInput',
+        key: NodeInputKeyEnum.loopFlow,
+        value: {
+          ...loopFlowData,
+          value: {
+            ...loopFlowData?.value,
+            childNodes: childNodes.map((node) => node.nodeId)
+          }
+        }
+      });
+  }, []);
 
   return (
     <NodeCard
@@ -39,22 +58,6 @@ const NodeLoop = ({ data, selected, zIndex }: NodeProps<FlowNodeItemType>) => {
         <Box flex={1} position={'relative'} border={'base'} bg={'myGray.100'} rounded={'8px'}>
           <Background />
         </Box>
-        {/* <NodeResizeControl
-          position="bottom-right"
-          style={{ border: 'none', background: 'none' }}
-          minHeight={900}
-          minWidth={900}
-          children={
-            <MyIcon
-              name="common/editor/resizer"
-              w={4}
-              position={'absolute'}
-              right={1}
-              bottom={1}
-              cursor={'nwse-resize'}
-            />
-          }
-        /> */}
       </Container>
       <Container>
         <RenderOutput nodeId={nodeId} flowOutputList={outputs} />

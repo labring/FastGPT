@@ -22,9 +22,9 @@ export const LoopEndNode: FlowNodeTemplateType = {
   version: '4811',
   inputs: [
     {
-      key: NodeInputKeyEnum.loopOutputArray,
+      key: NodeInputKeyEnum.loopOutputArrayElement,
       renderTypeList: [FlowNodeInputTypeEnum.reference],
-      valueType: WorkflowIOValueTypeEnum.arrayAny,
+      valueType: WorkflowIOValueTypeEnum.any,
       label: '',
       required: true,
       value: []
