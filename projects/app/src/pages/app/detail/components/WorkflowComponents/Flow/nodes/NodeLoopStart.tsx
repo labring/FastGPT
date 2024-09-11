@@ -96,7 +96,6 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           <VariableTable
             variables={[
               {
-                // label: t('workflow:Array_element'),
                 icon: 'core/workflow/inputType/array',
                 label: '数组元素',
                 type: typeMap[outputValueType as keyof typeof typeMap],

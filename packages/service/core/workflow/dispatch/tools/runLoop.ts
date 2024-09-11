@@ -13,7 +13,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopFlow]: { childNodes: Array<string> };
 }>;
 type Response = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.loopArray]: any[];
+  [NodeOutputKeyEnum.loopArray]: Array<any>;
 }>;
 
 export const dispatchLoop = async (props: Props): Promise<Response> => {

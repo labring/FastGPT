@@ -104,7 +104,6 @@ export type FlowNodeItemType = FlowNodeTemplateType & {
     response?: ChatHistoryItemResType;
     isExpired?: boolean;
   };
-  isIntersecting?: boolean;
 };
 
 // store node type

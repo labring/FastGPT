@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Box,
   Flex,
@@ -14,7 +14,7 @@ import type {
   NodeTemplateListItemType,
   NodeTemplateListType
 } from '@fastgpt/global/core/workflow/type/node.d';
-import { useReactFlow, useViewport, XYPosition } from 'reactflow';
+import { useReactFlow, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
@@ -36,9 +36,7 @@ import { useRouter } from 'next/router';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
-import { useI18n } from '@/web/context/I18n';
 import { getTeamPlugTemplates } from '@/web/core/app/api/plugin';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import FolderPath from '@/components/common/folder/Path';
