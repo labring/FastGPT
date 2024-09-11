@@ -68,7 +68,6 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       minW={'240px'}
       selected={selected}
       menuForbid={{
-        rename: true,
         copy: true,
         delete: true
       }}

@@ -19,7 +19,6 @@ import { useCopyData } from '@/web/common/hooks/useCopyData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { SendPromptFnType } from '../type';
 import { AIChatItemValueItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import { isEqual } from 'lodash';
@@ -51,7 +50,6 @@ type BasicProps = {
 
 type Props = BasicProps & {
   type: ChatRoleEnum.Human | ChatRoleEnum.AI;
-  onSendMessage: SendPromptFnType;
 };
 
 const RenderQuestionGuide = ({ questionGuides }: { questionGuides: string[] }) => {
@@ -80,14 +78,12 @@ const AIContentCard = React.memo(function AIContentCard({
   dataId,
   isLastChild,
   isChatting,
-  onSendMessage,
   questionGuides
 }: {
   dataId: string;
   chatValue: ChatItemValueItemType[];
   isLastChild: boolean;
   isChatting: boolean;
-  onSendMessage: SendPromptFnType;
   questionGuides: string[];
 }) {
   return (
@@ -101,7 +97,6 @@ const AIContentCard = React.memo(function AIContentCard({
             value={value}
             isLastChild={isLastChild && i === chatValue.length - 1}
             isChatting={isChatting}
-            onSendMessage={onSendMessage}
           />
         );
       })}
@@ -113,16 +108,7 @@ const AIContentCard = React.memo(function AIContentCard({
 });
 
 const ChatItem = (props: Props) => {
-  const {
-    type,
-    avatar,
-    statusBoxData,
-    children,
-    isLastChild,
-    questionGuides = [],
-    onSendMessage,
-    chat
-  } = props;
+  const { type, avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
 
   const styleMap: BoxProps =
     type === ChatRoleEnum.Human
@@ -270,7 +256,6 @@ const ChatItem = (props: Props) => {
                 dataId={chat.dataId}
                 isLastChild={isLastChild && i === splitAiResponseResults.length - 1}
                 isChatting={isChatting}
-                onSendMessage={onSendMessage}
                 questionGuides={questionGuides}
               />
             )}

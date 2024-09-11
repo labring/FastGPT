@@ -2,7 +2,8 @@ import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { useCallback, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './PluginRunBox/constants';
-import { ComponentRef as ChatComponentRef } from './ChatBox/type';
+import { ComponentRef as ChatComponentRef, SendPromptFnType } from './ChatBox/type';
+import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 
 export const useChat = () => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
@@ -61,3 +62,5 @@ export const useChat = () => {
     resetChatRecords
   };
 };
+
+export const onSendPrompt: SendPromptFnType = (e) => eventBus.emit(EventNameEnum.sendQuestion, e);

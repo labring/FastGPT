@@ -91,7 +91,6 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         minW={'300px'}
         selected={selected}
         menuForbid={{
-          rename: true,
           copy: true,
           delete: true
         }}

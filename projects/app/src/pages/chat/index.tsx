@@ -130,7 +130,6 @@ const Chat = ({
       const completionChatId = chatId || getNanoid();
       // Just send a user prompt
       const histories = messages.slice(-1);
-
       const { responseText, responseData } = await streamFetch({
         data: {
           messages: histories,
@@ -146,10 +145,8 @@ const Chat = ({
       const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
 
       // new chat
-      if (completionChatId !== chatId) {
-        if (controller.signal.reason !== 'leave') {
-          onChangeChatId(completionChatId, true);
-        }
+      if (completionChatId !== chatId && controller.signal.reason !== 'leave') {
+        onChangeChatId(completionChatId, true);
       }
       loadHistories();
 
