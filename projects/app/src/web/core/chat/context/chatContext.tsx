@@ -47,7 +47,7 @@ type ChatContextType = {
     data: ChatHistoryItemType;
   }[];
   histories: ChatHistoryItemType[];
-  newChatTitle: ({ chatId, newTitle }: { chatId: string; newTitle: string }) => void;
+  onUpdateHistoryTitle: ({ chatId, newTitle }: { chatId: string; newTitle: string }) => void;
 };
 
 export const ChatContext = createContext<ChatContextType>({
@@ -55,7 +55,7 @@ export const ChatContext = createContext<ChatContextType>({
   // forbidLoadChat: undefined,
   historyList: [],
   histories: [],
-  newChatTitle: function (): void {
+  onUpdateHistoryTitle: function (): void {
     throw new Error('Function not implemented.');
   },
   ScrollList: function (): ReactNode {
@@ -103,20 +103,22 @@ const ChatContextProvider = ({
   const forbidLoadChat = useRef(false);
 
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
+
   const {
-    list: historyList,
+    scrollDataList: historyList,
     ScrollList,
     isLoading: isPaginationLoading,
     setData: setHistories,
     fetchData: loadHistories,
-    data: histories
+    totalData: histories
   } = useScrollPagination(getChatHistories, {
-    overscan: 10,
-    pageSize: 15,
-    itemHeight: 52.5,
+    overscan: 30,
+    pageSize: 30,
+    itemHeight: 52,
     defaultParams: params,
     refreshDeps: [params]
   });
+
   const { setLastChatId } = useChatStore();
   const onChangeChatId = useCallback(
     (changeChatId = getNanoid(), forbid = false) => {
@@ -130,22 +132,13 @@ const ChatContextProvider = ({
           }
         });
       }
-      const activeChat = histories.find((item) => item.chatId === chatId);
-      // if (!activeChat)
-      //   setHistories([
-      //     {
-      //       chatId: changeChatId,
-      //       updateTime: new Date(),
-      //       top: false,
-      //       title: '',
-      //       appId: appId || ''
-      //     },
-      //     ...histories
-      //   ]);
+
       onCloseSlider();
     },
-    [chatId, histories, onCloseSlider, router, setLastChatId]
+    [chatId, onCloseSlider, router, setLastChatId]
   );
+
+  // Refresh lastChatId
   useEffect(() => {
     setLastChatId(chatId);
   }, [chatId, setLastChatId]);
@@ -206,16 +199,22 @@ const ChatContextProvider = ({
       }
     }
   );
-  const newChatTitle = useCallback(
+
+  const onUpdateHistoryTitle = useCallback(
     ({ chatId, newTitle }: { chatId: string; newTitle: string }) => {
-      histories.find((item) => item.chatId === chatId)
-        ? setHistories((state) =>
-            state.map((item) => (item.chatId === chatId ? { ...item, title: newTitle } : item))
-          )
-        : loadHistories();
+      // Chat history exists
+      if (histories.find((item) => item.chatId === chatId)) {
+        setHistories((state) =>
+          state.map((item) => (item.chatId === chatId ? { ...item, title: newTitle } : item))
+        );
+      } else {
+        // Chat history not exists
+        loadHistories();
+      }
     },
     [histories, loadHistories, setHistories]
   );
+
   const isLoading =
     isUpdatingHistory || isDeletingHistory || isClearingHistory || isPaginationLoading;
 
@@ -236,7 +235,7 @@ const ChatContextProvider = ({
     ScrollList,
     loadHistories,
     histories,
-    newChatTitle
+    onUpdateHistoryTitle
   };
   return <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>;
 };

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { delChatRecordById, getChatHistories, getInitChatInfo } from '@/web/core/chat/api';
@@ -63,7 +63,7 @@ const Chat = ({
     onCloseSlider,
     forbidLoadChat,
     onChangeChatId,
-    newChatTitle
+    onUpdateHistoryTitle
   } = useContextSelector(ChatContext, (v) => v);
   const {
     ChatBoxRef,
@@ -151,7 +151,7 @@ const Chat = ({
       if (completionChatId !== chatId && controller.signal.reason !== 'leave') {
         onChangeChatId(completionChatId, true);
       }
-      newChatTitle({ chatId: completionChatId, newTitle });
+      onUpdateHistoryTitle({ chatId: completionChatId, newTitle });
       // update chat window
       setChatData((state) => ({
         ...state,
@@ -160,7 +160,7 @@ const Chat = ({
 
       return { responseText, responseData, isNewChat: forbidLoadChat.current };
     },
-    [chatId, appId, newChatTitle, forbidLoadChat, onChangeChatId]
+    [chatId, appId, onUpdateHistoryTitle, forbidLoadChat, onChangeChatId]
   );
 
   return (
@@ -318,8 +318,9 @@ const Render = (props: Props) => {
     }
   });
 
+  const providerParams = useMemo(() => ({ appId }), [appId]);
   return (
-    <ChatContextProvider params={{ appId }}>
+    <ChatContextProvider params={providerParams}>
       <Chat {...props} myApps={myApps} />
     </ChatContextProvider>
   );

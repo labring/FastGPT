@@ -9,15 +9,10 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { AppListItemType } from '@fastgpt/global/core/app/type';
-import { useI18n } from '@/web/context/I18n';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { getChatHistories } from '@/web/core/chat/api';
-import index from '../../index';
 
 type HistoryItemType = {
   id: string;
@@ -184,14 +179,13 @@ const ChatHistorySlider = ({
           {concatHistory.map((item, i) => (
             <Flex
               position={'relative'}
-              key={item.id || `${i}`}
+              key={item.id}
               alignItems={'center'}
-              py={2.5}
               px={4}
+              h={'44px'}
               cursor={'pointer'}
               userSelect={'none'}
               borderRadius={'md'}
-              mb={2}
               fontSize={'sm'}
               _hover={{
                 bg: 'myGray.50',
@@ -210,6 +204,9 @@ const ChatHistorySlider = ({
                       onChangeChatId(item.id);
                     }
                   })}
+              {...(i !== concatHistory.length - 1 && {
+                mb: '8px'
+              })}
             >
               <MyIcon
                 name={item.id === activeChatId ? 'core/chat/chatFill' : 'core/chat/chatLight'}

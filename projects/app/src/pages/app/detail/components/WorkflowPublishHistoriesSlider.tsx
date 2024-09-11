@@ -180,15 +180,18 @@ const TeamCloud = () => {
   const { loadAndGetTeamMembers } = useUserStore();
   const { feConfigs } = useSystemStore();
 
-  const { list, ScrollList, isLoading, fetchData } = useScrollPagination(getWorkflowVersionList, {
-    itemHeight: 40,
-    overscan: 20,
+  const { scrollDataList, ScrollList, isLoading, fetchData } = useScrollPagination(
+    getWorkflowVersionList,
+    {
+      itemHeight: 40,
+      overscan: 20,
 
-    pageSize: 30,
-    defaultParams: {
-      appId: appDetail._id
+      pageSize: 30,
+      defaultParams: {
+        appId: appDetail._id
+      }
     }
-  });
+  );
   const { data: members = [] } = useRequest2(loadAndGetTeamMembers, {
     manual: !feConfigs.isPlus
   });
@@ -228,9 +231,9 @@ const TeamCloud = () => {
 
   return (
     <ScrollList isLoading={isLoading || isLoadingVersion} flex={'1 0 0'} px={5}>
-      {list.map((data, index) => {
+      {scrollDataList.map((data, index) => {
         const item = data.data;
-        const firstPublishedIndex = list.findIndex((data) => data.data.isPublish);
+        const firstPublishedIndex = scrollDataList.findIndex((data) => data.data.isPublish);
         const tmb = members.find((member) => member.tmbId === item.tmbId);
 
         return (

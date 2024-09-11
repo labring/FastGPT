@@ -121,14 +121,15 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
 
   // Tags list
   const {
-    list,
+    scrollDataList: renderTags,
+    totalData: collectionTags,
     ScrollList,
     isLoading: isRequesting,
     fetchData,
     total: tagsTotal
   } = useScrollPagination(getDatasetCollectionTags, {
     refreshDeps: [''],
-    debounceWait: 300,
+    // debounceWait: 300,
 
     itemHeight: 56,
     overscan: 10,
@@ -142,12 +143,12 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
 
   // Collections list
   const {
-    list: collectionsList,
+    scrollDataList: collectionsList,
     ScrollList: ScrollListCollections,
     isLoading: collectionsListLoading
   } = useScrollPagination(getScrollCollectionList, {
     refreshDeps: [searchText],
-    debounceWait: 300,
+    // debounceWait: 300,
 
     itemHeight: 37,
     overscan: 10,
@@ -221,7 +222,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                   ref={tagInputRef}
                   w={'200px'}
                   onBlur={() => {
-                    if (newTag && !list.map((item) => item.data.tag).includes(newTag)) {
+                    if (newTag && !collectionTags.map((item) => item.tag).includes(newTag)) {
                       onCreateCollectionTag(newTag);
                     }
                     setNewTag(undefined);
@@ -236,7 +237,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
             fontSize={'sm'}
             EmptyChildren={<EmptyTip text={t('dataset:dataset.no_tags')} />}
           >
-            {list.map((listItem) => {
+            {renderTags.map((listItem) => {
               const item = listItem.data;
               const tagUsage = tagUsages?.find((tagUsage) => tagUsage.tagId === item._id);
               const collections = tagUsage?.collections || [];
@@ -292,7 +293,9 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                           onBlur={() => {
                             if (
                               currentEditTagContent &&
-                              !list.map((item) => item.data.tag).includes(currentEditTagContent)
+                              !collectionTags
+                                .map((item) => item.tag)
+                                .includes(currentEditTagContent)
                             ) {
                               onUpdateCollectionTag({
                                 tag: currentEditTagContent,

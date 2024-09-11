@@ -32,9 +32,7 @@ import Markdown from '@/components/Markdown';
 import { DatasetDataListItemType } from '@/global/core/dataset/type';
 
 const DataCard = () => {
-  const BoxRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
-  const lastSearch = useRef('');
   const router = useRouter();
   const { isPc } = useSystem();
   const { collectionId = '', datasetId } = router.query as {
@@ -52,24 +50,25 @@ const DataCard = () => {
     type: 'delete'
   });
 
+  const scrollParams = useMemo(
+    () => ({
+      collectionId,
+      searchText
+    }),
+    [collectionId, searchText]
+  );
   const {
     data: datasetDataList,
     ScrollData,
     total,
-    getData,
-    pageNum,
     isLoading,
     refresh,
     setData: setDatasetDataList
   } = usePagination<DatasetDataListItemType>({
     api: getDatasetDataList,
-    debounceWait: 300,
-    pageSize: 24,
+    pageSize: 10,
     type: 'scroll',
-    params: {
-      collectionId,
-      searchText
-    },
+    params: scrollParams,
     refreshDeps: [searchText, collectionId]
   });
 
@@ -93,8 +92,8 @@ const DataCard = () => {
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
 
   return (
-    <MyBox isLoading={isLoading} position={'relative'} py={[1, 0]} h={'100%'}>
-      <Flex ref={BoxRef} flexDirection={'column'} h={'100%'}>
+    <MyBox position={'relative'} py={[1, 0]} h={'100%'}>
+      <Flex flexDirection={'column'} h={'100%'}>
         {/* Header */}
         <Flex alignItems={'center'} px={6}>
           <Flex className="textEllipsis" flex={'1 0 0'} mr={[3, 5]} alignItems={'center'}>
@@ -163,150 +162,149 @@ const DataCard = () => {
           />
         </Flex>
         {/* data */}
-        <Box flex={'1 0 0'} overflow={'auto'} px={5} pb={5}>
-          <ScrollData>
-            <Flex flexDir={'column'} gap={2}>
-              {datasetDataList.map((item, index) => (
-                <Card
-                  key={item._id}
-                  cursor={'pointer'}
-                  p={3}
-                  userSelect={'none'}
-                  boxShadow={'none'}
-                  bg={index % 2 === 1 ? 'myGray.50' : 'blue.50'}
-                  border={theme.borders.sm}
-                  position={'relative'}
-                  overflow={'hidden'}
-                  _hover={{
-                    borderColor: 'blue.600',
-                    boxShadow: 'lg',
-                    '& .header': { visibility: 'visible' },
-                    '& .footer': { visibility: 'visible' },
-                    '& .forbid-switch': { display: 'flex' },
-                    bg: index % 2 === 1 ? 'myGray.200' : 'blue.100'
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!collection) return;
-                    setEditDataId(item._id);
-                  }}
+        <ScrollData flex={'1 0 0'} px={5} pb={5}>
+          <Flex flexDir={'column'} gap={2}>
+            {datasetDataList.map((item, index) => (
+              <Card
+                key={item._id}
+                cursor={'pointer'}
+                p={3}
+                userSelect={'none'}
+                boxShadow={'none'}
+                bg={index % 2 === 1 ? 'myGray.50' : 'blue.50'}
+                border={theme.borders.sm}
+                position={'relative'}
+                overflow={'hidden'}
+                _hover={{
+                  borderColor: 'blue.600',
+                  boxShadow: 'lg',
+                  '& .header': { visibility: 'visible' },
+                  '& .footer': { visibility: 'visible' },
+                  bg: index % 2 === 1 ? 'myGray.200' : 'blue.100'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!collection) return;
+                  setEditDataId(item._id);
+                }}
+              >
+                {/* Data tag */}
+                <Flex
+                  position={'absolute'}
+                  zIndex={1}
+                  alignItems={'center'}
+                  visibility={'hidden'}
+                  className="header"
                 >
-                  {/* Data tag */}
-                  <Flex
-                    position={'absolute'}
-                    zIndex={1}
-                    alignItems={'center'}
-                    visibility={'hidden'}
-                    className="header"
+                  <MyTag
+                    px={2}
+                    type="borderFill"
+                    borderRadius={'sm'}
+                    border={'1px'}
+                    color={'myGray.200'}
+                    bg={'white'}
+                    fontWeight={'500'}
                   >
-                    <MyTag
-                      px={2}
-                      type="borderFill"
-                      borderRadius={'sm'}
-                      border={'1px'}
-                      color={'myGray.200'}
-                      bg={'white'}
-                      fontWeight={'500'}
+                    <Box color={'blue.600'}>#{item.chunkIndex ?? '-'} </Box>
+                    <Box
+                      ml={1.5}
+                      className={'textEllipsis'}
+                      fontSize={'mini'}
+                      textAlign={'right'}
+                      color={'myGray.500'}
                     >
-                      <Box color={'blue.600'}>#{item.chunkIndex ?? '-'} </Box>
-                      <Box
-                        ml={1.5}
-                        className={'textEllipsis'}
-                        fontSize={'mini'}
-                        textAlign={'right'}
-                        color={'myGray.500'}
-                      >
-                        ID:{item._id}
-                      </Box>
-                    </MyTag>
-                  </Flex>
+                      ID:{item._id}
+                    </Box>
+                  </MyTag>
+                </Flex>
 
-                  {/* Data content */}
-                  <Box wordBreak={'break-all'} fontSize={'sm'}>
-                    <Markdown source={item.q} isDisabled />
-                    {!!item.a && (
-                      <>
-                        <MyDivider />
-                        <Markdown source={item.a} isDisabled />
-                      </>
-                    )}
-                  </Box>
+                {/* Data content */}
+                <Box wordBreak={'break-all'} fontSize={'sm'}>
+                  <Markdown source={item.q} isDisabled />
+                  {!!item.a && (
+                    <>
+                      <MyDivider />
+                      <Markdown source={item.a} isDisabled />
+                    </>
+                  )}
+                </Box>
 
-                  {/* Mask */}
+                {/* Mask */}
+                <Flex
+                  className="footer"
+                  position={'absolute'}
+                  bottom={2}
+                  right={2}
+                  overflow={'hidden'}
+                  alignItems={'flex-end'}
+                  visibility={'hidden'}
+                  fontSize={'mini'}
+                >
                   <Flex
-                    className="footer"
-                    position={'absolute'}
-                    bottom={2}
-                    right={2}
-                    overflow={'hidden'}
-                    alignItems={'flex-end'}
-                    visibility={'hidden'}
+                    alignItems={'center'}
+                    bg={'white'}
+                    color={'myGray.600'}
+                    borderRadius={'sm'}
+                    border={'1px'}
+                    borderColor={'myGray.200'}
+                    h={'24px'}
+                    px={2}
                     fontSize={'mini'}
+                    boxShadow={'1'}
+                    py={1}
+                    mr={2}
                   >
-                    <Flex
-                      alignItems={'center'}
+                    <MyIcon
                       bg={'white'}
                       color={'myGray.600'}
                       borderRadius={'sm'}
                       border={'1px'}
                       borderColor={'myGray.200'}
-                      h={'24px'}
-                      px={2}
-                      fontSize={'mini'}
-                      boxShadow={'1'}
-                      py={1}
-                      mr={2}
-                    >
-                      <MyIcon
-                        bg={'white'}
-                        color={'myGray.600'}
-                        borderRadius={'sm'}
-                        border={'1px'}
-                        borderColor={'myGray.200'}
-                        name="common/text/t"
-                        w={'14px'}
-                        mr={1}
-                      />
-                      {item.q.length + (item.a?.length || 0)}
-                    </Flex>
-                    {canWrite && (
-                      <IconButton
-                        display={'flex'}
-                        p={1}
-                        boxShadow={'1'}
-                        icon={<MyIcon name={'common/trash'} w={'14px'} color={'myGray.600'} />}
-                        variant={'whiteDanger'}
-                        size={'xsSquare'}
-                        aria-label={'delete'}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openConfirm(async () => {
-                            try {
-                              await delOneDatasetDataById(item._id);
-                              setDatasetDataList((prev) => {
-                                return prev.filter((data) => data._id !== item._id);
-                              });
-                              toast({
-                                title: t('common:common.Delete Success'),
-                                status: 'success'
-                              });
-                            } catch (error) {
-                              toast({
-                                title: getErrText(error),
-                                status: 'error'
-                              });
-                            }
-                          })();
-                        }}
-                      />
-                    )}
+                      name="common/text/t"
+                      w={'14px'}
+                      mr={1}
+                    />
+                    {item.q.length + (item.a?.length || 0)}
                   </Flex>
-                </Card>
-              ))}
-            </Flex>
-          </ScrollData>
-          {total === 0 && <EmptyTip text={t('common:core.dataset.data.Empty Tip')}></EmptyTip>}
-        </Box>
+                  {canWrite && (
+                    <IconButton
+                      display={'flex'}
+                      p={1}
+                      boxShadow={'1'}
+                      icon={<MyIcon name={'common/trash'} w={'14px'} color={'myGray.600'} />}
+                      variant={'whiteDanger'}
+                      size={'xsSquare'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openConfirm(async () => {
+                          try {
+                            await delOneDatasetDataById(item._id);
+                            setDatasetDataList((prev) => {
+                              return prev.filter((data) => data._id !== item._id);
+                            });
+                            toast({
+                              title: t('common:common.Delete Success'),
+                              status: 'success'
+                            });
+                          } catch (error) {
+                            toast({
+                              title: getErrText(error),
+                              status: 'error'
+                            });
+                          }
+                        })();
+                      }}
+                      aria-label={''}
+                    />
+                  )}
+                </Flex>
+              </Card>
+            ))}
+          </Flex>
+        </ScrollData>
+        {total === 0 && !isLoading && (
+          <EmptyTip text={t('common:core.dataset.data.Empty Tip')}></EmptyTip>
+        )}
       </Flex>
 
       {editDataId !== undefined && collection && (

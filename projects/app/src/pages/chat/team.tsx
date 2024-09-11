@@ -58,7 +58,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
 
   const {
-    newChatTitle,
+    onUpdateHistoryTitle,
     loadHistories,
     onUpdateHistory,
     onClearHistories,
@@ -115,7 +115,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       if (completionChatId !== chatId) {
         onChangeChatId(completionChatId, true);
       }
-      newChatTitle({ chatId: completionChatId, newTitle });
+      onUpdateHistoryTitle({ chatId: completionChatId, newTitle });
 
       // update chat window
       setChatData((state) => ({

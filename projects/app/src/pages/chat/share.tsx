@@ -75,7 +75,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
   const outLinkUid: string = authToken || localUId;
 
   const {
-    newChatTitle,
+    onUpdateHistoryTitle,
     loadHistories,
     onUpdateHistory,
     onClearHistories,
@@ -141,7 +141,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
       if (completionChatId !== chatId) {
         onChangeChatId(completionChatId, true);
       }
-      newChatTitle({ chatId: completionChatId, newTitle });
+      onUpdateHistoryTitle({ chatId: completionChatId, newTitle });
 
       // update chat window
       setChatData((state) => ({

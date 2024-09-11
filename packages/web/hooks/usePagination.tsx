@@ -1,14 +1,17 @@
-import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import { IconButton, Flex, Box, Input } from '@chakra-ui/react';
+import { useRef, useState, useCallback, useMemo } from 'react';
+import { IconButton, Flex, Box, Input, BoxProps } from '@chakra-ui/react';
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
-import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'next-i18next';
-import { throttle } from 'lodash';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useRequest } from 'ahooks';
-
-const thresholdVal = 100;
+import {
+  useBoolean,
+  useLockFn,
+  useMemoizedFn,
+  useRequest,
+  useScroll,
+  useThrottleEffect
+} from 'ahooks';
 
 type PagingData<T> = {
   pageNum: number;
@@ -24,10 +27,7 @@ export function usePagination<ResT = any>({
   defaultRequest = true,
   type = 'button',
   onChange,
-  elementRef,
-  refreshDeps,
-  debounceWait,
-  throttleWait
+  refreshDeps
 }: {
   api: (data: any) => Promise<PagingData<ResT>>;
   pageSize?: number;
@@ -35,55 +35,59 @@ export function usePagination<ResT = any>({
   defaultRequest?: boolean;
   type?: 'button' | 'scroll';
   onChange?: (pageNum: number) => void;
-  elementRef?: React.RefObject<HTMLDivElement>;
   refreshDeps?: any[];
-  debounceWait?: number;
-  throttleWait?: number;
 }) {
   const { toast } = useToast();
   const { t } = useTranslation();
   const [pageNum, setPageNum] = useState(1);
+
+  const ScrollContainerRef = useRef<HTMLDivElement>(null);
+
   const noMore = useRef(false);
-  const pageNumRef = useRef(pageNum);
-  pageNumRef.current = pageNum;
+
+  const [isLoading, { setTrue, setFalse }] = useBoolean(false);
+
   const [total, setTotal] = useState(0);
-  const totalRef = useRef(total);
-  totalRef.current = total;
   const [data, setData] = useState<ResT[]>([]);
-  const dataLengthRef = useRef(data.length);
-  dataLengthRef.current = data.length;
+
   const maxPage = useMemo(() => Math.ceil(total / pageSize) || 1, [pageSize, total]);
 
-  const { mutate, isLoading } = useMutation({
-    mutationFn: async (num: number = pageNum) => {
-      if (noMore.current) return;
-      try {
-        const res: PagingData<ResT> = await api({
-          pageNum: num,
-          pageSize,
-          ...params
-        });
-        res.total !== undefined && setTotal(res.total);
+  const fetchData = useLockFn(async (num: number = pageNum) => {
+    if (noMore.current && num !== 1) return;
+    setTrue();
 
-        if (res.total !== undefined && res.total <= data.length + res.data.length) {
-          noMore.current = true;
-        }
-        setPageNum(num);
-        if (type === 'scroll') {
-          setData((prevData) => [...prevData, ...res.data]);
-        } else {
-          setData(res.data);
-        }
-        onChange && onChange(num);
-      } catch (error: any) {
-        toast({
-          title: getErrText(error, t('common:core.chat.error.data_error')),
-          status: 'error'
-        });
-        console.log(error);
+    try {
+      const res: PagingData<ResT> = await api({
+        pageNum: num,
+        pageSize,
+        ...params
+      });
+
+      // Check total and set
+      res.total !== undefined && setTotal(res.total);
+
+      if (res.total !== undefined && res.total <= data.length + res.data.length) {
+        noMore.current = true;
       }
-      return null;
+
+      setPageNum(num);
+
+      if (type === 'scroll') {
+        setData((prevData) => (num === 1 ? res.data : [...prevData, ...res.data]));
+      } else {
+        setData(res.data);
+      }
+
+      onChange?.(num);
+    } catch (error: any) {
+      toast({
+        title: getErrText(error, t('common:core.chat.error.data_error')),
+        status: 'error'
+      });
+      console.log(error);
     }
+
+    setFalse();
   });
 
   const Pagination = useCallback(() => {
@@ -95,7 +99,7 @@ export function usePagination<ResT = any>({
           aria-label={'left'}
           size={'smSquare'}
           isLoading={isLoading}
-          onClick={() => mutate(pageNum - 1)}
+          onClick={() => fetchData(pageNum - 1)}
         />
         <Flex mx={2} alignItems={'center'}>
           <Input
@@ -110,11 +114,11 @@ export function usePagination<ResT = any>({
               const val = +e.target.value;
               if (val === pageNum) return;
               if (val >= maxPage) {
-                mutate(maxPage);
+                fetchData(maxPage);
               } else if (val < 1) {
-                mutate(1);
+                fetchData(1);
               } else {
-                mutate(+e.target.value);
+                fetchData(+e.target.value);
               }
             }}
             onKeyDown={(e) => {
@@ -123,11 +127,11 @@ export function usePagination<ResT = any>({
               if (val && e.key === 'Enter') {
                 if (val === pageNum) return;
                 if (val >= maxPage) {
-                  mutate(maxPage);
+                  fetchData(maxPage);
                 } else if (val < 1) {
-                  mutate(1);
+                  fetchData(1);
                 } else {
-                  mutate(val);
+                  fetchData(val);
                 }
               }
             }}
@@ -143,22 +147,35 @@ export function usePagination<ResT = any>({
           isLoading={isLoading}
           w={'28px'}
           h={'28px'}
-          onClick={() => mutate(pageNum + 1)}
+          onClick={() => fetchData(pageNum + 1)}
         />
       </Flex>
     );
-  }, [isLoading, maxPage, mutate, pageNum]);
+  }, [isLoading, maxPage, fetchData, pageNum]);
 
-  const ScrollData = useCallback(
-    ({ children, ...props }: { children: React.ReactNode }) => {
-      const loadText = useMemo(() => {
+  // Reload data
+  const { runAsync: refresh } = useRequest(
+    async () => {
+      setData([]);
+      defaultRequest && fetchData(1);
+    },
+    {
+      manual: false,
+      refreshDeps,
+      throttleWait: 100
+    }
+  );
+
+  const ScrollData = useMemoizedFn(
+    ({ children, ...props }: { children: React.ReactNode } & BoxProps) => {
+      const loadText = (() => {
         if (isLoading) return t('common:common.is_requesting');
         if (total <= data.length) return t('common:common.request_end');
         return t('common:common.request_more');
-      }, []);
+      })();
 
       return (
-        <Box {...props} ref={elementRef} overflow={'overlay'}>
+        <Box {...props} ref={ScrollContainerRef} overflow={'overlay'}>
           {children}
           <Box
             mt={2}
@@ -168,57 +185,29 @@ export function usePagination<ResT = any>({
             cursor={loadText === t('common:common.request_more') ? 'pointer' : 'default'}
             onClick={() => {
               if (loadText !== t('common:common.request_more')) return;
-              mutate(pageNum + 1);
+              fetchData(pageNum + 1);
             }}
           >
             {loadText}
           </Box>
         </Box>
       );
-    },
-    [data.length, isLoading, mutate, pageNum, total]
-  );
-
-  const { runAsync: refresh } = useRequest(
-    async () => {
-      setData([]);
-      defaultRequest && mutate(1);
-    },
-    {
-      manual: false,
-      refreshDeps,
-      debounceWait: data.length === 0 ? 0 : debounceWait,
-      throttleWait
     }
   );
 
-  useEffect(() => {
-    if (!elementRef?.current || type !== 'scroll') return;
-
-    const scrolling = throttle((e: Event) => {
-      const element = e.target as HTMLDivElement;
-      if (!element) return;
-      // 当前滚动位置
-      const scrollTop = element.scrollTop;
-      // 可视高度
-      const clientHeight = element.clientHeight;
-      // 内容总高度
-      const scrollHeight = element.scrollHeight;
-      // 判断是否滚动到底部
-      if (scrollTop + clientHeight + thresholdVal >= scrollHeight && !noMore.current) {
-        mutate(pageNumRef.current + 1);
+  // Scroll check
+  const scroll = useScroll(ScrollContainerRef);
+  useThrottleEffect(
+    () => {
+      if (!ScrollContainerRef?.current || type !== 'scroll' || total === 0) return;
+      const { scrollTop, scrollHeight, clientHeight } = ScrollContainerRef.current;
+      if (scrollTop + clientHeight >= scrollHeight - 100) {
+        fetchData(pageNum + 1);
       }
-    }, 100);
-
-    const handleScroll = (e: Event) => {
-      scrolling(e);
-    };
-
-    elementRef.current.addEventListener('scroll', handleScroll);
-    return () => {
-      elementRef.current?.removeEventListener('scroll', handleScroll);
-    };
-  }, [elementRef, mutate, pageNum, type, total, data.length]);
+    },
+    [scroll],
+    { wait: 50 }
+  );
 
   return {
     pageNum,
@@ -229,7 +218,7 @@ export function usePagination<ResT = any>({
     isLoading,
     Pagination,
     ScrollData,
-    getData: mutate,
+    getData: fetchData,
     refresh
   };
 }
