@@ -374,6 +374,18 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
     if (!nodeRunResult) return [];
 
+    /* 
+      特殊情况：
+      通过 skipEdges 可以判断是运行了分支节点。
+      由于分支节点，可能会实现递归调用（skip 连线往前递归）
+      需要把分支节点也加入到已跳过的记录里，可以保证递归 skip 运行时，至多只会传递到当前分支节点，不会影响分支后的内容。
+    */
+    const skipEdges = (nodeRunResult.result[DispatchNodeResponseKeyEnum.skipHandleId] ||
+      []) as string[];
+    if (skipEdges && skipEdges?.length > 0) {
+      skippedNodeIdList.add(node.nodeId);
+    }
+
     // In the current version, only one interactive node is allowed at the same time
     const interactiveResponse = nodeRunResult.result?.[DispatchNodeResponseKeyEnum.interactive];
     if (interactiveResponse) {
@@ -559,7 +571,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
   // start process width initInput
   const entryNodes = runtimeNodes.filter((item) => item.isEntry);
-
   // reset entry
   runtimeNodes.forEach((item) => {
     // Interactive node is not the entry node, return interactive result

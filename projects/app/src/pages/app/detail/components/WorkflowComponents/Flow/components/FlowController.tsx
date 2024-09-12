@@ -34,12 +34,10 @@ const FlowController = React.memo(function FlowController() {
 
   // Controller shortcut key
   useKeyPress(['ctrl.z', 'meta.z'], (e) => {
-    e.preventDefault();
     if (!mouseInCanvas) return;
     undo();
   });
   useKeyPress(['ctrl.shift.z', 'meta.shift.z', 'ctrl.y', 'meta.y'], (e) => {
-    e.preventDefault();
     if (!mouseInCanvas) return;
     redo();
   });

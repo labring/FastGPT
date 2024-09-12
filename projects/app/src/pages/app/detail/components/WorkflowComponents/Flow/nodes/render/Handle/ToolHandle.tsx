@@ -44,7 +44,7 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
         type="target"
         id={handleId}
         position={Position.Top}
-        isConnectableStart={false}
+        isConnectableEnd={showHandle}
       >
         <Box
           className="flow-handle"
