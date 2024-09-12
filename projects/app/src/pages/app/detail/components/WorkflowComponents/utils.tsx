@@ -25,7 +25,8 @@ export const uiWorkflow2StoreWorkflow = ({
     version: item.data.version,
     inputs: item.data.inputs,
     outputs: item.data.outputs,
-    pluginId: item.data.pluginId
+    pluginId: item.data.pluginId,
+    parentNodeId: item.data.parentNodeId
   }));
 
   // get all handle

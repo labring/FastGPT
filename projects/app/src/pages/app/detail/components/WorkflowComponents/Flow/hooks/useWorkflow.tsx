@@ -369,7 +369,7 @@ export const useWorkflow = () => {
           return handleRemoveNode(change, changes, node);
         }
       } else if (change.type === 'select') {
-        return handleSelectNode(change);
+        return handleSelectNode(change, changes);
       } else if (change.type === 'position') {
         const node = nodes.find((n) => n.id === change.id);
         if (node) {
@@ -434,9 +434,14 @@ export const useWorkflow = () => {
     }
   };
 
-  const handleSelectNode = (change: NodeSelectionChange) => {
+  const handleSelectNode = (change: NodeSelectionChange, changes: NodeChange[]) => {
     if (change.selected === false && isDowningCtrl) {
       change.selected = true;
+    } else {
+      return (() => {
+        customApplyNodeChanges(changes, nodes);
+        onNodesChange(changes);
+      })();
     }
   };
 

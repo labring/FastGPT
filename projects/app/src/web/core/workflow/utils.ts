@@ -97,11 +97,11 @@ export const storeNode2FlowNode = ({
 
   // replace item data
   const nodeItem: FlowNodeItemType = {
+    parentNodeId,
     ...template,
     ...storeNode,
     avatar: template.avatar ?? storeNode.avatar,
     version: storeNode.version ?? template.version ?? defaultNodeVersion,
-    parentNodeId,
     /* 
       Inputs and outputs, New fields are added, not reduced
     */
