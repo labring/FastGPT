@@ -43,7 +43,7 @@ export const useChat = () => {
     const { data, ScrollData, isLoading, setData, refresh, getData } = usePagination({
       api: async (data): Promise<PagingData<ChatSiteItemType>> => {
         const res = await getChatRecords(data);
-        console.log(res, 'res');
+
         return {
           ...res,
           data: res.data.map((item) => ({

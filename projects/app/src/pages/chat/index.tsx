@@ -93,7 +93,6 @@ const Chat = ({
   // get chat app info
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
   const isPlugin = chatData.app.type === AppTypeEnum.plugin;
-  console.log(chatRecords, 'chatRecords');
   const { loading: isInit } = useRequest2(
     async () => {
       if (!appId || forbidLoadChat.current) return;
