@@ -11,8 +11,6 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -56,14 +54,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }),
     getAppLatestVersion(app._id, app)
   ]);
-
-  // pick share response field
-  app.type !== AppTypeEnum.plugin &&
-    histories.forEach((item) => {
-      if (item.obj === ChatRoleEnum.AI) {
-        item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
-      }
-    });
 
   jsonRes<InitChatResponse>(res, {
     data: {
