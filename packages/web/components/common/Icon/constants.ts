@@ -175,7 +175,6 @@ export const iconPaths = {
   'core/workflow/debugBlue': () => import('./icons/core/workflow/debugBlue.svg'),
   'core/workflow/debugNext': () => import('./icons/core/workflow/debugNext.svg'),
   'core/workflow/debugResult': () => import('./icons/core/workflow/debugResult.svg'),
-  'core/workflow/dragIcon': () => import('./icons/core/workflow/dragIcon.svg'),
   'core/workflow/edgeArrow': () => import('./icons/core/workflow/edgeArrow.svg'),
   'core/workflow/grout': () => import('./icons/core/workflow/grout.svg'),
   'core/workflow/inputType/customVariable': () =>
@@ -199,6 +198,7 @@ export const iconPaths = {
     import('./icons/core/workflow/inputType/selectLLM.svg'),
   'core/workflow/inputType/switch': () => import('./icons/core/workflow/inputType/switch.svg'),
   'core/workflow/inputType/textarea': () => import('./icons/core/workflow/inputType/textarea.svg'),
+  'core/workflow/mouse': () => import('./icons/core/workflow/mouse.svg'),
   'core/workflow/publish': () => import('./icons/core/workflow/publish.svg'),
   'core/workflow/redo': () => import('./icons/core/workflow/redo.svg'),
   'core/workflow/revertVersion': () => import('./icons/core/workflow/revertVersion.svg'),
@@ -249,6 +249,7 @@ export const iconPaths = {
     import('./icons/core/workflow/template/variableUpdate.svg'),
   'core/workflow/template/workflowStart': () =>
     import('./icons/core/workflow/template/workflowStart.svg'),
+  'core/workflow/touchTable': () => import('./icons/core/workflow/touchTable.svg'),
   'core/workflow/undo': () => import('./icons/core/workflow/undo.svg'),
   'core/workflow/upload': () => import('./icons/core/workflow/upload.svg'),
   'core/workflow/versionHistories': () => import('./icons/core/workflow/versionHistories.svg'),

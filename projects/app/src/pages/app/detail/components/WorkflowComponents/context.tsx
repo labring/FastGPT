@@ -65,6 +65,7 @@ type WorkflowContextType = {
   basicNodeTemplates: FlowNodeTemplateType[];
   filterAppIds?: string[];
   reactFlowWrapper: React.RefObject<HTMLDivElement> | null;
+  mouseInCanvas: boolean;
 
   // nodes
   nodes: Node<FlowNodeItemType, string | undefined>[];
@@ -146,8 +147,6 @@ type WorkflowContextType = {
         edges: StoreEdgeItemType[];
       }
     | undefined;
-  onSaveWorkflow: () => Promise<null | undefined>;
-  isSaving: boolean;
 
   // debug
   workflowDebugData:
@@ -197,7 +196,6 @@ type DebugDataType = {
 };
 
 export const WorkflowContext = createContext<WorkflowContextType>({
-  isSaving: false,
   setConnectingEdge: function (
     value: React.SetStateAction<OnConnectStartParams | undefined>
   ): void {
@@ -210,6 +208,7 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   reactFlowWrapper: null,
   nodes: [],
   nodeList: [],
+  mouseInCanvas: false,
   setNodes: function (
     value: React.SetStateAction<Node<FlowNodeItemType, string | undefined>[]>
   ): void {
@@ -300,9 +299,6 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     | undefined {
     throw new Error('Function not implemented.');
   },
-  onSaveWorkflow: function (): Promise<null | undefined> {
-    throw new Error('Function not implemented.');
-  },
   historiesDefaultData: undefined,
   setHistoriesDefaultData: function (value: React.SetStateAction<InitProps | undefined>): void {
     throw new Error('Function not implemented.');
@@ -346,7 +342,7 @@ const WorkflowContextProvider = ({
   const { toast } = useToast();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
-  const { appDetail, setAppDetail, updateAppDetail } = useContextSelector(AppContext, (v) => v);
+  const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
   const appId = appDetail._id;
 
   const [workflowControlMode, setWorkflowControlMode] = useLocalStorageState<'drag' | 'select'>(
@@ -356,6 +352,23 @@ const WorkflowContextProvider = ({
       listenStorageChange: true
     }
   );
+
+  // Mouse in canvas
+  const [mouseInCanvas, setMouseInCanvas] = useState(false);
+  useEffect(() => {
+    const handleMouseInCanvas = (e: MouseEvent) => {
+      setMouseInCanvas(true);
+    };
+    const handleMouseOutCanvas = (e: MouseEvent) => {
+      setMouseInCanvas(false);
+    };
+    reactFlowWrapper?.current?.addEventListener('mouseenter', handleMouseInCanvas);
+    reactFlowWrapper?.current?.addEventListener('mouseleave', handleMouseOutCanvas);
+    return () => {
+      reactFlowWrapper?.current?.removeEventListener('mouseenter', handleMouseInCanvas);
+      reactFlowWrapper?.current?.removeEventListener('mouseleave', handleMouseOutCanvas);
+    };
+  }, [reactFlowWrapper?.current]);
 
   /* edge */
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -601,33 +614,6 @@ const WorkflowContextProvider = ({
     const storeNodes = uiWorkflow2StoreWorkflow({ nodes, edges });
 
     return storeNodes;
-  });
-
-  /* save workflow */
-  const { runAsync: onSaveWorkflow, loading: isSaving } = useRequest2(async () => {
-    const { nodes } = await getWorkflowStore();
-
-    // version preview / debug mode, not save
-    if (appDetail.version !== 'v2' || historiesDefaultData || isSaving || !!workflowDebugData)
-      return;
-
-    const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges });
-
-    // check valid
-    if (storeWorkflow.nodes.length === 0 || storeWorkflow.edges.length === 0) {
-      return;
-    }
-
-    try {
-      await updateAppDetail({
-        ...storeWorkflow,
-        chatConfig: appDetail.chatConfig,
-        //@ts-ignore
-        version: 'v2'
-      });
-    } catch (error) {}
-
-    return null;
   });
 
   /* debug */
@@ -963,6 +949,7 @@ const WorkflowContextProvider = ({
     basicNodeTemplates,
     workflowControlMode,
     setWorkflowControlMode,
+    mouseInCanvas,
 
     // node
     nodes,
@@ -1004,8 +991,6 @@ const WorkflowContextProvider = ({
     initData,
     flowData2StoreDataAndCheck,
     flowData2StoreData,
-    onSaveWorkflow,
-    isSaving,
 
     // debug
     workflowDebugData,
