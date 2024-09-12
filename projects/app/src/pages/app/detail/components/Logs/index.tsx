@@ -42,8 +42,7 @@ const Logs = () => {
   const { teamMembers, loadAndGetTeamMembers } = useUserStore();
 
   useEffect(() => {
-    if (teamMembers.length) return;
-    loadAndGetTeamMembers(true);
+    loadAndGetTeamMembers();
   }, []);
 
   const [dateRange, setDateRange] = useState<DateRangeType>({
