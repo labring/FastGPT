@@ -1,27 +1,66 @@
-type MockAuthAppType = {
-  app: {
-    _id: string;
-    type: string;
-  };
+import { TestAppType } from '@/test/test-cases/app';
+import type { AuthResponseType } from '@fastgpt/service/support/permission/type';
+
+let authAppRet: AuthResponseType & {
+  app: TestAppType;
 };
 
-let __app: MockAuthAppType = {
-  app: {
-    _id: 'mock-app-id',
-    type: 'mock-app-type'
-  }
+let authAppByTmbIdRet: {
+  app: TestAppType;
 };
 
 jest.mock('@fastgpt/service/support/permission/app/auth', () => {
   return {
-    async authApp({ appId, per, req }: { appId: string; per: string; req: any }) {
-      if (!appId) {
-        return null;
-      }
-    }
+    // authApp: async ({
+    //   appId,
+    //   per,
+    //   req
+    // }: {
+    //   appId: string;
+    //   per: Permission;
+    //   req: TestRequest;
+    // }): Promise<
+    //   AuthResponseType & {
+    //     app: TestAppType;
+    //   }
+    // > => {
+    //   if (!appId) {
+    //     return Promise.reject(AppErrEnum.unExist);
+    //   }
+    //   const result = await MockParseHeaderCert({ req, authToken: true });
+    //
+    //   const { tmbId, isRoot } = result;
+    //   const app = TestAppList.find((app) => app._id === appId);
+    //   if (!app) {
+    //     return Promise.reject(AppErrEnum.unExist);
+    //   }
+    //   if (isRoot) {
+    //     return {
+    //       ...result,
+    //       permission: new Permission({ isOwner: true }),
+    //       app
+    //     };
+    //   }
+    //   return {
+    //     ...result,
+    //     permission: new Permission({ isOwner: false }), // TODO: unfinished
+    //     app
+    //   };
+    // },
+    // authAppByTmbId: async () => { };
+    authApp: async () => authAppRet,
+    authAppByTmbId: async () => authAppByTmbIdRet
   };
 });
 
-export function setApp(app: MockAuthAppType) {
-  __app = app;
-}
+export const setAuthAppRet = (
+  ret: AuthResponseType & {
+    app: TestAppType;
+  }
+) => {
+  authAppRet = ret;
+};
+
+export const setAuthAppByTmbIdRet = (ret: { app: TestAppType }) => {
+  authAppByTmbIdRet = ret;
+};

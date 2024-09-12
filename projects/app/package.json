@@ -70,6 +70,7 @@
     "zustand": "^4.3.5"
   },
   "devDependencies": {
+    "@shelf/jest-mongodb": "^4.3.2",
     "@svgr/webpack": "^6.5.1",
     "@types/formidable": "^2.0.5",
     "@types/js-yaml": "^4.0.9",
@@ -82,6 +83,7 @@
     "@types/request-ip": "^0.0.37",
     "eslint": "8.56.0",
     "eslint-config-next": "14.2.3",
+    "mockingoose": "^2.16.2",
     "nextjs-node-loader": "^1.1.5",
     "typescript": "^5.1.3"
   }

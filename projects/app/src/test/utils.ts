@@ -1,4 +1,4 @@
-import { UserModelSchema } from '@fastgpt/global/support/user/type';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 export type TestTokenType = {
   userId: string;
@@ -23,35 +23,72 @@ export type TestRequest = {
   };
 };
 
-export function getTestRequest({
+export function getTestRequest<Q = any, B = any>({
   query = {},
-  body = {},
+  body = {}
+  // authToken = true,
+  // authRoot = false,
+  // authApiKey = false,
+  // user
+}: {
+  body?: Partial<B>;
+  query?: Partial<Q>;
+  // authToken?: boolean;
+  // authRoot?: boolean;
+  // authApiKey?: boolean;
+  // user?: {
+  //   uid: string;
+  //   tmbId: string;
+  //   teamId: string;
+  //   isRoot: boolean;
+  // };
+}): [any, any] {
+  // const headers: TestRequest['headers'] = {};
+  // if (authToken) {
+  //   headers.cookie = {
+  //     token: {
+  //       userId: user?.uid || '',
+  //       teamId: user?.teamId || '',
+  //       tmbId: user?.tmbId || '',
+  //       isRoot: user?.isRoot || false
+  //     }
+  //   };
+  // }
+  return [
+    {
+      // headers,
+      query,
+      body
+    },
+    {}
+  ];
+}
+
+export const MockParseHeaderCert = async ({
+  req,
   authToken = false,
   authRoot = false,
-  authApiKey = false,
-  user
+  authApiKey = false
 }: {
-  body: any;
-  headers: any;
-  query: any;
+  req: TestRequest;
   authToken?: boolean;
   authRoot?: boolean;
   authApiKey?: boolean;
-  user?: UserModelSchema;
-}) {
-  const headers: TestRequest['headers'] = {};
+}): Promise<TestTokenType> => {
   if (authToken) {
-    headers.cookie = {
-      token: {
-        userId: user?._id || '',
-        teamId: '',
-        tmbId: '',
-        isRoot: false
-      }
-    };
+    const token = req.headers?.cookie?.token;
+    if (!token) {
+      return Promise.reject(ERROR_ENUM.unAuthorization);
+    }
+    return token;
   }
-  return {
-    query,
-    body
-  };
-}
+  // if (authRoot) {
+  //   // TODO: unfinished
+  //   return req.headers.rootkey;
+  // }
+  // if (authApiKey) {
+  //   // TODO: unfinished
+  //   return req.headers.authorization;
+  // }
+  return {} as any;
+};
