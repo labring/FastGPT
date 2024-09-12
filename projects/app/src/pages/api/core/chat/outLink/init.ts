@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import type { InitChatResponse, InitOutLinkChatProps } from '@/global/core/chat/api.d';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
@@ -9,11 +8,9 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -55,14 +52,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }),
     getAppLatestVersion(app._id, app)
   ]);
-
-  // pick share response field
-  app.type !== AppTypeEnum.plugin &&
-    histories.forEach((item) => {
-      if (item.obj === ChatRoleEnum.AI) {
-        item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
-      }
-    });
 
   jsonRes<InitChatResponse>(res, {
     data: {

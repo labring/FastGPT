@@ -18,6 +18,8 @@ export function transformPreviewHistories(histories: ChatItemType[]) {
 export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   if (historyItem.obj !== ChatRoleEnum.AI) return historyItem;
   if (historyItem.totalQuoteList !== undefined) return historyItem;
+
+  // Flat children
   const flatResData: ChatHistoryItemResType[] =
     historyItem.responseData
       ?.map((item) => {
