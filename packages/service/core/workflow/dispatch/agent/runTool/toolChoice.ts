@@ -423,8 +423,8 @@ async function streamResponse({
         // Start call tool
         if (toolCall.id) {
           callingTool = {
-            name: toolCall.function.name || '',
-            arguments: toolCall.function.arguments || ''
+            name: toolCall.function?.name || '',
+            arguments: toolCall.function?.arguments || ''
           };
         } else if (callingTool) {
           // Continue call
@@ -442,6 +442,7 @@ async function streamResponse({
           toolCalls.push({
             ...toolCall,
             id: toolId,
+            type: 'function',
             function: toolFunction,
             toolName: toolNode.name,
             toolAvatar: toolNode.avatar
