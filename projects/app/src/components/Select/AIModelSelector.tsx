@@ -68,7 +68,13 @@ const AIModelSelector = ({ list, onchange, disableTip, ...props }: Props) => {
 
   return (
     <MyTooltip label={disableTip}>
-      <MySelect isDisabled={!!disableTip} list={expandList} {...props} onchange={onSelect} />
+      <MySelect
+        className="nowheel"
+        isDisabled={!!disableTip}
+        list={expandList}
+        {...props}
+        onchange={onSelect}
+      />
     </MyTooltip>
   );
 };

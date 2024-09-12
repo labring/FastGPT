@@ -100,6 +100,7 @@ export default function Editor({
 
   return (
     <Box
+      className="nowheel"
       position={'relative'}
       width={'full'}
       h={`${height}px`}

@@ -135,6 +135,7 @@ const Workflow = () => {
           onConnectEnd={onConnectEnd}
           onEdgeMouseEnter={onEdgeMouseEnter}
           onEdgeMouseLeave={onEdgeMouseLeave}
+          onlyRenderVisibleElements
           panOnScrollSpeed={2}
           {...(workflowControlMode === 'select'
             ? {
