@@ -6,7 +6,7 @@ import {
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -48,7 +48,8 @@ import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { formatTime2YMDHMS, formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import type { InitProps } from '@/pages/app/detail/components/PublishHistoriesSlider';
-import { cloneDeep, isEqual } from 'lodash';
+import { cloneDeep } from 'lodash';
+import { SetState } from 'ahooks/lib/createUseStorageState';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -64,6 +65,7 @@ type WorkflowContextType = {
   basicNodeTemplates: FlowNodeTemplateType[];
   filterAppIds?: string[];
   reactFlowWrapper: React.RefObject<HTMLDivElement> | null;
+  mouseInCanvas: boolean;
 
   // nodes
   nodes: Node<FlowNodeItemType, string | undefined>[];
@@ -145,8 +147,6 @@ type WorkflowContextType = {
         edges: StoreEdgeItemType[];
       }
     | undefined;
-  onSaveWorkflow: () => Promise<null | undefined>;
-  isSaving: boolean;
 
   // debug
   workflowDebugData:
@@ -182,6 +182,10 @@ type WorkflowContextType = {
       | undefined
     >
   >;
+
+  //
+  workflowControlMode?: 'drag' | 'select';
+  setWorkflowControlMode: (value?: SetState<'drag' | 'select'> | undefined) => void;
 };
 
 type DebugDataType = {
@@ -192,7 +196,6 @@ type DebugDataType = {
 };
 
 export const WorkflowContext = createContext<WorkflowContextType>({
-  isSaving: false,
   setConnectingEdge: function (
     value: React.SetStateAction<OnConnectStartParams | undefined>
   ): void {
@@ -205,6 +208,7 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   reactFlowWrapper: null,
   nodes: [],
   nodeList: [],
+  mouseInCanvas: false,
   setNodes: function (
     value: React.SetStateAction<Node<FlowNodeItemType, string | undefined>[]>
   ): void {
@@ -295,9 +299,6 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     | undefined {
     throw new Error('Function not implemented.');
   },
-  onSaveWorkflow: function (): Promise<null | undefined> {
-    throw new Error('Function not implemented.');
-  },
   historiesDefaultData: undefined,
   setHistoriesDefaultData: function (value: React.SetStateAction<InitProps | undefined>): void {
     throw new Error('Function not implemented.');
@@ -323,7 +324,11 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     throw new Error('Function not implemented.');
   },
   canRedo: false,
-  canUndo: false
+  canUndo: false,
+  workflowControlMode: 'drag',
+  setWorkflowControlMode: function (value?: SetState<'drag' | 'select'> | undefined): void {
+    throw new Error('Function not implemented.');
+  }
 });
 
 const WorkflowContextProvider = ({
@@ -337,8 +342,33 @@ const WorkflowContextProvider = ({
   const { toast } = useToast();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
-  const { appDetail, setAppDetail, updateAppDetail } = useContextSelector(AppContext, (v) => v);
+  const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
   const appId = appDetail._id;
+
+  const [workflowControlMode, setWorkflowControlMode] = useLocalStorageState<'drag' | 'select'>(
+    'workflow-control-mode',
+    {
+      defaultValue: 'select',
+      listenStorageChange: true
+    }
+  );
+
+  // Mouse in canvas
+  const [mouseInCanvas, setMouseInCanvas] = useState(false);
+  useEffect(() => {
+    const handleMouseInCanvas = (e: MouseEvent) => {
+      setMouseInCanvas(true);
+    };
+    const handleMouseOutCanvas = (e: MouseEvent) => {
+      setMouseInCanvas(false);
+    };
+    reactFlowWrapper?.current?.addEventListener('mouseenter', handleMouseInCanvas);
+    reactFlowWrapper?.current?.addEventListener('mouseleave', handleMouseOutCanvas);
+    return () => {
+      reactFlowWrapper?.current?.removeEventListener('mouseenter', handleMouseInCanvas);
+      reactFlowWrapper?.current?.removeEventListener('mouseleave', handleMouseOutCanvas);
+    };
+  }, [reactFlowWrapper?.current]);
 
   /* edge */
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -584,33 +614,6 @@ const WorkflowContextProvider = ({
     const storeNodes = uiWorkflow2StoreWorkflow({ nodes, edges });
 
     return storeNodes;
-  });
-
-  /* save workflow */
-  const { runAsync: onSaveWorkflow, loading: isSaving } = useRequest2(async () => {
-    const { nodes } = await getWorkflowStore();
-
-    // version preview / debug mode, not save
-    if (appDetail.version !== 'v2' || historiesDefaultData || isSaving || !!workflowDebugData)
-      return;
-
-    const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges });
-
-    // check valid
-    if (storeWorkflow.nodes.length === 0 || storeWorkflow.edges.length === 0) {
-      return;
-    }
-
-    try {
-      await updateAppDetail({
-        ...storeWorkflow,
-        chatConfig: appDetail.chatConfig,
-        //@ts-ignore
-        version: 'v2'
-      });
-    } catch (error) {}
-
-    return null;
   });
 
   /* debug */
@@ -944,6 +947,10 @@ const WorkflowContextProvider = ({
     appId,
     reactFlowWrapper,
     basicNodeTemplates,
+    workflowControlMode,
+    setWorkflowControlMode,
+    mouseInCanvas,
+
     // node
     nodes,
     setNodes,
@@ -984,8 +991,6 @@ const WorkflowContextProvider = ({
     initData,
     flowData2StoreDataAndCheck,
     flowData2StoreData,
-    onSaveWorkflow,
-    isSaving,
 
     // debug
     workflowDebugData,

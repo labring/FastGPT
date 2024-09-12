@@ -10,6 +10,7 @@ const SelectRender = ({ item, nodeId }: RenderInputProps) => {
   const Render = useMemo(() => {
     return (
       <MySelect
+        className="nowheel"
         width={'100%'}
         value={item.value}
         list={item.list || []}
