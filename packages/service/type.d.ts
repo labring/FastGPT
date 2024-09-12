@@ -12,6 +12,7 @@ import { Worker } from 'worker_threads';
 import { TemplateMarketItemType } from '@fastgpt/global/core/workflow/type';
 
 declare global {
+  var systemVersion: string;
   var feConfigs: FastGPTFeConfigsType;
   var systemEnv: SystemEnvType;
   var subPlans: SubPlanType | undefined;
