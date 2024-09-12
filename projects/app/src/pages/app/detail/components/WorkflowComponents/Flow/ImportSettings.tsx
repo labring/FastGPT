@@ -4,17 +4,16 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
-import { useI18n } from '@/web/context/I18n';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+
 type Props = {
   onClose: () => void;
 };
 
 const ImportSettings = ({ onClose }: Props) => {
-  const { appT } = useI18n();
   const { toast } = useToast();
   const { File, onOpen } = useSelectFile({
     fileType: 'json',
@@ -25,21 +24,6 @@ const ImportSettings = ({ onClose }: Props) => {
   const [isDragging, setIsDragging] = useState(false);
   const [value, setValue] = useState('');
   const { t } = useTranslation();
-  const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
-  const handleDrop = useCallback(async (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    readJSONFile(file);
-    setIsDragging(false);
-  }, []);
 
   const readJSONFile = useCallback(
     (file: File) => {
@@ -62,6 +46,25 @@ const ImportSettings = ({ onClose }: Props) => {
     [t, toast]
   );
 
+  const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+  const handleDrop = useCallback(
+    async (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      readJSONFile(file);
+      setIsDragging(false);
+    },
+    [readJSONFile]
+  );
+
   const onSelectFile = useCallback(
     async (e: File[]) => {
       const file = e[0];
@@ -70,16 +73,14 @@ const ImportSettings = ({ onClose }: Props) => {
     },
     [readJSONFile]
   );
+
   return (
     <MyModal
       isOpen
       onClose={onClose}
-      title={
-        <Flex align={'center'} ml={-3}>
-          <MyIcon name={'common/importLight'} color={'primary.600'} w={'1.25rem'} mr={'0.62rem'} />
-          <Box lineHeight={'1.25rem'}>{appT('import_configs')}</Box>
-        </Flex>
-      }
+      iconSrc="common/importLight"
+      iconColor="primary.600"
+      title={t('app:import_configs')}
       size={isPc ? 'lg' : 'md'}
     >
       <ModalBody>
@@ -129,14 +130,12 @@ const ImportSettings = ({ onClose }: Props) => {
                 border={'1px solid'}
                 borderRadius={'md'}
                 borderColor={'myGray.200'}
-                h={'15.125rem'}
                 value={value}
                 placeholder={
                   isPc
                     ? t('app:paste_config') + '\n' + t('app:or_drag_JSON')
                     : t('app:paste_config')
                 }
-                defaultValue={value}
                 rows={16}
                 onChange={(e) => setValue(e.target.value)}
               />

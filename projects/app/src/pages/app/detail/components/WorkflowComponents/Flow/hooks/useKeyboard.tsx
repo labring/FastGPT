@@ -86,12 +86,10 @@ export const useKeyboard = () => {
   }, [computedNewNodeName, hasInputtingElement, setNodes]);
 
   useKeyPressEffect(['ctrl.c', 'meta.c'], (e) => {
-    e.preventDefault();
     if (!mouseInCanvas) return;
     onCopy();
   });
   useKeyPressEffect(['ctrl.v', 'meta.v'], (e) => {
-    e.preventDefault();
     if (!mouseInCanvas) return;
     onParse();
   });
