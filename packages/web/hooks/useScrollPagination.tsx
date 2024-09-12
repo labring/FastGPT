@@ -141,7 +141,6 @@ export function useScrollPagination<
   // Reload data
   useRequest(
     async () => {
-      console.log('reload', 11111);
       loadData(1);
     },
     {
