@@ -1,5 +1,5 @@
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './PluginRunBox/constants';
 import {
@@ -8,20 +8,22 @@ import {
   SendPromptFnType
 } from './ChatBox/type';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import { PagingData } from '@/types';
+import { getChatRecords } from '@/web/core/chat/api';
+import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { GetChatRecordsParams, GetChatRecordsProps } from '@/global/core/chat/api';
 
 export const useChat = () => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
-
-  const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([]);
-  const variablesForm = useForm<ChatBoxInputFormType>();
+  const variablesForm = useForm();
   // plugin
   const [pluginRunTab, setPluginRunTab] = useState<PluginRunBoxTabEnum>(PluginRunBoxTabEnum.input);
 
-  const resetChatRecords = useCallback(
-    (props?: { records?: ChatSiteItemType[]; variables?: Record<string, any> }) => {
-      const { records = [], variables = {} } = props || {};
-
-      setChatRecords(records);
+  const resetVariables = useCallback(
+    (props?: { variables?: Record<string, any> }) => {
+      const { variables = {} } = props || {};
 
       // Reset to empty input
       const data = variablesForm.getValues();
@@ -33,20 +35,42 @@ export const useChat = () => {
         ...data,
         ...variables
       });
-
-      setTimeout(
-        () => {
-          ChatBoxRef.current?.restartChat?.();
-        },
-        ChatBoxRef.current?.restartChat ? 0 : 500
-      );
     },
-    [variablesForm, setChatRecords]
+    [variablesForm]
   );
 
+  const useChatPagination = (params: GetChatRecordsParams) => {
+    const { data, ScrollData, isLoading, setData, refresh, getData } = usePagination({
+      api: async (data): Promise<PagingData<ChatSiteItemType>> => {
+        const res = await getChatRecords(data);
+        console.log(res, 'res');
+        return {
+          ...res,
+          data: res.data.map((item) => ({
+            ...item,
+            dataId: item.dataId || getNanoid(),
+            status: ChatStatusEnum.finish
+          }))
+        };
+      },
+      showTextTip: false,
+      params,
+      pageSize: 10,
+      type: 'scroll',
+      elementRef: ChatBoxRef.current?.elementRef,
+      refreshDeps: [...Object.values(params)],
+      loadType: 'top'
+    });
+    return {
+      data,
+      ScrollData,
+      isLoading,
+      setData,
+      refresh,
+      getData
+    };
+  };
   const clearChatRecords = useCallback(() => {
-    setChatRecords([]);
-
     const data = variablesForm.getValues();
     for (const key in data) {
       variablesForm.setValue(key, '');
@@ -54,16 +78,14 @@ export const useChat = () => {
 
     ChatBoxRef.current?.restartChat?.();
   }, [variablesForm]);
-
   return {
     ChatBoxRef,
-    chatRecords,
-    setChatRecords,
     variablesForm,
     pluginRunTab,
     setPluginRunTab,
     clearChatRecords,
-    resetChatRecords
+    resetVariables,
+    useChatPagination
   };
 };
 

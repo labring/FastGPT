@@ -39,19 +39,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     throw new Error(ChatErrEnum.unAuthChat);
   }
 
-  const [{ histories }, { nodes, chatConfig }] = await Promise.all([
-    getChatItems({
-      appId: app._id,
-      chatId,
-      limit: 30,
-      field: `dataId obj value userGoodFeedback userBadFeedback ${
-        shareChat.responseDetail || app.type === AppTypeEnum.plugin
-          ? `adminFeedback ${DispatchNodeResponseKeyEnum.nodeResponse}`
-          : ''
-      } `
-    }),
-    getAppLatestVersion(app._id, app)
-  ]);
+  const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
+  // pick share response field
 
   jsonRes<InitChatResponse>(res, {
     data: {
@@ -61,7 +50,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       //@ts-ignore
       userAvatar: tmb?.userId?.avatar,
       variables: chat?.variables || {},
-      history: app.type === AppTypeEnum.plugin ? histories : transformPreviewHistories(histories),
       app: {
         chatConfig: getAppChatConfig({
           chatConfig,

@@ -1,5 +1,5 @@
 import { useUserStore } from '@/web/support/user/useUserStore';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getMaxHistoryLimitFromNodes } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -15,6 +15,7 @@ import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 import { Box } from '@chakra-ui/react';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
+import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
@@ -29,7 +30,7 @@ export const useChatTest = ({
 }) => {
   const { userInfo } = useUserStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-
+  const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([]);
   const startChat = useMemoizedFn(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
       /* get histories */
@@ -60,15 +61,11 @@ export const useChatTest = ({
     return nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs || [];
   }, [nodes]);
 
-  const {
-    ChatBoxRef,
-    chatRecords,
-    setChatRecords,
-    variablesForm,
-    pluginRunTab,
-    setPluginRunTab,
-    clearChatRecords
-  } = useChat();
+  const ScrollData = useCallback(({ children }: { children: React.ReactNode }) => {
+    return <Box overflow={'overlay'}>{children}</Box>;
+  }, []);
+
+  const { ChatBoxRef, variablesForm, pluginRunTab, setPluginRunTab, clearChatRecords } = useChat();
 
   const CustomChatContainer = useMemoizedFn(() =>
     appDetail.type === AppTypeEnum.plugin ? (
@@ -82,13 +79,14 @@ export const useChatTest = ({
           chatConfig={appDetail.chatConfig}
           tab={pluginRunTab}
           setTab={setPluginRunTab}
-          onNewChat={clearChatRecords}
+          onNewChat={() => setChatRecords([])}
           onStartChat={startChat}
         />
       </Box>
     ) : (
       <ChatBox
         ref={ChatBoxRef}
+        ScrollData={ScrollData}
         chatHistories={chatRecords}
         setChatHistories={setChatRecords}
         variablesForm={variablesForm}

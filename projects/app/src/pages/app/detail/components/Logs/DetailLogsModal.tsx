@@ -16,6 +16,7 @@ import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useQuery } from '@tanstack/react-query';
 import { PcHeader } from '@/pages/chat/components/ChatHeader';
+import { GetChatTypeEnum } from '@/global/core/chat/constants';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
@@ -33,27 +34,29 @@ const DetailLogsModal = ({
   const theme = useTheme();
   const {
     ChatBoxRef,
-    chatRecords,
-    setChatRecords,
     variablesForm,
     pluginRunTab,
     setPluginRunTab,
-    resetChatRecords
+    resetVariables,
+    useChatPagination
   } = useChat();
-
+  const {
+    data: chatRecords,
+    ScrollData,
+    isLoading: isLoadChatRecords,
+    setData: setChatRecords
+  } = useChatPagination({
+    chatId,
+    appId,
+    loadCustomFeedbacks: true,
+    type: GetChatTypeEnum.normal
+  });
   const { data: chat, isFetching } = useQuery(
     ['getChatDetail', chatId],
     () => getInitChatInfo({ appId, chatId, loadCustomFeedbacks: true }),
     {
       onSuccess(res) {
-        const history = res.history.map((item) => ({
-          ...item,
-          dataId: item.dataId || getNanoid(),
-          status: 'finish' as any
-        }));
-
-        resetChatRecords({
-          records: history,
+        resetVariables({
           variables: res.variables
         });
       }
@@ -63,11 +66,11 @@ const DetailLogsModal = ({
   const title = chat?.title;
   const chatModels = chat?.app?.chatModels;
   const isPlugin = chat?.app.type === AppTypeEnum.plugin;
-
+  const loading = isFetching || isLoadChatRecords;
   return (
     <>
       <MyBox
-        isLoading={isFetching}
+        isLoading={loading}
         display={'flex'}
         flexDirection={'column'}
         zIndex={3}
@@ -157,6 +160,7 @@ const DetailLogsModal = ({
             </Box>
           ) : (
             <ChatBox
+              ScrollData={ScrollData}
               ref={ChatBoxRef}
               chatHistories={chatRecords}
               setChatHistories={setChatRecords}

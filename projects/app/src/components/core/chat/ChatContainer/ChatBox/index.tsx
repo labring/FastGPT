@@ -44,7 +44,11 @@ import ChatInput from './Input/ChatInput';
 import ChatBoxDivider from '../../Divider';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatItemValueTypeEnum,
+  ChatRoleEnum,
+  ChatStatusEnum
+} from '@fastgpt/global/core/chat/constants';
 import {
   checkIsInteractiveByHistories,
   formatChatValue2InputType,
@@ -86,7 +90,7 @@ type Props = OutLinkChatAuthProps &
     userAvatar?: string;
     active?: boolean; // can use
     appId: string;
-
+    ScrollData: ({ children, ...props }: { children: React.ReactNode }) => React.JSX.Element;
     // not chat test params
 
     onStartChat?: (e: StartChatFnProps) => Promise<
@@ -113,11 +117,12 @@ const ChatBox = (
     teamId,
     teamToken,
     onStartChat,
-    onDelMessage
+    onDelMessage,
+    ScrollData
   }: Props,
   ref: ForwardedRef<ComponentRef>
 ) => {
-  const ChatBoxRef = useRef<HTMLDivElement>(null);
+  const elementRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -173,13 +178,13 @@ const ChatBox = (
   // 滚动到底部
   const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
     setTimeout(() => {
-      if (!ChatBoxRef.current) {
+      if (!elementRef.current) {
         setTimeout(() => {
           scrollToBottom(behavior);
         }, 500);
       } else {
-        ChatBoxRef.current.scrollTo({
-          top: ChatBoxRef.current.scrollHeight,
+        elementRef.current.scrollTo({
+          top: elementRef.current.scrollHeight,
           behavior
         });
       }
@@ -189,10 +194,10 @@ const ChatBox = (
   // 聊天信息生成中……获取当前滚动条位置，判断是否需要滚动到底部
   const { run: generatingScroll } = useThrottleFn(
     () => {
-      if (!ChatBoxRef.current) return;
+      if (!elementRef.current) return;
       const isBottom =
-        ChatBoxRef.current.scrollTop + ChatBoxRef.current.clientHeight + 150 >=
-        ChatBoxRef.current.scrollHeight;
+        elementRef.current.scrollTop + elementRef.current.clientHeight + 150 >=
+        elementRef.current.scrollHeight;
 
       isBottom && scrollToBottom('auto');
     },
@@ -445,7 +450,7 @@ const ChatBox = (
                     ]
                   : [])
               ] as UserChatItemValueItemType[],
-              status: 'finish'
+              status: ChatStatusEnum.finish
             },
             // 普通 chat 模式，需要增加一个 AI 来接收响应消息
             {
@@ -459,7 +464,7 @@ const ChatBox = (
                   }
                 }
               ],
-              status: 'loading'
+              status: ChatStatusEnum.loading
             }
           ];
 
@@ -506,7 +511,7 @@ const ChatBox = (
                 if (index !== state.length - 1) return item;
                 return {
                   ...item,
-                  status: 'finish',
+                  status: ChatStatusEnum.finish,
                   responseData: item.responseData
                     ? [...item.responseData, ...responseData]
                     : responseData
@@ -548,7 +553,7 @@ const ChatBox = (
                 if (index !== state.length - 1) return item;
                 return {
                   ...item,
-                  status: 'finish'
+                  status: ChatStatusEnum.finish
                 };
               })
             );
@@ -806,7 +811,7 @@ const ChatBox = (
     if (!chatContent) return;
 
     return {
-      status: chatContent.status || 'loading',
+      status: chatContent.status || ChatStatusEnum.loading,
       name: t(chatContent.moduleName || ('' as any)) || t('common:common.Loading')
     };
   }, [chatHistories, isChatting, t]);
@@ -854,112 +859,118 @@ const ChatBox = (
   useImperativeHandle(ref, () => ({
     restartChat() {
       abortRequest();
+
+      setChatHistories([]);
       setValue('chatStarted', false);
       scrollToBottom('smooth', 500);
-    }
+    },
+    elementRef
   }));
 
   const RenderRecords = useMemo(() => {
     return (
-      <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'} px={[4, 0]} pb={3}>
-        <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
-          {showEmpty && <Empty />}
-          {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
-          {/* variable input */}
-          {!!variableList?.length && (
-            <VariableInput chatStarted={chatStarted} chatForm={chatForm} />
-          )}
-          {/* chat history */}
-          <Box id={'history'}>
-            {chatHistories.map((item, index) => (
-              <Box key={item.dataId} py={5}>
-                {item.obj === ChatRoleEnum.Human && (
-                  <ChatItem
-                    type={item.obj}
-                    avatar={userAvatar}
-                    chat={item}
-                    onRetry={retryInput(item.dataId)}
-                    onDelete={delOneMessage(item.dataId)}
-                    isLastChild={index === chatHistories.length - 1}
-                  />
-                )}
-                {item.obj === ChatRoleEnum.AI && (
-                  <>
+      <Box ref={elementRef} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'} px={[4, 0]} pb={3}>
+        <ScrollData>
+          <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
+            {showEmpty && <Empty />}
+            {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
+            {/* variable input */}
+            {!!variableList?.length && (
+              <VariableInput chatStarted={chatStarted} chatForm={chatForm} />
+            )}
+            {/* chat history */}
+            <Box id={'history'}>
+              {chatHistories.map((item, index) => (
+                <Box key={item.dataId} py={5}>
+                  {item.obj === ChatRoleEnum.Human && (
                     <ChatItem
                       type={item.obj}
-                      avatar={appAvatar}
+                      avatar={userAvatar}
                       chat={item}
+                      onRetry={retryInput(item.dataId)}
+                      onDelete={delOneMessage(item.dataId)}
                       isLastChild={index === chatHistories.length - 1}
-                      {...{
-                        showVoiceIcon,
-                        shareId,
-                        outLinkUid,
-                        teamId,
-                        teamToken,
-                        statusBoxData,
-                        questionGuides,
-                        onMark: onMark(
-                          item,
-                          formatChatValue2InputType(chatHistories[index - 1]?.value)?.text
-                        ),
-                        onAddUserLike: onAddUserLike(item),
-                        onCloseUserLike: onCloseUserLike(item),
-                        onAddUserDislike: onAddUserDislike(item),
-                        onReadUserDislike: onReadUserDislike(item)
-                      }}
-                    >
-                      <ResponseTags
-                        showTags={index !== chatHistories.length - 1 || !isChatting}
-                        showDetail={!shareId && !teamId}
-                        historyItem={item}
-                      />
+                    />
+                  )}
+                  {item.obj === ChatRoleEnum.AI && (
+                    <>
+                      <ChatItem
+                        type={item.obj}
+                        avatar={appAvatar}
+                        chat={item}
+                        isLastChild={index === chatHistories.length - 1}
+                        {...{
+                          showVoiceIcon,
+                          shareId,
+                          outLinkUid,
+                          teamId,
+                          teamToken,
+                          statusBoxData,
+                          questionGuides,
+                          onMark: onMark(
+                            item,
+                            formatChatValue2InputType(chatHistories[index - 1]?.value)?.text
+                          ),
+                          onAddUserLike: onAddUserLike(item),
+                          onCloseUserLike: onCloseUserLike(item),
+                          onAddUserDislike: onAddUserDislike(item),
+                          onReadUserDislike: onReadUserDislike(item)
+                        }}
+                      >
+                        <ResponseTags
+                          showTags={index !== chatHistories.length - 1 || !isChatting}
+                          showDetail={!shareId && !teamId}
+                          historyItem={item}
+                        />
 
-                      {/* custom feedback */}
-                      {item.customFeedbacks && item.customFeedbacks.length > 0 && (
-                        <Box>
-                          <ChatBoxDivider
-                            icon={'core/app/customFeedback'}
-                            text={t('common:core.app.feedback.Custom feedback')}
-                          />
-                          {item.customFeedbacks.map((text, i) => (
-                            <Box key={`${text}${i}`}>
-                              <MyTooltip
-                                label={t('common:core.app.feedback.close custom feedback')}
-                              >
-                                <Checkbox
-                                  onChange={onCloseCustomFeedback(item, i)}
-                                  icon={<MyIcon name={'common/check'} w={'12px'} />}
+                        {/* custom feedback */}
+                        {item.customFeedbacks && item.customFeedbacks.length > 0 && (
+                          <Box>
+                            <ChatBoxDivider
+                              icon={'core/app/customFeedback'}
+                              text={t('common:core.app.feedback.Custom feedback')}
+                            />
+                            {item.customFeedbacks.map((text, i) => (
+                              <Box key={`${text}${i}`}>
+                                <MyTooltip
+                                  label={t('common:core.app.feedback.close custom feedback')}
                                 >
-                                  {text}
-                                </Checkbox>
-                              </MyTooltip>
-                            </Box>
-                          ))}
-                        </Box>
-                      )}
-                      {/* admin mark content */}
-                      {showMarkIcon && item.adminFeedback && (
-                        <Box fontSize={'sm'}>
-                          <ChatBoxDivider
-                            icon="core/app/markLight"
-                            text={t('common:core.chat.Admin Mark Content')}
-                          />
-                          <Box whiteSpace={'pre-wrap'}>
-                            <Box color={'black'}>{item.adminFeedback.q}</Box>
-                            <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
+                                  <Checkbox
+                                    onChange={onCloseCustomFeedback(item, i)}
+                                    icon={<MyIcon name={'common/check'} w={'12px'} />}
+                                  >
+                                    {text}
+                                  </Checkbox>
+                                </MyTooltip>
+                              </Box>
+                            ))}
                           </Box>
-                        </Box>
-                      )}
-                    </ChatItem>
-                  </>
-                )}
-              </Box>
-            ))}
+                        )}
+                        {/* admin mark content */}
+                        {showMarkIcon && item.adminFeedback && (
+                          <Box fontSize={'sm'}>
+                            <ChatBoxDivider
+                              icon="core/app/markLight"
+                              text={t('common:core.chat.Admin Mark Content')}
+                            />
+                            <Box whiteSpace={'pre-wrap'}>
+                              <Box color={'black'}>{item.adminFeedback.q}</Box>
+                              <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
+                            </Box>
+                          </Box>
+                        )}
+                      </ChatItem>
+                    </>
+                  )}
+                </Box>
+              ))}
+            </Box>
           </Box>
-        </Box>
+        </ScrollData>
       </Box>
     );
   }, [
+    ScrollData,
     appAvatar,
     chatForm,
     chatHistories,

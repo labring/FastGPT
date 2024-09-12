@@ -40,4 +40,5 @@ export type SendPromptFnType = (
 
 export type ComponentRef = {
   restartChat: () => void;
+  elementRef: React.RefObject<HTMLDivElement>;
 };
