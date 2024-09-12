@@ -54,6 +54,7 @@ const JsonEditor = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const Render = useMemo(() => {
     return (
       <JSONEditor
+        className="nowheel"
         bg={'white'}
         borderRadius={'sm'}
         placeholder={t(item.placeholder as any)}

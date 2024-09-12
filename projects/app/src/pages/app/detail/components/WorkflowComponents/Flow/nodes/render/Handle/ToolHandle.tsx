@@ -4,15 +4,16 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { Connection, Handle, Position } from 'reactflow';
 import { useCallback, useMemo } from 'react';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
-const handleSize = '14px';
+
+const handleSize = '16px';
 
 type ToolHandleProps = BoxProps & {
   nodeId: string;
+  show: boolean;
 };
-export const ToolTargetHandle = ({ nodeId }: ToolHandleProps) => {
+export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
   const { t } = useTranslation();
   const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
   const edges = useContextSelector(WorkflowContext, (v) => v.edges);
@@ -22,44 +23,45 @@ export const ToolTargetHandle = ({ nodeId }: ToolHandleProps) => {
   const connected = edges.some((edge) => edge.target === nodeId && edge.targetHandle === handleId);
 
   // if top handle is connected, return null
-  const hidden =
-    !connected &&
-    (connectingEdge?.handleId !== NodeOutputKeyEnum.selectedTools ||
-      edges.some((edge) => edge.targetHandle === getHandleId(nodeId, 'target', 'top')));
+  const showHandle =
+    connected || (show && connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools);
 
   const Render = useMemo(() => {
-    return hidden ? null : (
-      <MyTooltip label={t('common:core.workflow.tool.Handle')} shouldWrapChildren={false}>
-        <Handle
-          style={{
-            borderRadius: '0',
-            backgroundColor: 'transparent',
-            border: 'none',
-            width: handleSize,
-            height: handleSize
-          }}
-          type="target"
-          id={handleId}
-          position={Position.Top}
-        >
-          <Box
-            className="flow-handle"
-            w={handleSize}
-            h={handleSize}
-            border={'4px solid #8774EE'}
-            transform={'translate(0,-30%) rotate(45deg)'}
-            pointerEvents={'none'}
-            visibility={'visible'}
-          />
-        </Handle>
-      </MyTooltip>
+    return (
+      <Handle
+        style={{
+          borderRadius: '0',
+          backgroundColor: 'transparent',
+          border: 'none',
+          width: handleSize,
+          height: handleSize,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          top: '-10px',
+          ...(showHandle ? {} : { visibility: 'hidden' })
+        }}
+        type="target"
+        id={handleId}
+        position={Position.Top}
+        isConnectableStart={false}
+      >
+        <Box
+          className="flow-handle"
+          w={handleSize}
+          h={handleSize}
+          border={'4px solid #8774EE'}
+          transform={'translate(0,0) rotate(45deg)'}
+          pointerEvents={'none'}
+        />
+      </Handle>
     );
-  }, [handleId, hidden, t]);
+  }, [handleId, showHandle]);
 
   return Render;
 };
 
-export const ToolSourceHandle = ({ nodeId }: ToolHandleProps) => {
+export const ToolSourceHandle = () => {
   const { t } = useTranslation();
   const setEdges = useContextSelector(WorkflowContext, (v) => v.setEdges);
 
@@ -86,7 +88,11 @@ export const ToolSourceHandle = ({ nodeId }: ToolHandleProps) => {
             backgroundColor: 'transparent',
             border: 'none',
             width: handleSize,
-            height: handleSize
+            height: handleSize,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bottom: '-10px'
           }}
           type="source"
           id={NodeOutputKeyEnum.selectedTools}
@@ -97,7 +103,7 @@ export const ToolSourceHandle = ({ nodeId }: ToolHandleProps) => {
             w={handleSize}
             h={handleSize}
             border={'4px solid #8774EE'}
-            transform={'translate(0,30%) rotate(45deg)'}
+            transform={'translate(0,0) rotate(45deg)'}
             pointerEvents={'none'}
           />
         </Handle>

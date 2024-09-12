@@ -145,7 +145,7 @@ const NodeCard = (props: Props) => {
         {/* debug */}
         <Box px={4} py={3}>
           {/* tool target handle */}
-          {showToolHandle && <ToolTargetHandle nodeId={nodeId} />}
+          <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
 
           {/* avatar and name */}
           <Flex alignItems={'center'}>

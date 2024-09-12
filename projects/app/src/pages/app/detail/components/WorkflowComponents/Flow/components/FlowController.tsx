@@ -1,55 +1,58 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Background, ControlButton, MiniMap, Panel, useReactFlow, useViewport } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box } from '@chakra-ui/react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import styles from './index.module.scss';
 import { maxZoom, minZoom } from '../index';
+import { useKeyPress } from 'ahooks';
+
+const buttonStyle = {
+  border: 'none',
+  borderRadius: '6px',
+  padding: '7px'
+};
 
 const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { zoom } = useViewport();
-  const { undo, redo, canRedo, canUndo } = useContextSelector(WorkflowContext, (v) => v);
+  const {
+    undo,
+    redo,
+    canRedo,
+    canUndo,
+    workflowControlMode,
+    setWorkflowControlMode,
+    mouseInCanvas
+  } = useContextSelector(WorkflowContext, (v) => v);
   const { t } = useTranslation();
 
   const isMac = !window ? false : window.navigator.userAgent.toLocaleLowerCase().includes('mac');
 
-  useEffect(() => {
-    const keyDownHandler = (event: KeyboardEvent) => {
-      if (
-        (event.key === 'z' || event.key === 'Z') &&
-        (event.ctrlKey || event.metaKey) &&
-        event.shiftKey
-      ) {
-        event.preventDefault();
-        redo();
-      } else if (event.key === 'z' && (event.ctrlKey || event.metaKey)) {
-        event.preventDefault();
-        undo();
-      } else if ((event.key === '=' || event.key === '+') && (event.ctrlKey || event.metaKey)) {
-        event.preventDefault();
-        zoomIn();
-      } else if (event.key === '-' && (event.ctrlKey || event.metaKey)) {
-        event.preventDefault();
-        zoomOut();
-      }
-    };
-
-    document.addEventListener('keydown', keyDownHandler);
-
-    return () => {
-      document.removeEventListener('keydown', keyDownHandler);
-    };
-  }, [undo, redo, zoomIn, zoomOut]);
-
-  const buttonStyle = {
-    border: 'none',
-    borderRadius: '6px',
-    padding: '7px'
-  };
+  // Controller shortcut key
+  useKeyPress(['ctrl.z', 'meta.z'], (e) => {
+    e.preventDefault();
+    if (!mouseInCanvas) return;
+    undo();
+  });
+  useKeyPress(['ctrl.shift.z', 'meta.shift.z', 'ctrl.y', 'meta.y'], (e) => {
+    e.preventDefault();
+    if (!mouseInCanvas) return;
+    redo();
+  });
+  useKeyPress(['ctrl.add', 'meta.add', 'ctrl.equalsign', 'meta.equalsign'], (e) => {
+    e.preventDefault();
+    if (!mouseInCanvas) return;
+    zoomIn();
+  });
+  useKeyPress(['ctrl.dash', 'meta.dash'], (e) => {
+    e.preventDefault();
+    if (!mouseInCanvas) return;
+    zoomOut();
+  });
 
   const Render = useMemo(() => {
     return (
@@ -79,6 +82,35 @@ const FlowController = React.memo(function FlowController() {
               '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 12px 16px -4px rgba(19, 51, 107, 0.20)'
           }}
         >
+          {/* Control Mode */}
+          <MyTooltip
+            label={
+              workflowControlMode === 'select'
+                ? t('workflow:pan_priority')
+                : t('workflow:mouse_priority')
+            }
+          >
+            <ControlButton
+              onClick={() => {
+                setWorkflowControlMode(workflowControlMode === 'select' ? 'drag' : 'select');
+              }}
+              style={{
+                ...buttonStyle
+              }}
+              className={`${styles.customControlButton}`}
+            >
+              <MyIcon
+                name={
+                  workflowControlMode === 'select'
+                    ? 'core/workflow/touchTable'
+                    : 'core/workflow/mouse'
+                }
+              />
+            </ControlButton>
+          </MyTooltip>
+
+          <Box w="1px" h="20px" bg="gray.200" mx={1.5}></Box>
+
           {/* undo */}
           <MyTooltip label={isMac ? t('common:common.undo_tip_mac') : t('common:common.undo_tip')}>
             <ControlButton
@@ -107,7 +139,7 @@ const FlowController = React.memo(function FlowController() {
 
           {/* zoom out */}
           <MyTooltip
-            label={isMac ? t('common:common.zoomout_tip_mac') : t('common:common.zoomout_tip')}
+            label={isMac ? t('common:common.zoomin_tip_mac') : t('common:common.zoomin_tip')}
           >
             <ControlButton
               onClick={() => zoomOut()}
@@ -121,7 +153,7 @@ const FlowController = React.memo(function FlowController() {
 
           {/* zoom in */}
           <MyTooltip
-            label={isMac ? t('common:common.zoomin_tip_mac') : t('common:common.zoomin_tip')}
+            label={isMac ? t('common:common.zoomout_tip_mac') : t('common:common.zoomout_tip')}
           >
             <ControlButton
               onClick={() => zoomIn()}
@@ -149,7 +181,20 @@ const FlowController = React.memo(function FlowController() {
         <Background />
       </>
     );
-  }, [isMac, t, undo, buttonStyle, canUndo, redo, canRedo, zoom, zoomOut, zoomIn, fitView]);
+  }, [
+    workflowControlMode,
+    isMac,
+    t,
+    undo,
+    canUndo,
+    redo,
+    canRedo,
+    zoom,
+    setWorkflowControlMode,
+    zoomOut,
+    zoomIn,
+    fitView
+  ]);
 
   return Render;
 });

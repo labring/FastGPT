@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactFlow, { NodeProps, ReactFlowProvider } from 'reactflow';
+import ReactFlow, { NodeProps, ReactFlowProvider, SelectionMode } from 'reactflow';
 import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -59,7 +59,10 @@ const edgeTypes = {
 };
 
 const Workflow = () => {
-  const { nodes, edges, reactFlowWrapper } = useContextSelector(WorkflowContext, (v) => v);
+  const { nodes, edges, reactFlowWrapper, workflowControlMode } = useContextSelector(
+    WorkflowContext,
+    (v) => v
+  );
 
   const {
     handleNodesChange,
@@ -124,6 +127,7 @@ const Workflow = () => {
           connectionLineStyle={connectionLineStyle}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
+          connectionRadius={50}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgeChange}
           onConnect={customOnConnect}
@@ -131,6 +135,17 @@ const Workflow = () => {
           onConnectEnd={onConnectEnd}
           onEdgeMouseEnter={onEdgeMouseEnter}
           onEdgeMouseLeave={onEdgeMouseLeave}
+          panOnScrollSpeed={2}
+          {...(workflowControlMode === 'select'
+            ? {
+                selectionMode: SelectionMode.Full,
+                selectNodesOnDrag: false,
+                selectionOnDrag: true,
+                selectionKeyCode: null,
+                panOnDrag: false,
+                panOnScroll: true
+              }
+            : {})}
         >
           <FlowController />
           <HelperLines horizontal={helperLineHorizontal} vertical={helperLineVertical} />

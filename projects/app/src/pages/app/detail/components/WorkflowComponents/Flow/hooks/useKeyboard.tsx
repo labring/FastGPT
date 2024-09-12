@@ -1,20 +1,21 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
-import { Node } from 'reactflow';
+import { Node, useKeyPress } from 'reactflow';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext, getWorkflowStore } from '../../context';
 import { useWorkflowUtils } from './useUtils';
+import { useKeyPress as useKeyPressEffect } from 'ahooks';
 
 export const useKeyboard = () => {
   const { t } = useTranslation();
-  const { setNodes, onSaveWorkflow } = useContextSelector(WorkflowContext, (v) => v);
+  const { setNodes, mouseInCanvas } = useContextSelector(WorkflowContext, (v) => v);
   const { copyData } = useCopyData();
   const { computedNewNodeName } = useWorkflowUtils();
 
-  const [isDowningCtrl, setIsDowningCtrl] = useState(false);
+  const isDowningCtrl = useKeyPress(['Meta', 'Control']);
 
   const hasInputtingElement = useCallback(() => {
     const activeElement = document.activeElement;
@@ -84,48 +85,20 @@ export const useKeyboard = () => {
     } catch (error) {}
   }, [computedNewNodeName, hasInputtingElement, setNodes]);
 
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent) => {
-      if (event.ctrlKey || event.metaKey) {
-        setIsDowningCtrl(true);
-
-        switch (event.key) {
-          case 'c':
-            onCopy();
-            break;
-          case 'v':
-            onParse();
-            break;
-          case 's':
-            event.preventDefault();
-
-            onSaveWorkflow();
-            break;
-          default:
-            break;
-        }
-      }
-    },
-    [onCopy, onParse, onSaveWorkflow]
-  );
-
-  const handleKeyUp = useCallback((event: KeyboardEvent) => {
-    setIsDowningCtrl(false);
-  }, []);
-
-  useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [handleKeyDown]);
-
-  useEffect(() => {
-    document.addEventListener('keyup', handleKeyUp);
-    return () => {
-      document.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [handleKeyUp]);
+  useKeyPressEffect(['ctrl.c', 'meta.c'], (e) => {
+    e.preventDefault();
+    if (!mouseInCanvas) return;
+    onCopy();
+  });
+  useKeyPressEffect(['ctrl.v', 'meta.v'], (e) => {
+    e.preventDefault();
+    if (!mouseInCanvas) return;
+    onParse();
+  });
+  useKeyPressEffect(['ctrl.s', 'meta.s'], (e) => {
+    e.preventDefault();
+    if (!mouseInCanvas) return;
+  });
 
   return {
     isDowningCtrl

@@ -218,7 +218,7 @@ const MyTargetHandle = React.memo(function MyTargetHandle({
     return (
       <Handle
         style={
-          !!styles && showHandle
+          styles && showHandle
             ? styles
             : {
                 visibility: 'hidden',
@@ -226,10 +226,10 @@ const MyTargetHandle = React.memo(function MyTargetHandle({
                 ...handleSize
               }
         }
+        isConnectableEnd={styles && showHandle}
         type="target"
         id={handleId}
         position={position}
-        isConnectableStart={false}
       ></Handle>
     );
   }, [styles, showHandle, transform, handleId, position]);
