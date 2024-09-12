@@ -888,7 +888,6 @@ const WorkflowContextProvider = ({
       );
 
       if (isPastEqual) return false;
-      console.log(currentNodes);
 
       setPast((past) => [
         {

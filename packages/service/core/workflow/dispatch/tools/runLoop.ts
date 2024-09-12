@@ -25,8 +25,10 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   const runNodes = runtimeNodes.filter((node) => childNodes.includes(node.nodeId));
   const outputArray = [];
   const loopDetail: ChatHistoryItemResType[] = [];
+  let totalPoints = 0;
+  let totalTokens = 0;
 
-  for (const element of loopInputArray) {
+  for await (const element of loopInputArray) {
     const response = await dispatchWorkFlow({
       ...props,
       runtimeNodes: runNodes.map((node) =>
@@ -54,10 +56,16 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     )?.loopOutputElement;
     outputArray.push(loopOutputElement);
     loopDetail.push(...response.flowResponses);
+    response.flowResponses.forEach((res) => {
+      totalPoints = totalPoints + (res.totalPoints ?? 0);
+      totalTokens = totalTokens + (res.tokens ?? 0);
+    });
   }
 
   return {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      totalPoints: totalPoints,
+      tokens: totalTokens,
       loopInput: loopInputArray,
       loopResult: outputArray,
       loopDetail: loopDetail

@@ -378,8 +378,6 @@ export const useWorkflow = () => {
       }
     }
 
-    customApplyNodeChanges(changes, nodes);
-
     onNodesChange(changes);
   };
 
@@ -439,7 +437,6 @@ export const useWorkflow = () => {
       change.selected = true;
     } else {
       return (() => {
-        customApplyNodeChanges(changes, nodes);
         onNodesChange(changes);
       })();
     }
@@ -458,25 +455,23 @@ export const useWorkflow = () => {
         onNodesChange(changes);
         resetNodeSizeAndPosition(rect, parentId);
       })();
-    } else if (nodes.find((item) => item.data.parentNodeId === node.id)) {
+    } else if (nodes.some((item) => item.data.parentNodeId === node.id)) {
       const parentId = node.id;
       const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
       const initPosition = node.position;
       const deltaX = change.position?.x ? change.position.x - initPosition.x : 0;
       const deltaY = change.position?.y ? change.position.y - initPosition.y : 0;
-      const childNodesChange = childNodes.map((node) => {
+      const childNodesChange: NodePositionChange[] = childNodes.map((node) => {
         if (change.dragging) {
+          const position = {
+            x: node.position.x + deltaX,
+            y: node.position.y + deltaY
+          };
           return {
             ...change,
             id: node.id,
-            position: {
-              x: node.position.x + deltaX,
-              y: node.position.y + deltaY
-            },
-            positionAbsolute: {
-              x: node.position.x + deltaX,
-              y: node.position.y + deltaY
-            }
+            position,
+            positionAbsolute: position
           };
         } else {
           return {
@@ -490,11 +485,14 @@ export const useWorkflow = () => {
         //   changes,
         //   nodes.filter((node) => !node.data.parentNodeId)
         // );
-        onNodesChange(changes.concat(childNodesChange));
+        onNodesChange([...changes, ...childNodesChange]);
       })();
     } else {
       return (() => {
-        customApplyNodeChanges(changes, nodes);
+        customApplyNodeChanges(
+          changes,
+          nodes.filter((node) => !node.data.parentNodeId)
+        );
         onNodesChange(changes);
       })();
     }
@@ -509,6 +507,7 @@ export const useWorkflow = () => {
 
   const onNodeDragStop = useCallback(
     (_: any, node: Node) => {
+      if (!node) return;
       const intersections = getIntersectingNodes(node);
       const parentNode = intersections.find((item) => item.type === FlowNodeTypeEnum.loop);
 

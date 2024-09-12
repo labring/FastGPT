@@ -12,7 +12,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import VariableTable from './NodePluginIO/VariableTable';
 import { Box } from '@chakra-ui/react';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const typeMap = {
@@ -109,4 +109,4 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
 };
 
-export default NodeLoopStart;
+export default React.memo(NodeLoopStart);

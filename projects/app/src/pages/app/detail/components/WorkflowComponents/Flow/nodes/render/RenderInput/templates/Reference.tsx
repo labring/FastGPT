@@ -30,10 +30,12 @@ type SelectProps = {
     children: {
       label: string;
       value: string;
+      valueType?: WorkflowIOValueTypeEnum;
     }[];
   }[];
   onSelect: (val: ReferenceValueProps) => void;
   styles?: ButtonProps;
+  showType?: boolean;
 };
 
 const Reference = ({ item, nodeId }: RenderInputProps) => {
@@ -83,6 +85,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
       list={referenceList}
       value={formatValue}
       onSelect={onSelect}
+      showType={item.showType}
     />
   );
 };
@@ -139,7 +142,8 @@ export const useReference = ({
             .map((output) => {
               return {
                 label: t((output.label as any) || ''),
-                value: output.id
+                value: output.id,
+                valueType: output.valueType
               };
             })
         };
@@ -166,7 +170,13 @@ export const useReference = ({
     formatValue
   };
 };
-export const ReferSelector = ({ placeholder, value, list = [], onSelect }: SelectProps) => {
+export const ReferSelector = ({
+  placeholder,
+  value,
+  list = [],
+  onSelect,
+  showType
+}: SelectProps) => {
   const selectItemLabel = useMemo(() => {
     if (!value) {
       return;
@@ -179,7 +189,12 @@ export const ReferSelector = ({ placeholder, value, list = [], onSelect }: Selec
     if (!secondColumn) {
       return;
     }
-    return [firstColumn, secondColumn];
+    const valueType = secondColumn.valueType;
+    return {
+      firstColumn: firstColumn,
+      secondColumn: secondColumn,
+      valueType: valueType
+    };
   }, [list, value]);
 
   const Render = useMemo(() => {
@@ -188,9 +203,24 @@ export const ReferSelector = ({ placeholder, value, list = [], onSelect }: Selec
         label={
           selectItemLabel ? (
             <Flex alignItems={'center'}>
-              {selectItemLabel[0].label}
+              {selectItemLabel.firstColumn.label}
               <MyIcon name={'common/rightArrowLight'} mx={1} w={'14px'}></MyIcon>
-              {selectItemLabel[1].label}
+              {selectItemLabel.secondColumn.label}
+              {showType && (
+                <Box
+                  as={'span'}
+                  border={'base'}
+                  bg={'myGray.100'}
+                  color={'myGray.500'}
+                  px={1.5}
+                  py={'3px'}
+                  rounded={'sm'}
+                  fontSize={'12px'}
+                  ml={2}
+                >
+                  {selectItemLabel.valueType}
+                </Box>
+              )}
             </Flex>
           ) : (
             <Box>{placeholder}</Box>

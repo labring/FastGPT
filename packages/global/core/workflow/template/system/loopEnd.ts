@@ -27,7 +27,8 @@ export const LoopEndNode: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.any,
       label: '',
       required: true,
-      value: []
+      value: [],
+      showType: true
     }
   ],
   outputs: []

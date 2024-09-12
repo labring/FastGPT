@@ -39,7 +39,6 @@ export const WholeResponseContent = ({
   showDetail: boolean;
 }) => {
   const { t } = useTranslation();
-  console.log('activeModule', activeModule);
 
   // Auto scroll to top
   const ContentRef = useRef<HTMLDivElement>(null);
