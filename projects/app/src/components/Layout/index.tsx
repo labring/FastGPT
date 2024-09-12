@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -12,6 +12,7 @@ import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
 import Auth from './auth';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useMount } from 'ahooks';
+import { watchWindowHidden } from '@/web/common/system/utils';
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
 const UpdateInviteModal = dynamic(() => import('@/components/support/user/team/UpdateInviteModal'));
@@ -66,6 +67,14 @@ const Layout = ({ children }: { children: JSX.Element }) => {
 
   useMount(() => {
     setUserDefaultLng();
+  });
+
+  // Add global listener
+  useEffect(() => {
+    document.addEventListener('visibilitychange', watchWindowHidden);
+    return () => {
+      document.removeEventListener('visibilitychange', watchWindowHidden);
+    };
   });
 
   return (

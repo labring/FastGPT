@@ -13,3 +13,12 @@ export const getWebLLMModel = (model?: string) => {
   const list = useSystemStore.getState().llmModelList;
   return list.find((item) => item.model === model || item.name === model) ?? list[0];
 };
+
+export const watchWindowHidden = () => {
+  // @ts-ignore
+  if (document.hidden) {
+    window.windowHidden = true;
+  } else {
+    window.windowHidden = false;
+  }
+};

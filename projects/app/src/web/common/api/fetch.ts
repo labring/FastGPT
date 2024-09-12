@@ -84,7 +84,7 @@ export const streamFetch = ({
       }
 
       if (responseQueue.length > 0) {
-        const fetchCount = Math.max(1, Math.round(responseQueue.length / 30));
+        const fetchCount = Math.max(1, Math.round(responseQueue.length / 20));
         for (let i = 0; i < fetchCount; i++) {
           const item = responseQueue[i];
           onMessage(item);
@@ -100,7 +100,9 @@ export const streamFetch = ({
         return finish();
       }
 
-      requestAnimationFrame(animateResponseText);
+      window.windowHidden
+        ? setTimeout(animateResponseText, 16)
+        : requestAnimationFrame(animateResponseText);
     }
     // start animation
     animateResponseText();
