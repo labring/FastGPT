@@ -10,6 +10,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 
 export type getResDataQuery = OutLinkChatAuthProps & {
   chatId?: string;
@@ -48,14 +49,18 @@ async function handler(
     });
   }
 
-  const chatData = await MongoChatItem.findOne({
-    appId,
-    chatId,
-    dataId
-  });
+  const chatData = await MongoChatItem.findOne(
+    {
+      appId,
+      chatId,
+      dataId
+    },
+    'obj responseData'
+  ).lean();
 
   if (chatData?.obj === ChatRoleEnum.AI) {
-    return chatData.responseData || {};
+    const data = chatData.responseData || {};
+    return req.query.shareId ? filterPublicNodeResponseData(data) : data;
   } else return {};
 }
 
