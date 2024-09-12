@@ -33,10 +33,7 @@ const AppCard = ({
 
   const { appDetail, onOpenInfoEdit, onOpenTeamTagModal, onDelApp, currentTab } =
     useContextSelector(AppContext, (v) => v);
-  const { historiesDefaultData, onSaveWorkflow, isSaving } = useContextSelector(
-    WorkflowContext,
-    (v) => v
-  );
+  const { historiesDefaultData } = useContextSelector(WorkflowContext, (v) => v);
 
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
 

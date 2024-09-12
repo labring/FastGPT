@@ -35,7 +35,7 @@ const NodeTools = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           />
         </Box>
 
-        <ToolSourceHandle nodeId={nodeId} />
+        <ToolSourceHandle />
       </Box>
     </NodeCard>
   );

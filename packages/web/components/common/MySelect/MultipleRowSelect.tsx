@@ -35,6 +35,7 @@ const MultipleRowSelect = ({
       return (
         <>
           <Box
+            className="nowheel"
             flex={'1 0 auto'}
             // width={0}
             px={2}

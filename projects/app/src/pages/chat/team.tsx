@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
-import { delChatRecordById, getChatHistories, getTeamChatInfo } from '@/web/core/chat/api';
+import { delChatRecordById, getTeamChatInfo } from '@/web/core/chat/api';
 import { useRouter } from 'next/router';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -11,7 +11,6 @@ import ChatHistorySlider from './components/ChatHistorySlider';
 import ChatHeader from './components/ChatHeader';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
-import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
