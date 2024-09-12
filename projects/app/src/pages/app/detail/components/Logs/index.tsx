@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Flex,
   Box,
@@ -23,7 +23,6 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { addDays } from 'date-fns';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import DateRangePicker, { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
-import { useI18n } from '@/web/context/I18n';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
@@ -37,11 +36,15 @@ const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
 const Logs = () => {
   const { t } = useTranslation();
-  const { appT } = useI18n();
   const { isPc } = useSystem();
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
-  const { teamMembers } = useUserStore();
+  const { teamMembers, loadAndGetTeamMembers } = useUserStore();
+
+  useEffect(() => {
+    if (teamMembers.length) return;
+    loadAndGetTeamMembers(true);
+  }, []);
 
   const [dateRange, setDateRange] = useState<DateRangeType>({
     from: addDays(new Date(), -7),
@@ -77,10 +80,10 @@ const Logs = () => {
       {isPc && (
         <Box {...cardStyles} boxShadow={2} px={[4, 8]} py={[4, 6]}>
           <Box fontWeight={'bold'} fontSize={['md', 'lg']} mb={2}>
-            {appT('chat_logs')}
+            {t('app:chat_logs')}
           </Box>
           <Box color={'myGray.500'} fontSize={'sm'}>
-            {appT('chat_logs_tips')},{' '}
+            {t('app:chat_logs_tips')},{' '}
             <Box
               as={'span'}
               mr={2}
@@ -201,7 +204,7 @@ const Logs = () => {
               ))}
             </Tbody>
           </Table>
-          {logs.length === 0 && !isLoading && <EmptyTip text={appT('logs_empty')}></EmptyTip>}
+          {logs.length === 0 && !isLoading && <EmptyTip text={t('app:logs_empty')}></EmptyTip>}
         </TableContainer>
 
         <HStack w={'100%'} mt={3} justifyContent={'flex-end'}>
