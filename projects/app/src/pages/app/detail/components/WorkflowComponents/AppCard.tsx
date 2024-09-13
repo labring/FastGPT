@@ -28,7 +28,6 @@ const AppCard = ({
   isPublished: boolean;
 }) => {
   const { t } = useTranslation();
-  const { appT } = useI18n();
   const { feConfigs } = useSystemStore();
 
   const { appDetail, onOpenInfoEdit, onOpenTeamTagModal, onDelApp, currentTab } =
@@ -48,7 +47,7 @@ const AppCard = ({
               children: [
                 {
                   icon: 'edit',
-                  label: appT('edit_info'),
+                  label: t('app:edit_info'),
                   onClick: onOpenInfoEdit
                 },
                 {
@@ -63,7 +62,7 @@ const AppCard = ({
                   {
                     children: [
                       {
-                        label: appT('import_configs'),
+                        label: t('app:import_configs'),
                         icon: 'common/importLight',
                         onClick: onOpenImport
                       },
@@ -117,7 +116,6 @@ const AppCard = ({
       appDetail.name,
       appDetail.permission.hasWritePer,
       appDetail.permission.isOwner,
-      appT,
       currentTab,
       feConfigs?.show_team_chat,
       historiesDefaultData,

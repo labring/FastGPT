@@ -172,6 +172,15 @@ export type DispatchNodeResponseType = {
 
   // update var
   updateVarResult?: any[];
+
+  // loop
+  loopResult?: any[];
+  loopInput?: any[];
+  loopDetail?: ChatHistoryItemResType[];
+  // loop start
+  loopInputValue?: any;
+  // loop end
+  loopOutputValue?: any;
 };
 
 export type DispatchNodeResultType<T = {}> = {

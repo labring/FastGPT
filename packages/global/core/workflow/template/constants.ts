@@ -29,6 +29,9 @@ import { TextEditorNode } from './system/textEditor';
 import { CustomFeedbackNode } from './system/customFeedback';
 import { ReadFilesNodes } from './system/readFiles';
 import { UserSelectNode } from './system/userSelect/index';
+import { LoopNode } from './system/loop/loop';
+import { LoopStartNode } from './system/loop/loopStart';
+import { LoopEndNode } from './system/loop/loopEnd';
 
 const systemNodes: FlowNodeTemplateType[] = [
   AiChatModule,
@@ -46,7 +49,8 @@ const systemNodes: FlowNodeTemplateType[] = [
   LafModule,
   IfElseNode,
   VariableUpdateNode,
-  CodeNode
+  CodeNode,
+  LoopNode
 ];
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
@@ -74,5 +78,7 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   EmptyNode,
   RunPluginModule,
   RunAppNode,
-  RunAppModule
+  RunAppModule,
+  LoopStartNode,
+  LoopEndNode
 ];

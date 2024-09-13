@@ -12,7 +12,7 @@ const IOTitle = ({
   return (
     <HStack fontSize={'md'} alignItems={'center'} fontWeight={'medium'} mb={3} {...props}>
       <Box w={'3px'} h={'14px'} borderRadius={'13px'} bg={'primary.600'} />
-      <Box>{text}</Box>
+      <Box color={'myGray.900'}>{text}</Box>
       <Box flex={1} />
 
       {inputExplanationUrl && (

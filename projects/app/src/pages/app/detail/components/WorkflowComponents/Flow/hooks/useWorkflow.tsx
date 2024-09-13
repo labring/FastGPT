@@ -8,9 +8,14 @@ import {
   Edge,
   Node,
   NodePositionChange,
-  XYPosition
+  XYPosition,
+  useReactFlow,
+  getNodesBounds,
+  Rect,
+  NodeRemoveChange,
+  NodeSelectionChange
 } from 'reactflow';
-import { EDGE_TYPE } from '@fastgpt/global/core/workflow/node/constant';
+import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
@@ -18,6 +23,8 @@ import { useKeyboard } from './useKeyboard';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { THelperLine } from '@fastgpt/global/core/workflow/type';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 /* 
     Compute helper lines for snapping nodes to each other
@@ -259,8 +266,56 @@ export const useWorkflow = () => {
   const { t } = useTranslation();
 
   const { isDowningCtrl } = useKeyboard();
-  const { setConnectingEdge, nodes, onNodesChange, setEdges, onEdgesChange, setHoverEdgeId } =
-    useContextSelector(WorkflowContext, (v) => v);
+  const {
+    setConnectingEdge,
+    nodes,
+    onNodesChange,
+    setEdges,
+    setNodes,
+    onChangeNode,
+    onEdgesChange,
+    setHoverEdgeId
+  } = useContextSelector(WorkflowContext, (v) => v);
+
+  const { getIntersectingNodes } = useReactFlow();
+
+  const resetNodeSizeAndPosition = (rect: Rect, parentId: string) => {
+    const parentNode = nodes.find((node) => node.id === parentId);
+    const loopFlow = parentNode?.data.inputs.find(
+      (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.loopFlow
+    );
+
+    if (!loopFlow) return;
+    const newLoopFlowValue = {
+      ...loopFlow.value,
+      width: rect.width + 110 > 900 ? rect.width + 110 : 900,
+      height: rect.height + 380 > 900 ? rect.height + 380 : 900
+    };
+
+    onChangeNode({
+      nodeId: parentId || '',
+      type: 'updateInput',
+      key: NodeInputKeyEnum.loopFlow,
+      value: {
+        ...loopFlow,
+        value: newLoopFlowValue
+      }
+    });
+
+    setNodes((nodes) =>
+      nodes.map((node) =>
+        node.id === parentId
+          ? {
+              ...node,
+              position: {
+                x: rect.x - 50,
+                y: rect.y - 280
+              }
+            }
+          : node
+      )
+    );
+  };
 
   /* helper line */
   const [helperLineHorizontal, setHelperLineHorizontal] = useState<THelperLine>();
@@ -305,38 +360,209 @@ export const useWorkflow = () => {
     }
   };
 
+  // Check if a node is placed on top of a loop node
+  const checkNodeOverLoopNode = useCallback(
+    (node: Node) => {
+      if (!node) return;
+      const intersections = getIntersectingNodes(node);
+      const parentNode = intersections.find((item) => item.type === FlowNodeTypeEnum.loop);
+
+      const unSupportedTypes = [
+        FlowNodeTypeEnum.workflowStart,
+        FlowNodeTypeEnum.loop,
+        FlowNodeTypeEnum.pluginInput,
+        FlowNodeTypeEnum.pluginOutput,
+        FlowNodeTypeEnum.systemConfig
+      ];
+
+      if (parentNode && !node.data.parentNodeId) {
+        if (unSupportedTypes.includes(node.type as FlowNodeTypeEnum)) {
+          return toast({
+            status: 'warning',
+            title: t('workflow:can_not_loop')
+          });
+        }
+
+        const updatedLoopFlow = parentNode.data.inputs.find(
+          (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.loopFlow
+        );
+        if (updatedLoopFlow) {
+          updatedLoopFlow.value.childNodes = [...updatedLoopFlow.value.childNodes, node.id];
+        }
+
+        onChangeNode({
+          nodeId: node.id,
+          type: 'attr',
+          key: 'parentNodeId',
+          value: parentNode.id
+        });
+        onChangeNode({
+          nodeId: parentNode.id,
+          type: 'updateInput',
+          key: NodeInputKeyEnum.loopFlow,
+          value: updatedLoopFlow
+        });
+        setEdges((state) =>
+          state.filter((edge) => edge.source !== node.id && edge.target !== node.id)
+        );
+
+        const childNodes = [...nodes.filter((n) => n.data.parentNodeId === parentNode.id), node];
+        const rect = getNodesBounds(childNodes);
+        resetNodeSizeAndPosition(rect, parentNode.id);
+      }
+    },
+    [getIntersectingNodes, onChangeNode, setEdges, nodes, toast, t, resetNodeSizeAndPosition]
+  );
+
   /* node */
+  const handleRemoveNode = (change: NodeRemoveChange, changes: NodeChange[], node: Node) => {
+    if (node.data.forbidDelete) {
+      return toast({
+        status: 'warning',
+        title: t('common:core.workflow.Can not delete node')
+      });
+    }
+
+    // If the node has child nodes, remove the child nodes
+    if (nodes.some((n) => n.data.parentNodeId === node.id)) {
+      const childNodes = nodes.filter((n) => n.data.parentNodeId === node.id);
+      const childNodesChange = childNodes.map((node) => ({
+        ...change,
+        id: node.id
+      }));
+      onNodesChange([...changes, ...childNodesChange]);
+      setEdges((state) =>
+        state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
+      );
+      return;
+    }
+
+    setEdges((state) =>
+      state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
+    );
+    onNodesChange(changes);
+
+    // If the node is a child node, remove the child node from the parent node
+    if (node?.data.parentNodeId) {
+      const parentId = node.data.parentNodeId;
+      const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId && n.id !== node.id);
+      const parentNode = nodes.find((n) => n.id === parentId);
+      const rect = getNodesBounds(childNodes);
+      const updatedLoopFlow = parentNode?.data.inputs.find(
+        (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.loopFlow
+      );
+      if (updatedLoopFlow) {
+        updatedLoopFlow.value.childNodes = updatedLoopFlow.value.childNodes.filter(
+          (nodeId: string) => nodeId !== node.id
+        );
+        resetNodeSizeAndPosition(rect, parentId);
+        onChangeNode({
+          nodeId: parentId,
+          type: 'updateInput',
+          key: NodeInputKeyEnum.loopFlow,
+          value: updatedLoopFlow
+        });
+      }
+    }
+  };
+
+  const handleSelectNode = (change: NodeSelectionChange, changes: NodeChange[]) => {
+    // If the node is not selected and the Ctrl key is pressed, select the node
+    if (change.selected === false && isDowningCtrl) {
+      change.selected = true;
+    }
+
+    onNodesChange(changes);
+  };
+
+  const handlePositionNode = (change: NodePositionChange, changes: NodeChange[], node: Node) => {
+    // If node is a child node, move child node and reset parent node
+    if (node.data.parentNodeId) {
+      const parentId = node.data.parentNodeId;
+      const parentNode = nodes.find((n) => n.id === parentId);
+      const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
+
+      if (!parentNode) return;
+      const rect = getNodesBounds(childNodes);
+      customApplyNodeChanges(changes, childNodes);
+      onNodesChange(changes);
+      resetNodeSizeAndPosition(rect, parentId);
+      return;
+    }
+    // If node is parent node, move parent node and child nodes
+    if (nodes.some((item) => item.data.parentNodeId === node.id)) {
+      const parentId = node.id;
+      const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
+      const initPosition = node.position;
+      const deltaX = change.position?.x ? change.position.x - initPosition.x : 0;
+      const deltaY = change.position?.y ? change.position.y - initPosition.y : 0;
+      const childNodesChange: NodePositionChange[] = childNodes.map((node) => {
+        if (change.dragging) {
+          const position = {
+            x: node.position.x + deltaX,
+            y: node.position.y + deltaY
+          };
+          return {
+            ...change,
+            id: node.id,
+            position,
+            positionAbsolute: position
+          };
+        } else {
+          return {
+            ...change,
+            id: node.id
+          };
+        }
+      });
+      // customApplyNodeChanges(
+      //   changes,
+      //   nodes.filter((node) => !node.data.parentNodeId)
+      // );
+      onNodesChange([...changes, ...childNodesChange]);
+      return;
+    }
+
+    customApplyNodeChanges(
+      changes,
+      nodes.filter((node) => !node.data.parentNodeId)
+    );
+    onNodesChange(changes);
+  };
+
   const handleNodesChange = (changes: NodeChange[]) => {
     for (const change of changes) {
       if (change.type === 'remove') {
         const node = nodes.find((n) => n.id === change.id);
-        if (node && node.data.forbidDelete) {
-          return toast({
-            status: 'warning',
-            title: t('common:core.workflow.Can not delete node')
-          });
-        } else {
-          return (() => {
-            onNodesChange(changes);
-            setEdges((state) =>
-              state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
-            );
-          })();
+        if (node) {
+          return handleRemoveNode(change, changes, node);
         }
-      } else if (change.type === 'select' && change.selected === false && isDowningCtrl) {
-        change.selected = true;
+      } else if (change.type === 'select') {
+        return handleSelectNode(change, changes);
+      } else if (change.type === 'position') {
+        const node = nodes.find((n) => n.id === change.id);
+        if (node) {
+          return handlePositionNode(change, changes, node);
+        }
       }
     }
 
-    customApplyNodeChanges(changes, nodes);
-
+    // default changes
     onNodesChange(changes);
   };
+
   const handleEdgeChange = useCallback(
     (changes: EdgeChange[]) => {
       onEdgesChange(changes.filter((change) => change.type !== 'remove'));
     },
     [onEdgesChange]
+  );
+
+  const onNodeDragStop = useCallback(
+    (_: any, node: Node) => {
+      checkNodeOverLoopNode(node);
+    },
+    [checkNodeOverLoopNode]
   );
 
   /* connect */
@@ -403,7 +629,8 @@ export const useWorkflow = () => {
     onEdgeMouseEnter,
     onEdgeMouseLeave,
     helperLineHorizontal,
-    helperLineVertical
+    helperLineVertical,
+    onNodeDragStop
   };
 };
 
