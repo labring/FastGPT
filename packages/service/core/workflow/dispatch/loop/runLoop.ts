@@ -24,15 +24,22 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     node: { name }
   } = props;
   const {
-    loopInputArray,
+    loopInputArray = [],
     loopFlow: { childNodes }
   } = params;
+
+  if (!Array.isArray(loopInputArray)) {
+    return Promise.reject('Input value is not an array');
+  }
+
   const runNodes = runtimeNodes.filter((node) => childNodes.includes(node.nodeId));
-  const outputArray = [];
+
+  const outputValueArr = [];
   const loopDetail: ChatHistoryItemResType[] = [];
+
   let totalPoints = 0;
 
-  for await (const element of loopInputArray) {
+  for await (const item of loopInputArray) {
     const response = await dispatchWorkFlow({
       ...props,
       runtimeNodes: runNodes.map((node) =>
@@ -41,10 +48,10 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
               ...node,
               isEntry: true,
               inputs: node.inputs.map((input) =>
-                input.key === NodeInputKeyEnum.loopArrayElement
+                input.key === NodeInputKeyEnum.loopStartInput
                   ? {
                       ...input,
-                      value: element
+                      value: item
                     }
                   : input
               )
@@ -60,7 +67,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       (res) => res.moduleType === FlowNodeTypeEnum.loopEnd
     )?.loopOutputValue;
 
-    outputArray.push(loopOutputValue);
+    outputValueArr.push(loopOutputValue);
     loopDetail.push(...response.flowResponses);
 
     totalPoints = response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
@@ -70,7 +77,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: totalPoints,
       loopInput: loopInputArray,
-      loopResult: outputArray,
+      loopResult: outputValueArr,
       loopDetail: loopDetail
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
@@ -79,6 +86,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
         moduleName: name
       }
     ],
-    [NodeOutputKeyEnum.loopArray]: outputArray
+    [NodeOutputKeyEnum.loopArray]: outputValueArr
   };
 };

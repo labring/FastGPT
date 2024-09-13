@@ -1,10 +1,10 @@
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'react-i18next';
 import { NodeProps } from 'reactflow';
-import NodeCard from './render/NodeCard';
+import NodeCard from '../render/NodeCard';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
+import { WorkflowContext } from '../../../context';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -32,75 +32,62 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => nodeList.find((node) => node.nodeId === nodeId),
     [nodeList, nodeId]
   );
-  const parentNode = useMemo(
-    () => nodeList.find((node) => node.nodeId === loopStartNode?.parentNodeId),
-    [nodeList, loopStartNode]
-  );
-  const arrayInput = useMemo(
-    () => parentNode?.inputs.find((input) => input.key === NodeInputKeyEnum.loopInputArray),
-    [parentNode]
-  );
-  const outputValueType = useMemo(
-    () =>
-      !!arrayInput?.value
-        ? nodeList
-            .find((node) => node.nodeId === arrayInput?.value[0])
-            ?.outputs.find((output) => output.id === arrayInput?.value[1])?.valueType
-        : undefined,
-    [arrayInput, nodeList]
-  );
-  const variables = useMemo(
-    () => [
-      {
-        icon: 'core/workflow/inputType/array',
-        label: '数组元素',
-        type: typeMap[outputValueType as keyof typeof typeMap],
-        key: t('workflow:Array_element')
-      }
-    ],
-    [outputValueType, t]
-  );
 
+  // According to the variable referenced by parentInput, find the output of the corresponding node and take its output valueType
+  const loopItemInputType = useMemo(() => {
+    const parentNode = nodeList.find((node) => node.nodeId === loopStartNode?.parentNodeId);
+    const parentArrayInput = parentNode?.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.loopInputArray
+    );
+    return parentArrayInput?.value
+      ? (nodeList
+          .find((node) => node.nodeId === parentArrayInput?.value[0])
+          ?.outputs.find((output) => output.id === parentArrayInput?.value[1])
+          ?.valueType as keyof typeof typeMap)
+      : undefined;
+  }, [loopStartNode?.parentNodeId, nodeList]);
+
+  // Auth update loopStartInput output
   useEffect(() => {
     const loopArrayOutput = loopStartNode?.outputs.find(
-      (output) => output.key === NodeOutputKeyEnum.loopArrayElement
+      (output) => output.key === NodeOutputKeyEnum.loopStartInput
     );
 
-    // if outputValueType is undefined, delete loopArrayElement output
-    if (!outputValueType && loopArrayOutput) {
+    // if loopItemInputType is undefined, delete loopStartInput output
+    if (!loopItemInputType && loopArrayOutput) {
       onChangeNode({
         nodeId,
         type: 'delOutput',
-        key: NodeOutputKeyEnum.loopArrayElement
+        key: NodeOutputKeyEnum.loopStartInput
       });
     }
-    // if outputValueType is not undefined, and has no loopArrayOutput, add loopArrayElement output
-    if (outputValueType && !loopArrayOutput) {
+    // if loopItemInputType is not undefined, and has no loopArrayOutput, add loopStartInput output
+    if (loopItemInputType && !loopArrayOutput) {
       onChangeNode({
         nodeId,
         type: 'addOutput',
         value: {
-          id: NodeOutputKeyEnum.loopArrayElement,
-          key: NodeOutputKeyEnum.loopArrayElement,
+          id: NodeOutputKeyEnum.loopStartInput,
+          key: NodeOutputKeyEnum.loopStartInput,
           label: t('workflow:Array_element'),
           type: FlowNodeOutputTypeEnum.static,
-          valueType: typeMap[outputValueType as keyof typeof typeMap]
+          valueType: typeMap[loopItemInputType as keyof typeof typeMap]
         }
       });
     }
-    // if outputValueType is not undefined, and has loopArrayOutput, update loopArrayElement output
-    if (outputValueType && loopArrayOutput) {
+    // if loopItemInputType is not undefined, and has loopArrayOutput, update loopStartInput output
+    if (loopItemInputType && loopArrayOutput) {
       onChangeNode({
         nodeId,
         type: 'updateOutput',
-        key: NodeOutputKeyEnum.loopArrayElement,
+        key: NodeOutputKeyEnum.loopStartInput,
         value: {
           ...loopArrayOutput,
-          valueType: typeMap[outputValueType as keyof typeof typeMap]
+          valueType: typeMap[loopItemInputType as keyof typeof typeMap]
         }
       });
     }
-  }, [onChangeNode, outputValueType]);
+  }, [loopStartNode?.outputs, nodeId, onChangeNode, loopItemInputType, t]);
 
   return (
     <NodeCard
@@ -115,7 +102,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       }}
     >
       <Box px={4}>
-        {!outputValueType ? (
+        {!loopItemInputType ? (
           <EmptyTip text={t('workflow:loop_start_tip')} py={0} mt={0} iconSize={'32px'} />
         ) : (
           <Box bg={'white'} borderRadius={'md'} overflow={'hidden'} border={'base'}>
@@ -130,24 +117,20 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {variables.map((item) => (
-                    <Tr key={item.key}>
-                      <Td>
-                        <Flex alignItems={'center'}>
-                          {!!item.icon && (
-                            <MyIcon
-                              name={item.icon as any}
-                              w={'14px'}
-                              mr={1}
-                              color={'primary.600'}
-                            />
-                          )}
-                          {item.label || item.key}
-                        </Flex>
-                      </Td>
-                      <Td>{item.type}</Td>
-                    </Tr>
-                  ))}
+                  <Tr>
+                    <Td>
+                      <Flex alignItems={'center'}>
+                        <MyIcon
+                          name={'core/workflow/inputType/array'}
+                          w={'14px'}
+                          mr={1}
+                          color={'primary.600'}
+                        />
+                        {t('workflow:Array_element')}
+                      </Flex>
+                    </Td>
+                    <Td>{typeMap[loopItemInputType]}</Td>
+                  </Tr>
                 </Tbody>
               </Table>
             </TableContainer>

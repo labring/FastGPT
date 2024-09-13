@@ -66,9 +66,9 @@ import {
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
 import { dispatchRunAppNode } from './plugin/runApp';
-import { dispatchLoop } from './tools/runLoop';
-import { dispatchLoopEnd } from './tools/runLoopEnd';
-import { dispatchLoopStart } from './tools/runLoopStart';
+import { dispatchLoop } from './loop/runLoop';
+import { dispatchLoopEnd } from './loop/runLoopEnd';
+import { dispatchLoopStart } from './loop/runLoopStart';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
