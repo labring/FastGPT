@@ -38,6 +38,7 @@ import { clone } from 'lodash';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import ComplianceTip, { TipTypeEnum } from '@/components/support/compliance/ComplianceTip';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -709,6 +710,7 @@ const ChatInput = ({
 
         {RenderTextarea}
       </Box>
+      <ComplianceTip type={TipTypeEnum.chat} />
     </Box>
   );
 };
