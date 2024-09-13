@@ -6,7 +6,7 @@ import Markdown from '@/components/Markdown';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import AIResponseBox from '../../../components/AIResponseBox';
 import { useTranslation } from 'next-i18next';
-import ComplianceTip, { TipTypeEnum } from '@/components/support/compliance/ComplianceTip';
+import ComplianceTip from '@/components/support/compliance/ComplianceTip';
 const RenderOutput = () => {
   const { histories, isChatting } = useContextSelector(PluginRunContext, (v) => v);
   const { t } = useTranslation();
@@ -50,7 +50,7 @@ const RenderOutput = () => {
           ) : null}
         </Box>
       </Box>
-      <ComplianceTip type={TipTypeEnum.chat} />
+      <ComplianceTip type={'chat'} />
     </>
   );
 };
