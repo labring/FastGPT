@@ -12,8 +12,7 @@ import type {
   InitChatResponse,
   InitOutLinkChatProps,
   GetHistoriesProps,
-  InitTeamChatProps,
-  GetChatRecordsProps
+  InitTeamChatProps
 } from '@/global/core/chat/api.d';
 
 import type {
@@ -28,6 +27,7 @@ import { AuthTeamTagTokenProps } from '@fastgpt/global/support/user/team/tag';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { PagingData } from '@/types';
+import { getPaginationRecordsQuery } from '@/pages/api/core/chat/getPaginationRecords';
 
 /**
  * 获取初始化聊天内容
@@ -38,7 +38,7 @@ export const getInitOutLinkChatInfo = (data: InitOutLinkChatProps) =>
   GET<InitChatResponse>(`/core/chat/outLink/init`, data);
 export const getTeamChatInfo = (data: InitTeamChatProps) =>
   GET<InitChatResponse>(`/core/chat/team/init`, data);
-export const getChatRecords = (data: GetChatRecordsProps) =>
+export const getChatRecords = (data: getPaginationRecordsQuery) =>
   GET<PagingData<ChatItemType>>('core/chat/getPaginationRecords', data);
 /**
  * get current window history(appid or shareId)

@@ -128,7 +128,7 @@ const ChatBox = (
   }: Props,
   ref: ForwardedRef<ComponentRef>
 ) => {
-  const elementRef = useRef<HTMLDivElement>(null);
+  const ChatBoxRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -184,13 +184,13 @@ const ChatBox = (
   // 滚动到底部
   const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
     setTimeout(() => {
-      if (!elementRef.current) {
+      if (!ChatBoxRef.current) {
         setTimeout(() => {
           scrollToBottom(behavior);
         }, 500);
       } else {
-        elementRef.current.scrollTo({
-          top: elementRef.current.scrollHeight,
+        ChatBoxRef.current.scrollTo({
+          top: ChatBoxRef.current.scrollHeight,
           behavior
         });
       }
@@ -200,10 +200,10 @@ const ChatBox = (
   // 聊天信息生成中……获取当前滚动条位置，判断是否需要滚动到底部
   const { run: generatingScroll } = useThrottleFn(
     () => {
-      if (!elementRef.current) return;
+      if (!ChatBoxRef.current) return;
       const isBottom =
-        elementRef.current.scrollTop + elementRef.current.clientHeight + 150 >=
-        elementRef.current.scrollHeight;
+        ChatBoxRef.current.scrollTop + ChatBoxRef.current.clientHeight + 150 >=
+        ChatBoxRef.current.scrollHeight;
 
       isBottom && scrollToBottom('auto');
     },
@@ -869,14 +869,13 @@ const ChatBox = (
       setChatHistories([]);
       setValue('chatStarted', false);
       scrollToBottom('smooth', 500);
-    },
-    elementRef
+    }
   }));
 
   const RenderRecords = useMemo(() => {
     return (
       <ScrollData
-        ScrollContainerRef={elementRef}
+        ScrollContainerRef={ChatBoxRef}
         flex={'1 0 0'}
         h={0}
         w={'100%'}

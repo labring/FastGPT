@@ -191,7 +191,7 @@ const OutLink = ({
     type: GetChatTypeEnum.outLink
   });
 
-  const { loading: isInit } = useRequest2(
+  const { loading: isLoading } = useRequest2(
     async () => {
       if (!shareId || !outLinkUid || forbidLoadChat.current) return;
 
@@ -234,7 +234,8 @@ const OutLink = ({
   useMount(() => {
     setIdEmbed(window !== top);
   });
-  const loading = isLoadChatRecords || isInit;
+  const loading = isLoadChatRecords || isLoading;
+
   return (
     <>
       <NextHead title={appName} desc={appIntro} icon={appAvatar} />

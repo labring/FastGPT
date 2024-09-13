@@ -150,7 +150,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   );
 
   // get chat app info
-  const { loading: isInit } = useRequest2(
+  const { loading: isLoading } = useRequest2(
     async () => {
       if (!appId || forbidLoadChat.current) return;
 
@@ -180,7 +180,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     }
   );
 
-  const loading = isLoadChatRecords || isInit;
+  const loading = isLoadChatRecords || isLoading;
 
   return (
     <Flex h={'100%'}>

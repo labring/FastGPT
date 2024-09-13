@@ -31,6 +31,7 @@ export const useChatTest = ({
   const { userInfo } = useUserStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([]);
+
   const startChat = useMemoizedFn(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
       /* get histories */

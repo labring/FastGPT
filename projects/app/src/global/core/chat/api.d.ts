@@ -17,13 +17,12 @@ export type InitChatProps = {
   loadCustomFeedbacks?: boolean;
 };
 
-export type GetChatRecordsParams = OutLinkChatAuthProps & {
+export type GetChatRecordsProps = OutLinkChatAuthProps & {
   appId: string;
   chatId?: string;
   loadCustomFeedbacks?: boolean;
   type: `${GetChatTypeEnum}`;
 };
-export type GetChatRecordsProps = RequestPaging & GetChatRecordsParams;
 
 export type InitOutLinkChatProps = {
   chatId?: string;

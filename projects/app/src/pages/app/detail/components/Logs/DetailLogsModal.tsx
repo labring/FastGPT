@@ -40,6 +40,7 @@ const DetailLogsModal = ({
     resetVariables,
     useChatPagination
   } = useChat();
+
   const {
     data: chatRecords,
     ScrollData,
@@ -67,6 +68,7 @@ const DetailLogsModal = ({
   const chatModels = chat?.app?.chatModels;
   const isPlugin = chat?.app.type === AppTypeEnum.plugin;
   const loading = isFetching || isLoadChatRecords;
+
   return (
     <>
       <MyBox

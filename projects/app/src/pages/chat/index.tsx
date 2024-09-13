@@ -93,7 +93,8 @@ const Chat = ({
   // get chat app info
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
   const isPlugin = chatData.app.type === AppTypeEnum.plugin;
-  const { loading: isInit } = useRequest2(
+
+  const { loading: isLoading } = useRequest2(
     async () => {
       if (!appId || forbidLoadChat.current) return;
 
@@ -166,7 +167,8 @@ const Chat = ({
     },
     [chatId, appId, onUpdateHistoryTitle, forbidLoadChat, onChangeChatId]
   );
-  const loading = isLoadChatRecords || isInit;
+  const loading = isLoadChatRecords || isLoading;
+
   return (
     <Flex h={'100%'}>
       <NextHead title={chatData.app.name} icon={chatData.app.avatar}></NextHead>

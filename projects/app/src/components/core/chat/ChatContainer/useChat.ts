@@ -13,7 +13,7 @@ import { PagingData } from '@/types';
 import { getChatRecords } from '@/web/core/chat/api';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { GetChatRecordsParams, GetChatRecordsProps } from '@/global/core/chat/api';
+import { GetChatRecordsProps } from '@/global/core/chat/api';
 
 export const useChat = () => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
@@ -39,7 +39,7 @@ export const useChat = () => {
     [variablesForm]
   );
 
-  const useChatPagination = (params: GetChatRecordsParams) => {
+  const useChatPagination = (params: GetChatRecordsProps) => {
     const { data, ScrollData, isLoading, setData, refresh, getData } = usePagination({
       api: async (data): Promise<PagingData<ChatSiteItemType>> => {
         const res = await getChatRecords(data);
@@ -57,10 +57,10 @@ export const useChat = () => {
       params,
       pageSize: 10,
       type: 'scroll',
-      elementRef: ChatBoxRef.current?.elementRef,
       refreshDeps: [...Object.values(params)],
       loadType: 'top'
     });
+
     return {
       data,
       ScrollData,

@@ -39,7 +39,6 @@ export function usePagination<ResT = any>({
   defaultRequest?: boolean;
   type?: 'button' | 'scroll';
   onChange?: (pageNum: number) => void;
-  elementRef?: React.RefObject<HTMLDivElement>;
   refreshDeps?: any[];
   throttleWait?: number;
   showTextTip?: boolean;
@@ -197,6 +196,7 @@ export function usePagination<ResT = any>({
         return t('common:common.request_more');
       })();
       const scroll = useScroll(ScrollContainerRef);
+
       useThrottleEffect(
         () => {
           if (!ScrollContainerRef?.current || type !== 'scroll' || total.current === 0) return;

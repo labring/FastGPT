@@ -1,11 +1,7 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { GetChatRecordsProps } from '@/global/core/chat/api';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -17,8 +13,9 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
+import { RequestPaging } from '@/types';
 
-export type getPaginationRecordsQuery = GetChatRecordsProps;
+export type getPaginationRecordsQuery = RequestPaging & GetChatRecordsProps;
 
 export type getPaginationRecordsBody = {};
 
@@ -28,7 +25,6 @@ async function handler(
   req: ApiRequestProps<getPaginationRecordsBody, getPaginationRecordsQuery>,
   res: ApiResponseType<any>
 ): Promise<getPaginationRecordsResponse> {
-  let shareChat;
   const { chatId, appId, pageNum = 1, pageSize = 10, loadCustomFeedbacks, type } = req.query;
   if (!appId || !chatId)
     return {
@@ -47,16 +43,19 @@ async function handler(
       per: ReadPermissionVal
     })
   ]);
-
-  if (type === 'outLink')
-    shareChat = await authOutLink({
-      shareId: req.query.shareId,
-      outLinkUid: req.query.outLinkUid
-    }).then(({ shareChat }) => shareChat);
-
   if (!app) {
     return Promise.reject(AppErrEnum.unExist);
   }
+
+  const shareChat = await (async () => {
+    if (type !== GetChatTypeEnum.outLink) return null;
+    const result = await authOutLink({
+      shareId: req.query.shareId,
+      outLinkUid: req.query.outLinkUid
+    });
+    return result.shareChat;
+  })();
+
   const fieldMap = {
     [GetChatTypeEnum.normal]: `dataId obj value adminFeedback userBadFeedback userGoodFeedback ${
       DispatchNodeResponseKeyEnum.nodeResponse
@@ -76,7 +75,7 @@ async function handler(
     pageNum
   });
 
-  if (type !== 'normal')
+  if (type === 'outLink')
     app.type !== AppTypeEnum.plugin &&
       histories.forEach((item) => {
         if (item.obj === ChatRoleEnum.AI) {
