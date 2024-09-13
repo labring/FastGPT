@@ -96,9 +96,7 @@ export async function getResourceAllClbs({
   session
 }: {
   teamId: string;
-  // resourceType: T;
   session?: ClientSession;
-  // resourceId?: T extends 'team' ? undefined : ParentIdType;
 } & (
   | {
       resourceType: 'team';
@@ -114,7 +112,9 @@ export async function getResourceAllClbs({
       resourceId,
       resourceType: resourceType,
       teamId: teamId,
-      groupId: null
+      groupId: {
+        $exists: false
+      }
     },
     null,
     {
