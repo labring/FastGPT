@@ -1,14 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  Box,
-  Flex,
-  Image,
-  Button,
-  useDisclosure,
-  InputGroup,
-  InputLeftElement,
-  Input
-} from '@chakra-ui/react';
+import { Box, Flex, Button, InputGroup, InputLeftElement, Input } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serviceSideProps } from '@/web/common/utils/i18n';
@@ -249,14 +240,14 @@ const Dataset = () => {
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 permissionList: DatasetPermissionList,
                 onUpdateCollaborators: ({
-                  tmbIds,
+                  members = [], // TODO: remove the default value after group is ready
                   permission
                 }: {
-                  tmbIds: string[];
+                  members?: string[];
                   permission: number;
                 }) => {
                   return postUpdateDatasetCollaborators({
-                    tmbIds,
+                    members,
                     permission,
                     datasetId: folderDetail._id
                   });
