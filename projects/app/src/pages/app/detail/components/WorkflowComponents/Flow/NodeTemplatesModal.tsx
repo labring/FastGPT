@@ -47,6 +47,8 @@ import { cloneDeep } from 'lodash';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import CostTooltip from '@/components/core/app/plugin/CostTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
+import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -482,27 +484,19 @@ const RenderList = React.memo(function RenderList({
         },
         position: { x: mouseX, y: mouseY },
         selected: true,
-        zIndex: templateNode.flowNodeType === FlowNodeTypeEnum.loop ? -1001 : 0,
         t
       });
       const newNodes = [newNode];
 
       if (templateNode.flowNodeType === FlowNodeTypeEnum.loop) {
-        const loopStartNode = moduleTemplatesFlat.find(
-          (item) => item.flowNodeType === FlowNodeTypeEnum.loopStart
-        )!;
-        const loopEndNode = moduleTemplatesFlat.find(
-          (item) => item.flowNodeType === FlowNodeTypeEnum.loopEnd
-        )!;
-
         const startNode = nodeTemplate2FlowNode({
-          template: loopStartNode,
+          template: LoopStartNode,
           position: { x: mouseX + 60, y: mouseY + 280 },
           parentNodeId: newNode.id,
           t
         });
         const endNode = nodeTemplate2FlowNode({
-          template: loopEndNode,
+          template: LoopEndNode,
           position: { x: mouseX + 420, y: mouseY + 680 },
           parentNodeId: newNode.id,
           t

@@ -11,7 +11,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { Box, Flex, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
@@ -28,37 +28,54 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId } = data;
   const { nodeList, onChangeNode } = useContextSelector(WorkflowContext, (v) => v);
 
-  const loopStartNode = nodeList.find((node) => node.nodeId === nodeId);
-  const parentNode = nodeList.find((node) => node.nodeId === loopStartNode?.parentNodeId);
-  const arrayInput = parentNode?.inputs.find(
-    (input) => input.key === NodeInputKeyEnum.loopInputArray
+  const loopStartNode = useMemo(
+    () => nodeList.find((node) => node.nodeId === nodeId),
+    [nodeList, nodeId]
   );
-  const outputValueType = !!arrayInput?.value
-    ? nodeList
-        .find((node) => node.nodeId === arrayInput?.value[0])
-        ?.outputs.find((output) => output.id === arrayInput?.value[1])?.valueType
-    : undefined;
-  const variables = [
-    {
-      icon: 'core/workflow/inputType/array',
-      label: '数组元素',
-      type: typeMap[outputValueType as keyof typeof typeMap],
-      key: t('workflow:Array_element')
-    }
-  ];
+  const parentNode = useMemo(
+    () => nodeList.find((node) => node.nodeId === loopStartNode?.parentNodeId),
+    [nodeList, loopStartNode]
+  );
+  const arrayInput = useMemo(
+    () => parentNode?.inputs.find((input) => input.key === NodeInputKeyEnum.loopInputArray),
+    [parentNode]
+  );
+  const outputValueType = useMemo(
+    () =>
+      !!arrayInput?.value
+        ? nodeList
+            .find((node) => node.nodeId === arrayInput?.value[0])
+            ?.outputs.find((output) => output.id === arrayInput?.value[1])?.valueType
+        : undefined,
+    [arrayInput, nodeList]
+  );
+  const variables = useMemo(
+    () => [
+      {
+        icon: 'core/workflow/inputType/array',
+        label: '数组元素',
+        type: typeMap[outputValueType as keyof typeof typeMap],
+        key: t('workflow:Array_element')
+      }
+    ],
+    [outputValueType, t]
+  );
 
   useEffect(() => {
     const loopArrayOutput = loopStartNode?.outputs.find(
       (output) => output.key === NodeOutputKeyEnum.loopArrayElement
     );
 
+    // if outputValueType is undefined, delete loopArrayElement output
     if (!outputValueType && loopArrayOutput) {
       onChangeNode({
         nodeId,
         type: 'delOutput',
         key: NodeOutputKeyEnum.loopArrayElement
       });
-    } else if (outputValueType && !loopArrayOutput) {
+    }
+    // if outputValueType is not undefined, and has no loopArrayOutput, add loopArrayElement output
+    if (outputValueType && !loopArrayOutput) {
       onChangeNode({
         nodeId,
         type: 'addOutput',
@@ -70,7 +87,9 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           valueType: typeMap[outputValueType as keyof typeof typeMap]
         }
       });
-    } else if (outputValueType && loopArrayOutput) {
+    }
+    // if outputValueType is not undefined, and has loopArrayOutput, update loopArrayElement output
+    if (outputValueType && loopArrayOutput) {
       onChangeNode({
         nodeId,
         type: 'updateOutput',

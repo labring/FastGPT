@@ -3,7 +3,7 @@ import { NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
 import Reference from './render/RenderInput/templates/Reference';
 import { Box } from '@chakra-ui/react';
-import React, { useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -34,15 +34,16 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [inputs]
   );
 
-  if (!inputItem) return null;
-
-  const global = getGlobalVariableNode({ nodes: nodeList, t, chatConfig: appDetail.chatConfig });
+  const global = useMemo(
+    () => getGlobalVariableNode({ nodes: nodeList, t, chatConfig: appDetail.chatConfig }),
+    [nodeList, t, appDetail.chatConfig]
+  );
   const inputItemValueNode = useMemo(
-    () => [...nodeList, global].find((node) => node.nodeId === inputItem.value[0]),
+    () => [...nodeList, global].find((node) => node.nodeId === inputItem?.value[0]),
     [nodeList, inputItem]
   );
   const inputItemValueOutput = useMemo(
-    () => inputItemValueNode?.outputs.find((output) => output.id === inputItem.value[1]),
+    () => inputItemValueNode?.outputs.find((output) => output.id === inputItem?.value[1]),
     [inputItemValueNode]
   );
   const valueType = inputItemValueOutput?.valueType;
@@ -82,7 +83,7 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       }}
     >
       <Box px={4} pb={4}>
-        <Reference item={inputItem} nodeId={nodeId} />
+        {inputItem && <Reference item={inputItem} nodeId={nodeId} />}
       </Box>
     </NodeCard>
   );

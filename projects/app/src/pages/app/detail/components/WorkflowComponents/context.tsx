@@ -403,6 +403,12 @@ const WorkflowContextProvider = ({
   const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
   const [hoverNodeId, setHoverNodeId] = useState<string>();
 
+  useEffect(() => {
+    setNodes((nodes) =>
+      nodes.map((node) => (node.type === FlowNodeTypeEnum.loop ? { ...node, zIndex: -1001 } : node))
+    );
+  }, [nodes.length]);
+
   const nodeListString = JSON.stringify(nodes.map((node) => node.data));
   const nodeList = useMemo(
     () => JSON.parse(nodeListString) as FlowNodeItemType[],
@@ -569,13 +575,7 @@ const WorkflowContextProvider = ({
         return resetSnapshot(past[0]);
       }
 
-      setNodes(
-        e.nodes?.map((item) =>
-          item.flowNodeType === FlowNodeTypeEnum.loop
-            ? storeNode2FlowNode({ item, t, zIndex: -1001 })
-            : storeNode2FlowNode({ item, t })
-        ) || []
-      );
+      setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || []);
       setEdges(e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || []);
 
       const chatConfig = e.chatConfig;
@@ -589,12 +589,7 @@ const WorkflowContextProvider = ({
       // If it is the initial data, save the initial snapshot
       if (isInit) {
         saveSnapshot({
-          pastNodes:
-            e.nodes?.map((item) =>
-              item.flowNodeType === FlowNodeTypeEnum.loop
-                ? storeNode2FlowNode({ item, t, zIndex: -1001 })
-                : storeNode2FlowNode({ item, t })
-            ) || [],
+          pastNodes: e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [],
           pastEdges: e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [],
           customTitle: t(`app:app.version_initial`),
           chatConfig: appDetail.chatConfig,

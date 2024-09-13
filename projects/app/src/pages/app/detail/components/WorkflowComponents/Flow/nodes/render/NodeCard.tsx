@@ -54,8 +54,8 @@ const NodeCard = (props: Props) => {
     minW = '300px',
     maxW = '600px',
     minH = 0,
-    w,
-    h,
+    w = 'full',
+    h = 'full',
     nodeId,
     selected,
     menuForbid,
@@ -270,8 +270,8 @@ const NodeCard = (props: Props) => {
       borderWidth={'1px'}
       borderRadius={'md'}
       boxShadow={'1'}
-      w={w || 'full'}
-      h={h || 'full'}
+      w={w}
+      h={h}
       _hover={{
         boxShadow: '4',
         '& .controller-menu': {

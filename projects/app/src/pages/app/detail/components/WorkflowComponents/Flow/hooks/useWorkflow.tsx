@@ -382,12 +382,14 @@ export const useWorkflow = () => {
             title: t('workflow:can_not_loop')
           });
         }
+
         const updatedLoopFlow = parentNode.data.inputs.find(
           (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.loopFlow
         );
         if (updatedLoopFlow) {
           updatedLoopFlow.value.childNodes = [...updatedLoopFlow.value.childNodes, node.id];
         }
+
         onChangeNode({
           nodeId: node.id,
           type: 'attr',
@@ -413,88 +415,68 @@ export const useWorkflow = () => {
   );
 
   /* node */
-  const handleNodesChange = (changes: NodeChange[]) => {
-    for (const change of changes) {
-      if (change.type === 'remove') {
-        const node = nodes.find((n) => n.id === change.id);
-        if (node) {
-          return handleRemoveNode(change, changes, node);
-        }
-      } else if (change.type === 'select') {
-        return handleSelectNode(change, changes);
-      } else if (change.type === 'position') {
-        const node = nodes.find((n) => n.id === change.id);
-        if (node) {
-          return handlePositionNode(change, changes, node);
-        }
-      }
-    }
-
-    onNodesChange(changes);
-  };
-
   const handleRemoveNode = (change: NodeRemoveChange, changes: NodeChange[], node: Node) => {
     if (node.data.forbidDelete) {
       return toast({
         status: 'warning',
         title: t('common:core.workflow.Can not delete node')
       });
-    } else if (nodes.some((n) => n.data.parentNodeId === node.id)) {
+    }
+
+    // If the node has child nodes, remove the child nodes
+    if (nodes.some((n) => n.data.parentNodeId === node.id)) {
       const childNodes = nodes.filter((n) => n.data.parentNodeId === node.id);
       const childNodesChange = childNodes.map((node) => ({
         ...change,
         id: node.id
       }));
-      return (() => {
-        onNodesChange([...changes, ...childNodesChange]);
-        setEdges((state) =>
-          state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
+      onNodesChange([...changes, ...childNodesChange]);
+      setEdges((state) =>
+        state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
+      );
+      return;
+    }
+
+    setEdges((state) =>
+      state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
+    );
+    onNodesChange(changes);
+
+    // If the node is a child node, remove the child node from the parent node
+    if (node?.data.parentNodeId) {
+      const parentId = node.data.parentNodeId;
+      const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId && n.id !== node.id);
+      const parentNode = nodes.find((n) => n.id === parentId);
+      const rect = getNodesBounds(childNodes);
+      const updatedLoopFlow = parentNode?.data.inputs.find(
+        (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.loopFlow
+      );
+      if (updatedLoopFlow) {
+        updatedLoopFlow.value.childNodes = updatedLoopFlow.value.childNodes.filter(
+          (nodeId: string) => nodeId !== node.id
         );
-      })();
-    } else {
-      return (() => {
-        onNodesChange(changes);
-        setEdges((state) =>
-          state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
-        );
-        if (node?.data.parentNodeId) {
-          const parentId = node.data.parentNodeId;
-          const childNodes = nodes.filter(
-            (n) => n.data.parentNodeId === parentId && n.id !== node.id
-          );
-          const parentNode = nodes.find((n) => n.id === parentId);
-          const rect = getNodesBounds(childNodes);
-          const updatedLoopFlow = parentNode?.data.inputs.find(
-            (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.loopFlow
-          );
-          if (updatedLoopFlow) {
-            updatedLoopFlow.value.childNodes = updatedLoopFlow.value.childNodes.filter(
-              (nodeId: string) => nodeId !== node.id
-            );
-            resetNodeSizeAndPosition(rect, parentId);
-            onChangeNode({
-              nodeId: parentId,
-              type: 'updateInput',
-              key: NodeInputKeyEnum.loopFlow,
-              value: updatedLoopFlow
-            });
-          }
-        }
-      })();
+        resetNodeSizeAndPosition(rect, parentId);
+        onChangeNode({
+          nodeId: parentId,
+          type: 'updateInput',
+          key: NodeInputKeyEnum.loopFlow,
+          value: updatedLoopFlow
+        });
+      }
     }
   };
 
   const handleSelectNode = (change: NodeSelectionChange, changes: NodeChange[]) => {
+    // If the node is not selected and the Ctrl key is pressed, select the node
     if (change.selected === false && isDowningCtrl) {
       change.selected = true;
-    } else {
-      return (() => {
-        onNodesChange(changes);
-      })();
     }
+
+    onNodesChange(changes);
   };
 
   const handlePositionNode = (change: NodePositionChange, changes: NodeChange[], node: Node) => {
+    // If node is a child node, move child node and reset parent node
     if (node.data.parentNodeId) {
       const parentId = node.data.parentNodeId;
       const parentNode = nodes.find((n) => n.id === parentId);
@@ -502,12 +484,13 @@ export const useWorkflow = () => {
 
       if (!parentNode) return;
       const rect = getNodesBounds(childNodes);
-      return (() => {
-        customApplyNodeChanges(changes, childNodes);
-        onNodesChange(changes);
-        resetNodeSizeAndPosition(rect, parentId);
-      })();
-    } else if (nodes.some((item) => item.data.parentNodeId === node.id)) {
+      customApplyNodeChanges(changes, childNodes);
+      onNodesChange(changes);
+      resetNodeSizeAndPosition(rect, parentId);
+      return;
+    }
+    // If node is parent node, move parent node and child nodes
+    if (nodes.some((item) => item.data.parentNodeId === node.id)) {
       const parentId = node.id;
       const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
       const initPosition = node.position;
@@ -532,22 +515,40 @@ export const useWorkflow = () => {
           };
         }
       });
-      return (() => {
-        // customApplyNodeChanges(
-        //   changes,
-        //   nodes.filter((node) => !node.data.parentNodeId)
-        // );
-        onNodesChange([...changes, ...childNodesChange]);
-      })();
-    } else {
-      return (() => {
-        customApplyNodeChanges(
-          changes,
-          nodes.filter((node) => !node.data.parentNodeId)
-        );
-        onNodesChange(changes);
-      })();
+      // customApplyNodeChanges(
+      //   changes,
+      //   nodes.filter((node) => !node.data.parentNodeId)
+      // );
+      onNodesChange([...changes, ...childNodesChange]);
+      return;
     }
+
+    customApplyNodeChanges(
+      changes,
+      nodes.filter((node) => !node.data.parentNodeId)
+    );
+    onNodesChange(changes);
+  };
+
+  const handleNodesChange = (changes: NodeChange[]) => {
+    for (const change of changes) {
+      if (change.type === 'remove') {
+        const node = nodes.find((n) => n.id === change.id);
+        if (node) {
+          return handleRemoveNode(change, changes, node);
+        }
+      } else if (change.type === 'select') {
+        return handleSelectNode(change, changes);
+      } else if (change.type === 'position') {
+        const node = nodes.find((n) => n.id === change.id);
+        if (node) {
+          return handlePositionNode(change, changes, node);
+        }
+      }
+    }
+
+    // default changes
+    onNodesChange(changes);
   };
 
   const handleEdgeChange = useCallback(

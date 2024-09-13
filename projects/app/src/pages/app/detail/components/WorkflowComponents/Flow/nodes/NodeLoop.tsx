@@ -1,3 +1,9 @@
+/*
+  The loop node has controllable width and height properties, which serve as the parent node of loopFlow.
+  When the childNodes of loopFlow change, it automatically calculates the rectangular width, height, and position of the childNodes, 
+  thereby further updating the width and height properties of the loop node.
+*/
+
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useEffect, useMemo } from 'react';
 import { Background, NodeProps } from 'reactflow';
