@@ -66,6 +66,9 @@ import {
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
 import { dispatchRunAppNode } from './plugin/runApp';
+import { dispatchLoop } from './tools/runLoop';
+import { dispatchLoopEnd } from './tools/runLoopEnd';
+import { dispatchLoopStart } from './tools/runLoopStart';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -91,6 +94,9 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.customFeedback]: dispatchCustomFeedback,
   [FlowNodeTypeEnum.readFiles]: dispatchReadFiles,
   [FlowNodeTypeEnum.userSelect]: dispatchUserSelect,
+  [FlowNodeTypeEnum.loop]: dispatchLoop,
+  [FlowNodeTypeEnum.loopStart]: dispatchLoopStart,
+  [FlowNodeTypeEnum.loopEnd]: dispatchLoopEnd,
 
   // none
   [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,

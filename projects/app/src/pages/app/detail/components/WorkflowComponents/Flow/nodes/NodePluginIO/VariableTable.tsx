@@ -2,7 +2,6 @@ import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useI18n } from '@/web/context/I18n';
 
 const VariableTable = ({
   variables = [],
@@ -14,7 +13,6 @@ const VariableTable = ({
   onDelete: (key: string) => void;
 }) => {
   const { t } = useTranslation();
-  const { workflowT } = useI18n();
   const showToolColumn = variables.some((item) => item.isTool);
 
   return (
@@ -27,7 +25,7 @@ const VariableTable = ({
                 {t('common:core.module.variable.variable name')}
               </Th>
               <Th>{t('common:core.workflow.Value type')}</Th>
-              {showToolColumn && <Th>{workflowT('tool_input')}</Th>}
+              {showToolColumn && <Th>{t('workflow:tool_input')}</Th>}
               <Th borderBottomRightRadius={'none !important'}></Th>
             </Tr>
           </Thead>

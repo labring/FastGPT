@@ -30,6 +30,7 @@ type SelectProps = {
     children: {
       label: string;
       value: string;
+      valueType?: WorkflowIOValueTypeEnum;
     }[];
   }[];
   onSelect: (val: ReferenceValueProps) => void;
@@ -130,13 +131,17 @@ export const useReference = ({
               (output) =>
                 valueType === WorkflowIOValueTypeEnum.any ||
                 output.valueType === WorkflowIOValueTypeEnum.any ||
-                output.valueType === valueType
+                output.valueType === valueType ||
+                // When valueType is arrayAny, return all array type outputs
+                (valueType === WorkflowIOValueTypeEnum.arrayAny &&
+                  output.valueType?.includes('array'))
             )
             .filter((output) => output.id !== NodeOutputKeyEnum.addOutputParam)
             .map((output) => {
               return {
                 label: t((output.label as any) || ''),
-                value: output.id
+                value: output.id,
+                valueType: output.valueType
               };
             })
         };

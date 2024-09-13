@@ -403,6 +403,12 @@ const WorkflowContextProvider = ({
   const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
   const [hoverNodeId, setHoverNodeId] = useState<string>();
 
+  useEffect(() => {
+    setNodes((nodes) =>
+      nodes.map((node) => (node.type === FlowNodeTypeEnum.loop ? { ...node, zIndex: -1001 } : node))
+    );
+  }, [nodes.length]);
+
   const nodeListString = JSON.stringify(nodes.map((node) => node.data));
   const nodeList = useMemo(
     () => JSON.parse(nodeListString) as FlowNodeItemType[],
@@ -612,7 +618,6 @@ const WorkflowContextProvider = ({
 
   const flowData2StoreData = useMemoizedFn(() => {
     const storeNodes = uiWorkflow2StoreWorkflow({ nodes, edges });
-
     return storeNodes;
   });
 

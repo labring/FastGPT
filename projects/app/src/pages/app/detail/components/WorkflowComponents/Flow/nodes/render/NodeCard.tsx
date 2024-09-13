@@ -30,6 +30,9 @@ type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
   minW?: string | number;
   maxW?: string | number;
+  minH?: string | number;
+  w?: string | number;
+  h?: string | number;
   selected?: boolean;
   menuForbid?: {
     debug?: boolean;
@@ -50,6 +53,9 @@ const NodeCard = (props: Props) => {
     intro,
     minW = '300px',
     maxW = '600px',
+    minH = 0,
+    w = 'full',
+    h = 'full',
     nodeId,
     selected,
     menuForbid,
@@ -255,13 +261,17 @@ const NodeCard = (props: Props) => {
   }, [nodeId]);
 
   return (
-    <Box
+    <Flex
+      flexDirection={'column'}
       minW={minW}
       maxW={maxW}
+      minH={minH}
       bg={'white'}
       borderWidth={'1px'}
       borderRadius={'md'}
       boxShadow={'1'}
+      w={w}
+      h={h}
       _hover={{
         boxShadow: '4',
         '& .controller-menu': {
@@ -291,7 +301,7 @@ const NodeCard = (props: Props) => {
       {RenderHandle}
 
       <EditTitleModal maxLength={20} />
-    </Box>
+    </Flex>
   );
 };
 
@@ -347,6 +357,7 @@ const MenuRender = React.memo(function MenuRender({
               version: template.version
             },
             selected: true,
+            parentNodeId: undefined,
             t
           })
         );
@@ -356,7 +367,9 @@ const MenuRender = React.memo(function MenuRender({
   );
   const onDelNode = useCallback(
     (nodeId: string) => {
-      setNodes((state) => state.filter((item) => item.data.nodeId !== nodeId));
+      setNodes((state) =>
+        state.filter((item) => item.data.nodeId !== nodeId && item.data.parentNodeId !== nodeId)
+      );
       setEdges((state) => state.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
     },
     [setEdges, setNodes]
