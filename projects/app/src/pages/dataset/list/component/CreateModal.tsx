@@ -20,7 +20,7 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import ComplianceTip from '@/components/support/compliance/ComplianceTip';
+import ComplianceTip from '@/components/common/ComplianceTip/index';
 
 export type CreateDatasetType =
   | DatasetTypeEnum.dataset
