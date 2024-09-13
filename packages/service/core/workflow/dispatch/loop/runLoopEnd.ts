@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/type';
 
 type Props = ModuleDispatchProps<{
-  [NodeInputKeyEnum.loopOutputArrayElement]: any;
+  [NodeInputKeyEnum.loopEndInput]: any;
 }>;
 type Response = DispatchNodeResultType<{}>;
 
@@ -15,7 +15,7 @@ export const dispatchLoopEnd = async (props: Props): Promise<Response> => {
 
   return {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      loopOutputValue: params.loopOutputArrayElement
+      loopOutputValue: params.loopEndInput
     }
   };
 };

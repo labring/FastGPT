@@ -7,17 +7,17 @@
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useEffect, useMemo } from 'react';
 import { Background, NodeProps } from 'reactflow';
-import NodeCard from './render/NodeCard';
-import Container from '../components/Container';
-import IOTitle from '../components/IOTitle';
+import NodeCard from '../render/NodeCard';
+import Container from '../../components/Container';
+import IOTitle from '../../components/IOTitle';
 import { useTranslation } from 'react-i18next';
-import RenderInput from './render/RenderInput';
+import RenderInput from '../render/RenderInput';
 import { Box } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import RenderOutput from './render/RenderOutput';
+import RenderOutput from '../render/RenderOutput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../context';
+import { WorkflowContext } from '../../../context';
 
 const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();

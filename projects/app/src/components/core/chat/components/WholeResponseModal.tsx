@@ -630,7 +630,7 @@ export const ResponseBox = React.memo(function ResponseBox({
     <>
       {isPc && !useMobile ? (
         <Flex overflow={'hidden'} height={'100%'}>
-          <Box flex={'2 0 0'} borderRight={'sm'} p={3}>
+          <Box flex={'2 0 0'} w={0} borderRight={'sm'} p={3}>
             <Box overflow={'auto'} height={'100%'}>
               <WholeResponseSideTab
                 response={sliderResponseList}
@@ -639,7 +639,7 @@ export const ResponseBox = React.memo(function ResponseBox({
               />
             </Box>
           </Box>
-          <Box flex={'5 0 0'} height={'100%'}>
+          <Box flex={'5 0 0'} w={0} height={'100%'}>
             <WholeResponseContent
               activeModule={activeModule}
               hideTabs={hideTabs}

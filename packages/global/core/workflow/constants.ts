@@ -143,10 +143,10 @@ export enum NodeInputKeyEnum {
   loopFlow = 'loopFlow',
 
   // loop start
-  loopArrayElement = 'loopArrayElement',
+  loopStartInput = 'loopStartInput',
 
   // loop end
-  loopOutputArrayElement = 'loopOutputArrayElement'
+  loopEndInput = 'loopEndInput'
 }
 
 export enum NodeOutputKeyEnum {
@@ -195,7 +195,7 @@ export enum NodeOutputKeyEnum {
   loopArray = 'loopArray',
 
   // loop start
-  loopArrayElement = 'loopArrayElement'
+  loopStartInput = 'loopStartInput'
 }
 
 export enum VariableInputEnum {
