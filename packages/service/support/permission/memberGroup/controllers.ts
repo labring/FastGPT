@@ -87,5 +87,6 @@ export const getGroupPermission = async ({
       teamId
     })
   ).map((item) => item.permission);
+
   return getMaxGroupPer(groupPermissions);
 };

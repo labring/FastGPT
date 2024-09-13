@@ -42,6 +42,7 @@ export const getResourcePermission = async ({
       resourceId: string;
     }
 )): Promise<PermissionValueType | undefined> => {
+  // Personal permission has the highest priority
   const tmbPer = (
     await MongoResourcePermission.findOne(
       {
@@ -54,41 +55,38 @@ export const getResourcePermission = async ({
     ).lean()
   )?.permission;
 
+  // could be 0
   if (tmbPer !== undefined) {
-    // could be 0
     return tmbPer;
   }
 
+  // If there is no personal permission, get the group permission
   const groupIdList = await getGroupsByTmbId(tmbId);
   if (!groupIdList || !groupIdList.length) {
-    return tmbPer; // could be undefined
+    return undefined;
   }
 
-  const groupPer = await (async () => {
-    // get the maximum permission of the group
-    if (!groupIdList || !groupIdList.length) {
-      return undefined;
-    }
-    const pers = (
-      await MongoResourcePermission.find(
-        {
-          teamId,
-          resourceType,
-          groupId: {
-            $in: groupIdList
-          },
-          resourceId
+  // get the maximum permission of the group
+  const pers = (
+    await MongoResourcePermission.find(
+      {
+        teamId,
+        resourceType,
+        groupId: {
+          $in: groupIdList
         },
-        'permission'
-      )
-    ).map((item) => item.permission);
+        resourceId
+      },
+      'permission'
+    )
+  ).map((item) => item.permission);
 
-    return getMaxGroupPer(pers);
-  })();
+  const groupPer = getMaxGroupPer(pers);
 
-  return groupPer ?? undefined;
+  return groupPer;
 };
 
+/* 仅取 members 不取 groups */
 export async function getResourceAllClbs({
   resourceId,
   teamId,
@@ -369,11 +367,6 @@ export const getMaxGroupPer = (groups?: PermissionValueType[]) => {
   if (!groups || !groups.length) {
     return undefined;
   }
-  return groups.reduce((prev, cur) => {
-    if (cur) {
-      return Math.max(prev, cur);
-    } else {
-      return prev;
-    }
-  });
+
+  return Math.max(...groups);
 };
