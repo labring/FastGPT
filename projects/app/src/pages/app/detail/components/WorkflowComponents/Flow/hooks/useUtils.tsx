@@ -27,7 +27,9 @@ export const useWorkflowUtils = () => {
           }
         }
       }).length;
-      return nodeLength > 0 ? `${templateName}#${nodeLength + 1}` : templateName;
+      return nodeLength > 0
+        ? `${templateName.replace(/#\d+$/, '')}#${nodeLength + 1}`
+        : templateName;
     },
     [nodeList]
   );
