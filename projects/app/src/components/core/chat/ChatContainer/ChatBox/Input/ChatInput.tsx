@@ -1,15 +1,6 @@
 import { useSpeech } from '@/web/common/hooks/useSpeech';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import {
-  Box,
-  CircularProgress,
-  CircularProgressLabel,
-  Flex,
-  HStack,
-  Image,
-  Spinner,
-  Textarea
-} from '@chakra-ui/react';
+import { Box, CircularProgress, Flex, HStack, Image, Spinner, Textarea } from '@chakra-ui/react';
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -38,7 +29,7 @@ import { clone } from 'lodash';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import ComplianceTip from '@/components/support/compliance/ComplianceTip';
+import ComplianceTip from '@/components/common/ComplianceTip/index';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
