@@ -35,7 +35,6 @@ type SelectProps = {
   }[];
   onSelect: (val: ReferenceValueProps) => void;
   styles?: ButtonProps;
-  showType?: boolean;
 };
 
 const Reference = ({ item, nodeId }: RenderInputProps) => {
@@ -85,7 +84,6 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
       list={referenceList}
       value={formatValue}
       onSelect={onSelect}
-      showType={item.showType}
     />
   );
 };
@@ -170,13 +168,7 @@ export const useReference = ({
     formatValue
   };
 };
-export const ReferSelector = ({
-  placeholder,
-  value,
-  list = [],
-  onSelect,
-  showType
-}: SelectProps) => {
+export const ReferSelector = ({ placeholder, value, list = [], onSelect }: SelectProps) => {
   const selectItemLabel = useMemo(() => {
     if (!value) {
       return;
@@ -189,12 +181,7 @@ export const ReferSelector = ({
     if (!secondColumn) {
       return;
     }
-    const valueType = secondColumn.valueType;
-    return {
-      firstColumn: firstColumn,
-      secondColumn: secondColumn,
-      valueType: valueType
-    };
+    return [firstColumn, secondColumn];
   }, [list, value]);
 
   const Render = useMemo(() => {
@@ -203,24 +190,9 @@ export const ReferSelector = ({
         label={
           selectItemLabel ? (
             <Flex alignItems={'center'}>
-              {selectItemLabel.firstColumn.label}
+              {selectItemLabel[0].label}
               <MyIcon name={'common/rightArrowLight'} mx={1} w={'14px'}></MyIcon>
-              {selectItemLabel.secondColumn.label}
-              {showType && (
-                <Box
-                  as={'span'}
-                  border={'base'}
-                  bg={'myGray.100'}
-                  color={'myGray.500'}
-                  px={1.5}
-                  py={'3px'}
-                  rounded={'sm'}
-                  fontSize={'12px'}
-                  ml={2}
-                >
-                  {selectItemLabel.valueType}
-                </Box>
-              )}
+              {selectItemLabel[1].label}
             </Flex>
           ) : (
             <Box>{placeholder}</Box>

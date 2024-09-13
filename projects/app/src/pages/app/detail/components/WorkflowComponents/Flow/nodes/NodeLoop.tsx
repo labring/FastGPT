@@ -1,5 +1,5 @@
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Background, NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
 import Container from '../components/Container';
@@ -18,23 +18,29 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, outputs } = data;
   const { onChangeNode, nodeList } = useContextSelector(WorkflowContext, (v) => v);
 
-  const loopFlowData = inputs.find((input) => input.key === NodeInputKeyEnum.loopFlow);
-  const childNodes = nodeList.filter((node) => node.parentNodeId === nodeId);
+  const loopFlowData = useMemo(
+    () => inputs.find((input) => input.key === NodeInputKeyEnum.loopFlow),
+    [inputs]
+  );
+  const childNodes = useMemo(
+    () => nodeList.filter((node) => node.parentNodeId === nodeId),
+    [nodeList, nodeId]
+  );
 
   useEffect(() => {
-    loopFlowData &&
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: NodeInputKeyEnum.loopFlow,
+    if (!loopFlowData) return;
+    onChangeNode({
+      nodeId,
+      type: 'updateInput',
+      key: NodeInputKeyEnum.loopFlow,
+      value: {
+        ...loopFlowData,
         value: {
-          ...loopFlowData,
-          value: {
-            ...loopFlowData?.value,
-            childNodes: childNodes.map((node) => node.nodeId)
-          }
+          ...loopFlowData?.value,
+          childNodes: childNodes.map((node) => node.nodeId)
         }
-      });
+      }
+    });
   }, []);
 
   return (
@@ -45,6 +51,9 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       minH={900}
       w={loopFlowData?.value?.width}
       h={loopFlowData?.value?.height}
+      menuForbid={{
+        copy: true
+      }}
       {...data}
     >
       <Container position={'relative'} flex={1}>

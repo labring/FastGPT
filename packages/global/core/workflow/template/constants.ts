@@ -29,9 +29,9 @@ import { TextEditorNode } from './system/textEditor';
 import { CustomFeedbackNode } from './system/customFeedback';
 import { ReadFilesNodes } from './system/readFiles';
 import { UserSelectNode } from './system/userSelect/index';
-import { LoopNode } from './system/loop';
-import { LoopStartNode } from './system/loopStart';
-import { LoopEndNode } from './system/loopEnd';
+import { LoopNode } from './system/loop/loop';
+import { LoopStartNode } from './system/loop/loopStart';
+import { LoopEndNode } from './system/loop/loopEnd';
 
 const systemNodes: FlowNodeTemplateType[] = [
   AiChatModule,

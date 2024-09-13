@@ -1,12 +1,12 @@
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '../../../../../../web/i18n/utils';
 import {
   FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum,
   WorkflowIOValueTypeEnum
-} from '../../constants';
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
-import { FlowNodeTemplateType } from '../../type/node';
-import { getHandleConfig } from '../utils';
+} from '../../../constants';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../../node/constant';
+import { FlowNodeTemplateType } from '../../../type/node';
+import { getHandleConfig } from '../../utils';
 
 export const LoopEndNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.loopEnd,

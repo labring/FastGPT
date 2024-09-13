@@ -2,7 +2,6 @@ import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useI18n } from '@/web/context/I18n';
 
 const VariableTable = ({
   variables = [],
@@ -10,8 +9,8 @@ const VariableTable = ({
   onDelete
 }: {
   variables: { icon?: string; label: string; type: string; key: string; isTool?: boolean }[];
-  onEdit?: (key: string) => void;
-  onDelete?: (key: string) => void;
+  onEdit: (key: string) => void;
+  onDelete: (key: string) => void;
 }) => {
   const { t } = useTranslation();
   const showToolColumn = variables.some((item) => item.isTool);
@@ -38,38 +37,32 @@ const VariableTable = ({
                     {!!item.icon && (
                       <MyIcon name={item.icon as any} w={'14px'} mr={1} color={'primary.600'} />
                     )}
-                    {/* <Box as={'span'} fontSize={'12px'}> */}
                     {item.label || item.key}
-                    {/* </Box> */}
                   </Flex>
                 </Td>
                 <Td>{item.type}</Td>
                 {showToolColumn && <Th>{item.isTool ? '✅' : '-'}</Th>}
                 <Td>
-                  {onEdit && (
-                    <MyIcon
-                      mr={3}
-                      name={'common/settingLight'}
-                      w={'16px'}
-                      cursor={'pointer'}
-                      _hover={{ color: 'primary.600' }}
-                      onClick={() => onEdit(item.key)}
-                    />
-                  )}
-                  {onDelete && (
-                    <MyIcon
-                      className="delete"
-                      name={'delete'}
-                      w={'16px'}
-                      color={'myGray.600'}
-                      cursor={'pointer'}
-                      ml={2}
-                      _hover={{ color: 'red.500' }}
-                      onClick={() => {
-                        onDelete(item.key);
-                      }}
-                    />
-                  )}
+                  <MyIcon
+                    mr={3}
+                    name={'common/settingLight'}
+                    w={'16px'}
+                    cursor={'pointer'}
+                    _hover={{ color: 'primary.600' }}
+                    onClick={() => onEdit(item.key)}
+                  />
+                  <MyIcon
+                    className="delete"
+                    name={'delete'}
+                    w={'16px'}
+                    color={'myGray.600'}
+                    cursor={'pointer'}
+                    ml={2}
+                    _hover={{ color: 'red.500' }}
+                    onClick={() => {
+                      onDelete(item.key);
+                    }}
+                  />
                 </Td>
               </Tr>
             ))}

@@ -341,67 +341,26 @@ const MenuRender = React.memo(function MenuRender({
           pluginId: node.data.pluginId,
           version: node.data.version
         };
-        const childNodes = state.filter((item) => item.data.parentNodeId === nodeId);
-
-        const childNodeTemplates = childNodes.map((item) => ({
-          avatar: item.data.avatar,
-          name: computedNewNodeName({
-            templateName: item.data.name,
-            flowNodeType: item.data.flowNodeType,
-            pluginId: item.data.pluginId
-          }),
-          intro: item.data.intro,
-          flowNodeType: item.data.flowNodeType,
-          inputs: item.data.inputs,
-          outputs: item.data.outputs,
-          showStatus: item.data.showStatus,
-          pluginId: item.data.pluginId,
-          version: item.data.version,
-          position: { x: item.position.x + 200, y: item.position.y + 50 }
-        }));
-        const currentNodeId = getNanoid();
-        return state
-          .concat(
-            storeNode2FlowNode({
-              item: {
-                flowNodeType: template.flowNodeType,
-                avatar: template.avatar,
-                name: template.name,
-                intro: template.intro,
-                nodeId: currentNodeId,
-                position: { x: node.position.x + 200, y: node.position.y + 50 },
-                showStatus: template.showStatus,
-                pluginId: template.pluginId,
-                inputs: template.inputs,
-                outputs: template.outputs,
-                version: template.version
-              },
-              selected: true,
-              zIndex: childNodes.length > 0 ? -1001 : 0,
-              t
-            })
-          )
-          .concat(
-            childNodeTemplates.map((template) =>
-              storeNode2FlowNode({
-                item: {
-                  flowNodeType: template.flowNodeType,
-                  avatar: template.avatar,
-                  name: template.name,
-                  intro: template.intro,
-                  nodeId: getNanoid(),
-                  position: template.position,
-                  showStatus: template.showStatus,
-                  pluginId: template.pluginId,
-                  inputs: template.inputs,
-                  outputs: template.outputs,
-                  version: template.version
-                },
-                parentNodeId: currentNodeId,
-                t
-              })
-            )
-          );
+        return state.concat(
+          storeNode2FlowNode({
+            item: {
+              flowNodeType: template.flowNodeType,
+              avatar: template.avatar,
+              name: template.name,
+              intro: template.intro,
+              nodeId: getNanoid(),
+              position: { x: node.position.x + 200, y: node.position.y + 50 },
+              showStatus: template.showStatus,
+              pluginId: template.pluginId,
+              inputs: template.inputs,
+              outputs: template.outputs,
+              version: template.version
+            },
+            selected: true,
+            parentNodeId: undefined,
+            t
+          })
+        );
       });
     },
     [computedNewNodeName, setNodes, t]

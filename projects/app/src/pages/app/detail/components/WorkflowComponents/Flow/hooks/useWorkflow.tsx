@@ -360,6 +360,58 @@ export const useWorkflow = () => {
     }
   };
 
+  // Check if a node is placed on top of a loop node
+  const checkNodeOverLoopNode = useCallback(
+    (node: Node) => {
+      if (!node) return;
+      const intersections = getIntersectingNodes(node);
+      const parentNode = intersections.find((item) => item.type === FlowNodeTypeEnum.loop);
+
+      const unSupportedTypes = [
+        FlowNodeTypeEnum.workflowStart,
+        FlowNodeTypeEnum.loop,
+        FlowNodeTypeEnum.pluginInput,
+        FlowNodeTypeEnum.pluginOutput,
+        FlowNodeTypeEnum.systemConfig
+      ];
+
+      if (parentNode && !node.data.parentNodeId) {
+        if (unSupportedTypes.includes(node.type as FlowNodeTypeEnum)) {
+          return toast({
+            status: 'warning',
+            title: t('workflow:can_not_loop')
+          });
+        }
+        const updatedLoopFlow = parentNode.data.inputs.find(
+          (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.loopFlow
+        );
+        if (updatedLoopFlow) {
+          updatedLoopFlow.value.childNodes = [...updatedLoopFlow.value.childNodes, node.id];
+        }
+        onChangeNode({
+          nodeId: node.id,
+          type: 'attr',
+          key: 'parentNodeId',
+          value: parentNode.id
+        });
+        onChangeNode({
+          nodeId: parentNode.id,
+          type: 'updateInput',
+          key: NodeInputKeyEnum.loopFlow,
+          value: updatedLoopFlow
+        });
+        setEdges((state) =>
+          state.filter((edge) => edge.source !== node.id && edge.target !== node.id)
+        );
+
+        const childNodes = [...nodes.filter((n) => n.data.parentNodeId === parentNode.id), node];
+        const rect = getNodesBounds(childNodes);
+        resetNodeSizeAndPosition(rect, parentNode.id);
+      }
+    },
+    [getIntersectingNodes, onChangeNode, setEdges, nodes, toast, t, resetNodeSizeAndPosition]
+  );
+
   /* node */
   const handleNodesChange = (changes: NodeChange[]) => {
     for (const change of changes) {
@@ -507,53 +559,9 @@ export const useWorkflow = () => {
 
   const onNodeDragStop = useCallback(
     (_: any, node: Node) => {
-      if (!node) return;
-      const intersections = getIntersectingNodes(node);
-      const parentNode = intersections.find((item) => item.type === FlowNodeTypeEnum.loop);
-
-      const unSupportedTypes = [
-        FlowNodeTypeEnum.workflowStart,
-        FlowNodeTypeEnum.loop,
-        FlowNodeTypeEnum.pluginInput,
-        FlowNodeTypeEnum.pluginOutput,
-        FlowNodeTypeEnum.systemConfig
-      ];
-
-      if (parentNode && !node.data.parentNodeId) {
-        if (unSupportedTypes.includes(node.type as FlowNodeTypeEnum)) {
-          return toast({
-            status: 'warning',
-            title: t('workflow:can_not_loop')
-          });
-        }
-        const updatedLoopFlow = parentNode.data.inputs.find(
-          (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.loopFlow
-        );
-        if (updatedLoopFlow) {
-          updatedLoopFlow.value.childNodes = [...updatedLoopFlow.value.childNodes, node.id];
-        }
-        onChangeNode({
-          nodeId: node.id,
-          type: 'attr',
-          key: 'parentNodeId',
-          value: parentNode.id
-        });
-        onChangeNode({
-          nodeId: parentNode.id,
-          type: 'updateInput',
-          key: NodeInputKeyEnum.loopFlow,
-          value: updatedLoopFlow
-        });
-        setEdges((state) =>
-          state.filter((edge) => edge.source !== node.id && edge.target !== node.id)
-        );
-
-        const childNodes = [...nodes.filter((n) => n.data.parentNodeId === parentNode.id), node];
-        const rect = getNodesBounds(childNodes);
-        resetNodeSizeAndPosition(rect, parentNode.id);
-      }
+      checkNodeOverLoopNode(node);
     },
-    [getIntersectingNodes, onChangeNode, setEdges, nodes, toast, t, resetNodeSizeAndPosition]
+    [checkNodeOverLoopNode]
   );
 
   /* connect */

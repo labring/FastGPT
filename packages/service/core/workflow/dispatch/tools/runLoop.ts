@@ -17,7 +17,12 @@ type Response = DispatchNodeResultType<{
 }>;
 
 export const dispatchLoop = async (props: Props): Promise<Response> => {
-  const { params, runtimeNodes } = props;
+  const {
+    params,
+    runtimeNodes,
+    user,
+    node: { name }
+  } = props;
   const {
     loopInputArray,
     loopFlow: { childNodes }
@@ -26,7 +31,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   const outputArray = [];
   const loopDetail: ChatHistoryItemResType[] = [];
   let totalPoints = 0;
-  let totalTokens = 0;
 
   for await (const element of loopInputArray) {
     const response = await dispatchWorkFlow({
@@ -51,25 +55,30 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
             }
       )
     });
-    const loopOutputElement = response.flowResponses.find(
+
+    const loopOutputValue = response.flowResponses.find(
       (res) => res.moduleType === FlowNodeTypeEnum.loopEnd
-    )?.loopOutputElement;
-    outputArray.push(loopOutputElement);
+    )?.loopOutputValue;
+
+    outputArray.push(loopOutputValue);
     loopDetail.push(...response.flowResponses);
-    response.flowResponses.forEach((res) => {
-      totalPoints = totalPoints + (res.totalPoints ?? 0);
-      totalTokens = totalTokens + (res.tokens ?? 0);
-    });
+
+    totalPoints = response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
   }
 
   return {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: totalPoints,
-      tokens: totalTokens,
       loopInput: loopInputArray,
       loopResult: outputArray,
       loopDetail: loopDetail
     },
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
+      {
+        totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+        moduleName: name
+      }
+    ],
     [NodeOutputKeyEnum.loopArray]: outputArray
   };
 };

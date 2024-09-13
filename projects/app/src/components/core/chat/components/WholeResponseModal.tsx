@@ -344,13 +344,13 @@ export const WholeResponseContent = ({
       {/* loopStart */}
       <Row
         label={t('common:core.chat.response.loop_input_element')}
-        value={activeModule?.loopInputElement}
+        value={activeModule?.loopInputValue}
       />
 
       {/* loopEnd */}
       <Row
         label={t('common:core.chat.response.loop_output_element')}
-        value={activeModule?.loopOutputElement}
+        value={activeModule?.loopOutputValue}
       />
     </Box>
   ) : null;

@@ -490,14 +490,10 @@ const RenderList = React.memo(function RenderList({
       if (templateNode.flowNodeType === FlowNodeTypeEnum.loop) {
         const loopStartNode = moduleTemplatesFlat.find(
           (item) => item.flowNodeType === FlowNodeTypeEnum.loopStart
-        );
+        )!;
         const loopEndNode = moduleTemplatesFlat.find(
           (item) => item.flowNodeType === FlowNodeTypeEnum.loopEnd
-        );
-
-        if (!loopStartNode || !loopEndNode) {
-          return;
-        }
+        )!;
 
         const startNode = nodeTemplate2FlowNode({
           template: loopStartNode,

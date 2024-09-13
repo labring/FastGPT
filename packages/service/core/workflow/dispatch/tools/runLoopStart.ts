@@ -17,7 +17,7 @@ export const dispatchLoopStart = async (props: Props): Promise<Response> => {
 
   return {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      loopInputElement: params.loopArrayElement
+      loopInputValue: params.loopArrayElement
     },
     [NodeOutputKeyEnum.loopArrayElement]: params.loopArrayElement
   };
