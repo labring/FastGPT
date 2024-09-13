@@ -98,6 +98,7 @@
     "manage_collaborators": "Manage Collaborators",
     "no_collaborators": "No Collaborators"
   },
+  "team.write_role_member": "",
   "usage": {
     "feishu": "Feishu",
     "official_account": "Official Account",

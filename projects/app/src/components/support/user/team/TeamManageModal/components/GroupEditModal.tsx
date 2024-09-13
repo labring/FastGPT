@@ -5,7 +5,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 import { useTranslation } from 'next-i18next';
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -29,7 +29,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
   );
   const { t } = useTranslation();
   const { File: AvatarSelect, onOpen: onOpenSelectAvatar } = useSelectFile({
-    fileType: '*.jpg;*.jpeg;*.png;',
+    fileType: '.jpg, .jpeg, .png',
     multiple: false
   });
 
@@ -63,11 +63,11 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
   );
 
   const { run: onCreate, loading: isLoadingCreate } = useRequest2(
-    async () => {
-      postCreateGroup({
-        memberIdList: getValues('members'),
-        name: getValues('name'),
-        avatar: getValues('avatar')
+    (data: GroupFormType) => {
+      return postCreateGroup({
+        name: data.name,
+        avatar: data.avatar,
+        memberIdList: data.members
       });
     },
     {
@@ -76,29 +76,21 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
   );
 
   const { run: onUpdate, loading: isLoadingUpdate } = useRequest2(
-    async () => {
+    async (data: GroupFormType) => {
       if (!editGroupId) return;
       return putUpdateGroup({
         groupId: editGroupId,
-        name: getValues('name'),
-        avatar: getValues('avatar'),
-        memberIdList: getValues('members')
+        name: data.name,
+        avatar: data.avatar,
+        memberIdList: data.members
       });
     },
     {
-      onSuccess: async () => await Promise.all([onClose(), refetchGroups(), refetchMembers()])
+      onSuccess: () => Promise.all([onClose(), refetchGroups(), refetchMembers()])
     }
   );
 
   const isLoading = isLoadingUpdate || isLoadingCreate || uploadingAvatar;
-
-  const submit = useCallback(() => {
-    if (editGroupId) {
-      onUpdate();
-    } else {
-      onCreate();
-    }
-  }, [editGroupId, onCreate, onUpdate]);
 
   return (
     <MyModal
@@ -106,50 +98,58 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
       title={editGroupId ? t('user:team.group.edit') : t('user:team.group.create')}
       iconSrc="support/permission/collaborator"
       iconColor="primary.600"
-      minW={'1000px'}
-      isLoading={isLoading}
+      minW={['90vw', '1000px']}
+      h={'600px'}
+      isCentered
     >
-      <ModalBody>
-        <Flex flexDirection={'column'} gap={4}>
-          <HStack>
-            <FormLabel w="80px">{t('user:team.group.avatar')}</FormLabel>
-            <Avatar src={getValues('avatar')} w={'32px'} />
-            <HStack
-              ml={2}
-              cursor={'pointer'}
-              onClick={onOpenSelectAvatar}
-              _hover={{ color: 'primary.600' }}
-            >
-              <MyIcon name="edit" w={'14px'} />
-              <Box fontSize={'sm'}>{t('common:common.Edit')}</Box>
-            </HStack>
+      <ModalBody flex={1} overflow={'auto'} display={'flex'} flexDirection={'column'} gap={4}>
+        <HStack>
+          <FormLabel w="80px">{t('user:team.group.avatar')}</FormLabel>
+          <Avatar src={getValues('avatar')} w={'32px'} />
+          <HStack
+            ml={2}
+            cursor={'pointer'}
+            onClick={onOpenSelectAvatar}
+            _hover={{ color: 'primary.600' }}
+          >
+            <MyIcon name="edit" w={'14px'} />
+            <Box fontSize={'sm'}>{t('common:common.Edit')}</Box>
           </HStack>
-          <HStack>
-            <FormLabel w="80px" required minW="fit-content">
-              {t('user:team.group.name')}
-            </FormLabel>
-            <Input
-              bgColor="myGray.50"
-              {...register('name', { required: true })}
-              placeholder={t('user:team.group.name')}
+        </HStack>
+        <HStack>
+          <FormLabel w="80px" required minW="fit-content">
+            {t('user:team.group.name')}
+          </FormLabel>
+          <Input
+            bgColor="myGray.50"
+            {...register('name', { required: true })}
+            placeholder={t('user:team.group.name')}
+          />
+        </HStack>
+        <Flex flex={'1 0 0'} h={0}>
+          <FormLabel w="80px">{t('user:team.group.members')}</FormLabel>
+          <Box flexGrow={1} h={'100%'}>
+            <SelectMember
+              allMembers={{
+                member: members.map((item) => ({ ...item, type: 'member' }))
+              }}
+              control={control as any}
+              mode="member"
             />
-          </HStack>
-          <Flex>
-            <FormLabel w="80px">{t('user:team.group.members')}</FormLabel>
-            <Box flexGrow={1}>
-              <SelectMember
-                allMembers={{
-                  member: members.map((item) => ({ ...item, type: 'member' }))
-                }}
-                control={control as any}
-                mode="member"
-              />
-            </Box>
-          </Flex>
+          </Box>
         </Flex>
       </ModalBody>
       <ModalFooter alignItems="flex-end">
-        <Button isLoading={isLoading} onClick={handleSubmit(submit)}>
+        <Button
+          isLoading={isLoading}
+          onClick={handleSubmit((data) => {
+            if (editGroupId) {
+              onUpdate(data);
+            } else {
+              onCreate(data);
+            }
+          })}
+        >
           {editGroupId ? t('common:common.Save') : t('common:new_create')}
         </Button>
       </ModalFooter>

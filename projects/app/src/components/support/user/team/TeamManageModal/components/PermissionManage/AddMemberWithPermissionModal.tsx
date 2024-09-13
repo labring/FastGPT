@@ -26,7 +26,6 @@ function AddManagerModal({
   addType: addType;
 }) {
   const { t } = useTranslation();
-  const { userT } = useI18n();
   const { members, refetchMembers, groups, refetchGroups, refetchClbs } = useContextSelector(
     TeamModalContext,
     (v) => v
@@ -41,7 +40,7 @@ function AddManagerModal({
   });
 
   const { runAsync: submit, loading: isLoading } = useRequest2(
-    async ({ member, group }) =>
+    ({ member, group }) =>
       updateMemberPermission({
         members: member,
         groups: group,
@@ -55,14 +54,14 @@ function AddManagerModal({
   return (
     <MyModal
       isOpen
+      isCentered
       iconSrc={'modal/AddClb'}
-      maxW={['90vw']}
-      minW={['900px']}
-      overflow={'unset'}
-      title={userT('team.Add manager')}
+      minW={['90vw', '900px']}
+      h={'600px'}
+      title={t('user:team.Add manager')}
     >
       <ModalCloseButton onClick={onClose} />
-      <ModalBody py={6} px={10}>
+      <ModalBody py={6} px={10} flex={'1 0 0'} h={0}>
         <SelectMember
           allMembers={{
             member: members.map((item) => ({ ...item, type: 'member' })),

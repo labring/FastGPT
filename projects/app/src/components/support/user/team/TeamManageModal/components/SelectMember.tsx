@@ -1,5 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Checkbox, Flex, Grid, Input, InputGroup, InputLeftElement } from '@chakra-ui/react';
+import {
+  Box,
+  Checkbox,
+  Flex,
+  Grid,
+  HStack,
+  Input,
+  InputGroup,
+  InputLeftElement
+} from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
@@ -102,12 +111,12 @@ function SelectMember({
   return (
     <Grid
       templateColumns="1fr 1fr"
-      h="448px"
       borderRadius="8px"
       border="1px solid"
       borderColor="myGray.200"
+      h={'100%'}
     >
-      <Flex flexDirection="column" p="4">
+      <Flex flexDirection="column" p="4" h={'100%'} overflow={'auto'}>
         <InputGroup alignItems="center" size={'sm'}>
           <InputLeftElement>
             <MyIcon name="common/searchLight" w="16px" color={'myGray.500'} />
@@ -124,7 +133,7 @@ function SelectMember({
         <Flex flexDirection="column" mt={3}>
           {filtered.map((member) => {
             return (
-              <Flex
+              <HStack
                 py="2"
                 px={3}
                 borderRadius={'md'}
@@ -139,49 +148,55 @@ function SelectMember({
                 onClick={() => handleToggleSelect(member)}
               >
                 <Checkbox
-                  isChecked={isSelected(member)}
+                  isChecked={!!isSelected(member)}
                   icon={<MyIcon name={'common/check'} w={'12px'} />}
                 />
-                <Avatar ml={2} src={member.avatar} w="1.5rem" borderRadius={'50%'} />
-                {(member.type == 'member' ? member.memberName : member.name) ||
-                  t('user:team.group.default_group')}
-              </Flex>
+                <Avatar src={member.avatar} w="1.5rem" borderRadius={'50%'} />
+                <Box>
+                  {(member.type == 'member' ? member.memberName : member.name) ||
+                    t('user:team.group.default_group')}
+                </Box>
+              </HStack>
             );
           })}
         </Flex>
       </Flex>
-      <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4">
+      <Flex
+        borderLeft="1px"
+        borderColor="myGray.200"
+        flexDirection="column"
+        p="4"
+        h={'100%'}
+        overflow={'auto'}
+      >
         <Box mt={3}>
           {t('common:chosen') + ': ' + Number(selected.member.length + selected.group.length)}{' '}
         </Box>
         <Box mt={5}>
-          {selectedFlated?.map((member) => {
+          {selectedFlated.map((member) => {
             return (
-              member && (
-                <Flex
-                  alignItems="center"
-                  justifyContent="space-between"
-                  py="2"
-                  px={3}
-                  borderRadius={'md'}
-                  key={member.type == 'member' ? member.tmbId : member._id}
-                  _hover={{ bg: 'myGray.50' }}
-                  _notLast={{ mb: 2 }}
-                >
-                  <Avatar src={member.avatar} w="1.5rem" />
-                  <Box w="full">
-                    {(member.type == 'member' ? member.memberName : member.name) ||
-                      t('user:team.group.default_group')}
-                  </Box>
-                  <MyIcon
-                    name={'common/closeLight'}
-                    w={'1rem'}
-                    cursor={'pointer'}
-                    _hover={{ color: 'red.600' }}
-                    onClick={() => handleToggleSelect(member)}
-                  />
-                </Flex>
-              )
+              <HStack
+                justifyContent="space-between"
+                py="2"
+                px={3}
+                borderRadius={'md'}
+                key={member.type == 'member' ? member.tmbId : member._id}
+                _hover={{ bg: 'myGray.50' }}
+                _notLast={{ mb: 2 }}
+              >
+                <Avatar src={member.avatar} w="1.5rem" borderRadius={'md'} />
+                <Box w="full">
+                  {(member.type == 'member' ? member.memberName : member.name) ||
+                    t('user:team.group.default_group')}
+                </Box>
+                <MyIcon
+                  name={'common/closeLight'}
+                  w={'1rem'}
+                  cursor={'pointer'}
+                  _hover={{ color: 'red.600' }}
+                  onClick={() => handleToggleSelect(member)}
+                />
+              </HStack>
             );
           })}
         </Box>
