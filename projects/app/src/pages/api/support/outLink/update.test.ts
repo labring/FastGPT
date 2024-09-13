@@ -1,44 +1,48 @@
-import '../../__mocks__/base';
-import '../../__mocks__/auth/app';
-const mockingoose = require('mockingoose'); // !important: must import using require
 import { getTestRequest } from '@/test/utils';
-
+import '../../__mocks__/base';
 import handler, { OutLinkUpdateBody, OutLinkUpdateQuery } from './update';
-import { setAuthAppRet } from '../../__mocks__/auth/app';
-import { Permission } from '@fastgpt/global/support/permission/controller';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { root } from '../../__mocks__/db/init';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 test('Update Outlink', async () => {
-  setAuthAppRet({
-    teamId: '1',
-    tmbId: '1',
-    permission: new Permission({
-      isOwner: true
-    }),
-    app: MongoApp.findById(root.appId)
+  const outlink = await MongoOutLink.create({
+    shareId: 'aaa',
+    appId: root.appId,
+    tmbId: root.tmbId,
+    teamId: root.teamId,
+    type: 'share',
+    name: 'aaa'
   });
+
+  await outlink.save();
 
   const res = (await handler(
     ...getTestRequest<OutLinkUpdateQuery, OutLinkUpdateBody>({
-      query: {},
       body: {
-        _id: '1',
-        name: 'test'
-      }
+        _id: outlink._id,
+        name: 'changed'
+      },
+      user: root
     })
   )) as any;
-  expect(res.data.length).toBe(2);
+
+  expect(res.code).toBe(200);
+
+  const link = await MongoOutLink.findById(outlink._id).lean();
+  expect(link?.name).toBe('changed');
 });
 
-// test('appId is required', async () => {
-//   const res = (await handler(
-//     ...getTestRequest<Outli>({
-//       query: {
-//         type: 'share'
-//       },
-//     })
-//   )) as any;
-//   expect(res.code).toBe(500);
-//   expect(res.error).toBe(AppErrEnum.unExist);
-// });
+test('Did not post _id', async () => {
+  const res = (await handler(
+    ...getTestRequest<OutLinkUpdateQuery, OutLinkUpdateBody>({
+      body: {
+        name: 'changed'
+      },
+      user: root
+    })
+  )) as any;
+
+  expect(res.code).toBe(500);
+  expect(res.error).toBe(CommonErrEnum.missingParams);
+});

@@ -84,6 +84,7 @@
     "eslint": "8.56.0",
     "eslint-config-next": "14.2.3",
     "mockingoose": "^2.16.2",
+    "mongodb-memory-server": "^10.0.0",
     "nextjs-node-loader": "^1.1.5",
     "typescript": "^5.1.3"
   }

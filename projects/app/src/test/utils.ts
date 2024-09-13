@@ -25,38 +25,38 @@ export type TestRequest = {
 
 export function getTestRequest<Q = any, B = any>({
   query = {},
-  body = {}
-  // authToken = true,
+  body = {},
+  authToken = true,
   // authRoot = false,
   // authApiKey = false,
-  // user
+  user
 }: {
   body?: Partial<B>;
   query?: Partial<Q>;
-  // authToken?: boolean;
-  // authRoot?: boolean;
-  // authApiKey?: boolean;
-  // user?: {
-  //   uid: string;
-  //   tmbId: string;
-  //   teamId: string;
-  //   isRoot: boolean;
-  // };
+  authToken?: boolean;
+  authRoot?: boolean;
+  authApiKey?: boolean;
+  user?: {
+    uid: string;
+    tmbId: string;
+    teamId: string;
+    isRoot: boolean;
+  };
 }): [any, any] {
-  // const headers: TestRequest['headers'] = {};
-  // if (authToken) {
-  //   headers.cookie = {
-  //     token: {
-  //       userId: user?.uid || '',
-  //       teamId: user?.teamId || '',
-  //       tmbId: user?.tmbId || '',
-  //       isRoot: user?.isRoot || false
-  //     }
-  //   };
-  // }
+  const headers: TestRequest['headers'] = {};
+  if (authToken) {
+    headers.cookie = {
+      token: {
+        userId: String(user?.uid || ''),
+        teamId: String(user?.teamId || ''),
+        tmbId: String(user?.tmbId || ''),
+        isRoot: user?.isRoot || false
+      }
+    };
+  }
   return [
     {
-      // headers,
+      headers,
       query,
       body
     },
@@ -66,7 +66,7 @@ export function getTestRequest<Q = any, B = any>({
 
 export const MockParseHeaderCert = async ({
   req,
-  authToken = false,
+  authToken = true,
   authRoot = false,
   authApiKey = false
 }: {
