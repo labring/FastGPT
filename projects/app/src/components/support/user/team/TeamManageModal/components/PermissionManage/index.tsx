@@ -51,7 +51,7 @@ function PermissionManage() {
       >
         <Flex>
           <Box fontSize={['sm', 'md']} fontWeight={'bold'} alignItems={'center'}>
-            {t('common:user.team.role.writer')}
+            {t('user:team.write_role_member')}
           </Box>
           <Box
             fontSize={['xs']}
@@ -63,7 +63,7 @@ function PermissionManage() {
             ml={3}
             borderRadius={'sm'}
           >
-            {TeamPermissionList['write'].description}
+            {t(TeamPermissionList['write'].description as any)}
           </Box>
         </Flex>
         {userInfo?.team.role === 'owner' && (

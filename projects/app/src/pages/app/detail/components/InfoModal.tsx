@@ -127,22 +127,22 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     [setValue, t, toast]
   );
 
-  const onUpdateCollaborators = async ({
+  const onUpdateCollaborators = ({
     members,
     permission
   }: {
     members: string[];
     permission: PermissionValueType;
   }) => {
-    await postUpdateAppCollaborators({
+    return postUpdateAppCollaborators({
       members,
       permission,
       appId: appDetail._id
     });
   };
 
-  const onDelCollaborator = async (tmbId: string) => {
-    await deleteAppCollaborators({
+  const onDelCollaborator = (tmbId: string) => {
+    return deleteAppCollaborators({
       appId: appDetail._id,
       tmbId
     });
