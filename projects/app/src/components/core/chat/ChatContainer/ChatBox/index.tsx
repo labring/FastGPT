@@ -537,6 +537,7 @@ const ChatBox = (
 
             if (!err?.responseText) {
               resetInputVal({ text, files });
+              // 这里的 newChatList 没包含用户交互输入的内容，所以重置后刚好是正确的。
               setChatHistories(newChatList.slice(0, newChatList.length - 2));
             }
 
