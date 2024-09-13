@@ -49,7 +49,7 @@ export function usePagination<ResT = any>({
   const { t } = useTranslation();
   const [pageNum, setPageNum] = useState(1);
 
-  const ScrollContainerRef = useRef<HTMLDivElement>(null);
+  const DefaultScrollContainerRef = useRef<HTMLDivElement>(null);
 
   const noMore = useRef(false);
 
@@ -183,13 +183,35 @@ export function usePagination<ResT = any>({
   );
 
   const ScrollData = useMemoizedFn(
-    ({ children, ...props }: { children: React.ReactNode } & BoxProps) => {
+    ({
+      children,
+      ScrollContainerRef = DefaultScrollContainerRef,
+      ...props
+    }: {
+      children: React.ReactNode;
+      ScrollContainerRef?: React.RefObject<HTMLDivElement>;
+    } & BoxProps) => {
       const loadText = (() => {
         if (isLoading) return t('common:common.is_requesting');
         if (total.current <= data.length) return t('common:common.request_end');
         return t('common:common.request_more');
       })();
+      const scroll = useScroll(ScrollContainerRef);
+      useThrottleEffect(
+        () => {
+          if (!ScrollContainerRef?.current || type !== 'scroll' || total.current === 0) return;
+          const { scrollTop, scrollHeight, clientHeight } = ScrollContainerRef.current;
 
+          if (
+            (loadType === 'button' && scrollTop + clientHeight >= scrollHeight - thresholdVal) ||
+            (loadType === 'top' && scrollTop === 0)
+          ) {
+            fetchData(pageNum + 1);
+          }
+        },
+        [scroll],
+        { wait: 50 }
+      );
       return (
         <Box {...props} ref={ScrollContainerRef} overflow={'overlay'}>
           {children}
@@ -214,21 +236,6 @@ export function usePagination<ResT = any>({
   );
 
   // Scroll check
-  const scroll = useScroll(ScrollContainerRef);
-  useThrottleEffect(
-    () => {
-      if (!ScrollContainerRef?.current || type !== 'scroll' || total.current === 0) return;
-      const { scrollTop, scrollHeight, clientHeight } = ScrollContainerRef.current;
-      if (
-        (loadType === 'button' && scrollTop + clientHeight >= scrollHeight - thresholdVal) ||
-        (loadType === 'top' && scrollTop === 0)
-      ) {
-        fetchData(pageNum + 1);
-      }
-    },
-    [scroll],
-    { wait: 50 }
-  );
 
   return {
     pageNum,

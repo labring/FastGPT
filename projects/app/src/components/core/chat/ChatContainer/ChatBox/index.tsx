@@ -16,7 +16,7 @@ import type {
 } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Flex, Checkbox } from '@chakra-ui/react';
+import { Box, Flex, Checkbox, BoxProps } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -90,7 +90,13 @@ type Props = OutLinkChatAuthProps &
     userAvatar?: string;
     active?: boolean; // can use
     appId: string;
-    ScrollData: ({ children, ...props }: { children: React.ReactNode }) => React.JSX.Element;
+    ScrollData: ({
+      children,
+      ...props
+    }: {
+      children: React.ReactNode;
+      ScrollContainerRef?: React.RefObject<HTMLDivElement>;
+    } & BoxProps) => React.JSX.Element;
     // not chat test params
 
     onStartChat?: (e: StartChatFnProps) => Promise<
@@ -869,105 +875,111 @@ const ChatBox = (
 
   const RenderRecords = useMemo(() => {
     return (
-      <Box ref={elementRef} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'} px={[4, 0]} pb={3}>
-        <ScrollData>
-          <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
-            {showEmpty && <Empty />}
-            {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
-            {/* variable input */}
-            {!!variableList?.length && (
-              <VariableInput chatStarted={chatStarted} chatForm={chatForm} />
-            )}
-            {/* chat history */}
-            <Box id={'history'}>
-              {chatHistories.map((item, index) => (
-                <Box key={item.dataId} py={5}>
-                  {item.obj === ChatRoleEnum.Human && (
+      <ScrollData
+        ScrollContainerRef={elementRef}
+        flex={'1 0 0'}
+        h={0}
+        w={'100%'}
+        overflow={'overlay'}
+        px={[4, 0]}
+        pb={3}
+      >
+        <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
+          {showEmpty && <Empty />}
+          {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
+          {/* variable input */}
+          {!!variableList?.length && (
+            <VariableInput chatStarted={chatStarted} chatForm={chatForm} />
+          )}
+          {/* chat history */}
+          <Box id={'history'}>
+            {chatHistories.map((item, index) => (
+              <Box key={item.dataId} py={5}>
+                {item.obj === ChatRoleEnum.Human && (
+                  <ChatItem
+                    type={item.obj}
+                    avatar={userAvatar}
+                    chat={item}
+                    onRetry={retryInput(item.dataId)}
+                    onDelete={delOneMessage(item.dataId)}
+                    isLastChild={index === chatHistories.length - 1}
+                  />
+                )}
+                {item.obj === ChatRoleEnum.AI && (
+                  <>
                     <ChatItem
                       type={item.obj}
-                      avatar={userAvatar}
+                      avatar={appAvatar}
                       chat={item}
-                      onRetry={retryInput(item.dataId)}
-                      onDelete={delOneMessage(item.dataId)}
                       isLastChild={index === chatHistories.length - 1}
-                    />
-                  )}
-                  {item.obj === ChatRoleEnum.AI && (
-                    <>
-                      <ChatItem
-                        type={item.obj}
-                        avatar={appAvatar}
-                        chat={item}
-                        isLastChild={index === chatHistories.length - 1}
-                        {...{
-                          showVoiceIcon,
-                          shareId,
-                          outLinkUid,
-                          teamId,
-                          teamToken,
-                          statusBoxData,
-                          questionGuides,
-                          onMark: onMark(
-                            item,
-                            formatChatValue2InputType(chatHistories[index - 1]?.value)?.text
-                          ),
-                          onAddUserLike: onAddUserLike(item),
-                          onCloseUserLike: onCloseUserLike(item),
-                          onAddUserDislike: onAddUserDislike(item),
-                          onReadUserDislike: onReadUserDislike(item)
-                        }}
-                      >
-                        <ResponseTags
-                          showTags={index !== chatHistories.length - 1 || !isChatting}
-                          showDetail={!shareId && !teamId}
-                          historyItem={item}
-                        />
+                      {...{
+                        showVoiceIcon,
+                        shareId,
+                        outLinkUid,
+                        teamId,
+                        teamToken,
+                        statusBoxData,
+                        questionGuides,
+                        onMark: onMark(
+                          item,
+                          formatChatValue2InputType(chatHistories[index - 1]?.value)?.text
+                        ),
+                        onAddUserLike: onAddUserLike(item),
+                        onCloseUserLike: onCloseUserLike(item),
+                        onAddUserDislike: onAddUserDislike(item),
+                        onReadUserDislike: onReadUserDislike(item)
+                      }}
+                    >
+                      <ResponseTags
+                        showTags={index !== chatHistories.length - 1 || !isChatting}
+                        showDetail={!shareId && !teamId}
+                        historyItem={item}
+                      />
 
-                        {/* custom feedback */}
-                        {item.customFeedbacks && item.customFeedbacks.length > 0 && (
-                          <Box>
-                            <ChatBoxDivider
-                              icon={'core/app/customFeedback'}
-                              text={t('common:core.app.feedback.Custom feedback')}
-                            />
-                            {item.customFeedbacks.map((text, i) => (
-                              <Box key={`${text}${i}`}>
-                                <MyTooltip
-                                  label={t('common:core.app.feedback.close custom feedback')}
+                      {/* custom feedback */}
+                      {item.customFeedbacks && item.customFeedbacks.length > 0 && (
+                        <Box>
+                          <ChatBoxDivider
+                            icon={'core/app/customFeedback'}
+                            text={t('common:core.app.feedback.Custom feedback')}
+                          />
+                          {item.customFeedbacks.map((text, i) => (
+                            <Box key={`${text}${i}`}>
+                              <MyTooltip
+                                label={t('common:core.app.feedback.close custom feedback')}
+                              >
+                                <Checkbox
+                                  onChange={onCloseCustomFeedback(item, i)}
+                                  icon={<MyIcon name={'common/check'} w={'12px'} />}
                                 >
-                                  <Checkbox
-                                    onChange={onCloseCustomFeedback(item, i)}
-                                    icon={<MyIcon name={'common/check'} w={'12px'} />}
-                                  >
-                                    {text}
-                                  </Checkbox>
-                                </MyTooltip>
-                              </Box>
-                            ))}
-                          </Box>
-                        )}
-                        {/* admin mark content */}
-                        {showMarkIcon && item.adminFeedback && (
-                          <Box fontSize={'sm'}>
-                            <ChatBoxDivider
-                              icon="core/app/markLight"
-                              text={t('common:core.chat.Admin Mark Content')}
-                            />
-                            <Box whiteSpace={'pre-wrap'}>
-                              <Box color={'black'}>{item.adminFeedback.q}</Box>
-                              <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
+                                  {text}
+                                </Checkbox>
+                              </MyTooltip>
                             </Box>
+                          ))}
+                        </Box>
+                      )}
+                      {/* admin mark content */}
+                      {showMarkIcon && item.adminFeedback && (
+                        <Box fontSize={'sm'}>
+                          <ChatBoxDivider
+                            icon="core/app/markLight"
+                            text={t('common:core.chat.Admin Mark Content')}
+                          />
+                          <Box whiteSpace={'pre-wrap'}>
+                            <Box color={'black'}>{item.adminFeedback.q}</Box>
+                            <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
                           </Box>
-                        )}
-                      </ChatItem>
-                    </>
-                  )}
-                </Box>
-              ))}
-            </Box>
+                        </Box>
+                      )}
+                    </ChatItem>
+                  </>
+                )}
+              </Box>
+            ))}
           </Box>
-        </ScrollData>
-      </Box>
+        </Box>
+      </ScrollData>
     );
   }, [
     ScrollData,
