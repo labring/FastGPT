@@ -1,5 +1,5 @@
-export const imageBaseUrl = '/api/system/img/';
-
+// export const imageBaseUrl = '/api/system/img/';
+export const imageBaseUrl = 'https://chat.snimay.com/api/system/img/';
 export enum MongoImageTypeEnum {
   systemAvatar = 'systemAvatar',
   appAvatar = 'appAvatar',

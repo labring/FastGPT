@@ -62,7 +62,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   docUrl: '#',
   openAPIDocUrl: '#',
   systemPluginCourseUrl: '#',
-  systemTitle: 'SnimayGPT',
+  systemTitle: 'MyGPT',
   concatMd:
     'My项目',
   limit: {
