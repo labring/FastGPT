@@ -1,6 +1,5 @@
 import React from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useTranslation } from 'next-i18next';
 import { Box } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';

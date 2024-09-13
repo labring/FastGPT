@@ -2,12 +2,12 @@ import {
   ButtonProps,
   Flex,
   Menu,
-  MenuButton,
   MenuList,
   Box,
   Radio,
   useOutsideClick,
-  HStack
+  HStack,
+  MenuButton
 } from '@chakra-ui/react';
 import React, { useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -46,18 +46,17 @@ function PermissionSelect({
   offset = [0, 5],
   Button,
   width = 'auto',
-  onDelete,
-  ...props
+  onDelete
 }: PermissionSelectProps) {
   const { t } = useTranslation();
   const { permission, permissionList } = useContextSelector(CollaboratorContext, (v) => v);
-  const ref = useRef<HTMLDivElement>(null);
-  const closeTimer = useRef<any>();
+  const ref = useRef<HTMLButtonElement>(null);
+  const closeTimer = useRef<NodeJS.Timeout>();
 
   const [isOpen, setIsOpen] = useState(false);
 
   const permissionSelectList = useMemo(() => {
-    const list = Object.entries(permissionList).map(([key, value]) => {
+    const list = Object.entries(permissionList).map(([_, value]) => {
       return {
         name: value.name,
         value: value.value,
@@ -85,15 +84,15 @@ function PermissionSelect({
 
     return permissionList['read'].value;
   }, [permissionList, value]);
-  const selectedMultipleValues = useMemo(() => {
-    const per = new Permission({ per: value });
-
-    return permissionSelectList.multipleCheckBoxList
-      .filter((item) => {
-        return per.checkPer(item.value);
-      })
-      .map((item) => item.value);
-  }, [permissionSelectList.multipleCheckBoxList, value]);
+  // const selectedMultipleValues = useMemo(() => {
+  //   const per = new Permission({ per: value });
+  //
+  //   return permissionSelectList.multipleCheckBoxList
+  //     .filter((item) => {
+  //       return per.checkPer(item.value);
+  //     })
+  //     .map((item) => item.value);
+  // }, [permissionSelectList.multipleCheckBoxList, value]);
 
   const onSelectPer = (per: PermissionValueType) => {
     if (per === value) return;
@@ -111,7 +110,7 @@ function PermissionSelect({
   return (
     <Menu offset={offset} isOpen={isOpen} autoSelect={false} direction={'ltr'}>
       <Box
-        ref={ref}
+        w="fit-content"
         onMouseEnter={() => {
           if (trigger === 'hover') {
             setIsOpen(true);
@@ -126,7 +125,8 @@ function PermissionSelect({
           }
         }}
       >
-        <Box
+        <MenuButton
+          ref={ref}
           position={'relative'}
           onClickCapture={() => {
             if (trigger === 'click') {
@@ -134,25 +134,8 @@ function PermissionSelect({
             }
           }}
         >
-          <MenuButton
-            w={'100%'}
-            h={'100%'}
-            position={'absolute'}
-            top={0}
-            right={0}
-            bottom={0}
-            left={0}
-          />
-          <Flex
-            alignItems={'center'}
-            justifyContent={'center'}
-            position={'relative'}
-            cursor={'pointer'}
-            userSelect={'none'}
-          >
-            {Button}
-          </Flex>
-        </Box>
+          {Button}
+        </MenuButton>
         <MenuList
           minW={isOpen ? `${width}px !important` : 0}
           p="3"
