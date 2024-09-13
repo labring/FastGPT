@@ -20,6 +20,7 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import ComplianceTip, { TipTypeEnum } from '@/components/support/compliance/ComplianceTip';
 
 export type CreateDatasetType =
   | DatasetTypeEnum.dataset
@@ -224,15 +225,18 @@ const CreateModal = ({
             </Box>
           </Flex>
         )}
+        <Flex w={'100%'} pt={6} justifyContent={'flex-end'}>
+          <Button variant={'whiteBase'} mr={3} onClick={onClose}>
+            {t('common:common.Close')}
+          </Button>
+          <Button isLoading={creating} onClick={handleSubmit((data) => onclickCreate(data))}>
+            {t('common:common.Confirm Create')}
+          </Button>
+        </Flex>
       </ModalBody>
 
-      <ModalFooter px={9}>
-        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:common.Close')}
-        </Button>
-        <Button isLoading={creating} onClick={handleSubmit((data) => onclickCreate(data))}>
-          {t('common:common.Confirm Create')}
-        </Button>
+      <ModalFooter px={9} pt={0}>
+        <ComplianceTip pt={0} type={TipTypeEnum.dataset} />
       </ModalFooter>
 
       <File onSelect={onSelectFile} />
