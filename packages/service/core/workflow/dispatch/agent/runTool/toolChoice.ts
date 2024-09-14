@@ -128,17 +128,18 @@ export const runToolWithToolChoice = async (
     })
   ]);
   const requestBody: any = {
-    ...toolModel?.defaultConfig,
     model: toolModel.model,
     temperature: computedTemperature({
       model: toolModel,
       temperature
     }),
+    max_completion_tokens: max_tokens,
     max_tokens,
     stream,
     messages: requestMessages,
     tools,
-    tool_choice: 'auto'
+    tool_choice: 'auto',
+    ...toolModel?.defaultConfig
   };
 
   // console.log(JSON.stringify(requestBody, null, 2));
@@ -153,9 +154,13 @@ export const runToolWithToolChoice = async (
         Accept: 'application/json, text/plain, */*'
       }
     });
+    const isStreamResponse =
+      typeof aiResponse === 'object' &&
+      aiResponse !== null &&
+      ('iterator' in aiResponse || 'controller' in aiResponse);
 
     const { answer, toolCalls } = await (async () => {
-      if (res && stream) {
+      if (res && isStreamResponse) {
         return streamResponse({
           res,
           workflowStreamResponse,
@@ -165,6 +170,7 @@ export const runToolWithToolChoice = async (
       } else {
         const result = aiResponse as ChatCompletion;
         const calls = result.choices?.[0]?.message?.tool_calls || [];
+        const answer = result.choices?.[0]?.message?.content || '';
 
         // 加上name和avatar
         const toolCalls = calls.map((tool) => {
@@ -176,8 +182,33 @@ export const runToolWithToolChoice = async (
           };
         });
 
+        // 不支持 stream 模式的模型的流失响应
+        toolCalls.forEach((tool) => {
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.toolCall,
+            data: {
+              tool: {
+                id: tool.id,
+                toolName: tool.toolName,
+                toolAvatar: tool.toolAvatar,
+                functionName: tool.function.name,
+                params: tool.function?.arguments ?? '',
+                response: ''
+              }
+            }
+          });
+        });
+        if (answer) {
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.fastAnswer,
+            data: textAdaptGptResponse({
+              text: answer
+            })
+          });
+        }
+
         return {
-          answer: result.choices?.[0]?.message?.content || '',
+          answer,
           toolCalls: toolCalls
         };
       }
@@ -239,7 +270,7 @@ export const runToolWithToolChoice = async (
                 toolName: '',
                 toolAvatar: '',
                 params: '',
-                response: sliceStrStartEnd(stringToolResponse, 500, 500)
+                response: sliceStrStartEnd(stringToolResponse, 2000, 2000)
               }
             }
           });

@@ -128,7 +128,8 @@ const completions = async ({
     model: cqModel.model,
     temperature: 0.01,
     messages: requestMessages,
-    stream: false
+    stream: false,
+    ...cqModel.defaultConfig
   });
   const answer = data.choices?.[0].message?.content || '';
 

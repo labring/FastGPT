@@ -96,7 +96,7 @@ export async function generateQA(): Promise<any> {
   addLog.info(`[QA Queue] Start`);
 
   try {
-    const model = getLLMModel(data.model)?.model;
+    const modelData = getLLMModel(data.model);
     const prompt = `${data.prompt || Prompt_AgentQA.description}
 ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 
@@ -112,10 +112,11 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       timeout: 600000
     });
     const chatResponse = await ai.chat.completions.create({
-      model,
+      model: modelData.model,
       temperature: 0.3,
       messages: await loadRequestMessages({ messages, useVision: false }),
-      stream: false
+      stream: false,
+      ...modelData.defaultConfig
     });
     const answer = chatResponse.choices?.[0].message?.content || '';
 
@@ -150,7 +151,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
         tmbId: data.tmbId,
         tokens: await countGptMessagesTokens(messages),
         billId: data.billId,
-        model
+        model: modelData.model
       });
     } else {
       addLog.info(`QA result 0:`, { answer });
