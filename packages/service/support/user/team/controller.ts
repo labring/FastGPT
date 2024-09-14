@@ -90,7 +90,7 @@ export async function createDefaultTeam({
   });
 
   if (!tmb) {
-    // create
+    // create team
     const [{ _id: insertedId }] = await MongoTeam.create(
       [
         {
@@ -103,6 +103,7 @@ export async function createDefaultTeam({
       ],
       { session }
     );
+    // create team member
     const [tmb] = await MongoTeamMember.create(
       [
         {
@@ -117,7 +118,7 @@ export async function createDefaultTeam({
       ],
       { session }
     );
-
+    // create default group
     await MongoMemberGroupModel.create(
       [
         {
@@ -128,7 +129,7 @@ export async function createDefaultTeam({
       ],
       { session }
     );
-
+    // create default group member
     await MongoGroupMemberModel.create(
       [
         {
@@ -170,6 +171,7 @@ export async function updateTeam({
       { session }
     );
 
+    // update default group
     if (avatar) {
       await MongoMemberGroupModel.updateOne(
         {
