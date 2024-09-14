@@ -10,11 +10,10 @@ import {
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamModalContext } from '../../context';
-import { useI18n } from '@/web/context/I18n';
 import SelectMember from '../SelectMember';
 import { useForm } from 'react-hook-form';
 
-type addType = 'writer' | 'manager';
+type addPerType = 'writer' | 'manager';
 
 function AddManagerModal({
   onClose,
@@ -23,7 +22,7 @@ function AddManagerModal({
 }: {
   onClose: () => void;
   onSuccess: () => void;
-  addType: addType;
+  addType: addPerType;
 }) {
   const { t } = useTranslation();
   const { members, refetchMembers, groups, refetchGroups, refetchClbs } = useContextSelector(
@@ -58,7 +57,7 @@ function AddManagerModal({
       iconSrc={'modal/AddClb'}
       minW={['90vw', '900px']}
       h={'600px'}
-      title={t('user:team.Add manager')}
+      title={addType === 'manager' ? t('user:team.Add manager') : t('user:team.add_writer')}
     >
       <ModalCloseButton onClick={onClose} />
       <ModalBody py={6} px={10} flex={'1 0 0'} h={0}>
