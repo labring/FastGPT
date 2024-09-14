@@ -114,15 +114,16 @@ export const runToolWithPromptCall = async (
     })
   ]);
   const requestBody = {
-    ...toolModel?.defaultConfig,
     model: toolModel.model,
     temperature: computedTemperature({
       model: toolModel,
       temperature
     }),
+    max_completion_tokens: max_tokens,
     max_tokens,
     stream,
-    messages: requestMessages
+    messages: requestMessages,
+    ...toolModel?.defaultConfig
   };
 
   // console.log(JSON.stringify(requestBody, null, 2));
@@ -135,9 +136,13 @@ export const runToolWithPromptCall = async (
       Accept: 'application/json, text/plain, */*'
     }
   });
+  const isStreamResponse =
+    typeof aiResponse === 'object' &&
+    aiResponse !== null &&
+    ('iterator' in aiResponse || 'controller' in aiResponse);
 
   const answer = await (async () => {
-    if (res && stream) {
+    if (res && isStreamResponse) {
       const { answer } = await streamResponse({
         res,
         toolNodes,
@@ -164,6 +169,17 @@ export const runToolWithPromptCall = async (
         })
       });
     }
+
+    // 不支持 stream 模式的模型的流失响应
+    if (stream && !isStreamResponse) {
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.fastAnswer,
+        data: textAdaptGptResponse({
+          text: replaceAnswer
+        })
+      });
+    }
+
     // No tool is invoked, indicating that the process is over
     const gptAssistantResponse: ChatCompletionAssistantMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.Assistant,

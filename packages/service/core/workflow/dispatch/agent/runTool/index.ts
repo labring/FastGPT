@@ -14,7 +14,7 @@ import {
   GPTMessages2Chats,
   chatValue2RuntimePrompt,
   chats2GPTMessages,
-  getSystemPrompt,
+  getSystemPrompt_ChatItemType,
   runtimePrompt2ChatsValue
 } from '@fastgpt/global/core/chat/adapt';
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
@@ -95,7 +95,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     });
 
   const messages: ChatItemType[] = [
-    ...getSystemPrompt(systemPrompt),
+    ...getSystemPrompt_ChatItemType(toolModel.defaultSystemChatPrompt),
+    ...getSystemPrompt_ChatItemType(systemPrompt),
     // Add file input prompt to histories
     ...chatHistories.map((item) => {
       if (item.obj === ChatRoleEnum.Human) {
