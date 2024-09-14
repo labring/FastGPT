@@ -14,6 +14,7 @@ import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 
 const AddMemberWithPermissionModal = dynamic(() => import('./AddMemberWithPermissionModal'));
 
@@ -89,7 +90,7 @@ function PermissionManage() {
               <MyTag key={group._id} px="4" py="2" type="fill" colorSchema="gray">
                 <Avatar src={group.avatar} w="1.25rem" />
                 <Box fontSize={'sm'} ml={1}>
-                  {group.name}
+                  {group.name === DefaultGroupName ? userInfo?.team.teamName : group.name}
                 </Box>
                 {userInfo?.team.role === 'owner' && (
                   <MyIcon
@@ -188,7 +189,7 @@ function PermissionManage() {
               <MyTag key={group._id} px="4" py="2" type="fill" colorSchema="gray">
                 <Avatar src={group.avatar} w="1.25rem" />
                 <Box fontSize={'sm'} ml={1}>
-                  {group.name}
+                  {group.name || userInfo?.team.teamName}
                 </Box>
                 {userInfo?.team.role === 'owner' && (
                   <MyIcon

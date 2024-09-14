@@ -177,21 +177,23 @@ function TeamCard() {
               {t('common:user.team.Invite Member')}
             </Button>
           )}
-          {userInfo?.team.permission.hasManagePer && feConfigs?.show_team_chat && (
-            <Button
-              variant={'whitePrimary'}
-              size="sm"
-              borderRadius={'md'}
-              ml={3}
-              leftIcon={<DragHandleIcon w={'14px'} color={'primary.500'} />}
-              onClick={() => {
-                onOpenTeamTagsAsync();
-              }}
-            >
-              {t('common:user.team.Team Tags Async')}
-            </Button>
-          )}
-          {!userInfo?.team.permission.isOwner && (
+          {tab === TabListEnum.member &&
+            userInfo?.team.permission.hasManagePer &&
+            feConfigs?.show_team_chat && (
+              <Button
+                variant={'whitePrimary'}
+                size="sm"
+                borderRadius={'md'}
+                ml={3}
+                leftIcon={<DragHandleIcon w={'14px'} color={'primary.500'} />}
+                onClick={() => {
+                  onOpenTeamTagsAsync();
+                }}
+              >
+                {t('common:user.team.Team Tags Async')}
+              </Button>
+            )}
+          {tab === TabListEnum.member && !userInfo?.team.permission.isOwner && (
             <Button
               variant={'whitePrimary'}
               size="sm"
@@ -206,7 +208,7 @@ function TeamCard() {
               {t('common:user.team.Leave Team')}
             </Button>
           )}
-          {userInfo?.team.permission.hasManagePer && tab === TabListEnum.group && (
+          {tab === TabListEnum.group && userInfo?.team.permission.hasManagePer && (
             <Button
               variant={'primary'}
               size="sm"
