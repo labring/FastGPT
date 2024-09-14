@@ -14,6 +14,7 @@ import { TeamPermission } from '@fastgpt/global/support/permission/user/controll
 import { TeamDefaultPermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoMemberGroupModel } from '../../permission/memberGroup/memberGroupSchema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemType> {
   const tmb = (await MongoTeamMember.findOne(match).populate('teamId')) as TeamMemberWithTeamSchema;
@@ -132,7 +133,7 @@ export async function updateTeam({
   teamDomain,
   lafAccount
 }: UpdateTeamProps & { teamId: string }) {
-  mongoSessionRun(async (session) => {
+  return mongoSessionRun(async (session) => {
     await MongoTeam.findByIdAndUpdate(
       teamId,
       {
@@ -148,7 +149,7 @@ export async function updateTeam({
       await MongoMemberGroupModel.updateOne(
         {
           teamId: teamId,
-          name: ''
+          name: DefaultGroupName
         },
         {
           avatar

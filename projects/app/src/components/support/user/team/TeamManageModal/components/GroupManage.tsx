@@ -11,6 +11,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { deleteGroup } from '@/web/support/user/team/group/api';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 
 function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }) {
   const { t } = useTranslation();
@@ -49,7 +50,7 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
                   <HStack>
                     <Avatar src={group.avatar} w={['18px', '22px']} />
                     <Box maxW={'150px'} className={'textEllipsis'}>
-                      {group.name || userInfo?.team.teamName}
+                      {group.name === DefaultGroupName ? userInfo?.team.teamName : group.name}
                     </Box>
                   </HStack>
                 </Td>
@@ -62,7 +63,7 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
                   />
                 </Td>
                 <Td>
-                  {userInfo?.team.permission.hasManagePer && group.name && (
+                  {userInfo?.team.permission.hasManagePer && group.name !== DefaultGroupName && (
                     <MyMenu
                       Button={<MyIcon name={'edit'} cursor={'pointer'} w="1rem" />}
                       menuList={[
