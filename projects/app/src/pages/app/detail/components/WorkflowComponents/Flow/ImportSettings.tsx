@@ -69,7 +69,6 @@ const ImportSettings = ({ onClose }: Props) => {
     async (e: File[]) => {
       const file = e[0];
       readJSONFile(file);
-      console.log(file);
     },
     [readJSONFile]
   );
