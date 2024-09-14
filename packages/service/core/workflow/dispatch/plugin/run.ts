@@ -14,6 +14,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { computedPluginUsage } from '../../../app/plugin/utils';
 import { filterSystemVariables } from '../utils';
 import { getPluginRunUserQuery } from '../../utils';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 
 type RunPluginProps = ModuleDispatchProps<{
   [key: string]: any;
@@ -25,12 +26,15 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     node: { pluginId },
     runningAppInfo,
     mode,
+    query,
     params: data // Plugin input
   } = props;
 
   if (!pluginId) {
     return Promise.reject('pluginId can not find');
   }
+
+  const { files } = chatValue2RuntimePrompt(query);
 
   // auth plugin
   const pluginData = await authPluginByTmbId({
@@ -74,7 +78,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       tmbId: pluginData?.tmbId || ''
     },
     variables: runtimeVariables,
-    query: getPluginRunUserQuery(plugin.nodes, runtimeVariables).value,
+    query: getPluginRunUserQuery({
+      nodes: plugin.nodes,
+      variables: runtimeVariables,
+      files
+    }).value,
     chatConfig: {},
     runtimeNodes,
     runtimeEdges: initWorkflowEdgeStatus(plugin.edges)
