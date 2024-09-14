@@ -13,6 +13,7 @@ const MultipleRowSelect = ({
   emptyTip,
   maxH = 300,
   onSelect,
+  popFromTop = false,
   styles
 }: MultipleSelectProps) => {
   const { t } = useTranslation();
@@ -124,7 +125,8 @@ const MultipleRowSelect = ({
       {isOpen && (
         <Box
           position={'absolute'}
-          top={'45px'}
+          bottom={popFromTop ? '45px' : 'auto'}
+          top={popFromTop ? 'auto' : '45px'}
           py={2}
           bg={'white'}
           border={'1px solid #fff'}

@@ -426,13 +426,20 @@ export const useWorkflow = () => {
     // If the node has child nodes, remove the child nodes
     if (nodes.some((n) => n.data.parentNodeId === node.id)) {
       const childNodes = nodes.filter((n) => n.data.parentNodeId === node.id);
+      const childNodeIds = childNodes.map((n) => n.id);
       const childNodesChange = childNodes.map((node) => ({
         ...change,
         id: node.id
       }));
       onNodesChange([...changes, ...childNodesChange]);
       setEdges((state) =>
-        state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
+        state.filter(
+          (edge) =>
+            edge.source !== change.id &&
+            edge.target !== change.id &&
+            !childNodeIds.includes(edge.source) &&
+            !childNodeIds.includes(edge.target)
+        )
       );
       return;
     }
