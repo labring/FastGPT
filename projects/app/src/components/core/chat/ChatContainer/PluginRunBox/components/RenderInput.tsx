@@ -6,15 +6,17 @@ import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { PluginRunContext } from '../context';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { isEqual } from 'lodash';
 import Markdown from '@/components/Markdown';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useFileUpload } from '../../ChatBox/hooks/useFileUpload';
 import FilePreview from '../../components/FilePreview';
+import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 const RenderInput = () => {
+  const { t } = useTranslation();
+
   const {
     pluginInputs,
     variablesForm,
@@ -28,7 +30,6 @@ const RenderInput = () => {
     outLinkAuthData
   } = useContextSelector(PluginRunContext, (v) => v);
 
-  const { t } = useTranslation();
   const {
     control,
     handleSubmit,
@@ -36,6 +37,7 @@ const RenderInput = () => {
     getValues,
     formState: { errors }
   } = variablesForm;
+
   const {
     File,
     onOpenSelectFile,
@@ -46,7 +48,8 @@ const RenderInput = () => {
     selectFileLabel,
     showSelectFile,
     showSelectImg,
-    removeFiles
+    removeFiles,
+    replaceFiles
   } = useFileUpload({
     outLinkAuthData,
     chatId: chatId || '',
@@ -66,21 +69,24 @@ const RenderInput = () => {
 
   const historyFormValues = useMemo(() => {
     if (histories.length === 0) return undefined;
-
+    const historyValue = histories[0].value;
     try {
-      const inputValueString = histories[0].value[0].text?.content || '[]';
-      return JSON.parse(inputValueString).reduce(
-        (
-          acc: Record<string, any>,
-          {
-            key,
-            value
-          }: {
-            key: string;
-            value: any;
-          }
-        ) => ({ ...acc, [key]: value }),
-        {}
+      const inputValueString = historyValue.find((item) => item.type === 'text')?.text?.content;
+      return (
+        inputValueString &&
+        JSON.parse(inputValueString).reduce(
+          (
+            acc: Record<string, any>,
+            {
+              key,
+              value
+            }: {
+              key: string;
+              value: any;
+            }
+          ) => ({ ...acc, [key]: value }),
+          {}
+        )
       );
     } catch (error) {
       console.error('Failed to parse input value:', error);
@@ -88,9 +94,16 @@ const RenderInput = () => {
     }
   }, [histories]);
 
+  const historyFileList = useMemo(() => {
+    if (histories.length === 0) return [];
+    const historyValue = histories[0].value as UserChatItemValueItemType[];
+    return historyValue.filter((item) => item.type === 'file').map((item) => item.file);
+  }, [histories]);
+  console.log('historyFileList', historyFileList);
+
   useEffect(() => {
-    if (isEqual(getValues(), defaultFormValues)) return;
     reset(historyFormValues || defaultFormValues);
+    replaceFiles(historyFileList as any);
   }, [defaultFormValues, getValues, historyFormValues, reset]);
 
   const isDisabledInput = histories.length > 0;
@@ -126,24 +139,31 @@ const RenderInput = () => {
       {(showSelectFile || showSelectImg) && (
         <Box>
           <Flex alignItems={'center'}>
-            <FormLabel fontSize={'14px'} fontWeight={'medium'}>
-              {selectFileLabel}
-            </FormLabel>
-            <Box flex={1} />
-            <Button
-              leftIcon={<MyIcon name={selectFileIcon as any} w={'16px'} />}
-              variant={'whiteBase'}
-              onClick={() => {
-                onOpenSelectFile();
-              }}
-            >
-              {t('chat:upload')}
-            </Button>
+            {histories.length === 0 && (
+              <>
+                <FormLabel fontSize={'14px'} fontWeight={'medium'}>
+                  {selectFileLabel}
+                </FormLabel>
+                <Box flex={1} />
+                <Button
+                  leftIcon={<MyIcon name={selectFileIcon as any} w={'16px'} />}
+                  variant={'whiteBase'}
+                  onClick={() => {
+                    onOpenSelectFile();
+                  }}
+                >
+                  {t('chat:upload')}
+                </Button>
+              </>
+            )}
             <File onSelect={(files) => onSelectFile({ files, fileList })} />
           </Flex>
         </Box>
       )}
-      <FilePreview fileList={fileList} removeFiles={removeFiles} />
+      <FilePreview
+        fileList={fileList}
+        removeFiles={histories.length > 0 ? undefined : removeFiles}
+      />
       {pluginInputs.map((input) => {
         return (
           <Controller
@@ -181,7 +201,8 @@ const RenderInput = () => {
               if (histories.length > 0) {
                 return onNewChat();
               }
-              handleSubmit((data) => onSubmit(data, fileList))();
+              handleSubmit(onSubmit)();
+              replaceFiles && replaceFiles([]);
             }}
           >
             {histories.length > 0 ? t('common:common.Restart') : t('common:common.Run')}

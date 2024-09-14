@@ -3,11 +3,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { addLog } from '@fastgpt/service/common/system/log';
-import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatSourceEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
@@ -113,6 +109,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     variables = {},
     responseChatItemId = getNanoid()
   } = req.body as Props;
+  console.log('variables', variables);
 
   const originIp = requestIp.getClientIp(req);
 
@@ -189,8 +186,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Get obj=Human history
     const userQuestion: UserChatItemType = (() => {
       if (isPlugin) {
-        // TODO：get plugin files from variables
-        return getPluginRunUserQuery({ nodes: app.modules, variables });
+        return getPluginRunUserQuery({
+          nodes: app.modules,
+          variables,
+          files: variables.files
+        });
       }
 
       const latestHumanChat = chatMessages.pop() as UserChatItemType | undefined;

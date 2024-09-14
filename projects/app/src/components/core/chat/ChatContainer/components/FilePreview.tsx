@@ -12,7 +12,7 @@ const RenderFilePreview = ({
   removeFiles
 }: {
   fileList: FieldArrayWithId<ChatBoxInputFormType, 'files', 'id'>[];
-  removeFiles: (index?: number | number[]) => void;
+  removeFiles?: (index?: number | number[]) => void;
 }) => {
   const { isPc } = useSystem();
 
@@ -54,23 +54,25 @@ const RenderFilePreview = ({
               alignItems={'center'}
               pl={isFile ? 1 : 0}
             >
-              <MyIcon
-                name={'closeSolid'}
-                w={'16px'}
-                h={'16px'}
-                color={'myGray.700'}
-                cursor={'pointer'}
-                _hover={{ color: 'red.500' }}
-                position={'absolute'}
-                rounded={'full'}
-                bg={'white'}
-                right={'-8px'}
-                top={'-8px'}
-                onClick={() => removeFiles(index)}
-                className="close-icon"
-                display={['', 'none']}
-                zIndex={10}
-              />
+              {removeFiles && (
+                <MyIcon
+                  name={'closeSolid'}
+                  w={'16px'}
+                  h={'16px'}
+                  color={'myGray.700'}
+                  cursor={'pointer'}
+                  _hover={{ color: 'red.500' }}
+                  position={'absolute'}
+                  rounded={'full'}
+                  bg={'white'}
+                  right={'-8px'}
+                  top={'-8px'}
+                  onClick={() => removeFiles(index)}
+                  className="close-icon"
+                  display={['', 'none']}
+                  zIndex={10}
+                />
+              )}
               {isImage && (
                 <Image
                   alt={'img'}

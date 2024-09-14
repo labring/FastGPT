@@ -18,7 +18,7 @@ import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 type PluginRunContextType = OutLinkChatAuthProps &
   PluginRunBoxProps & {
     isChatting: boolean;
-    onSubmit: (e: FieldValues, files?: UserInputFileItemType[]) => Promise<any>;
+    onSubmit: (e: FieldValues) => Promise<any>;
     outLinkAuthData: OutLinkChatAuthProps;
   };
 
