@@ -189,7 +189,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Get obj=Human history
     const userQuestion: UserChatItemType = (() => {
       if (isPlugin) {
-        return getPluginRunUserQuery(app.modules, variables);
+        // TODO：get plugin files from variables
+        return getPluginRunUserQuery({ nodes: app.modules, variables });
       }
 
       const latestHumanChat = chatMessages.pop() as UserChatItemType | undefined;
