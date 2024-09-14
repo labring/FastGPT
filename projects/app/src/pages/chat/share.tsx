@@ -182,7 +182,8 @@ const OutLink = ({
     data: chatRecords,
     ScrollData,
     isLoading: isLoadChatRecords,
-    setData: setChatRecords
+    setData: setChatRecords,
+    total: totalRecordsCount
   } = useChatPagination({
     chatId,
     shareId,
@@ -309,6 +310,7 @@ const OutLink = ({
               <ChatHeader
                 chatData={chatData}
                 history={chatRecords}
+                totalRecordsCount={totalRecordsCount}
                 showHistory={showHistory === '1'}
               />
             ) : null}

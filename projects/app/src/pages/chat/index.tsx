@@ -79,11 +79,13 @@ const Chat = ({
 
   const { userInfo } = useUserStore();
   const { isPc } = useSystem();
+
   const {
     data: chatRecords,
     ScrollData,
     isLoading: isLoadChatRecords,
-    setData: setChatRecords
+    setData: setChatRecords,
+    total: totalRecordsCount
   } = useChatPagination({
     chatId,
     appId,
@@ -229,6 +231,7 @@ const Chat = ({
           >
             {/* header */}
             <ChatHeader
+              totalRecordsCount={totalRecordsCount}
               apps={myApps}
               chatData={chatData}
               history={chatRecords}

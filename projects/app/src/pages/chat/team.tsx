@@ -81,7 +81,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     data: chatRecords,
     ScrollData,
     isLoading: isLoadChatRecords,
-    setData: setChatRecords
+    setData: setChatRecords,
+    total: totalRecordsCount
   } = useChatPagination({
     appId,
     chatId,
@@ -242,7 +243,13 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
             flexDirection={'column'}
           >
             {/* header */}
-            <ChatHeader apps={myApps} chatData={chatData} history={chatRecords} showHistory />
+            <ChatHeader
+              totalRecordsCount={totalRecordsCount}
+              apps={myApps}
+              chatData={chatData}
+              history={chatRecords}
+              showHistory
+            />
             {/* chat box */}
             <Box flex={1}>
               {chatData.app.type === AppTypeEnum.plugin ? (

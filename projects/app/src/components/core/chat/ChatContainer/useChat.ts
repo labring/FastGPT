@@ -40,7 +40,7 @@ export const useChat = () => {
   );
 
   const useChatPagination = (params: GetChatRecordsProps) => {
-    const { data, ScrollData, isLoading, setData, refresh, getData } = usePagination({
+    const { data, ScrollData, isLoading, setData, refresh, getData, total } = usePagination({
       api: async (data): Promise<PagingData<ChatSiteItemType>> => {
         const res = await getChatRecords(data);
 
@@ -58,7 +58,7 @@ export const useChat = () => {
       pageSize: 10,
       type: 'scroll',
       refreshDeps: [...Object.values(params)],
-      loadType: 'top'
+      scrollLoadType: 'top'
     });
 
     return {
@@ -67,7 +67,8 @@ export const useChat = () => {
       isLoading,
       setData,
       refresh,
-      getData
+      getData,
+      total
     };
   };
   const clearChatRecords = useCallback(() => {

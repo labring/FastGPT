@@ -46,7 +46,8 @@ const DetailLogsModal = ({
     data: chatRecords,
     ScrollData,
     isLoading: isLoadChatRecords,
-    setData: setChatRecords
+    setData: setChatRecords,
+    total: totalRecordsCount
   } = useChatPagination({
     chatId,
     appId,
@@ -131,7 +132,11 @@ const DetailLogsModal = ({
           >
             {isPc ? (
               <>
-                <PcHeader title={title || ''} history={chatRecords} chatModels={chatModels} />
+                <PcHeader
+                  totalRecordsCount={totalRecordsCount}
+                  title={title || ''}
+                  chatModels={chatModels}
+                />
                 <Box flex={1} />
               </>
             ) : (
