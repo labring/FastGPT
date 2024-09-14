@@ -403,11 +403,22 @@ const WorkflowContextProvider = ({
   const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
   const [hoverNodeId, setHoverNodeId] = useState<string>();
 
+  // Elevate childNodes
   useEffect(() => {
     setNodes((nodes) =>
-      nodes.map((node) => (node.type === FlowNodeTypeEnum.loop ? { ...node, zIndex: -1001 } : node))
+      nodes.map((node) => (node.data.parentNodeId ? { ...node, zIndex: 1001 } : node))
     );
   }, [nodes.length]);
+  // Elevate edges of childNodes
+  useEffect(() => {
+    setEdges((state) =>
+      state.map((item) =>
+        nodeList.some((node) => item.source === node.nodeId && node.parentNodeId)
+          ? { ...item, zIndex: 1001 }
+          : item
+      )
+    );
+  }, [edges.length]);
 
   const nodeListString = JSON.stringify(nodes.map((node) => node.data));
   const nodeList = useMemo(

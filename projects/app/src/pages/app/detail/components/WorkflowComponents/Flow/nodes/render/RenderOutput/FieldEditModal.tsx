@@ -1,4 +1,3 @@
-import { useI18n } from '@/web/context/I18n';
 import {
   FlowNodeOutputTypeEnum,
   FlowValueTypeMap
@@ -41,7 +40,6 @@ const FieldModal = ({
   onSubmit: (e: { data: FlowNodeOutputItemType; isChangeKey: boolean }) => void;
 }) => {
   const { t } = useTranslation();
-  const { workflowT, commonT } = useI18n();
   const { toast } = useToast();
   const isEdit = !!defaultValue.key;
 
@@ -57,7 +55,7 @@ const FieldModal = ({
 
     return true;
   }, [customFieldConfig.selectValueTypeList]);
-  const valueTypeSelectLit = useMemo(() => {
+  const valueTypeSelectList = useMemo(() => {
     if (!customFieldConfig.selectValueTypeList) return [];
 
     const dataTypeSelectList = Object.values(FlowValueTypeMap)
@@ -81,7 +79,7 @@ const FieldModal = ({
         if (!isEdit || isChangeKey) {
           toast({
             status: 'warning',
-            title: workflowT('field_name_already_exists')
+            title: t('workflow:field_name_already_exists')
           });
           return;
         }
@@ -97,7 +95,7 @@ const FieldModal = ({
       });
       onClose();
     },
-    [defaultValue.key, isEdit, keys, onClose, onSubmit, toast, workflowT]
+    [defaultValue.key, isEdit, keys, onClose, onSubmit, toast, t]
   );
   const onSubmitError = useCallback(
     (e: Object) => {
@@ -118,18 +116,20 @@ const FieldModal = ({
     <MyModal
       isOpen={true}
       iconSrc="/imgs/workflow/extract.png"
-      title={isEdit ? workflowT('edit_input') : workflowT('add_new_input')}
+      title={isEdit ? t('workflow:edit_input') : t('workflow:add_new_input')}
       overflow={'unset'}
     >
       <ModalBody w={'100%'} overflow={'auto'} display={'flex'} flexDirection={['column', 'row']}>
         <Stack w={'100%'} spacing={3}>
           {showValueTypeSelect && (
             <Flex alignItems={'center'}>
-              <FormLabel flex={'0 0 70px'}>{commonT('core.module.Data Type')}</FormLabel>
+              <FormLabel flex={'0 0 70px'}>{t('common:core.module.Data Type')}</FormLabel>
               <Box flex={1}>
                 <MySelect<WorkflowIOValueTypeEnum>
                   w={'full'}
-                  list={valueTypeSelectLit}
+                  list={valueTypeSelectList.filter(
+                    (item) => item.value !== WorkflowIOValueTypeEnum.arrayAny
+                  )}
                   value={valueType}
                   onchange={(e) => {
                     setValue('valueType', e);
@@ -154,7 +154,7 @@ const FieldModal = ({
           </Flex>
           {customFieldConfig.showDescription && (
             <Flex mt={3} alignItems={'center'}>
-              <FormLabel flex={'0 0 70px'}>{workflowT('input_description')}</FormLabel>
+              <FormLabel flex={'0 0 70px'}>{t('workflow:input_description')}</FormLabel>
               <Textarea bg={'myGray.50'} {...register('description', {})} />
             </Flex>
           )}
@@ -162,10 +162,10 @@ const FieldModal = ({
       </ModalBody>
       <ModalFooter gap={3}>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {commonT('common.Close')}
+          {t('common:common.Close')}
         </Button>
         <Button onClick={handleSubmit(onSubmitSuccess, onSubmitError)}>
-          {commonT('common.Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

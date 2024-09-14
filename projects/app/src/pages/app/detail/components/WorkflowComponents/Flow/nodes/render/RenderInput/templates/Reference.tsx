@@ -34,6 +34,7 @@ type SelectProps = {
     }[];
   }[];
   onSelect: (val: ReferenceValueProps) => void;
+  popFromTop?: boolean;
   styles?: ButtonProps;
 };
 
@@ -84,6 +85,9 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
       list={referenceList}
       value={formatValue}
       onSelect={onSelect}
+      popFromTop={
+        nodeList.find((node) => node.nodeId === nodeId)?.flowNodeType === FlowNodeTypeEnum.loop
+      }
     />
   );
 };
@@ -168,7 +172,13 @@ export const useReference = ({
     formatValue
   };
 };
-export const ReferSelector = ({ placeholder, value, list = [], onSelect }: SelectProps) => {
+export const ReferSelector = ({
+  placeholder,
+  value,
+  list = [],
+  onSelect,
+  popFromTop
+}: SelectProps) => {
   const selectItemLabel = useMemo(() => {
     if (!value) {
       return;
@@ -203,6 +213,7 @@ export const ReferSelector = ({ placeholder, value, list = [], onSelect }: Selec
         onSelect={(e) => {
           onSelect(e as ReferenceValueProps);
         }}
+        popFromTop={popFromTop}
       />
     );
   }, [list, onSelect, placeholder, selectItemLabel, value]);

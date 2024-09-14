@@ -228,7 +228,7 @@ const NodeCard = (props: Props) => {
               </MyTooltip>
             )}
           </Flex>
-          <MenuRender nodeId={nodeId} menuForbid={menuForbid} />
+          <MenuRender nodeId={nodeId} menuForbid={menuForbid} nodeList={nodeList} />
           <NodeIntro nodeId={nodeId} intro={intro} />
         </Box>
         <ConfirmSyncModal />
@@ -309,10 +309,12 @@ export default React.memo(NodeCard);
 
 const MenuRender = React.memo(function MenuRender({
   nodeId,
-  menuForbid
+  menuForbid,
+  nodeList
 }: {
   nodeId: string;
   menuForbid?: Props['menuForbid'];
+  nodeList: FlowNodeItemType[];
 }) {
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
@@ -370,7 +372,18 @@ const MenuRender = React.memo(function MenuRender({
       setNodes((state) =>
         state.filter((item) => item.data.nodeId !== nodeId && item.data.parentNodeId !== nodeId)
       );
-      setEdges((state) => state.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+      const childNodeIds = nodeList
+        .filter((node) => node.parentNodeId === nodeId)
+        .map((node) => node.nodeId);
+      setEdges((state) =>
+        state.filter(
+          (edge) =>
+            edge.source !== nodeId &&
+            edge.target !== nodeId &&
+            !childNodeIds.includes(edge.target) &&
+            !childNodeIds.includes(edge.source)
+        )
+      );
     },
     [setEdges, setNodes]
   );
