@@ -2,18 +2,23 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import React, { ReactNode, useCallback, useEffect, useRef } from 'react';
 import { createContext } from 'use-context-selector';
-import { delClearChatHistories, delChatHistoryById, putChatHistory } from '../api';
+import {
+  delClearChatHistories,
+  delChatHistoryById,
+  putChatHistory,
+  getChatHistories
+} from '../api';
 import { ChatHistoryItemType } from '@fastgpt/global/core/chat/type';
 import { ClearHistoriesProps, DelHistoryProps, UpdateHistoryProps } from '@/global/core/chat/api';
-import { useDisclosure } from '@chakra-ui/react';
+import { BoxProps, useDisclosure } from '@chakra-ui/react';
 import { useChatStore } from './storeChat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
 type ChatContextValueType = {
-  histories: ChatHistoryItemType[];
-  loadHistories: () => Promise<ChatHistoryItemType[]>;
+  params: Record<string, string | number>;
 };
-type ChatContextType = ChatContextValueType & {
+type ChatContextType = {
   chatId: string;
   onUpdateHistory: (data: UpdateHistoryProps) => void;
   onDelHistory: (data: DelHistoryProps) => Promise<undefined>;
@@ -21,17 +26,45 @@ type ChatContextType = ChatContextValueType & {
   isOpenSlider: boolean;
   onCloseSlider: () => void;
   onOpenSlider: () => void;
+  setHistories: React.Dispatch<React.SetStateAction<ChatHistoryItemType[]>>;
   forbidLoadChat: React.MutableRefObject<boolean>;
   onChangeChatId: (chatId?: string, forbid?: boolean) => void;
+  loadHistories: () => void;
+  ScrollList: ({
+    children,
+    EmptyChildren,
+    isLoading,
+    ...props
+  }: {
+    children: React.ReactNode;
+    EmptyChildren?: React.ReactNode;
+    isLoading?: boolean;
+  } & BoxProps) => ReactNode;
   onChangeAppId: (appId: string) => void;
   isLoading: boolean;
+  historyList: {
+    index: number;
+    data: ChatHistoryItemType;
+  }[];
+  histories: ChatHistoryItemType[];
+  onUpdateHistoryTitle: ({ chatId, newTitle }: { chatId: string; newTitle: string }) => void;
 };
 
 export const ChatContext = createContext<ChatContextType>({
   chatId: '',
   // forbidLoadChat: undefined,
+  historyList: [],
   histories: [],
-  loadHistories: function (): Promise<ChatHistoryItemType[]> {
+  onUpdateHistoryTitle: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  ScrollList: function (): ReactNode {
+    throw new Error('Function not implemented.');
+  },
+  loadHistories: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  setHistories: function (): void {
     throw new Error('Function not implemented.');
   },
   onUpdateHistory: function (data: UpdateHistoryProps): void {
@@ -62,8 +95,7 @@ export const ChatContext = createContext<ChatContextType>({
 
 const ChatContextProvider = ({
   children,
-  histories,
-  loadHistories
+  params
 }: ChatContextValueType & { children: ReactNode }) => {
   const router = useRouter();
   const { chatId = '' } = router.query as { chatId: string };
@@ -71,6 +103,21 @@ const ChatContextProvider = ({
   const forbidLoadChat = useRef(false);
 
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
+
+  const {
+    scrollDataList: historyList,
+    ScrollList,
+    isLoading: isPaginationLoading,
+    setData: setHistories,
+    fetchData: loadHistories,
+    totalData: histories
+  } = useScrollPagination(getChatHistories, {
+    overscan: 30,
+    pageSize: 30,
+    itemHeight: 52,
+    defaultParams: params,
+    refreshDeps: [params]
+  });
 
   const { setLastChatId } = useChatStore();
   const onChangeChatId = useCallback(
@@ -85,10 +132,13 @@ const ChatContextProvider = ({
           }
         });
       }
+
       onCloseSlider();
     },
     [chatId, onCloseSlider, router, setLastChatId]
   );
+
+  // Refresh lastChatId
   useEffect(() => {
     setLastChatId(chatId);
   }, [chatId, setLastChatId]);
@@ -108,33 +158,68 @@ const ChatContextProvider = ({
   );
 
   const { runAsync: onUpdateHistory, loading: isUpdatingHistory } = useRequest2(putChatHistory, {
-    onSuccess() {
-      loadHistories();
+    onSuccess(data, params) {
+      const { chatId, top, customTitle } = params[0];
+
+      setHistories((histories) => {
+        const updatedHistories = histories.map((history) => {
+          if (history.chatId === chatId) {
+            return {
+              ...history,
+              customTitle: customTitle || history.customTitle,
+              top: top !== undefined ? top : history.top
+            };
+          }
+          return history;
+        });
+
+        return top !== undefined
+          ? updatedHistories.sort((a, b) => (b.top ? 1 : 0) - (a.top ? 1 : 0))
+          : updatedHistories;
+      });
     },
     errorToast: undefined
   });
+
   const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest2(delChatHistoryById, {
-    onSuccess() {
-      loadHistories();
+    onSuccess(data, params) {
+      const { chatId } = params[0];
+      setHistories((old) => old.filter((i) => i.chatId !== chatId));
     }
   });
+
   const { runAsync: onClearHistories, loading: isClearingHistory } = useRequest2(
     delClearChatHistories,
     {
       onSuccess() {
-        loadHistories();
+        setHistories([]);
       },
       onFinally() {
         onChangeChatId('');
       }
     }
   );
-  const isLoading = isUpdatingHistory || isDeletingHistory || isClearingHistory;
+
+  const onUpdateHistoryTitle = useCallback(
+    ({ chatId, newTitle }: { chatId: string; newTitle: string }) => {
+      // Chat history exists
+      if (histories.find((item) => item.chatId === chatId)) {
+        setHistories((state) =>
+          state.map((item) => (item.chatId === chatId ? { ...item, title: newTitle } : item))
+        );
+      } else {
+        // Chat history not exists
+        loadHistories();
+      }
+    },
+    [histories, loadHistories, setHistories]
+  );
+
+  const isLoading =
+    isUpdatingHistory || isDeletingHistory || isClearingHistory || isPaginationLoading;
 
   const contextValue = {
     chatId,
-    histories,
-    loadHistories,
     onUpdateHistory,
     onDelHistory,
     onClearHistories,
@@ -144,7 +229,13 @@ const ChatContextProvider = ({
     forbidLoadChat,
     onChangeChatId,
     onChangeAppId,
-    isLoading
+    isLoading,
+    historyList,
+    setHistories,
+    ScrollList,
+    loadHistories,
+    histories,
+    onUpdateHistoryTitle
   };
   return <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>;
 };

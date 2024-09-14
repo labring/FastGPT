@@ -26,7 +26,6 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { getTeamMembers } from '@/web/support/user/team/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
@@ -43,7 +42,7 @@ const UsageTable = () => {
   });
   const [usageSource, setUsageSource] = useState<UsageSourceEnum | ''>('');
   const { isPc } = useSystem();
-  const { userInfo } = useUserStore();
+  const { userInfo, loadAndGetTeamMembers } = useUserStore();
   const [usageDetail, setUsageDetail] = useState<UsageItemType>();
 
   const sourceList = useMemo(
@@ -64,7 +63,7 @@ const UsageTable = () => {
   const [selectTmbId, setSelectTmbId] = useState(userInfo?.team?.tmbId);
   const { data: members = [] } = useQuery(['getMembers', userInfo?.team?.teamId], () => {
     if (!userInfo?.team?.teamId) return [];
-    return getTeamMembers();
+    return loadAndGetTeamMembers();
   });
   const tmbList = useMemo(
     () =>
@@ -181,11 +180,10 @@ const UsageTable = () => {
             ))}
           </Tbody>
         </Table>
+        {!isLoading && usages.length === 0 && (
+          <EmptyTip text={t('common:user.no_usage_records')}></EmptyTip>
+        )}
       </TableContainer>
-
-      {!isLoading && usages.length === 0 && (
-        <EmptyTip text={t('common:user.no_usage_records')}></EmptyTip>
-      )}
 
       <Loading loading={isLoading} fixed={false} />
       {!!usageDetail && (

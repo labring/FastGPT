@@ -2,11 +2,14 @@ import { markdownProcess } from '@fastgpt/global/common/string/markdown';
 import { uploadMongoImg } from '../image/controller';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { addHours } from 'date-fns';
+import FormData from 'form-data';
 
 import { WorkerNameEnum, runWorker } from '../../../worker/utils';
 import fs from 'fs';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
+import axios from 'axios';
+import { addLog } from '../../system/log';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -51,15 +54,7 @@ export const readRawContentByFileBuffer = async ({
   metadata?: Record<string, any>;
 }) => {
   // Upload image in markdown
-  const matchMdImgTextAndUpload = ({
-    teamId,
-    md,
-    metadata
-  }: {
-    md: string;
-    teamId: string;
-    metadata?: Record<string, any>;
-  }) =>
+  const matchMdImgTextAndUpload = ({ teamId, md }: { md: string; teamId: string }) =>
     markdownProcess({
       rawText: md,
       uploadImgController: (base64Img) =>
@@ -72,18 +67,63 @@ export const readRawContentByFileBuffer = async ({
         })
     });
 
-  let { rawText, formatText } = await runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
-    extension,
-    encoding,
-    buffer
-  });
+  /* If */
+  const customReadfileUrl = process.env.CUSTOM_READ_FILE_URL;
+  const customReadFileExtension = process.env.CUSTOM_READ_FILE_EXTENSION || '';
+  const ocrParse = process.env.CUSTOM_READ_FILE_OCR || 'false';
+  const readFileFromCustomService = async (): Promise<ReadFileResponse | undefined> => {
+    if (
+      !customReadfileUrl ||
+      !customReadFileExtension ||
+      !customReadFileExtension.includes(extension)
+    )
+      return;
+
+    const start = Date.now();
+
+    const data = new FormData();
+    data.append('file', buffer, {
+      filename: `file.${extension}`
+    });
+    data.append('extension', extension);
+    data.append('ocr', ocrParse);
+    const { data: response } = await axios.post<{
+      success: boolean;
+      message: string;
+      data: {
+        page: number;
+        markdown: string;
+      };
+    }>(customReadfileUrl, data, {
+      timeout: 600000,
+      headers: {
+        ...data.getHeaders()
+      }
+    });
+
+    addLog.info(`Use custom read file service, time: ${Date.now() - start}ms`);
+
+    const rawText = response.data.markdown;
+
+    return {
+      rawText,
+      formatText: rawText
+    };
+  };
+
+  let { rawText, formatText } =
+    (await readFileFromCustomService()) ||
+    (await runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
+      extension,
+      encoding,
+      buffer
+    }));
 
   // markdown data format
-  if (['md', 'html', 'docx'].includes(extension)) {
+  if (['md', 'html', 'docx', ...customReadFileExtension.split(',')].includes(extension)) {
     rawText = await matchMdImgTextAndUpload({
       teamId: teamId,
-      md: rawText,
-      metadata: metadata
+      md: rawText
     });
   }
 

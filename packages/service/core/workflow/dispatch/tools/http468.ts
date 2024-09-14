@@ -14,9 +14,10 @@ import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
 import { addLog } from '../../../../common/system/log';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { responseWrite } from '../../../../common/response';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getSystemPluginCb } from '../../../../../plugins/register';
+import { ContentTypes } from '@fastgpt/global/core/workflow/constants';
+import { replaceEditorVariable } from '@fastgpt/global/core/workflow/utils';
 
 type PropsArrType = {
   key: string;
@@ -30,7 +31,10 @@ type HttpRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.httpHeaders]: PropsArrType[];
   [NodeInputKeyEnum.httpParams]: PropsArrType[];
   [NodeInputKeyEnum.httpJsonBody]: string;
+  [NodeInputKeyEnum.httpFormBody]: PropsArrType[];
+  [NodeInputKeyEnum.httpContentType]: ContentTypes;
   [NodeInputKeyEnum.addInputParam]: Record<string, any>;
+  [NodeInputKeyEnum.httpTimeout]?: number;
   [key: string]: any;
 }>;
 type HttpResponse = DispatchNodeResultType<{
@@ -40,23 +44,34 @@ type HttpResponse = DispatchNodeResultType<{
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
+const contentTypeMap = {
+  [ContentTypes.none]: '',
+  [ContentTypes.formData]: '',
+  [ContentTypes.xWwwFormUrlencoded]: 'application/x-www-form-urlencoded',
+  [ContentTypes.json]: 'application/json',
+  [ContentTypes.xml]: 'application/xml',
+  [ContentTypes.raw]: 'text/plain'
+};
+
 export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<HttpResponse> => {
   let {
-    res,
-    detail,
-    app: { _id: appId },
+    runningAppInfo: { id: appId },
     chatId,
-    stream,
     responseChatItemId,
     variables,
-    node: { outputs },
+    node,
+    runtimeNodes,
     histories,
+    workflowStreamResponse,
     params: {
       system_httpMethod: httpMethod = 'POST',
       system_httpReqUrl: httpReqUrl,
       system_httpHeader: httpHeader,
       system_httpParams: httpParams = [],
       system_httpJsonBody: httpJsonBody,
+      system_httpFormBody: httpFormBody,
+      system_httpContentType: httpContentType = ContentTypes.json,
+      system_httpTimeout: httpTimeout = 60,
       [NodeInputKeyEnum.addInputParam]: dynamicInput,
       ...body
     }
@@ -78,21 +93,37 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     // ...dynamicInput,
     ...systemVariables
   };
-
   const allVariables = {
     [NodeInputKeyEnum.addInputParam]: concatVariables,
     ...concatVariables
   };
-
   httpReqUrl = replaceVariable(httpReqUrl, allVariables);
+
+  const replaceStringVariables = (text: string) => {
+    return replaceVariable(
+      replaceEditorVariable({
+        text,
+        nodes: runtimeNodes,
+        variables: allVariables,
+        runningNode: node
+      }),
+      allVariables
+    );
+  };
+
   // parse header
   const headers = await (() => {
     try {
+      const contentType = contentTypeMap[httpContentType];
+      if (contentType) {
+        httpHeader = [{ key: 'Content-Type', value: contentType, type: 'string' }, ...httpHeader];
+      }
+
       if (!httpHeader || httpHeader.length === 0) return {};
       // array
       return httpHeader.reduce((acc: Record<string, string>, item) => {
-        const key = replaceVariable(item.key, allVariables);
-        const value = replaceVariable(item.value, allVariables);
+        const key = replaceStringVariables(item.key);
+        const value = replaceStringVariables(item.value);
         acc[key] = valueTypeFormat(value, WorkflowIOValueTypeEnum.string);
         return acc;
       }, {});
@@ -100,28 +131,53 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       return Promise.reject('Header 为非法 JSON 格式');
     }
   })();
+
   const params = httpParams.reduce((acc: Record<string, string>, item) => {
-    const key = replaceVariable(item.key, allVariables);
-    const value = replaceVariable(item.value, allVariables);
+    const key = replaceStringVariables(item.key);
+    const value = replaceStringVariables(item.value);
     acc[key] = valueTypeFormat(value, WorkflowIOValueTypeEnum.string);
     return acc;
   }, {});
 
   const requestBody = await (() => {
-    if (!httpJsonBody) return {};
+    if (httpContentType === ContentTypes.none) return {};
     try {
-      // Replace all variables in the string body
-      httpJsonBody = replaceVariable(httpJsonBody, allVariables);
-
-      // Text body, return directly
-      if (headers['Content-Type']?.includes('text/plain')) {
-        return httpJsonBody?.replaceAll(UNDEFINED_SIGN, 'null');
+      if (httpContentType === ContentTypes.formData) {
+        if (!Array.isArray(httpFormBody)) return {};
+        httpFormBody = httpFormBody.map((item) => ({
+          key: replaceStringVariables(item.key),
+          type: item.type,
+          value: replaceStringVariables(item.value)
+        }));
+        const formData = new FormData();
+        for (const { key, value } of httpFormBody) {
+          formData.append(key, value);
+        }
+        return formData;
       }
-
-      // Json body, parse and return
-      const jsonParse = JSON.parse(httpJsonBody);
-      const removeSignJson = removeUndefinedSign(jsonParse);
-      return removeSignJson;
+      if (httpContentType === ContentTypes.xWwwFormUrlencoded) {
+        if (!Array.isArray(httpFormBody)) return {};
+        httpFormBody = httpFormBody.map((item) => ({
+          key: replaceStringVariables(item.key),
+          type: item.type,
+          value: replaceStringVariables(item.value)
+        }));
+        const urlSearchParams = new URLSearchParams();
+        for (const { key, value } of httpFormBody) {
+          urlSearchParams.append(key, value);
+        }
+        return urlSearchParams;
+      }
+      if (!httpJsonBody) return {};
+      if (httpContentType === ContentTypes.json) {
+        httpJsonBody = replaceVariable(httpJsonBody, allVariables);
+        // Json body, parse and return
+        const jsonParse = JSON.parse(httpJsonBody);
+        const removeSignJson = removeUndefinedSign(jsonParse);
+        return removeSignJson;
+      }
+      httpJsonBody = replaceStringVariables(httpJsonBody);
+      return httpJsonBody.replaceAll(UNDEFINED_SIGN, 'null');
     } catch (error) {
       console.log(error);
       return Promise.reject(`Invalid JSON body: ${httpJsonBody}`);
@@ -143,22 +199,22 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         url: httpReqUrl,
         headers,
         body: requestBody,
-        params
+        params,
+        timeout: httpTimeout
       });
     })();
 
     // format output value type
     const results: Record<string, any> = {};
     for (const key in formatResponse) {
-      const output = outputs.find((item) => item.key === key);
+      const output = node.outputs.find((item) => item.key === key);
       if (!output) continue;
       results[key] = valueTypeFormat(formatResponse[key], output.valueType);
     }
 
-    if (stream && typeof formatResponse[NodeOutputKeyEnum.answerText] === 'string') {
-      responseWrite({
-        res,
-        event: detail ? SseResponseEventEnum.fastAnswer : undefined,
+    if (typeof formatResponse[NodeOutputKeyEnum.answerText] === 'string') {
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.fastAnswer,
         data: textAdaptGptResponse({
           text: formatResponse[NodeOutputKeyEnum.answerText]
         })
@@ -199,23 +255,24 @@ async function fetchData({
   url,
   headers,
   body,
-  params
+  params,
+  timeout
 }: {
   method: string;
   url: string;
   headers: Record<string, any>;
   body: Record<string, any> | string;
   params: Record<string, any>;
+  timeout: number;
 }) {
   const { data: response } = await axios({
     method,
     baseURL: `http://${SERVICE_LOCAL_HOST}`,
     url,
     headers: {
-      'Content-Type': 'application/json',
       ...headers
     },
-    timeout: 120000,
+    timeout: timeout * 1000,
     params: params,
     data: ['POST', 'PUT', 'PATCH'].includes(method) ? body : undefined
   });
@@ -308,7 +365,7 @@ function replaceVariable(text: string, obj: Record<string, any>) {
         replacement.startsWith('"') && replacement.endsWith('"')
           ? replacement.slice(1, -1)
           : replacement;
-      text = text.replace(new RegExp(`{{(${key})}}`, 'g'), unquotedReplacement);
+      text = text.replace(new RegExp(`{{(${key})}}`, 'g'), () => unquotedReplacement);
     }
   }
   return text || '';

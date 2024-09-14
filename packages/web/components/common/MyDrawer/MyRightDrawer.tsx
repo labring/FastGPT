@@ -25,7 +25,7 @@ const MyRightDrawer = ({
   onClose,
   iconSrc,
   title,
-  maxW = ['90vw', '30vw'],
+  maxW = ['90vw', '500px'],
   children,
   isLoading,
   ...props

@@ -22,8 +22,10 @@ export enum DispatchNodeResponseKeyEnum {
   childrenResponses = 'childrenResponses', // Some nodes make recursive calls that need to be returned
   toolResponses = 'toolResponses', // The result is passed back to the tool node for use
   assistantResponses = 'assistantResponses', // assistant response
+  rewriteHistories = 'rewriteHistories', // If have the response, workflow histories will be rewrite
 
-  interactive = 'INTERACTIVE' // is interactive
+  interactive = 'INTERACTIVE', // is interactive
+  runTimes = 'runTimes' // run times
 }
 
 export const needReplaceReferenceInputTypeList = [

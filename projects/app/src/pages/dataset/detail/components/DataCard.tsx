@@ -1,28 +1,11 @@
 import React, { useState, useRef, useMemo } from 'react';
-import {
-  Box,
-  Card,
-  IconButton,
-  Flex,
-  Grid,
-  Button,
-  useTheme,
-  Drawer,
-  DrawerBody,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerOverlay,
-  DrawerContent,
-  useDisclosure,
-  HStack
-} from '@chakra-ui/react';
+import { Box, Card, IconButton, Flex, Button, useTheme } from '@chakra-ui/react';
 import {
   getDatasetDataList,
   delOneDatasetDataById,
   getDatasetCollectionById,
   putDatasetDataById
 } from '@/web/core/dataset/api';
-import { DeleteIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -33,16 +16,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
 import InputDataModal from '../components/InputDataModal';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
-import type { DatasetDataListItemType } from '@/global/core/dataset/type.d';
-import { TabEnum } from '..';
-import { DatasetCollectionTypeMap, TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
-import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
-import { formatFileSize } from '@fastgpt/global/common/file/tools';
-import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
-import { useI18n } from '@/web/context/I18n';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useContextSelector } from 'use-context-selector';
@@ -52,11 +27,12 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import TagsPopOver from './CollectionCard/TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import Markdown from '@/components/Markdown';
+import { DatasetDataListItemType } from '@/global/core/dataset/type';
 
 const DataCard = () => {
-  const BoxRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
-  const lastSearch = useRef('');
   const router = useRouter();
   const { isPc } = useSystem();
   const { collectionId = '', datasetId } = router.query as {
@@ -67,53 +43,36 @@ const DataCard = () => {
   const { feConfigs } = useSystemStore();
 
   const { t } = useTranslation();
-  const { datasetT } = useI18n();
   const [searchText, setSearchText] = useState('');
   const { toast } = useToast();
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('common:dataset.Confirm to delete the data'),
     type: 'delete'
   });
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const readSource = getCollectionSourceAndOpen(collectionId);
 
-  const {
-    data: datasetDataList,
-    Pagination,
-    total,
-    getData,
-    pageNum,
-    pageSize,
-    isLoading: isRequesting
-  } = usePagination<DatasetDataListItemType>({
-    api: getDatasetDataList,
-    pageSize: 24,
-    defaultRequest: false,
-    params: {
+  const scrollParams = useMemo(
+    () => ({
       collectionId,
       searchText
-    },
-    onChange() {
-      if (BoxRef.current) {
-        BoxRef.current.scrollTop = 0;
-      }
-    }
+    }),
+    [collectionId, searchText]
+  );
+  const {
+    data: datasetDataList,
+    ScrollData,
+    total,
+    isLoading,
+    refresh,
+    setData: setDatasetDataList
+  } = usePagination<DatasetDataListItemType>({
+    api: getDatasetDataList,
+    pageSize: 10,
+    type: 'scroll',
+    params: scrollParams,
+    refreshDeps: [searchText, collectionId]
   });
 
   const [editDataId, setEditDataId] = useState<string>();
-
-  // get first page data
-  useRequest2(
-    async () => {
-      getData(1);
-      lastSearch.current = searchText;
-    },
-    {
-      manual: false,
-      debounceWait: 300,
-      refreshDeps: [searchText]
-    }
-  );
 
   // get file info
   const { data: collection } = useQuery(
@@ -132,96 +91,11 @@ const DataCard = () => {
 
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
 
-  const metadataList = useMemo(() => {
-    if (!collection) return [];
-
-    const webSelector =
-      collection?.datasetId?.websiteConfig?.selector || collection?.metadata?.webPageSelector;
-
-    return [
-      {
-        label: t('common:core.dataset.collection.metadata.source'),
-        value: t(DatasetCollectionTypeMap[collection.type]?.name as any)
-      },
-      {
-        label: t('common:core.dataset.collection.metadata.source name'),
-        value: collection.file?.filename || collection?.rawLink || collection?.name
-      },
-      {
-        label: t('common:core.dataset.collection.metadata.source size'),
-        value: collection.file ? formatFileSize(collection.file.length) : '-'
-      },
-      {
-        label: t('common:core.dataset.collection.metadata.Createtime'),
-        value: formatTime2YMDHM(collection.createTime)
-      },
-      {
-        label: t('common:core.dataset.collection.metadata.Updatetime'),
-        value: formatTime2YMDHM(collection.updateTime)
-      },
-      {
-        label: t('common:core.dataset.collection.metadata.Raw text length'),
-        value: collection.rawTextLength ?? '-'
-      },
-      {
-        label: t('common:core.dataset.collection.metadata.Training Type'),
-        value: t(TrainingTypeMap[collection.trainingType]?.label as any)
-      },
-      {
-        label: t('common:core.dataset.collection.metadata.Chunk Size'),
-        value: collection.chunkSize || '-'
-      },
-      ...(webSelector
-        ? [
-            {
-              label: t('common:core.dataset.collection.metadata.Web page selector'),
-              value: webSelector
-            }
-          ]
-        : []),
-      {
-        ...(collection.tags
-          ? [
-              {
-                label: datasetT('collection_tags'),
-                value: collection.tags?.join(', ') || '-'
-              }
-            ]
-          : [])
-      }
-    ];
-  }, [collection, datasetT, t]);
-
-  const { run: onUpdate, loading } = useRequest2(putDatasetDataById, {
-    onSuccess() {
-      getData(pageNum);
-    }
-  });
-
-  const isLoading = isRequesting || loading;
-
   return (
-    <MyBox isLoading={isLoading} position={'relative'} py={[1, 5]} h={'100%'}>
-      <Flex ref={BoxRef} flexDirection={'column'} h={'100%'}>
+    <MyBox position={'relative'} py={[1, 0]} h={'100%'}>
+      <Flex flexDirection={'column'} h={'100%'}>
         {/* Header */}
-        <Flex alignItems={'center'} px={5}>
-          <IconButton
-            mr={3}
-            icon={<MyIcon name={'common/backFill'} w={['14px', '18px']} color={'primary.500'} />}
-            variant={'whitePrimary'}
-            size={'smSquare'}
-            borderRadius={'50%'}
-            aria-label={''}
-            onClick={() =>
-              router.replace({
-                query: {
-                  datasetId: router.query.datasetId,
-                  parentId: router.query.parentId,
-                  currentTab: TabEnum.collectionCard
-                }
-              })
-            }
-          />
+        <Flex alignItems={'center'} px={6}>
           <Flex className="textEllipsis" flex={'1 0 0'} mr={[3, 5]} alignItems={'center'}>
             <Box>
               <Box alignItems={'center'} gap={2} display={isPc ? 'flex' : ''}>
@@ -234,12 +108,6 @@ const DataCard = () => {
                     textDecoration={'none'}
                   />
                 )}
-                <Box fontSize={'sm'} color={'myGray.500'}>
-                  {t('common:core.dataset.collection.id')}:{' '}
-                  <Box as={'span'} userSelect={'all'}>
-                    {collection?._id}
-                  </Box>
-                </Box>
               </Box>
               {feConfigs?.isPlus && !!collection?.tags?.length && (
                 <TagsPopOver currentCollection={collection} />
@@ -250,7 +118,6 @@ const DataCard = () => {
             <Box>
               <Button
                 ml={2}
-                mr={isPc ? 2 : 0}
                 variant={'whitePrimary'}
                 size={['sm', 'md']}
                 onClick={() => {
@@ -262,24 +129,17 @@ const DataCard = () => {
               </Button>
             </Box>
           )}
-          {isPc && (
-            <MyTooltip label={t('common:core.dataset.collection.metadata.Read Metadata')}>
-              <IconButton
-                variant={'whiteBase'}
-                size={['sm', 'md']}
-                icon={<MyIcon name={'menu'} w={'18px'} />}
-                aria-label={''}
-                onClick={onOpen}
-              />
-            </MyTooltip>
-          )}
         </Flex>
-        <Flex my={3} alignItems={'center'} px={5}>
-          <Box>
-            <Box as={'span'} fontSize={['sm', 'md']}>
-              {t('core.dataset.data.Total Amount', { total })}
+        <Box justifyContent={'center'} px={6} pos={'relative'} w={'100%'}>
+          <MyDivider my={'17px'} w={'100%'} />
+        </Box>
+        <Flex alignItems={'center'} px={6} pb={4}>
+          <Flex align={'center'} color={'myGray.500'}>
+            <MyIcon name="common/list" mr={2} w={'18px'} />
+            <Box as={'span'} fontSize={['sm', '14px']} fontWeight={'500'}>
+              {t('common:core.dataset.data.Total Amount', { total })}
             </Box>
-          </Box>
+          </Flex>
           <Box flex={1} mr={1} />
           <MyInput
             leftIcon={
@@ -287,9 +147,12 @@ const DataCard = () => {
                 name="common/searchLight"
                 position={'absolute'}
                 w={'14px'}
-                color={'myGray.500'}
+                color={'myGray.600'}
               />
             }
+            bg={'myGray.25'}
+            borderColor={'myGray.200'}
+            color={'myGray.500'}
             w={['200px', '300px']}
             placeholder={t('common:core.dataset.data.Search data placeholder')}
             value={searchText}
@@ -299,193 +162,173 @@ const DataCard = () => {
           />
         </Flex>
         {/* data */}
-        <Box flex={'1 0 0'} overflow={'auto'} px={5}>
-          <Grid
-            gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
-            gridGap={4}
-          >
-            {datasetDataList.map((item) => (
+        <ScrollData flex={'1 0 0'} px={5} pb={5}>
+          <Flex flexDir={'column'} gap={2}>
+            {datasetDataList.map((item, index) => (
               <Card
                 key={item._id}
                 cursor={'pointer'}
                 p={3}
                 userSelect={'none'}
                 boxShadow={'none'}
-                bg={'myWhite.500'}
+                bg={index % 2 === 1 ? 'myGray.50' : 'blue.50'}
                 border={theme.borders.sm}
                 position={'relative'}
                 overflow={'hidden'}
                 _hover={{
-                  borderColor: 'myGray.200',
+                  borderColor: 'blue.600',
                   boxShadow: 'lg',
-                  bg: 'white',
-                  '& .footer': { h: 'auto', p: 3 },
-                  '& .forbid-switch': { display: 'flex' }
+                  '& .header': { visibility: 'visible' },
+                  '& .footer': { visibility: 'visible' },
+                  bg: index % 2 === 1 ? 'myGray.200' : 'blue.100'
                 }}
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (!collection) return;
                   setEditDataId(item._id);
                 }}
               >
-                <Flex zIndex={1} alignItems={'center'}>
-                  <MyTag type="borderFill"># {item.chunkIndex ?? '-'}</MyTag>
-
-                  <Box
-                    className={'textEllipsis'}
-                    flex={'1 0 0'}
-                    w="0"
-                    fontSize={'mini'}
-                    textAlign={'right'}
-                  >
-                    ID:{item._id}
-                  </Box>
-                  {/* {item.forbid ? (
-                    <MyTag colorSchema="gray" bg={'transparent'} px={1} showDot>
-                      {datasetT('Disabled')}
-                    </MyTag>
-                  ) : (
-                    <MyTag colorSchema="green" bg={'transparent'} px={1} showDot>
-                      {datasetT('Enabled')}
-                    </MyTag>
-                  )}
-                  <HStack
-                    borderLeftWidth={'1.5px'}
-                    className="forbid-switch"
-                    display={['flex', 'none']}
-                    borderLeftColor={'myGray.200'}
-                    pl={1}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                    h={'12px'}
-                  >
-                    <Switch
-                      size={'sm'}
-                      isChecked={!item.forbid}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        onUpdate({
-                          dataId: item._id,
-                          forbid: !e.target.checked
-                        });
-                      }}
-                    />
-                  </HStack> */}
-                </Flex>
-                <Box
-                  maxH={'135px'}
-                  minH={'90px'}
-                  overflow={'hidden'}
-                  wordBreak={'break-all'}
-                  pt={1}
-                  pb={3}
-                  fontSize={'sm'}
+                {/* Data tag */}
+                <Flex
+                  position={'absolute'}
+                  zIndex={1}
+                  alignItems={'center'}
+                  visibility={'hidden'}
+                  className="header"
                 >
-                  <Box color={'black'} mb={1}>
-                    {item.q}
-                  </Box>
-                  <Box color={'myGray.700'}>{item.a}</Box>
-
-                  {/* Mask */}
-                  <Flex
-                    className="footer"
-                    position={'absolute'}
-                    top={0}
-                    bottom={0}
-                    left={0}
-                    right={0}
-                    h={'0'}
-                    overflow={'hidden'}
-                    bg={'linear-gradient(to top, white,white 20%, rgba(255,255,255,0) 60%)'}
-                    alignItems={'flex-end'}
-                    fontSize={'mini'}
+                  <MyTag
+                    px={2}
+                    type="borderFill"
+                    borderRadius={'sm'}
+                    border={'1px'}
+                    color={'myGray.200'}
+                    bg={'white'}
+                    fontWeight={'500'}
                   >
-                    <HStack p={0} flex={1}>
-                      <Flex alignItems={'center'}>
-                        <MyIcon name="common/text/t" w={'0.8rem'} mr={1} color={'myGray.500'} />
-                        <Box>{item.q.length + (item.a?.length || 0)}</Box>
-                      </Flex>
-                      <Box flex={1}></Box>
-                      {/* <Box className={'textEllipsis'} flex={'1 0 0'} w="0">
-                        ID:{item._id}
-                      </Box> */}
-                      {canWrite && (
-                        <IconButton
-                          display={'flex'}
-                          icon={<DeleteIcon />}
-                          variant={'whiteDanger'}
-                          size={'xsSquare'}
-                          aria-label={'delete'}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openConfirm(async () => {
-                              try {
-                                await delOneDatasetDataById(item._id);
-                                getData(pageNum);
-                              } catch (error) {
-                                toast({
-                                  title: getErrText(error),
-                                  status: 'error'
-                                });
-                              }
-                            })();
-                          }}
-                        />
-                      )}
-                    </HStack>
-                  </Flex>
+                    <Box color={'blue.600'}>#{item.chunkIndex ?? '-'} </Box>
+                    <Box
+                      ml={1.5}
+                      className={'textEllipsis'}
+                      fontSize={'mini'}
+                      textAlign={'right'}
+                      color={'myGray.500'}
+                    >
+                      ID:{item._id}
+                    </Box>
+                  </MyTag>
+                </Flex>
+
+                {/* Data content */}
+                <Box wordBreak={'break-all'} fontSize={'sm'}>
+                  <Markdown source={item.q} isDisabled />
+                  {!!item.a && (
+                    <>
+                      <MyDivider />
+                      <Markdown source={item.a} isDisabled />
+                    </>
+                  )}
                 </Box>
+
+                {/* Mask */}
+                <Flex
+                  className="footer"
+                  position={'absolute'}
+                  bottom={2}
+                  right={2}
+                  overflow={'hidden'}
+                  alignItems={'flex-end'}
+                  visibility={'hidden'}
+                  fontSize={'mini'}
+                >
+                  <Flex
+                    alignItems={'center'}
+                    bg={'white'}
+                    color={'myGray.600'}
+                    borderRadius={'sm'}
+                    border={'1px'}
+                    borderColor={'myGray.200'}
+                    h={'24px'}
+                    px={2}
+                    fontSize={'mini'}
+                    boxShadow={'1'}
+                    py={1}
+                    mr={2}
+                  >
+                    <MyIcon
+                      bg={'white'}
+                      color={'myGray.600'}
+                      borderRadius={'sm'}
+                      border={'1px'}
+                      borderColor={'myGray.200'}
+                      name="common/text/t"
+                      w={'14px'}
+                      mr={1}
+                    />
+                    {item.q.length + (item.a?.length || 0)}
+                  </Flex>
+                  {canWrite && (
+                    <IconButton
+                      display={'flex'}
+                      p={1}
+                      boxShadow={'1'}
+                      icon={<MyIcon name={'common/trash'} w={'14px'} color={'myGray.600'} />}
+                      variant={'whiteDanger'}
+                      size={'xsSquare'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openConfirm(async () => {
+                          try {
+                            await delOneDatasetDataById(item._id);
+                            setDatasetDataList((prev) => {
+                              return prev.filter((data) => data._id !== item._id);
+                            });
+                            toast({
+                              title: t('common:common.Delete Success'),
+                              status: 'success'
+                            });
+                          } catch (error) {
+                            toast({
+                              title: getErrText(error),
+                              status: 'error'
+                            });
+                          }
+                        })();
+                      }}
+                      aria-label={''}
+                    />
+                  )}
+                </Flex>
               </Card>
             ))}
-          </Grid>
-          {total > pageSize && (
-            <Flex mt={2} justifyContent={'center'}>
-              <Pagination />
-            </Flex>
-          )}
-          {total === 0 && <EmptyTip text={t('common:core.dataset.data.Empty Tip')}></EmptyTip>}
-        </Box>
+          </Flex>
+        </ScrollData>
+        {total === 0 && !isLoading && (
+          <EmptyTip text={t('common:core.dataset.data.Empty Tip')}></EmptyTip>
+        )}
       </Flex>
-
-      {/* metadata drawer */}
-      <Drawer isOpen={isOpen} placement="right" size={'md'} onClose={onClose}>
-        <DrawerOverlay />
-        <DrawerContent>
-          <DrawerHeader fontSize={'lg'}>
-            {t('common:core.dataset.collection.metadata.metadata')}
-          </DrawerHeader>
-
-          <DrawerBody>
-            {metadataList.map((item, i) => (
-              <Flex key={i} alignItems={'center'} mb={5} wordBreak={'break-all'} fontSize={'sm'}>
-                <Box color={'myGray.500'} flex={'0 0 100px'}>
-                  {item.label}
-                </Box>
-                <Box>{item.value}</Box>
-              </Flex>
-            ))}
-            {collection?.sourceId && (
-              <Button variant={'whitePrimary'} onClick={readSource}>
-                {t('common:core.dataset.collection.metadata.read source')}
-              </Button>
-            )}
-          </DrawerBody>
-
-          <DrawerFooter>
-            <Button variant={'whitePrimary'} onClick={onClose}>
-              {t('common:common.Close')}
-            </Button>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
 
       {editDataId !== undefined && collection && (
         <InputDataModal
           collectionId={collection._id}
           dataId={editDataId}
           onClose={() => setEditDataId(undefined)}
-          onSuccess={() => getData(pageNum)}
-          onDelete={() => getData(pageNum)}
+          onSuccess={(data) => {
+            if (editDataId === '') {
+              refresh();
+              return;
+            }
+            setDatasetDataList((prev) => {
+              return prev.map((item) => {
+                if (item._id === editDataId) {
+                  return {
+                    ...item,
+                    ...data
+                  };
+                }
+                return item;
+              });
+            });
+          }}
         />
       )}
       <ConfirmModal />

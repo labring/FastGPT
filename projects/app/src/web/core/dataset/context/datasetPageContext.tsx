@@ -1,32 +1,41 @@
 import { useQuery } from '@tanstack/react-query';
-import { ReactNode, SetStateAction, useMemo, useState } from 'react';
+import { Dispatch, ReactNode, SetStateAction, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext } from 'use-context-selector';
 import {
   getAllTags,
   getDatasetById,
   getDatasetCollectionTags,
+  getDatasetPaths,
   getDatasetTrainingQueue,
   getTrainingQueueLen,
+  postCreateDatasetCollectionTag,
   putDatasetById
 } from '../api';
 import { defaultDatasetDetail } from '../constants';
 import { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
 import { DatasetItemType, DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 type DatasetPageContextType = {
   datasetId: string;
   datasetDetail: DatasetItemType;
   loadDatasetDetail: (id: string) => Promise<DatasetItemType>;
   updateDataset: (data: DatasetUpdateBody) => Promise<void>;
-  datasetTags: DatasetTagType[];
-  loadDatasetTags: (data: { id: string; searchKey: string }) => Promise<void>;
+
+  searchDatasetTagsResult: DatasetTagType[];
   allDatasetTags: DatasetTagType[];
-  loadAllDatasetTags: (data: { id: string }) => Promise<void>;
+  loadAllDatasetTags: () => Promise<DatasetTagType[]>;
   checkedDatasetTag: DatasetTagType[];
   setCheckedDatasetTag: React.Dispatch<SetStateAction<DatasetTagType[]>>;
-
+  onCreateCollectionTag: (tag: string) => Promise<void>;
+  isCreateCollectionTagLoading: boolean;
+  searchTagKey: string;
+  setSearchTagKey: Dispatch<SetStateAction<string>>;
+  paths: ParentTreePathItemType[];
+  refetchPaths: () => void;
   vectorTrainingMap: {
     colorSchema: string;
     tip: string;
@@ -62,18 +71,25 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
   updateDataset: function (data: DatasetUpdateBody): Promise<void> {
     throw new Error('Function not implemented.');
   },
-  datasetTags: [],
-  loadDatasetTags: function (data: { id: string; searchKey: string }): Promise<void> {
-    throw new Error('Function not implemented.');
-  },
+  searchDatasetTagsResult: [],
   allDatasetTags: [],
-  loadAllDatasetTags: function (data: { id: string }): Promise<void> {
-    throw new Error('Function not implemented.');
-  },
   checkedDatasetTag: [],
   setCheckedDatasetTag: function (): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  loadAllDatasetTags: function (): Promise<DatasetTagType[]> {
+    throw new Error('Function not implemented.');
+  },
+  onCreateCollectionTag: function (tag: string): Promise<void> {
+    throw new Error('Function not implemented.');
+  },
+  isCreateCollectionTagLoading: false,
+  searchTagKey: '',
+  setSearchTagKey: function (value: SetStateAction<string>): void {
+    throw new Error('Function not implemented.');
+  },
+  paths: [],
+  refetchPaths: () => {}
 });
 
 export const DatasetPageContextProvider = ({
@@ -88,12 +104,9 @@ export const DatasetPageContextProvider = ({
 
   // dataset detail
   const [datasetDetail, setDatasetDetail] = useState(defaultDatasetDetail);
-
   const loadDatasetDetail = async (id: string) => {
     const data = await getDatasetById(id);
-
     setDatasetDetail(data);
-
     return data;
   };
   const updateDataset = async (data: DatasetUpdateBody) => {
@@ -108,28 +121,53 @@ export const DatasetPageContextProvider = ({
   };
 
   // dataset tags
-  const [datasetTags, setDatasetTags] = useState<DatasetTagType[]>([]);
-
-  const loadDatasetTags = async ({ id, searchKey }: { id: string; searchKey: string }) => {
-    const { list } = await getDatasetCollectionTags({
-      datasetId: id,
-      searchText: searchKey,
-      current: 1,
-      pageSize: 15
-    });
-    setDatasetTags(list);
-  };
-
   const [checkedDatasetTag, setCheckedDatasetTag] = useState<DatasetTagType[]>([]);
+  const [searchTagKey, setSearchTagKey] = useState('');
 
-  const [allDatasetTags, setAllDatasetTags] = useState<DatasetTagType[]>([]);
+  const { runAsync: loadAllDatasetTags, data: allDatasetTags = [] } = useRequest2(
+    async () => {
+      if (!feConfigs?.isPlus || !datasetDetail._id) return [];
 
-  const loadAllDatasetTags = async ({ id }: { id: string }) => {
-    if (!feConfigs?.isPlus) return;
-
-    const { list } = await getAllTags(id);
-    setAllDatasetTags(list);
-  };
+      const { list } = await getAllTags(datasetDetail._id);
+      return list;
+    },
+    {
+      manual: false,
+      refreshDeps: [datasetDetail._id]
+    }
+  );
+  const { data: searchDatasetTagsResult = [] } = useRequest2(
+    async () => {
+      if (!searchTagKey) return allDatasetTags;
+      const { list } = await getDatasetCollectionTags({
+        datasetId: datasetDetail._id,
+        searchText: searchTagKey,
+        current: 1,
+        pageSize: 15
+      });
+      return list;
+    },
+    {
+      manual: false,
+      throttleWait: 300,
+      refreshDeps: [datasetDetail._id, searchTagKey, allDatasetTags]
+    }
+  );
+  const { runAsync: onCreateCollectionTag, loading: isCreateCollectionTagLoading } = useRequest2(
+    (tag: string) =>
+      postCreateDatasetCollectionTag({
+        datasetId: datasetDetail._id,
+        tag
+      }),
+    {
+      refreshDeps: [datasetDetail._id],
+      onSuccess() {
+        loadAllDatasetTags();
+      },
+      successToast: t('common:common.Create Success'),
+      errorToast: t('common:common.Create Failed')
+    }
+  );
 
   // global queue
   const { data: { vectorTrainingCount = 0, agentTrainingCount = 0 } = {} } = useQuery(
@@ -188,23 +226,43 @@ export const DatasetPageContextProvider = ({
       refetchInterval: 10000
     });
 
+  const { data: paths = [], runAsync: refetchPaths } = useRequest2(
+    () =>
+      getDatasetPaths(datasetDetail.parentId).then((res) => {
+        res.push({
+          parentId: '',
+          parentName: datasetDetail.name
+        });
+        return res;
+      }),
+    {
+      manual: false,
+      refreshDeps: [datasetDetail.parentId]
+    }
+  );
+
   const contextValue: DatasetPageContextType = {
     datasetId,
     datasetDetail,
     loadDatasetDetail,
     updateDataset,
-
+    paths,
+    refetchPaths,
     vectorTrainingMap,
     agentTrainingMap,
     rebuildingCount,
     trainingCount,
     refetchDatasetTraining,
-    datasetTags,
-    loadDatasetTags,
+
+    searchDatasetTagsResult,
     checkedDatasetTag,
     setCheckedDatasetTag,
     allDatasetTags,
-    loadAllDatasetTags
+    loadAllDatasetTags,
+    onCreateCollectionTag,
+    isCreateCollectionTagLoading,
+    searchTagKey,
+    setSearchTagKey
   };
 
   return <DatasetPageContext.Provider value={contextValue}>{children}</DatasetPageContext.Provider>;

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NodeCard from './render/NodeCard';
 import { NodeProps } from 'reactflow';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -12,8 +12,7 @@ import {
   NumberInput,
   NumberInputField,
   NumberInputStepper,
-  Switch,
-  Textarea
+  Switch
 } from '@chakra-ui/react';
 import { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -33,6 +32,9 @@ import { ReferSelector, useReference } from './render/RenderInput/templates/Refe
 import { getRefData } from '@/web/core/workflow/utils';
 import { isReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { AppContext } from '@/pages/app/detail/components/context';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import { useCreation } from 'ahooks';
+import { getEditorVariables } from '../../utils';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -41,6 +43,17 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+
+  const variables = useCreation(() => {
+    return getEditorVariables({
+      nodeId,
+      nodeList,
+      edges,
+      appDetail,
+      t
+    });
+  }, [nodeList, edges, inputs, t]);
 
   const updateList = useMemo(
     () =>
@@ -87,10 +100,8 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           const { valueType } = getRefData({
             variable: updateItem.variable,
             nodeList,
-            chatConfig: appDetail.chatConfig,
-            t
+            chatConfig: appDetail.chatConfig
           });
-
           const renderTypeData = menuList.find((item) => item.renderType === updateItem.renderType);
           const handleUpdate = (newValue: ReferenceValueProps | string) => {
             if (isReferenceValue(newValue)) {
@@ -162,6 +173,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                       bg={'white'}
                       borderRadius={'xs'}
                       mx={2}
+                      color={'primary.600'}
                       onClick={() => {
                         onUpdateList(
                           updateList.map((update, i) => {
@@ -199,12 +211,15 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                   }
                   if (valueType === WorkflowIOValueTypeEnum.string) {
                     return (
-                      <Textarea
-                        bg="white"
-                        value={updateItem.value?.[1] || ''}
-                        w="300px"
-                        onChange={(e) => handleUpdate(e.target.value)}
-                      />
+                      <Box w={'300px'}>
+                        <PromptEditor
+                          value={updateItem.value?.[1] || ''}
+                          onChange={handleUpdate}
+                          showOpenModal={false}
+                          variableLabels={variables}
+                          h={100}
+                        />
+                      </Box>
                     );
                   }
                   if (valueType === WorkflowIOValueTypeEnum.number) {
@@ -248,7 +263,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         })}
       </>
     );
-  }, [nodeId, nodeList, onUpdateList, t, updateList]);
+  }, [appDetail.chatConfig, nodeId, nodeList, onUpdateList, t, updateList, variables]);
 
   return (
     <NodeCard selected={selected} maxW={'1000px'} {...data}>

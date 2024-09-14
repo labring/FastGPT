@@ -1,3 +1,11 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+
 import { useState, useRef, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
@@ -92,12 +100,14 @@ export default function Editor({
 
   return (
     <Box
+      className="nowheel"
       position={'relative'}
       width={'full'}
       h={`${height}px`}
       cursor={'text'}
       color={'myGray.700'}
       bg={focus ? 'white' : bg}
+      borderRadius={'md'}
     >
       <LexicalComposer initialConfig={initialConfig} key={key}>
         <PlainTextPlugin

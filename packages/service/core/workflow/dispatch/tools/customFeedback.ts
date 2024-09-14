@@ -6,7 +6,6 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { addCustomFeedbacks } from '../../../chat/controller';
-import { responseWrite } from '../../../../common/response';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = ModuleDispatchProps<{
@@ -16,12 +15,11 @@ type Response = DispatchNodeResultType<{}>;
 
 export const dispatchCustomFeedback = (props: Record<string, any>): Response => {
   const {
-    res,
-    app: { _id: appId },
+    runningAppInfo: { id: appId },
     chatId,
     responseChatItemId: chatItemId,
     stream,
-    detail,
+    workflowStreamResponse,
     params: { system_textareaInput: feedbackText = '' }
   } = props as Props;
 
@@ -36,9 +34,8 @@ export const dispatchCustomFeedback = (props: Record<string, any>): Response => 
 
   if (stream) {
     if (!chatId || !chatItemId) {
-      responseWrite({
-        res,
-        event: detail ? SseResponseEventEnum.fastAnswer : undefined,
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.fastAnswer,
         data: textAdaptGptResponse({
           text: `\n\n**自定义反馈成功: (仅调试模式下展示该内容)**: "${feedbackText}"\n\n`
         })

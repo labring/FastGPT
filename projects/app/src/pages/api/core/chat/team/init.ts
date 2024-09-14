@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -12,8 +11,6 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -48,7 +45,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   // get app and history
-  const [{ histories }, { nodes }] = await Promise.all([
+  const [{ histories }, { nodes, chatConfig }] = await Promise.all([
     getChatItems({
       appId,
       chatId,
@@ -57,14 +54,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }),
     getAppLatestVersion(app._id, app)
   ]);
-
-  // pick share response field
-  app.type !== AppTypeEnum.plugin &&
-    histories.forEach((item) => {
-      if (item.obj === ChatRoleEnum.AI) {
-        item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
-      }
-    });
 
   jsonRes<InitChatResponse>(res, {
     data: {
@@ -76,7 +65,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       history: app.type === AppTypeEnum.plugin ? histories : transformPreviewHistories(histories),
       app: {
         chatConfig: getAppChatConfig({
-          chatConfig: app.chatConfig,
+          chatConfig,
           systemConfigNode: getGuideModule(nodes),
           storeVariables: chat?.variableList,
           storeWelcomeText: chat?.welcomeText,

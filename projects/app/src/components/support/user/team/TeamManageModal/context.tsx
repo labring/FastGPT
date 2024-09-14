@@ -6,7 +6,6 @@ import { useQuery } from '@tanstack/react-query';
 import {
   delMemberPermission,
   getTeamList,
-  getTeamMembers,
   putSwitchTeam,
   updateMemberPermission
 } from '@/web/support/user/team/api';
@@ -56,7 +55,7 @@ export const TeamModalContext = createContext<TeamModalContextType>({
 export const TeamModalContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const [editTeamData, setEditTeamData] = useState<EditTeamFormDataType>();
-  const { userInfo, initUserInfo } = useUserStore();
+  const { userInfo, initUserInfo, loadAndGetTeamMembers } = useUserStore();
 
   const {
     data: myTeams = [],
@@ -72,7 +71,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
   } = useRequest2(
     () => {
       if (!userInfo?.team?.teamId) return Promise.resolve([]);
-      return getTeamMembers();
+      return loadAndGetTeamMembers(true);
     },
     {
       manual: false,

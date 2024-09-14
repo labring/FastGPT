@@ -72,6 +72,8 @@ async function handler(req: NextApiRequest) {
       type: collection.type,
       trainingType: collection.trainingType,
       chunkSize: collection.chunkSize,
+      chunkSplitter: collection.chunkSplitter,
+      qaPrompt: collection.qaPrompt,
       fileId: collection.fileId,
       rawLink: collection.rawLink,
       metadata: collection.metadata,

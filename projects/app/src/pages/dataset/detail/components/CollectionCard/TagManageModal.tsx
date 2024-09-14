@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Input, Button, Flex, Box, Checkbox } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -13,23 +13,26 @@ import {
   getScrollCollectionList,
   getTagUsage,
   postAddTagsToCollections,
-  postCreateDatasetCollectionTag,
   updateDatasetCollectionTag
 } from '@/web/core/dataset/api';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyInput from '@/components/MyInput';
 import { DatasetTagType } from '@fastgpt/global/core/dataset/type';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { ScrollListType, useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import MyBox from '@fastgpt/web/components/common/MyBox';
+import { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 
 const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
-  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
-  const loadDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadDatasetTags);
-  const loadAllDatasetTags = useContextSelector(DatasetPageContext, (v) => v.loadAllDatasetTags);
-  const { getData, collections } = useContextSelector(CollectionPageContext, (v) => v);
+  const {
+    datasetDetail,
+    onCreateCollectionTag,
+    isCreateCollectionTagLoading,
+    loadAllDatasetTags,
+    setSearchTagKey
+  } = useContextSelector(DatasetPageContext, (v) => v);
+  const { getData, pageNum, collections } = useContextSelector(CollectionPageContext, (v) => v);
 
   const tagInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -39,6 +42,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   >(undefined);
 
   const [newTag, setNewTag] = useState<string | undefined>(undefined);
+  const [searchText, setSearchText] = useState('');
 
   const [currentEditTagContent, setCurrentEditTagContent] = useState<string | undefined>(undefined);
   const [currentEditTag, setCurrentEditTag] = useState<DatasetTagType | undefined>(undefined);
@@ -55,60 +59,42 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   }, [currentEditTag]);
 
-  const { mutate: onCreateCollectionTag, isLoading: isCreateCollectionTagLoading } = useRequest({
-    mutationFn: async (tag: string) => {
-      const id = await postCreateDatasetCollectionTag({
-        datasetId: datasetDetail._id,
-        tag
-      });
-      return id;
-    },
-
-    onSuccess() {
-      fetchData(1);
-      loadDatasetTags({ id: datasetDetail._id, searchKey: '' });
-      loadAllDatasetTags({ id: datasetDetail._id });
-    },
-    successToast: t('common:common.Create Success'),
-    errorToast: t('common:common.Create Failed')
-  });
-
-  const { mutate: onDeleteCollectionTag, isLoading: isDeleteCollectionTagLoading } = useRequest({
-    mutationFn: async (tag: string) => {
-      const id = await delDatasetCollectionTag({
+  const { runAsync: onDeleteCollectionTag, loading: isDeleteCollectionTagLoading } = useRequest2(
+    (tag: string) =>
+      delDatasetCollectionTag({
         datasetId: datasetDetail._id,
         id: tag
-      });
-      return id;
-    },
+      }),
+    {
+      onSuccess() {
+        fetchData(1);
+        setSearchTagKey('');
+        loadAllDatasetTags();
+      },
+      successToast: t('common:common.Delete Success'),
+      errorToast: t('common:common.Delete Failed')
+    }
+  );
 
-    onSuccess() {
-      fetchData(1);
-      loadDatasetTags({ id: datasetDetail._id, searchKey: '' });
-      loadAllDatasetTags({ id: datasetDetail._id });
-    },
-    successToast: t('common:common.Delete Success'),
-    errorToast: t('common:common.Delete Failed')
-  });
-
-  const { mutate: onUpdateCollectionTag, isLoading: isUpdateCollectionTagLoading } = useRequest({
-    mutationFn: async (tag: DatasetTagType) => {
-      const id = await updateDatasetCollectionTag({
+  const { runAsync: onUpdateCollectionTag, loading: isUpdateCollectionTagLoading } = useRequest2(
+    async (tag: DatasetTagType) => {
+      return updateDatasetCollectionTag({
         datasetId: datasetDetail._id,
         tagId: tag._id,
         tag: tag.tag
       });
-      return id;
     },
-    onSuccess() {
-      fetchData(1);
-      loadDatasetTags({ id: datasetDetail._id, searchKey: '' });
-      loadAllDatasetTags({ id: datasetDetail._id });
+    {
+      onSuccess() {
+        fetchData(1);
+        setSearchTagKey('');
+        loadAllDatasetTags();
+      }
     }
-  });
+  );
 
-  const { mutate: onSaveCollectionTag, isLoading: isSaveCollectionTagLoading } = useRequest({
-    mutationFn: async ({
+  const { runAsync: onSaveCollectionTag, loading: isSaveCollectionTagLoading } = useRequest2(
+    async ({
       tag,
       originCollectionIds,
       collectionIds
@@ -117,32 +103,33 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       originCollectionIds: string[];
       collectionIds: string[];
     }) => {
-      try {
-        await postAddTagsToCollections({
-          tag,
-          originCollectionIds,
-          collectionIds,
-          datasetId: datasetDetail._id
-        });
-      } catch (error) {}
+      return postAddTagsToCollections({
+        tag,
+        originCollectionIds,
+        collectionIds,
+        datasetId: datasetDetail._id
+      });
     },
+    {
+      onFinally() {
+        getData(pageNum);
+      },
+      successToast: t('common:common.Save Success'),
+      errorToast: t('common:common.Save Failed')
+    }
+  );
 
-    onSuccess() {
-      getData(1);
-    },
-    successToast: t('common:common.Save Success'),
-    errorToast: t('common:common.Save Failed')
-  });
-
+  // Tags list
   const {
-    list,
+    scrollDataList: renderTags,
+    totalData: collectionTags,
     ScrollList,
     isLoading: isRequesting,
     fetchData,
     total: tagsTotal
   } = useScrollPagination(getDatasetCollectionTags, {
     refreshDeps: [''],
-    debounceWait: 300,
+    // debounceWait: 300,
 
     itemHeight: 56,
     overscan: 10,
@@ -154,10 +141,37 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   });
 
+  // Collections list
+  const {
+    scrollDataList: collectionsList,
+    ScrollList: ScrollListCollections,
+    isLoading: collectionsListLoading
+  } = useScrollPagination(getScrollCollectionList, {
+    refreshDeps: [searchText],
+    // debounceWait: 300,
+
+    itemHeight: 37,
+    overscan: 10,
+
+    pageSize: 30,
+    defaultParams: {
+      datasetId: datasetDetail._id,
+      searchText
+    }
+  });
+
   const { data: tagUsages } = useRequest2(() => getTagUsage(datasetDetail._id), {
     manual: false,
     refreshDeps: [collections]
   });
+
+  const isLoading =
+    isRequesting ||
+    isCreateCollectionTagLoading ||
+    isDeleteCollectionTagLoading ||
+    isUpdateCollectionTagLoading ||
+    isSaveCollectionTagLoading ||
+    collectionsListLoading;
 
   return (
     <MyModal
@@ -167,14 +181,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       title={t('dataset:tag.manage')}
       w={'580px'}
       h={'600px'}
-      isLoading={
-        isRequesting ||
-        isCreateCollectionTagLoading ||
-        isDeleteCollectionTagLoading ||
-        isUpdateCollectionTagLoading ||
-        isSaveCollectionTagLoading
-      }
       closeOnOverlayClick={false}
+      isLoading={isLoading}
     >
       {currentAddTag === undefined ? (
         <>
@@ -187,7 +195,11 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
             pt={6}
           >
             <MyIcon name="menu" w={5} />
-            <Box ml={2} fontWeight={'semibold'} flex={'1 0 0'}>{`共${tagsTotal}个标签`}</Box>
+            <Box ml={2} fontWeight={'semibold'} flex={'1 0 0'}>
+              {t('dataset:tag.total_tags', {
+                total: tagsTotal
+              })}
+            </Box>
             <Button
               size={'sm'}
               leftIcon={<MyIcon name="common/addLight" w={4} />}
@@ -200,14 +212,9 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
               {t('dataset:tag.Add New')}
             </Button>
           </Flex>
-          <ScrollList
-            px={8}
-            flex={'1 0 0'}
-            fontSize={'sm'}
-            EmptyChildren={<EmptyTip text={t('dataset:dataset.no_tags')} />}
-          >
+          <Flex px={8} w={'full'}>
             {newTag !== undefined && (
-              <Flex p={2} borderBottom={'1px solid #E8EBF0'}>
+              <Flex py={3} px={2} w={'full'} borderBottom={'1px solid #E8EBF0'}>
                 <Input
                   placeholder={t('dataset:tag.Add_new_tag')}
                   value={newTag}
@@ -215,7 +222,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                   ref={tagInputRef}
                   w={'200px'}
                   onBlur={() => {
-                    if (newTag && !list.map((item) => item.data.tag).includes(newTag)) {
+                    if (newTag && !collectionTags.map((item) => item.tag).includes(newTag)) {
                       onCreateCollectionTag(newTag);
                     }
                     setNewTag(undefined);
@@ -223,7 +230,14 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                 />
               </Flex>
             )}
-            {list.map((listItem) => {
+          </Flex>
+          <ScrollList
+            px={8}
+            flex={'1 0 0'}
+            fontSize={'sm'}
+            EmptyChildren={<EmptyTip text={t('dataset:dataset.no_tags')} />}
+          >
+            {renderTags.map((listItem) => {
               const item = listItem.data;
               const tagUsage = tagUsages?.find((tagUsage) => tagUsage.tagId === item._id);
               const collections = tagUsage?.collections || [];
@@ -246,7 +260,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                     flex={'1'}
                     _hover={{ bg: 'myGray.100' }}
                     alignItems={'center'}
-                    borderRadius={'4px'}
+                    borderRadius={'xs'}
                   >
                     <Flex
                       flex={'1 0 0'}
@@ -263,7 +277,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                           bg={'#DBF3FF'}
                           color={'#0884DD'}
                           fontSize={'xs'}
-                          borderRadius={'6px'}
+                          borderRadius={'sm'}
                         >
                           {item.tag}
                         </Box>
@@ -279,7 +293,9 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                           onBlur={() => {
                             if (
                               currentEditTagContent &&
-                              !list.map((item) => item.data.tag).includes(currentEditTagContent)
+                              !collectionTags
+                                .map((item) => item.tag)
+                                .includes(currentEditTagContent)
                             ) {
                               onUpdateCollectionTag({
                                 tag: currentEditTagContent,
@@ -299,7 +315,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                       _hover={{ bg: '#1118240D' }}
                       mr={2}
                       p={1}
-                      borderRadius={'6px'}
+                      borderRadius={'sm'}
                       onClick={() => {
                         setCurrentAddTag({ ...item, collections });
                       }}
@@ -313,7 +329,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                       _hover={{ bg: '#1118240D' }}
                       mr={2}
                       p={1}
-                      borderRadius={'6px'}
+                      borderRadius={'sm'}
                       cursor={'pointer'}
                       onClick={(e) => {
                         setCurrentEditTag(item);
@@ -332,7 +348,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                           display="none"
                           _hover={{ bg: '#1118240D' }}
                           p={1}
-                          borderRadius={'6px'}
+                          borderRadius={'sm'}
                           cursor={'pointer'}
                         >
                           <MyIcon name="delete" w={4} />
@@ -351,6 +367,9 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
           currentAddTag={currentAddTag}
           setCurrentAddTag={setCurrentAddTag}
           onSaveCollectionTag={onSaveCollectionTag}
+          setSearchText={setSearchText}
+          collectionsList={collectionsList}
+          ScrollListCollections={ScrollListCollections}
         />
       )}
     </MyModal>
@@ -362,7 +381,10 @@ export default TagManageModal;
 const AddTagToCollections = ({
   currentAddTag,
   setCurrentAddTag,
-  onSaveCollectionTag
+  onSaveCollectionTag,
+  setSearchText,
+  collectionsList,
+  ScrollListCollections
 }: {
   currentAddTag: DatasetTagType & { collections: string[] };
   setCurrentAddTag: (tag: (DatasetTagType & { collections: string[] }) | undefined) => void;
@@ -375,35 +397,19 @@ const AddTagToCollections = ({
     originCollectionIds: string[];
     collectionIds: string[];
   }) => void;
+  setSearchText: (text: string) => void;
+  collectionsList: {
+    index: number;
+    data: DatasetCollectionsListItemType;
+  }[];
+  ScrollListCollections: ScrollListType;
 }) => {
   const { t } = useTranslation();
 
-  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
-  const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
-
-  useEffect(() => {
-    setSelectedCollections(currentAddTag.collections);
-  }, []);
-
-  const [searchText, setSearchText] = useState('');
-
-  const {
-    list: collectionsList,
-    ScrollList: ScrollListCollections,
-    isLoading: isCollectionLoading
-  } = useScrollPagination(getScrollCollectionList, {
-    refreshDeps: [searchText],
-    debounceWait: 300,
-
-    itemHeight: 29,
-    overscan: 10,
-
-    pageSize: 30,
-    defaultParams: {
-      datasetId: datasetDetail._id,
-      searchText
-    }
-  });
+  const [selectedCollections, setSelectedCollections] = useState<string[]>(
+    currentAddTag.collections
+  );
+  const [originCollections, setOriginCollections] = useState<string[]>(currentAddTag.collections);
 
   const formatCollections = useMemo(
     () =>
@@ -421,7 +427,7 @@ const AddTagToCollections = ({
   );
 
   return (
-    <MyBox flex={'1 0 0'} isLoading={isCollectionLoading}>
+    <>
       <Flex alignItems={'center'} pb={2} mx={8} pt={6} borderBottom={'1px solid #E8EBF0'}>
         <MyIcon
           name="common/backFill"
@@ -441,7 +447,7 @@ const AddTagToCollections = ({
               bg={'#DBF3FF'}
               color={'#0884DD'}
               fontSize={'sm'}
-              borderRadius={'6px'}
+              borderRadius={'sm'}
             >
               {currentAddTag.tag}
             </Box>
@@ -467,9 +473,10 @@ const AddTagToCollections = ({
           onClick={() => {
             onSaveCollectionTag({
               tag: currentAddTag._id,
-              originCollectionIds: currentAddTag.collections,
+              originCollectionIds: originCollections,
               collectionIds: selectedCollections
             });
+            setOriginCollections(selectedCollections);
           }}
         >
           {t('common:common.Save')}
@@ -496,7 +503,7 @@ const AddTagToCollections = ({
                   : {})
               }}
               alignItems={'center'}
-              borderRadius={'4px'}
+              borderRadius={'xs'}
               key={collection.id}
               cursor={'pointer'}
               onClick={() => {
@@ -525,13 +532,13 @@ const AddTagToCollections = ({
                 isChecked={selectedCollections.includes(collection.id)}
               />
               <MyIcon name={collection.icon as any} w={'20px'} mr={2} />
-              <Box fontSize={'14px'} borderRadius={'6px'} color={'myGray.900'}>
+              <Box fontSize={'sm'} borderRadius={'sm'} color={'myGray.900'}>
                 {collection.name}
               </Box>
             </Flex>
           );
         })}
       </ScrollListCollections>
-    </MyBox>
+    </>
   );
 };

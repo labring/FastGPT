@@ -348,10 +348,9 @@ const ConditionSelect = ({
     return getRefData({
       variable,
       nodeList,
-      chatConfig: appDetail.chatConfig,
-      t
+      chatConfig: appDetail.chatConfig
     });
-  }, [appDetail.chatConfig, nodeList, t, variable]);
+  }, [appDetail.chatConfig, nodeList, variable]);
 
   const conditionList = useMemo(() => {
     if (valueType === WorkflowIOValueTypeEnum.string) return stringConditionList;
@@ -375,15 +374,21 @@ const ConditionSelect = ({
     return [];
   }, [valueType]);
   const filterQuiredConditionList = useMemo(() => {
-    if (required) {
-      return conditionList.filter(
-        (item) =>
-          item.value !== VariableConditionEnum.isEmpty &&
-          item.value !== VariableConditionEnum.isNotEmpty
-      );
-    }
-    return conditionList;
-  }, [conditionList, required]);
+    const list = (() => {
+      if (required) {
+        return conditionList.filter(
+          (item) =>
+            item.value !== VariableConditionEnum.isEmpty &&
+            item.value !== VariableConditionEnum.isNotEmpty
+        );
+      }
+      return conditionList;
+    })();
+    return list.map((item) => ({
+      ...item,
+      label: t(item.label)
+    }));
+  }, [conditionList, required, t]);
 
   return (
     <MySelect

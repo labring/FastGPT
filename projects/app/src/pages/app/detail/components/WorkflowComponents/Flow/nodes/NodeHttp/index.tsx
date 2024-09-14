@@ -17,17 +17,25 @@ import {
   Td,
   TableContainer,
   Button,
-  useDisclosure
+  useDisclosure,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+  NumberInput
 } from '@chakra-ui/react';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  ContentTypes,
+  NodeInputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
-import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import dynamic from 'next/dynamic';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -35,52 +43,22 @@ import RenderToolInput from '../render/RenderToolInput';
 import IOTitle from '../../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
-import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
-import { useMemoizedFn } from 'ahooks';
+import { useCreation, useMemoizedFn } from 'ahooks';
 import { AppContext } from '@/pages/app/detail/components/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getEditorVariables } from '../../../utils';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 
-export const HttpHeaders = [
-  { key: 'A-IM', label: 'A-IM' },
-  { key: 'Accept', label: 'Accept' },
-  { key: 'Accept-Charset', label: 'Accept-Charset' },
-  { key: 'Accept-Encoding', label: 'Accept-Encoding' },
-  { key: 'Accept-Language', label: 'Accept-Language' },
-  { key: 'Accept-Datetime', label: 'Accept-Datetime' },
-  { key: 'Access-Control-Request-Method', label: 'Access-Control-Request-Method' },
-  { key: 'Access-Control-Request-Headers', label: 'Access-Control-Request-Headers' },
-  { key: 'Authorization', label: 'Authorization' },
-  { key: 'Cache-Control', label: 'Cache-Control' },
-  { key: 'Connection', label: 'Connection' },
-  { key: 'Content-Length', label: 'Content-Length' },
-  { key: 'Content-Type', label: 'Content-Type' },
-  { key: 'Cookie', label: 'Cookie' },
-  { key: 'Date', label: 'Date' },
-  { key: 'Expect', label: 'Expect' },
-  { key: 'Forwarded', label: 'Forwarded' },
-  { key: 'From', label: 'From' },
-  { key: 'Host', label: 'Host' },
-  { key: 'If-Match', label: 'If-Match' },
-  { key: 'If-Modified-Since', label: 'If-Modified-Since' },
-  { key: 'If-None-Match', label: 'If-None-Match' },
-  { key: 'If-Range', label: 'If-Range' },
-  { key: 'If-Unmodified-Since', label: 'If-Unmodified-Since' },
-  { key: 'Max-Forwards', label: 'Max-Forwards' },
-  { key: 'Origin', label: 'Origin' },
-  { key: 'Pragma', label: 'Pragma' },
-  { key: 'Proxy-Authorization', label: 'Proxy-Authorization' },
-  { key: 'Range', label: 'Range' },
-  { key: 'Referer', label: 'Referer' },
-  { key: 'TE', label: 'TE' },
-  { key: 'User-Agent', label: 'User-Agent' },
-  { key: 'Upgrade', label: 'Upgrade' },
-  { key: 'Via', label: 'Via' },
-  { key: 'Warning', label: 'Warning' },
-  { key: 'Dnt', label: 'Dnt' },
-  { key: 'X-Requested-With', label: 'X-Requested-With' },
-  { key: 'X-CSRF-Token', label: 'X-CSRF-Token' }
-];
+const defaultFormBody = {
+  key: NodeInputKeyEnum.httpFormBody,
+  renderTypeList: [FlowNodeInputTypeEnum.hidden],
+  valueType: WorkflowIOValueTypeEnum.any,
+  value: [],
+  label: '',
+  required: false
+};
 
 enum TabEnum {
   params = 'params',
@@ -255,7 +233,7 @@ export function RenderHttpProps({
   const { t } = useTranslation();
   const [selectedTab, setSelectedTab] = useState(TabEnum.params);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const getNodeDynamicInputs = useContextSelector(WorkflowContext, (v) => v.getNodeDynamicInputs);
+  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -263,22 +241,23 @@ export function RenderHttpProps({
   const params = inputs.find((item) => item.key === NodeInputKeyEnum.httpParams);
   const headers = inputs.find((item) => item.key === NodeInputKeyEnum.httpHeaders);
   const jsonBody = inputs.find((item) => item.key === NodeInputKeyEnum.httpJsonBody);
+  const formBody =
+    inputs.find((item) => item.key === NodeInputKeyEnum.httpFormBody) || defaultFormBody;
+  const contentType = inputs.find((item) => item.key === NodeInputKeyEnum.httpContentType);
 
   const paramsLength = params?.value?.length || 0;
   const headersLength = headers?.value?.length || 0;
 
   // get variable
-  const variables = useMemo(() => {
-    const globalVariables = getWorkflowGlobalVariables({
-      nodes: nodeList,
-      chatConfig: appDetail.chatConfig,
+  const variables = useCreation(() => {
+    return getEditorVariables({
+      nodeId,
+      nodeList,
+      edges,
+      appDetail,
       t
     });
-
-    const nodeVariables = formatEditorVariablePickerIcon(getNodeDynamicInputs(nodeId));
-
-    return [...nodeVariables, ...globalVariables];
-  }, [appDetail.chatConfig, getNodeDynamicInputs, nodeId, nodeList, t]);
+  }, [nodeList, edges, inputs, t]);
 
   const variableText = useMemo(() => {
     return variables
@@ -306,10 +285,12 @@ export function RenderHttpProps({
           <QuestionTip
             ml={1}
             label={t('common:core.module.http.Props tip', { variable: variableText })}
-          ></QuestionTip>
+          />
         </Flex>
         <LightRowTabs<TabEnum>
           width={'100%'}
+          mb={2}
+          defaultColor={'myGray.250'}
           list={[
             { label: <RenderPropsItem text="Params" num={paramsLength} />, value: TabEnum.params },
             ...(!['GET', 'DELETE'].includes(requestMethods)
@@ -318,7 +299,8 @@ export function RenderHttpProps({
                     label: (
                       <Flex alignItems={'center'}>
                         Body
-                        {jsonBody?.value && <Box ml={1}>✅</Box>}
+                        {(jsonBody?.value || !!formBody?.value?.length) &&
+                          contentType?.value !== ContentTypes.none && <Box ml={1}>✅</Box>}
                       </Flex>
                     ),
                     value: TabEnum.body
@@ -333,33 +315,31 @@ export function RenderHttpProps({
           value={selectedTab}
           onChange={setSelectedTab}
         />
-        <Box bg={'white'} borderRadius={'md'}>
+        <Box minW={'560px'}>
           {params &&
             headers &&
             jsonBody &&
             {
-              [TabEnum.params]: (
-                <RenderForm
+              [TabEnum.params]: <RenderForm nodeId={nodeId} input={params} variables={variables} />,
+              [TabEnum.body]: (
+                <RenderBody
                   nodeId={nodeId}
-                  input={params}
                   variables={variables}
-                  tabType={TabEnum.params}
+                  jsonBody={jsonBody}
+                  formBody={formBody}
+                  typeInput={contentType}
                 />
               ),
-              [TabEnum.body]: <RenderJson nodeId={nodeId} variables={variables} input={jsonBody} />,
               [TabEnum.headers]: (
-                <RenderForm
-                  nodeId={nodeId}
-                  input={headers}
-                  variables={variables}
-                  tabType={TabEnum.headers}
-                />
+                <RenderForm nodeId={nodeId} input={headers} variables={variables} />
               )
             }[selectedTab]}
         </Box>
       </Box>
     );
   }, [
+    contentType,
+    formBody,
     headersLength,
     nodeId,
     paramsLength,
@@ -372,16 +352,68 @@ export function RenderHttpProps({
 
   return Render;
 }
+const RenderHttpTimeout = ({
+  nodeId,
+  inputs
+}: {
+  nodeId: string;
+  inputs: FlowNodeInputItemType[];
+}) => {
+  const { t } = useTranslation();
+  const timeout = inputs.find((item) => item.key === NodeInputKeyEnum.httpTimeout)!;
+  const [isEditTimeout, setIsEditTimeout] = useState(false);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+
+  return (
+    <Flex alignItems={'center'} justifyContent={'space-between'}>
+      <Box fontWeight={'medium'} color={'myGray.600'}>
+        {t('common:core.module.Http timeout')}
+      </Box>
+      <Box>
+        {isEditTimeout ? (
+          <NumberInput
+            defaultValue={timeout.value}
+            min={timeout.min}
+            max={timeout.max}
+            bg={'white'}
+            onBlur={() => setIsEditTimeout(false)}
+            onChange={(e) => {
+              onChangeNode({
+                nodeId,
+                type: 'updateInput',
+                key: NodeInputKeyEnum.httpTimeout,
+                value: {
+                  ...timeout,
+                  value: Number(e)
+                }
+              });
+            }}
+          >
+            <NumberInputField autoFocus bg={'white'} px={3} borderRadius={'sm'} />
+            <NumberInputStepper>
+              <NumberIncrementStepper />
+              <NumberDecrementStepper />
+            </NumberInputStepper>
+          </NumberInput>
+        ) : (
+          <Button
+            variant={'whiteBase'}
+            color={'myGray.600'}
+            onClick={() => setIsEditTimeout(true)}
+          >{`${timeout?.value} s`}</Button>
+        )}
+      </Box>
+    </Flex>
+  );
+};
 const RenderForm = ({
   nodeId,
   input,
-  variables,
-  tabType
+  variables
 }: {
   nodeId: string;
   input: FlowNodeInputItemType;
-  variables: EditorVariablePickerType[];
-  tabType?: TabEnum;
+  variables: EditorVariableLabelPickerType[];
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -390,13 +422,6 @@ const RenderForm = ({
   const [list, setList] = useState<PropsArrType[]>(input.value || []);
   const [updateTrigger, setUpdateTrigger] = useState(false);
   const [shouldUpdateNode, setShouldUpdateNode] = useState(false);
-
-  const leftVariables = useMemo(() => {
-    return (tabType === TabEnum.headers ? HttpHeaders : variables).filter((variable) => {
-      const existVariables = list.map((item) => item.key);
-      return !existVariables.includes(variable.key);
-    });
-  }, [list, tabType, variables]);
 
   useEffect(() => {
     setList(input.value || []);
@@ -423,20 +448,16 @@ const RenderForm = ({
       setList((prevList) => {
         if (!newKey) {
           setUpdateTrigger((prev) => !prev);
-          toast({
-            status: 'warning',
-            title: t('common:core.module.http.Key cannot be empty')
-          });
-          return prevList;
-        }
-        const checkExist = prevList.find((item, i) => i !== index && item.key == newKey);
-        if (checkExist) {
+          // toast({
+          //   status: 'warning',
+          //   title: t('common:core.module.http.Key cannot be empty')
+          // });
+        } else if (prevList.find((item, i) => i !== index && item.key == newKey)) {
           setUpdateTrigger((prev) => !prev);
           toast({
             status: 'warning',
             title: t('common:core.module.http.Key already exists')
           });
-          return prevList;
         }
         return prevList.map((item, i) => (i === index ? { ...item, key: newKey } : item));
       });
@@ -445,14 +466,15 @@ const RenderForm = ({
     [t, toast]
   );
 
+  // Add new params/headers key
   const handleAddNewProps = useCallback(
-    (key: string, value: string = '') => {
+    (value: string) => {
       setList((prevList) => {
-        if (!key) {
+        if (!value) {
           return prevList;
         }
 
-        const checkExist = prevList.find((item) => item.key === key);
+        const checkExist = prevList.find((item) => item.key === value);
         if (checkExist) {
           setUpdateTrigger((prev) => !prev);
           toast({
@@ -461,7 +483,7 @@ const RenderForm = ({
           });
           return prevList;
         }
-        return [...prevList, { key, type: 'string', value }];
+        return [...prevList, { key: value, type: 'string', value: '' }];
       });
 
       setShouldUpdateNode(true);
@@ -471,7 +493,13 @@ const RenderForm = ({
 
   const Render = useMemo(() => {
     return (
-      <Box mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'} borderBottom={'none'}>
+      <Box
+        borderRadius={'md'}
+        overflow={'hidden'}
+        borderWidth={'1px'}
+        borderBottom={'none'}
+        bg={'white'}
+      >
         <TableContainer overflowY={'visible'} overflowX={'unset'}>
           <Table>
             <Thead>
@@ -485,31 +513,33 @@ const RenderForm = ({
               </Tr>
             </Thead>
             <Tbody>
-              {list.map((item, index) => (
+              {[...list, { key: '', value: '', label: '' }].map((item, index) => (
                 <Tr key={`${input.key}${index}`}>
-                  <Td p={0} w={'150px'}>
+                  <Td p={0} w={'50%'} borderRight={'1px solid'} borderColor={'myGray.200'}>
                     <HttpInput
-                      hasVariablePlugin={false}
-                      hasDropDownPlugin={tabType === TabEnum.headers}
-                      setDropdownValue={(value) => {
-                        handleKeyChange(index, value);
-                        setUpdateTrigger((prev) => !prev);
-                      }}
-                      placeholder={t('common:core.module.http.Props name')}
+                      placeholder={t('common:textarea_variable_picker_tip')}
                       value={item.key}
-                      variables={leftVariables}
+                      variableLabels={variables}
+                      variables={variables}
                       onBlur={(val) => {
                         handleKeyChange(index, val);
+
+                        // Last item blur, add the next item.
+                        if (index === list.length && val) {
+                          handleAddNewProps(val);
+                          setUpdateTrigger((prev) => !prev);
+                        }
                       }}
                       updateTrigger={updateTrigger}
                     />
                   </Td>
-                  <Td p={0}>
+                  <Td p={0} w={'50%'}>
                     <Box display={'flex'} alignItems={'center'}>
                       <HttpInput
-                        placeholder={t('common:core.module.http.Props value')}
+                        placeholder={t('common:textarea_variable_picker_tip')}
                         value={item.value}
                         variables={variables}
+                        variableLabels={variables}
                         onBlur={(val) => {
                           setList((prevList) =>
                             prevList.map((item, i) =>
@@ -519,107 +549,167 @@ const RenderForm = ({
                           setShouldUpdateNode(true);
                         }}
                       />
-                      <MyIcon
-                        name={'delete'}
-                        cursor={'pointer'}
-                        _hover={{ color: 'red.600' }}
-                        w={'14px'}
-                        onClick={() => {
-                          setList((prevlist) => prevlist.filter((val) => val.key !== item.key));
-                          setShouldUpdateNode(true);
-                        }}
-                      />
+                      {index !== list.length && (
+                        <MyIcon
+                          name={'delete'}
+                          cursor={'pointer'}
+                          _hover={{ color: 'red.600' }}
+                          w={'14px'}
+                          onClick={() => {
+                            setList((prevlist) => prevlist.filter((val) => val.key !== item.key));
+                            setShouldUpdateNode(true);
+                          }}
+                        />
+                      )}
                     </Box>
                   </Td>
                 </Tr>
               ))}
-              <Tr>
-                <Td p={0} w={'150px'}>
-                  <HttpInput
-                    hasVariablePlugin={false}
-                    hasDropDownPlugin={tabType === TabEnum.headers}
-                    setDropdownValue={(val) => {
-                      handleAddNewProps(val);
-                      setUpdateTrigger((prev) => !prev);
-                    }}
-                    placeholder={t('common:core.module.http.Add props')}
-                    value={''}
-                    variables={leftVariables}
-                    updateTrigger={updateTrigger}
-                    onBlur={(val) => {
-                      handleAddNewProps(val);
-                      setUpdateTrigger((prev) => !prev);
-                    }}
-                  />
-                </Td>
-                <Td p={0}>
-                  <Box display={'flex'} alignItems={'center'}>
-                    <HttpInput />
-                  </Box>
-                </Td>
-              </Tr>
             </Tbody>
           </Table>
         </TableContainer>
       </Box>
     );
-  }, [
-    handleAddNewProps,
-    handleKeyChange,
-    input.key,
-    leftVariables,
-    list,
-    t,
-    tabType,
-    updateTrigger,
-    variables
-  ]);
+  }, [handleAddNewProps, handleKeyChange, input.key, list, t, updateTrigger, variables]);
 
   return Render;
 };
-const RenderJson = ({
+const RenderBody = ({
   nodeId,
-  input,
+  jsonBody,
+  formBody,
+  typeInput,
   variables
 }: {
   nodeId: string;
-  input: FlowNodeInputItemType;
-  variables: EditorVariablePickerType[];
+  jsonBody: FlowNodeInputItemType;
+  formBody: FlowNodeInputItemType;
+  typeInput: FlowNodeInputItemType | undefined;
+  variables: EditorVariableLabelPickerType[];
 }) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const [_, startSts] = useTransition();
 
+  useEffect(() => {
+    if (typeInput === undefined) {
+      onChangeNode({
+        nodeId,
+        type: 'addInput',
+        value: {
+          key: NodeInputKeyEnum.httpContentType,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: ContentTypes.json,
+          label: '',
+          required: false
+        }
+      });
+    }
+  }, [nodeId, onChangeNode, typeInput]);
+
   const Render = useMemo(() => {
     return (
-      <Box mt={1}>
-        <JSONEditor
-          bg={'white'}
-          defaultHeight={200}
-          resize
-          value={input.value}
-          placeholder={t('common:core.module.template.http body placeholder')}
-          onChange={(e) => {
-            startSts(() => {
-              onChangeNode({
-                nodeId,
-                type: 'updateInput',
-                key: input.key,
-                value: {
-                  ...input,
-                  value: e
-                }
+      <Box>
+        <Flex bg={'myGray.50'}>
+          {Object.values(ContentTypes).map((item) => (
+            <Box
+              key={item}
+              as={'span'}
+              px={3}
+              py={1.5}
+              mb={2}
+              borderRadius={'6px'}
+              border={'1px solid'}
+              {...(typeInput?.value === item
+                ? {
+                    bg: 'white',
+                    borderColor: 'myGray.200',
+                    color: 'primary.700'
+                  }
+                : {
+                    bg: 'myGray.50',
+                    borderColor: 'transparent',
+                    color: 'myGray.500'
+                  })}
+              _hover={{ bg: 'white', borderColor: 'myGray.200', color: 'primary.700' }}
+              onClick={() => {
+                onChangeNode({
+                  nodeId,
+                  type: 'updateInput',
+                  key: NodeInputKeyEnum.httpContentType,
+                  value: {
+                    key: NodeInputKeyEnum.httpContentType,
+                    renderTypeList: [FlowNodeInputTypeEnum.hidden],
+                    valueType: WorkflowIOValueTypeEnum.string,
+                    value: item,
+                    label: '',
+                    required: false
+                  }
+                });
+              }}
+              cursor={'pointer'}
+              whiteSpace={'nowrap'}
+            >
+              {item}
+            </Box>
+          ))}
+        </Flex>
+        {(typeInput?.value === ContentTypes.formData ||
+          typeInput?.value === ContentTypes.xWwwFormUrlencoded) && (
+          <RenderForm nodeId={nodeId} input={formBody} variables={variables} />
+        )}
+        {typeInput?.value === ContentTypes.json && (
+          <JSONEditor
+            bg={'white'}
+            defaultHeight={200}
+            resize
+            value={jsonBody.value}
+            placeholder={t('common:core.module.template.http body placeholder')}
+            onChange={(e) => {
+              startSts(() => {
+                onChangeNode({
+                  nodeId,
+                  type: 'updateInput',
+                  key: jsonBody.key,
+                  value: {
+                    ...jsonBody,
+                    value: e
+                  }
+                });
               });
-            });
-          }}
-          variables={variables}
-        />
+            }}
+            variables={variables}
+          />
+        )}
+        {(typeInput?.value === ContentTypes.xml || typeInput?.value === ContentTypes.raw) && (
+          <PromptEditor
+            value={jsonBody.value}
+            placeholder={t('common:textarea_variable_picker_tip')}
+            onChange={(e) => {
+              startSts(() => {
+                onChangeNode({
+                  nodeId,
+                  type: 'updateInput',
+                  key: jsonBody.key,
+                  value: {
+                    ...jsonBody,
+                    value: e
+                  }
+                });
+              });
+            }}
+            showOpenModal={false}
+            variableLabels={variables}
+            h={200}
+          />
+        )}
       </Box>
     );
-  }, [input, nodeId, onChangeNode, t, variables]);
-
+  }, [typeInput?.value, t, nodeId, formBody, variables, jsonBody, onChangeNode]);
   return Render;
 };
+
 const RenderPropsItem = ({ text, num }: { text: string; num: number }) => {
   return (
     <Flex alignItems={'center'}>
@@ -643,13 +733,15 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     <RenderHttpMethodAndUrl nodeId={nodeId} inputs={inputs} />
   ));
   const Headers = useMemoizedFn(() => <RenderHttpProps nodeId={nodeId} inputs={inputs} />);
+  const HttpTimeout = useMemoizedFn(() => <RenderHttpTimeout nodeId={nodeId} inputs={inputs} />);
 
   const CustomComponents = useMemo(() => {
     return {
       [NodeInputKeyEnum.httpMethod]: HttpMethodAndUrl,
-      [NodeInputKeyEnum.httpHeaders]: Headers
+      [NodeInputKeyEnum.httpHeaders]: Headers,
+      [NodeInputKeyEnum.httpTimeout]: HttpTimeout
     };
-  }, [Headers, HttpMethodAndUrl]);
+  }, [Headers, HttpMethodAndUrl, HttpTimeout]);
 
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>

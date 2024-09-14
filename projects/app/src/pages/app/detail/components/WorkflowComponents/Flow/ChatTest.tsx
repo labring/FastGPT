@@ -93,15 +93,16 @@ const ChatTest = ({
           </Flex>
         ) : (
           <Flex
-            py={4}
+            py={2.5}
             px={5}
             whiteSpace={'nowrap'}
-            bg={isPlugin ? 'myGray.25' : ''}
-            borderBottom={isPlugin ? '1px solid #F4F4F7' : ''}
+            bg={'myGray.25'}
+            borderBottom={'1px solid #F4F4F7'}
           >
-            <Box fontSize={'lg'} fontWeight={'bold'} flex={1}>
-              {t('common:core.chat.Debug test')}
-            </Box>
+            <Flex fontSize={'16px'} fontWeight={'bold'} flex={1} alignItems={'center'}>
+              <MyIcon name={'common/paused'} w={'14px'} mr={2.5} />
+              {t('common:core.chat.Run test')}
+            </Flex>
             <MyTooltip label={t('common:core.chat.Restart')}>
               <IconButton
                 className="chat"
@@ -121,6 +122,7 @@ const ChatTest = ({
                 size={'smSquare'}
                 aria-label={''}
                 onClick={onClose}
+                bg={'none'}
               />
             </MyTooltip>
           </Flex>

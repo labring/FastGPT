@@ -13,10 +13,7 @@ import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import {
-  removePluginInputVariables,
-  updatePluginInputByVariables
-} from '@fastgpt/global/core/workflow/utils';
+import { updatePluginInputByVariables } from '@fastgpt/global/core/workflow/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
@@ -28,6 +25,9 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -58,9 +58,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     chatConfig
   } = req.body as Props;
   try {
+    if (!Array.isArray(nodes)) {
+      throw new Error('Nodes is not array');
+    }
+    if (!Array.isArray(edges)) {
+      throw new Error('Edges is not array');
+    }
     const chatMessages = GPTMessages2Chats(messages);
-
     const userInput = chatMessages.pop()?.value as UserChatItemValueItemType[] | undefined;
+
+    // console.log(JSON.stringify(chatMessages, null, 2), '====', chatMessages.length);
 
     /* user auth */
     const [{ app }, { teamId, tmbId }] = await Promise.all([
@@ -75,19 +82,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const isPlugin = app.type === AppTypeEnum.plugin;
 
-    if (!Array.isArray(nodes)) {
-      throw new Error('Nodes is not array');
-    }
-    if (!Array.isArray(edges)) {
-      throw new Error('Edges is not array');
-    }
-
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, chatMessages));
 
     // Plugin need to replace inputs
     if (isPlugin) {
       runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
-      variables = removePluginInputVariables(variables, runtimeNodes);
+      variables = {};
     } else {
       if (!userInput) {
         throw new Error('Params Error');
@@ -95,16 +95,25 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     runtimeNodes = rewriteNodeOutputByHistories(chatMessages, runtimeNodes);
+    const workflowResponseWrite = getWorkflowResponseWrite({
+      res,
+      detail: true,
+      streamResponse: true,
+      id: getNanoid(24)
+    });
 
     /* start process */
     const { flowResponses, flowUsages } = await dispatchWorkFlow({
       res,
       requestOrigin: req.headers.origin,
       mode: 'test',
-      teamId,
-      tmbId,
+      runningAppInfo: {
+        id: appId,
+        teamId,
+        tmbId
+      },
+      uid: tmbId,
       user,
-      app,
       runtimeNodes,
       runtimeEdges: initWorkflowEdgeStatus(edges, chatMessages),
       variables,
@@ -112,8 +121,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       chatConfig,
       histories: chatMessages,
       stream: true,
-      detail: true,
-      maxRunTimes: 200
+      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+      workflowStreamResponse: workflowResponseWrite
     });
 
     responseWrite({

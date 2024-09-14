@@ -14,8 +14,12 @@ type FileType = {
   size: number;
 };
 
+/* 
+  maxSize: File max size (MB)
+*/
 export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
   maxSize *= 1024 * 1024;
+
   class UploadModel {
     uploader = multer({
       limits: {

@@ -19,10 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getPromotionInitData, getPromotionRecords } from '@/web/support/activity/promotion/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import type { PromotionRecordType } from '@/global/support/api/userRes.d';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import dayjs from 'dayjs';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -42,7 +39,7 @@ const Promotion = () => {
     total,
     pageSize,
     Pagination
-  } = usePagination<PromotionRecordType>({
+  } = usePagination({
     api: getPromotionRecords,
     pageSize: 20
   });
@@ -116,7 +113,7 @@ const Promotion = () => {
                   <Td>
                     {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                   </Td>
-                  <Td>{t(`user.promotion.${item.type}` as any)}</Td>
+                  <Td>{t(`user:promotion.${item.type}` as any)}</Td>
                   <Td>{item.amount}</Td>
                 </Tr>
               ))}

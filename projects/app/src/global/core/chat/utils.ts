@@ -18,6 +18,8 @@ export function transformPreviewHistories(histories: ChatItemType[]) {
 export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   if (historyItem.obj !== ChatRoleEnum.AI) return historyItem;
   if (historyItem.totalQuoteList !== undefined) return historyItem;
+
+  // Flat children
   const flatResData: ChatHistoryItemResType[] =
     historyItem.responseData
       ?.map((item) => {
@@ -27,6 +29,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
         return item;
       })
       .flat() || [];
+
   return {
     ...historyItem,
     llmModuleAccount: flatResData.filter(isLLMNode).length,
@@ -36,7 +39,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
       .flat()
       .filter(Boolean) as SearchDataResponseItemType[],
     totalRunningTime: Number(
-      flatResData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
+      historyItem.responseData?.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
     ),
     historyPreviewLength: flatResData.find(isLLMNode)?.historyPreview?.length
   };

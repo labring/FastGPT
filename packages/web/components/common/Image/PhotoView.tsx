@@ -5,7 +5,7 @@ import { Box, Image, ImageProps } from '@chakra-ui/react';
 import { useSystem } from '../../../hooks/useSystem';
 import Loading from '../MyLoading';
 
-const MyPhotoView = (props: ImageProps) => {
+const MyPhotoView = ({ ...props }: ImageProps) => {
   const { isPc } = useSystem();
   return (
     <PhotoProvider

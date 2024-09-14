@@ -27,10 +27,7 @@ async function handler(req: NextApiRequest): Promise<DatasetSimpleItemType[]> {
 
   const [myDatasets, rpList] = await Promise.all([
     MongoDataset.find({
-      teamId,
-      type: {
-        $ne: DatasetTypeEnum.folder
-      }
+      teamId
     })
       .sort({
         updateTime: -1
@@ -45,9 +42,29 @@ async function handler(req: NextApiRequest): Promise<DatasetSimpleItemType[]> {
 
   const filterDatasets = myDatasets
     .map((dataset) => {
-      const perVal = rpList.find(
-        (item) => String(item.resourceId) === String(dataset._id)
-      )?.permission;
+      const perVal = (() => {
+        const perVal = rpList.find(
+          (item) => String(item.resourceId) === String(dataset._id)
+        )?.permission;
+        if (perVal) {
+          return perVal;
+        }
+
+        if (dataset.inheritPermission && dataset.parentId) {
+          const parentDataset = myDatasets.find(
+            (item) => String(item._id) === String(dataset.parentId)
+          );
+          if (parentDataset) {
+            const parentPerVal =
+              rpList.find((item) => String(item.resourceId) === String(parentDataset._id))
+                ?.permission ?? parentDataset.defaultPermission;
+            if (parentPerVal) {
+              return parentPerVal;
+            }
+          }
+        }
+      })();
+
       const Per = new DatasetPermission({
         per: perVal ?? dataset.defaultPermission,
         isOwner: String(dataset.tmbId) === tmbId || tmbPer.isOwner

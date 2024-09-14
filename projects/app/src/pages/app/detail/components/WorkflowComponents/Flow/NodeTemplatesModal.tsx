@@ -92,7 +92,6 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const { data: basicNodes } = useRequest2(
     async () => {
       if (templateType === TemplateTypeEnum.basic) {
-        console.log(1111);
         return basicNodeTemplates
           .filter((item) => {
             // unique node filter
@@ -124,7 +123,8 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     },
     {
       manual: false,
-      refreshDeps: [members, basicNodeTemplates, nodeList, hasToolNode, templateType]
+      throttleWait: 100,
+      refreshDeps: [basicNodeTemplates, nodeList, hasToolNode, templateType]
     }
   );
   const {
@@ -142,16 +142,15 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
       searchVal?: string;
     }) => {
       if (type === TemplateTypeEnum.teamPlugin) {
-        const plugins = await getTeamPlugTemplates({
+        const teamApps = await getTeamPlugTemplates({
           parentId,
-          searchKey: searchVal,
-          type: [AppTypeEnum.folder, AppTypeEnum.httpPlugin, AppTypeEnum.plugin]
+          searchKey: searchVal
         }).then((res) => res.filter((app) => app.id !== appId));
 
-        return plugins.map<NodeTemplateListItemType>((plugin) => {
-          const member = members.find((member) => member.tmbId === plugin.tmbId);
+        return teamApps.map<NodeTemplateListItemType>((app) => {
+          const member = members.find((member) => member.tmbId === app.tmbId);
           return {
-            ...plugin,
+            ...app,
             author: member?.memberName,
             authorAvatar: member?.avatar
           };
@@ -169,7 +168,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         setParentId(parentId);
         setTemplateType(type);
       },
-      refreshDeps: [searchKey, templateType]
+      refreshDeps: [members, searchKey, templateType]
     }
   );
 
@@ -266,7 +265,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                     },
                     {
                       icon: 'core/modules/teamPlugin',
-                      label: t('common:core.module.template.Team Plugin'),
+                      label: t('common:core.module.template.Team app'),
                       value: TemplateTypeEnum.teamPlugin
                     }
                   ]}
@@ -302,7 +301,11 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                   <Input
                     h={'full'}
                     bg={'myGray.50'}
-                    placeholder={t('common:plugin.Search plugin')}
+                    placeholder={
+                      templateType === TemplateTypeEnum.teamPlugin
+                        ? t('common:plugin.Search_app')
+                        : t('common:plugin.Search plugin')
+                    }
                     onChange={(e) => setSearchKey(e.target.value)}
                   />
                 </InputGroup>
@@ -389,13 +392,12 @@ const RenderList = React.memo(function RenderList({
   setParentId
 }: RenderListProps) {
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, setLoading } = useSystemStore();
 
   const { isPc } = useSystem();
   const isSystemPlugin = type === TemplateTypeEnum.systemPlugin;
 
   const { x, y, zoom } = useViewport();
-  const { setLoading } = useSystemStore();
   const { toast } = useToast();
   const reactFlowWrapper = useContextSelector(WorkflowContext, (v) => v.reactFlowWrapper);
   const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
@@ -425,7 +427,10 @@ const RenderList = React.memo(function RenderList({
       const templateNode = await (async () => {
         try {
           // get plugin preview module
-          if (template.flowNodeType === FlowNodeTypeEnum.pluginModule) {
+          if (
+            template.flowNodeType === FlowNodeTypeEnum.pluginModule ||
+            template.flowNodeType === FlowNodeTypeEnum.appModule
+          ) {
             setLoading(true);
             const res = await getPreviewPluginNode({ appId: template.id });
 
@@ -461,21 +466,36 @@ const RenderList = React.memo(function RenderList({
             flowNodeType: templateNode.flowNodeType,
             pluginId: templateNode.pluginId
           }),
-          intro: t(templateNode.intro as any)
+          intro: t(templateNode.intro as any),
+          inputs: templateNode.inputs.map((input) => ({
+            ...input,
+            valueDesc: t(input.valueDesc as any),
+            label: t(input.label as any),
+            description: t(input.description as any),
+            debugLabel: t(input.debugLabel as any),
+            toolDescription: t(input.toolDescription as any)
+          })),
+          outputs: templateNode.outputs.map((output) => ({
+            ...output,
+            valueDesc: t(output.valueDesc as any),
+            label: t(output.label as any),
+            description: t(output.description as any)
+          }))
         },
         position: { x: mouseX, y: mouseY - 20 },
         selected: true
       });
 
-      setNodes((state) =>
-        state
+      setNodes((state) => {
+        const newState = state
           .map((node) => ({
             ...node,
             selected: false
           }))
           // @ts-ignore
-          .concat(node)
-      );
+          .concat(node);
+        return newState;
+      });
     },
     [computedNewNodeName, reactFlowWrapper, setLoading, setNodes, t, toast, x, y, zoom]
   );
@@ -585,7 +605,7 @@ const RenderList = React.memo(function RenderList({
                         src={template.avatar}
                         w={gridStyle.avatarSize}
                         objectFit={'contain'}
-                        borderRadius={'md'}
+                        borderRadius={'sm'}
                       />
                       <Box ml={3} flex={'1'}>
                         <Box color={'myGray.900'} fontWeight={'500'} fontSize={'sm'} flex={'1 0 0'}>

@@ -8,4 +8,7 @@ export type AppVersionSchemaType = {
   nodes: AppSchema['modules'];
   edges: AppSchema['edges'];
   chatConfig: AppSchema['chatConfig'];
+  isPublish?: boolean;
+  versionName: string;
+  tmbId: string;
 };

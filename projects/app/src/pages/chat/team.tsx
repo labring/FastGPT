@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
-import { delChatRecordById, getChatHistories, getTeamChatInfo } from '@/web/core/chat/api';
+import { delChatRecordById, getTeamChatInfo } from '@/web/core/chat/api';
 import { useRouter } from 'next/router';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -11,7 +11,6 @@ import ChatHistorySlider from './components/ChatHistorySlider';
 import ChatHeader from './components/ChatHeader';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
-import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
@@ -58,6 +57,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
 
   const {
+    onUpdateHistoryTitle,
     loadHistories,
     onUpdateHistory,
     onClearHistories,
@@ -114,7 +114,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       if (completionChatId !== chatId) {
         onChangeChatId(completionChatId, true);
       }
-      loadHistories();
+      onUpdateHistoryTitle({ chatId: completionChatId, newTitle });
 
       // update chat window
       setChatData((state) => ({
@@ -125,15 +125,15 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       return { responseText, responseData, isNewChat: forbidLoadChat.current };
     },
     [
-      chatData.app.type,
       chatId,
       customVariables,
       appId,
       teamId,
       teamToken,
+      chatData.app.type,
+      onUpdateHistoryTitle,
       forbidLoadChat,
-      onChangeChatId,
-      loadHistories
+      onChangeChatId
     ]
   );
 
@@ -302,19 +302,6 @@ const Render = (props: Props) => {
     }
   );
 
-  const { data: histories = [], runAsync: loadHistories } = useRequest2(
-    async () => {
-      if (teamId && appId && teamToken) {
-        return getChatHistories({ teamId, appId, teamToken: teamToken });
-      }
-      return [];
-    },
-    {
-      manual: false,
-      refreshDeps: [appId, teamId, teamToken]
-    }
-  );
-
   // 初始化聊天框
   useEffect(() => {
     (async () => {
@@ -330,8 +317,12 @@ const Render = (props: Props) => {
     })();
   }, [appId, loadMyApps, myApps, router, t, toast]);
 
+  const contextParams = useMemo(() => {
+    return { teamId, appId, teamToken };
+  }, [teamId, appId, teamToken]);
+
   return (
-    <ChatContextProvider histories={histories} loadHistories={loadHistories}>
+    <ChatContextProvider params={contextParams}>
       <Chat {...props} myApps={myApps} />
     </ChatContextProvider>
   );

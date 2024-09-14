@@ -4,7 +4,10 @@ import {
   ChatItemValueItemType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -19,5 +22,18 @@ export type DispatchFlowResponse = {
   };
   [DispatchNodeResponseKeyEnum.toolResponses]: ToolRunResponseItemType;
   [DispatchNodeResponseKeyEnum.assistantResponses]: AIChatItemValueItemType[];
+  [DispatchNodeResponseKeyEnum.runTimes]: number;
   newVariables: Record<string, string>;
 };
+
+export type WorkflowResponseType = ({
+  write,
+  event,
+  data,
+  stream
+}: {
+  write?: ((text: string) => void) | undefined;
+  event: SseResponseEventEnum;
+  data: Record<string, any>;
+  stream?: boolean | undefined;
+}) => void;

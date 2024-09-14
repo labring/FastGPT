@@ -6,13 +6,12 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { AppChatConfigType, AppDetailType } from '@fastgpt/global/core/app/type';
 import { AppUpdateParams, PostPublishAppProps } from '@/global/core/app/api';
-import { postPublishApp } from '@/web/core/app/api/version';
+import { postPublishApp, getAppLatestVersion } from '@/web/core/app/api/version';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import dynamic from 'next/dynamic';
 import { useDisclosure } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useI18n } from '@/web/context/I18n';
-import { getAppLatestVersion } from '@/web/core/app/api/version';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 
@@ -36,7 +35,7 @@ type AppContextType = {
   onOpenInfoEdit: () => void;
   onOpenTeamTagModal: () => void;
   onDelApp: () => void;
-  onPublish: (data: PostPublishAppProps) => Promise<void>;
+  onSaveApp: (data: PostPublishAppProps) => Promise<void>;
   appLatestVersion:
     | {
         nodes: StoreNodeItemType[];
@@ -71,7 +70,7 @@ export const AppContext = createContext<AppContextType>({
   onDelApp: function (): void {
     throw new Error('Function not implemented.');
   },
-  onPublish: function (data: PostPublishAppProps): Promise<void> {
+  onSaveApp: function (data: PostPublishAppProps): Promise<void> {
     throw new Error('Function not implemented.');
   },
   appLatestVersion: undefined,
@@ -85,7 +84,6 @@ export const AppContext = createContext<AppContextType>({
 
 const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
-  const { appT } = useI18n();
   const router = useRouter();
   const { appId, currentTab = TabEnum.appEdit } = router.query as {
     appId: string;
@@ -152,23 +150,18 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }));
   });
 
-  const { runAsync: onPublish } = useRequest2(
-    async (data: PostPublishAppProps) => {
-      await postPublishApp(appId, data);
-      setAppDetail((state) => ({
-        ...state,
-        ...data,
-        modules: data.nodes || state.modules
-      }));
-      reloadAppLatestVersion();
-    },
-    {
-      successToast: appT('publish_success')
-    }
-  );
+  const { runAsync: onSaveApp } = useRequest2(async (data: PostPublishAppProps) => {
+    await postPublishApp(appId, data);
+    setAppDetail((state) => ({
+      ...state,
+      ...data,
+      modules: data.nodes || state.modules
+    }));
+    reloadAppLatestVersion();
+  });
 
   const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
-    content: appT('confirm_del_app_tip'),
+    content: t('app:confirm_del_app_tip'),
     type: 'delete'
   });
   const { runAsync: deleteApp } = useRequest2(
@@ -197,7 +190,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     onOpenInfoEdit,
     onOpenTeamTagModal,
     onDelApp,
-    onPublish,
+    onSaveApp,
     appLatestVersion,
     reloadAppLatestVersion,
     reloadApp

@@ -17,6 +17,7 @@ interface Props extends PopoverContentProps {
   hasArrow?: boolean;
   children: (e: { onClose: () => void }) => React.ReactNode;
   onCloseFunc?: () => void;
+  onOpenFunc?: () => void;
   closeOnBlur?: boolean;
 }
 
@@ -27,6 +28,7 @@ const MyPopover = ({
   trigger,
   hasArrow = true,
   children,
+  onOpenFunc,
   onCloseFunc,
   closeOnBlur = false,
   ...props
@@ -39,7 +41,10 @@ const MyPopover = ({
     <Popover
       isOpen={isOpen}
       initialFocusRef={firstFieldRef}
-      onOpen={onOpen}
+      onOpen={() => {
+        onOpen();
+        onOpenFunc && onOpenFunc();
+      }}
       onClose={() => {
         onClose();
         onCloseFunc && onCloseFunc();

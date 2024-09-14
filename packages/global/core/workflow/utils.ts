@@ -1,10 +1,16 @@
-import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from './node/constant';
+import {
+  chatHistoryValueDesc,
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from './node/constant';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   VariableInputEnum,
   variableMap,
-  VARIABLE_NODE_ID
+  VARIABLE_NODE_ID,
+  NodeOutputKeyEnum
 } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType, ReferenceValueProps } from './type/io.d';
 import { StoreNodeItemType } from './type/node';
@@ -25,6 +31,8 @@ import {
 import { IfElseResultEnum } from './template/system/ifElse/constant';
 import { RuntimeNodeItemType } from './runtime/type';
 import { getReferenceVariableValue } from './runtime/utils';
+import { Input_Template_History, Input_Template_UserChatInput } from './template/input';
+import { i18nT } from '../../../web/i18n/utils';
 
 export const getHandleId = (nodeId: string, type: 'source' | 'target', key: string) => {
   return `${nodeId}-${type}-${key}`;
@@ -72,6 +80,10 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.chatInputGuide)?.value ||
     defaultChatInputGuideConfig;
 
+  // plugin
+  const instruction: string =
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.instruction)?.value || '';
+
   return {
     welcomeText,
     variables,
@@ -79,7 +91,8 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
     ttsConfig,
     whisperConfig,
     scheduledTriggerConfig,
-    chatInputGuide
+    chatInputGuide,
+    instruction
   };
 };
 
@@ -104,7 +117,8 @@ export const getAppChatConfig = ({
     ttsConfig,
     whisperConfig,
     scheduledTriggerConfig,
-    chatInputGuide
+    chatInputGuide,
+    instruction
   } = splitGuideModule(systemConfigNode);
 
   const config: AppChatConfigType = {
@@ -113,6 +127,7 @@ export const getAppChatConfig = ({
     whisperConfig,
     scheduledTriggerConfig,
     chatInputGuide,
+    instruction,
     ...chatConfig,
     variables: storeVariables ?? chatConfig?.variables ?? variables,
     welcomeText: storeWelcomeText ?? chatConfig?.welcomeText ?? welcomeText
@@ -147,9 +162,11 @@ export const getModuleInputUiField = (input: FlowNodeInputItemType) => {
   return {};
 };
 
-export const pluginData2FlowNodeIO = (
-  nodes: StoreNodeItemType[]
-): {
+export const pluginData2FlowNodeIO = ({
+  nodes
+}: {
+  nodes: StoreNodeItemType[];
+}): {
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
 } => {
@@ -157,14 +174,17 @@ export const pluginData2FlowNodeIO = (
   const pluginOutput = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginOutput);
 
   return {
-    inputs: pluginInput
-      ? pluginInput.inputs.map((item) => ({
-          ...item,
-          ...getModuleInputUiField(item),
-          value: getOrInitModuleInputValue(item),
-          canEdit: false
-        }))
-      : [],
+    inputs:
+      pluginInput?.inputs.map((item) => ({
+        ...item,
+        ...getModuleInputUiField(item),
+        value: getOrInitModuleInputValue(item),
+        canEdit: false,
+        renderTypeList:
+          item.renderTypeList[0] === FlowNodeInputTypeEnum.customVariable
+            ? [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input]
+            : item.renderTypeList
+      })) || [],
     outputs: pluginOutput
       ? [
           ...pluginOutput.inputs.map((item) => ({
@@ -177,6 +197,80 @@ export const pluginData2FlowNodeIO = (
           }))
         ]
       : []
+  };
+};
+
+export const appData2FlowNodeIO = ({
+  chatConfig
+}: {
+  chatConfig?: AppChatConfigType;
+}): {
+  inputs: FlowNodeInputItemType[];
+  outputs: FlowNodeOutputItemType[];
+} => {
+  const variableInput = !chatConfig?.variables
+    ? []
+    : chatConfig.variables.map((item) => {
+        const renderTypeMap = {
+          [VariableInputEnum.input]: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          [VariableInputEnum.textarea]: [
+            FlowNodeInputTypeEnum.textarea,
+            FlowNodeInputTypeEnum.reference
+          ],
+          [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
+          [VariableInputEnum.custom]: [
+            FlowNodeInputTypeEnum.input,
+            FlowNodeInputTypeEnum.reference
+          ],
+          default: [FlowNodeInputTypeEnum.reference]
+        };
+
+        return {
+          key: item.key,
+          renderTypeList: renderTypeMap[item.type] || renderTypeMap.default,
+          label: item.label,
+          debugLabel: item.label,
+          description: '',
+          valueType: WorkflowIOValueTypeEnum.any,
+          required: item.required,
+          list: item.enums.map((enumItem) => ({
+            label: enumItem.value,
+            value: enumItem.value
+          }))
+        };
+      });
+
+  // const showFileLink =
+  //   chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg;
+
+  return {
+    inputs: [
+      Input_Template_History,
+      Input_Template_UserChatInput,
+      // ...(showFileLink ? [Input_Template_File_Link] : []),
+      ...variableInput
+    ],
+    outputs: [
+      {
+        id: NodeOutputKeyEnum.history,
+        key: NodeOutputKeyEnum.history,
+        required: true,
+        label: i18nT('common:core.module.output.label.New context'),
+        description: i18nT('common:core.module.output.description.New context'),
+        valueType: WorkflowIOValueTypeEnum.chatHistory,
+        valueDesc: chatHistoryValueDesc,
+        type: FlowNodeOutputTypeEnum.static
+      },
+      {
+        id: NodeOutputKeyEnum.answerText,
+        key: NodeOutputKeyEnum.answerText,
+        required: false,
+        label: i18nT('common:core.module.output.label.Ai response content'),
+        description: i18nT('common:core.module.output.description.Ai response content'),
+        valueType: WorkflowIOValueTypeEnum.string,
+        type: FlowNodeOutputTypeEnum.static
+      }
+    ]
   };
 };
 
@@ -232,25 +326,8 @@ export const updatePluginInputByVariables = (
   );
 };
 
-export const removePluginInputVariables = (
-  variables: Record<string, any>,
-  nodes: RuntimeNodeItemType[]
-) => {
-  const pluginInputNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput);
-
-  if (!pluginInputNode) return variables;
-  return Object.keys(variables).reduce(
-    (acc, key) => {
-      if (!pluginInputNode.inputs.find((input) => input.key === key)) {
-        acc[key] = variables[key];
-      }
-      return acc;
-    },
-    {} as Record<string, any>
-  );
-};
-
-export function replaceVariableLabel({
+// replace {{$xx.xx$}} variables for text
+export function replaceEditorVariable({
   text,
   nodes,
   variables,
@@ -258,7 +335,7 @@ export function replaceVariableLabel({
 }: {
   text: any;
   nodes: RuntimeNodeItemType[];
-  variables: Record<string, string | number>;
+  variables: Record<string, any>; // global variables
   runningNode: RuntimeNodeItemType;
 }) {
   if (typeof text !== 'string') return text;

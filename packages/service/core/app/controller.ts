@@ -48,10 +48,13 @@ export const beforeUpdateAppFormat = <T extends AppSchema['modules'] | undefined
 
 export const getAppLatestVersion = async (appId: string, app?: AppSchema) => {
   const version = await MongoAppVersion.findOne({
-    appId
-  }).sort({
-    time: -1
-  });
+    appId,
+    isPublish: true
+  })
+    .sort({
+      time: -1
+    })
+    .lean();
 
   if (version) {
     return {

@@ -6,7 +6,6 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import PermissionIconText from '@/components/support/permission/IconText';
-import { useI18n } from '@/web/context/I18n';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -35,19 +34,19 @@ const ConfigPerModal = dynamic(() => import('@/components/support/permission/Con
 
 import type { EditHttpPluginProps } from './HttpPluginEditModal';
 import { postCopyApp } from '@/web/core/app/api/app';
-import { getTeamMembers } from '@/web/support/user/team/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useChatStore } from '@/web/core/chat/context/storeChat';
+import { useUserStore } from '@/web/support/user/useUserStore';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
   const { t } = useTranslation();
-  const { appT, commonT } = useI18n();
   const router = useRouter();
   const { parentId = null } = router.query;
   const { isPc } = useSystem();
+
+  const { loadAndGetTeamMembers } = useUserStore();
   const { lastChatAppId, setLastChatAppId } = useChatStore();
 
   const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail } = useContextSelector(
@@ -59,7 +58,6 @@ const ListItem = () => {
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editHttpPlugin, setEditHttpPlugin] = useState<EditHttpPluginProps>();
   const [editPerAppIndex, setEditPerAppIndex] = useState<number>();
-  const { feConfigs } = useSystemStore();
 
   const editPerApp = useMemo(
     () => (editPerAppIndex !== undefined ? myApps[editPerAppIndex] : undefined),
@@ -100,18 +98,18 @@ const ListItem = () => {
   );
 
   const { openConfirm: openConfirmCopy, ConfirmModal: ConfirmCopyModal } = useConfirm({
-    content: appT('confirm_copy_app_tip')
+    content: t('app:confirm_copy_app_tip')
   });
   const { runAsync: onclickCopy } = useRequest2(postCopyApp, {
     onSuccess({ appId }) {
       router.push(`/app/detail?appId=${appId}`);
       loadMyApps();
     },
-    successToast: appT('create_copy_success')
+    successToast: t('app:create_copy_success')
   });
 
-  const { data: members = [] } = useRequest2(getTeamMembers, {
-    manual: !feConfigs.isPlus
+  const { data: members = [] } = useRequest2(loadAndGetTeamMembers, {
+    manual: false
   });
 
   const { runAsync: onResumeInheritPermission } = useRequest2(
@@ -120,7 +118,7 @@ const ListItem = () => {
     },
     {
       manual: true,
-      errorToast: commonT('permission.Resume InheritPermission Failed'),
+      errorToast: t('common:permission.Resume InheritPermission Failed'),
       onSuccess() {
         loadMyApps();
       }
@@ -149,8 +147,8 @@ const ListItem = () => {
                 app.type === AppTypeEnum.folder
                   ? t('common:common.folder.Open folder')
                   : app.permission.hasWritePer
-                    ? appT('edit_app')
-                    : appT('go_to_chat')
+                    ? t('app:edit_app')
+                    : t('app:go_to_chat')
               }
             >
               <MyBox
@@ -249,7 +247,7 @@ const ListItem = () => {
                         <Box color={'myGray.500'}>{formatTimeToChatTime(app.updateTime)}</Box>
                       </HStack>
                     )}
-                    {app.permission.hasManagePer && (
+                    {app.permission.hasWritePer && (
                       <Box className="more" display={['', 'none']}>
                         <MyMenu
                           Button={
@@ -267,7 +265,7 @@ const ListItem = () => {
                                     children: [
                                       {
                                         icon: 'core/chat/chatLight',
-                                        label: appT('go_to_chat'),
+                                        label: t('app:go_to_chat'),
                                         onClick: () => {
                                           router.push(`/chat?appId=${app._id}`);
                                         }
@@ -282,7 +280,7 @@ const ListItem = () => {
                                     children: [
                                       {
                                         icon: 'core/chat/chatLight',
-                                        label: appT('go_to_run'),
+                                        label: t('app:go_to_run'),
                                         onClick: () => {
                                           router.push(`/chat?appId=${app._id}`);
                                         }
@@ -291,50 +289,54 @@ const ListItem = () => {
                                   }
                                 ]
                               : []),
-                            {
-                              children: [
-                                {
-                                  icon: 'edit',
-                                  label: t('common:dataset.Edit Info'),
-                                  onClick: () => {
-                                    if (app.type === AppTypeEnum.httpPlugin) {
-                                      setEditHttpPlugin({
-                                        id: app._id,
-                                        name: app.name,
-                                        avatar: app.avatar,
-                                        intro: app.intro,
-                                        pluginData: app.pluginData
-                                      });
-                                    } else {
-                                      setEditedApp({
-                                        id: app._id,
-                                        avatar: app.avatar,
-                                        name: app.name,
-                                        intro: app.intro
-                                      });
-                                    }
-                                  }
-                                },
-                                ...(folderDetail?.type === AppTypeEnum.httpPlugin
-                                  ? []
-                                  : [
+                            ...(app.permission.hasManagePer
+                              ? [
+                                  {
+                                    children: [
                                       {
-                                        icon: 'common/file/move',
-                                        label: t('common:common.folder.Move to'),
-                                        onClick: () => setMoveAppId(app._id)
-                                      }
-                                    ]),
-                                ...(app.permission.hasManagePer
-                                  ? [
-                                      {
-                                        icon: 'support/team/key',
-                                        label: t('common:permission.Permission'),
-                                        onClick: () => setEditPerAppIndex(index)
-                                      }
+                                        icon: 'edit',
+                                        label: t('common:dataset.Edit Info'),
+                                        onClick: () => {
+                                          if (app.type === AppTypeEnum.httpPlugin) {
+                                            setEditHttpPlugin({
+                                              id: app._id,
+                                              name: app.name,
+                                              avatar: app.avatar,
+                                              intro: app.intro,
+                                              pluginData: app.pluginData
+                                            });
+                                          } else {
+                                            setEditedApp({
+                                              id: app._id,
+                                              avatar: app.avatar,
+                                              name: app.name,
+                                              intro: app.intro
+                                            });
+                                          }
+                                        }
+                                      },
+                                      ...(folderDetail?.type === AppTypeEnum.httpPlugin
+                                        ? []
+                                        : [
+                                            {
+                                              icon: 'common/file/move',
+                                              label: t('common:common.folder.Move to'),
+                                              onClick: () => setMoveAppId(app._id)
+                                            }
+                                          ]),
+                                      ...(app.permission.hasManagePer
+                                        ? [
+                                            {
+                                              icon: 'support/team/key',
+                                              label: t('common:permission.Permission'),
+                                              onClick: () => setEditPerAppIndex(index)
+                                            }
+                                          ]
+                                        : [])
                                     ]
-                                  : [])
-                              ]
-                            },
+                                  }
+                                ]
+                              : []),
                             ...(AppFolderTypeList.includes(app.type)
                               ? []
                               : [
@@ -342,14 +344,13 @@ const ListItem = () => {
                                     children: [
                                       {
                                         icon: 'copy',
-                                        label: appT('copy_one_app'),
+                                        label: t('app:copy_one_app'),
                                         onClick: () =>
                                           openConfirmCopy(() => onclickCopy({ appId: app._id }))()
                                       }
                                     ]
                                   }
                                 ]),
-
                             ...(app.permission.isOwner
                               ? [
                                   {
@@ -363,8 +364,8 @@ const ListItem = () => {
                                             () => onclickDelApp(app._id),
                                             undefined,
                                             app.type === AppTypeEnum.folder
-                                              ? appT('confirm_delete_folder_tip')
-                                              : appT('confirm_del_app_tip')
+                                              ? t('app:confirm_delete_folder_tip')
+                                              : t('app:confirm_del_app_tip')
                                           )()
                                       }
                                     ]

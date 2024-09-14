@@ -10,13 +10,18 @@ import { PostPublishAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
-type Response = {};
-
 async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<{}> {
   const { appId } = req.query as { appId: string };
-  const { nodes = [], edges = [], chatConfig, type } = req.body as PostPublishAppProps;
+  const {
+    nodes = [],
+    edges = [],
+    chatConfig,
+    type,
+    isPublish,
+    versionName
+  } = req.body as PostPublishAppProps;
 
-  const { app } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
+  const { app, tmbId } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
 
   const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
 
@@ -28,7 +33,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
           appId,
           nodes: formatNodes,
           edges,
-          chatConfig
+          chatConfig,
+          isPublish,
+          versionName,
+          tmbId
         }
       ],
       { session }
@@ -48,7 +56,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
         scheduledTriggerNextTime: chatConfig?.scheduledTriggerConfig?.cronString
           ? getNextTimeByCronStringAndTimezone(chatConfig.scheduledTriggerConfig)
           : null,
-        ...(app.type === AppTypeEnum.plugin && { 'pluginData.nodeVersion': _id })
+        'pluginData.nodeVersion': _id
       },
       {
         session

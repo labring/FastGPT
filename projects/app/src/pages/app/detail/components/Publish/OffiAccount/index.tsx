@@ -11,7 +11,8 @@ import {
   Td,
   Tbody,
   useDisclosure,
-  Link
+  Link,
+  HStack
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -67,7 +68,7 @@ const OffiAccount = ({ appId }: { appId: string }) => {
   return (
     <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
       <Flex justifyContent={'space-between'} flexDirection="row">
-        <Flex alignItems={'center'}>
+        <HStack>
           <Box fontWeight={'bold'} fontSize={['md', 'lg']}>
             {t('publish:official_account.name')}
           </Box>
@@ -81,12 +82,12 @@ const OffiAccount = ({ appId }: { appId: string }) => {
               fontSize={'sm'}
             >
               <Flex alignItems={'center'}>
-                <MyIcon name="book" mr="1" />
+                <MyIcon name="book" mr="1" w={'1rem'} />
                 {t('common:common.Read document')}
               </Flex>
             </Link>
           )}
-        </Flex>
+        </HStack>
         <Button
           variant={'primary'}
           colorScheme={'blue'}

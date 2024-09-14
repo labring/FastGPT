@@ -4,7 +4,7 @@ import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useSearchTestStore, SearchTestStoreItemType } from '@/web/core/dataset/store/searchTest';
 import { postSearchText } from '@/web/core/dataset/api';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -48,7 +48,6 @@ type FormType = {
 
 const Test = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const { toast } = useToast();
   const { llmModelList } = useSystemStore();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
@@ -86,40 +85,42 @@ const Test = ({ datasetId }: { datasetId: string }) => {
     onClose: onCloseSelectMode
   } = useDisclosure();
 
-  const { mutate: onTextTest, isLoading: textTestIsLoading } = useRequest({
-    mutationFn: ({ inputText, searchParams }: FormType) =>
+  const { runAsync: onTextTest, loading: textTestIsLoading } = useRequest2(
+    ({ inputText, searchParams }: FormType) =>
       postSearchText({ datasetId, text: inputText.trim(), ...searchParams }),
-    onSuccess(res: SearchTestResponse) {
-      if (!res || res.list.length === 0) {
-        return toast({
-          status: 'warning',
-          title: t('common:dataset.test.noResult')
+    {
+      onSuccess(res: SearchTestResponse) {
+        if (!res || res.list.length === 0) {
+          return toast({
+            status: 'warning',
+            title: t('common:dataset.test.noResult')
+          });
+        }
+
+        const testItem: SearchTestStoreItemType = {
+          id: nanoid(),
+          datasetId,
+          text: getValues('inputText').trim(),
+          time: new Date(),
+          results: res.list,
+          duration: res.duration,
+          searchMode: res.searchMode,
+          usingReRank: res.usingReRank,
+          limit: res.limit,
+          similarity: res.similarity,
+          queryExtensionModel: res.queryExtensionModel
+        };
+        pushDatasetTestItem(testItem);
+        setDatasetTestItem(testItem);
+      },
+      onError(err) {
+        toast({
+          title: getErrText(err),
+          status: 'error'
         });
       }
-
-      const testItem: SearchTestStoreItemType = {
-        id: nanoid(),
-        datasetId,
-        text: getValues('inputText').trim(),
-        time: new Date(),
-        results: res.list,
-        duration: res.duration,
-        searchMode: res.searchMode,
-        usingReRank: res.usingReRank,
-        limit: res.limit,
-        similarity: res.similarity,
-        queryExtensionModel: res.queryExtensionModel
-      };
-      pushDatasetTestItem(testItem);
-      setDatasetTestItem(testItem);
-    },
-    onError(err) {
-      toast({
-        title: getErrText(err),
-        status: 'error'
-      });
     }
-  });
+  );
 
   const onSelectFile = async (files: File[]) => {
     const file = files[0];
@@ -141,7 +142,6 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         flex={1}
         maxW={'500px'}
         py={4}
-        borderRight={['none', theme.borders.base]}
       >
         <Box
           border={'2px solid'}
@@ -280,7 +280,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
             </Button>
           </Flex>
         </Box>
-        <Box mt={5} flex={'1 0 0'} px={4} overflow={'overlay'} display={['none', 'block']}>
+        <Box mt={5} px={4} overflow={'overlay'} display={['none', 'block']}>
           <TestHistories
             datasetId={datasetId}
             datasetTestItem={datasetTestItem}
@@ -330,6 +330,7 @@ const TestHistories = React.memo(function TestHistories({
     () => datasetTestList.filter((item) => item.datasetId === datasetId),
     [datasetId, datasetTestList]
   );
+
   return (
     <>
       <Flex alignItems={'center'} color={'myGray.900'}>

@@ -10,7 +10,6 @@ import {
   HStack
 } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -28,7 +27,7 @@ import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
 import DeleteIcon, { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
 import { TTSTypeEnum } from '@/web/core/app/constants';
-import { getSystemVariables } from '@/web/core/app/utils';
+import { workflowSystemVariables } from '@/web/core/app/utils';
 import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pages/app/detail/components/context';
@@ -79,7 +78,6 @@ const EditForm = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const { allDatasets } = useDatasetStore();
-  const { llmModelList } = useSystemStore();
   const [, startTst] = useTransition();
 
   const selectDatasets = useMemo(
@@ -109,10 +107,11 @@ const EditForm = ({
   const formatVariables = useMemo(
     () =>
       formatEditorVariablePickerIcon([
-        ...getSystemVariables(t),
+        ...workflowSystemVariables,
         ...(appForm.chatConfig.variables || [])
       ]).map((item) => ({
         ...item,
+        label: t(item.label as any),
         parent: {
           id: 'VARIABLE_NODE_ID',
           label: t('common:core.module.Variable'),
@@ -505,6 +504,8 @@ const EditForm = ({
                 ...e
               }
             }));
+
+            console.dir(e);
           }}
         />
       )}

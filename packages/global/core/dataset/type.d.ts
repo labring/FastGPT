@@ -51,6 +51,7 @@ export type DatasetCollectionSchemaType = {
   chunkSize: number;
   chunkSplitter?: string;
   qaPrompt?: string;
+  ocrParse?: boolean;
 
   tags?: string[];
 
@@ -137,7 +138,9 @@ export type DatasetSimpleItemType = {
 };
 export type DatasetListItemType = {
   _id: string;
+  tmbId: string;
   avatar: string;
+  updateTime: Date;
   name: string;
   intro: string;
   type: `${DatasetTypeEnum}`;

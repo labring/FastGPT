@@ -8,7 +8,6 @@ import TTSSelect from '@/components/core/app/TTSSelect';
 import WhisperConfig from '@/components/core/app/WhisperConfig';
 import InputGuideConfig from '@/components/core/app/InputGuideConfig';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
-import { useTranslation } from 'next-i18next';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import NodeCard from './render/NodeCard';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
@@ -20,6 +19,8 @@ import VariableEdit from '@/components/core/app/VariableEdit';
 import { AppContext } from '@/pages/app/detail/components/context';
 import WelcomeTextConfig from '@/components/core/app/WelcomeTextConfig';
 import FileSelect from '@/components/core/app/FileSelect';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 
 type ComponentProps = {
   chatConfig: AppChatConfigType;
@@ -52,7 +53,6 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         selected={selected}
         menuForbid={{
           debug: true,
-          rename: true,
           copy: true,
           delete: true
         }}
@@ -90,24 +90,19 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 export default React.memo(NodeUserGuide);
 
 function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentProps) {
-  const { t } = useTranslation();
-  const [, startTst] = useTransition();
-
   return (
     <Box className="nodrag">
       <WelcomeTextConfig
         resize={'both'}
-        defaultValue={welcomeText}
+        value={welcomeText}
         onChange={(e) => {
-          startTst(() => {
-            setAppDetail((state) => ({
-              ...state,
-              chatConfig: {
-                ...state.chatConfig,
-                welcomeText: e.target.value
-              }
-            }));
-          });
+          setAppDetail((state) => ({
+            ...state,
+            chatConfig: {
+              ...state.chatConfig,
+              welcomeText: e.target.value
+            }
+          }));
         }}
       />
     </Box>
@@ -164,8 +159,6 @@ function TTSGuide({ chatConfig: { ttsConfig }, setAppDetail }: ComponentProps) {
 }
 
 function WhisperGuide({ chatConfig: { whisperConfig, ttsConfig }, setAppDetail }: ComponentProps) {
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-
   return (
     <WhisperConfig
       isOpenAudio={ttsConfig?.type !== TTSTypeEnum.none}
@@ -205,7 +198,6 @@ function ScheduledTrigger({
 
 function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: ComponentProps) {
   const appId = useContextSelector(WorkflowContext, (v) => v.appId);
-
   return appId ? (
     <InputGuideConfig
       appId={appId}
@@ -224,6 +216,10 @@ function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: Co
 }
 
 function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: ComponentProps) {
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const nodes = useContextSelector(WorkflowContext, (v) => v.nodes);
+  const workflowStartNode = nodes.find((item) => item.type === FlowNodeTypeEnum.workflowStart)!;
+
   return (
     <FileSelect
       value={fileSelectConfig}
@@ -235,6 +231,27 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
             fileSelectConfig: e
           }
         }));
+
+        // Dynamic add or delete userFilesInput
+        const canUploadFiles = e.canSelectFile || e.canSelectImg;
+        const repeatKey = workflowStartNode?.data.outputs.find(
+          (item) => item.key === userFilesInput.key
+        );
+        if (canUploadFiles) {
+          !repeatKey &&
+            onChangeNode({
+              nodeId: workflowStartNode.id,
+              type: 'addOutput',
+              value: userFilesInput
+            });
+        } else {
+          repeatKey &&
+            onChangeNode({
+              nodeId: workflowStartNode.id,
+              type: 'delOutput',
+              key: userFilesInput.key
+            });
+        }
       }}
     />
   );

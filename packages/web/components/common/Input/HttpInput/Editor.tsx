@@ -1,3 +1,11 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+
 import { useState, useRef, useTransition, useEffect, useMemo } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
@@ -9,39 +17,40 @@ import { Box, Flex } from '@chakra-ui/react';
 import styles from './index.module.scss';
 import { EditorState, LexicalEditor } from 'lexical';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { EditorVariablePickerType } from '../../Textarea/PromptEditor/type';
+import {
+  EditorVariableLabelPickerType,
+  EditorVariablePickerType
+} from '../../Textarea/PromptEditor/type';
 import { VariableNode } from '../../Textarea/PromptEditor/plugins/VariablePlugin/node';
 import { textToEditorState } from '../../Textarea/PromptEditor/utils';
-import DropDownMenu from '../../Textarea/PromptEditor/modules/DropDownMenu';
 import { SingleLinePlugin } from '../../Textarea/PromptEditor/plugins/SingleLinePlugin';
 import OnBlurPlugin from '../../Textarea/PromptEditor/plugins/OnBlurPlugin';
 import VariablePlugin from '../../Textarea/PromptEditor/plugins/VariablePlugin';
 import VariablePickerPlugin from '../../Textarea/PromptEditor/plugins/VariablePickerPlugin';
 import FocusPlugin from '../../Textarea/PromptEditor/plugins/FocusPlugin';
+import VariableLabelPlugin from '../../Textarea/PromptEditor/plugins/VariableLabelPlugin';
+import { VariableLabelNode } from '../../Textarea/PromptEditor/plugins/VariableLabelPlugin/node';
+import VariableLabelPickerPlugin from '../../Textarea/PromptEditor/plugins/VariableLabelPickerPlugin';
 
 export default function Editor({
   h = 40,
-  hasVariablePlugin = true,
-  hasDropDownPlugin = false,
   variables,
+  variableLabels,
   onChange,
   onBlur,
   value,
   currentValue,
   placeholder = '',
-  setDropdownValue,
   updateTrigger
 }: {
   h?: number;
-  hasVariablePlugin?: boolean;
-  hasDropDownPlugin?: boolean;
   variables: EditorVariablePickerType[];
+  variableLabels: EditorVariableLabelPickerType[];
   onChange?: (editorState: EditorState, editor: LexicalEditor) => void;
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
   currentValue?: string;
   placeholder?: string;
-  setDropdownValue?: (value: string) => void;
   updateTrigger?: boolean;
 }) {
   const [key, setKey] = useState(getNanoid(6));
@@ -50,7 +59,7 @@ export default function Editor({
 
   const initialConfig = {
     namespace: 'HttpInput',
-    nodes: [VariableNode],
+    nodes: [VariableNode, VariableLabelNode],
     editorState: textToEditorState(value),
     onError: (error: Error) => {
       throw error;
@@ -66,16 +75,6 @@ export default function Editor({
     setKey(getNanoid(6));
     setFocus(false);
   }, [updateTrigger]);
-
-  const dropdownVariables = useMemo(
-    () =>
-      variables.filter((item) => {
-        const key = item.key.toLowerCase();
-        const current = currentValue?.toLowerCase();
-        return key.includes(current || '') && item.key !== currentValue;
-      }),
-    [currentValue, variables]
-  );
 
   return (
     <Flex
@@ -125,14 +124,12 @@ export default function Editor({
             });
           }}
         />
-        {hasVariablePlugin ? <VariablePickerPlugin variables={variables} /> : ''}
         <VariablePlugin variables={variables} />
+        <VariableLabelPlugin variables={variableLabels} />
+        <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
         <OnBlurPlugin onBlur={onBlur} />
         <SingleLinePlugin />
       </LexicalComposer>
-      {focus && hasDropDownPlugin && (
-        <DropDownMenu variables={dropdownVariables} setDropdownValue={setDropdownValue} />
-      )}
     </Flex>
   );
 }

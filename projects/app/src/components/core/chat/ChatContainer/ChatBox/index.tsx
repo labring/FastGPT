@@ -45,7 +45,11 @@ import ChatBoxDivider from '../../Divider';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { formatChatValue2InputType } from './utils';
+import {
+  checkIsInteractiveByHistories,
+  formatChatValue2InputType,
+  setUserSelectResultToHistories
+} from './utils';
 import { textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext, ChatProviderProps } from './Provider';
@@ -56,7 +60,7 @@ import dynamic from 'next/dynamic';
 import type { StreamResponseType } from '@/web/common/api/fetch';
 import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useThrottleFn } from 'ahooks';
+import { useCreation, useMemoizedFn, useThrottleFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
@@ -92,14 +96,6 @@ type Props = OutLinkChatAuthProps &
     >;
     onDelMessage?: (e: { contentId: string }) => void;
   };
-
-/* 
-  The input is divided into sections
-  1. text
-  2. img
-  3. file
-  4. ....
-*/
 
 const ChatBox = (
   {
@@ -156,15 +152,11 @@ const ChatBox = (
     isChatting
   } = useContextSelector(ChatBoxContext, (v) => v);
 
-  const isInteractive = useMemo(() => {
-    const lastAIHistory = chatHistories[chatHistories.length - 1];
-    if (!lastAIHistory) return false;
-    const lastAIMessage = lastAIHistory.value as AIChatItemValueItemType[];
-    const interactiveContent = lastAIMessage?.find(
-      (item) => item.type === ChatItemValueTypeEnum.interactive
-    )?.interactive?.params;
-    return !!interactiveContent;
-  }, [chatHistories]);
+  // Workflow running, there are user input or selection
+  const isInteractive = useMemo(
+    () => checkIsInteractiveByHistories(chatHistories),
+    [chatHistories]
+  );
 
   // compute variable input is finish.
   const chatForm = useForm<ChatBoxInputFormType>({
@@ -343,16 +335,15 @@ const ChatBox = (
 
   // create question guide
   const createQuestionGuide = useCallback(
-    async ({ history }: { history: ChatSiteItemType[] }) => {
+    async ({ histories }: { histories: ChatSiteItemType[] }) => {
       if (!questionGuide || chatController.current?.signal?.aborted) return;
-
       try {
         const abortSignal = new AbortController();
         questionGuideController.current = abortSignal;
 
         const result = await postQuestionGuide(
           {
-            messages: chats2GPTMessages({ messages: history, reserveId: false }).slice(-6),
+            messages: chats2GPTMessages({ messages: histories, reserveId: false }).slice(-6),
             shareId,
             outLinkUid,
             teamId,
@@ -382,7 +373,13 @@ const ChatBox = (
    * user confirm send prompt
    */
   const sendPrompt: SendPromptFnType = useCallback(
-    ({ text = '', files = [], history = chatHistories, autoTTSResponse = false }) => {
+    ({
+      text = '',
+      files = [],
+      history = chatHistories,
+      autoTTSResponse = false,
+      isInteractivePrompt = false
+    }) => {
       variablesForm.handleSubmit(
         async (variables) => {
           if (!onStartChat) return;
@@ -449,6 +446,7 @@ const ChatBox = (
               ] as UserChatItemValueItemType[],
               status: 'finish'
             },
+            // 普通 chat 模式，需要增加一个 AI 来接收响应消息
             {
               dataId: responseChatId,
               obj: ChatRoleEnum.AI,
@@ -464,18 +462,26 @@ const ChatBox = (
             }
           ];
 
-          // 插入内容
-          setChatHistories(newChatList);
+          // Update histories(Interactive input does not require new session rounds)
+          setChatHistories(
+            isInteractivePrompt
+              ? // 把交互的结果存储到对话记录中，交互模式下，不需要新的会话轮次
+                setUserSelectResultToHistories(newChatList.slice(0, -2), text)
+              : newChatList
+          );
 
           // 清空输入内容
           resetInputVal({});
           setQuestionGuide([]);
           scrollToBottom('smooth', 100);
+
           try {
             // create abort obj
             const abortSignal = new AbortController();
             chatController.current = abortSignal;
 
+            // 最后一条 AI 消息是空的，会被过滤掉，这里得到的 messages，不会包含最后一条 AI 消息，所以不需要 slice 了。
+            // 这里，无论是否为交互模式，最后都是 Human 的消息。
             const messages = chats2GPTMessages({ messages: newChatList, reserveId: true });
 
             const {
@@ -483,7 +489,7 @@ const ChatBox = (
               responseText,
               isNewChat = false
             } = await onStartChat({
-              messages: messages.slice(0, -1),
+              messages, // 保证最后一条是 Human 的消息
               responseChatItemId: responseChatId,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
@@ -492,35 +498,29 @@ const ChatBox = (
 
             isNewChatReplace.current = isNewChat;
 
-            // set finish status
-            setChatHistories((state) =>
-              state.map((item, index) => {
+            // Set last chat finish status
+            let newChatHistories: ChatSiteItemType[] = [];
+            setChatHistories((state) => {
+              newChatHistories = state.map((item, index) => {
                 if (index !== state.length - 1) return item;
                 return {
                   ...item,
                   status: 'finish',
-                  responseData
+                  responseData: item.responseData
+                    ? [...item.responseData, ...responseData]
+                    : responseData
                 };
-              })
-            );
-            setTimeout(() => {
-              createQuestionGuide({
-                history: newChatList.map((item, i) =>
-                  i === newChatList.length - 1
-                    ? {
-                        ...item,
-                        value: [
-                          {
-                            type: ChatItemValueTypeEnum.text,
-                            text: {
-                              content: responseText
-                            }
-                          }
-                        ]
-                      }
-                    : item
-                )
               });
+              return newChatHistories;
+            });
+
+            setTimeout(() => {
+              if (!checkIsInteractiveByHistories(newChatHistories)) {
+                createQuestionGuide({
+                  histories: newChatHistories
+                });
+              }
+
               generatingScroll();
               isPc && TextareaDom.current?.focus();
             }, 100);
@@ -537,6 +537,7 @@ const ChatBox = (
 
             if (!err?.responseText) {
               resetInputVal({ text, files });
+              // 这里的 newChatList 没包含用户交互输入的内容，所以重置后刚好是正确的。
               setChatHistories(newChatList.slice(0, newChatList.length - 2));
             }
 
@@ -583,233 +584,205 @@ const ChatBox = (
   );
 
   // retry input
-  const retryInput = useCallback(
-    (dataId?: string) => {
-      if (!dataId || !onDelMessage) return;
+  const retryInput = useMemoizedFn((dataId?: string) => {
+    if (!dataId || !onDelMessage) return;
 
-      return async () => {
-        setLoading(true);
-        const index = chatHistories.findIndex((item) => item.dataId === dataId);
-        const delHistory = chatHistories.slice(index);
-        try {
-          await Promise.all(
-            delHistory.map((item) => {
-              if (item.dataId) {
-                return onDelMessage({ contentId: item.dataId });
-              }
-            })
-          );
-          setChatHistories((state) => (index === 0 ? [] : state.slice(0, index)));
-
-          sendPrompt({
-            ...formatChatValue2InputType(delHistory[0].value),
-            history: chatHistories.slice(0, index)
-          });
-        } catch (error) {
-          toast({
-            status: 'warning',
-            title: getErrText(error, 'Retry failed')
-          });
-        }
-        setLoading(false);
-      };
-    },
-    [chatHistories, onDelMessage, sendPrompt, setChatHistories, setLoading, toast]
-  );
-  // delete one message(One human and the ai response)
-  const delOneMessage = useCallback(
-    (dataId?: string) => {
-      if (!dataId || !onDelMessage) return;
-      return () => {
-        setChatHistories((state) => {
-          let aiIndex = -1;
-
-          return state.filter((chat, i) => {
-            if (chat.dataId === dataId) {
-              aiIndex = i + 1;
-              onDelMessage({
-                contentId: dataId
-              });
-              return false;
-            } else if (aiIndex === i && chat.obj === ChatRoleEnum.AI && chat.dataId) {
-              onDelMessage({
-                contentId: chat.dataId
-              });
-              return false;
+    return async () => {
+      setLoading(true);
+      const index = chatHistories.findIndex((item) => item.dataId === dataId);
+      const delHistory = chatHistories.slice(index);
+      try {
+        await Promise.all(
+          delHistory.map((item) => {
+            if (item.dataId) {
+              return onDelMessage({ contentId: item.dataId });
             }
-            return true;
-          });
+          })
+        );
+        setChatHistories((state) => (index === 0 ? [] : state.slice(0, index)));
+
+        sendPrompt({
+          ...formatChatValue2InputType(delHistory[0].value),
+          history: chatHistories.slice(0, index)
         });
-      };
-    },
-    [onDelMessage, setChatHistories]
-  );
+      } catch (error) {
+        toast({
+          status: 'warning',
+          title: getErrText(error, 'Retry failed')
+        });
+      }
+      setLoading(false);
+    };
+  });
+  // delete one message(One human and the ai response)
+  const delOneMessage = useMemoizedFn((dataId?: string) => {
+    if (!dataId || !onDelMessage) return;
+    return () => {
+      setChatHistories((state) => {
+        let aiIndex = -1;
+
+        return state.filter((chat, i) => {
+          if (chat.dataId === dataId) {
+            aiIndex = i + 1;
+            onDelMessage({
+              contentId: dataId
+            });
+            return false;
+          } else if (aiIndex === i && chat.obj === ChatRoleEnum.AI && chat.dataId) {
+            onDelMessage({
+              contentId: chat.dataId
+            });
+            return false;
+          }
+          return true;
+        });
+      });
+    };
+  });
   // admin mark
-  const onMark = useCallback(
-    (chat: ChatSiteItemType, q = '') => {
-      if (!showMarkIcon || chat.obj !== ChatRoleEnum.AI) return;
+  const onMark = useMemoizedFn((chat: ChatSiteItemType, q = '') => {
+    if (!showMarkIcon || chat.obj !== ChatRoleEnum.AI) return;
 
-      return () => {
-        if (!chat.dataId) return;
+    return () => {
+      if (!chat.dataId) return;
 
-        if (chat.adminFeedback) {
-          setAdminMarkData({
-            chatItemId: chat.dataId,
-            datasetId: chat.adminFeedback.datasetId,
-            collectionId: chat.adminFeedback.collectionId,
-            dataId: chat.adminFeedback.dataId,
-            q: chat.adminFeedback.q || q || '',
-            a: chat.adminFeedback.a
-          });
-        } else {
-          setAdminMarkData({
-            chatItemId: chat.dataId,
-            q,
-            a: formatChatValue2InputType(chat.value).text
-          });
-        }
-      };
-    },
-    [showMarkIcon]
-  );
-  const onAddUserLike = useCallback(
-    (chat: ChatSiteItemType) => {
-      if (
-        feedbackType !== FeedbackTypeEnum.user ||
-        chat.obj !== ChatRoleEnum.AI ||
-        chat.userBadFeedback
-      )
-        return;
+      if (chat.adminFeedback) {
+        setAdminMarkData({
+          chatItemId: chat.dataId,
+          datasetId: chat.adminFeedback.datasetId,
+          collectionId: chat.adminFeedback.collectionId,
+          dataId: chat.adminFeedback.dataId,
+          q: chat.adminFeedback.q || q || '',
+          a: chat.adminFeedback.a
+        });
+      } else {
+        setAdminMarkData({
+          chatItemId: chat.dataId,
+          q,
+          a: formatChatValue2InputType(chat.value).text
+        });
+      }
+    };
+  });
+  const onAddUserLike = useMemoizedFn((chat: ChatSiteItemType) => {
+    if (
+      feedbackType !== FeedbackTypeEnum.user ||
+      chat.obj !== ChatRoleEnum.AI ||
+      chat.userBadFeedback
+    )
+      return;
+    return () => {
+      if (!chat.dataId || !chatId || !appId) return;
+
+      const isGoodFeedback = !!chat.userGoodFeedback;
+      setChatHistories((state) =>
+        state.map((chatItem) =>
+          chatItem.dataId === chat.dataId
+            ? {
+                ...chatItem,
+                userGoodFeedback: isGoodFeedback ? undefined : 'yes'
+              }
+            : chatItem
+        )
+      );
+      try {
+        updateChatUserFeedback({
+          appId,
+          chatId,
+          teamId,
+          teamToken,
+          chatItemId: chat.dataId,
+          shareId,
+          outLinkUid,
+          userGoodFeedback: isGoodFeedback ? undefined : 'yes'
+        });
+      } catch (error) {}
+    };
+  });
+  const onCloseUserLike = useMemoizedFn((chat: ChatSiteItemType) => {
+    if (feedbackType !== FeedbackTypeEnum.admin) return;
+    return () => {
+      if (!chat.dataId || !chatId || !appId) return;
+      setChatHistories((state) =>
+        state.map((chatItem) =>
+          chatItem.dataId === chat.dataId ? { ...chatItem, userGoodFeedback: undefined } : chatItem
+        )
+      );
+      updateChatUserFeedback({
+        appId,
+        teamId,
+        teamToken,
+        chatId,
+        chatItemId: chat.dataId,
+        userGoodFeedback: undefined
+      });
+    };
+  });
+  const onAddUserDislike = useMemoizedFn((chat: ChatSiteItemType) => {
+    if (
+      feedbackType !== FeedbackTypeEnum.user ||
+      chat.obj !== ChatRoleEnum.AI ||
+      chat.userGoodFeedback
+    ) {
+      return;
+    }
+    if (chat.userBadFeedback) {
       return () => {
         if (!chat.dataId || !chatId || !appId) return;
-
-        const isGoodFeedback = !!chat.userGoodFeedback;
         setChatHistories((state) =>
           state.map((chatItem) =>
-            chatItem.dataId === chat.dataId
-              ? {
-                  ...chatItem,
-                  userGoodFeedback: isGoodFeedback ? undefined : 'yes'
-                }
-              : chatItem
+            chatItem.dataId === chat.dataId ? { ...chatItem, userBadFeedback: undefined } : chatItem
           )
         );
         try {
           updateChatUserFeedback({
             appId,
             chatId,
-            teamId,
-            teamToken,
             chatItemId: chat.dataId,
             shareId,
-            outLinkUid,
-            userGoodFeedback: isGoodFeedback ? undefined : 'yes'
+            teamId,
+            teamToken,
+            outLinkUid
           });
         } catch (error) {}
       };
-    },
-    [appId, chatId, feedbackType, outLinkUid, setChatHistories, shareId, teamId, teamToken]
-  );
-  const onCloseUserLike = useCallback(
-    (chat: ChatSiteItemType) => {
-      if (feedbackType !== FeedbackTypeEnum.admin) return;
-      return () => {
-        if (!chat.dataId || !chatId || !appId) return;
+    } else {
+      return () => setFeedbackId(chat.dataId);
+    }
+  });
+  const onReadUserDislike = useMemoizedFn((chat: ChatSiteItemType) => {
+    if (feedbackType !== FeedbackTypeEnum.admin || chat.obj !== ChatRoleEnum.AI) return;
+    return () => {
+      if (!chat.dataId) return;
+      setReadFeedbackData({
+        chatItemId: chat.dataId || '',
+        content: chat.userBadFeedback || ''
+      });
+    };
+  });
+  const onCloseCustomFeedback = useMemoizedFn((chat: ChatSiteItemType, i: number) => {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.checked && appId && chatId && chat.dataId) {
+        closeCustomFeedback({
+          appId,
+          chatId,
+          chatItemId: chat.dataId,
+          index: i
+        });
+        // update dom
         setChatHistories((state) =>
           state.map((chatItem) =>
-            chatItem.dataId === chat.dataId
-              ? { ...chatItem, userGoodFeedback: undefined }
+            chatItem.obj === ChatRoleEnum.AI && chatItem.dataId === chat.dataId
+              ? {
+                  ...chatItem,
+                  customFeedbacks: chatItem.customFeedbacks?.filter((_, index) => index !== i)
+                }
               : chatItem
           )
         );
-        updateChatUserFeedback({
-          appId,
-          teamId,
-          teamToken,
-          chatId,
-          chatItemId: chat.dataId,
-          userGoodFeedback: undefined
-        });
-      };
-    },
-    [appId, chatId, feedbackType, setChatHistories, teamId, teamToken]
-  );
-  const onAddUserDislike = useCallback(
-    (chat: ChatSiteItemType) => {
-      if (
-        feedbackType !== FeedbackTypeEnum.user ||
-        chat.obj !== ChatRoleEnum.AI ||
-        chat.userGoodFeedback
-      ) {
-        return;
       }
-      if (chat.userBadFeedback) {
-        return () => {
-          if (!chat.dataId || !chatId || !appId) return;
-          setChatHistories((state) =>
-            state.map((chatItem) =>
-              chatItem.dataId === chat.dataId
-                ? { ...chatItem, userBadFeedback: undefined }
-                : chatItem
-            )
-          );
-          try {
-            updateChatUserFeedback({
-              appId,
-              chatId,
-              chatItemId: chat.dataId,
-              shareId,
-              teamId,
-              teamToken,
-              outLinkUid
-            });
-          } catch (error) {}
-        };
-      } else {
-        return () => setFeedbackId(chat.dataId);
-      }
-    },
-    [appId, chatId, feedbackType, outLinkUid, setChatHistories, shareId, teamId, teamToken]
-  );
-  const onReadUserDislike = useCallback(
-    (chat: ChatSiteItemType) => {
-      if (feedbackType !== FeedbackTypeEnum.admin || chat.obj !== ChatRoleEnum.AI) return;
-      return () => {
-        if (!chat.dataId) return;
-        setReadFeedbackData({
-          chatItemId: chat.dataId || '',
-          content: chat.userBadFeedback || ''
-        });
-      };
-    },
-    [feedbackType]
-  );
-  const onCloseCustomFeedback = useCallback(
-    (chat: ChatSiteItemType, i: number) => {
-      return (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.checked && appId && chatId && chat.dataId) {
-          closeCustomFeedback({
-            appId,
-            chatId,
-            chatItemId: chat.dataId,
-            index: i
-          });
-          // update dom
-          setChatHistories((state) =>
-            state.map((chatItem) =>
-              chatItem.obj === ChatRoleEnum.AI && chatItem.dataId === chat.dataId
-                ? {
-                    ...chatItem,
-                    customFeedbacks: chatItem.customFeedbacks?.filter((_, index) => index !== i)
-                  }
-                : chatItem
-            )
-          );
-        }
-      };
-    },
-    [appId, chatId, setChatHistories]
-  );
+    };
+  });
 
   const showEmpty = useMemo(
     () =>
@@ -826,7 +799,7 @@ const ChatBox = (
       welcomeText
     ]
   );
-  const statusBoxData = useMemo(() => {
+  const statusBoxData = useCreation(() => {
     if (!isChatting) return;
     const chatContent = chatHistories[chatHistories.length - 1];
     if (!chatContent) return;
@@ -860,12 +833,10 @@ const ChatBox = (
     };
     window.addEventListener('message', windowMessage);
 
-    eventBus.on(EventNameEnum.sendQuestion, ({ text }: { text: string }) => {
-      if (!text) return;
-      sendPrompt({
-        text
-      });
-    });
+    const fn: SendPromptFnType = (e) => {
+      sendPrompt(e);
+    };
+    eventBus.on(EventNameEnum.sendQuestion, fn);
     eventBus.on(EventNameEnum.editQuestion, ({ text }: { text: string }) => {
       if (!text) return;
       resetInputVal({ text });
@@ -884,18 +855,11 @@ const ChatBox = (
       abortRequest();
       setValue('chatStarted', false);
       scrollToBottom('smooth', 500);
-    },
-    scrollToBottom,
-    sendPrompt: (question: string) => {
-      sendPrompt({
-        text: question
-      });
     }
   }));
-  return (
-    <Flex flexDirection={'column'} h={'100%'} position={'relative'}>
-      <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
-      {/* chat box container */}
+
+  const RenderRecords = useMemo(() => {
+    return (
       <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'} px={[4, 0]} pb={3}>
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {showEmpty && <Empty />}
@@ -916,7 +880,6 @@ const ChatBox = (
                     onRetry={retryInput(item.dataId)}
                     onDelete={delOneMessage(item.dataId)}
                     isLastChild={index === chatHistories.length - 1}
-                    onSendMessage={undefined}
                   />
                 )}
                 {item.obj === ChatRoleEnum.AI && (
@@ -926,7 +889,6 @@ const ChatBox = (
                       avatar={appAvatar}
                       chat={item}
                       isLastChild={index === chatHistories.length - 1}
-                      onSendMessage={sendPrompt}
                       {...{
                         showVoiceIcon,
                         shareId,
@@ -995,6 +957,41 @@ const ChatBox = (
           </Box>
         </Box>
       </Box>
+    );
+  }, [
+    appAvatar,
+    chatForm,
+    chatHistories,
+    chatStarted,
+    delOneMessage,
+    isChatting,
+    onAddUserDislike,
+    onAddUserLike,
+    onCloseCustomFeedback,
+    onCloseUserLike,
+    onMark,
+    onReadUserDislike,
+    outLinkUid,
+    questionGuides,
+    retryInput,
+    shareId,
+    showEmpty,
+    showMarkIcon,
+    showVoiceIcon,
+    statusBoxData,
+    t,
+    teamId,
+    teamToken,
+    userAvatar,
+    variableList?.length,
+    welcomeText
+  ]);
+
+  return (
+    <Flex flexDirection={'column'} h={'100%'} position={'relative'}>
+      <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
+      {/* chat box container */}
+      {RenderRecords}
       {/* message input */}
       {onStartChat && chatStarted && active && appId && !isInteractive && (
         <ChatInput

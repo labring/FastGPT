@@ -121,46 +121,22 @@ export const loadRequestMessages = async ({
     const imageRegex =
       /(https?:\/\/[^\s/$.?#].[^\s]*\.(?:png|jpe?g|gif|webp|bmp|tiff?|svg|ico|heic|avif))/i;
 
-    const result: { type: 'text' | 'image'; value: string }[] = [];
-    let lastIndex = 0;
-    let match;
+    const result: ChatCompletionContentPart[] = [];
 
-    // 使用正则表达式查找所有匹配项
-    while ((match = imageRegex.exec(input.slice(lastIndex))) !== null) {
-      const textBefore = input.slice(lastIndex, lastIndex + match.index);
-
-      // 如果图片URL前有文本，添加文本部分
-      if (textBefore) {
-        result.push({ type: 'text', value: textBefore });
-      }
-
-      // 添加图片URL
-      result.push({ type: 'image', value: match[0] });
-
-      lastIndex += match.index + match[0].length;
-    }
-
-    // 添加剩余的文本（如果有的话）
-    if (lastIndex < input.length) {
-      result.push({ type: 'text', value: input.slice(lastIndex) });
-    }
-
-    return result
-      .map((item) => {
-        if (item.type === 'text') {
-          return { type: 'text', text: item.value };
+    // 提取所有HTTPS图片URL并添加到result开头
+    const httpsImages = input.match(imageRegex) || [];
+    httpsImages.forEach((url) => {
+      result.push({
+        type: 'image_url',
+        image_url: {
+          url: url
         }
-        if (item.type === 'image') {
-          return {
-            type: 'image_url',
-            image_url: {
-              url: item.value
-            }
-          };
-        }
-        return { type: 'text', text: item.value };
-      })
-      .filter(Boolean) as ChatCompletionContentPart[];
+      });
+    });
+
+    // 添加原始input作为文本
+    result.push({ type: 'text', text: input });
+    return result;
   }
   // Load image
   const parseUserContent = async (content: string | ChatCompletionContentPart[]) => {
@@ -235,10 +211,39 @@ export const loadRequestMessages = async ({
             };
           }
         }
+        if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+          if (item.content !== undefined && !item.content) return;
+          if (Array.isArray(item.content) && item.content.length === 0) return;
+        }
 
         return item;
       })
       .filter(Boolean) as ChatCompletionMessageParam[];
+  };
+  /* 
+    Merge data for some consecutive roles
+    1. Contiguous assistant and both have content, merge content
+  */
+  const mergeConsecutiveMessages = (
+    messages: ChatCompletionMessageParam[]
+  ): ChatCompletionMessageParam[] => {
+    return messages.reduce((mergedMessages: ChatCompletionMessageParam[], currentMessage) => {
+      const lastMessage = mergedMessages[mergedMessages.length - 1];
+
+      if (
+        lastMessage &&
+        currentMessage.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
+        lastMessage.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
+        typeof lastMessage.content === 'string' &&
+        typeof currentMessage.content === 'string'
+      ) {
+        lastMessage.content += currentMessage ? `\n${currentMessage.content}` : '';
+      } else {
+        mergedMessages.push(currentMessage);
+      }
+
+      return mergedMessages;
+    }, []);
   };
 
   if (messages.length === 0) {
@@ -269,11 +274,22 @@ export const loadRequestMessages = async ({
           ...item,
           content: await parseUserContent(item.content)
         };
+      } else if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+        return {
+          role: item.role,
+          content: item.content,
+          function_call: item.function_call,
+          name: item.name,
+          refusal: item.refusal,
+          tool_calls: item.tool_calls
+        };
       } else {
         return item;
       }
     })
   )) as ChatCompletionMessageParam[];
 
-  return clearInvalidMessages(loadMessages) as SdkChatCompletionMessageParam[];
+  return mergeConsecutiveMessages(
+    clearInvalidMessages(loadMessages)
+  ) as SdkChatCompletionMessageParam[];
 };

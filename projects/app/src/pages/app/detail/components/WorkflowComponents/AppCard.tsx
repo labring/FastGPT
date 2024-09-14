@@ -2,72 +2,40 @@ import React, { useCallback, useMemo } from 'react';
 import { Box, Flex, HStack, useDisclosure } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useI18n } from '@/web/context/I18n';
 import { WorkflowContext } from './context';
-import { compareWorkflow, filterSensitiveNodesData } from '@/web/core/workflow/utils';
+import { filterSensitiveNodesData } from '@/web/core/workflow/utils';
 import dynamic from 'next/dynamic';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { publishStatusStyle } from '../constants';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import { fileDownload } from '@/web/common/file/utils';
+import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 const ImportSettings = dynamic(() => import('./Flow/ImportSettings'));
 
-const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
+const AppCard = ({
+  showSaveStatus,
+  isPublished
+}: {
+  showSaveStatus: boolean;
+  isPublished: boolean;
+}) => {
   const { t } = useTranslation();
   const { appT } = useI18n();
-  const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
 
-  const { appDetail, appLatestVersion, onOpenInfoEdit, onOpenTeamTagModal, onDelApp, currentTab } =
+  const { appDetail, onOpenInfoEdit, onOpenTeamTagModal, onDelApp, currentTab } =
     useContextSelector(AppContext, (v) => v);
-  const { historiesDefaultData, flowData2StoreDataAndCheck, onSaveWorkflow, isSaving, saveLabel } =
-    useContextSelector(WorkflowContext, (v) => v);
+  const { historiesDefaultData } = useContextSelector(WorkflowContext, (v) => v);
 
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
-  const onExportWorkflow = useCallback(async () => {
-    const data = flowData2StoreDataAndCheck();
-    if (data) {
-      copyData(
-        JSON.stringify(
-          {
-            nodes: filterSensitiveNodesData(data.nodes),
-            edges: data.edges,
-            chatConfig: appDetail.chatConfig
-          },
-          null,
-          2
-        ),
-        appT('export_config_successful')
-      );
-    }
-  }, [appDetail.chatConfig, appT, copyData, flowData2StoreDataAndCheck]);
-
-  const isPublished = (() => {
-    const data = flowData2StoreDataAndCheck(true);
-    if (!appLatestVersion) return true;
-
-    if (data) {
-      return compareWorkflow(
-        {
-          nodes: appLatestVersion.nodes,
-          edges: appLatestVersion.edges,
-          chatConfig: appLatestVersion.chatConfig
-        },
-        {
-          nodes: data.nodes,
-          edges: data.edges,
-          chatConfig: appDetail.chatConfig
-        }
-      );
-    }
-    return false;
-  })();
 
   const InfoMenu = useCallback(
     ({ children }: { children: React.ReactNode }) => {
@@ -100,9 +68,14 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
                         onClick: onOpenImport
                       },
                       {
-                        label: appT('export_configs'),
-                        icon: 'export',
-                        onClick: onExportWorkflow
+                        label: ExportPopover({
+                          chatConfig: appDetail.chatConfig,
+                          appName: appDetail.name
+                        }),
+                        menuItemStyles: {
+                          p: 0,
+                          cursor: 'default'
+                        }
                       }
                     ]
                   }
@@ -140,6 +113,8 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
       );
     },
     [
+      appDetail.chatConfig,
+      appDetail.name,
       appDetail.permission.hasWritePer,
       appDetail.permission.isOwner,
       appT,
@@ -147,7 +122,6 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
       feConfigs?.show_team_chat,
       historiesDefaultData,
       onDelApp,
-      onExportWorkflow,
       onOpenImport,
       onOpenInfoEdit,
       onOpenTeamTagModal,
@@ -169,35 +143,25 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
             </HStack>
           </InfoMenu>
           {showSaveStatus && (
-            <MyTooltip label={t('common:core.app.Onclick to save')}>
-              <Flex
-                alignItems={'center'}
-                h={'20px'}
-                cursor={'pointer'}
-                fontSize={'mini'}
-                onClick={onSaveWorkflow}
-                lineHeight={1}
+            <Flex alignItems={'center'} h={'20px'} fontSize={'mini'} lineHeight={1}>
+              <MyTag
+                py={0}
+                px={0}
+                showDot
+                bg={'transparent'}
+                colorSchema={
+                  isPublished
+                    ? publishStatusStyle.published.colorSchema
+                    : publishStatusStyle.unPublish.colorSchema
+                }
               >
-                {isSaving && <MyIcon name={'common/loading'} w={'0.8rem'} mr={0.5} />}
-                <Box color={'myGray.500'}>{saveLabel}</Box>
-                <MyTag
-                  py={0}
-                  showDot
-                  bg={'transparent'}
-                  colorSchema={
-                    isPublished
-                      ? publishStatusStyle.published.colorSchema
-                      : publishStatusStyle.unPublish.colorSchema
-                  }
-                >
-                  {t(
-                    isPublished
-                      ? publishStatusStyle.published.text
-                      : publishStatusStyle.unPublish.text
-                  )}
-                </MyTag>
-              </Flex>
-            </MyTooltip>
+                {t(
+                  isPublished
+                    ? publishStatusStyle.published.text
+                    : publishStatusStyle.unPublish.text
+                )}
+              </MyTag>
+            </Flex>
           )}
         </Box>
 
@@ -210,15 +174,111 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
     appDetail.name,
     isOpenImport,
     isPublished,
-    isSaving,
     onCloseImport,
-    onSaveWorkflow,
-    saveLabel,
     showSaveStatus,
     t
   ]);
 
   return Render;
 };
+
+function ExportPopover({
+  chatConfig,
+  appName
+}: {
+  chatConfig: AppChatConfigType;
+  appName: string;
+}) {
+  const { t } = useTranslation();
+  const { copyData } = useCopyData();
+  const { flowData2StoreDataAndCheck } = useContextSelector(WorkflowContext, (v) => v);
+
+  const onExportWorkflow = useCallback(async () => {
+    const data = flowData2StoreDataAndCheck();
+    if (data) {
+      copyData(
+        JSON.stringify(
+          {
+            nodes: filterSensitiveNodesData(data.nodes),
+            edges: data.edges,
+            chatConfig: chatConfig
+          },
+          null,
+          2
+        ),
+        t('app:export_config_successful')
+      );
+    }
+  }, [chatConfig, copyData, flowData2StoreDataAndCheck, t]);
+
+  return (
+    <MyPopover
+      placement={'right-start'}
+      offset={[0, 0]}
+      hasArrow
+      trigger={'hover'}
+      w={'8.6rem'}
+      Trigger={
+        <Flex align={'center'} w={'100%'} py={2} px={3}>
+          <Avatar src={'export'} borderRadius={'sm'} w={'1rem'} mr={3} />
+          {t('app:export_configs')}
+        </Flex>
+      }
+    >
+      {({ onClose }) => (
+        <Box p={1}>
+          <Flex
+            py={'0.38rem'}
+            px={1}
+            color={'myGray.600'}
+            _hover={{
+              bg: 'myGray.05',
+              color: 'primary.600',
+              cursor: 'pointer'
+            }}
+            borderRadius={'xs'}
+            onClick={onExportWorkflow}
+          >
+            <MyIcon name={'copy'} w={'1rem'} mr={2} />
+            <Box fontSize={'mini'}>{t('common:common.copy_to_clipboard')}</Box>
+          </Flex>
+          <Flex
+            py={'0.38rem'}
+            px={1}
+            color={'myGray.600'}
+            _hover={{
+              bg: 'myGray.05',
+              color: 'primary.600',
+              cursor: 'pointer'
+            }}
+            borderRadius={'xs'}
+            onClick={() => {
+              const data = flowData2StoreDataAndCheck();
+
+              if (!data) return;
+
+              fileDownload({
+                text: JSON.stringify(
+                  {
+                    nodes: filterSensitiveNodesData(data.nodes),
+                    edges: data.edges,
+                    chatConfig: chatConfig
+                  },
+                  null,
+                  2
+                ),
+                type: 'application/json;charset=utf-8',
+                filename: `${appName}.json`
+              });
+            }}
+          >
+            <MyIcon name={'configmap'} w={'1rem'} mr={2} />
+            <Box fontSize={'mini'}>{t('common:common.export_to_json')}</Box>
+          </Flex>
+        </Box>
+      )}
+    </MyPopover>
+  );
+}
 
 export default AppCard;

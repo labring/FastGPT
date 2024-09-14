@@ -14,6 +14,7 @@ import {
 import { getNanoid } from '../../../../common/string/tools';
 import { getHandleConfig } from '../utils';
 import { FlowNodeInputItemType } from '../../type/io.d';
+import { i18nT } from '../../../../../web/i18n/utils';
 
 export const getOneQuoteInputTemplate = ({
   key = getNanoid(),
@@ -24,8 +25,8 @@ export const getOneQuoteInputTemplate = ({
 }): FlowNodeInputItemType => ({
   key,
   renderTypeList: [FlowNodeInputTypeEnum.reference],
-  label: `引用${index}`,
-  debugLabel: '知识库引用',
+  label: `${i18nT('workflow:quote_num')},{ num: ${index} }`,
+  debugLabel: i18nT('workflow:knowledge_base_reference'),
   canEdit: true,
   valueType: WorkflowIOValueTypeEnum.datasetQuote
 });
@@ -37,15 +38,17 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/datasetConcat',
-  name: '知识库搜索引用合并',
-  intro: '可以将多个知识库搜索结果进行合并输出。使用 RRF 的合并方式进行最终排序输出。',
+  name: i18nT('workflow:knowledge_base_search_merge'),
+  intro: i18nT('workflow:intro_knowledge_base_search_merge'),
+
   showStatus: false,
   version: '486',
   inputs: [
     {
       key: NodeInputKeyEnum.datasetMaxTokens,
       renderTypeList: [FlowNodeInputTypeEnum.custom],
-      label: '最大 Tokens',
+      label: i18nT('workflow:max_tokens'),
+
       value: 3000,
       valueType: WorkflowIOValueTypeEnum.number
     },
@@ -60,7 +63,7 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
     {
       id: NodeOutputKeyEnum.datasetQuoteQA,
       key: NodeOutputKeyEnum.datasetQuoteQA,
-      label: 'core.module.Dataset quote.label',
+      label: i18nT('common:core.module.Dataset quote.label'),
       type: FlowNodeOutputTypeEnum.static,
       valueType: WorkflowIOValueTypeEnum.datasetQuote,
       valueDesc: datasetQuoteValueDesc

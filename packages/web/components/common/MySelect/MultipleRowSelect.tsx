@@ -35,6 +35,7 @@ const MultipleRowSelect = ({
       return (
         <>
           <Box
+            className="nowheel"
             flex={'1 0 auto'}
             // width={0}
             px={2}
@@ -105,7 +106,7 @@ const MultipleRowSelect = ({
         justifyContent={'space-between'}
         width={'100%'}
         rightIcon={<ChevronDownIcon />}
-        variant={'whiteFlow'}
+        variant={'whiteBase'}
         _active={{
           transform: 'none'
         }}

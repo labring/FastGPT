@@ -76,6 +76,7 @@ const MultipleSelect = <T = any,>({
           as={Box}
           ref={ref}
           width={width}
+          minH={'40px'}
           px={3}
           py={2}
           borderRadius={'md'}

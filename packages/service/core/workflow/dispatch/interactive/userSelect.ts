@@ -1,7 +1,4 @@
-import {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   DispatchNodeResultType,
   ModuleDispatchProps
@@ -12,9 +9,6 @@ import type {
   UserSelectInteractive,
   UserSelectOptionItemType
 } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
-import { updateUserSelectedResult } from '../../../chat/controller';
-import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import { responseWrite } from '../../../../common/response';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 
 type Props = ModuleDispatchProps<{
@@ -29,40 +23,27 @@ type UserSelectResponse = DispatchNodeResultType<{
 
 export const dispatchUserSelect = async (props: Props): Promise<UserSelectResponse> => {
   const {
-    res,
-    detail,
     histories,
-    stream,
-    app: { _id: appId },
-    chatId,
-    node: { nodeId, isEntry },
+    node,
     params: { description, userSelectOptions },
     query
   } = props;
+  const { nodeId, isEntry } = node;
 
   // Interactive node is not the entry node, return interactive result
   if (!isEntry) {
-    const answerText = description ? `\n${description}` : undefined;
-    if (res && stream && answerText) {
-      responseWrite({
-        res,
-        event: detail ? SseResponseEventEnum.fastAnswer : undefined,
-        data: textAdaptGptResponse({
-          text: answerText
-        })
-      });
-    }
-
     return {
-      [NodeOutputKeyEnum.answerText]: answerText,
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userSelect',
         params: {
+          description,
           userSelectOptions
         }
       }
     };
   }
+
+  node.isEntry = false;
 
   const { text: userSelectedVal } = chatValue2RuntimePrompt(query);
 
@@ -75,14 +56,8 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     };
   }
 
-  // Update db
-  updateUserSelectedResult({
-    appId,
-    chatId,
-    userSelectedVal
-  });
-
   return {
+    [DispatchNodeResponseKeyEnum.rewriteHistories]: histories.slice(0, -2), // Removes the current session record as the history of subsequent nodes
     [DispatchNodeResponseKeyEnum.skipHandleId]: userSelectOptions
       .filter((item) => item.value !== userSelectedVal)
       .map((item: any) => getHandleId(nodeId, 'source', item.key)),

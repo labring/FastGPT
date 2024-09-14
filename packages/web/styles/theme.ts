@@ -194,28 +194,6 @@ const Button = defineStyleConfig({
         color: 'myGray.600 !important'
       }
     },
-    whiteFlow: {
-      color: 'myGray.600',
-      border: '1px solid',
-      borderColor: 'myGray.200',
-      height: '40px',
-      bg: 'white',
-      px: '12px',
-      py: '0',
-      borderRadius: '6px',
-      transition: 'background 0.1s',
-      _hover: {
-        color: 'primary.600',
-        background: 'primary.1',
-        borderColor: 'primary.300'
-      },
-      _active: {
-        color: 'primary.600'
-      },
-      _disabled: {
-        color: 'myGray.600 !important'
-      }
-    },
     whiteDanger: {
       color: 'myGray.600',
       border: '1px solid',
@@ -492,15 +470,29 @@ const Checkbox = checkBoxMultiStyle({
 });
 
 const Modal = modalMultiStyle({
-  baseStyle: modalPart({
-    body: {
-      py: 4,
-      px: 7
-    },
-    footer: {
-      pt: 2
-    }
-  })
+  sizes: {
+    md: modalPart({
+      body: {
+        py: 4,
+        px: 7
+      },
+      footer: {
+        pt: 2
+      }
+    }),
+    lg: modalPart({
+      body: {
+        pt: 8,
+        pb: 6,
+        px: '3.25rem'
+      },
+      footer: {
+        pb: 8,
+        px: '3.25rem',
+        pt: 0
+      }
+    })
+  }
 });
 
 const Table = tableMultiStyle({
@@ -680,6 +672,19 @@ export const theme = extendTheme({
       800: '#93370D',
       900: '#7A2E0E'
     },
+    adora: {
+      25: '#FCFCFF',
+      50: '#F0EEFF',
+      100: '#E4E1FC',
+      200: '#D3CAFF',
+      300: '#B6A8FC',
+      400: '#9E8DFB',
+      500: '#8774EE',
+      600: '#6F5DD7',
+      700: '#5E4EBD',
+      800: '#4E4198',
+      900: '#42387D'
+    },
     borderColor: {
       low: '#E8EBF0',
       base: '#DFE2EA',
@@ -710,11 +715,13 @@ export const theme = extendTheme({
     lg: '1px solid #D0E0E2'
   },
   radii: {
-    xs: '4px',
-    sm: '6px',
-    md: '8px',
-    lg: '12px',
-    xl: '16px'
+    none: '0',
+    xs: '0.25rem',
+    sm: '0.375rem',
+    md: '0.5rem',
+    semilg: '0.625rem',
+    lg: '0.75rem',
+    xl: '1rem'
   },
   shadows: {
     1: '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)',

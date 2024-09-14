@@ -1,18 +1,27 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { GetHistoriesProps } from '@/global/core/chat/api';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
+import { NextAPI } from '@/service/middleware/entry';
+import { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { GetHistoriesProps } from '@/global/core/chat/api';
+export type getHistoriesQuery = {};
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export type getHistoriesBody = PaginationProps<GetHistoriesProps>;
+
+export type getHistoriesResponse = {};
+
+async function handler(
+  req: ApiRequestProps<getHistoriesBody, getHistoriesQuery>,
+  res: ApiResponseType<any>
+): Promise<PaginationResponse<getHistoriesResponse>> {
   try {
     await connectToDatabase();
-    const { appId, shareId, outLinkUid, teamId, teamToken } = req.body as GetHistoriesProps;
+    const { appId, shareId, outLinkUid, teamId, teamToken, current, pageSize } =
+      req.body as getHistoriesBody;
 
     const limit = shareId && outLinkUid ? 20 : 30;
 
@@ -50,24 +59,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return Promise.reject('Params are error');
     })();
 
-    const data = await MongoChat.find(match, 'chatId title top customTitle appId updateTime')
-      .sort({ top: -1, updateTime: -1 })
-      .limit(limit);
+    const [data, total] = await Promise.all([
+      await MongoChat.find(match, 'chatId title top customTitle appId updateTime')
+        .sort({ top: -1, updateTime: -1 })
+        .skip((current - 1) * pageSize)
+        .limit(pageSize),
+      MongoChat.countDocuments(match)
+    ]);
 
-    jsonRes<ChatHistoryItemType[]>(res, {
-      data: data.map((item) => ({
+    return {
+      list: data.map((item) => ({
         chatId: item.chatId,
         updateTime: item.updateTime,
         appId: item.appId,
         customTitle: item.customTitle,
         title: item.title,
         top: item.top
-      }))
-    });
+      })),
+      total
+    };
   } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
+    return Promise.reject(err);
   }
 }
+
+export default NextAPI(handler);

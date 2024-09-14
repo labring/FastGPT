@@ -1,7 +1,5 @@
 {
-  "Disabled": "已禁用",
   "Enable": "启用",
-  "Enabled": "已启用",
   "collection": {
     "Create update time": "创建/更新时间",
     "Training type": "训练模式"
@@ -20,6 +18,7 @@
   "external_read_url": "外部预览地址",
   "external_read_url_tip": "可以配置你文件库的阅读地址。便于对用户进行阅读鉴权操作。目前可以使用 {{fileId}} 变量来指代外部文件 ID。",
   "external_url": "文件访问 URL",
+  "file_model_function_tip": "用于增强索引和 QA 生成",
   "filename": "文件名",
   "folder_dataset": "文件夹",
   "rebuild_embedding_start_tip": "切换索引模型任务已开始",
@@ -33,9 +32,17 @@
     "delete_tag_confirm": "确定删除标签？",
     "manage": "标签管理",
     "searchOrAddTag": "搜索或添加标签",
-    "tags": "标签"
+    "tags": "标签",
+    "total_tags": "共{{total}}个标签"
   },
   "the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt": "知识库有训练中或正在重建的索引",
   "website_dataset": "Web 站点同步",
-  "website_dataset_desc": "Web 站点同步允许你直接使用一个网页链接构建知识库"
+  "website_dataset_desc": "Web 站点同步允许你直接使用一个网页链接构建知识库",
+  "permission": {
+    "des": {
+      "read": "可查看知识库内容",
+      "write": "可增加和变更知识库内容",
+      "manage": "可管理整个知识库数据和信息"
+    }
+  }
 }

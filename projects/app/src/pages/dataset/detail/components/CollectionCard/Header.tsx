@@ -1,5 +1,14 @@
 import React, { useCallback, useRef } from 'react';
-import { Box, Flex, MenuButton, Button, Link, useTheme, useDisclosure } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  MenuButton,
+  Button,
+  Link,
+  useTheme,
+  useDisclosure,
+  HStack
+} from '@chakra-ui/react';
 import {
   getDatasetCollectionPathById,
   postDatasetCollection,
@@ -39,6 +48,7 @@ const FileSourceSelector = dynamic(() => import('../Import/components/FileSource
 const Header = ({}: {}) => {
   const { t } = useTranslation();
   const theme = useTheme();
+
   const { setLoading, feConfigs } = useSystemStore();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
@@ -49,15 +59,6 @@ const Header = ({}: {}) => {
   const lastSearch = useRef('');
   const { searchText, setSearchText, total, getData, pageNum, onOpenWebsiteModal } =
     useContextSelector(CollectionPageContext, (v) => v);
-
-  // change search
-  const debounceRefetch = useCallback(
-    debounce(() => {
-      getData(1);
-      lastSearch.current = searchText;
-    }, 300),
-    []
-  );
 
   const { data: paths = [] } = useQuery(['getDatasetCollectionPathById', parentId], () =>
     getDatasetCollectionPathById(parentId)
@@ -110,52 +111,61 @@ const Header = ({}: {}) => {
     successToast: t('common:common.Create Success'),
     errorToast: t('common:common.Create Failed')
   });
+  const isWebSite = datasetDetail?.type === DatasetTypeEnum.websiteDataset;
 
   return (
-    <Flex px={[2, 6]} alignItems={'flex-start'} h={'35px'}>
-      <Box flex={1}>
-        <ParentPath
-          paths={paths.map((path, i) => ({
-            parentId: path.parentId,
-            parentName: i === paths.length - 1 ? `${path.parentName}` : path.parentName
-          }))}
-          FirstPathDom={
-            <>
-              <Box fontWeight={'bold'} fontSize={['sm', 'md']}>
-                {t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel as any)}({total})
-              </Box>
-              {datasetDetail?.websiteConfig?.url && (
-                <Flex fontSize={'sm'}>
-                  {t('common:core.dataset.website.Base Url')}:
-                  <Link
-                    href={datasetDetail.websiteConfig.url}
-                    target="_blank"
-                    mr={2}
-                    textDecoration={'underline'}
-                    color={'primary.600'}
-                  >
-                    {datasetDetail.websiteConfig.url}
-                  </Link>
+    <Box display={['block', 'flex']} alignItems={'center'} gap={2}>
+      <HStack flex={1}>
+        <Box flex={1} fontWeight={'500'} color={'myGray.900'} whiteSpace={'nowrap'}>
+          <ParentPath
+            paths={paths.map((path, i) => ({
+              parentId: path.parentId,
+              parentName: i === paths.length - 1 ? `${path.parentName}` : path.parentName
+            }))}
+            FirstPathDom={
+              <Flex
+                flexDir={'column'}
+                justify={'center'}
+                h={'100%'}
+                fontSize={isWebSite ? 'sm' : 'md'}
+                fontWeight={'500'}
+                color={'myGray.600'}
+              >
+                <Flex align={'center'}>
+                  {!isWebSite && <MyIcon name="common/list" mr={2} w={'20px'} color={'black'} />}
+                  {t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel as any)}({total})
                 </Flex>
-              )}
-            </>
-          }
-          onClick={(e) => {
-            router.replace({
-              query: {
-                ...router.query,
-                parentId: e
-              }
-            });
-          }}
-        />
-      </Box>
+                {datasetDetail?.websiteConfig?.url && (
+                  <Flex fontSize={'mini'}>
+                    {t('common:core.dataset.website.Base Url')}:
+                    <Link
+                      href={datasetDetail.websiteConfig.url}
+                      target="_blank"
+                      mr={2}
+                      color={'blue.700'}
+                    >
+                      {datasetDetail.websiteConfig.url}
+                    </Link>
+                  </Flex>
+                )}
+              </Flex>
+            }
+            onClick={(e) => {
+              router.replace({
+                query: {
+                  ...router.query,
+                  parentId: e
+                }
+              });
+            }}
+          />
+        </Box>
 
-      {/* search input */}
-      {isPc && (
-        <Flex alignItems={'center'} mr={4}>
+        {/* search input */}
+        {isPc && (
           <MyInput
-            w={['100%', '250px']}
+            maxW={'250px'}
+            flex={1}
             size={'sm'}
             h={'36px'}
             placeholder={t('common:common.Search') || ''}
@@ -170,27 +180,17 @@ const Header = ({}: {}) => {
             }
             onChange={(e) => {
               setSearchText(e.target.value);
-              debounceRefetch();
-            }}
-            onBlur={() => {
-              if (searchText === lastSearch.current) return;
-              getData(1);
-            }}
-            onKeyDown={(e) => {
-              if (searchText === lastSearch.current) return;
-              if (e.key === 'Enter') {
-                getData(1);
-              }
             }}
           />
-        </Flex>
-      )}
+        )}
+
+        {/* Tag */}
+        {datasetDetail.permission.hasWritePer && feConfigs?.isPlus && <HeaderTagPopOver />}
+      </HStack>
 
       {/* diff collection button */}
       {datasetDetail.permission.hasWritePer && (
-        <Flex gap={3}>
-          {feConfigs?.isPlus && <HeaderTagPopOver />}
-
+        <Box textAlign={'end'} mt={[3, 0]}>
           {datasetDetail?.type === DatasetTypeEnum.dataset && (
             <MyMenu
               offset={[0, 5]}
@@ -202,18 +202,26 @@ const Header = ({}: {}) => {
                   fontSize={['sm', 'md']}
                 >
                   <Flex
-                    alignItems={'center'}
-                    px={5}
+                    px={3.5}
                     py={2}
-                    borderRadius={'md'}
+                    borderRadius={'sm'}
                     cursor={'pointer'}
                     bg={'primary.500'}
                     overflow={'hidden'}
                     color={'white'}
-                    h={['28px', '35px']}
                   >
-                    <MyIcon name={'common/importLight'} mr={2} w={'14px'} />
-                    <Box>{t('common:dataset.collections.Create And Import')}</Box>
+                    <Flex h={'20px'} alignItems={'center'}>
+                      <MyIcon
+                        name={'common/folderImport'}
+                        mr={2}
+                        w={'18px'}
+                        h={'18px'}
+                        color={'white'}
+                      />
+                    </Flex>
+                    <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
+                      {t('common:dataset.collections.Create And Import')}
+                    </Box>
                   </Flex>
                 </MenuButton>
               }
@@ -323,18 +331,26 @@ const Header = ({}: {}) => {
                   fontSize={['sm', 'md']}
                 >
                   <Flex
-                    alignItems={'center'}
-                    px={5}
+                    px={3.5}
                     py={2}
-                    borderRadius={'md'}
+                    borderRadius={'sm'}
                     cursor={'pointer'}
                     bg={'primary.500'}
                     overflow={'hidden'}
                     color={'white'}
-                    h={['28px', '35px']}
                   >
-                    <MyIcon name={'common/importLight'} mr={2} w={'14px'} />
-                    <Box>{t('common:dataset.collections.Create And Import')}</Box>
+                    <Flex h={'20px'} alignItems={'center'}>
+                      <MyIcon
+                        name={'common/folderImport'}
+                        mr={2}
+                        w={'18px'}
+                        h={'18px'}
+                        color={'white'}
+                      />
+                    </Flex>
+                    <Box h={'20px'} fontSize={'sm'} fontWeight={'500'}>
+                      {t('common:dataset.collections.Create And Import')}
+                    </Box>
                   </Flex>
                 </MenuButton>
               }
@@ -371,7 +387,7 @@ const Header = ({}: {}) => {
               ]}
             />
           )}
-        </Flex>
+        </Box>
       )}
 
       {/* modal */}
@@ -402,7 +418,7 @@ const Header = ({}: {}) => {
       )}
       <EditCreateVirtualFileModal iconSrc={'modal/manualDataset'} closeBtnText={''} />
       {isOpenFileSourceSelector && <FileSourceSelector onClose={onCloseFileSourceSelector} />}
-    </Flex>
+    </Box>
   );
 };
 

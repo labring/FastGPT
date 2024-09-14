@@ -1,5 +1,5 @@
 import React, { useState, Dispatch, useCallback } from 'react';
-import { FormControl, Box, Input, Button } from '@chakra-ui/react';
+import { FormControl, Box, Input, Button, useDisclosure } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { postFindPassword } from '@/web/support/user/api';
@@ -8,6 +8,8 @@ import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
   loginSuccess: (e: ResLogin) => void;
@@ -28,49 +30,45 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     register,
     handleSubmit,
     getValues,
-    trigger,
+    watch,
     formState: { errors }
   } = useForm<RegisterType>({
     mode: 'onBlur'
   });
+  const username = watch('username');
 
-  const { codeSending, sendCodeText, sendCode, codeCountDown } = useSendCode();
+  const { SendCodeBox } = useSendCode({ type: 'findPassword' });
 
-  const onclickSendCode = useCallback(async () => {
-    const check = await trigger('username');
-    if (!check) return;
-    sendCode({
-      username: getValues('username'),
-      type: 'findPassword'
-    });
-  }, [getValues, sendCode, trigger]);
-
-  const [requesting, setRequesting] = useState(false);
-
-  const onclickFindPassword = useCallback(
-    async ({ username, code, password }: RegisterType) => {
-      setRequesting(true);
-      try {
-        loginSuccess(
-          await postFindPassword({
-            username,
-            code,
-            password
-          })
-        );
-        toast({
-          title: t('user:password.retrieved'),
-          status: 'success'
-        });
-      } catch (error: any) {
-        toast({
-          title: error.message || t('user:password.change_error'),
-          status: 'error'
-        });
+  const placeholder = feConfigs?.find_password_method
+    ?.map((item) => {
+      switch (item) {
+        case 'email':
+          return t('common:support.user.login.Email');
+        case 'phone':
+          return t('common:support.user.login.Phone number');
+        default:
+          return t('common:support.user.login.Username');
       }
-      setRequesting(false);
+    })
+    .join('/');
+
+  const { runAsync: onclickFindPassword, loading: requesting } = useRequest2(
+    async ({ username, code, password }: RegisterType) => {
+      loginSuccess(
+        await postFindPassword({
+          username,
+          code,
+          password
+        })
+      );
+      toast({
+        status: 'success',
+        title: t('user:password.retrieved')
+      });
     },
-    [loginSuccess, toast]
+    {
+      refreshDeps: [loginSuccess, t, toast]
+    }
   );
 
   return (
@@ -89,7 +87,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         <FormControl isInvalid={!!errors.username}>
           <Input
             bg={'myGray.50'}
-            placeholder={t('user:password.email_phone')}
+            placeholder={placeholder}
             {...register('username', {
               required: t('user:password.email_phone_void'),
               pattern: {
@@ -116,23 +114,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
               required: t('user:password.code_required')
             })}
           ></Input>
-          <Box
-            position={'absolute'}
-            right={3}
-            zIndex={1}
-            fontSize={'sm'}
-            {...(codeCountDown > 0
-              ? {
-                  color: 'myGray.500'
-                }
-              : {
-                  color: 'primary.700',
-                  cursor: 'pointer',
-                  onClick: onclickSendCode
-                })}
-          >
-            {sendCodeText}
-          </Box>
+          <SendCodeBox username={username} />
         </FormControl>
         <FormControl mt={6} isInvalid={!!errors.password}>
           <Input

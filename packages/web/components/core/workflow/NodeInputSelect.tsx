@@ -45,7 +45,11 @@ const NodeInputSelect = ({
     {
       type: FlowNodeInputTypeEnum.switch,
       icon: FlowNodeInputMap[FlowNodeInputTypeEnum.switch].icon,
-
+      title: t('common:core.workflow.inputType.Manual select')
+    },
+    {
+      type: FlowNodeInputTypeEnum.select,
+      icon: FlowNodeInputMap[FlowNodeInputTypeEnum.select].icon,
       title: t('common:core.workflow.inputType.Manual select')
     },
     {
@@ -147,7 +151,7 @@ const NodeInputSelect = ({
       Button={
         <Button
           size={'xs'}
-          leftIcon={<MyIcon name={renderTypeData.icon as any} w={'0.8rem'} />}
+          leftIcon={<MyIcon name={renderTypeData.icon as any} w={'0.8rem'} color={'primary.600'} />}
           rightIcon={<MyIcon name={'common/select'} w={'0.8rem'} color={'myGray.500'} />}
           variant={'grayBase'}
           border={theme.borders.base}

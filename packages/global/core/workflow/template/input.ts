@@ -9,8 +9,9 @@ export const Input_Template_History: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.history,
   renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
   valueType: WorkflowIOValueTypeEnum.chatHistory,
-  label: 'core.module.input.label.chat history',
-  description: '最多携带多少轮对话记录',
+  label: i18nT('common:core.module.input.label.chat history'),
+  description: i18nT('workflow:max_dialog_rounds'),
+
   required: true,
   min: 0,
   max: 50,
@@ -21,7 +22,7 @@ export const Input_Template_UserChatInput: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.userChatInput,
   renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
   valueType: WorkflowIOValueTypeEnum.string,
-  label: '用户问题',
+  label: i18nT('workflow:user_question'),
   required: true
 };
 
@@ -36,14 +37,14 @@ export const Input_Template_DynamicInput: FlowNodeInputItemType = {
 export const Input_Template_SelectAIModel: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.aiModel,
   renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel, FlowNodeInputTypeEnum.reference],
-  label: 'core.module.input.label.aiModel',
+  label: i18nT('common:core.module.input.label.aiModel'),
   required: true,
   valueType: WorkflowIOValueTypeEnum.string
 };
 export const Input_Template_SettingAiModel: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.aiModel,
   renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel, FlowNodeInputTypeEnum.reference],
-  label: 'core.module.input.label.aiModel',
+  label: i18nT('common:core.module.input.label.aiModel'),
   valueType: WorkflowIOValueTypeEnum.string
 };
 
@@ -52,7 +53,7 @@ export const Input_Template_System_Prompt: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
   max: 3000,
   valueType: WorkflowIOValueTypeEnum.string,
-  label: 'core.ai.Prompt',
+  label: i18nT('common:core.ai.Prompt'),
   description: chatNodeSystemPromptTip,
   placeholder: chatNodeSystemPromptTip
 };
@@ -61,7 +62,7 @@ export const Input_Template_Dataset_Quote: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.aiChatDatasetQuote,
   renderTypeList: [FlowNodeInputTypeEnum.settingDatasetQuotePrompt],
   label: '',
-  debugLabel: '知识库引用',
+  debugLabel: i18nT('workflow:knowledge_base_reference'),
   description: '',
   valueType: WorkflowIOValueTypeEnum.datasetQuote
 };
@@ -72,4 +73,13 @@ export const Input_Template_Text_Quote: FlowNodeInputItemType = {
   debugLabel: i18nT('app:document_quote'),
   description: i18nT('app:document_quote_tip'),
   valueType: WorkflowIOValueTypeEnum.string
+};
+export const Input_Template_File_Link: FlowNodeInputItemType = {
+  key: NodeInputKeyEnum.fileUrlList,
+  renderTypeList: [FlowNodeInputTypeEnum.reference],
+  required: true,
+  label: i18nT('app:workflow.user_file_input'),
+  debugLabel: i18nT('app:workflow.user_file_input'),
+  description: i18nT('app:workflow.user_file_input_desc'),
+  valueType: WorkflowIOValueTypeEnum.arrayString
 };

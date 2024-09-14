@@ -6,7 +6,8 @@ import {
   Box,
   useOutsideClick,
   MenuButton,
-  MenuItemProps
+  MenuItemProps,
+  PlacementWithLogical
 } from '@chakra-ui/react';
 import MyDivider from '../MyDivider';
 import type { IconNameType } from '../Icon/type';
@@ -21,6 +22,9 @@ export type Props = {
   Button: React.ReactNode;
   trigger?: 'hover' | 'click';
   iconSize?: string;
+  iconRadius?: string;
+
+  placement?: PlacementWithLogical;
   menuList: {
     label?: string;
     children: {
@@ -29,7 +33,8 @@ export type Props = {
       icon?: IconNameType | string;
       label: string | React.ReactNode;
       description?: string;
-      onClick: () => any;
+      onClick?: () => any;
+      menuItemStyles?: MenuItemProps;
     }[];
   }[];
 };
@@ -40,7 +45,9 @@ const MyMenu = ({
   offset,
   iconSize = '1rem',
   Button,
-  menuList
+  menuList,
+  iconRadius,
+  placement = 'bottom-start'
 }: Props) => {
   const typeMapStyle: Record<MenuItemType, MenuItemProps> = {
     primary: {
@@ -69,14 +76,6 @@ const MyMenu = ({
         background: 'red.1'
       }
     }
-  };
-  const menuItemStyles: MenuItemProps = {
-    borderRadius: 'sm',
-    py: 2,
-    px: 3,
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: 'sm'
   };
 
   const { isPc } = useSystem();
@@ -107,7 +106,7 @@ const MyMenu = ({
       direction={'ltr'}
       isLazy
       lazyBehavior={'keepMounted'}
-      placement="bottom-start"
+      placement={placement}
       computePositionOnMount
     >
       <Box
@@ -161,24 +160,42 @@ const MyMenu = ({
                 {item.children.map((child, index) => (
                   <MenuItem
                     key={index}
-                    {...menuItemStyles}
-                    onClickCapture={(e) => {
+                    borderRadius={'sm'}
+                    onClick={(e) => {
                       e.stopPropagation();
-                      setIsOpen(false);
-                      child.onClick && child.onClick();
+                      if (child.onClick) {
+                        setIsOpen(false);
+                        child.onClick();
+                      }
                     }}
+                    py={2}
+                    px={3}
+                    alignItems={'center'}
+                    fontSize={'sm'}
                     color={child.isActive ? 'primary.700' : 'myGray.600'}
                     whiteSpace={'pre-wrap'}
                     _notLast={{ mb: 0.5 }}
                     {...typeMapStyle[child.type || 'primary']}
+                    {...child.menuItemStyles}
                   >
-                    {!!child.icon && <Avatar src={child.icon as any} w={iconSize} mr={3} />}
-                    <Box>
-                      <Box color={child.description ? 'myGray.900' : 'inherit'} fontSize={'sm'}>
+                    {!!child.icon && (
+                      <Avatar
+                        src={child.icon as any}
+                        borderRadius={iconRadius}
+                        w={iconSize}
+                        mr={3}
+                      />
+                    )}
+                    <Box w={'100%'}>
+                      <Box
+                        w={'100%'}
+                        color={child.description ? 'myGray.900' : 'inherit'}
+                        fontSize={'sm'}
+                      >
                         {child.label}
                       </Box>
                       {child.description && (
-                        <Box color={'myGray.500'} fontSize={'mini'}>
+                        <Box color={'myGray.500'} fontSize={'mini'} w={'100%'}>
                           {child.description}
                         </Box>
                       )}

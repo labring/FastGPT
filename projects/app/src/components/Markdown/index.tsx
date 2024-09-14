@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import 'katex/dist/katex.min.css';
 import RemarkMath from 'remark-math'; // Math syntax
@@ -10,7 +10,7 @@ import RehypeExternalLinks from 'rehype-external-links';
 import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
 
-import { Link, Button } from '@chakra-ui/react';
+import { Link, Button, Box } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
@@ -28,10 +28,12 @@ const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false
 
 const Markdown = ({
   source = '',
-  showAnimation = false
+  showAnimation = false,
+  isDisabled = false
 }: {
   source?: string;
   showAnimation?: boolean;
+  isDisabled?: boolean;
 }) => {
   const components = useMemo<any>(
     () => ({
@@ -46,30 +48,41 @@ const Markdown = ({
 
   const formatSource = useMemo(() => {
     const formatSource = source
-      .replace(/(http[s]?:\/\/[^\s，。]+)([。，])/g, '$1 $2') // Follow the link with a space
+      .replace(
+        /([\u4e00-\u9fa5\u3000-\u303f])([a-zA-Z0-9])|([a-zA-Z0-9])([\u4e00-\u9fa5\u3000-\u303f])/g,
+        '$1$3 $2$4'
+      ) // Chinese and english chars separated by space
       .replace(/\n*(\[QUOTE SIGN\]\(.*\))/g, '$1');
 
     return formatSource;
   }, [source]);
 
+  const urlTransform = useCallback((val: string) => {
+    return val;
+  }, []);
+
   return (
-    <ReactMarkdown
-      className={`markdown ${styles.markdown}
+    <Box position={'relative'}>
+      <ReactMarkdown
+        className={`markdown ${styles.markdown}
       ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
     `}
-      remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
-      rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
-      components={components}
-    >
-      {formatSource}
-    </ReactMarkdown>
+        remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
+        rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
+        components={components}
+        urlTransform={urlTransform}
+      >
+        {formatSource}
+      </ReactMarkdown>
+      {isDisabled && <Box position={'absolute'} top={0} right={0} left={0} bottom={0} />}
+    </Box>
   );
 };
 
 export default React.memo(Markdown);
 
 /* Custom dom */
-const Code = React.memo(function Code(e: any) {
+function Code(e: any) {
   const { className, codeBlock, children } = e;
   const match = /language-(\w+)/.exec(className || '');
   const codeType = match?.[1];
@@ -98,11 +111,13 @@ const Code = React.memo(function Code(e: any) {
   }, [codeType, className, codeBlock, match, children, strChildren]);
 
   return Component;
-});
-const Image = React.memo(function Image({ src }: { src?: string }) {
+}
+
+function Image({ src }: { src?: string }) {
   return <MdImage src={src} />;
-});
-const A = React.memo(function A({ children, ...props }: any) {
+}
+
+function A({ children, ...props }: any) {
   const { t } = useTranslation();
 
   // empty href link
@@ -147,7 +162,7 @@ const A = React.memo(function A({ children, ...props }: any) {
   }
 
   return <Link {...props}>{children}</Link>;
-});
+}
 
 function RewritePre({ children }: any) {
   const modifiedChildren = React.Children.map(children, (child) => {

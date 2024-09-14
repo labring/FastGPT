@@ -23,13 +23,12 @@ declare global {
   var qaQueueLen: number;
   var vectorQueueLen: number;
 
-  var systemVersion: string;
-
   interface Window {
     grecaptcha: any;
     QRCode: any;
     umami?: {
       track: (event: TrackEventName, data: any) => void;
     };
+    windowHidden: boolean;
   }
 }

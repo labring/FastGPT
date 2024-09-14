@@ -6,7 +6,7 @@ import { ImportDataSourceEnum, TrainingModeEnum } from '@fastgpt/global/core/dat
 import { useMyStep } from '@fastgpt/web/hooks/useStep';
 import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { TabEnum } from '../Slider';
+import { TabEnum } from '../NavBar';
 import { ImportProcessWayEnum } from '@/web/core/dataset/constants';
 import { UseFormReturn, useForm } from 'react-hook-form';
 import { ImportSourceItemType } from '@/web/core/dataset/type';

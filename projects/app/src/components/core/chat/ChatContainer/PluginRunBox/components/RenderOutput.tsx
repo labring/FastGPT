@@ -6,6 +6,7 @@ import Markdown from '@/components/Markdown';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import AIResponseBox from '../../../components/AIResponseBox';
 import { useTranslation } from 'next-i18next';
+import ComplianceTip from '@/components/common/ComplianceTip/index';
 const RenderOutput = () => {
   const { histories, isChatting } = useContextSelector(PluginRunContext, (v) => v);
   const { t } = useTranslation();
@@ -32,11 +33,8 @@ const RenderOutput = () => {
                   <AIResponseBox
                     key={key}
                     value={value}
-                    index={i}
-                    chat={histories[1]}
                     isLastChild={true}
                     isChatting={isChatting}
-                    questionGuides={[]}
                   />
                 );
               })}
@@ -52,6 +50,7 @@ const RenderOutput = () => {
           ) : null}
         </Box>
       </Box>
+      <ComplianceTip type={'chat'} />
     </>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { delChatRecordById, getChatHistories, getInitChatInfo } from '@/web/core/chat/api';
@@ -53,14 +53,17 @@ const Chat = ({
 
   const { setLastChatAppId } = useChatStore();
   const {
-    loadHistories,
+    setHistories: setRecordHistories,
+    loadHistories: loadRecordHistories,
+    histories: recordHistories,
     onUpdateHistory,
     onClearHistories,
     onDelHistory,
     isOpenSlider,
     onCloseSlider,
     forbidLoadChat,
-    onChangeChatId
+    onChangeChatId,
+    onUpdateHistoryTitle
   } = useContextSelector(ChatContext, (v) => v);
   const {
     ChatBoxRef,
@@ -130,7 +133,6 @@ const Chat = ({
       const completionChatId = chatId || getNanoid();
       // Just send a user prompt
       const histories = messages.slice(-1);
-
       const { responseText, responseData } = await streamFetch({
         data: {
           messages: histories,
@@ -146,13 +148,10 @@ const Chat = ({
       const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
 
       // new chat
-      if (completionChatId !== chatId) {
-        if (controller.signal.reason !== 'leave') {
-          onChangeChatId(completionChatId, true);
-        }
+      if (completionChatId !== chatId && controller.signal.reason !== 'leave') {
+        onChangeChatId(completionChatId, true);
       }
-      loadHistories();
-
+      onUpdateHistoryTitle({ chatId: completionChatId, newTitle });
       // update chat window
       setChatData((state) => ({
         ...state,
@@ -161,7 +160,7 @@ const Chat = ({
 
       return { responseText, responseData, isNewChat: forbidLoadChat.current };
     },
-    [appId, chatId, forbidLoadChat, loadHistories, onChangeChatId]
+    [chatId, appId, onUpdateHistoryTitle, forbidLoadChat, onChangeChatId]
   );
 
   return (
@@ -240,6 +239,7 @@ const Chat = ({
                   histories={chatRecords}
                   setHistories={setChatRecords}
                   appId={chatData.appId}
+                  chatConfig={chatData.app.chatConfig}
                   tab={pluginRunTab}
                   setTab={setPluginRunTab}
                   onNewChat={() => onChangeChatId(getNanoid())}
@@ -285,14 +285,6 @@ const Render = (props: Props) => {
     }
   );
 
-  const { data: histories = [], runAsync: loadHistories } = useRequest2(
-    () => (appId ? getChatHistories({ appId }) : Promise.resolve([])),
-    {
-      manual: false,
-      refreshDeps: [appId]
-    }
-  );
-
   // 初始化聊天框
   useMount(async () => {
     // pc: redirect to latest model chat
@@ -326,8 +318,9 @@ const Render = (props: Props) => {
     }
   });
 
+  const providerParams = useMemo(() => ({ appId }), [appId]);
   return (
-    <ChatContextProvider histories={histories} loadHistories={loadHistories}>
+    <ChatContextProvider params={providerParams}>
       <Chat {...props} myApps={myApps} />
     </ChatContextProvider>
   );

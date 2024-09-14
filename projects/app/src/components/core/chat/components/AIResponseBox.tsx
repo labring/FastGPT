@@ -1,5 +1,4 @@
 import Markdown from '@/components/Markdown';
-import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import {
   Accordion,
   AccordionButton,
@@ -13,67 +12,47 @@ import {
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   AIChatItemValueItemType,
-  ChatSiteItemType,
+  ToolModuleResponseItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { SendPromptFnType } from '../ChatContainer/ChatBox/type';
-import { useContextSelector } from 'use-context-selector';
-import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
-import { setUserSelectResultToHistories } from '../ChatContainer/ChatBox/utils';
+import { InteractiveNodeResponseItemType } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
+import { isEqual } from 'lodash';
+import { onSendPrompt } from '../ChatContainer/useChat';
 
 type props = {
   value: UserChatItemValueItemType | AIChatItemValueItemType;
-  index: number;
-  chat: ChatSiteItemType;
   isLastChild: boolean;
   isChatting: boolean;
-  questionGuides: string[];
-  onSendMessage?: SendPromptFnType;
 };
 
-const AIResponseBox = ({
-  value,
-  index,
-  chat,
-  isLastChild,
-  isChatting,
-  questionGuides,
-  onSendMessage
-}: props) => {
-  const chatHistories = useContextSelector(ChatBoxContext, (v) => v.chatHistories);
+const RenderText = React.memo(function RenderText({
+  showAnimation,
+  text
+}: {
+  showAnimation: boolean;
+  text?: string;
+}) {
+  let source = (text || '').trim();
 
-  if (value.type === ChatItemValueTypeEnum.text && value.text) {
-    let source = (value.text?.content || '').trim();
+  // First empty line
+  // if (!source && !isLastChild) return null;
 
-    // First empty line
-    if (!source && chat.value.length > 1) return null;
-
-    // computed question guide
-    if (
-      isLastChild &&
-      !isChatting &&
-      questionGuides.length > 0 &&
-      index === chat.value.length - 1
-    ) {
-      source = `${source}
-\`\`\`${CodeClassNameEnum.questionGuide}
-${JSON.stringify(questionGuides)}`;
-    }
-
-    return (
-      <Markdown
-        source={source}
-        showAnimation={isLastChild && isChatting && index === chat.value.length - 1}
-      />
-    );
-  }
-  if (value.type === ChatItemValueTypeEnum.tool && value.tools) {
+  return <Markdown source={source} showAnimation={showAnimation} />;
+});
+const RenderTool = React.memo(
+  function RenderTool({
+    showAnimation,
+    tools
+  }: {
+    showAnimation: boolean;
+    tools: ToolModuleResponseItemType[];
+  }) {
     return (
       <Box>
-        {value.tools.map((tool) => {
+        {tools.map((tool) => {
           const toolParams = (() => {
             try {
               return JSON.stringify(JSON.parse(tool.params), null, 2);
@@ -109,7 +88,7 @@ ${JSON.stringify(questionGuides)}`;
                   <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
                     {tool.toolName}
                   </Box>
-                  {isChatting && !tool.response && <MyIcon name={'common/loading'} w={'14px'} />}
+                  {showAnimation && !tool.response && <MyIcon name={'common/loading'} w={'14px'} />}
                   <AccordionIcon color={'myGray.600'} ml={5} />
                 </AccordionButton>
                 <AccordionPanel
@@ -142,22 +121,27 @@ ${toolResponse}`}
         })}
       </Box>
     );
-  }
-  if (
-    value.type === ChatItemValueTypeEnum.interactive &&
-    value.interactive &&
-    value.interactive.type === 'userSelect'
-  ) {
-    return (
-      <Flex flexDirection={'column'} gap={2} minW={'200px'} maxW={'250px'}>
-        {value.interactive.params.userSelectOptions?.map((option) => {
-          const selected = option.value === value.interactive?.params?.userSelectedVal;
+  },
+  (prevProps, nextProps) => isEqual(prevProps, nextProps)
+);
+const RenderInteractive = React.memo(function RenderInteractive({
+  interactive
+}: {
+  interactive: InteractiveNodeResponseItemType;
+}) {
+  return (
+    <>
+      {interactive?.params?.description && <Markdown source={interactive.params.description} />}
+      <Flex flexDirection={'column'} gap={2} w={'250px'}>
+        {interactive.params.userSelectOptions?.map((option) => {
+          const selected = option.value === interactive?.params?.userSelectedVal;
 
           return (
             <Button
               key={option.key}
               variant={'whitePrimary'}
-              isDisabled={!isLastChild && value.interactive?.params?.userSelectedVal !== undefined}
+              whiteSpace={'pre-wrap'}
+              isDisabled={interactive?.params?.userSelectedVal !== undefined}
               {...(selected
                 ? {
                     _disabled: {
@@ -169,9 +153,9 @@ ${toolResponse}`}
                   }
                 : {})}
               onClick={() => {
-                onSendMessage?.({
+                onSendPrompt({
                   text: option.value,
-                  history: setUserSelectResultToHistories(chatHistories, option.value)
+                  isInteractivePrompt: true
                 });
               }}
             >
@@ -180,9 +164,21 @@ ${toolResponse}`}
           );
         })}
       </Flex>
-    );
-  }
-  return null;
+    </>
+  );
+});
+
+const AIResponseBox = ({ value, isLastChild, isChatting }: props) => {
+  if (value.type === ChatItemValueTypeEnum.text && value.text)
+    return <RenderText showAnimation={isChatting && isLastChild} text={value.text.content} />;
+  if (value.type === ChatItemValueTypeEnum.tool && value.tools)
+    return <RenderTool showAnimation={isChatting && isLastChild} tools={value.tools} />;
+  if (
+    value.type === ChatItemValueTypeEnum.interactive &&
+    value.interactive &&
+    value.interactive.type === 'userSelect'
+  )
+    return <RenderInteractive interactive={value.interactive} />;
 };
 
 export default React.memo(AIResponseBox);

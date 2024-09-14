@@ -13,6 +13,7 @@ import {
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 
 export const getScheduleTriggerApp = async () => {
@@ -35,9 +36,12 @@ export const getScheduleTriggerApp = async () => {
           chatId: getNanoid(),
           user,
           mode: 'chat',
-          teamId: String(app.teamId),
-          tmbId: String(app.tmbId),
-          app,
+          runningAppInfo: {
+            id: String(app._id),
+            teamId: String(app.teamId),
+            tmbId: String(app.tmbId)
+          },
+          uid: String(app.tmbId),
           runtimeNodes: storeNodes2RuntimeNodes(app.modules, getWorkflowEntryNodeIds(app.modules)),
           runtimeEdges: initWorkflowEdgeStatus(app.edges),
           variables: {},
@@ -52,8 +56,7 @@ export const getScheduleTriggerApp = async () => {
           chatConfig: defaultApp.chatConfig,
           histories: [],
           stream: false,
-          detail: false,
-          maxRunTimes: 200
+          maxRunTimes: WORKFLOW_MAX_RUN_TIMES
         });
         pushChatUsage({
           appName: app.name,

@@ -33,8 +33,11 @@ app.get('/', (req, res) => {
 
   svgPaths.forEach((filePath) => {
     const name = filePath.split('.')[0];
+
+    const icon = fs.readFileSync(`${svgDir}/${filePath}`, 'utf8');
+
     iconHtml += `<div class="item" id="${name}" onclick="onclickCopy('${name}')">
-      <img src="/icons/${filePath}" width="30" height="30" /> 
+      ${icon}
       <div>${name}</div>
     </div>`;
   });
@@ -48,7 +51,7 @@ app.get('/', (req, res) => {
       .grid {
         display: grid;
         grid-gap: 10px;
-        grid-template-columns: repeat(6, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
         padding: 10px;
         background-color: #F0F1F6;
       }
@@ -65,9 +68,13 @@ app.get('/', (req, res) => {
       .item:hover{
         background-color: rgba(17, 24, 36, 0.1);
       }
-      img {
-        margin-bottom: 5px;
+      svg {
+        width: 30px;
+        height: 30px;
+        margin: auto;
+        fill: #999;
       }
+      
   </style>
   <body>
     <div class="grid">

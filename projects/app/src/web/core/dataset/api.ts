@@ -34,7 +34,10 @@ import type { CreateDatasetParams, InsertOneDatasetDataProps } from '@/global/co
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
+import type {
+  DatasetCollectionsListItemType,
+  DatasetDataListItemType
+} from '@/global/core/dataset/type.d';
 import { PagingData } from '@/types';
 import type { getDatasetTrainingQueueResponse } from '@/pages/api/core/dataset/training/getDatasetTrainingQueue';
 import type { rebuildEmbeddingBody } from '@/pages/api/core/dataset/training/rebuildEmbedding';
@@ -98,7 +101,7 @@ export const postDatasetCollection = (data: CreateDatasetCollectionParams) =>
   POST<string>(`/core/dataset/collection/create`, data);
 export const postCreateDatasetFileCollection = (data: FileIdCreateDatasetCollectionParams) =>
   POST<{ collectionId: string }>(`/core/dataset/collection/create/fileId`, data, {
-    timeout: 120000
+    timeout: 360000
   });
 export const postCreateDatasetLinkCollection = (data: LinkCreateDatasetCollectionParams) =>
   POST<{ collectionId: string }>(`/core/dataset/collection/create/link`, data);
@@ -106,13 +109,13 @@ export const postCreateDatasetTextCollection = (data: TextCreateDatasetCollectio
   POST<{ collectionId: string }>(`/core/dataset/collection/create/text`, data);
 export const postCreateDatasetCsvTableCollection = (data: CsvTableCreateDatasetCollectionParams) =>
   POST<{ collectionId: string }>(`/core/dataset/collection/create/csvTable`, data, {
-    timeout: 120000
+    timeout: 360000
   });
 export const postCreateDatasetExternalFileCollection = (
   data: ExternalFileCreateDatasetCollectionParams
 ) =>
   POST<{ collectionId: string }>(`/proApi/core/dataset/collection/create/externalFileUrl`, data, {
-    timeout: 120000
+    timeout: 360000
   });
 
 export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
@@ -120,7 +123,7 @@ export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
 export const delDatasetCollectionById = (params: { id: string }) =>
   DELETE(`/core/dataset/collection/delete`, params);
 export const postLinkCollectionSync = (collectionId: string) =>
-  POST<`${DatasetCollectionSyncResultEnum}`>(`/core/dataset/collection/sync/link`, {
+  POST<DatasetCollectionSyncResultEnum>(`/core/dataset/collection/sync/link`, {
     collectionId
   });
 
@@ -153,7 +156,7 @@ export const getScrollCollectionList = (data: GetScrollCollectionsProps) =>
 /* =============================== data ==================================== */
 /* get dataset list */
 export const getDatasetDataList = (data: GetDatasetDataListProps) =>
-  POST(`/core/dataset/data/list`, data);
+  POST<PagingData<DatasetDataListItemType>>(`/core/dataset/data/list`, data);
 
 export const getDatasetDataItemById = (id: string) =>
   GET<DatasetDataItemType>(`/core/dataset/data/detail`, { id });

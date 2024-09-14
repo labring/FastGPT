@@ -1,0 +1,13 @@
+{
+  "Login": "Login",
+  "forget_password": "Find password",
+  "login_failed": "Login failed",
+  "login_success": "Login successful",
+  "password_condition": "Password maximum 60 characters",
+  "policy_tip": "By useing, you agree to our",
+  "privacy": "Privacy policy",
+  "register": "Register",
+  "root_password_placeholder": "The root user password is the value of the environment variable DEFAULT_ROOT_PSW",
+  "terms": "Terms",
+  "use_root_login": "Log in as root user"
+}

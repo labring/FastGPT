@@ -13,7 +13,7 @@
         "js",
         "ts"
     ],
-    "i18n-ally.keystyle": "nested",
+    "i18n-ally.keystyle": "flat",
     "i18n-ally.sortKeys": true,
     "i18n-ally.keepFulfilled": false,
     "i18n-ally.sourceLanguage": "zh", // 根据此语言文件翻译其他语言文件的变量和内容

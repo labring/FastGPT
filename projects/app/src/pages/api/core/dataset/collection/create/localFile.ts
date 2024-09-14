@@ -30,7 +30,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCo
    * Creates the multer uploader
    */
   const upload = getUploadModel({
-    maxSize: (global.feConfigs?.uploadFileMaxSize || 500) * 1024 * 1024
+    maxSize: global.feConfigs?.uploadFileMaxSize
   });
   let filePaths: string[] = [];
 

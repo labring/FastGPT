@@ -60,7 +60,7 @@ const ParentPaths = (props: {
             {item.parentName}
           </Box>
           {i !== concatPaths.length - 1 && (
-            <Box mx={1.5} color={'myGray.500'}>
+            <Box mx={1} color={'myGray.500'}>
               /
             </Box>
           )}

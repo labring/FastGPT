@@ -4,37 +4,48 @@ import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import ApplyInvoiceModal from './ApplyInvoiceModal';
+import { useRouter } from 'next/router';
 
-const TabEnum = {
-  bill: 'bill',
-  invoice: 'invoice',
-  invoiceHeader: 'voiceHeader'
-};
+export enum InvoiceTabEnum {
+  bill = 'bill',
+  invoice = 'invoice',
+  invoiceHeader = 'invoiceHeader'
+}
+
 const BillTable = dynamic(() => import('./BillTable'));
 const InvoiceHeaderForm = dynamic(() => import('./InvoiceHeaderForm'));
 const InvoiceTable = dynamic(() => import('./InvoiceTable'));
 const BillAndInvoice = () => {
-  const [currentTab, setCurrentTab] = useState(TabEnum.bill);
+  const { t } = useTranslation();
+  const router = useRouter();
+  const { invoiceTab = InvoiceTabEnum.bill } = router.query as { invoiceTab: `${InvoiceTabEnum}` };
+
   const [isOpenInvoiceModal, setIsOpenInvoiceModal] = useState(false);
 
-  const { t } = useTranslation();
   return (
     <>
       <Box p={['1rem', '2rem']}>
         <Flex justifyContent={'space-between'} alignItems={'center'} pb={'0.75rem'}>
           <FillRowTabs
             list={[
-              { label: t('common:support.wallet.bill_tag.bill'), value: TabEnum.bill },
-              { label: t('common:support.wallet.bill_tag.invoice'), value: TabEnum.invoice },
+              { label: t('common:support.wallet.bill_tag.bill'), value: InvoiceTabEnum.bill },
+              { label: t('common:support.wallet.bill_tag.invoice'), value: InvoiceTabEnum.invoice },
               {
                 label: t('common:support.wallet.bill_tag.default_header'),
-                value: TabEnum.invoiceHeader
+                value: InvoiceTabEnum.invoiceHeader
               }
             ]}
-            value={currentTab}
-            onChange={setCurrentTab}
+            value={invoiceTab}
+            onChange={(e) => {
+              router.replace({
+                query: {
+                  ...router.query,
+                  invoiceTab: e
+                }
+              });
+            }}
           ></FillRowTabs>
-          {currentTab !== TabEnum.invoiceHeader && (
+          {invoiceTab !== InvoiceTabEnum.invoiceHeader && (
             <Button variant={'primary'} px="0" onClick={() => setIsOpenInvoiceModal(true)}>
               <Flex alignItems={'center'} px={'20px'}>
                 <Box px={'1.25rem'} py={'0.5rem'}>
@@ -45,11 +56,17 @@ const BillAndInvoice = () => {
           )}
         </Flex>
         <Box h={'100%'}>
-          {currentTab === TabEnum.bill && <BillTable />}
-          {currentTab === TabEnum.invoice && <InvoiceTable />}
-          {currentTab === TabEnum.invoiceHeader && <InvoiceHeaderForm />}
+          {invoiceTab === InvoiceTabEnum.bill && <BillTable />}
+          {invoiceTab === InvoiceTabEnum.invoice && <InvoiceTable />}
+          {invoiceTab === InvoiceTabEnum.invoiceHeader && <InvoiceHeaderForm />}
         </Box>
-        {isOpenInvoiceModal && <ApplyInvoiceModal onClose={() => setIsOpenInvoiceModal(false)} />}
+        {isOpenInvoiceModal && (
+          <ApplyInvoiceModal
+            onClose={() => {
+              setIsOpenInvoiceModal(false);
+            }}
+          />
+        )}
       </Box>
     </>
   );

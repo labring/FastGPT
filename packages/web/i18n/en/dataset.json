@@ -1,41 +1,48 @@
 {
-  "Disabled": "Disabled",
   "Enable": "Enable",
-  "Enabled": "Enabled",
   "collection": {
-    "Create update time": "Create/Update time",
-    "Training type": "Training type"
+    "Create update time": "Creation/Update Time",
+    "Training type": "Training Mode"
   },
-  "collection_tags": "Tags",
-  "common_dataset": "Common dataset",
-  "common_dataset_desc": "Can be built by importing files, web links, or manual entry",
-  "confirm_to_rebuild_embedding_tip": "Are you sure to switch the knowledge base index?\nSwitching index is a very heavy operation that requires re-indexing all the data in your knowledge base, which may take a long time. Please ensure that the remaining points in your account are sufficient.\n\nIn addition, you need to be careful to modify the applications that select this knowledge base to avoid mixing them with other index model knowledge bases.",
+  "collection_tags": "Collection Tags",
+  "common_dataset": "General Dataset",
+  "common_dataset_desc": "Build a Dataset by importing files, web links, or manual input.",
+  "confirm_to_rebuild_embedding_tip": "Are you sure you want to switch the index for the Dataset?\nSwitching the index is a significant operation that requires re-indexing all data in your Dataset, which may take a long time. Please ensure your account has sufficient remaining points.\n\nAdditionally, you need to update the applications that use this Dataset to avoid conflicts with other indexed model Datasets.",
   "dataset": {
-    "no_collections": "no collections",
-    "no_tags": "no tags"
+    "no_collections": "No datasets available",
+    "no_tags": "No tags available"
   },
-  "external_file": "External file",
-  "external_file_dataset_desc": "You can import files from an external file library to build a knowledge base. Files are not stored twice",
-  "external_id": "File id",
-  "external_read_url": "External read url",
-  "external_read_url_tip": "You can configure the reading address of your file library. This allows users to read and authenticate. You can currently use the {{fileId}} variable to refer to the external file ID.",
-  "external_url": "File read url",
-  "filename": "filename",
+  "external_file": "External File Library",
+  "external_file_dataset_desc": "Import files from an external file library to build a Dataset. The files will not be stored again.",
+  "external_id": "File Reading ID",
+  "external_read_url": "External Preview URL",
+  "external_read_url_tip": "Configure the reading URL of your file library for user authentication. Use the {{fileId}} variable to refer to the external file ID.",
+  "external_url": "File Access URL",
+  "file_model_function_tip": "Enhances indexing and QA generation",
+  "filename": "Filename",
   "folder_dataset": "Folder",
-  "rebuild_embedding_start_tip": "The task of switching index models has begun",
-  "rebuilding_index_count": "Rebuilding count: {{count}}",
-  "tag": {
-    "Add New": "Add new",
-    "Add_new_tag": "Add new tag",
-    "Edit_tag": "Edit tag",
-    "add": "Add",
-    "cancel": "Cancel",
-    "delete_tag_confirm": "Confirm to delete tag",
-    "manage": "Manage",
-    "searchOrAddTag": "Search or add tags",
-    "tags": "Tags"
+  "permission": {
+    "des": {
+      "manage": "Can manage the entire knowledge base data and information",
+      "read": "View knowledge base content",
+      "write": "Ability to add and change knowledge base content"
+    }
   },
-  "the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt": "The knowledge base has indexes that are being trained or being rebuilt",
-  "website_dataset": "Web site",
-  "website_dataset_desc": "Web site synchronization allows you to use a web page link to build a dataset"
+  "rebuild_embedding_start_tip": "Index model switching task has started",
+  "rebuilding_index_count": "Number of indexes being rebuilt: {{count}}",
+  "tag": {
+    "Add New": "Add New",
+    "Add_new_tag": "Add New Tag",
+    "Edit_tag": "Edit Tag",
+    "add": "Create",
+    "cancel": "Cancel",
+    "delete_tag_confirm": "Confirm to delete the tag?",
+    "manage": "Tagging",
+    "searchOrAddTag": "Search or Add Tag",
+    "tags": "Tags",
+    "total_tags": "Total {{total}} tags"
+  },
+  "the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt": "The Dataset has indexes that are being trained or rebuilt",
+  "website_dataset": "Website Sync",
+  "website_dataset_desc": "Website sync allows you to build a Dataset directly using a web link."
 }

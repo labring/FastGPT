@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, Flex, Button, ModalFooter, ModalBody, Input } from '@chakra-ui/react';
+import { Box, Flex, Button, ModalFooter, ModalBody, Input, HStack } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
@@ -17,9 +17,10 @@ import { useTranslation } from 'next-i18next';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import ComplianceTip from '@/components/common/ComplianceTip/index';
 
 export type CreateDatasetType =
   | DatasetTypeEnum.dataset
@@ -116,17 +117,23 @@ const CreateModal = ({
 
   return (
     <MyModal
-      iconSrc={iconMap[type]}
-      title={t('common:core.dataset.Create dataset', { name: databaseNameMap[type] })}
+      title={
+        <Flex alignItems={'center'} ml={-3}>
+          <Avatar w={'20px'} h={'20px'} borderRadius={'xs'} src={iconMap[type]} pr={'10px'} />
+          {t('common:core.dataset.Create dataset', { name: databaseNameMap[type] })}
+        </Flex>
+      }
       isOpen
       onClose={onClose}
       isCentered={!isPc}
-      w={'450px'}
+      w={'490px'}
     >
-      <ModalBody py={2}>
-        <Box mt={5}>
-          <Box color={'myGray.900'}>{t('common:common.Set Name')}</Box>
-          <Flex mt={1} alignItems={'center'}>
+      <ModalBody py={6} px={9}>
+        <Box>
+          <Box color={'myGray.900'} fontWeight={500} fontSize={'sm'}>
+            {t('common:common.Set Name')}
+          </Box>
+          <Flex mt={'12px'} alignItems={'center'}>
             <MyTooltip label={t('common:common.avatar.Select Avatar')}>
               <Avatar
                 flexShrink={0}
@@ -152,14 +159,27 @@ const CreateModal = ({
           </Flex>
         </Box>
         {filterNotHiddenVectorModelList.length > 1 && (
-          <Flex mt={6} alignItems={'center'}>
-            <Flex alignItems={'center'} flex={'0 0 100px'} fontSize={'sm'}>
-              {t('common:core.ai.model.Vector Model')}
+          <Flex
+            mt={6}
+            alignItems={['flex-start', 'center']}
+            justify={'space-between'}
+            flexDir={['column', 'row']}
+          >
+            <HStack
+              spacing={1}
+              alignItems={'center'}
+              flex={['', '0 0 110px']}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={500}
+              pb={['12px', '0']}
+            >
+              <Box>{t('common:core.ai.model.Vector Model')}</Box>
               <QuestionTip label={t('common:core.dataset.embedding model tip')} />
-            </Flex>
-            <Box flex={1}>
+            </HStack>
+            <Box w={['100%', '300px']}>
               <AIModelSelector
-                w={'100%'}
+                w={['100%', '300px']}
                 value={vectorModel}
                 list={filterNotHiddenVectorModelList.map((item) => ({
                   label: item.name,
@@ -173,13 +193,26 @@ const CreateModal = ({
           </Flex>
         )}
         {datasetModelList.length > 1 && (
-          <Flex mt={6} alignItems={'center'}>
-            <Box flex={'0 0 100px'} fontSize={'sm'}>
-              {t('common:core.ai.model.Dataset Agent Model')}
-            </Box>
-            <Box flex={1}>
+          <Flex
+            mt={6}
+            alignItems={['flex-start', 'center']}
+            justify={'space-between'}
+            flexDir={['column', 'row']}
+          >
+            <HStack
+              spacing={1}
+              flex={['', '0 0 110px']}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={500}
+              pb={['12px', '0']}
+            >
+              <Box>{t('common:core.ai.model.Dataset Agent Model')}</Box>
+              <QuestionTip label={t('dataset:file_model_function_tip')} />
+            </HStack>
+            <Box w={['100%', '300px']}>
               <AIModelSelector
-                w={'100%'}
+                w={['100%', '300px']}
                 value={agentModel}
                 list={datasetModelList.map((item) => ({
                   label: item.name,
@@ -194,7 +227,7 @@ const CreateModal = ({
         )}
       </ModalBody>
 
-      <ModalFooter>
+      <ModalFooter px={9}>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common:common.Close')}
         </Button>
@@ -202,6 +235,8 @@ const CreateModal = ({
           {t('common:common.Confirm Create')}
         </Button>
       </ModalFooter>
+
+      <ComplianceTip pb={6} pt={0} px={9} type={'dataset'} />
 
       <File onSelect={onSelectFile} />
     </MyModal>

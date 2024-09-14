@@ -25,7 +25,6 @@ export type ChatControllerProps = {
 
 const ChatController = ({
   chat,
-  isLastChild,
   showVoiceIcon,
   onReadUserDislike,
   onCloseUserLike,

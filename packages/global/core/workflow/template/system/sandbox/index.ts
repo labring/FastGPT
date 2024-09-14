@@ -14,6 +14,7 @@ import { getHandleConfig } from '../../utils';
 import { Input_Template_DynamicInput } from '../../input';
 import { Output_Template_AddOutput } from '../../output';
 import { JS_TEMPLATE } from './constants';
+import { i18nT } from '../../../../../../web/i18n/utils';
 
 export const CodeNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.code,
@@ -22,14 +23,14 @@ export const CodeNode: FlowNodeTemplateType = {
   sourceHandle: getHandleConfig(true, true, true, true),
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/codeRun',
-  name: '代码运行',
-  intro: '执行一段简单的脚本代码，通常用于进行复杂的数据处理。',
+  name: i18nT('workflow:code_execution'),
+  intro: i18nT('workflow:execute_a_simple_script_code_usually_for_complex_data_processing'),
   showStatus: true,
   version: '482',
   inputs: [
     {
       ...Input_Template_DynamicInput,
-      description: '这些变量会作为代码的运行的输入参数',
+      description: i18nT('workflow:these_variables_will_be_input_parameters_for_code_execution'),
       customInputConfig: {
         selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
         showDescription: false,
@@ -78,20 +79,20 @@ export const CodeNode: FlowNodeTemplateType = {
   outputs: [
     {
       ...Output_Template_AddOutput,
-      description: '将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key'
+      description: i18nT('workflow:pass_returned_object_as_output_to_next_nodes')
     },
     {
       id: NodeOutputKeyEnum.rawResponse,
       key: NodeOutputKeyEnum.rawResponse,
-      label: '完整响应数据',
+      label: i18nT('workflow:full_response_data'),
       valueType: WorkflowIOValueTypeEnum.object,
       type: FlowNodeOutputTypeEnum.static
     },
     {
       id: NodeOutputKeyEnum.error,
       key: NodeOutputKeyEnum.error,
-      label: '运行错误',
-      description: '代码运行错误信息，成功时返回空',
+      label: i18nT('workflow:execution_error'),
+      description: i18nT('workflow:error_info_returns_empty_on_success'),
       valueType: WorkflowIOValueTypeEnum.object,
       type: FlowNodeOutputTypeEnum.static
     },

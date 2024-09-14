@@ -9,6 +9,7 @@ import { PostWorkflowDebugProps, PostWorkflowDebugResponse } from '@/global/core
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { defaultApp } from '@/web/core/app/constants';
+import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 
 async function handler(
   req: NextApiRequest,
@@ -39,14 +40,17 @@ async function handler(
   const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
   /* start process */
-  const { flowUsages, flowResponses, debugResponse } = await dispatchWorkFlow({
+  const { flowUsages, flowResponses, debugResponse, newVariables } = await dispatchWorkFlow({
     res,
     requestOrigin: req.headers.origin,
     mode: 'debug',
-    teamId,
-    tmbId,
+    runningAppInfo: {
+      id: appId,
+      teamId,
+      tmbId
+    },
+    uid: tmbId,
     user,
-    app,
     runtimeNodes: nodes,
     runtimeEdges: edges,
     variables,
@@ -54,8 +58,7 @@ async function handler(
     chatConfig: defaultApp.chatConfig,
     histories: [],
     stream: false,
-    detail: true,
-    maxRunTimes: 200
+    maxRunTimes: WORKFLOW_MAX_RUN_TIMES
   });
 
   pushChatUsage({
@@ -69,6 +72,7 @@ async function handler(
 
   return {
     ...debugResponse,
+    newVariables,
     flowResponses
   };
 }
