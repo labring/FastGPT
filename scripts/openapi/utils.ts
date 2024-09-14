@@ -213,7 +213,10 @@ function getMethod(api: ApiType): 'GET' | 'POST' {
 
 export function parseAPI({ path, rootPath }: { path: string; rootPath: string }): ApiType {
   const code = fs.readFileSync(path, 'utf-8');
+  const authApiKey = code.includes('authApiKey: true');
+  const authToken = code.includes('authToken: true');
   const api = parseCode(code);
+  api.authorization = authApiKey ? 'apikey' : authToken ? 'token' : undefined;
   api.url = path.replace('.ts', '').replace(rootPath, '');
   api.path = path;
   if (api.method === undefined) {
