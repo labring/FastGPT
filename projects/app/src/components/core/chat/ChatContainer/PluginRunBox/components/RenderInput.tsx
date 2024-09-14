@@ -7,8 +7,12 @@ import { useContextSelector } from 'use-context-selector';
 import { PluginRunContext } from '../context';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { isEqual } from 'lodash';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import Markdown from '@/components/Markdown';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useFileUpload } from '../../ChatBox/hooks/useFileUpload';
+import FilePreview from '../../components/FilePreview';
 
 const RenderInput = () => {
   const {
@@ -19,7 +23,9 @@ const RenderInput = () => {
     onNewChat,
     onSubmit,
     isChatting,
-    chatConfig
+    chatConfig,
+    chatId,
+    outLinkAuthData
   } = useContextSelector(PluginRunContext, (v) => v);
 
   const { t } = useTranslation();
@@ -30,6 +36,23 @@ const RenderInput = () => {
     getValues,
     formState: { errors }
   } = variablesForm;
+  const {
+    File,
+    onOpenSelectFile,
+    fileList,
+    onSelectFile,
+    uploadFiles,
+    selectFileIcon,
+    selectFileLabel,
+    showSelectFile,
+    showSelectImg,
+    removeFiles
+  } = useFileUpload({
+    outLinkAuthData,
+    chatId: chatId || '',
+    fileSelectConfig: chatConfig?.fileSelectConfig,
+    control
+  });
 
   const defaultFormValues = useMemo(() => {
     return pluginInputs.reduce(
@@ -72,6 +95,17 @@ const RenderInput = () => {
 
   const isDisabledInput = histories.length > 0;
 
+  useRequest2(
+    async () => {
+      uploadFiles();
+    },
+    {
+      manual: false,
+      errorToast: t('common:upload_file_error'),
+      refreshDeps: [fileList, outLinkAuthData, chatId]
+    }
+  );
+
   return (
     <>
       {/* instruction */}
@@ -88,7 +122,28 @@ const RenderInput = () => {
           <Markdown source={chatConfig.instruction} />
         </Box>
       )}
-
+      {/* file select */}
+      {(showSelectFile || showSelectImg) && (
+        <Box>
+          <Flex alignItems={'center'}>
+            <FormLabel fontSize={'14px'} fontWeight={'medium'}>
+              {selectFileLabel}
+            </FormLabel>
+            <Box flex={1} />
+            <Button
+              leftIcon={<MyIcon name={selectFileIcon as any} w={'16px'} />}
+              variant={'whiteBase'}
+              onClick={() => {
+                onOpenSelectFile();
+              }}
+            >
+              {t('chat:upload')}
+            </Button>
+            <File onSelect={(files) => onSelectFile({ files, fileList })} />
+          </Flex>
+        </Box>
+      )}
+      <FilePreview fileList={fileList} removeFiles={removeFiles} />
       {pluginInputs.map((input) => {
         return (
           <Controller
@@ -126,7 +181,7 @@ const RenderInput = () => {
               if (histories.length > 0) {
                 return onNewChat();
               }
-              handleSubmit(onSubmit)();
+              handleSubmit((data) => onSubmit(data, fileList))();
             }}
           >
             {histories.length > 0 ? t('common:common.Restart') : t('common:common.Run')}

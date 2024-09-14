@@ -8,7 +8,8 @@ import {
   useDisclosure,
   HStack,
   Switch,
-  ModalFooter
+  ModalFooter,
+  BoxProps
 } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -25,11 +26,14 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 const FileSelect = ({
   forbidVision = false,
   value = defaultAppSelectFileConfig,
-  onChange
-}: {
+  onChange,
+  showIcon = true,
+  ...labelStyle
+}: Omit<BoxProps, 'onChange'> & {
   forbidVision?: boolean;
   value?: AppFileSelectConfigType;
   onChange: (e: AppFileSelectConfigType) => void;
+  showIcon?: boolean;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -56,8 +60,8 @@ const FileSelect = ({
 
   return (
     <Flex alignItems={'center'}>
-      <MyIcon name={'core/app/simpleMode/file'} mr={2} w={'20px'} />
-      <FormLabel>{t('app:file_upload')}</FormLabel>
+      {showIcon && <MyIcon name={'core/app/simpleMode/file'} mr={2} w={'20px'} />}
+      <FormLabel {...labelStyle}>{t('app:file_upload')}</FormLabel>
       <ChatFunctionTip type={'file'} />
       <Box flex={1} />
       <MyTooltip label={t('app:config_file_upload')}>

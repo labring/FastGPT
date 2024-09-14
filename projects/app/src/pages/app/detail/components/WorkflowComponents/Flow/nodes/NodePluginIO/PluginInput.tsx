@@ -22,6 +22,7 @@ import { WorkflowContext } from '../../../context';
 import IOTitle from '../../components/IOTitle';
 import dynamic from 'next/dynamic';
 import { defaultInput } from './InputEditModal';
+import RenderOutput from '../render/RenderOutput';
 
 const FieldEditModal = dynamic(() => import('./InputEditModal'));
 
@@ -96,6 +97,12 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         }}
         {...data}
       >
+        {!!outputs.length && (
+          <Container>
+            <IOTitle text={t('common:common.Output')} />
+            <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+          </Container>
+        )}
         <Container mt={1}>
           <HStack className="nodrag" cursor={'default'} mb={3}>
             <IOTitle text={t('common:core.workflow.Custom inputs')} mb={0} />
