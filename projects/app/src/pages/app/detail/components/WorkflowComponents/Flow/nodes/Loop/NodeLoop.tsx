@@ -49,36 +49,49 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     });
   }, []);
 
-  return (
-    <NodeCard
-      selected={selected}
-      maxW={'full'}
-      minW={900}
-      minH={900}
-      w={loopFlowData?.value?.width}
-      h={loopFlowData?.value?.height}
-      menuForbid={{
-        copy: true
-      }}
-      {...data}
-    >
-      <Container position={'relative'} flex={1}>
-        <IOTitle text={t('common:common.Input')} />
-        <Box mb={6} maxW={'360'}>
-          <RenderInput nodeId={nodeId} flowInputList={inputs} />
-        </Box>
-        <FormLabel required fontWeight={'medium'} mb={3} color={'myGray.600'}>
-          {t('workflow:loop_body')}
-        </FormLabel>
-        <Box flex={1} position={'relative'} border={'base'} bg={'myGray.100'} rounded={'8px'}>
-          <Background />
-        </Box>
-      </Container>
-      <Container>
-        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
-      </Container>
-    </NodeCard>
-  );
+  const Render = useMemo(() => {
+    return (
+      <NodeCard
+        selected={selected}
+        maxW={'full'}
+        minW={900}
+        minH={900}
+        w={loopFlowData?.value?.width}
+        h={loopFlowData?.value?.height}
+        menuForbid={{
+          copy: true
+        }}
+        {...data}
+      >
+        <Container position={'relative'} flex={1}>
+          <IOTitle text={t('common:common.Input')} />
+          <Box mb={6} maxW={'360'}>
+            <RenderInput nodeId={nodeId} flowInputList={inputs} />
+          </Box>
+          <FormLabel required fontWeight={'medium'} mb={3} color={'myGray.600'}>
+            {t('workflow:loop_body')}
+          </FormLabel>
+          <Box flex={1} position={'relative'} border={'base'} bg={'myGray.100'} rounded={'8px'}>
+            <Background />
+          </Box>
+        </Container>
+        <Container>
+          <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+        </Container>
+      </NodeCard>
+    );
+  }, [
+    selected,
+    loopFlowData?.value?.width,
+    loopFlowData?.value?.height,
+    data,
+    t,
+    nodeId,
+    inputs,
+    outputs
+  ]);
+
+  return Render;
 };
 
 export default React.memo(NodeLoop);

@@ -89,56 +89,60 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     }
   }, [loopStartNode?.outputs, nodeId, onChangeNode, loopItemInputType, t]);
 
-  return (
-    <NodeCard
-      selected={selected}
-      {...data}
-      w={'420px'}
-      h={'176px'}
-      menuForbid={{
-        copy: true,
-        delete: true,
-        debug: true
-      }}
-    >
-      <Box px={4}>
-        {!loopItemInputType ? (
-          <EmptyTip text={t('workflow:loop_start_tip')} py={0} mt={0} iconSize={'32px'} />
-        ) : (
-          <Box bg={'white'} borderRadius={'md'} overflow={'hidden'} border={'base'}>
-            <TableContainer>
-              <Table bg={'white'}>
-                <Thead>
-                  <Tr>
-                    <Th borderBottomLeftRadius={'none !important'}>
-                      {t('common:core.module.variable.variable name')}
-                    </Th>
-                    <Th>{t('common:core.workflow.Value type')}</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  <Tr>
-                    <Td>
-                      <Flex alignItems={'center'}>
-                        <MyIcon
-                          name={'core/workflow/inputType/array'}
-                          w={'14px'}
-                          mr={1}
-                          color={'primary.600'}
-                        />
-                        {t('workflow:Array_element')}
-                      </Flex>
-                    </Td>
-                    <Td>{typeMap[loopItemInputType]}</Td>
-                  </Tr>
-                </Tbody>
-              </Table>
-            </TableContainer>
-          </Box>
-        )}
-      </Box>
-    </NodeCard>
-  );
+  const Render = useMemo(() => {
+    return (
+      <NodeCard
+        selected={selected}
+        {...data}
+        w={'420px'}
+        h={'176px'}
+        menuForbid={{
+          copy: true,
+          delete: true,
+          debug: true
+        }}
+      >
+        <Box px={4}>
+          {!loopItemInputType ? (
+            <EmptyTip text={t('workflow:loop_start_tip')} py={0} mt={0} iconSize={'32px'} />
+          ) : (
+            <Box bg={'white'} borderRadius={'md'} overflow={'hidden'} border={'base'}>
+              <TableContainer>
+                <Table bg={'white'}>
+                  <Thead>
+                    <Tr>
+                      <Th borderBottomLeftRadius={'none !important'}>
+                        {t('common:core.module.variable.variable name')}
+                      </Th>
+                      <Th>{t('common:core.workflow.Value type')}</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    <Tr>
+                      <Td>
+                        <Flex alignItems={'center'}>
+                          <MyIcon
+                            name={'core/workflow/inputType/array'}
+                            w={'14px'}
+                            mr={1}
+                            color={'primary.600'}
+                          />
+                          {t('workflow:Array_element')}
+                        </Flex>
+                      </Td>
+                      <Td>{typeMap[loopItemInputType]}</Td>
+                    </Tr>
+                  </Tbody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+        </Box>
+      </NodeCard>
+    );
+  }, [data, loopItemInputType, selected, t]);
+
+  return Render;
 };
 
 export default React.memo(NodeLoopStart);

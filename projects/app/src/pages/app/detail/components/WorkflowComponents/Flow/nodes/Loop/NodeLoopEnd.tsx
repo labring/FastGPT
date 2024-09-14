@@ -68,22 +68,26 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     }
   }, [valueType, nodeList, nodeId, onChangeNode, parentNodeId]);
 
-  return (
-    <NodeCard
-      selected={selected}
-      {...data}
-      w={'420px'}
-      menuForbid={{
-        copy: true,
-        delete: true,
-        debug: true
-      }}
-    >
-      <Box px={4} pb={4}>
-        {inputItem && <Reference item={inputItem} nodeId={nodeId} />}
-      </Box>
-    </NodeCard>
-  );
+  const Render = useMemo(() => {
+    return (
+      <NodeCard
+        selected={selected}
+        {...data}
+        w={'420px'}
+        menuForbid={{
+          copy: true,
+          delete: true,
+          debug: true
+        }}
+      >
+        <Box px={4} pb={4}>
+          {inputItem && <Reference item={inputItem} nodeId={nodeId} />}
+        </Box>
+      </NodeCard>
+    );
+  }, [data, inputItem, nodeId, selected]);
+
+  return Render;
 };
 
 export default React.memo(NodeLoopEnd);

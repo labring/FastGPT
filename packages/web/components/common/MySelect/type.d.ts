@@ -13,5 +13,5 @@ export type MultipleSelectProps<T = any> = {
   maxH?: number;
   onSelect: (val: any[]) => void;
   styles?: ButtonProps;
-  popFromTop?: boolean;
+  popDirection?: 'top' | 'bottom';
 };

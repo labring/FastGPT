@@ -34,7 +34,7 @@ type SelectProps = {
     }[];
   }[];
   onSelect: (val: ReferenceValueProps) => void;
-  popFromTop?: boolean;
+  popDirection?: 'top' | 'bottom';
   styles?: ButtonProps;
 };
 
@@ -79,15 +79,19 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
     value: item.value
   });
 
+  const popDirection = useMemo(() => {
+    const node = nodeList.find((node) => node.nodeId === nodeId);
+    if (!node) return 'bottom';
+    return node.flowNodeType === FlowNodeTypeEnum.loop ? 'top' : 'bottom';
+  }, [nodeId, nodeList]);
+
   return (
     <ReferSelector
       placeholder={t((item.referencePlaceholder as any) || 'select_reference_variable')}
       list={referenceList}
       value={formatValue}
       onSelect={onSelect}
-      popFromTop={
-        nodeList.find((node) => node.nodeId === nodeId)?.flowNodeType === FlowNodeTypeEnum.loop
-      }
+      popDirection={popDirection}
     />
   );
 };
@@ -177,7 +181,7 @@ export const ReferSelector = ({
   value,
   list = [],
   onSelect,
-  popFromTop
+  popDirection
 }: SelectProps) => {
   const selectItemLabel = useMemo(() => {
     if (!value) {
@@ -213,10 +217,10 @@ export const ReferSelector = ({
         onSelect={(e) => {
           onSelect(e as ReferenceValueProps);
         }}
-        popFromTop={popFromTop}
+        popDirection={popDirection}
       />
     );
-  }, [list, onSelect, placeholder, selectItemLabel, value]);
+  }, [list, onSelect, placeholder, popDirection, selectItemLabel, value]);
 
   return Render;
 };
