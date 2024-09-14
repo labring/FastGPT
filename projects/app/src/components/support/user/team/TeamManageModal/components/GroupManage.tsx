@@ -49,7 +49,7 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
                   <HStack>
                     <Avatar src={group.avatar} w={['18px', '22px']} />
                     <Box maxW={'150px'} className={'textEllipsis'}>
-                      {group.name || t('user:team.group.default_group')}
+                      {group.name || userInfo?.team.teamName}
                     </Box>
                   </HStack>
                 </Td>
