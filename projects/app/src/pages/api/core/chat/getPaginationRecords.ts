@@ -48,12 +48,11 @@ async function handler(
   }
 
   const shareChat = await (async () => {
-    if (type !== GetChatTypeEnum.outLink) return null;
-    const result = await authOutLink({
-      shareId: req.query.shareId,
-      outLinkUid: req.query.outLinkUid
-    });
-    return result.shareChat;
+    if (type === GetChatTypeEnum.outLink)
+      return await authOutLink({
+        shareId: req.query.shareId,
+        outLinkUid: req.query.outLinkUid
+      }).then((result) => result.shareChat);
   })();
 
   const fieldMap = {
@@ -67,6 +66,7 @@ async function handler(
     } `,
     [GetChatTypeEnum.team]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback ${DispatchNodeResponseKeyEnum.nodeResponse}`
   };
+
   const { total, histories } = await getChatItems({
     appId,
     chatId,

@@ -32,6 +32,7 @@ const DetailLogsModal = ({
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const theme = useTheme();
+
   const {
     ChatBoxRef,
     variablesForm,
@@ -52,6 +53,7 @@ const DetailLogsModal = ({
     loadCustomFeedbacks: true,
     type: GetChatTypeEnum.normal
   });
+
   const { data: chat, isFetching } = useQuery(
     ['getChatDetail', chatId],
     () => getInitChatInfo({ appId, chatId, loadCustomFeedbacks: true }),
