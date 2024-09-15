@@ -16,9 +16,5 @@ export const getWebLLMModel = (model?: string) => {
 
 export const watchWindowHidden = () => {
   // @ts-ignore
-  if (document.hidden) {
-    window.windowHidden = true;
-  } else {
-    window.windowHidden = false;
-  }
+  window.windowHidden = document.hidden;
 };

@@ -7,7 +7,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 
 const ButtonEdge = (props: EdgeProps) => {
-  const { nodes, setEdges, workflowDebugData, hoverEdgeId } = useContextSelector(
+  const { nodes, nodeList, setEdges, workflowDebugData, hoverEdgeId } = useContextSelector(
     WorkflowContext,
     (v) => v
   );
@@ -27,6 +27,10 @@ const ButtonEdge = (props: EdgeProps) => {
     targetHandleId,
     style
   } = props;
+  const defaultZIndex = useMemo(
+    () => (nodeList.find((node) => node.nodeId === source && node.parentNodeId) ? 1001 : 0),
+    [nodeList, source]
+  );
 
   const onDelConnect = useCallback(
     (id: string) => {
@@ -135,7 +139,7 @@ const ButtonEdge = (props: EdgeProps) => {
           bg={'white'}
           borderRadius={'17px'}
           cursor={'pointer'}
-          zIndex={1000}
+          zIndex={9999}
           onClick={() => onDelConnect(id)}
         >
           <MyIcon name={'core/workflow/closeEdge'} w={'100%'}></MyIcon>
@@ -150,7 +154,7 @@ const ButtonEdge = (props: EdgeProps) => {
             w={highlightEdge ? '14px' : '10px'}
             h={highlightEdge ? '14px' : '10px'}
             // bg={'white'}
-            zIndex={highlightEdge ? 1000 : 0}
+            zIndex={highlightEdge ? 1000 : defaultZIndex}
           >
             <MyIcon
               name={'core/workflow/edgeArrow'}
@@ -199,8 +203,7 @@ const ButtonEdge = (props: EdgeProps) => {
 
       return {
         ...style,
-        strokeWidth: 3,
-        zIndex: 2
+        strokeWidth: 3
       };
     })();
 

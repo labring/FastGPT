@@ -1,4 +1,4 @@
-import React, { Dispatch, useMemo, useTransition } from 'react';
+import React, { Dispatch, useMemo } from 'react';
 import { NodeProps } from 'reactflow';
 import { Box } from '@chakra-ui/react';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';

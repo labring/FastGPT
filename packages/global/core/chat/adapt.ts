@@ -344,7 +344,7 @@ export const runtimePrompt2ChatsValue = (
   return value;
 };
 
-export const getSystemPrompt = (prompt?: string): ChatItemType[] => {
+export const getSystemPrompt_ChatItemType = (prompt?: string): ChatItemType[] => {
   if (!prompt) return [];
   return [
     {

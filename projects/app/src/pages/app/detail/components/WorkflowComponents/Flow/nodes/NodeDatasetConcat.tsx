@@ -26,33 +26,110 @@ import ValueTypeLabel from './render/ValueTypeLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { isWorkflowStartOutput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import { getWebLLMModel } from '@/web/common/system/utils';
+import { useMemoizedFn } from 'ahooks';
 
 const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
   const { nodeId, inputs, outputs } = data;
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const { nodeList, onChangeNode } = useContextSelector(WorkflowContext, (v) => v);
 
-  const quoteList = useMemo(() => inputs.filter((item) => item.canEdit), [inputs]);
+  const Reference = useMemoizedFn(
+    ({ nodeId, inputChildren }: { nodeId: string; inputChildren: FlowNodeInputItemType }) => {
+      const { t } = useTranslation();
+      const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
-  const tokenLimit = useMemo(() => {
-    let maxTokens = 13000;
+      const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
-    nodeList.forEach((item) => {
-      if ([FlowNodeTypeEnum.chatNode, FlowNodeTypeEnum.tools].includes(item.flowNodeType)) {
-        const model =
-          item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
-        const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 13000;
+      const { referenceList, formatValue } = useReference({
+        nodeId,
+        valueType: inputChildren.valueType,
+        value: inputChildren.value
+      });
 
-        maxTokens = Math.max(maxTokens, quoteMaxToken);
-      }
-    });
+      const onSelect = useCallback(
+        (e: ReferenceValueProps) => {
+          const workflowStartNode = nodeList.find(
+            (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
+          );
 
-    return maxTokens;
-  }, [nodeList, llmModelList]);
+          onChangeNode({
+            nodeId,
+            type: 'replaceInput',
+            key: inputChildren.key,
+            value: {
+              ...inputChildren,
+              value:
+                e[0] === workflowStartNode?.id && !isWorkflowStartOutput(e[1])
+                  ? [VARIABLE_NODE_ID, e[1]]
+                  : e
+            }
+          });
+        },
+        [inputChildren, nodeId, nodeList, onChangeNode]
+      );
+
+      const onDel = useCallback(() => {
+        onChangeNode({
+          nodeId,
+          type: 'delInput',
+          key: inputChildren.key
+        });
+      }, [inputChildren.key, nodeId, onChangeNode]);
+
+      return (
+        <>
+          <Flex alignItems={'center'} mb={1}>
+            <FormLabel required={inputChildren.required}>{t(inputChildren.label as any)}</FormLabel>
+            {/* value */}
+            <ValueTypeLabel
+              valueType={inputChildren.valueType}
+              valueDesc={inputChildren.valueDesc}
+            />
+
+            <MyIcon
+              className="delete"
+              name={'delete'}
+              w={'14px'}
+              color={'myGray.500'}
+              cursor={'pointer'}
+              ml={2}
+              _hover={{ color: 'red.600' }}
+              onClick={onDel}
+            />
+          </Flex>
+          <ReferSelector
+            placeholder={t(
+              (inputChildren.referencePlaceholder as any) ||
+                t('common:core.module.Dataset quote.select')
+            )}
+            list={referenceList}
+            value={formatValue}
+            onSelect={onSelect}
+          />
+        </>
+      );
+    }
+  );
 
   const CustomComponent = useMemo(() => {
+    const quoteList = inputs.filter((item) => item.canEdit);
+    const tokenLimit = (() => {
+      let maxTokens = 13000;
+
+      nodeList.forEach((item) => {
+        if ([FlowNodeTypeEnum.chatNode, FlowNodeTypeEnum.tools].includes(item.flowNodeType)) {
+          const model =
+            item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
+          const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 13000;
+
+          maxTokens = Math.max(maxTokens, quoteMaxToken);
+        }
+      });
+
+      return maxTokens;
+    })();
+
     return {
       [NodeInputKeyEnum.datasetMaxTokens]: (item: FlowNodeInputItemType) => (
         <Box px={2}>
@@ -115,98 +192,23 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     };
-  }, [nodeId, onChangeNode, quoteList, t, tokenLimit]);
+  }, [Reference, inputs, nodeId, nodeList, onChangeNode, t, llmModelList]);
 
-  return (
-    <NodeCard minW={'400px'} selected={selected} {...data}>
-      <Container position={'relative'}>
-        <RenderInput nodeId={nodeId} flowInputList={inputs} CustomComponent={CustomComponent} />
-        {/* {RenderQuoteList} */}
-      </Container>
-      <Container>
-        <IOTitle text={t('common:common.Output')} />
-        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
-      </Container>
-    </NodeCard>
-  );
+  const Render = useMemo(() => {
+    return (
+      <NodeCard minW={'400px'} selected={selected} {...data}>
+        <Container position={'relative'}>
+          <RenderInput nodeId={nodeId} flowInputList={inputs} CustomComponent={CustomComponent} />
+          {/* {RenderQuoteList} */}
+        </Container>
+        <Container>
+          <IOTitle text={t('common:common.Output')} />
+          <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+        </Container>
+      </NodeCard>
+    );
+  }, [CustomComponent, data, inputs, nodeId, outputs, selected, t]);
+
+  return Render;
 };
 export default React.memo(NodeDatasetConcat);
-
-function Reference({
-  nodeId,
-  inputChildren
-}: {
-  nodeId: string;
-  inputChildren: FlowNodeInputItemType;
-}) {
-  const { t } = useTranslation();
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-
-  const { referenceList, formatValue } = useReference({
-    nodeId,
-    valueType: inputChildren.valueType,
-    value: inputChildren.value
-  });
-
-  const onSelect = useCallback(
-    (e: ReferenceValueProps) => {
-      const workflowStartNode = nodeList.find(
-        (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
-      );
-
-      onChangeNode({
-        nodeId,
-        type: 'replaceInput',
-        key: inputChildren.key,
-        value: {
-          ...inputChildren,
-          value:
-            e[0] === workflowStartNode?.id && !isWorkflowStartOutput(e[1])
-              ? [VARIABLE_NODE_ID, e[1]]
-              : e
-        }
-      });
-    },
-    [inputChildren, nodeId, nodeList, onChangeNode]
-  );
-
-  const onDel = useCallback(() => {
-    onChangeNode({
-      nodeId,
-      type: 'delInput',
-      key: inputChildren.key
-    });
-  }, [inputChildren.key, nodeId, onChangeNode]);
-
-  return (
-    <>
-      <Flex alignItems={'center'} mb={1}>
-        <FormLabel required={inputChildren.required}>{t(inputChildren.label as any)}</FormLabel>
-        {/* value */}
-        <ValueTypeLabel valueType={inputChildren.valueType} valueDesc={inputChildren.valueDesc} />
-
-        <MyIcon
-          className="delete"
-          name={'delete'}
-          w={'14px'}
-          color={'myGray.500'}
-          cursor={'pointer'}
-          ml={2}
-          _hover={{ color: 'red.600' }}
-          onClick={onDel}
-        />
-      </Flex>
-      <ReferSelector
-        placeholder={t(
-          (inputChildren.referencePlaceholder as any) ||
-            t('common:core.module.Dataset quote.select')
-        )}
-        list={referenceList}
-        value={formatValue}
-        onSelect={onSelect}
-      />
-    </>
-  );
-}

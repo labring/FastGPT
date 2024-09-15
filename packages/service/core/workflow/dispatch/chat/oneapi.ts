@@ -19,7 +19,7 @@ import { countMessagesTokens } from '../../../../common/string/tiktoken/index';
 import {
   chats2GPTMessages,
   chatValue2RuntimePrompt,
-  getSystemPrompt,
+  getSystemPrompt_ChatItemType,
   GPTMessages2Chats,
   runtimePrompt2ChatsValue
 } from '@fastgpt/global/core/chat/adapt';
@@ -153,15 +153,16 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   ]);
 
   const requestBody = {
-    ...modelConstantsData?.defaultConfig,
     model: modelConstantsData.model,
     temperature: computedTemperature({
       model: modelConstantsData,
       temperature
     }),
+    max_completion_tokens: max_tokens,
     max_tokens,
     stream,
-    messages: requestMessages
+    messages: requestMessages,
+    ...modelConstantsData?.defaultConfig
   };
   // console.log(JSON.stringify(requestBody, null, 2), '===');
   try {
@@ -175,8 +176,13 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       }
     });
 
+    const isStreamResponse =
+      typeof response === 'object' &&
+      response !== null &&
+      ('iterator' in response || 'controller' in response);
+
     const { answerText } = await (async () => {
-      if (res && stream) {
+      if (res && isStreamResponse) {
         // sse response
         const { answer } = await streamResponse({
           res,
@@ -194,6 +200,14 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       } else {
         const unStreamResponse = response as ChatCompletion;
         const answer = unStreamResponse.choices?.[0]?.message?.content || '';
+
+        // Some models do not support streaming
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            text: answer
+          })
+        });
 
         return {
           answerText: answer
@@ -310,9 +324,9 @@ async function getChatMessages({
     : userChatInput;
 
   const messages: ChatItemType[] = [
-    ...getSystemPrompt(systemPrompt),
+    ...getSystemPrompt_ChatItemType(systemPrompt),
     ...(stringQuoteText
-      ? getSystemPrompt(
+      ? getSystemPrompt_ChatItemType(
           replaceVariable(Prompt_DocumentQuote, {
             quote: stringQuoteText
           })

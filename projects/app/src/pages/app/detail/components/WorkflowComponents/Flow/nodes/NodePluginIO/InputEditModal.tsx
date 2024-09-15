@@ -414,7 +414,9 @@ const FieldEditModal = ({
               {showValueTypeSelect ? (
                 <Box flex={1}>
                   <MySelect<WorkflowIOValueTypeEnum>
-                    list={valueTypeSelectList}
+                    list={valueTypeSelectList.filter(
+                      (item) => item.value !== WorkflowIOValueTypeEnum.arrayAny
+                    )}
                     value={valueType}
                     onchange={(e) => {
                       setValue('valueType', e);

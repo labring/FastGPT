@@ -118,7 +118,6 @@ type WorkflowContextType = {
   setConnectingEdge: React.Dispatch<React.SetStateAction<OnConnectStartParams | undefined>>;
 
   // common function
-  onFixView: () => void;
   splitToolInputs: (
     inputs: FlowNodeInputItemType[],
     nodeId: string
@@ -199,9 +198,6 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   setConnectingEdge: function (
     value: React.SetStateAction<OnConnectStartParams | undefined>
   ): void {
-    throw new Error('Function not implemented.');
-  },
-  onFixView: function (): void {
     throw new Error('Function not implemented.');
   },
   basicNodeTemplates: [],
@@ -409,13 +405,30 @@ const WorkflowContextProvider = ({
     [nodeListString]
   );
 
+  // Elevate childNodes
+  useEffect(() => {
+    setNodes((nodes) =>
+      nodes.map((node) => (node.data.parentNodeId ? { ...node, zIndex: 1001 } : node))
+    );
+  }, [nodeList]);
+  // Elevate edges of childNodes
+  useEffect(() => {
+    setEdges((state) =>
+      state.map((item) =>
+        nodeList.some((node) => item.source === node.nodeId && node.parentNodeId)
+          ? { ...item, zIndex: 1001 }
+          : item
+      )
+    );
+  }, [edges.length]);
+
   const hasToolNode = useMemo(() => {
-    return !!nodes.find((node) => node.data.flowNodeType === FlowNodeTypeEnum.tools);
-  }, [nodes]);
+    return !!nodeList.find((node) => node.flowNodeType === FlowNodeTypeEnum.tools);
+  }, [nodeList]);
 
   const onUpdateNodeError = useMemoizedFn((nodeId: string, isError: Boolean) => {
-    setNodes((nodes) => {
-      return nodes.map((item) => {
+    setNodes((state) => {
+      return state.map((item) => {
         if (item.data?.nodeId === nodeId) {
           item.selected = true;
           //@ts-ignore
@@ -535,17 +548,8 @@ const WorkflowContextProvider = ({
     [nodeList]
   );
 
-  /* function */
-  const onFixView = useMemoizedFn(() => {
-    const btn = document.querySelector('.custom-workflow-fix_view') as HTMLButtonElement;
-
-    setTimeout(() => {
-      btn && btn.click();
-    }, 100);
-  });
-
   /* If the module is connected by a tool, the tool input and the normal input are separated */
-  const splitToolInputs = (inputs: FlowNodeInputItemType[], nodeId: string) => {
+  const splitToolInputs = useMemoizedFn((inputs: FlowNodeInputItemType[], nodeId: string) => {
     const isTool = !!edges.find(
       (edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools && edge.target === nodeId
     );
@@ -558,40 +562,7 @@ const WorkflowContextProvider = ({
         return !item.toolDescription;
       })
     };
-  };
-
-  const initData = useMemoizedFn(
-    async (e: Parameters<WorkflowContextType['initData']>[0], isInit?: boolean) => {
-      /* 
-        Refresh web page, load init
-      */
-      if (isInit && past.length > 0) {
-        return resetSnapshot(past[0]);
-      }
-
-      setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || []);
-      setEdges(e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || []);
-
-      const chatConfig = e.chatConfig;
-      if (chatConfig) {
-        setAppDetail((state) => ({
-          ...state,
-          chatConfig
-        }));
-      }
-
-      // If it is the initial data, save the initial snapshot
-      if (isInit) {
-        saveSnapshot({
-          pastNodes: e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [],
-          pastEdges: e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [],
-          customTitle: t(`app:app.version_initial`),
-          chatConfig: appDetail.chatConfig,
-          isSaved: true
-        });
-      }
-    }
-  );
+  });
 
   /* ui flow to store data */
   const flowData2StoreDataAndCheck = useMemoizedFn((hideTip = false) => {
@@ -611,9 +582,7 @@ const WorkflowContextProvider = ({
   });
 
   const flowData2StoreData = useMemoizedFn(() => {
-    const storeNodes = uiWorkflow2StoreWorkflow({ nodes, edges });
-
-    return storeNodes;
+    return uiWorkflow2StoreWorkflow({ nodes, edges });
   });
 
   /* debug */
@@ -762,7 +731,7 @@ const WorkflowContextProvider = ({
     },
     [appId, onChangeNode, setNodes, workflowDebugData]
   );
-  const onStopNodeDebug = useCallback(() => {
+  const onStopNodeDebug = useMemoizedFn(() => {
     setWorkflowDebugData(undefined);
     setNodes((state) =>
       state.map((node) => ({
@@ -774,8 +743,8 @@ const WorkflowContextProvider = ({
         }
       }))
     );
-  }, [setNodes]);
-  const onStartNodeDebug = useCallback(
+  });
+  const onStartNodeDebug = useMemoizedFn(
     async ({
       entryNodeId,
       runtimeNodes,
@@ -795,25 +764,8 @@ const WorkflowContextProvider = ({
       setWorkflowDebugData(data);
 
       onNextNodeDebug(data);
-    },
-    [onNextNodeDebug, onStopNodeDebug]
+    }
   );
-
-  /* Version histories */
-  const [historiesDefaultData, setHistoriesDefaultData] = useState<InitProps>();
-
-  /* event bus */
-  useEffect(() => {
-    eventBus.on(EventNameEnum.requestWorkflowStore, () => {
-      eventBus.emit(EventNameEnum.receiveWorkflowStore, {
-        nodes,
-        edges
-      });
-    });
-    return () => {
-      eventBus.off(EventNameEnum.requestWorkflowStore);
-    };
-  }, [edges, nodes]);
 
   /* chat test */
   const { isOpen: isOpenTest, onOpen: onOpenTest, onClose: onCloseTest } = useDisclosure();
@@ -829,24 +781,20 @@ const WorkflowContextProvider = ({
   const [past, setPast] = useLocalStorageState<SnapshotsType[]>(`${appId}-past`, {
     defaultValue: []
   }) as [SnapshotsType[], (value: SetStateAction<SnapshotsType[]>) => void];
-
   const [future, setFuture] = useLocalStorageState<SnapshotsType[]>(`${appId}-future`, {
     defaultValue: []
   }) as [SnapshotsType[], (value: SetStateAction<SnapshotsType[]>) => void];
 
-  const resetSnapshot = useCallback(
-    (state: SnapshotsType) => {
-      setNodes(state.nodes);
-      setEdges(state.edges);
-      setAppDetail((detail) => ({
-        ...detail,
-        chatConfig: state.chatConfig
-      }));
-    },
-    [setAppDetail, setEdges, setNodes]
-  );
+  const resetSnapshot = useMemoizedFn((state: SnapshotsType) => {
+    setNodes(state.nodes);
+    setEdges(state.edges);
+    setAppDetail((detail) => ({
+      ...detail,
+      chatConfig: state.chatConfig
+    }));
+  });
 
-  const { runAsync: saveSnapshot } = useRequest2(
+  const saveSnapshot = useMemoizedFn(
     async ({
       pastNodes,
       pastEdges,
@@ -893,12 +841,10 @@ const WorkflowContextProvider = ({
       setFuture([]);
 
       return true;
-    },
-    {
-      refreshDeps: [nodes, edges, appDetail.chatConfig, past]
     }
   );
 
+  // Auto save snapshot
   useDebounceEffect(
     () => {
       if (!nodes.length) return;
@@ -913,15 +859,14 @@ const WorkflowContextProvider = ({
     { wait: 500 }
   );
 
-  const undo = useCallback(() => {
+  const undo = useMemoizedFn(() => {
     if (past[1]) {
       setFuture((future) => [past[0], ...future]);
       setPast((past) => past.slice(1));
       resetSnapshot(past[1]);
     }
-  }, [past, setFuture, setPast, resetSnapshot]);
-
-  const redo = useCallback(() => {
+  });
+  const redo = useMemoizedFn(() => {
     const futureState = future[0];
 
     if (futureState) {
@@ -929,7 +874,40 @@ const WorkflowContextProvider = ({
       setFuture((future) => future.slice(1));
       resetSnapshot(futureState);
     }
-  }, [future, setPast, setFuture, resetSnapshot]);
+  });
+
+  const initData = useMemoizedFn(
+    async (e: Parameters<WorkflowContextType['initData']>[0], isInit?: boolean) => {
+      /* 
+        Refresh web page, load init
+      */
+      if (isInit && past.length > 0) {
+        return resetSnapshot(past[0]);
+      }
+
+      setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || []);
+      setEdges(e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || []);
+
+      const chatConfig = e.chatConfig;
+      if (chatConfig) {
+        setAppDetail((state) => ({
+          ...state,
+          chatConfig
+        }));
+      }
+
+      // If it is the initial data, save the initial snapshot
+      if (isInit) {
+        saveSnapshot({
+          pastNodes: e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [],
+          pastEdges: e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [],
+          customTitle: t(`app:app.version_initial`),
+          chatConfig: appDetail.chatConfig,
+          isSaved: true
+        });
+      }
+    }
+  );
 
   // remove other app's snapshot
   useEffect(() => {
@@ -942,6 +920,22 @@ const WorkflowContextProvider = ({
       }
     });
   }, [appId]);
+
+  /* Version histories */
+  const [historiesDefaultData, setHistoriesDefaultData] = useState<InitProps>();
+
+  /* event bus */
+  useEffect(() => {
+    eventBus.on(EventNameEnum.requestWorkflowStore, () => {
+      eventBus.emit(EventNameEnum.receiveWorkflowStore, {
+        nodes,
+        edges
+      });
+    });
+    return () => {
+      eventBus.off(EventNameEnum.requestWorkflowStore);
+    };
+  }, [edges, nodes]);
 
   const value = {
     appId,
@@ -986,7 +980,6 @@ const WorkflowContextProvider = ({
     canRedo: !!future.length,
 
     // function
-    onFixView,
     splitToolInputs,
     initData,
     flowData2StoreDataAndCheck,

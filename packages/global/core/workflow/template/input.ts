@@ -83,3 +83,25 @@ export const Input_Template_File_Link: FlowNodeInputItemType = {
   description: i18nT('app:workflow.user_file_input_desc'),
   valueType: WorkflowIOValueTypeEnum.arrayString
 };
+
+export const Input_Template_Children_Node_List: FlowNodeInputItemType = {
+  key: NodeInputKeyEnum.childrenNodeIdList,
+  renderTypeList: [FlowNodeInputTypeEnum.hidden],
+  valueType: WorkflowIOValueTypeEnum.arrayString,
+  label: '',
+  value: []
+};
+export const Input_Template_Node_Width: FlowNodeInputItemType = {
+  key: NodeInputKeyEnum.nodeWidth,
+  renderTypeList: [FlowNodeInputTypeEnum.hidden],
+  valueType: WorkflowIOValueTypeEnum.number,
+  label: '',
+  value: 900
+};
+export const Input_Template_Node_Height: FlowNodeInputItemType = {
+  key: NodeInputKeyEnum.nodeHeight,
+  renderTypeList: [FlowNodeInputTypeEnum.hidden],
+  valueType: WorkflowIOValueTypeEnum.number,
+  label: '',
+  value: 900
+};

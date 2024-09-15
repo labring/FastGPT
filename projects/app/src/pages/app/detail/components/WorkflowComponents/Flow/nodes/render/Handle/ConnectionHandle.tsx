@@ -119,23 +119,49 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
 }: {
   nodeId: string;
 }) {
-  const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+  const { connectingEdge, nodeList, edges } = useContextSelector(WorkflowContext, (ctx) => ctx);
 
-  const { showHandle, LeftHandle, rightHandle, topHandle, bottomHandle } = useMemo(() => {
+  const { LeftHandle, rightHandle, topHandle, bottomHandle } = useMemo(() => {
     const node = nodeList.find((node) => node.nodeId === nodeId);
     const connectingNode = nodeList.find((node) => node.nodeId === connectingEdge?.nodeId);
 
-    const sourceEdges = edges.filter((edge) => edge.target === connectingNode?.nodeId);
-    const connectingNodeSourceNodeIds = sourceEdges.map((edge) => edge.source);
+    const connectingNodeSourceNodeIdMap = new Map<string, number>();
+    let forbidConnect = false;
+    edges.forEach((edge) => {
+      if (edge.target === connectingNode?.nodeId) {
+        connectingNodeSourceNodeIdMap.set(edge.source, 1);
+      } else if (edge.target === nodeId) {
+        // Node has be connected tool, it cannot be connect by other handle
+        if (edge.targetHandle === NodeOutputKeyEnum.selectedTools) {
+          forbidConnect = true;
+        }
+        // The same source handle cannot connect to the same target node
+        if (
+          connectingEdge &&
+          connectingEdge.handleId === edge.sourceHandle &&
+          edge.target === nodeId
+        ) {
+          forbidConnect = true;
+        }
+      }
+    });
 
     const showHandle = (() => {
+      if (forbidConnect) return false;
       if (!node) return false;
+
+      // Tool connecting
+      if (connectingEdge && connectingEdge.handleId === NodeOutputKeyEnum.selectedTools)
+        return false;
+
       // Unable to connect oneself
       if (connectingEdge && connectingEdge.nodeId === nodeId) return false;
+      // Not the same parent node
+      if (connectingNode && connectingNode?.parentNodeId !== node?.parentNodeId) return false;
+
       // Unable to connect to the source node
-      if (connectingNodeSourceNodeIds.includes(nodeId)) return false;
+      if (connectingNodeSourceNodeIdMap.has(nodeId)) return false;
+
       return true;
     })();
 
@@ -150,6 +176,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
           handleId={handleId}
           position={Position.Left}
           translate={[-2, 0]}
+          showHandle={showHandle}
         />
       );
     })();
@@ -164,6 +191,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
           handleId={handleId}
           position={Position.Right}
           translate={[2, 0]}
+          showHandle={showHandle}
         />
       );
     })();
@@ -178,6 +206,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
           handleId={handleId}
           position={Position.Top}
           translate={[0, -2]}
+          showHandle={showHandle}
         />
       );
     })();
@@ -192,6 +221,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
           handleId={handleId}
           position={Position.Bottom}
           translate={[0, 2]}
+          showHandle={showHandle}
         />
       );
     })();
@@ -205,14 +235,14 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
     };
   }, [connectingEdge, edges, nodeId, nodeList]);
 
-  return showHandle ? (
+  return (
     <>
       {LeftHandle}
       {rightHandle}
       {topHandle}
       {bottomHandle}
     </>
-  ) : null;
+  );
 });
 
 export default function Dom() {
