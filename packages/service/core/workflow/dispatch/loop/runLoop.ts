@@ -31,6 +31,9 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   if (!Array.isArray(loopInputArray)) {
     return Promise.reject('Input value is not an array');
   }
+  if (loopInputArray.length > 50) {
+    return Promise.reject('Input array length cannot be greater than 50');
+  }
 
   const runNodes = runtimeNodes.filter((node) => childNodes.includes(node.nodeId));
 
