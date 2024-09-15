@@ -85,7 +85,7 @@
       "un_auth": "无权操作该插件"
     },
     "system_error": {
-      "community_version_num_limit": "超出开源版数量限制，请升级商业版: https://fastgpt.in"
+      "community_version_num_limit": "超出开源版数量限制，请升级商业版: https://tryfastgpt.ai"
     },
     "team_error": {
       "ai_points_not_enough": "",
@@ -276,7 +276,7 @@
     "submitted": "已提交",
     "support": "支持",
     "system": {
-      "Commercial version function": "请升级商业版后使用该功能：https://fastgpt.in",
+      "Commercial version function": "请升级商业版后使用该功能：https://tryfastgpt.ai",
       "Help Chatbot": "机器人助手",
       "Use Helper": "使用帮助"
     },

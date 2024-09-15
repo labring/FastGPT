@@ -55,7 +55,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
   const theme = useTheme();
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
-  const [baseUrl, setBaseUrl] = useState('https://fastgpt.in/api');
+  const [baseUrl, setBaseUrl] = useState('https://tryfastgpt.ai/api');
   const [editData, setEditData] = useState<EditProps>();
   const [apiKey, setApiKey] = useState('');
 
