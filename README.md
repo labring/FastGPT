@@ -50,22 +50,22 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 ## 💡 RoadMap
 
 `1` 应用编排能力
-   - [x] 提供简易模式，无需操作编排
-   - [x] 工作流编排
+   - [x] 对话工作流、插件工作流
    - [x] 工具调用
-   - [x] 插件 - 工作流封装能力
    - [x] Code sandbox
-   - [ ] 循环调用
+   - [x] 循环调用
+   - [x] 用户选择
+   - [ ] 表单输入
 
 `2` 知识库能力
    - [x] 多库复用，混用
    - [x] chunk 记录修改和删除
-   - [x] 源文件存储
    - [x] 支持手动输入，直接分段，QA 拆分导入
    - [x] 支持 txt，md，html，pdf，docx，pptx，csv，xlsx (有需要更多可 PR file loader)
    - [x] 支持 url 读取、CSV 批量导入
    - [x] 混合检索 & 重排
-   - [ ] 标签过滤
+   - [ ] 自定义文件读取服务
+   - [ ] 自定义分块服务
   
 `3` 应用调试能力
    - [x] 知识库单点搜索测试
@@ -88,7 +88,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 `6` 其他
    - [x] 支持语音输入和输出 (可配置语音输入语音回答)
    - [x] 模糊输入提示
-   - [ ] 模板市场
+   - [x] 模板市场
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">

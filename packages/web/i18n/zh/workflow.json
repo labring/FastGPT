@@ -91,7 +91,7 @@
   "length_not_equal_to": "长度不等于",
   "less_than": "小于",
   "less_than_or_equal_to": "小于等于",
-  "loop": "批量执行(测试)",
+  "loop": "循环运行(测试)",
   "loop_body": "循环体",
   "loop_end": "循环体结束",
   "loop_input_array": "数组",
