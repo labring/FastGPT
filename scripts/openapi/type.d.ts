@@ -6,6 +6,7 @@ export type ApiMetaData = {
 
 export type ApiType = {
   description?: string;
+  authorization?: 'apikey' | 'token';
   path: string;
   url: string;
   query?: itemType | itemType[];
