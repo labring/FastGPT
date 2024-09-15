@@ -6,7 +6,7 @@ draft: false
 toc: true
 weight: 1200
 type: redirect
-target: https://cloud.fastgpt.in/price
+target: https://cloud.tryfastgpt.ai/price
 ---
 
-线上版价格请查看：[https://cloud.fastgpt.in/price](https://cloud.fastgpt.in/price)
+线上版价格请查看：[https://cloud.tryfastgpt.ai/price](https://cloud.tryfastgpt.ai/price)
