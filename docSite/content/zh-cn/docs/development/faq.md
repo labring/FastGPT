@@ -122,3 +122,149 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 1. 模型服务不可用
 2. 模型接口参数异常（温度、max token等可能不适配）
 3. ....
+
+
+## 四、常见模型问题
+
+### 报错 - 模型响应为空
+
+该错误是由于 stream 模式下，oneapi 直接结束了流请求，并且未返回任何内容导致。
+
+4.8.10 版本新增了错误日志，报错时，会在日志中打印出实际发送的 Body 参数，可以复制该参数后，通过 curl 向 oneapi 发起请求测试。
+
+由于 oneapi 在 stream 模式下，无法正确捕获错误，可以设置成 `stream=false` 后进行测试。
+
+### 如何测试模型是否支持工具调用
+
+需要模型提供商和 oneapi 同时支持工具调用才可使用，测试方法如下：
+
+1. 通过 `curl` 向 `oneapi` 发起第一轮 stream 模式的 tool 测试。
+
+```bash
+curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
+--header 'Authorization: Bearer sk-xxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "gpt-4o-mini",
+  "temperature": 0.01,
+  "max_completion_tokens": 8000,
+  "max_tokens": 8000,
+  "stream": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": "几点了"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "hCVbIY",
+        "description": "获取用户当前时区的时间。",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}'
+```
+
+2. 检查响应参数
+
+如果能正常调用工具，会返回对应 `tool_calls` 参数。
+
+```json
+{
+    "id": "chatcmpl-A7kwo1rZ3OHYSeIFgfWYxu8X2koN3",
+    "object": "chat.completion.chunk",
+    "created": 1726412126,
+    "model": "gpt-4o-mini-2024-07-18",
+    "system_fingerprint": "fp_483d39d857",
+    "choices": [
+        {
+            "index": 0,
+            "delta": {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "index": 0,
+                        "id": "call_0n24eiFk8OUyIyrdEbLdirU7",
+                        "type": "function",
+                        "function": {
+                            "name": "mEYIcFl84rYC",
+                            "arguments": ""
+                        }
+                    }
+                ],
+                "refusal": null
+            },
+            "logprobs": null,
+            "finish_reason": null
+        }
+    ],
+    "usage": null
+}
+```
+
+3. 通过 `curl` 向 `oneapi` 发起第二轮 stream 模式的 tool 测试。
+
+第二轮请求是把工具结果发送给模型。发起后会得到模型回答的结果。
+
+```bash
+curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
+--header 'Authorization: Bearer sk-xxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "gpt-4o-mini",
+  "temperature": 0.01,
+  "max_completion_tokens": 8000,
+  "max_tokens": 8000,
+  "stream": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": "几点了"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "kDia9S19c4RO",
+          "type": "function",
+          "function": {
+            "name": "hCVbIY",
+            "arguments": "{}"
+          }
+        }
+      ]
+    },
+    {
+      "tool_call_id": "kDia9S19c4RO",
+      "role": "tool",
+      "name": "hCVbIY",
+      "content": "{\n  \"time\": \"2024-09-14 22:59:21 Sunday\"\n}"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "hCVbIY",
+        "description": "获取用户当前时区的时间。",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}'
+```
