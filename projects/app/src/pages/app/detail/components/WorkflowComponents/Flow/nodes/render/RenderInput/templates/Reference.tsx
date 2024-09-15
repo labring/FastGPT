@@ -30,9 +30,11 @@ type SelectProps = {
     children: {
       label: string;
       value: string;
+      valueType?: WorkflowIOValueTypeEnum;
     }[];
   }[];
   onSelect: (val: ReferenceValueProps) => void;
+  popDirection?: 'top' | 'bottom';
   styles?: ButtonProps;
 };
 
@@ -77,12 +79,19 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
     value: item.value
   });
 
+  const popDirection = useMemo(() => {
+    const node = nodeList.find((node) => node.nodeId === nodeId);
+    if (!node) return 'bottom';
+    return node.flowNodeType === FlowNodeTypeEnum.loop ? 'top' : 'bottom';
+  }, [nodeId, nodeList]);
+
   return (
     <ReferSelector
       placeholder={t((item.referencePlaceholder as any) || 'select_reference_variable')}
       list={referenceList}
       value={formatValue}
       onSelect={onSelect}
+      popDirection={popDirection}
     />
   );
 };
@@ -130,13 +139,17 @@ export const useReference = ({
               (output) =>
                 valueType === WorkflowIOValueTypeEnum.any ||
                 output.valueType === WorkflowIOValueTypeEnum.any ||
-                output.valueType === valueType
+                output.valueType === valueType ||
+                // When valueType is arrayAny, return all array type outputs
+                (valueType === WorkflowIOValueTypeEnum.arrayAny &&
+                  output.valueType?.includes('array'))
             )
             .filter((output) => output.id !== NodeOutputKeyEnum.addOutputParam)
             .map((output) => {
               return {
                 label: t((output.label as any) || ''),
-                value: output.id
+                value: output.id,
+                valueType: output.valueType
               };
             })
         };
@@ -163,7 +176,13 @@ export const useReference = ({
     formatValue
   };
 };
-export const ReferSelector = ({ placeholder, value, list = [], onSelect }: SelectProps) => {
+export const ReferSelector = ({
+  placeholder,
+  value,
+  list = [],
+  onSelect,
+  popDirection
+}: SelectProps) => {
   const selectItemLabel = useMemo(() => {
     if (!value) {
       return;
@@ -198,9 +217,10 @@ export const ReferSelector = ({ placeholder, value, list = [], onSelect }: Selec
         onSelect={(e) => {
           onSelect(e as ReferenceValueProps);
         }}
+        popDirection={popDirection}
       />
     );
-  }, [list, onSelect, placeholder, selectItemLabel, value]);
+  }, [list, onSelect, placeholder, popDirection, selectItemLabel, value]);
 
   return Render;
 };

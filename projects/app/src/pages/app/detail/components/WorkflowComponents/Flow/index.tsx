@@ -52,7 +52,10 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.ifElseNode]: dynamic(() => import('./nodes/NodeIfElse')),
   [FlowNodeTypeEnum.variableUpdate]: dynamic(() => import('./nodes/NodeVariableUpdate')),
   [FlowNodeTypeEnum.code]: dynamic(() => import('./nodes/NodeCode')),
-  [FlowNodeTypeEnum.userSelect]: dynamic(() => import('./nodes/NodeUserSelect'))
+  [FlowNodeTypeEnum.userSelect]: dynamic(() => import('./nodes/NodeUserSelect')),
+  [FlowNodeTypeEnum.loop]: dynamic(() => import('./nodes/Loop/NodeLoop')),
+  [FlowNodeTypeEnum.loopStart]: dynamic(() => import('./nodes/Loop/NodeLoopStart')),
+  [FlowNodeTypeEnum.loopEnd]: dynamic(() => import('./nodes/Loop/NodeLoopEnd'))
 };
 const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge
@@ -73,7 +76,8 @@ const Workflow = () => {
     onEdgeMouseEnter,
     onEdgeMouseLeave,
     helperLineHorizontal,
-    helperLineVertical
+    helperLineVertical,
+    onNodeDragStop
   } = useWorkflow();
 
   const {
@@ -146,6 +150,7 @@ const Workflow = () => {
                 panOnScroll: true
               }
             : {})}
+          onNodeDragStop={onNodeDragStop}
         >
           <FlowController />
           <HelperLines horizontal={helperLineHorizontal} vertical={helperLineVertical} />

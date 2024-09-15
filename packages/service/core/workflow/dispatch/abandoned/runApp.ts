@@ -93,6 +93,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const { text } = chatValue2RuntimePrompt(assistantResponses);
 
   return {
+    assistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: appData.avatar,
       query: userChatInput,

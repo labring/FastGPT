@@ -552,7 +552,11 @@
         "search using reRank": "Result Re-Rank",
         "text output": "Text Output",
         "update_var_result": "Variable Update Result (Displays Multiple Variable Update Results in Order)",
-        "user_select_result": "User Selection Result"
+        "user_select_result": "User Selection Result",
+        "loop_input": "Loop Input Array",
+        "loop_output": "Loop Output Array",
+        "loop_input_element": "Loop Input Element",
+        "loop_output_element": "Loop Output Element"
       },
       "retry": "Regenerate",
       "tts": {

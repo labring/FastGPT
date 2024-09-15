@@ -504,7 +504,6 @@ const ChatInput = ({
               const files = Array.from(items)
                 .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))
                 .filter((file) => {
-                  console.log(file);
                   return file && fileTypeFilter(file);
                 }) as File[];
               onSelectFile(files);

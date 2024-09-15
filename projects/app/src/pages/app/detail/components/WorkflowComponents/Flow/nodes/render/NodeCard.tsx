@@ -30,6 +30,9 @@ type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
   minW?: string | number;
   maxW?: string | number;
+  minH?: string | number;
+  w?: string | number;
+  h?: string | number;
   selected?: boolean;
   menuForbid?: {
     debug?: boolean;
@@ -50,6 +53,9 @@ const NodeCard = (props: Props) => {
     intro,
     minW = '300px',
     maxW = '600px',
+    minH = 0,
+    w = 'full',
+    h = 'full',
     nodeId,
     selected,
     menuForbid,
@@ -222,7 +228,7 @@ const NodeCard = (props: Props) => {
               </MyTooltip>
             )}
           </Flex>
-          <MenuRender nodeId={nodeId} menuForbid={menuForbid} />
+          <MenuRender nodeId={nodeId} menuForbid={menuForbid} nodeList={nodeList} />
           <NodeIntro nodeId={nodeId} intro={intro} />
         </Box>
         <ConfirmSyncModal />
@@ -234,11 +240,12 @@ const NodeCard = (props: Props) => {
     avatar,
     t,
     name,
-    menuForbid,
     hasNewVersion,
     onOpenConfirmSync,
     onClickSyncVersion,
     nodeTemplate?.diagram,
+    menuForbid,
+    nodeList,
     intro,
     ConfirmSyncModal,
     onOpenCustomTitleModal,
@@ -255,13 +262,17 @@ const NodeCard = (props: Props) => {
   }, [nodeId]);
 
   return (
-    <Box
+    <Flex
+      flexDirection={'column'}
       minW={minW}
       maxW={maxW}
+      minH={minH}
       bg={'white'}
       borderWidth={'1px'}
       borderRadius={'md'}
       boxShadow={'1'}
+      w={w}
+      h={h}
       _hover={{
         boxShadow: '4',
         '& .controller-menu': {
@@ -291,7 +302,7 @@ const NodeCard = (props: Props) => {
       {RenderHandle}
 
       <EditTitleModal maxLength={20} />
-    </Box>
+    </Flex>
   );
 };
 
@@ -299,16 +310,17 @@ export default React.memo(NodeCard);
 
 const MenuRender = React.memo(function MenuRender({
   nodeId,
-  menuForbid
+  menuForbid,
+  nodeList
 }: {
   nodeId: string;
   menuForbid?: Props['menuForbid'];
+  nodeList: FlowNodeItemType[];
 }) {
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
 
-  const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
-  const setEdges = useContextSelector(WorkflowContext, (v) => v.setEdges);
+  const { setNodes, setEdges, onNodesChange } = useContextSelector(WorkflowContext, (v) => v);
   const { computedNewNodeName } = useWorkflowUtils();
 
   const onCopyNode = useCallback(
@@ -347,6 +359,7 @@ const MenuRender = React.memo(function MenuRender({
               version: template.version
             },
             selected: true,
+            parentNodeId: undefined,
             t
           })
         );
@@ -356,10 +369,26 @@ const MenuRender = React.memo(function MenuRender({
   );
   const onDelNode = useCallback(
     (nodeId: string) => {
-      setNodes((state) => state.filter((item) => item.data.nodeId !== nodeId));
-      setEdges((state) => state.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+      // Remove node and its child nodes
+      setNodes((state) =>
+        state.filter((item) => item.data.nodeId !== nodeId && item.data.parentNodeId !== nodeId)
+      );
+
+      // Remove edges connected to the node and its child nodes
+      const childNodeIds = nodeList
+        .filter((node) => node.parentNodeId === nodeId)
+        .map((node) => node.nodeId);
+      setEdges((state) =>
+        state.filter(
+          (edge) =>
+            edge.source !== nodeId &&
+            edge.target !== nodeId &&
+            !childNodeIds.includes(edge.target) &&
+            !childNodeIds.includes(edge.source)
+        )
+      );
     },
-    [setEdges, setNodes]
+    [nodeList, setEdges, setNodes]
   );
 
   const Render = useMemo(() => {

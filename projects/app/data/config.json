@@ -54,6 +54,60 @@
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
       "defaultConfig": {}
+    },
+    {
+      "model": "o1-mini",
+      "name": "o1-mini",
+      "avatar": "/imgs/model/openai.svg",
+      "maxContext": 125000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 120000,
+      "maxTemperature": 1.2,
+      "charsPointsPrice": 0,
+      "censor": false,
+      "vision": false,
+      "datasetProcess": false,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
+      "toolChoice": false,
+      "functionCall": false,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {
+        "temperature": 1,
+        "max_tokens": null,
+        "stream": false
+      }
+    },
+    {
+      "model": "o1-preview",
+      "name": "o1-preview",
+      "avatar": "/imgs/model/openai.svg",
+      "maxContext": 125000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 120000,
+      "maxTemperature": 1.2,
+      "charsPointsPrice": 0,
+      "censor": false,
+      "vision": false,
+      "datasetProcess": false,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
+      "toolChoice": false,
+      "functionCall": false,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {
+        "temperature": 1,
+        "max_tokens": null,
+        "stream": false
+      }
     }
   ],
   "vectorModels": [
