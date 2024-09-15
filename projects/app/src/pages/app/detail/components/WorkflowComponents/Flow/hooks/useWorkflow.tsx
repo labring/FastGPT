@@ -29,11 +29,12 @@ import {
   Input_Template_Node_Height,
   Input_Template_Node_Width
 } from '@fastgpt/global/core/workflow/template/input';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 /* 
-    Compute helper lines for snapping nodes to each other
-    Refer: https://reactflow.dev/examples/interaction/helper-lines
-  */
+  Compute helper lines for snapping nodes to each other
+  Refer: https://reactflow.dev/examples/interaction/helper-lines
+*/
 type GetHelperLinesResult = {
   horizontal?: THelperLine;
   vertical?: THelperLine;
@@ -273,7 +274,6 @@ export const useWorkflow = () => {
   const {
     setConnectingEdge,
     nodes,
-    nodeList,
     onNodesChange,
     setEdges,
     setNodes,
@@ -411,67 +411,64 @@ export const useWorkflow = () => {
   });
 
   /* node */
-  const handleRemoveNode = useMemoizedFn(
-    (change: NodeRemoveChange, changes: NodeChange[], node: Node) => {
-      if (node.data.forbidDelete) {
-        return toast({
-          status: 'warning',
-          title: t('common:core.workflow.Can not delete node')
-        });
-      }
-
-      // If the node has child nodes, remove the child nodes
-      if (nodes.some((n) => n.data.parentNodeId === node.id)) {
-        const childNodes = nodes.filter((n) => n.data.parentNodeId === node.id);
-        const childNodeIds = childNodes.map((n) => n.id);
-        const childNodesChange = childNodes.map((node) => ({
-          ...change,
-          id: node.id
-        }));
-        onNodesChange([...changes, ...childNodesChange]);
-        setEdges((state) =>
-          state.filter(
-            (edge) =>
-              edge.source !== change.id &&
-              edge.target !== change.id &&
-              !childNodeIds.includes(edge.source) &&
-              !childNodeIds.includes(edge.target)
-          )
-        );
-        return;
-      }
-
-      setEdges((state) =>
-        state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
-      );
-      onNodesChange(changes);
+  const handleRemoveNode = useMemoizedFn((change: NodeRemoveChange, node: Node) => {
+    if (node.data.forbidDelete) {
+      return toast({
+        status: 'warning',
+        title: t('common:core.workflow.Can not delete node')
+      });
     }
-  );
 
-  const handleSelectNode = useMemoizedFn((change: NodeSelectionChange, changes: NodeChange[]) => {
+    // If the node has child nodes, remove the child nodes
+    if (nodes.some((n) => n.data.parentNodeId === node.id)) {
+      const childNodes = nodes.filter((n) => n.data.parentNodeId === node.id);
+      const childNodeIds = childNodes.map((n) => n.id);
+      const childNodesChange = childNodes.map((node) => ({
+        ...change,
+        id: node.id
+      }));
+      onNodesChange(childNodesChange);
+      setEdges((state) =>
+        state.filter(
+          (edge) =>
+            edge.source !== change.id &&
+            edge.target !== change.id &&
+            !childNodeIds.includes(edge.source) &&
+            !childNodeIds.includes(edge.target)
+        )
+      );
+      return;
+    }
+
+    setEdges((state) =>
+      state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
+    );
+  });
+
+  const handleSelectNode = useMemoizedFn((change: NodeSelectionChange) => {
     // If the node is not selected and the Ctrl key is pressed, select the node
     if (change.selected === false && isDowningCtrl) {
       change.selected = true;
     }
-
-    onNodesChange(changes);
   });
 
   const handlePositionNode = useMemoizedFn(
-    (change: NodePositionChange, changes: NodeChange[], node: Node) => {
+    (change: NodePositionChange, node: Node<FlowNodeItemType>) => {
+      const parentNode: Record<string, 1> = {
+        [FlowNodeTypeEnum.loop]: 1
+      };
+
       // If node is a child node, move child node and reset parent node
       if (node.data.parentNodeId) {
         const parentId = node.data.parentNodeId;
         const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
 
-        checkNodeHelpLine(changes, childNodes);
+        checkNodeHelpLine([change], childNodes);
 
         resetParentNodeSizeAndPosition(getNodesBounds(childNodes), parentId);
-        onNodesChange(changes);
-        return;
       }
       // If node is parent node, move parent node and child nodes
-      if (nodes.some((item) => item.data.parentNodeId === node.id)) {
+      else if (parentNode[node.data.flowNodeType]) {
         const parentId = node.id;
         const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
         const initPosition = node.position;
@@ -497,34 +494,31 @@ export const useWorkflow = () => {
           }
         });
         // checkNodeHelpLine(
-        //   changes,
+        //   [change],
         //   nodes.filter((node) => !node.data.parentNodeId)
         // );
-        onNodesChange([...changes, ...childNodesChange]);
-        return;
+        onNodesChange(childNodesChange);
+      } else {
+        checkNodeHelpLine(
+          [change],
+          nodes.filter((node) => !node.data.parentNodeId)
+        );
       }
-
-      checkNodeHelpLine(
-        changes,
-        nodes.filter((node) => !node.data.parentNodeId)
-      );
-      onNodesChange(changes);
     }
   );
-
   const handleNodesChange = useMemoizedFn((changes: NodeChange[]) => {
     for (const change of changes) {
       if (change.type === 'remove') {
         const node = nodes.find((n) => n.id === change.id);
         if (node) {
-          return handleRemoveNode(change, changes, node);
+          handleRemoveNode(change, node);
         }
       } else if (change.type === 'select') {
-        return handleSelectNode(change, changes);
+        handleSelectNode(change);
       } else if (change.type === 'position') {
         const node = nodes.find((n) => n.id === change.id);
         if (node) {
-          return handlePositionNode(change, changes, node);
+          handlePositionNode(change, node);
         }
       }
     }
@@ -535,7 +529,7 @@ export const useWorkflow = () => {
 
   const handleEdgeChange = useCallback(
     (changes: EdgeChange[]) => {
-      onEdgesChange(changes.filter((change) => change.type !== 'remove'));
+      onEdgesChange(changes);
     },
     [onEdgesChange]
   );

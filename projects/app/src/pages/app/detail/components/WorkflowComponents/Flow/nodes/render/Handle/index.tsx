@@ -117,6 +117,7 @@ const MySourceHandle = React.memo(function MySourceHandle({
 
   if (!node) return null;
   if (connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools) return null;
+
   return <>{RenderHandle}</>;
 });
 
@@ -136,18 +137,16 @@ const MyTargetHandle = React.memo(function MyTargetHandle({
   position,
   translate,
   highlightStyle,
-  connectedStyle
+  connectedStyle,
+  showHandle
 }: Props & {
+  showHandle: boolean;
   highlightStyle: Record<string, any>;
   connectedStyle: Record<string, any>;
 }) {
-  const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
-  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+  const { connectingEdge, edges } = useContextSelector(WorkflowContext, (ctx) => ctx);
 
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const node = useMemo(() => nodeList.find((node) => node.nodeId === nodeId), [nodeList, nodeId]);
   const connected = edges.some((edge) => edge.targetHandle === handleId);
-  const connectedEdges = edges.filter((edge) => edge.target === nodeId);
 
   const translateStr = useMemo(() => {
     if (!translate) return '';
@@ -190,30 +189,6 @@ const MyTargetHandle = React.memo(function MyTargetHandle({
     return;
   }, [connected, connectingEdge, connectedStyle, highlightStyle, transform]);
 
-  const showHandle = useMemo(() => {
-    if (!node) return false;
-    // check tool connected
-    if (
-      edges.some(
-        (edge) => edge.target === nodeId && edge.targetHandle === NodeOutputKeyEnum.selectedTools
-      )
-    ) {
-      return false;
-    }
-
-    if (connectingEdge?.handleId && !connectingEdge.handleId?.includes('source')) return false;
-
-    // From same source node and same handle
-    if (
-      connectedEdges.some(
-        (item) => item.sourceHandle === connectingEdge?.handleId && item.target === nodeId
-      )
-    )
-      return false;
-
-    return true;
-  }, [connectedEdges, connectingEdge?.handleId, edges, node, nodeId]);
-
   const RenderHandle = useMemo(() => {
     return (
       <Handle
@@ -237,7 +212,11 @@ const MyTargetHandle = React.memo(function MyTargetHandle({
   return RenderHandle;
 });
 
-export const TargetHandle = (props: Props) => {
+export const TargetHandle = (
+  props: Props & {
+    showHandle: boolean;
+  }
+) => {
   return (
     <MyTargetHandle
       {...props}
