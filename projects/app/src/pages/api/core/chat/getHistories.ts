@@ -18,69 +18,67 @@ async function handler(
   req: ApiRequestProps<getHistoriesBody, getHistoriesQuery>,
   res: ApiResponseType<any>
 ): Promise<PaginationResponse<getHistoriesResponse>> {
-  try {
-    await connectToDatabase();
-    const { appId, shareId, outLinkUid, teamId, teamToken, current, pageSize } =
-      req.body as getHistoriesBody;
+  const { appId, shareId, outLinkUid, teamId, teamToken, current, pageSize } =
+    req.body as getHistoriesBody;
 
-    const limit = shareId && outLinkUid ? 20 : 30;
+  const match = await (async () => {
+    if (shareId && outLinkUid) {
+      const { uid } = await authOutLink({ shareId, outLinkUid });
 
-    const match = await (async () => {
-      if (shareId && outLinkUid) {
-        const { uid } = await authOutLink({ shareId, outLinkUid });
+      return {
+        shareId,
+        outLinkUid: uid,
+        source: ChatSourceEnum.share,
+        updateTime: {
+          $gte: new Date(new Date().setDate(new Date().getDate() - 30))
+        }
+      };
+    }
+    if (appId && teamId && teamToken) {
+      const { uid } = await authTeamSpaceToken({ teamId, teamToken });
+      return {
+        teamId,
+        appId,
+        outLinkUid: uid,
+        source: ChatSourceEnum.team
+      };
+    }
+    if (appId) {
+      const { tmbId } = await authCert({ req, authToken: true });
+      return {
+        tmbId,
+        appId,
+        source: ChatSourceEnum.online
+      };
+    }
+  })();
 
-        return {
-          shareId,
-          outLinkUid: uid,
-          source: ChatSourceEnum.share,
-          updateTime: {
-            $gte: new Date(new Date().setDate(new Date().getDate() - 30))
-          }
-        };
-      }
-      if (appId && teamId && teamToken) {
-        const { uid } = await authTeamSpaceToken({ teamId, teamToken });
-        return {
-          teamId,
-          appId,
-          outLinkUid: uid,
-          source: ChatSourceEnum.team
-        };
-      }
-      if (appId) {
-        const { tmbId } = await authCert({ req, authToken: true });
-        return {
-          tmbId,
-          appId,
-          source: ChatSourceEnum.online
-        };
-      }
-
-      return Promise.reject('Params are error');
-    })();
-
-    const [data, total] = await Promise.all([
-      await MongoChat.find(match, 'chatId title top customTitle appId updateTime')
-        .sort({ top: -1, updateTime: -1 })
-        .skip((current - 1) * pageSize)
-        .limit(pageSize),
-      MongoChat.countDocuments(match)
-    ]);
-
+  if (!match) {
     return {
-      list: data.map((item) => ({
-        chatId: item.chatId,
-        updateTime: item.updateTime,
-        appId: item.appId,
-        customTitle: item.customTitle,
-        title: item.title,
-        top: item.top
-      })),
-      total
+      list: [],
+      total: 0
     };
-  } catch (err) {
-    return Promise.reject(err);
   }
+
+  const [data, total] = await Promise.all([
+    await MongoChat.find(match, 'chatId title top customTitle appId updateTime')
+      .sort({ top: -1, updateTime: -1 })
+      .skip((current - 1) * pageSize)
+      .limit(pageSize),
+    MongoChat.countDocuments(match)
+  ]);
+
+  return {
+    list: data.map((item) => ({
+      chatId: item.chatId,
+      updateTime: item.updateTime,
+      appId: item.appId,
+      customTitle: item.customTitle,
+      title: item.title,
+      top: item.top
+    })),
+    total
+  };
 }
 
 export default NextAPI(handler);

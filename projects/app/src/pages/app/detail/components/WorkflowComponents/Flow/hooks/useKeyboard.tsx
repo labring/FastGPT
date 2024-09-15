@@ -8,6 +8,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext, getWorkflowStore } from '../../context';
 import { useWorkflowUtils } from './useUtils';
 import { useKeyPress as useKeyPressEffect } from 'ahooks';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const useKeyboard = () => {
   const { t } = useTranslation();
@@ -50,7 +51,9 @@ export const useKeyboard = () => {
       if (!Array.isArray(parseData)) return;
       // filter workflow data
       const newNodes = parseData
-        .filter((item) => !!item.type && item.data?.unique !== true)
+        .filter(
+          (item) => !!item.type && item.data?.unique !== true && item.type !== FlowNodeTypeEnum.loop
+        )
         .map((item) => {
           const nodeId = getNanoid();
           return {
@@ -64,7 +67,8 @@ export const useKeyboard = () => {
                 flowNodeType: item.data?.flowNodeType || '',
                 pluginId: item.data?.pluginId
               }),
-              nodeId
+              nodeId,
+              parentNodeId: undefined
             },
             position: {
               x: item.position.x + 100,
@@ -73,6 +77,7 @@ export const useKeyboard = () => {
           };
         });
 
+      // Reset all node to not select and concat new node
       setNodes((prev) =>
         prev
           .map((node) => ({

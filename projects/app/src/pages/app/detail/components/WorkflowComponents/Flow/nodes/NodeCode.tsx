@@ -23,11 +23,11 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { workflowT } = useI18n();
   const { nodeId, inputs, outputs } = data;
-  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
+  const { splitToolInputs, onChangeNode, onResetNode } = useContextSelector(
+    WorkflowContext,
+    (ctx) => ctx
+  );
 
-  const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
   const { ConfirmModal, openConfirm } = useConfirm({
     content: workflowT('code.Reset template confirm')
   });
@@ -73,31 +73,37 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     };
-  }, [nodeId, onChangeNode, openConfirm, workflowT]);
+  }, [data, nodeId, onChangeNode, onResetNode, openConfirm, workflowT]);
 
-  return (
-    <NodeCard minW={'400px'} selected={selected} {...data}>
-      {isTool && (
-        <>
-          <Container>
-            <RenderToolInput nodeId={nodeId} inputs={inputs} />
-          </Container>
-        </>
-      )}
-      <Container>
-        <IOTitle text={t('common:common.Input')} />
-        <RenderInput
-          nodeId={nodeId}
-          flowInputList={commonInputs}
-          CustomComponent={CustomComponent}
-        />
-      </Container>
-      <Container>
-        <IOTitle text={t('common:common.Output')} />
-        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
-      </Container>
-      <ConfirmModal />
-    </NodeCard>
-  );
+  const Render = useMemo(() => {
+    const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
+
+    return (
+      <NodeCard minW={'400px'} selected={selected} {...data}>
+        {isTool && (
+          <>
+            <Container>
+              <RenderToolInput nodeId={nodeId} inputs={inputs} />
+            </Container>
+          </>
+        )}
+        <Container>
+          <IOTitle text={t('common:common.Input')} />
+          <RenderInput
+            nodeId={nodeId}
+            flowInputList={commonInputs}
+            CustomComponent={CustomComponent}
+          />
+        </Container>
+        <Container>
+          <IOTitle text={t('common:common.Output')} />
+          <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+        </Container>
+        <ConfirmModal />
+      </NodeCard>
+    );
+  }, [ConfirmModal, CustomComponent, data, inputs, nodeId, outputs, selected, splitToolInputs, t]);
+
+  return Render;
 };
 export default React.memo(NodeCode);

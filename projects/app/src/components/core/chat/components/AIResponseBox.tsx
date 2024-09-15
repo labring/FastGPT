@@ -35,8 +35,7 @@ const RenderText = React.memo(function RenderText({
   showAnimation: boolean;
   text?: string;
 }) {
-  let source = (text || '').trim();
-
+  let source = text || '';
   // First empty line
   // if (!source && !isLastChild) return null;
 

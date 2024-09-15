@@ -66,6 +66,9 @@ import {
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
 import { dispatchRunAppNode } from './plugin/runApp';
+import { dispatchLoop } from './loop/runLoop';
+import { dispatchLoopEnd } from './loop/runLoopEnd';
+import { dispatchLoopStart } from './loop/runLoopStart';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -91,6 +94,9 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.customFeedback]: dispatchCustomFeedback,
   [FlowNodeTypeEnum.readFiles]: dispatchReadFiles,
   [FlowNodeTypeEnum.userSelect]: dispatchUserSelect,
+  [FlowNodeTypeEnum.loop]: dispatchLoop,
+  [FlowNodeTypeEnum.loopStart]: dispatchLoopStart,
+  [FlowNodeTypeEnum.loopEnd]: dispatchLoopEnd,
 
   // none
   [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,
@@ -160,7 +166,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   let chatResponses: ChatHistoryItemResType[] = []; // response request and save to database
   let chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user
   let chatNodeUsages: ChatNodeUsageType[] = [];
-  let toolRunResponse: ToolRunResponseItemType;
+  let toolRunResponse: ToolRunResponseItemType; // Run with tool mode. Result will response to tool node.
   let debugNextStepRunNodes: RuntimeNodeItemType[] = [];
   // 记录交互节点，交互节点需要在工作流完全结束后再进行计算
   let workflowInteractiveResponse:
@@ -196,9 +202,11 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     if (responseData) {
       chatResponses.push(responseData);
     }
+
     if (nodeDispatchUsages) {
       chatNodeUsages = chatNodeUsages.concat(nodeDispatchUsages);
     }
+
     if (toolResponses !== undefined) {
       if (Array.isArray(toolResponses) && toolResponses.length === 0) return;
       if (typeof toolResponses === 'object' && Object.keys(toolResponses).length === 0) {
@@ -206,6 +214,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       }
       toolRunResponse = toolResponses;
     }
+
+    // Histories store
     if (assistantResponses) {
       chatAssistantResponse = chatAssistantResponse.concat(assistantResponses);
     } else if (answerText) {

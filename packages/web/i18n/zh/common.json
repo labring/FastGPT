@@ -552,7 +552,11 @@
         "search using reRank": "结果重排",
         "text output": "文本输出",
         "update_var_result": "变量更新结果(按顺序展示多个变量更新结果)",
-        "user_select_result": "用户选择结果"
+        "user_select_result": "用户选择结果",
+        "loop_input": "输入数组",
+        "loop_output": "输出数组",
+        "loop_input_element": "输入数组元素",
+        "loop_output_element": "输出数组元素"
       },
       "retry": "重新生成",
       "tts": {
