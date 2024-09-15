@@ -140,11 +140,11 @@ export enum NodeInputKeyEnum {
 
   // loop
   loopInputArray = 'loopInputArray',
-  loopFlow = 'loopFlow',
-
+  childrenNodeIdList = 'childrenNodeIdList',
+  nodeWidth = 'nodeWidth',
+  nodeHeight = 'nodeHeight',
   // loop start
   loopStartInput = 'loopStartInput',
-
   // loop end
   loopEndInput = 'loopEndInput'
 }

@@ -213,7 +213,7 @@ const Header = () => {
                 size={'sm'}
                 leftIcon={<MyIcon name={'core/workflow/debug'} w={['14px', '16px']} />}
                 variant={'whitePrimary'}
-                onClick={async () => {
+                onClick={() => {
                   const data = flowData2StoreDataAndCheck();
                   if (data) {
                     setWorkflowTestData(data);

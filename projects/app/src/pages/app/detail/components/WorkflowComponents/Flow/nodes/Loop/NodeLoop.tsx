@@ -16,6 +16,7 @@ import { Box } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RenderOutput from '../render/RenderOutput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { Input_Template_Children_Node_List } from '@fastgpt/global/core/workflow/template/input';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 
@@ -24,27 +25,29 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, outputs } = data;
   const { onChangeNode, nodeList } = useContextSelector(WorkflowContext, (v) => v);
 
-  const loopFlowData = useMemo(
-    () => inputs.find((input) => input.key === NodeInputKeyEnum.loopFlow),
-    [inputs]
-  );
+  const { nodeWidth, nodeHeight } = useMemo(() => {
+    return {
+      nodeWidth: inputs.find((input) => input.key === NodeInputKeyEnum.nodeWidth)?.value,
+      nodeHeight: inputs.find((input) => input.key === NodeInputKeyEnum.nodeHeight)?.value
+    };
+  }, [inputs]);
+  const childrenNodeIdList = useMemo(() => {
+    return JSON.stringify(
+      nodeList.filter((node) => node.parentNodeId === nodeId).map((node) => node.nodeId)
+    );
+  }, [nodeId, nodeList]);
 
   useEffect(() => {
-    if (!loopFlowData || !loopFlowData?.value || !loopFlowData?.value?.childNodes) return;
-    const childNodes = nodeList.filter((node) => node.parentNodeId === nodeId);
     onChangeNode({
       nodeId,
       type: 'updateInput',
-      key: NodeInputKeyEnum.loopFlow,
+      key: NodeInputKeyEnum.childrenNodeIdList,
       value: {
-        ...loopFlowData,
-        value: {
-          ...loopFlowData?.value,
-          childNodes: childNodes.map((node) => node.nodeId)
-        }
+        ...Input_Template_Children_Node_List,
+        value: JSON.parse(childrenNodeIdList)
       }
     });
-  }, []);
+  }, [childrenNodeIdList]);
 
   const Render = useMemo(() => {
     return (
@@ -53,8 +56,8 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         maxW={'full'}
         minW={900}
         minH={900}
-        w={loopFlowData?.value?.width}
-        h={loopFlowData?.value?.height}
+        w={nodeWidth}
+        h={nodeHeight}
         menuForbid={{
           copy: true
         }}
@@ -77,16 +80,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         </Container>
       </NodeCard>
     );
-  }, [
-    selected,
-    loopFlowData?.value?.width,
-    loopFlowData?.value?.height,
-    data,
-    t,
-    nodeId,
-    inputs,
-    outputs
-  ]);
+  }, [selected, nodeWidth, nodeHeight, data, t, nodeId, inputs, outputs]);
 
   return Render;
 };

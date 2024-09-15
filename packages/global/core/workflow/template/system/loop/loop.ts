@@ -12,6 +12,11 @@ import {
 } from '../../../constants';
 import { getHandleConfig } from '../../utils';
 import { i18nT } from '../../../../../../web/i18n/utils';
+import {
+  Input_Template_Children_Node_List,
+  Input_Template_Node_Height,
+  Input_Template_Node_Width
+} from '../../input';
 
 export const LoopNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.loop,
@@ -33,17 +38,9 @@ export const LoopNode: FlowNodeTemplateType = {
       label: i18nT('workflow:loop_input_array'),
       value: []
     },
-    {
-      key: NodeInputKeyEnum.loopFlow,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      valueType: WorkflowIOValueTypeEnum.any,
-      label: '',
-      value: {
-        width: 0,
-        height: 0,
-        childNodes: []
-      }
-    }
+    Input_Template_Children_Node_List,
+    Input_Template_Node_Width,
+    Input_Template_Node_Height
   ],
   outputs: [
     {

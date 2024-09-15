@@ -136,6 +136,8 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
       if (connectingEdge && connectingEdge.nodeId === nodeId) return false;
       // Unable to connect to the source node
       if (connectingNodeSourceNodeIds.includes(nodeId)) return false;
+      // Not the same parent node
+      if (connectingNode?.parentNodeId !== node?.parentNodeId) return false;
       return true;
     })();
 

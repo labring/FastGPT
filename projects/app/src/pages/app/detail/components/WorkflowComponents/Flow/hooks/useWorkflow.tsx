@@ -24,8 +24,11 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { THelperLine } from '@fastgpt/global/core/workflow/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { useCreation, useMemoizedFn } from 'ahooks';
+import { useMemoizedFn } from 'ahooks';
+import {
+  Input_Template_Node_Height,
+  Input_Template_Node_Width
+} from '@fastgpt/global/core/workflow/template/input';
 
 /* 
     Compute helper lines for snapping nodes to each other
@@ -283,28 +286,26 @@ export const useWorkflow = () => {
 
   // Loop node size and position
   const resetParentNodeSizeAndPosition = useMemoizedFn((rect: Rect, parentId: string) => {
-    const parentNode = nodeList.find((node) => node.nodeId === parentId);
-    const loopFlow = parentNode?.inputs.find(
-      (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.loopFlow
-    );
-
-    if (!loopFlow) return;
+    const width = rect.width + 110 > 900 ? rect.width + 110 : 900;
+    const height = rect.height + 380 > 900 ? rect.height + 380 : 900;
 
     // Update parentNode size and position
-    const newLoopFlowValue = {
-      ...loopFlow.value,
-      // Automatic extension of width and height
-      width: rect.width + 110 > 900 ? rect.width + 110 : 900,
-      height: rect.height + 380 > 900 ? rect.height + 380 : 900
-    };
-
     onChangeNode({
-      nodeId: parentId || '',
+      nodeId: parentId,
       type: 'updateInput',
-      key: NodeInputKeyEnum.loopFlow,
+      key: NodeInputKeyEnum.nodeWidth,
       value: {
-        ...loopFlow,
-        value: newLoopFlowValue
+        ...Input_Template_Node_Width,
+        value: width
+      }
+    });
+    onChangeNode({
+      nodeId: parentId,
+      type: 'updateInput',
+      key: NodeInputKeyEnum.nodeHeight,
+      value: {
+        ...Input_Template_Node_Height,
+        value: height
       }
     });
 
@@ -370,7 +371,10 @@ export const useWorkflow = () => {
   // Check if a node is placed on top of a loop node
   const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
     if (!node) return;
+
+    // 获取所有与当前节点相交的节点
     const intersections = getIntersectingNodes(node);
+    // 获取所有与当前节点相交的节点中，类型为 loop 的节点
     const parentNode = intersections.find((item) => item.type === FlowNodeTypeEnum.loop);
 
     const unSupportedTypes = [
@@ -389,25 +393,13 @@ export const useWorkflow = () => {
         });
       }
 
-      const updatedLoopFlow = parentNode.data.inputs.find(
-        (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.loopFlow
-      );
-      if (updatedLoopFlow) {
-        updatedLoopFlow.value.childNodes = [...updatedLoopFlow.value.childNodes, node.id];
-      }
-
       onChangeNode({
         nodeId: node.id,
         type: 'attr',
         key: 'parentNodeId',
         value: parentNode.id
       });
-      onChangeNode({
-        nodeId: parentNode.id,
-        type: 'updateInput',
-        key: NodeInputKeyEnum.loopFlow,
-        value: updatedLoopFlow
-      });
+      // 删除当前节点与其他节点的连接
       setEdges((state) =>
         state.filter((edge) => edge.source !== node.id && edge.target !== node.id)
       );
@@ -453,31 +445,6 @@ export const useWorkflow = () => {
         state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
       );
       onNodesChange(changes);
-
-      // If the node is a child node, remove the child node from the parent node
-      if (node?.data.parentNodeId) {
-        const parentId = node.data.parentNodeId;
-        const childNodes = nodes.filter(
-          (n) => n.data.parentNodeId === parentId && n.id !== node.id
-        );
-        const parentNode = nodes.find((n) => n.id === parentId);
-        const rect = getNodesBounds(childNodes);
-        const updatedLoopFlow = parentNode?.data.inputs.find(
-          (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.loopFlow
-        );
-        if (updatedLoopFlow) {
-          updatedLoopFlow.value.childNodes = updatedLoopFlow.value.childNodes.filter(
-            (nodeId: string) => nodeId !== node.id
-          );
-          resetParentNodeSizeAndPosition(rect, parentId);
-          onChangeNode({
-            nodeId: parentId,
-            type: 'updateInput',
-            key: NodeInputKeyEnum.loopFlow,
-            value: updatedLoopFlow
-          });
-        }
-      }
     }
   );
 

@@ -564,39 +564,6 @@ const WorkflowContextProvider = ({
     };
   });
 
-  const initData = useMemoizedFn(
-    async (e: Parameters<WorkflowContextType['initData']>[0], isInit?: boolean) => {
-      /* 
-        Refresh web page, load init
-      */
-      if (isInit && past.length > 0) {
-        return resetSnapshot(past[0]);
-      }
-
-      setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || []);
-      setEdges(e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || []);
-
-      const chatConfig = e.chatConfig;
-      if (chatConfig) {
-        setAppDetail((state) => ({
-          ...state,
-          chatConfig
-        }));
-      }
-
-      // If it is the initial data, save the initial snapshot
-      if (isInit) {
-        saveSnapshot({
-          pastNodes: e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [],
-          pastEdges: e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [],
-          customTitle: t(`app:app.version_initial`),
-          chatConfig: appDetail.chatConfig,
-          isSaved: true
-        });
-      }
-    }
-  );
-
   /* ui flow to store data */
   const flowData2StoreDataAndCheck = useMemoizedFn((hideTip = false) => {
     const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
@@ -615,8 +582,7 @@ const WorkflowContextProvider = ({
   });
 
   const flowData2StoreData = useMemoizedFn(() => {
-    const storeNodes = uiWorkflow2StoreWorkflow({ nodes, edges });
-    return storeNodes;
+    return uiWorkflow2StoreWorkflow({ nodes, edges });
   });
 
   /* debug */
@@ -801,22 +767,6 @@ const WorkflowContextProvider = ({
     }
   );
 
-  /* Version histories */
-  const [historiesDefaultData, setHistoriesDefaultData] = useState<InitProps>();
-
-  /* event bus */
-  useEffect(() => {
-    eventBus.on(EventNameEnum.requestWorkflowStore, () => {
-      eventBus.emit(EventNameEnum.receiveWorkflowStore, {
-        nodes,
-        edges
-      });
-    });
-    return () => {
-      eventBus.off(EventNameEnum.requestWorkflowStore);
-    };
-  }, [edges, nodes]);
-
   /* chat test */
   const { isOpen: isOpenTest, onOpen: onOpenTest, onClose: onCloseTest } = useDisclosure();
   const [workflowTestData, setWorkflowTestData] = useState<{
@@ -916,7 +866,6 @@ const WorkflowContextProvider = ({
       resetSnapshot(past[1]);
     }
   });
-
   const redo = useMemoizedFn(() => {
     const futureState = future[0];
 
@@ -926,6 +875,39 @@ const WorkflowContextProvider = ({
       resetSnapshot(futureState);
     }
   });
+
+  const initData = useMemoizedFn(
+    async (e: Parameters<WorkflowContextType['initData']>[0], isInit?: boolean) => {
+      /* 
+        Refresh web page, load init
+      */
+      if (isInit && past.length > 0) {
+        return resetSnapshot(past[0]);
+      }
+
+      setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || []);
+      setEdges(e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || []);
+
+      const chatConfig = e.chatConfig;
+      if (chatConfig) {
+        setAppDetail((state) => ({
+          ...state,
+          chatConfig
+        }));
+      }
+
+      // If it is the initial data, save the initial snapshot
+      if (isInit) {
+        saveSnapshot({
+          pastNodes: e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [],
+          pastEdges: e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [],
+          customTitle: t(`app:app.version_initial`),
+          chatConfig: appDetail.chatConfig,
+          isSaved: true
+        });
+      }
+    }
+  );
 
   // remove other app's snapshot
   useEffect(() => {
@@ -938,6 +920,22 @@ const WorkflowContextProvider = ({
       }
     });
   }, [appId]);
+
+  /* Version histories */
+  const [historiesDefaultData, setHistoriesDefaultData] = useState<InitProps>();
+
+  /* event bus */
+  useEffect(() => {
+    eventBus.on(EventNameEnum.requestWorkflowStore, () => {
+      eventBus.emit(EventNameEnum.receiveWorkflowStore, {
+        nodes,
+        edges
+      });
+    });
+    return () => {
+      eventBus.off(EventNameEnum.requestWorkflowStore);
+    };
+  }, [edges, nodes]);
 
   const value = {
     appId,

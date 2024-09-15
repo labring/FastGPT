@@ -10,7 +10,7 @@ import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopInputArray]: Array<any>;
-  [NodeInputKeyEnum.loopFlow]: { childNodes: Array<string> };
+  [NodeInputKeyEnum.childrenNodeIdList]: string[];
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.loopArray]: Array<any>;
@@ -23,10 +23,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     user,
     node: { name }
   } = props;
-  const {
-    loopInputArray = [],
-    loopFlow: { childNodes }
-  } = params;
+  const { loopInputArray = [], childrenNodeIdList } = params;
 
   if (!Array.isArray(loopInputArray)) {
     return Promise.reject('Input value is not an array');
@@ -35,7 +32,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     return Promise.reject('Input array length cannot be greater than 50');
   }
 
-  const runNodes = runtimeNodes.filter((node) => childNodes.includes(node.nodeId));
+  const runNodes = runtimeNodes.filter((node) => childrenNodeIdList.includes(node.nodeId));
 
   const outputValueArr = [];
   const loopDetail: ChatHistoryItemResType[] = [];
