@@ -29,10 +29,16 @@ type OpenAPIResponse = {
   };
 };
 
+type OpenAPISecurity = {
+  apiKey?: string[];
+  token?: string[];
+};
+
 type PathType = {
   [method: string]: {
     description: string;
     parameters: OpenAPIParameter[];
+    security?: OpenAPISecurity[];
     responses: OpenAPIResponse;
   };
 };
@@ -52,6 +58,22 @@ type OpenApiType = {
   servers?: {
     url: string;
   }[];
+  components: {
+    securitySchemes: {
+      apiKey: {
+        type: 'apiKey';
+        name: 'Authorization';
+        in: 'header';
+        scheme: 'bearer';
+      };
+      token: {
+        type: 'apiKey';
+        in: 'token';
+        name: 'token';
+        scheme: 'basic';
+      };
+    };
+  };
 };
 
 export function convertPath(api: ApiType): PathType {
@@ -95,6 +117,17 @@ export function convertPath(api: ApiType): PathType {
         });
       });
     }
+  }
+
+  const security: OpenAPISecurity[] = [];
+  if (api.authorization === 'apikey') {
+    security.push({
+      apiKey: []
+    });
+  } else if (api.authorization === 'token') {
+    security.push({
+      token: []
+    });
   }
 
   const responses: OpenAPIResponse = (() => {
@@ -159,6 +192,7 @@ export function convertPath(api: ApiType): PathType {
   return {
     [method]: {
       description: api.description ?? '',
+      security,
       parameters,
       responses
     }
