@@ -320,8 +320,7 @@ const MenuRender = React.memo(function MenuRender({
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
 
-  const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
-  const setEdges = useContextSelector(WorkflowContext, (v) => v.setEdges);
+  const { setNodes, setEdges, onNodesChange } = useContextSelector(WorkflowContext, (v) => v);
   const { computedNewNodeName } = useWorkflowUtils();
 
   const onCopyNode = useCallback(

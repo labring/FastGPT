@@ -77,6 +77,7 @@ export const useKeyboard = () => {
           };
         });
 
+      // Reset all node to not select and concat new node
       setNodes((prev) =>
         prev
           .map((node) => ({

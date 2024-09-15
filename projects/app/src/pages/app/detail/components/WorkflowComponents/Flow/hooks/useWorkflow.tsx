@@ -276,7 +276,6 @@ export const useWorkflow = () => {
     nodes,
     onNodesChange,
     setEdges,
-    setNodes,
     onChangeNode,
     onEdgesChange,
     setHoverEdgeId
@@ -310,30 +309,26 @@ export const useWorkflow = () => {
     });
 
     // Update parentNode position
-    setNodes((nodes) =>
-      nodes.map((node) =>
-        node.id === parentId
-          ? {
-              ...node,
-              position: {
-                x: rect.x - 50,
-                y: rect.y - 280
-              }
-            }
-          : node
-      )
-    );
+    onNodesChange([
+      {
+        id: parentId,
+        type: 'position',
+        position: {
+          x: rect.x - 50,
+          y: rect.y - 280
+        }
+      }
+    ]);
   });
 
   /* helper line */
   const [helperLineHorizontal, setHelperLineHorizontal] = useState<THelperLine>();
   const [helperLineVertical, setHelperLineVertical] = useState<THelperLine>();
 
-  const checkNodeHelpLine = useMemoizedFn((changes: NodeChange[], nodes: Node[]) => {
-    const positionChange =
-      changes[0].type === 'position' && changes[0].dragging ? changes[0] : undefined;
+  const checkNodeHelpLine = useMemoizedFn((change: NodeChange, nodes: Node[]) => {
+    const positionChange = change.type === 'position' && change.dragging ? change : undefined;
 
-    if (changes.length === 1 && positionChange?.position) {
+    if (positionChange?.position) {
       // 只判断，3000px 内的 nodes，并按从近到远的顺序排序
       const filterNodes = nodes
         .filter((node) => {
@@ -444,14 +439,12 @@ export const useWorkflow = () => {
       state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
     );
   });
-
   const handleSelectNode = useMemoizedFn((change: NodeSelectionChange) => {
     // If the node is not selected and the Ctrl key is pressed, select the node
     if (change.selected === false && isDowningCtrl) {
       change.selected = true;
     }
   });
-
   const handlePositionNode = useMemoizedFn(
     (change: NodePositionChange, node: Node<FlowNodeItemType>) => {
       const parentNode: Record<string, 1> = {
@@ -462,13 +455,19 @@ export const useWorkflow = () => {
       if (node.data.parentNodeId) {
         const parentId = node.data.parentNodeId;
         const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
-
-        checkNodeHelpLine([change], childNodes);
+        checkNodeHelpLine(change, childNodes);
 
         resetParentNodeSizeAndPosition(getNodesBounds(childNodes), parentId);
       }
       // If node is parent node, move parent node and child nodes
       else if (parentNode[node.data.flowNodeType]) {
+        // It will update the change value.
+        checkNodeHelpLine(
+          change,
+          nodes.filter((node) => !node.data.parentNodeId)
+        );
+
+        // Compute the child nodes' position
         const parentId = node.id;
         const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
         const initPosition = node.position;
@@ -493,14 +492,11 @@ export const useWorkflow = () => {
             };
           }
         });
-        // checkNodeHelpLine(
-        //   [change],
-        //   nodes.filter((node) => !node.data.parentNodeId)
-        // );
+
         onNodesChange(childNodesChange);
       } else {
         checkNodeHelpLine(
-          [change],
+          change,
           nodes.filter((node) => !node.data.parentNodeId)
         );
       }
