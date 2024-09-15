@@ -81,7 +81,7 @@
       "un_auth": "Unauthorized to Operate This Plugin"
     },
     "system_error": {
-      "community_version_num_limit": "Exceeded Open Source Version Limit, Please Upgrade to Commercial Version: https://fastgpt.in"
+      "community_version_num_limit": "Exceeded Open Source Version Limit, Please Upgrade to Commercial Version: https://tryfastgpt.ai"
     },
     "team_error": {
       "ai_points_not_enough": "Insufficient AI Points",
@@ -272,7 +272,7 @@
     "submitted": "Submitted",
     "support": "Support",
     "system": {
-      "Commercial version function": "Please Upgrade to the Commercial Version to Use This Feature: https://fastgpt.in",
+      "Commercial version function": "Please Upgrade to the Commercial Version to Use This Feature: https://tryfastgpt.ai",
       "Help Chatbot": "Help Chatbot",
       "Use Helper": "Use Helper"
     },

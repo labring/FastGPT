@@ -89,7 +89,7 @@ FastGPT 商业版共包含了2个应用（fastgpt, fastgpt-plus）和2个数据�
 点击右侧的详情，可以查看对应应用的详细信息。
 
 ### 如何更新/升级 FastGPT
-[升级脚本文档](https://doc.fastgpt.in/docs/development/upgrading/)先看下文档，看下需要升级哪个版本。注意，不要跨版本升级！！！！！
+[升级脚本文档](https://doc.tryfastgpt.ai/docs/development/upgrading/)先看下文档，看下需要升级哪个版本。注意，不要跨版本升级！！！！！
 
 例如，目前是4.5 版本，要升级到4.5.1，就先把镜像版本改成v4.5.1，执行一下升级脚本，等待完成后再继续升级。如果目标版本不需要执行初始化，则可以跳过。
 
@@ -124,7 +124,7 @@ FastGPT 商业版共包含了2个应用（fastgpt, fastgpt-plus）和2个数据�
 
 ![](/imgs/onsealos5.png)
 
-[配置文件参考](https://doc.fastgpt.in/docs/development/configuration/)
+[配置文件参考](https://doc.tryfastgpt.ai/docs/development/configuration/)
 
 ### 修改站点名称以及 favicon
 修改应用的环境变量，增加
