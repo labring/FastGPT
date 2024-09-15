@@ -25,7 +25,7 @@ import { WorkflowContext } from '../../context';
 import { THelperLine } from '@fastgpt/global/core/workflow/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { useMemoizedFn } from 'ahooks';
+import { useCreation, useMemoizedFn } from 'ahooks';
 
 /* 
     Compute helper lines for snapping nodes to each other
@@ -281,7 +281,8 @@ export const useWorkflow = () => {
 
   const { getIntersectingNodes } = useReactFlow();
 
-  const resetNodeSizeAndPosition = useMemoizedFn((rect: Rect, parentId: string) => {
+  // Loop node size and position
+  const resetParentNodeSizeAndPosition = useMemoizedFn((rect: Rect, parentId: string) => {
     const parentNode = nodeList.find((node) => node.nodeId === parentId);
     const loopFlow = parentNode?.inputs.find(
       (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.loopFlow
@@ -292,6 +293,7 @@ export const useWorkflow = () => {
     // Update parentNode size and position
     const newLoopFlowValue = {
       ...loopFlow.value,
+      // Automatic extension of width and height
       width: rect.width + 110 > 900 ? rect.width + 110 : 900,
       height: rect.height + 380 > 900 ? rect.height + 380 : 900
     };
@@ -306,6 +308,7 @@ export const useWorkflow = () => {
       }
     });
 
+    // Update parentNode position
     setNodes((nodes) =>
       nodes.map((node) =>
         node.id === parentId
@@ -325,7 +328,7 @@ export const useWorkflow = () => {
   const [helperLineHorizontal, setHelperLineHorizontal] = useState<THelperLine>();
   const [helperLineVertical, setHelperLineVertical] = useState<THelperLine>();
 
-  const customApplyNodeChanges = useMemoizedFn((changes: NodeChange[], nodes: Node[]) => {
+  const checkNodeHelpLine = useMemoizedFn((changes: NodeChange[], nodes: Node[]) => {
     const positionChange =
       changes[0].type === 'position' && changes[0].dragging ? changes[0] : undefined;
 
@@ -411,7 +414,7 @@ export const useWorkflow = () => {
 
       const childNodes = [...nodes.filter((n) => n.data.parentNodeId === parentNode.id), node];
       const rect = getNodesBounds(childNodes);
-      resetNodeSizeAndPosition(rect, parentNode.id);
+      resetParentNodeSizeAndPosition(rect, parentNode.id);
     }
   });
 
@@ -466,7 +469,7 @@ export const useWorkflow = () => {
           updatedLoopFlow.value.childNodes = updatedLoopFlow.value.childNodes.filter(
             (nodeId: string) => nodeId !== node.id
           );
-          resetNodeSizeAndPosition(rect, parentId);
+          resetParentNodeSizeAndPosition(rect, parentId);
           onChangeNode({
             nodeId: parentId,
             type: 'updateInput',
@@ -492,14 +495,12 @@ export const useWorkflow = () => {
       // If node is a child node, move child node and reset parent node
       if (node.data.parentNodeId) {
         const parentId = node.data.parentNodeId;
-        const parentNode = nodes.find((n) => n.id === parentId);
         const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
 
-        if (!parentNode) return;
-        const rect = getNodesBounds(childNodes);
-        customApplyNodeChanges(changes, childNodes);
+        checkNodeHelpLine(changes, childNodes);
+
+        resetParentNodeSizeAndPosition(getNodesBounds(childNodes), parentId);
         onNodesChange(changes);
-        resetNodeSizeAndPosition(rect, parentId);
         return;
       }
       // If node is parent node, move parent node and child nodes
@@ -528,7 +529,7 @@ export const useWorkflow = () => {
             };
           }
         });
-        // customApplyNodeChanges(
+        // checkNodeHelpLine(
         //   changes,
         //   nodes.filter((node) => !node.data.parentNodeId)
         // );
@@ -536,7 +537,7 @@ export const useWorkflow = () => {
         return;
       }
 
-      customApplyNodeChanges(
+      checkNodeHelpLine(
         changes,
         nodes.filter((node) => !node.data.parentNodeId)
       );

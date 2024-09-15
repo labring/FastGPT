@@ -28,13 +28,10 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => inputs.find((input) => input.key === NodeInputKeyEnum.loopFlow),
     [inputs]
   );
-  const childNodes = useMemo(
-    () => nodeList.filter((node) => node.parentNodeId === nodeId),
-    [nodeList, nodeId]
-  );
 
   useEffect(() => {
-    if (!loopFlowData) return;
+    if (!loopFlowData || !loopFlowData?.value || !loopFlowData?.value?.childNodes) return;
+    const childNodes = nodeList.filter((node) => node.parentNodeId === nodeId);
     onChangeNode({
       nodeId,
       type: 'updateInput',

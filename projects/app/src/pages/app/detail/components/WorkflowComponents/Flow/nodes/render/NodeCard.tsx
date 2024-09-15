@@ -240,11 +240,12 @@ const NodeCard = (props: Props) => {
     avatar,
     t,
     name,
-    menuForbid,
     hasNewVersion,
     onOpenConfirmSync,
     onClickSyncVersion,
     nodeTemplate?.diagram,
+    menuForbid,
+    nodeList,
     intro,
     ConfirmSyncModal,
     onOpenCustomTitleModal,
@@ -369,9 +370,12 @@ const MenuRender = React.memo(function MenuRender({
   );
   const onDelNode = useCallback(
     (nodeId: string) => {
+      // Remove node and its child nodes
       setNodes((state) =>
         state.filter((item) => item.data.nodeId !== nodeId && item.data.parentNodeId !== nodeId)
       );
+
+      // Remove edges connected to the node and its child nodes
       const childNodeIds = nodeList
         .filter((node) => node.parentNodeId === nodeId)
         .map((node) => node.nodeId);
@@ -385,7 +389,7 @@ const MenuRender = React.memo(function MenuRender({
         )
       );
     },
-    [setEdges, setNodes]
+    [nodeList, setEdges, setNodes]
   );
 
   const Render = useMemo(() => {
