@@ -4,7 +4,7 @@ import * as path from 'path';
 import { convertOpenApi } from './openapi';
 
 const rootPath = 'projects/app/src/pages/api';
-const exclude = ['/admin', '/proApi'];
+const exclude = ['/admin', '/proApi', 'test.ts'];
 
 function getAllFiles(dir: string) {
   let files: string[] = [];
@@ -38,6 +38,22 @@ const openapi = convertOpenApi({
     title: 'FastGPT OpenAPI',
     version: '1.0.0',
     author: 'FastGPT'
+  },
+  components: {
+    securitySchemes: {
+      apiKey: {
+        type: 'apiKey',
+        name: 'Authorization',
+        in: 'header',
+        scheme: 'bearer'
+      },
+      token: {
+        type: 'apiKey',
+        in: 'token',
+        name: 'token',
+        scheme: 'basic'
+      }
+    }
   },
   servers: [
     {
