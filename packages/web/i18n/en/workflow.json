@@ -90,6 +90,7 @@
   "length_not_equal_to": "Length Not Equal To",
   "less_than": "Less Than",
   "less_than_or_equal_to": "Less Than or Equal To",
+  "loop": "Batch execution",
   "loop_start_tip": "Not input array",
   "max_dialog_rounds": "Maximum Number of Dialog Rounds",
   "max_tokens": "Maximum Tokens",

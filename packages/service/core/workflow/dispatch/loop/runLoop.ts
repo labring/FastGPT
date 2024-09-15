@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { dispatchWorkFlow } from '..';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { AIChatItemValueItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopInputArray]: Array<any>;
@@ -36,7 +36,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
 
   const outputValueArr = [];
   const loopDetail: ChatHistoryItemResType[] = [];
-
+  let assistantResponses: AIChatItemValueItemType[] = [];
   let totalPoints = 0;
 
   for await (const item of loopInputArray) {
@@ -69,11 +69,13 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
 
     outputValueArr.push(loopOutputValue);
     loopDetail.push(...response.flowResponses);
+    assistantResponses.push(...response.assistantResponses);
 
     totalPoints = response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
   }
 
   return {
+    [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: totalPoints,
       loopInput: loopInputArray,
