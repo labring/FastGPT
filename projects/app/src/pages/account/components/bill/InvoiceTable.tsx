@@ -29,17 +29,11 @@ const InvoiceTable = () => {
     data: invoices,
     isLoading,
     Pagination,
-    getData,
     total
   } = usePagination({
     api: getInvoiceRecords,
-    pageSize: 20,
-    defaultRequest: false
+    pageSize: 20
   });
-
-  useEffect(() => {
-    getData(1);
-  }, [getData]);
 
   return (
     <MyBox isLoading={isLoading} position={'relative'} h={'100%'} overflow={'overlay'}>
