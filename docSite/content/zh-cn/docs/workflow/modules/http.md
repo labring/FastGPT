@@ -70,7 +70,7 @@ HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Pos
   "array": [1, 2, 3],
   "obj": {
     "name": "FastGPT",
-    "url": "https://fastgpt.in"
+    "url": "https://tryfastgpt.ai"
   }
 }
 ```
@@ -109,7 +109,7 @@ HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Pos
   "array2": [1, 2, 3],
   "object": {
     "name": "FastGPT",
-    "url": "https://fastgpt.in"
+    "url": "https://tryfastgpt.ai"
   }
 }
 ```
