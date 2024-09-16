@@ -79,6 +79,7 @@ export enum NodeInputKeyEnum {
   aiChatMaxToken = 'maxToken',
   aiChatSettingModal = 'aiSettings',
   aiChatIsResponseText = 'isResponseAnswerText',
+  aiChatQuoteRole = 'aiChatQuoteRole',
   aiChatQuoteTemplate = 'quoteTemplate',
   aiChatQuotePrompt = 'quotePrompt',
   aiChatDatasetQuote = 'quoteQA',

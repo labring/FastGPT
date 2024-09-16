@@ -64,8 +64,9 @@ export default function VariablePickerPlugin({
                 borderRadius={'md'}
                 position={'absolute'}
                 w={'auto'}
-                overflow={'hidden'}
                 zIndex={99999}
+                maxH={'300px'}
+                overflow={'auto'}
               >
                 {variables.map((item, index) => (
                   <Flex

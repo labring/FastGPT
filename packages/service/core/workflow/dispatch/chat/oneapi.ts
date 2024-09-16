@@ -25,8 +25,9 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import {
   Prompt_DocumentQuote,
-  Prompt_QuotePromptList,
-  Prompt_QuoteTemplateList
+  Prompt_userQuotePromptList,
+  Prompt_QuoteTemplateList,
+  Prompt_systemQuotePromptList
 } from '@fastgpt/global/core/ai/prompt/AIChat';
 import type { AIChatNodeProps } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
@@ -42,6 +43,8 @@ import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { addLog } from '../../../../common/system/log';
 import { computedMaxToken, computedTemperature } from '../../../ai/utils';
 import { WorkflowResponseType } from '../type';
+import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
+import { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -75,6 +78,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       userChatInput,
       isResponseAnswerText = true,
       systemPrompt = '',
+      aiChatQuoteRole = 'system',
       quoteTemplate,
       quotePrompt,
       aiChatVision,
@@ -107,6 +111,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       histories: chatHistories,
       useDatasetQuote: quoteQA !== undefined,
       datasetQuoteText,
+      aiChatQuoteRole,
       datasetQuotePrompt: quotePrompt,
       userChatInput,
       inputFiles,
@@ -279,6 +284,7 @@ async function filterDatasetQuote({
     return replaceVariable(quoteTemplate || Prompt_QuoteTemplateList[0].value, {
       q: item.q,
       a: item.a,
+      updateTime: formatTime2YMDHM(item.updateTime),
       source: item.sourceName,
       sourceId: String(item.sourceId || 'UnKnow'),
       index: index + 1
@@ -298,7 +304,8 @@ async function filterDatasetQuote({
   };
 }
 async function getChatMessages({
-  datasetQuotePrompt,
+  aiChatQuoteRole,
+  datasetQuotePrompt = '',
   datasetQuoteText,
   useDatasetQuote,
   histories = [],
@@ -308,25 +315,45 @@ async function getChatMessages({
   model,
   stringQuoteText
 }: {
+  // dataset quote
+  aiChatQuoteRole: AiChatQuoteRoleType; // user: replace user prompt; system: replace system prompt
   datasetQuotePrompt?: string;
   datasetQuoteText: string;
+
   useDatasetQuote: boolean;
   histories: ChatItemType[];
   systemPrompt: string;
   userChatInput: string;
   inputFiles: UserChatItemValueItemType['file'][];
   model: LLMModelItemType;
-  stringQuoteText?: string;
+  stringQuoteText?: string; // file quote
 }) {
-  const replaceInputValue = useDatasetQuote
-    ? replaceVariable(datasetQuotePrompt || Prompt_QuotePromptList[0].value, {
-        quote: datasetQuoteText,
-        question: userChatInput
-      })
-    : userChatInput;
+  const datasetQuotePromptTemplate = datasetQuotePrompt
+    ? datasetQuotePrompt
+    : aiChatQuoteRole === 'user'
+      ? Prompt_userQuotePromptList[0].value
+      : Prompt_systemQuotePromptList[0].value;
+
+  const replaceInputValue =
+    useDatasetQuote && aiChatQuoteRole === 'user'
+      ? replaceVariable(datasetQuotePromptTemplate, {
+          quote: datasetQuoteText,
+          question: userChatInput
+        })
+      : userChatInput;
+
+  const replaceSystemPrompt =
+    useDatasetQuote && aiChatQuoteRole === 'system'
+      ? `${systemPrompt ? systemPrompt + '\n\n------\n\n' : ''}${replaceVariable(
+          datasetQuotePromptTemplate,
+          {
+            quote: datasetQuoteText
+          }
+        )}`
+      : systemPrompt;
 
   const messages: ChatItemType[] = [
-    ...getSystemPrompt_ChatItemType(systemPrompt),
+    ...getSystemPrompt_ChatItemType(replaceSystemPrompt),
     ...(stringQuoteText
       ? getSystemPrompt_ChatItemType(
           replaceVariable(Prompt_DocumentQuote, {
@@ -343,6 +370,7 @@ async function getChatMessages({
       })
     }
   ];
+
   const adaptMessages = chats2GPTMessages({ messages, reserveId: false });
 
   const filterMessages = await filterGPTMessageByMaxTokens({
