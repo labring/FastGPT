@@ -201,13 +201,15 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         const unStreamResponse = response as ChatCompletion;
         const answer = unStreamResponse.choices?.[0]?.message?.content || '';
 
-        // Some models do not support streaming
-        workflowStreamResponse?.({
-          event: SseResponseEventEnum.fastAnswer,
-          data: textAdaptGptResponse({
-            text: answer
-          })
-        });
+        if (stream) {
+          // Some models do not support streaming
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.fastAnswer,
+            data: textAdaptGptResponse({
+              text: answer
+            })
+          });
+        }
 
         return {
           answerText: answer
