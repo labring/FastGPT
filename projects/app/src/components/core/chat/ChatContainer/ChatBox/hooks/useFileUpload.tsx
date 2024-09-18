@@ -42,6 +42,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
   const showSelectImg = fileSelectConfig?.canSelectImg;
   const maxSelectFiles = fileSelectConfig?.maxFiles ?? 10;
   const maxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024; // nkb
+
   const { icon: selectFileIcon, label: selectFileLabel } = useMemo(() => {
     if (showSelectFile && showSelectImg) {
       return {

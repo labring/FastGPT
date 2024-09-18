@@ -102,7 +102,7 @@ const ChatInput = ({
         text: textareaValue.trim(),
         files: fileList
       });
-      replaceFiles && replaceFiles([]);
+      replaceFiles?.([]);
     },
     [TextareaDom, canSendMessage, fileList, onSendMessage, replaceFiles]
   );
