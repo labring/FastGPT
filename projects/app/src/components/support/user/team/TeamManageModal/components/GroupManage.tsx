@@ -29,7 +29,7 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
 
   const { runAsync: delDeleteGroup, loading: isLoadingDeleteGroup } = useRequest2(deleteGroup, {
     manual: true,
-    onSuccess: () => Promise.all([refetchGroups, refetchMembers])
+    onSuccess: () => Promise.all([refetchGroups(), refetchMembers()])
   });
 
   return (
@@ -82,7 +82,9 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
                               label: t('common:common.Delete'),
                               icon: 'delete',
                               type: 'danger',
-                              onClick: openDeleteGroupModal(() => delDeleteGroup(group._id))
+                              onClick: () => {
+                                openDeleteGroupModal(() => delDeleteGroup(group._id))();
+                              }
                             }
                           ]
                         }
