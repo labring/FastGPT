@@ -189,7 +189,7 @@ function PermissionManage() {
               <MyTag key={group._id} px="4" py="2" type="fill" colorSchema="gray">
                 <Avatar src={group.avatar} w="1.25rem" />
                 <Box fontSize={'sm'} ml={1}>
-                  {group.name || userInfo?.team.teamName}
+                  {group.name === DefaultGroupName ? userInfo?.team.teamName : group.name}
                 </Box>
                 {userInfo?.team.role === 'owner' && (
                   <MyIcon
