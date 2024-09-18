@@ -109,7 +109,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     variables = {},
     responseChatItemId = getNanoid()
   } = req.body as Props;
-  console.log('variables', variables);
 
   const originIp = requestIp.getClientIp(req);
 

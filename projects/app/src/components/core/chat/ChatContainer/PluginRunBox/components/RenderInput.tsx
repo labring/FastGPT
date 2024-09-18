@@ -99,7 +99,6 @@ const RenderInput = () => {
     const historyValue = histories[0].value as UserChatItemValueItemType[];
     return historyValue.filter((item) => item.type === 'file').map((item) => item.file);
   }, [histories]);
-  console.log('historyFileList', historyFileList);
 
   useEffect(() => {
     reset(historyFormValues || defaultFormValues);
@@ -201,8 +200,7 @@ const RenderInput = () => {
               if (histories.length > 0) {
                 return onNewChat();
               }
-              handleSubmit(onSubmit)();
-              replaceFiles && replaceFiles([]);
+              handleSubmit((e) => onSubmit(e, fileList))();
             }}
           >
             {histories.length > 0 ? t('common:common.Restart') : t('common:common.Run')}

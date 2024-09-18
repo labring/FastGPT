@@ -2,7 +2,7 @@ import React, { ReactNode, useCallback, useMemo, useRef, useState } from 'react'
 import { createContext } from 'use-context-selector';
 import { PluginRunBoxProps } from './type';
 import { AIChatItemValueItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type';
-import { FieldValues, useForm } from 'react-hook-form';
+import { FieldArrayWithId, FieldValues, useForm } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -18,7 +18,10 @@ import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 type PluginRunContextType = OutLinkChatAuthProps &
   PluginRunBoxProps & {
     isChatting: boolean;
-    onSubmit: (e: FieldValues) => Promise<any>;
+    onSubmit: (
+      e: FieldValues,
+      files?: FieldArrayWithId<ChatBoxInputFormType, 'files', 'id'>[]
+    ) => Promise<any>;
     outLinkAuthData: OutLinkChatAuthProps;
   };
 
@@ -199,7 +202,8 @@ const PluginRunContextProvider = ({
                   file: {
                     type: file.type,
                     name: file.name,
-                    url: file.url || ''
+                    url: file.url || '',
+                    icon: file.icon || ''
                   }
                 }))
               : []),
