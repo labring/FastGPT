@@ -15,7 +15,7 @@ import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/consta
 
 function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }) {
   const { t } = useTranslation();
-  const { userInfo } = useUserStore();
+  const { userInfo, teamMembers } = useUserStore();
 
   const { ConfirmModal: ConfirmDeleteGroupModal, openConfirm: openDeleteGroupModal } = useConfirm({
     type: 'delete',
@@ -56,9 +56,11 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
                 </Td>
                 <Td>
                   <AvatarGroup
-                    avatars={group.members.map(
-                      (v) => members.find((m) => m.tmbId === v)?.avatar ?? ''
-                    )}
+                    avatars={
+                      group.name === DefaultGroupName
+                        ? teamMembers.map((v) => v.avatar)
+                        : group.members.map((v) => members.find((m) => m.tmbId === v)?.avatar ?? '')
+                    }
                     groupId={group._id}
                   />
                 </Td>
