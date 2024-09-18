@@ -107,7 +107,7 @@ const completions = async ({
                 .join('\n------\n'),
               history: histories
                 .map((item) => `${item.obj}:${chatValue2RuntimePrompt(item.value).text}`)
-                .join('------'),
+                .join('\n------\n'),
               question: userChatInput
             })
           }

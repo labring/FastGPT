@@ -183,7 +183,7 @@ export async function pushDataListToTrainingQueue({
       });
       console.log('failed', failedDocuments);
     }
-    console.log(startIndex, '===');
+
     // 对于失败的文档，尝试单独插入
     await MongoDatasetTraining.create(failedDocuments, { session });
 
