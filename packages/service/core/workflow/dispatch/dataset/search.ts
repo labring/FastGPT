@@ -159,8 +159,9 @@ export async function dispatchDatasetSearch(
     [DispatchNodeResponseKeyEnum.nodeResponse]: responseData,
     nodeDispatchUsages,
     [DispatchNodeResponseKeyEnum.toolResponses]: searchRes.map((item) => ({
-      id: item.id,
-      text: `${item.q}\n${item.a}`.trim()
+      sourceName: item.sourceName,
+      updateTime: item.updateTime,
+      content: `${item.q}\n${item.a}`.trim()
     }))
   };
 }
