@@ -1,6 +1,11 @@
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import {
+  ChatCompletionCreateParamsNonStreaming,
+  ChatCompletionCreateParamsStreaming,
+  ChatCompletionMessageParam
+} from '@fastgpt/global/core/ai/type';
 import { countGptMessagesTokens } from '../../common/string/tiktoken';
+import { getLLMModel } from './model';
 
 export const computedMaxToken = async ({
   maxToken,
@@ -32,8 +37,49 @@ export const computedTemperature = ({
   model: LLMModelItemType;
   temperature: number;
 }) => {
+  if (temperature < 1) return temperature;
+
   temperature = +(model.maxTemperature * (temperature / 10)).toFixed(2);
   temperature = Math.max(temperature, 0.01);
 
   return temperature;
+};
+
+type CompletionsBodyType =
+  | ChatCompletionCreateParamsNonStreaming
+  | ChatCompletionCreateParamsStreaming;
+
+export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
+  body: T,
+  model: string | LLMModelItemType
+) => {
+  const modelData = typeof model === 'string' ? getLLMModel(model) : model;
+  if (!modelData) {
+    return body;
+  }
+
+  const requestBody: T = {
+    ...body,
+    temperature: body.temperature
+      ? computedTemperature({
+          model: modelData,
+          temperature: body.temperature
+        })
+      : undefined,
+    ...modelData?.defaultConfig
+  };
+
+  // field map
+  if (modelData.fieldMap) {
+    Object.entries(modelData.fieldMap).forEach(([sourceKey, targetKey]) => {
+      // @ts-ignore
+      requestBody[targetKey] = body[sourceKey];
+      // @ts-ignore
+      delete requestBody[sourceKey];
+    });
+  }
+
+  // console.log(requestBody);
+
+  return requestBody;
 };

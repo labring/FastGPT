@@ -259,6 +259,7 @@ export async function authDatasetData({
   const data: DatasetDataItemType = {
     id: String(datasetData._id),
     teamId: datasetData.teamId,
+    updateTime: datasetData.updateTime,
     q: datasetData.q,
     a: datasetData.a,
     chunkIndex: datasetData.chunkIndex,
