@@ -15,7 +15,6 @@ import { TeamDefaultPermissionVal } from '@fastgpt/global/support/permission/use
 import { MongoMemberGroupModel } from '../../permission/memberGroup/memberGroupSchema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
-import { MongoGroupMemberModel } from '../../../support/permission/memberGroup/groupMemberSchema';
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemType> {
   const tmb = (await MongoTeamMember.findOne(match).populate('teamId')) as TeamMemberWithTeamSchema;
@@ -129,18 +128,7 @@ export async function createDefaultTeam({
       ],
       { session }
     );
-    // create default group member
-    await MongoGroupMemberModel.create(
-      [
-        {
-          groupId: tmb.teamId,
-          tmbId: tmb._id
-        }
-      ],
-      { session }
-    );
-
-    console.log('create default team', userId);
+    console.log('create default team and group', userId);
     return tmb;
   } else {
     console.log('default team exist', userId);
