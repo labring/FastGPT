@@ -328,14 +328,18 @@ async function getChatMessages({
   model: LLMModelItemType;
   stringQuoteText?: string; // file quote
 }) {
+  // User role or prompt include question
+  const quoteRole =
+    aiChatQuoteRole === 'user' || datasetQuotePrompt.includes('{{question}}') ? 'user' : 'system';
+
   const datasetQuotePromptTemplate = datasetQuotePrompt
     ? datasetQuotePrompt
-    : aiChatQuoteRole === 'user'
+    : quoteRole === 'user'
       ? Prompt_userQuotePromptList[0].value
       : Prompt_systemQuotePromptList[0].value;
 
   const replaceInputValue =
-    useDatasetQuote && aiChatQuoteRole === 'user'
+    useDatasetQuote && quoteRole === 'user'
       ? replaceVariable(datasetQuotePromptTemplate, {
           quote: datasetQuoteText,
           question: userChatInput
@@ -343,7 +347,7 @@ async function getChatMessages({
       : userChatInput;
 
   const replaceSystemPrompt =
-    useDatasetQuote && aiChatQuoteRole === 'system'
+    useDatasetQuote && quoteRole === 'system'
       ? `${systemPrompt ? systemPrompt + '\n\n------\n\n' : ''}${replaceVariable(
           datasetQuotePromptTemplate,
           {
@@ -354,7 +358,7 @@ async function getChatMessages({
 
   const messages: ChatItemType[] = [
     ...getSystemPrompt_ChatItemType(replaceSystemPrompt),
-    ...(stringQuoteText
+    ...(stringQuoteText // file quote
       ? getSystemPrompt_ChatItemType(
           replaceVariable(Prompt_DocumentQuote, {
             quote: stringQuoteText
