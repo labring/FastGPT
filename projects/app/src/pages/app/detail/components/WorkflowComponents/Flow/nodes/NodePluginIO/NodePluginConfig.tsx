@@ -13,6 +13,11 @@ import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { useCreation } from 'ahooks';
 import ChatFunctionTip from '@/components/core/app/Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { WorkflowContext } from '../../../context';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import FileSelect from '@/components/core/app/FileSelect';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 type ComponentProps = {
   chatConfig: AppChatConfigType;
@@ -60,6 +65,9 @@ const NodePluginConfig = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     >
       <Container w={'360px'}>
         <Instruction {...componentsProps} />
+        <Box pt={4}>
+          <FileSelectConfig {...componentsProps} />
+        </Box>
       </Container>
     </NodeCard>
   );
@@ -72,6 +80,7 @@ function Instruction({ chatConfig: { instruction }, setAppDetail }: ComponentPro
   return (
     <>
       <Flex>
+        <MyIcon name={'core/app/simpleMode/chat'} mr={2} w={'20px'} />
         <FormLabel color={'myGray.600'} fontWeight={'medium'} fontSize={'14px'}>
           {t('workflow:plugin.Instructions')}
         </FormLabel>
@@ -98,5 +107,50 @@ function Instruction({ chatConfig: { instruction }, setAppDetail }: ComponentPro
         }}
       />
     </>
+  );
+}
+
+function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: ComponentProps) {
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const nodes = useContextSelector(WorkflowContext, (v) => v.nodes);
+  const pluginInputNode = nodes.find((item) => item.type === FlowNodeTypeEnum.pluginInput)!;
+
+  return (
+    <FileSelect
+      value={fileSelectConfig}
+      color={'myGray.600'}
+      fontWeight={'medium'}
+      fontSize={'14px'}
+      onChange={(e) => {
+        setAppDetail((state) => ({
+          ...state,
+          chatConfig: {
+            ...state.chatConfig,
+            fileSelectConfig: e
+          }
+        }));
+
+        // Dynamic add or delete userFilesInput
+        const canUploadFiles = e.canSelectFile || e.canSelectImg;
+        const repeatKey = pluginInputNode?.data.outputs.find(
+          (item) => item.key === userFilesInput.key
+        );
+        if (canUploadFiles) {
+          !repeatKey &&
+            onChangeNode({
+              nodeId: pluginInputNode.id,
+              type: 'addOutput',
+              value: userFilesInput
+            });
+        } else {
+          repeatKey &&
+            onChangeNode({
+              nodeId: pluginInputNode.id,
+              type: 'delOutput',
+              key: userFilesInput.key
+            });
+        }
+      }}
+    />
   );
 }

@@ -4,7 +4,7 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import { responseWrite } from '@fastgpt/service/common/response';
 import { pushChatUsage } from '@/service/support/wallet/usage/push';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -28,6 +28,7 @@ import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
+import { getPluginRunUserQuery } from '@fastgpt/service/core/workflow/utils';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -65,8 +66,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new Error('Edges is not array');
     }
     const chatMessages = GPTMessages2Chats(messages);
-    const userInput = chatMessages.pop()?.value as UserChatItemValueItemType[] | undefined;
-
     // console.log(JSON.stringify(chatMessages, null, 2), '====', chatMessages.length);
 
     /* user auth */
@@ -82,6 +81,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const isPlugin = app.type === AppTypeEnum.plugin;
 
+    const userQuestion: UserChatItemType = (() => {
+      if (isPlugin) {
+        return getPluginRunUserQuery({
+          nodes: app.modules,
+          variables,
+          files: variables.files
+        });
+      }
+
+      const latestHumanChat = chatMessages.pop() as UserChatItemType | undefined;
+      if (!latestHumanChat) {
+        throw new Error('User question is empty');
+      }
+      return latestHumanChat;
+    })();
+
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, chatMessages));
 
     // Plugin need to replace inputs
@@ -89,7 +104,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
       variables = {};
     } else {
-      if (!userInput) {
+      if (!userQuestion.value) {
         throw new Error('Params Error');
       }
     }
@@ -117,7 +132,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       runtimeNodes,
       runtimeEdges: initWorkflowEdgeStatus(edges, chatMessages),
       variables,
-      query: removeEmptyUserInput(userInput),
+      query: removeEmptyUserInput(userQuestion.value),
       chatConfig,
       histories: chatMessages,
       stream: true,

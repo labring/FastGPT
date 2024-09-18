@@ -8,7 +8,7 @@ import { onStartChatType } from '../type';
 
 export type PluginRunBoxProps = OutLinkChatAuthProps & {
   pluginInputs: FlowNodeInputItemType[];
-  variablesForm: UseFormReturn<FieldValues, any>;
+  variablesForm: UseFormReturn<ChatBoxInputFormType, any>;
   histories: ChatSiteItemType[]; // chatHistories[1] is the response
   setHistories: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
 
