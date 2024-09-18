@@ -27,13 +27,11 @@ const FileSelect = ({
   forbidVision = false,
   value = defaultAppSelectFileConfig,
   onChange,
-  showIcon = true,
   ...labelStyle
 }: Omit<BoxProps, 'onChange'> & {
   forbidVision?: boolean;
   value?: AppFileSelectConfigType;
   onChange: (e: AppFileSelectConfigType) => void;
-  showIcon?: boolean;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -60,7 +58,7 @@ const FileSelect = ({
 
   return (
     <Flex alignItems={'center'}>
-      {showIcon && <MyIcon name={'core/app/simpleMode/file'} mr={2} w={'20px'} />}
+      <MyIcon name={'core/app/simpleMode/file'} mr={2} w={'20px'} />
       <FormLabel {...labelStyle}>{t('app:file_upload')}</FormLabel>
       <ChatFunctionTip type={'file'} />
       <Box flex={1} />

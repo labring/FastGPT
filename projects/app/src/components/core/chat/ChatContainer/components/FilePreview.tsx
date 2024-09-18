@@ -86,7 +86,7 @@ const RenderFilePreview = ({
               {isFile && (
                 <HStack alignItems={'center'} h={'full'}>
                   <MyIcon name={item.icon as any} w={['1.5rem', '2rem']} h={['1.5rem', '2rem']} />
-                  <Box flex={'1 0 0'} className="textEllipsis" fontSize={'xs'}>
+                  <Box flex={'1 0 0'} pr={2} className="textEllipsis" fontSize={'xs'}>
                     {item.name}
                   </Box>
                 </HStack>

@@ -35,7 +35,6 @@ const FieldEditModal = dynamic(() => import('./InputEditModal'));
 const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs = [], outputs } = data;
-  console.log(outputs);
 
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
@@ -98,12 +97,6 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         }}
         {...data}
       >
-        {!!outputs.length && (
-          <Container>
-            <IOTitle text={t('common:common.Output')} />
-            <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
-          </Container>
-        )}
         <Container mt={1}>
           <HStack className="nodrag" cursor={'default'} mb={3}>
             <IOTitle text={t('common:core.workflow.Custom inputs')} mb={0} />
@@ -148,6 +141,12 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             }}
           />
         </Container>
+        {!!outputs.length && (
+          <Container>
+            <IOTitle text={t('common:common.Output')} />
+            <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+          </Container>
+        )}
       </NodeCard>
     );
   }, [data, inputs, nodeId, onChangeNode, selected, t]);

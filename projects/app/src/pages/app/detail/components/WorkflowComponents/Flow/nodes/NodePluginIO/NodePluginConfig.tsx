@@ -17,6 +17,7 @@ import { WorkflowContext } from '../../../context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import FileSelect from '@/components/core/app/FileSelect';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 type ComponentProps = {
   chatConfig: AppChatConfigType;
@@ -79,6 +80,7 @@ function Instruction({ chatConfig: { instruction }, setAppDetail }: ComponentPro
   return (
     <>
       <Flex>
+        <MyIcon name={'core/app/simpleMode/chat'} mr={2} w={'20px'} />
         <FormLabel color={'myGray.600'} fontWeight={'medium'} fontSize={'14px'}>
           {t('workflow:plugin.Instructions')}
         </FormLabel>
@@ -115,7 +117,6 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
 
   return (
     <FileSelect
-      showIcon={false}
       value={fileSelectConfig}
       color={'myGray.600'}
       fontWeight={'medium'}
