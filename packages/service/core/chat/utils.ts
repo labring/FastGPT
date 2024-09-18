@@ -9,6 +9,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { getFileContentTypeFromHeader, guessBase64ImageType } from '../../common/file/utils';
 import { serverRequestBaseUrl } from '../../common/api/serverRequest';
 import { i18nT } from '../../../web/i18n/utils';
+import { addLog } from '../../common/system/log';
 
 /* slice chat context by tokens */
 const filterEmptyMessages = (messages: ChatCompletionMessageParam[]) => {
@@ -127,9 +128,14 @@ export const loadRequestMessages = async ({
 
           // If imgUrl is a local path, load image from local, and set url to base64
           if (imgUrl.startsWith('/') || process.env.VISION_FOCUS_BASE64 === 'true') {
+            addLog.debug('Load image from local server', {
+              baseUrl: serverRequestBaseUrl,
+              requestUrl: imgUrl
+            });
             const response = await axios.get(imgUrl, {
               baseURL: serverRequestBaseUrl,
-              responseType: 'arraybuffer'
+              responseType: 'arraybuffer',
+              proxy: false
             });
             const base64 = Buffer.from(response.data, 'binary').toString('base64');
             const imageType =
