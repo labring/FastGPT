@@ -61,7 +61,7 @@ export const getResourcePermission = async ({
   }
 
   // If there is no personal permission, get the group permission
-  const groupIdList = await getGroupsByTmbId(tmbId);
+  const groupIdList = await getGroupsByTmbId({ tmbId, teamId });
   if (!groupIdList || !groupIdList.length) {
     return undefined;
   }

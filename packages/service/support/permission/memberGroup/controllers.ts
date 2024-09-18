@@ -4,19 +4,43 @@ import { TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '../schema';
 import { getMaxGroupPer } from '../controller';
+import { MongoMemberGroupModel } from './memberGroupSchema';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 
-export const getGroupsByTmbId = async (tmbId: string) => {
+export const getDefaultGroupByTeamId = async (teamId: string) => {
+  const group = await MongoMemberGroupModel.findOne({
+    teamId,
+    name: DefaultGroupName
+  }).lean();
+
+  if (!group) {
+    return await MongoMemberGroupModel.create({
+      teamId,
+      name: DefaultGroupName,
+      avatar: ''
+    });
+  }
+
+  return group;
+};
+
+export const getGroupsByTmbId = async ({ tmbId, teamId }: { tmbId: string; teamId: string }) => {
   return (
-    await MongoGroupMemberModel.find({
-      tmbId
-    })
-      .populate('groupId')
-      .lean()
-  ).map((item) => {
-    return {
-      ...(item.groupId as any as MemberGroupSchemaType)
-    };
-  });
+    await Promise.all([
+      (
+        await MongoGroupMemberModel.find({
+          tmbId
+        })
+          .populate('groupId')
+          .lean()
+      ).map((item) => {
+        return {
+          ...(item.groupId as any as MemberGroupSchemaType)
+        };
+      }),
+      await getDefaultGroupByTeamId(teamId)
+    ])
+  ).flat();
 };
 
 export const getTmbByGroupId = async (groupId: string) => {
@@ -76,7 +100,7 @@ export const getGroupPermission = async ({
       resourceType: Omit<PerResourceTypeEnum, 'team'>;
     }
 )) => {
-  const groupIds = (await getGroupsByTmbId(tmbId)).map((item) => item._id);
+  const groupIds = (await getGroupsByTmbId({ tmbId, teamId })).map((item) => item._id);
   const groupPermissions = (
     await MongoResourcePermission.find({
       groupId: {
