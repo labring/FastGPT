@@ -11,7 +11,7 @@ assignees: ''
 [//]: # '方框内填 x 表示打钩'
 
 - [ ] 我已确认目前没有类似 issue
-- [ ] 我已完整查看过项目 README，以及[项目文档](https://doc.fastgpt.in/docs/intro/)
+- [ ] 我已完整查看过项目 README，以及[项目文档](https://doc.tryfastgpt.ai/docs/intro/)
 - [ ] 我使用了自己的 key，并确认我的 key 是可正常使用的
 - [ ] 我理解并愿意跟进此 issue，协助测试和提供反馈
 - [x] 我理解并认可上述内容，并理解项目维护者精力有限，**不遵循规则的 issue 可能会被无视或直接关闭**

@@ -177,6 +177,7 @@ export const iconPaths = {
   'core/workflow/debugResult': () => import('./icons/core/workflow/debugResult.svg'),
   'core/workflow/edgeArrow': () => import('./icons/core/workflow/edgeArrow.svg'),
   'core/workflow/grout': () => import('./icons/core/workflow/grout.svg'),
+  'core/workflow/inputType/array': () => import('./icons/core/workflow/inputType/array.svg'),
   'core/workflow/inputType/customVariable': () =>
     import('./icons/core/workflow/inputType/customVariable.svg'),
   'core/workflow/inputType/dynamic': () => import('./icons/core/workflow/inputType/dynamic.svg'),
@@ -226,6 +227,9 @@ export const iconPaths = {
   'core/workflow/template/ifelse': () => import('./icons/core/workflow/template/ifelse.svg'),
   'core/workflow/template/lafDispatch': () =>
     import('./icons/core/workflow/template/lafDispatch.svg'),
+  'core/workflow/template/loop': () => import('./icons/core/workflow/template/loop.svg'),
+  'core/workflow/template/loopEnd': () => import('./icons/core/workflow/template/loopEnd.svg'),
+  'core/workflow/template/loopStart': () => import('./icons/core/workflow/template/loopStart.svg'),
   'core/workflow/template/mathCall': () => import('./icons/core/workflow/template/mathCall.svg'),
   'core/workflow/template/pluginOutput': () =>
     import('./icons/core/workflow/template/pluginOutput.svg'),

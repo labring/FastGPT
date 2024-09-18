@@ -1,10 +1,12 @@
 {
+  "Array_element": "Array element",
   "Code": "Code",
   "about_xxx_question": "Question regarding xxx",
   "add_new_input": "Add New Input",
   "append_application_reply_to_history_as_new_context": "Append the application's reply to the history as new context",
   "application_call": "Application Call",
   "assigned_reply": "Assigned Reply",
+  "can_not_loop": "This node can't loop.",
   "choose_another_application_to_call": "Select another application to call",
   "classification_result": "Classification Result",
   "code": {
@@ -88,6 +90,8 @@
   "length_not_equal_to": "Length Not Equal To",
   "less_than": "Less Than",
   "less_than_or_equal_to": "Less Than or Equal To",
+  "loop": "Batch execution",
+  "loop_start_tip": "Not input array",
   "max_dialog_rounds": "Maximum Number of Dialog Rounds",
   "max_tokens": "Maximum Tokens",
   "mouse_priority": "Mouse first",

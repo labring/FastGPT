@@ -124,7 +124,7 @@ const EditForm = ({
   const selectedModel = getWebLLMModel(appForm.aiSettings.model);
   const tokenLimit = useMemo(() => {
     return selectedModel?.quoteMaxToken || 3000;
-  }, [selectedModel.quoteMaxToken]);
+  }, [selectedModel?.quoteMaxToken]);
 
   return (
     <>
@@ -343,7 +343,7 @@ const EditForm = ({
         {/* File select */}
         <Box {...BoxStyles}>
           <FileSelectConfig
-            forbidVision={!selectedModel.vision}
+            forbidVision={!selectedModel?.vision}
             value={appForm.chatConfig.fileSelectConfig}
             onChange={(e) => {
               setAppForm((state) => ({

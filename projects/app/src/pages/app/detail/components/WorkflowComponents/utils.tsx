@@ -25,17 +25,10 @@ export const uiWorkflow2StoreWorkflow = ({
     version: item.data.version,
     inputs: item.data.inputs,
     outputs: item.data.outputs,
-    pluginId: item.data.pluginId
+    pluginId: item.data.pluginId,
+    parentNodeId: item.data.parentNodeId
   }));
 
-  // get all handle
-  const reactFlowViewport = document.querySelector('.react-flow__viewport');
-  // Gets the value of data-handleid on all elements below it whose data-handleid is not empty
-  const handleList =
-    reactFlowViewport?.querySelectorAll('[data-handleid]:not([data-handleid=""])') || [];
-  const handleIdList = Array.from(handleList).map(
-    (item) => item.getAttribute('data-handleid') || ''
-  );
   const formatEdges: StoreEdgeItemType[] = edges
     .map((item) => ({
       source: item.source,
@@ -43,11 +36,7 @@ export const uiWorkflow2StoreWorkflow = ({
       sourceHandle: item.sourceHandle || '',
       targetHandle: item.targetHandle || ''
     }))
-    .filter((item) => item.sourceHandle && item.targetHandle)
-    .filter(
-      // Filter out edges that do not have both sourceHandle and targetHandle
-      (item) => handleIdList.includes(item.sourceHandle) && handleIdList.includes(item.targetHandle)
-    );
+    .filter((item) => item.sourceHandle && item.targetHandle);
 
   return {
     nodes: formatNodes,

@@ -20,6 +20,7 @@ async function handler(
   const {
     parentId,
     name,
+    intro,
     type = DatasetTypeEnum.dataset,
     avatar,
     vectorModel = global.vectorModels[0].model,
@@ -47,6 +48,7 @@ async function handler(
   const { _id } = await MongoDataset.create({
     ...parseParentIdInMongo(parentId),
     name,
+    intro,
     teamId,
     tmbId,
     vectorModel,

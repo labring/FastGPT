@@ -355,7 +355,8 @@ Human: ${content}`
     model: extractModel.model,
     temperature: 0.01,
     messages: requestMessages,
-    stream: false
+    stream: false,
+    ...extractModel.defaultConfig
   });
   const answer = data.choices?.[0].message?.content || '';
 

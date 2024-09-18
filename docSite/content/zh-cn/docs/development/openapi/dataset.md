@@ -22,7 +22,7 @@ weight: 853
 **新例子**
 
 ```bash
-curl --location --request POST 'https://api.fastgpt.in/api/support/wallet/usage/createTrainingUsage' \
+curl --location --request POST 'https://api.tryfastgpt.ai/api/support/wallet/usage/createTrainingUsage' \
 --header 'Authorization: Bearer {{apikey}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -34,7 +34,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/support/wallet/usage/
 **x例子**
 
 ```bash
-curl --location --request POST 'https://api.fastgpt.in/api/support/wallet/bill/createTrainingBill' \
+curl --location --request POST 'https://api.tryfastgpt.ai/api/support/wallet/bill/createTrainingBill' \
 --header 'Authorization: Bearer {{apikey}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -466,7 +466,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 --header 'Authorization: Bearer {{authorization}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "link":"https://doc.fastgpt.in/docs/course/quick-start/",
+    "link":"https://doc.tryfastgpt.ai/docs/course/quick-start/",
     "datasetId":"6593e137231a2be9c5603ba7",
     "parentId": null,
 
@@ -718,7 +718,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
                 "tmbId": "65422be6aa44b7da77729ec9",
                 "type": "link",
                 "name": "快速上手 | FastGPT",
-                "rawLink": "https://doc.fastgpt.in/docs/course/quick-start/",
+                "rawLink": "https://doc.tryfastgpt.ai/docs/course/quick-start/",
                 "updateTime": "2024-01-20T13:54:53.031Z",
                 "dataAmount": 3,
                 "trainingAmount": 0,
@@ -935,7 +935,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/collect
 {{< markdownify >}}
 
 ```bash
-curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/data/pushData' \
+curl --location --request POST 'https://api.tryfastgpt.ai/api/core/dataset/data/pushData' \
 --header 'Authorization: Bearer apikey' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -1272,7 +1272,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/data/de
 {{< markdownify >}}
 
 ```bash
-curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/searchTest' \
+curl --location --request POST 'https://api.tryfastgpt.ai/api/core/dataset/searchTest' \
 --header 'Authorization: Bearer fastgpt-xxxxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{

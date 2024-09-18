@@ -18,7 +18,7 @@ Web 站点同步利用爬虫的技术，可以通过一个入口网站，自动�
 Tips: 国内的媒体站点基本不可用，公众号、csdn、知乎等。可以通过终端发送`curl`请求检测是否为静态站点，例如：
 
 ```bash
-curl https://doc.fastgpt.in/docs/intro/
+curl https://doc.tryfastgpt.ai/docs/intro/
 ```
 
 ## 如何使用
