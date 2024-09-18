@@ -32,8 +32,10 @@
   "response": {
     "node_inputs": "节点输入"
   },
-  "select_file": "选择文件",
-  "select_img": "选择图片",
+  "upload": "上传",
+  "select_file": "上传文件",
+  "select_file_img": "上传文件/图片",
+  "select_img": "上传图片",
   "stream_output": "流输出",
   "view_citations": "查看引用",
   "web_site_sync": "Web站点同步"

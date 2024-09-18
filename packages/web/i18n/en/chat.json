@@ -32,8 +32,10 @@
   "response": {
     "node_inputs": "Node Inputs"
   },
-  "select_file": "Select File",
-  "select_img": "Select Image",
+  "upload": "Upload",
+  "select_file": "Upload File",
+  "select_file_img": "Upload file / image",
+  "select_img": "Upload Image",
   "stream_output": "Stream Output",
   "view_citations": "View References",
   "web_site_sync": "Web Site Sync"
