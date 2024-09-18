@@ -182,7 +182,9 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
                     _notLast={{ mb: 2 }}
                   >
                     <Avatar src={member.avatar} w="24px" />
-                    <Box w="full">{member.memberName}</Box>
+                    <Box w="full" ml={2}>
+                      {member.memberName}
+                    </Box>
                     <MyIcon
                       name="common/closeLight"
                       w="16px"
