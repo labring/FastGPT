@@ -147,7 +147,6 @@ curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
 --data-raw '{
   "model": "gpt-4o-mini",
   "temperature": 0.01,
-  "max_completion_tokens": 8000,
   "max_tokens": 8000,
   "stream": true,
   "messages": [
@@ -223,7 +222,6 @@ curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
 --data-raw '{
   "model": "gpt-4o-mini",
   "temperature": 0.01,
-  "max_completion_tokens": 8000,
   "max_tokens": 8000,
   "stream": true,
   "messages": [

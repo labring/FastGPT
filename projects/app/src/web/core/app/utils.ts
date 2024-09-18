@@ -22,7 +22,12 @@ import {
   userFilesInput
 } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import { SystemConfigNode } from '@fastgpt/global/core/workflow/template/system/systemConfig';
-import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
+import {
+  AiChatModule,
+  AiChatQuotePrompt,
+  AiChatQuoteRole,
+  AiChatQuoteTemplate
+} from '@fastgpt/global/core/workflow/template/system/aiChat/index';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { ReadFilesNodes } from '@fastgpt/global/core/workflow/template/system/readFiles';
 import { i18nT } from '@fastgpt/web/i18n/utils';
@@ -126,18 +131,9 @@ export function form2AppWorkflow(
           value: true,
           valueType: WorkflowIOValueTypeEnum.boolean
         },
-        {
-          key: 'quoteTemplate',
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          label: '',
-          valueType: WorkflowIOValueTypeEnum.string
-        },
-        {
-          key: 'quotePrompt',
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          label: '',
-          valueType: WorkflowIOValueTypeEnum.string
-        },
+        AiChatQuoteRole,
+        AiChatQuoteTemplate,
+        AiChatQuotePrompt,
         {
           key: 'systemPrompt',
           renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],

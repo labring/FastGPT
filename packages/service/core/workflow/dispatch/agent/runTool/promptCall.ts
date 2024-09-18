@@ -25,7 +25,7 @@ import {
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { updateToolInputValue } from './utils';
-import { computedMaxToken, computedTemperature } from '../../../../ai/utils';
+import { computedMaxToken, llmCompletionsBodyFormat } from '../../../../ai/utils';
 import { WorkflowResponseType } from '../../type';
 
 type FunctionCallCompletion = {
@@ -113,18 +113,16 @@ export const runToolWithPromptCall = async (
       filterMessages
     })
   ]);
-  const requestBody = {
-    model: toolModel.model,
-    temperature: computedTemperature({
-      model: toolModel,
-      temperature
-    }),
-    max_completion_tokens: max_tokens,
-    max_tokens,
-    stream,
-    messages: requestMessages,
-    ...toolModel?.defaultConfig
-  };
+  const requestBody = llmCompletionsBodyFormat(
+    {
+      model: toolModel.model,
+      temperature,
+      max_tokens,
+      stream,
+      messages: requestMessages
+    },
+    toolModel
+  );
 
   // console.log(JSON.stringify(requestBody, null, 2));
   /* Run llm */

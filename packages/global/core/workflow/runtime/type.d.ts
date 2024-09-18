@@ -20,6 +20,7 @@ import { RuntimeEdgeItemType } from './edge';
 import { ReadFileNodeResponse } from '../template/system/readFiles/type';
 import { UserSelectOptionType } from '../template/system/userSelect/type';
 import { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
+import { AiChatQuoteRoleType } from '../template/system/aiChat/type';
 
 /* workflow props */
 export type ChatDispatchProps = {
@@ -201,6 +202,7 @@ export type AIChatNodeProps = {
   [NodeInputKeyEnum.aiChatTemperature]: number;
   [NodeInputKeyEnum.aiChatMaxToken]: number;
   [NodeInputKeyEnum.aiChatIsResponseText]: boolean;
+  [NodeInputKeyEnum.aiChatQuoteRole]?: AiChatQuoteRoleType;
   [NodeInputKeyEnum.aiChatQuoteTemplate]?: string;
   [NodeInputKeyEnum.aiChatQuotePrompt]?: string;
   [NodeInputKeyEnum.aiChatVision]?: boolean;

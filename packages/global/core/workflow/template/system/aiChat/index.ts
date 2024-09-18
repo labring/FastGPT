@@ -3,14 +3,14 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
-} from '../../node/constant';
-import { FlowNodeTemplateType } from '../../type/node';
+} from '../../../node/constant';
+import { FlowNodeTemplateType } from '../../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   FlowNodeTemplateTypeEnum
-} from '../../constants';
+} from '../../../constants';
 import {
   Input_Template_SettingAiModel,
   Input_Template_Dataset_Quote,
@@ -18,10 +18,30 @@ import {
   Input_Template_System_Prompt,
   Input_Template_UserChatInput,
   Input_Template_Text_Quote
-} from '../input';
-import { chatNodeSystemPromptTip } from '../tip';
-import { getHandleConfig } from '../utils';
-import { i18nT } from '../../../../../web/i18n/utils';
+} from '../../input';
+import { chatNodeSystemPromptTip } from '../../tip';
+import { getHandleConfig } from '../../utils';
+import { i18nT } from '../../../../../../web/i18n/utils';
+
+export const AiChatQuoteRole = {
+  key: NodeInputKeyEnum.aiChatQuoteRole,
+  renderTypeList: [FlowNodeInputTypeEnum.hidden],
+  label: '',
+  valueType: WorkflowIOValueTypeEnum.string,
+  value: 'system' // user or system
+};
+export const AiChatQuoteTemplate = {
+  key: NodeInputKeyEnum.aiChatQuoteTemplate,
+  renderTypeList: [FlowNodeInputTypeEnum.hidden],
+  label: '',
+  valueType: WorkflowIOValueTypeEnum.string
+};
+export const AiChatQuotePrompt = {
+  key: NodeInputKeyEnum.aiChatQuotePrompt,
+  renderTypeList: [FlowNodeInputTypeEnum.hidden],
+  label: '',
+  valueType: WorkflowIOValueTypeEnum.string
+};
 
 export const AiChatModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.chatNode,
@@ -52,6 +72,7 @@ export const AiChatModule: FlowNodeTemplateType = {
       value: 2000,
       valueType: WorkflowIOValueTypeEnum.number
     },
+
     {
       key: NodeInputKeyEnum.aiChatIsResponseText,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
@@ -59,18 +80,9 @@ export const AiChatModule: FlowNodeTemplateType = {
       value: true,
       valueType: WorkflowIOValueTypeEnum.boolean
     },
-    {
-      key: NodeInputKeyEnum.aiChatQuoteTemplate,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      label: '',
-      valueType: WorkflowIOValueTypeEnum.string
-    },
-    {
-      key: NodeInputKeyEnum.aiChatQuotePrompt,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      label: '',
-      valueType: WorkflowIOValueTypeEnum.string
-    },
+    AiChatQuoteRole,
+    AiChatQuoteTemplate,
+    AiChatQuotePrompt,
     {
       key: NodeInputKeyEnum.aiChatVision,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],

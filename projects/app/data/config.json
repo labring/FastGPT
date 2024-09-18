@@ -30,7 +30,8 @@
       "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型
       "customExtractPrompt": "", // 自定义内容提取提示词
       "defaultSystemChatPrompt": "", // 对话默认携带的系统提示词
-      "defaultConfig": {} // 请求API时，挟带一些默认配置（比如 GLM4 的 top_p）
+      "defaultConfig": {}, // 请求API时，挟带一些默认配置（比如 GLM4 的 top_p）
+      "fieldMap": {} // 字段映射（o1 模型需要把 max_tokens 映射为 max_completion_tokens）
     },
     {
       "model": "gpt-4o",
@@ -53,7 +54,8 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "defaultConfig": {}
+      "defaultConfig": {},
+      "fieldMap": {}
     },
     {
       "model": "o1-mini",
@@ -78,8 +80,10 @@
       "defaultSystemChatPrompt": "",
       "defaultConfig": {
         "temperature": 1,
-        "max_tokens": null,
         "stream": false
+      },
+      "fieldMap": {
+        "max_tokens": "max_completion_tokens"
       }
     },
     {
@@ -105,8 +109,10 @@
       "defaultSystemChatPrompt": "",
       "defaultConfig": {
         "temperature": 1,
-        "max_tokens": null,
         "stream": false
+      },
+      "fieldMap": {
+        "max_tokens": "max_completion_tokens"
       }
     }
   ],

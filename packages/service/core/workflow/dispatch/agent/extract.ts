@@ -26,6 +26,7 @@ import {
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { llmCompletionsBodyFormat } from '../../../ai/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -161,7 +162,7 @@ ${description ? `- ${description}` : ''}
 - 需要结合前面的对话内容，一起生成合适的参数。
 """
 
-本次输入内容: ${content}
+本次输入内容: """${content}"""
             `
           }
         }
@@ -226,13 +227,18 @@ const toolChoice = async (props: ActionProps) => {
     timeout: 480000
   });
 
-  const response = await ai.chat.completions.create({
-    model: extractModel.model,
-    temperature: 0.01,
-    messages: filterMessages,
-    tools,
-    tool_choice: { type: 'function', function: { name: agentFunName } }
-  });
+  const response = await ai.chat.completions.create(
+    llmCompletionsBodyFormat(
+      {
+        model: extractModel.model,
+        temperature: 0.01,
+        messages: filterMessages,
+        tools,
+        tool_choice: { type: 'function', function: { name: agentFunName } }
+      },
+      extractModel
+    )
+  );
 
   const arg: Record<string, any> = (() => {
     try {
@@ -271,15 +277,20 @@ const functionCall = async (props: ActionProps) => {
     timeout: 480000
   });
 
-  const response = await ai.chat.completions.create({
-    model: extractModel.model,
-    temperature: 0.01,
-    messages: filterMessages,
-    function_call: {
-      name: agentFunName
-    },
-    functions
-  });
+  const response = await ai.chat.completions.create(
+    llmCompletionsBodyFormat(
+      {
+        model: extractModel.model,
+        temperature: 0.01,
+        messages: filterMessages,
+        function_call: {
+          name: agentFunName
+        },
+        functions
+      },
+      extractModel
+    )
+  );
 
   try {
     const arg = JSON.parse(response?.choices?.[0]?.message?.function_call?.arguments || '');
@@ -311,7 +322,7 @@ const completions = async ({
   extractModel,
   user,
   histories,
-  params: { content, extractKeys, description }
+  params: { content, extractKeys, description = 'No special requirements' }
 }: ActionProps) => {
   const messages: ChatItemType[] = [
     {
@@ -351,13 +362,17 @@ Human: ${content}`
     userKey: user.openaiAccount,
     timeout: 480000
   });
-  const data = await ai.chat.completions.create({
-    model: extractModel.model,
-    temperature: 0.01,
-    messages: requestMessages,
-    stream: false,
-    ...extractModel.defaultConfig
-  });
+  const data = await ai.chat.completions.create(
+    llmCompletionsBodyFormat(
+      {
+        model: extractModel.model,
+        temperature: 0.01,
+        messages: requestMessages,
+        stream: false
+      },
+      extractModel
+    )
+  );
   const answer = data.choices?.[0].message?.content || '';
 
   // parse response
