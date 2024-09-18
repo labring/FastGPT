@@ -549,20 +549,23 @@ const WorkflowContextProvider = ({
   );
 
   /* If the module is connected by a tool, the tool input and the normal input are separated */
-  const splitToolInputs = useMemoizedFn((inputs: FlowNodeInputItemType[], nodeId: string) => {
-    const isTool = !!edges.find(
-      (edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools && edge.target === nodeId
-    );
+  const splitToolInputs = useCallback(
+    (inputs: FlowNodeInputItemType[], nodeId: string) => {
+      const isTool = !!edges.find(
+        (edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools && edge.target === nodeId
+      );
 
-    return {
-      isTool,
-      toolInputs: inputs.filter((item) => isTool && item.toolDescription),
-      commonInputs: inputs.filter((item) => {
-        if (!isTool) return true;
-        return !item.toolDescription;
-      })
-    };
-  });
+      return {
+        isTool,
+        toolInputs: inputs.filter((item) => isTool && item.toolDescription),
+        commonInputs: inputs.filter((item) => {
+          if (!isTool) return true;
+          return !item.toolDescription;
+        })
+      };
+    },
+    [edges]
+  );
 
   /* ui flow to store data */
   const flowData2StoreDataAndCheck = useMemoizedFn((hideTip = false) => {
