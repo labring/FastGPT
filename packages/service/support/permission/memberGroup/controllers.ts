@@ -6,21 +6,41 @@ import { MongoResourcePermission } from '../schema';
 import { getMaxGroupPer } from '../controller';
 import { MongoMemberGroupModel } from './memberGroupSchema';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
+import { ClientSession } from 'mongoose';
 
-export const getDefaultGroupByTeamId = async (teamId: string) => {
-  const group = await MongoMemberGroupModel.findOne({
-    teamId,
-    name: DefaultGroupName
+/**
+ * Get the default group of a team
+ * @param{Object} obj
+ * @param{string} obj.teamId
+ * @param{ClientSession} obj.session
+ */
+
+export const getTeamDefaultGroup = async ({
+  teamId,
+  session
+}: {
+  teamId: string;
+  session?: ClientSession;
+}) => {
+  const group = await MongoMemberGroupModel.findOne({ teamId, name: DefaultGroupName }, undefined, {
+    session
   }).lean();
 
+  // Create the default group if it does not exist
   if (!group) {
-    return await MongoMemberGroupModel.create({
-      teamId,
-      name: DefaultGroupName,
-      avatar: ''
-    });
-  }
+    const [group] = await MongoMemberGroupModel.create(
+      [
+        {
+          teamId,
+          name: DefaultGroupName,
+          avatar: ''
+        }
+      ],
+      { session }
+    );
 
+    return group;
+  }
   return group;
 };
 
@@ -38,7 +58,7 @@ export const getGroupsByTmbId = async ({ tmbId, teamId }: { tmbId: string; teamI
           ...(item.groupId as any as MemberGroupSchemaType)
         };
       }),
-      await getDefaultGroupByTeamId(teamId)
+      await getTeamDefaultGroup({ teamId })
     ])
   ).flat();
 };
