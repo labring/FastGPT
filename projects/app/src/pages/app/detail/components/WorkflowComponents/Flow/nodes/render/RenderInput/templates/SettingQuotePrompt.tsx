@@ -8,8 +8,9 @@ import { useTranslation } from 'next-i18next';
 import { ModalBody } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
-  Prompt_QuotePromptList,
-  Prompt_QuoteTemplateList
+  Prompt_userQuotePromptList,
+  Prompt_QuoteTemplateList,
+  Prompt_systemQuotePromptList
 } from '@fastgpt/global/core/ai/prompt/AIChat';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import PromptTemplate from '@/components/PromptTemplate';
@@ -25,6 +26,14 @@ import { AppContext } from '@/pages/app/detail/components/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { datasetQuoteValueDesc } from '@fastgpt/global/core/workflow/node/constant';
+import type { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
+import {
+  AiChatQuotePrompt,
+  AiChatQuoteRole,
+  AiChatQuoteTemplate
+} from '@fastgpt/global/core/workflow/template/system/aiChat';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import LightTip from '@fastgpt/web/components/common/LightTip';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -43,12 +52,17 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
 
   const { watch, setValue, handleSubmit } = useForm({
     defaultValues: {
-      quoteTemplate: inputs.find((input) => input.key === 'quoteTemplate')?.value || '',
-      quotePrompt: inputs.find((input) => input.key === 'quotePrompt')?.value || ''
+      quoteTemplate:
+        inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuoteTemplate)?.value || '',
+      quotePrompt:
+        inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuotePrompt)?.value || '',
+      quoteRole: (inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuoteRole)?.value ||
+        'system') as AiChatQuoteRoleType
     }
   });
   const aiChatQuoteTemplate = watch('quoteTemplate');
   const aiChatQuotePrompt = watch('quotePrompt');
+  const aiChatQuoteRole = watch('quoteRole');
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const variables = useCreation(() => {
@@ -102,50 +116,57 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
         label: t('common:core.app.Quote templates'),
         icon: 'core/app/simpleMode/variable'
       },
-      {
-        key: 'question',
-        label: t('common:core.module.input.label.user question'),
-        icon: 'core/app/simpleMode/variable'
-      },
+      ...(aiChatQuoteRole === 'user'
+        ? [
+            {
+              key: 'question',
+              label: t('common:core.module.input.label.user question'),
+              icon: 'core/app/simpleMode/variable'
+            }
+          ]
+        : []),
       ...variables
     ],
-    [t, variables]
+    [t, variables, aiChatQuoteRole]
   );
 
   const onSubmit = useCallback(
-    (data: { quoteTemplate: string; quotePrompt: string }) => {
-      const quoteTemplateInput = inputs.find(
-        (input) => input.key === NodeInputKeyEnum.aiChatQuoteTemplate
-      );
-      const quotePromptInput = inputs.find(
-        (input) => input.key === NodeInputKeyEnum.aiChatQuotePrompt
-      );
-      if (quoteTemplateInput) {
-        onChangeNode({
-          nodeId,
-          type: 'updateInput',
-          key: quoteTemplateInput.key,
-          value: {
-            ...quoteTemplateInput,
-            value: data.quoteTemplate
-          }
-        });
-      }
-      if (quotePromptInput) {
-        onChangeNode({
-          nodeId,
-          type: 'updateInput',
-          key: quotePromptInput.key,
-          value: {
-            ...quotePromptInput,
-            value: data.quotePrompt
-          }
-        });
-      }
+    (data: { quoteTemplate: string; quotePrompt: string; quoteRole: AiChatQuoteRoleType }) => {
+      onChangeNode({
+        nodeId,
+        type: 'replaceInput',
+        key: NodeInputKeyEnum.aiChatQuoteRole,
+        value: {
+          ...AiChatQuoteRole,
+          value: data.quoteRole || 'system'
+        }
+      });
+      onChangeNode({
+        nodeId,
+        type: 'replaceInput',
+        key: NodeInputKeyEnum.aiChatQuoteTemplate,
+        value: {
+          ...AiChatQuoteTemplate,
+          value: data.quoteTemplate
+        }
+      });
+      onChangeNode({
+        nodeId,
+        type: 'replaceInput',
+        key: NodeInputKeyEnum.aiChatQuotePrompt,
+        value: {
+          ...AiChatQuotePrompt,
+          value: data.quotePrompt
+        }
+      });
+
       onClose();
     },
-    [inputs, nodeId, onChangeNode, onClose]
+    [nodeId, onChangeNode, onClose]
   );
+
+  const quotePromptTemplates =
+    aiChatQuoteRole === 'user' ? Prompt_userQuotePromptList : Prompt_systemQuotePromptList;
 
   const Render = useMemo(() => {
     return (
@@ -176,16 +197,48 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
         <MyModal
           isOpen={isOpen}
           iconSrc={'modal/edit'}
-          title={t('common:core.module.Quote prompt setting')}
-          w={'600px'}
+          title={t('workflow:Quote_prompt_setting')}
+          w={'100%'}
+          h={['90vh', '85vh']}
+          maxW={['90vw', '700px']}
+          isCentered
         >
-          <ModalBody>
-            <Box>
+          <ModalBody flex={'1 0 0'} overflow={'auto'}>
+            <Flex {...LabelStyles} alignItems={'center'}>
+              <FormLabel>{t('workflow:dataset_quote_role')}</FormLabel>
+              <QuestionTip label={t('workflow:dataset_quote_role_tip')} ml={1} mr={5} />
+              <MySelect<AiChatQuoteRoleType>
+                value={aiChatQuoteRole}
+                list={[
+                  {
+                    label: 'System',
+                    value: 'system',
+                    description: t('workflow:dataset_quote_role_system_option_desc')
+                  },
+                  {
+                    label: 'User',
+                    value: 'user',
+                    description: t('workflow:dataset_quote_role_user_option_desc')
+                  }
+                ]}
+                onchange={(e) => {
+                  setValue('quoteRole', e);
+                }}
+              />
+              <Box ml={5}>
+                {aiChatQuoteRole === 'user' ? (
+                  <LightTip text={t('workflow:quote_role_user_tip')} />
+                ) : (
+                  <LightTip text={t('workflow:quote_role_system_tip')} />
+                )}
+              </Box>
+            </Flex>
+            <Box mt={4}>
               <Flex {...LabelStyles} mb={1}>
                 <FormLabel>{t('common:core.app.Quote templates')}</FormLabel>
                 <QuestionTip
                   ml={1}
-                  label={t('template.Quote Content Tip', {
+                  label={t('workflow:quote_content_tip', {
                     default: Prompt_QuoteTemplateList[0].value
                   })}
                 ></QuestionTip>
@@ -208,9 +261,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
                 variables={quoteTemplateVariables}
                 h={160}
                 title={t('common:core.app.Quote templates')}
-                placeholder={t('template.Quote Content Tip', {
-                  default: Prompt_QuoteTemplateList[0].value
-                })}
+                placeholder={t('workflow:quote_content_placeholder')}
                 value={aiChatQuoteTemplate}
                 onChange={(e) => {
                   setValue('quoteTemplate', e);
@@ -222,17 +273,17 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
                 <FormLabel>{t('common:core.app.Quote prompt')}</FormLabel>
                 <QuestionTip
                   ml={1}
-                  label={t('template.Quote Prompt Tip', {
-                    default: Prompt_QuotePromptList[0].value
+                  label={t('workflow:quote_prompt_tip', {
+                    default: quotePromptTemplates[0].value
                   })}
                 ></QuestionTip>
               </Flex>
               <PromptEditor
                 variables={quotePromptVariables}
                 title={t('common:core.app.Quote prompt')}
-                h={280}
-                placeholder={t('template.Quote Prompt Tip', {
-                  default: Prompt_QuotePromptList[0].value
+                h={300}
+                placeholder={t('workflow:quote_prompt_tip', {
+                  default: quotePromptTemplates[0].value
                 })}
                 value={aiChatQuotePrompt}
                 onChange={(e) => {
@@ -248,6 +299,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
             <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>
           </ModalFooter>
         </MyModal>
+        {/* Prompt template */}
         {!!selectTemplateData && (
           <PromptTemplate
             title={selectTemplateData.title}
@@ -255,9 +307,9 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
             onClose={() => setSelectTemplateData(undefined)}
             onSuccess={(e) => {
               const quoteVal = e.value;
-              const promptVal = Prompt_QuotePromptList.find(
-                (item) => item.title === e.title
-              )?.value;
+
+              const promptVal = quotePromptTemplates.find((item) => item.title === e.title)?.value;
+
               setValue('quoteTemplate', quoteVal);
               setValue('quotePrompt', promptVal);
             }}
@@ -267,6 +319,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
     );
   }, [
     aiChatQuotePrompt,
+    aiChatQuoteRole,
     aiChatQuoteTemplate,
     handleSubmit,
     isOpen,
@@ -274,6 +327,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
     onOpen,
     onSubmit,
     props,
+    quotePromptTemplates,
     quotePromptVariables,
     quoteTemplateVariables,
     selectTemplateData,

@@ -17,6 +17,7 @@ import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/ty
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { loadRequestMessages } from '../../../chat/utils';
+import { llmCompletionsBodyFormat } from '../../../ai/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
@@ -103,7 +104,7 @@ const completions = async ({
               systemPrompt: systemPrompt || 'null',
               typeList: agents
                 .map((item) => `{"类型ID":"${item.key}", "问题类型":"${item.value}"}`)
-                .join('------'),
+                .join('\n------\n'),
               history: histories
                 .map((item) => `${item.obj}:${chatValue2RuntimePrompt(item.value).text}`)
                 .join('------'),
@@ -124,13 +125,17 @@ const completions = async ({
     timeout: 480000
   });
 
-  const data = await ai.chat.completions.create({
-    model: cqModel.model,
-    temperature: 0.01,
-    messages: requestMessages,
-    stream: false,
-    ...cqModel.defaultConfig
-  });
+  const data = await ai.chat.completions.create(
+    llmCompletionsBodyFormat(
+      {
+        model: cqModel.model,
+        temperature: 0.01,
+        messages: requestMessages,
+        stream: false
+      },
+      cqModel
+    )
+  );
   const answer = data.choices?.[0].message?.content || '';
 
   // console.log(JSON.stringify(chats2GPTMessages({ messages, reserveId: false }), null, 2));

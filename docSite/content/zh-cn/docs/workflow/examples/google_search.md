@@ -965,7 +965,7 @@ export default async function (ctx: FunctionContext) {
           "required": true,
           "description": "",
           "canEdit": false,
-          "value": "请使用下面<data> </data>中的数据作为你的知识。请直接输出答案，不要提及你是从<data> </data>中获取的知识。\n\n当前时间:{{cTime}}\n\n<data>\n{{response}}\n</data>\n\n我的问题:\"{{q}}\"",
+          "value": "请使用下面<data> </data>中的数据作为本次对话的参考内容。请直接输出答案，不要提及你是从<data> </data>中获取的知识。\n\n当前时间:{{cTime}}\n\n<data>\n{{response}}\n</data>\n\n我的问题:\"{{q}}\"",
           "editField": {
             "key": true
           },

@@ -271,7 +271,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
         collectionId: { $in: Array.from(new Set(results.map((item) => item.collectionId))) },
         'indexes.dataId': { $in: results.map((item) => item.id?.trim()) }
       },
-      'datasetId collectionId q a chunkIndex indexes'
+      'datasetId collectionId updateTime q a chunkIndex indexes'
     )
       .populate('collectionId', 'name fileId rawLink externalFileId externalFileUrl')
       .lean()) as DatasetDataWithCollectionType[];
@@ -299,6 +299,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
 
       const result: SearchDataResponseItemType = {
         id: String(data._id),
+        updateTime: data.updateTime,
         q: data.q,
         a: data.a,
         chunkIndex: data.chunkIndex,
@@ -396,6 +397,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
                 _id: 1,
                 datasetId: 1,
                 collectionId: 1,
+                updateTime: 1,
                 q: 1,
                 a: 1,
                 chunkIndex: 1,
@@ -425,6 +427,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
           id: String(item._id),
           datasetId: String(item.datasetId),
           collectionId: String(item.collectionId),
+          updateTime: item.updateTime,
           ...getCollectionSourceData(collection),
           q: item.q,
           a: item.a,
