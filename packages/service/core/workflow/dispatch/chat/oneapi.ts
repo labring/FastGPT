@@ -41,7 +41,7 @@ import { getHistories } from '../utils';
 import { filterSearchResultsByMaxChars } from '../../utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { addLog } from '../../../../common/system/log';
-import { computedMaxToken, computedTemperature } from '../../../ai/utils';
+import { computedMaxToken, llmCompletionsBodyFormat } from '../../../ai/utils';
 import { WorkflowResponseType } from '../type';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
@@ -157,18 +157,16 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     })
   ]);
 
-  const requestBody = {
-    model: modelConstantsData.model,
-    temperature: computedTemperature({
-      model: modelConstantsData,
-      temperature
-    }),
-    max_completion_tokens: max_tokens,
-    max_tokens,
-    stream,
-    messages: requestMessages,
-    ...modelConstantsData?.defaultConfig
-  };
+  const requestBody = llmCompletionsBodyFormat(
+    {
+      model: modelConstantsData.model,
+      temperature,
+      max_tokens,
+      stream,
+      messages: requestMessages
+    },
+    modelConstantsData
+  );
   // console.log(JSON.stringify(requestBody, null, 2), '===');
   try {
     const ai = getAIApi({

@@ -27,6 +27,7 @@ export type LLMModelItemType = {
 
   defaultSystemChatPrompt?: string;
   defaultConfig?: Record<string, any>;
+  fieldMap?: Record<string, string>;
 };
 
 export type VectorModelItemType = {

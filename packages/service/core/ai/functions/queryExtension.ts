@@ -2,9 +2,10 @@ import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getAIApi } from '../config';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
-import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import { ChatCompletion, ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getLLMModel } from '../model';
+import { llmCompletionsBodyFormat } from '../utils';
 
 /* 
     query extension - 问题扩展
@@ -150,14 +151,19 @@ A: ${chatBg}
       })
     }
   ] as ChatCompletionMessageParam[];
-  const result = await ai.chat.completions.create({
-    model: modelData.model,
-    temperature: 0.01,
-    // @ts-ignore
-    messages,
-    stream: false,
-    ...modelData.defaultConfig
-  });
+
+  const result = (await ai.chat.completions.create(
+    llmCompletionsBodyFormat(
+      {
+        stream: false,
+        model: modelData.model,
+        temperature: 0.01,
+        // @ts-ignore
+        messages
+      },
+      modelData
+    )
+  )) as ChatCompletion;
 
   let answer = result.choices?.[0]?.message?.content || '';
   if (!answer) {
