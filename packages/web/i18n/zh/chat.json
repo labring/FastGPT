@@ -19,6 +19,7 @@
   "input_guide": "输入引导",
   "input_guide_lexicon": "词库",
   "input_guide_tip": "可以配置一些预设的问题。在用户输入问题时，会从这些预设问题中获取相关问题进行提示。",
+  "input_placeholder_phone": "输入问题",
   "insert_input_guide,_some_data_already_exists": "有重复数据，已自动过滤，共插入 {{len}} 条数据",
   "is_chatting": "正在聊天中...请等待结束",
   "items": "条",
