@@ -1,7 +1,11 @@
 import React, { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { PluginRunBoxProps } from './type';
-import { AIChatItemValueItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import {
+  AIChatItemValueItemType,
+  ChatSiteItemType,
+  RuntimeUserPromptType
+} from '@fastgpt/global/core/chat/type';
 import { FieldArrayWithId, FieldValues, useForm } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -18,10 +22,7 @@ import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 type PluginRunContextType = OutLinkChatAuthProps &
   PluginRunBoxProps & {
     isChatting: boolean;
-    onSubmit: (
-      e: FieldValues,
-      files?: FieldArrayWithId<ChatBoxInputFormType, 'files', 'id'>[]
-    ) => Promise<any>;
+    onSubmit: (e: FieldValues, files?: UserInputFileItemType[]) => Promise<any>;
     outLinkAuthData: OutLinkChatAuthProps;
   };
 
@@ -191,11 +192,14 @@ const PluginRunContextProvider = ({
       chatController.current = abortSignal;
 
       setHistories([
-        getPluginRunUserQuery({
-          pluginInputs,
-          variables: e,
-          files
-        }),
+        {
+          ...getPluginRunUserQuery({
+            pluginInputs,
+            variables: e,
+            files: files as RuntimeUserPromptType['files']
+          }),
+          status: 'finish'
+        },
         {
           dataId: getNanoid(24),
           obj: ChatRoleEnum.AI,
