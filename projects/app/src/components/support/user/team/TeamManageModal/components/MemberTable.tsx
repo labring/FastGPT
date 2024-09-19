@@ -10,6 +10,7 @@ import {
   Td,
   Th,
   Thead,
+  Tooltip,
   Tr
 } from '@chakra-ui/react';
 import {
@@ -27,11 +28,12 @@ import { TeamPermissionList } from '@fastgpt/global/support/permission/user/cons
 import PermissionSelect from '@/components/support/permission/MemberManager/PermissionSelect';
 import { CollaboratorContext } from '@/components/support/permission/MemberManager/context';
 import { delRemoveMember } from '@/web/support/user/team/api';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 function MemberTable() {
   const { userInfo } = useUserStore();
   const { t } = useTranslation();
-  const { members, refetchMembers } = useContextSelector(TeamModalContext, (v) => v);
+  const { members, refetchMembers, refetchClbs } = useContextSelector(TeamModalContext, (v) => v);
   const { onUpdateCollaborators } = useContextSelector(CollaboratorContext, (v) => v);
 
   const { ConfirmModal: ConfirmRemoveMemberModal, openConfirm: openRemoveMember } = useConfirm({
@@ -45,7 +47,12 @@ function MemberTable() {
           <Thead bg={'myWhite.400'}>
             <Tr>
               <Th borderRadius={'none !important'}>{t('common:common.Username')}</Th>
-              <Th>{t('common:common.Permission')}</Th>
+              <Th>
+                <Box>
+                  {t('common:common.Permission')}
+                  <QuestionTip label={t('common:common.Permission_tip')} ml="2" />
+                </Box>
+              </Th>
               <Th>{t('common:common.Status')}</Th>
               <Th borderRadius={'none !important'}>{t('common:common.Action')}</Th>
             </Tr>
@@ -92,7 +99,7 @@ function MemberTable() {
                           onUpdateCollaborators({
                             members: [item.tmbId],
                             permission
-                          });
+                          }).then(refetchClbs);
                         }}
                         onDelete={() => {
                           openRemoveMember(
