@@ -24,17 +24,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     async function createGroup(teamId: string) {
       try {
-        await MongoMemberGroupModel.create({
-          teamId: teamId,
-          name: DefaultGroupName
-        });
-        console.log(++success);
+        await MongoMemberGroupModel.updateOne(
+          {
+            teamId,
+            name: DefaultGroupName
+          },
+          {
+            $set: {
+              teamId: teamId,
+              name: DefaultGroupName
+            }
+          },
+          {
+            upsert: true
+          }
+        );
       } catch (error) {
+        console.log(error);
         await delay(500);
+        return createGroup(teamId);
       }
     }
     for await (const team of teamList) {
       await createGroup(team._id);
+      console.log(++success);
     }
 
     jsonRes(res, {
