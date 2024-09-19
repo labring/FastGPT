@@ -28,10 +28,11 @@ import { CodeNode } from './system/sandbox';
 import { TextEditorNode } from './system/textEditor';
 import { CustomFeedbackNode } from './system/customFeedback';
 import { ReadFilesNode } from './system/readFiles';
-import { UserSelectNode } from './system/userSelect/index';
+import { UserSelectNode } from './system/interactive/userSelect';
 import { LoopNode } from './system/loop/loop';
 import { LoopStartNode } from './system/loop/loopStart';
 import { LoopEndNode } from './system/loop/loopEnd';
+import { FormInputNode } from './system/interactive/formInput';
 
 const systemNodes: FlowNodeTemplateType[] = [
   AiChatModule,
@@ -58,7 +59,8 @@ export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
   WorkflowStart,
   ...systemNodes,
   CustomFeedbackNode,
-  UserSelectNode
+  UserSelectNode,
+  FormInputNode
 ];
 /* plugin flow module templates */
 export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [

@@ -54,7 +54,7 @@ const FieldEditModal = ({
   keys: string[];
   hasDynamicInput: boolean;
   onClose: () => void;
-  onSubmit: (e: { data: FlowNodeInputItemType; isChangeKey: boolean }) => void;
+  onSubmit: (data: FlowNodeInputItemType) => void;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -260,16 +260,10 @@ const FieldEditModal = ({
       data.label = data.key;
 
       if (action === 'confirm') {
-        onSubmit({
-          data,
-          isChangeKey
-        });
+        onSubmit(data);
         onClose();
       } else if (action === 'continue') {
-        onSubmit({
-          data,
-          isChangeKey
-        });
+        onSubmit(data);
         toast({
           status: 'success',
           title: t('common:common.Add Success')
@@ -641,7 +635,7 @@ const FieldEditModal = ({
                 onClick={handleSubmit((data) => onSubmitSuccess(data, 'continue'), onSubmitError)}
                 w={20}
               >
-                {t('common:comon.Continue_Adding')}
+                {t('common:common.Continue_Adding')}
               </Button>
             )}
           </Flex>

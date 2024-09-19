@@ -64,7 +64,7 @@ import { dispatchUserSelect } from './interactive/userSelect';
 import {
   InteractiveNodeResponseItemType,
   UserSelectInteractive
-} from '@fastgpt/global/core/workflow/template/system/userSelect/type';
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { dispatchRunAppNode } from './plugin/runApp';
 import { dispatchLoop } from './loop/runLoop';
 import { dispatchLoopEnd } from './loop/runLoopEnd';

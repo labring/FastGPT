@@ -18,7 +18,7 @@ import {
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { InteractiveNodeResponseItemType } from '@fastgpt/global/core/workflow/template/system/userSelect/type';
+import { InteractiveNodeResponseItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { isEqual } from 'lodash';
 import { onSendPrompt } from '../ChatContainer/useChat';
 
