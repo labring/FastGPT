@@ -10,11 +10,11 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { generatingMessageProps } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getPluginRunContent } from '@fastgpt/global/core/app/plugin/utils';
 import { useTranslation } from 'next-i18next';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ChatBoxInputFormType, UserInputFileItemType } from '../ChatBox/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 type PluginRunContextType = OutLinkChatAuthProps &
   PluginRunBoxProps & {
     isChatting: boolean;
@@ -190,38 +190,12 @@ const PluginRunContextProvider = ({
       const abortSignal = new AbortController();
       chatController.current = abortSignal;
 
-      const createNewChatList = ({
-        includeFiles = true
-      }: {
-        includeFiles?: boolean;
-      }): ChatSiteItemType[] => [
-        {
-          dataId: getNanoid(24),
-          obj: ChatRoleEnum.Human,
-          status: 'finish',
-          value: [
-            ...(includeFiles && files
-              ? files.map((file) => ({
-                  type: ChatItemValueTypeEnum.file as any,
-                  file: {
-                    type: file.type,
-                    name: file.name,
-                    url: file.url || '',
-                    icon: file.icon || ''
-                  }
-                }))
-              : []),
-            {
-              type: ChatItemValueTypeEnum.text,
-              text: {
-                content: getPluginRunContent({
-                  pluginInputs,
-                  variables: e
-                })
-              }
-            }
-          ]
-        },
+      setHistories([
+        getPluginRunUserQuery({
+          pluginInputs,
+          variables: e,
+          files
+        }),
         {
           dataId: getNanoid(24),
           obj: ChatRoleEnum.AI,
@@ -235,11 +209,16 @@ const PluginRunContextProvider = ({
           ],
           status: 'loading'
         }
-      ];
+      ]);
 
-      setHistories(createNewChatList({}));
       const messages = chats2GPTMessages({
-        messages: createNewChatList({ includeFiles: false }),
+        messages: [
+          {
+            dataId: getNanoid(24),
+            obj: ChatRoleEnum.Human,
+            value: []
+          }
+        ],
         reserveId: true
       });
 

@@ -32,26 +32,3 @@ export const filterSearchResultsByMaxChars = async (
 
   return results.length === 0 ? list.slice(0, 1) : results;
 };
-
-/* Get plugin runtime input user query */
-export const getPluginRunUserQuery = ({
-  nodes,
-  variables,
-  files = []
-}: {
-  nodes: StoreNodeItemType[];
-  variables: Record<string, any>;
-  files?: RuntimeUserPromptType['files'];
-}): UserChatItemType & { dataId: string } => {
-  return {
-    dataId: getNanoid(24),
-    obj: ChatRoleEnum.Human,
-    value: runtimePrompt2ChatsValue({
-      text: getPluginRunContent({
-        pluginInputs: getPluginInputsFromStoreNodes(nodes),
-        variables
-      }),
-      files
-    })
-  };
-};
