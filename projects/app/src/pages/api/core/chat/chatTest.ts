@@ -13,7 +13,10 @@ import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { updatePluginInputByVariables } from '@fastgpt/global/core/workflow/utils';
+import {
+  getPluginRunUserQuery,
+  updatePluginInputByVariables
+} from '@fastgpt/global/core/workflow/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
@@ -28,7 +31,7 @@ import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
-import { getPluginRunUserQuery } from '@fastgpt/service/core/workflow/utils';
+import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -84,7 +87,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const userQuestion: UserChatItemType = (() => {
       if (isPlugin) {
         return getPluginRunUserQuery({
-          nodes: app.modules,
+          pluginInputs: getPluginInputsFromStoreNodes(app.modules),
           variables,
           files: variables.files
         });
