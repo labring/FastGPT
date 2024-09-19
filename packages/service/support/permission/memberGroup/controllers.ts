@@ -3,7 +3,7 @@ import { MongoGroupMemberModel } from './groupMemberSchema';
 import { TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '../schema';
-import { getMaxGroupPer } from '../controller';
+import { getGroupPer } from '../controller';
 import { MongoMemberGroupModel } from './memberGroupSchema';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { ClientSession } from 'mongoose';
@@ -132,5 +132,5 @@ export const getGroupPermission = async ({
     })
   ).map((item) => item.permission);
 
-  return getMaxGroupPer(groupPermissions);
+  return getGroupPer(groupPermissions);
 };

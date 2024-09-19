@@ -15,6 +15,7 @@ import {
 import { bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { addMinutes } from 'date-fns';
 import { getGroupsByTmbId } from './memberGroup/controllers';
+import { Permission } from '@fastgpt/global/support/permission/controller';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -81,7 +82,7 @@ export const getResourcePermission = async ({
     )
   ).map((item) => item.permission);
 
-  const groupPer = getMaxGroupPer(pers);
+  const groupPer = getGroupPer(pers);
 
   return groupPer;
 };
@@ -363,10 +364,10 @@ export const authFileToken = (token?: string) =>
     });
   });
 
-export const getMaxGroupPer = (groups?: PermissionValueType[]) => {
+export const getGroupPer = (groups?: PermissionValueType[]) => {
   if (!groups || !groups.length) {
     return undefined;
   }
 
-  return Math.max(...groups);
+  return new Permission().addPer(...groups);
 };
