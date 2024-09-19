@@ -33,7 +33,7 @@ import { RuntimeNodeItemType } from './runtime/type';
 import { getReferenceVariableValue } from './runtime/utils';
 import { Input_Template_History, Input_Template_UserChatInput } from './template/input';
 import { i18nT } from '../../../web/i18n/utils';
-import { RuntimeUserPromptType, UserChatItemType } from 'core/chat/type';
+import { RuntimeUserPromptType, UserChatItemType } from '../../core/chat/type';
 import { getNanoid } from '../../common/string/tools';
 import { ChatRoleEnum } from '../../core/chat/constants';
 import { runtimePrompt2ChatsValue } from '../../core/chat/adapt';
