@@ -106,6 +106,7 @@ const RenderInput = () => {
   }, [defaultFormValues, getValues, historyFormValues, reset]);
 
   const isDisabledInput = histories.length > 0;
+  const hasFileUploading = fileList.some((item) => !item.url);
 
   useRequest2(
     async () => {
@@ -136,33 +137,31 @@ const RenderInput = () => {
       )}
       {/* file select */}
       {(showSelectFile || showSelectImg) && (
-        <Box>
+        <Box mb={2}>
           <Flex alignItems={'center'}>
+            <FormLabel fontSize={'14px'} fontWeight={'medium'}>
+              {selectFileLabel}
+            </FormLabel>
+            <Box flex={1} />
             {histories.length === 0 && (
-              <>
-                <FormLabel fontSize={'14px'} fontWeight={'medium'}>
-                  {selectFileLabel}
-                </FormLabel>
-                <Box flex={1} />
-                <Button
-                  leftIcon={<MyIcon name={selectFileIcon as any} w={'16px'} />}
-                  variant={'whiteBase'}
-                  onClick={() => {
-                    onOpenSelectFile();
-                  }}
-                >
-                  {t('chat:upload')}
-                </Button>
-              </>
+              <Button
+                leftIcon={<MyIcon name={selectFileIcon as any} w={'16px'} />}
+                variant={'whiteBase'}
+                onClick={() => {
+                  onOpenSelectFile();
+                }}
+              >
+                {t('chat:upload')}
+              </Button>
             )}
             <File onSelect={(files) => onSelectFile({ files, fileList })} />
           </Flex>
+          <FilePreview
+            fileList={fileList}
+            removeFiles={isDisabledInput ? undefined : removeFiles}
+          />
         </Box>
       )}
-      <FilePreview
-        fileList={fileList}
-        removeFiles={histories.length > 0 ? undefined : removeFiles}
-      />
       {pluginInputs.map((input) => {
         return (
           <Controller
@@ -195,15 +194,15 @@ const RenderInput = () => {
       {onStartChat && onNewChat && (
         <Flex justifyContent={'end'} mt={8}>
           <Button
-            isLoading={isChatting}
+            isLoading={isChatting || hasFileUploading}
             onClick={() => {
-              if (histories.length > 0) {
+              if (isDisabledInput) {
                 return onNewChat();
               }
               handleSubmit((e) => onSubmit(e, fileList))();
             }}
           >
-            {histories.length > 0 ? t('common:common.Restart') : t('common:common.Run')}
+            {isDisabledInput ? t('common:common.Restart') : t('common:common.Run')}
           </Button>
         </Flex>
       )}
