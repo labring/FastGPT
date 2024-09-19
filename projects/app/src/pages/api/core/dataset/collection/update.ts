@@ -1,5 +1,8 @@
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { getCollectionUpdateTime } from '@fastgpt/service/core/dataset/collection/utils';
+import {
+  createOrGetCollectionTags,
+  getCollectionUpdateTime
+} from '@fastgpt/service/core/dataset/collection/utils';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -11,11 +14,16 @@ import { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 export type UpdateDatasetCollectionParams = {
-  id: string;
+  id?: string;
   parentId?: string;
   name?: string;
-  tags?: string[];
+  tags?: string[]; // Not tag id, is tag label
   forbid?: boolean;
+  createTime?: Date;
+
+  // External file id
+  datasetId?: string;
+  externalFileId?: string;
 };
 
 // Set folder collection children forbid status
@@ -65,14 +73,22 @@ const updateFolderChildrenForbid = async ({
 };
 
 async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
-  const { id, parentId, name, tags, forbid } = req.body;
+  let { datasetId, externalFileId, id, parentId, name, tags, forbid, createTime } = req.body;
+
+  if (datasetId && externalFileId) {
+    const collection = await MongoDatasetCollection.findOne({ datasetId, externalFileId }, '_id');
+    if (!collection) {
+      return Promise.reject(CommonErrEnum.fileNotFound);
+    }
+    id = collection._id;
+  }
 
   if (!id) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
   // 凭证校验
-  const { collection } = await authDatasetCollection({
+  const { collection, teamId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -81,6 +97,13 @@ async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
   });
 
   await mongoSessionRun(async (session) => {
+    const collectionTags = await createOrGetCollectionTags({
+      tags,
+      teamId,
+      datasetId: collection.datasetId._id,
+      session
+    });
+
     await MongoDatasetCollection.updateOne(
       {
         _id: id
@@ -89,8 +112,9 @@ async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
         $set: {
           ...(parentId !== undefined && { parentId: parentId || null }),
           ...(name && { name, updateTime: getCollectionUpdateTime({ name }) }),
-          ...(tags && { tags }),
-          ...(forbid !== undefined && { forbid })
+          ...(collectionTags !== undefined && { tags: collectionTags }),
+          ...(forbid !== undefined && { forbid }),
+          ...(createTime !== undefined && { createTime })
         }
       },
       {

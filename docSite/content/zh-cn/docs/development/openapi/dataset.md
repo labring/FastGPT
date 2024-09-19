@@ -312,6 +312,8 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 | chunkSize | 预估块大小 |  |
 | chunkSplitter | 自定义最高优先分割符号 |  |
 | qaPrompt | qa拆分提示词 |  |
+| tags |  集合标签（字符串数组） |  |
+| createTime | 文件创建时间（Date / String） |  |
 
 **出参**
 
@@ -604,9 +606,11 @@ curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/co
 --data-raw '{
     "externalFileUrl":"https://image.xxxxx.com/fastgpt-dev/%E6%91%82.pdf",
     "externalFileId":"1111",
-    "filename":"自定义文件名",
+    "createTime": "2024-05-01T00:00:00.000Z",
+    "filename":"自定义文件名.pdf",
     "datasetId":"6642d105a5e9d2b00255b27b",
     "parentId": null,
+    "tags": ["tag1","tag2"],
 
     "trainingType": "chunk",
     "chunkSize":512,
@@ -625,7 +629,8 @@ curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/co
 | --- | --- | --- |
 | externalFileUrl | 文件访问链接（可以是临时链接） | ✅ |
 | externalFileId | 外部文件ID |  |
-| filename | 自定义文件名 |  |
+| filename | 自定义文件名，需要带后缀 |  |
+| createTime | 文件创建时间（Date ISO 字符串都 ok） |  |
 
 
 {{< /markdownify >}}
@@ -710,7 +715,21 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
                 "updateTime": "2099-01-01T00:00:00.000Z",
                 "dataAmount": 3,
                 "trainingAmount": 0,
-                "canWrite": true
+                "externalFileId": "1111",
+                "tags": [
+                    "11",
+                    "测试的"
+                ],
+                "forbid": false,
+                 "trainingType": "chunk",
+                "permission": {
+                    "value": 4294967295,
+                    "isOwner": true,
+                    "hasManagePer": true,
+                    "hasWritePer": true,
+                    "hasReadPer": true
+                }
+
             },
             {
                 "_id": "65abd0ad9d1448617cba6031",
@@ -722,7 +741,19 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
                 "updateTime": "2024-01-20T13:54:53.031Z",
                 "dataAmount": 3,
                 "trainingAmount": 0,
-                "canWrite": true
+                "externalFileId": "222",
+                "tags": [
+                    "测试的"
+                ],
+                "forbid": false,
+                 "trainingType": "chunk",
+                "permission": {
+                    "value": 4294967295,
+                    "isOwner": true,
+                    "hasManagePer": true,
+                    "hasWritePer": true,
+                    "hasReadPer": true
+                }
             }
         ],
         "total": 93
@@ -813,14 +844,36 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/collection
 {{< tab tabName="请求示例" >}}
 {{< markdownify >}}
 
+**通过集合 ID 修改集合信息**
+
 ```bash
 curl --location --request PUT 'http://localhost:3000/api/core/dataset/collection/update' \
 --header 'Authorization: Bearer {{authorization}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "id":"65abcfab9d1448617cba5f0d",
-    "parentId":null,
-    "name":"测2222试"
+    "parentId": null,
+    "name": "测2222试",
+    "tags": ["tag1", "tag2"],
+    "forbid": false,
+    "createTime": "2024-01-01T00:00:00.000Z"
+}'
+```
+
+**通过外部文件 ID 修改集合信息**， 只需要把 id 换成 datasetId 和 externalFileId。
+
+```bash
+curl --location --request PUT 'http://localhost:3000/api/core/dataset/collection/update' \
+--header 'Authorization: Bearer {{authorization}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "datasetId":"6593e137231a2be9c5603ba7",
+    "externalFileId":"1111",
+    "parentId": null,
+    "name": "测2222试",
+    "tags": ["tag1", "tag2"],
+    "forbid": false,
+    "createTime": "2024-01-01T00:00:00.000Z"
 }'
 ```
 
@@ -834,6 +887,9 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/collection
 - id: 集合的ID
 - parentId: 修改父级ID（可选）
 - name: 修改集合名称（可选）
+- tags: 修改集合标签（可选）
+- forbid: 修改集合禁用状态（可选）
+- createTime: 修改集合创建时间（可选）
 {{% /alert %}}
 
 {{< /markdownify >}}

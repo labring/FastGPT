@@ -243,8 +243,9 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 const vectorModel = vectorModelList.find((item) => item.model === e);
                 if (!vectorModel) return;
                 return onOpenConfirmRebuild(() => {
-                  setValue('vectorModel', vectorModel);
-                  return onRebuilding(vectorModel);
+                  return onRebuilding(vectorModel).then(() => {
+                    setValue('vectorModel', vectorModel);
+                  });
                 })();
               }}
             />
