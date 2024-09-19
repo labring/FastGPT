@@ -45,7 +45,10 @@ export async function createOneCollection({
   [key: string]: any;
   session?: ClientSession;
 }) {
+  // Create collection tags
   const collectionTags = await createOrGetCollectionTags({ tags, teamId, datasetId, session });
+
+  // Create collection
   const [collection] = await MongoDatasetCollection.create(
     [
       {

@@ -21,6 +21,8 @@ export type DatasetCollectionsListItemType = {
   trainingType?: DatasetCollectionSchemaType['trainingType'];
   tags?: string[];
 
+  externalFileId?: string;
+
   fileId?: string;
   rawLink?: string;
   permission: DatasetPermission;
