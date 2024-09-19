@@ -1,10 +1,9 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Box, Card, IconButton, Flex, Button, useTheme } from '@chakra-ui/react';
 import {
   getDatasetDataList,
   delOneDatasetDataById,
-  getDatasetCollectionById,
-  putDatasetDataById
+  getDatasetCollectionById
 } from '@/web/core/dataset/api';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -21,7 +20,6 @@ import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useContextSelector } from 'use-context-selector';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -96,24 +94,27 @@ const DataCard = () => {
       <Flex flexDirection={'column'} h={'100%'}>
         {/* Header */}
         <Flex alignItems={'center'} px={6}>
-          <Flex className="textEllipsis" flex={'1 0 0'} mr={[3, 5]} alignItems={'center'}>
-            <Box>
-              <Box alignItems={'center'} gap={2} display={isPc ? 'flex' : ''}>
-                {collection?._id && (
-                  <RawSourceBox
-                    collectionId={collection._id}
-                    {...getCollectionSourceData(collection)}
-                    fontSize={['sm', 'md']}
-                    color={'black'}
-                    textDecoration={'none'}
-                  />
-                )}
-              </Box>
-              {feConfigs?.isPlus && !!collection?.tags?.length && (
-                <TagsPopOver currentCollection={collection} />
+          <Box flex={'1 0 0'} mr={[3, 5]} alignItems={'center'}>
+            <Box
+              className="textEllipsis"
+              alignItems={'center'}
+              gap={2}
+              display={isPc ? 'flex' : ''}
+            >
+              {collection?._id && (
+                <RawSourceBox
+                  collectionId={collection._id}
+                  {...getCollectionSourceData(collection)}
+                  fontSize={['sm', 'md']}
+                  color={'black'}
+                  textDecoration={'none'}
+                />
               )}
             </Box>
-          </Flex>
+            {feConfigs?.isPlus && !!collection?.tags?.length && (
+              <TagsPopOver currentCollection={collection} />
+            )}
+          </Box>
           {canWrite && (
             <Box>
               <Button

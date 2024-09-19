@@ -111,6 +111,17 @@ try {
   DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, tags: 1 });
   // create time filter
   DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, createTime: 1 });
+
+  // Get collection by external file id
+  DatasetCollectionSchema.index(
+    { datasetId: 1, externalFileId: 1 },
+    {
+      unique: true,
+      partialFilterExpression: {
+        externalFileId: { $exists: true }
+      }
+    }
+  );
 } catch (error) {
   console.log(error);
 }

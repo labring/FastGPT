@@ -11,6 +11,8 @@ import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { PagingData } from '@/types';
+import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
 
 async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectionsListItemType>> {
   let {
@@ -60,12 +62,15 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
     trainingType: 1,
     fileId: 1,
     rawLink: 1,
-    tags: 1
+    tags: 1,
+    externalFileId: 1
   };
 
   // not count data amount
   if (simple) {
-    const collections = await MongoDatasetCollection.find(match)
+    const collections = await MongoDatasetCollection.find(match, undefined, {
+      ...readFromSecondary
+    })
       .select(selectField)
       .sort({
         updateTime: -1
@@ -78,6 +83,10 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
       data: await Promise.all(
         collections.map(async (item) => ({
           ...item,
+          tags: await collectionTagsToTagLabel({
+            datasetId,
+            tags: item.tags
+          }),
           dataAmount: 0,
           trainingAmount: 0,
           permission
@@ -153,12 +162,18 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
         }
       }
     ]),
-    MongoDatasetCollection.countDocuments(match)
+    MongoDatasetCollection.countDocuments(match, {
+      ...readFromSecondary
+    })
   ]);
 
   const data = await Promise.all(
     collections.map(async (item) => ({
       ...item,
+      tags: await collectionTagsToTagLabel({
+        datasetId,
+        tags: item.tags
+      }),
       permission
     }))
   );
