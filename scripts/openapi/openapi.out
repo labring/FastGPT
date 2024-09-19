@@ -1,0 +1,1284 @@
+[
+  {
+    "url": "/common/file/previewContent",
+    "path": "projects/app/src/pages/api/common/file/previewContent.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/common/file/read",
+    "path": "projects/app/src/pages/api/common/file/read.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/common/file/upload",
+    "path": "projects/app/src/pages/api/common/file/upload.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/common/file/uploadImage",
+    "path": "projects/app/src/pages/api/common/file/uploadImage.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/common/system/getInitData",
+    "path": "projects/app/src/pages/api/common/system/getInitData.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/common/system/unlockTask",
+    "path": "projects/app/src/pages/api/common/system/unlockTask.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/common/tools/urlFetch",
+    "path": "projects/app/src/pages/api/common/tools/urlFetch.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/ai/agent/createQuestionGuide",
+    "path": "projects/app/src/pages/api/core/ai/agent/createQuestionGuide.ts",
+    "method": "GET"
+  },
+  {
+    "query": [],
+    "body": [
+      {
+        "type": "ChatCompletionMessageParam[]",
+        "comment": "\n",
+        "key": "messages",
+        "required": true
+      }
+    ],
+    "response": [],
+    "url": "/core/ai/token",
+    "path": "projects/app/src/pages/api/core/ai/token.ts",
+    "method": "POST"
+  },
+  {
+    "query": [],
+    "body": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "appId",
+        "required": true
+      }
+    ],
+    "response": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "appId",
+        "required": true
+      }
+    ],
+    "url": "/core/app/copy",
+    "path": "projects/app/src/pages/api/core/app/copy.ts",
+    "method": "POST"
+  },
+  {
+    "body": [
+      {
+        "type": "ParentIdType",
+        "comment": "\n",
+        "key": "parentId",
+        "required": false
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "name",
+        "required": false
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "avatar",
+        "required": false
+      },
+      {
+        "type": "AppTypeEnum",
+        "comment": "\n",
+        "key": "type",
+        "required": false
+      },
+      {
+        "type": "TSIndexedAccessType",
+        "comment": "\n",
+        "key": "modules",
+        "required": true
+      },
+      {
+        "type": "TSIndexedAccessType",
+        "comment": "\n",
+        "key": "edges",
+        "required": false
+      },
+      {
+        "type": "TSIndexedAccessType",
+        "comment": "\n",
+        "key": "chatConfig",
+        "required": false
+      }
+    ],
+    "url": "/core/app/create",
+    "path": "projects/app/src/pages/api/core/app/create.ts",
+    "method": "POST"
+  },
+  {
+    "url": "/core/app/del",
+    "path": "projects/app/src/pages/api/core/app/del.ts",
+    "method": "GET"
+  },
+  {
+    "description": "获取我的模型",
+    "url": "/core/app/detail",
+    "path": "projects/app/src/pages/api/core/app/detail.ts",
+    "method": "GET"
+  },
+  {
+    "body": [
+      {
+        "type": "ParentIdType",
+        "comment": "\n",
+        "key": "parentId",
+        "required": false
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "name",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "intro",
+        "required": false
+      }
+    ],
+    "url": "/core/app/folder/create",
+    "path": "projects/app/src/pages/api/core/app/folder/create.ts",
+    "method": "POST"
+  },
+  {
+    "url": "/core/app/folder/path",
+    "path": "projects/app/src/pages/api/core/app/folder/path.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/app/getChatLogs",
+    "path": "projects/app/src/pages/api/core/app/getChatLogs.ts",
+    "method": "GET"
+  },
+  {
+    "query": [],
+    "body": {
+      "type": "Omit & TSTypeLiteral",
+      "comment": "\n"
+    },
+    "response": [],
+    "url": "/core/app/httpPlugin/create",
+    "path": "projects/app/src/pages/api/core/app/httpPlugin/create.ts",
+    "method": "POST"
+  },
+  {
+    "url": "/core/app/httpPlugin/getApiSchemaByUrl",
+    "path": "projects/app/src/pages/api/core/app/httpPlugin/getApiSchemaByUrl.ts",
+    "method": "GET"
+  },
+  {
+    "body": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "appId",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "name",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "avatar",
+        "required": false
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "intro",
+        "required": false
+      },
+      {
+        "type": "TSIndexedAccessType",
+        "comment": "\n",
+        "key": "pluginData",
+        "required": true
+      }
+    ],
+    "url": "/core/app/httpPlugin/update",
+    "path": "projects/app/src/pages/api/core/app/httpPlugin/update.ts",
+    "method": "POST"
+  },
+  {
+    "body": [
+      {
+        "type": "ParentIdType",
+        "comment": "\n",
+        "key": "parentId",
+        "required": false
+      },
+      {
+        "type": "AppTypeEnum | AppTypeEnum[]",
+        "comment": "\n",
+        "key": "type",
+        "required": false
+      },
+      {
+        "type": "boolean",
+        "comment": "\n",
+        "key": "getRecentlyChat",
+        "required": false
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "searchKey",
+        "required": false
+      }
+    ],
+    "url": "/core/app/list",
+    "path": "projects/app/src/pages/api/core/app/list.ts",
+    "method": "POST"
+  },
+  {
+    "query": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "appId",
+        "required": true
+      }
+    ],
+    "url": "/core/app/plugin/getPreviewNode",
+    "path": "projects/app/src/pages/api/core/app/plugin/getPreviewNode.ts",
+    "method": "GET"
+  },
+  {
+    "body": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "searchKey",
+        "required": false
+      },
+      {
+        "type": "ParentIdType",
+        "comment": "\n",
+        "key": "parentId",
+        "required": true
+      }
+    ],
+    "url": "/core/app/plugin/getSystemPluginTemplates",
+    "path": "projects/app/src/pages/api/core/app/plugin/getSystemPluginTemplates.ts",
+    "method": "POST"
+  },
+  {
+    "query": [
+      {
+        "type": "ParentIdType",
+        "comment": "\n",
+        "key": "parentId",
+        "required": true
+      }
+    ],
+    "body": [],
+    "response": {
+      "type": "Promise",
+      "comment": "\n"
+    },
+    "url": "/core/app/plugin/path",
+    "path": "projects/app/src/pages/api/core/app/plugin/path.ts",
+    "method": "GET"
+  },
+  {
+    "query": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "appId",
+        "required": true
+      }
+    ],
+    "body": [],
+    "description": "resume the app's inherit permission.",
+    "url": "/core/app/resumeInheritPermission",
+    "path": "projects/app/src/pages/api/core/app/resumeInheritPermission.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/app/template/detail",
+    "path": "projects/app/src/pages/api/core/app/template/detail.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/app/template/list",
+    "path": "projects/app/src/pages/api/core/app/template/list.ts",
+    "method": "GET"
+  },
+  {
+    "query": [],
+    "body": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "appId",
+        "required": true
+      },
+      {
+        "type": "boolean",
+        "comment": "\n",
+        "key": "createNew",
+        "required": false
+      }
+    ],
+    "response": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "id",
+        "required": false
+      }
+    ],
+    "url": "/core/app/transitionWorkflow",
+    "path": "projects/app/src/pages/api/core/app/transitionWorkflow.ts",
+    "method": "POST"
+  },
+  {
+    "description": "修改默认权限\n  1. 继承态目录：关闭继承态，修改权限，同步子目录默认权限\n  2. 继承态资源：关闭继承态，修改权限, 复制父级协作者。\n  3. 非继承目录：修改权限，同步子目录默认权限\n  4. 非继承资源：修改权限\n\n  移动\n  1. 继承态目录：改 parentId, 修改成父的默认权限，同步子目录默认权限和协作者\n  2. 继承态资源：改 parentId\n  3. 非继承：改 parentId",
+    "url": "/core/app/update",
+    "path": "projects/app/src/pages/api/core/app/update.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/app/version/detail",
+    "path": "projects/app/src/pages/api/core/app/version/detail.ts",
+    "method": "GET"
+  },
+  {
+    "query": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "appId",
+        "required": true
+      }
+    ],
+    "body": [],
+    "response": [
+      {
+        "type": "StoreNodeItemType[]",
+        "comment": "\n",
+        "key": "nodes",
+        "required": true
+      },
+      {
+        "type": "StoreEdgeItemType[]",
+        "comment": "\n",
+        "key": "edges",
+        "required": true
+      },
+      {
+        "type": "AppChatConfigType",
+        "comment": "\n",
+        "key": "chatConfig",
+        "required": true
+      }
+    ],
+    "url": "/core/app/version/latest",
+    "path": "projects/app/src/pages/api/core/app/version/latest.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/app/version/list",
+    "path": "projects/app/src/pages/api/core/app/version/list.ts",
+    "method": "GET"
+  },
+  {
+    "response": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "_id",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "appId",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "versionName",
+        "required": true
+      },
+      {
+        "type": "Date",
+        "comment": "\n",
+        "key": "time",
+        "required": true
+      },
+      {
+        "type": "boolean | TSUndefinedKeyword",
+        "comment": "\n",
+        "key": "isPublish",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "tmbId",
+        "required": true
+      }
+    ],
+    "url": "/core/app/version/listWorkflowx",
+    "path": "projects/app/src/pages/api/core/app/version/listWorkflow.tsx",
+    "method": "GET"
+  },
+  {
+    "url": "/core/app/version/publish",
+    "path": "projects/app/src/pages/api/core/app/version/publish.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/app/version/revert",
+    "path": "projects/app/src/pages/api/core/app/version/revert.ts",
+    "method": "GET"
+  },
+  {
+    "body": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "appId",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "versionId",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "versionName",
+        "required": true
+      }
+    ],
+    "url": "/core/app/version/update",
+    "path": "projects/app/src/pages/api/core/app/version/update.ts",
+    "method": "POST"
+  },
+  {
+    "url": "/core/chat/chatTest",
+    "path": "projects/app/src/pages/api/core/chat/chatTest.ts",
+    "method": "GET"
+  },
+  {
+    "description": "clear chat history",
+    "url": "/core/chat/clearHistories",
+    "path": "projects/app/src/pages/api/core/chat/clearHistories.ts",
+    "method": "GET"
+  },
+  {
+    "description": "clear chat history",
+    "url": "/core/chat/delHistory",
+    "path": "projects/app/src/pages/api/core/chat/delHistory.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/chat/feedback/closeCustom",
+    "path": "projects/app/src/pages/api/core/chat/feedback/closeCustom.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/chat/feedback/updateUserFeedback",
+    "path": "projects/app/src/pages/api/core/chat/feedback/updateUserFeedback.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/chat/getHistories",
+    "path": "projects/app/src/pages/api/core/chat/getHistories.ts",
+    "method": "GET"
+  },
+  {
+    "query": {
+      "type": "OutLinkChatAuthProps & TSTypeLiteral",
+      "comment": "\n"
+    },
+    "body": [],
+    "response": {
+      "type": "ChatHistoryItemResType[] | TSTypeLiteral",
+      "comment": "\n"
+    },
+    "url": "/core/chat/getResData",
+    "path": "projects/app/src/pages/api/core/chat/getResData.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/chat/init",
+    "path": "projects/app/src/pages/api/core/chat/init.ts",
+    "method": "GET"
+  },
+  {
+    "query": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "appId",
+        "required": true
+      }
+    ],
+    "body": [],
+    "response": [
+      {
+        "type": "number",
+        "comment": "\n",
+        "key": "total",
+        "required": true
+      }
+    ],
+    "url": "/core/chat/inputGuide/countTotal",
+    "path": "projects/app/src/pages/api/core/chat/inputGuide/countTotal.ts",
+    "method": "GET"
+  },
+  {
+    "query": [],
+    "body": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "appId",
+        "required": true
+      },
+      {
+        "type": "string[]",
+        "comment": "\n",
+        "key": "textList",
+        "required": true
+      }
+    ],
+    "response": [
+      {
+        "type": "number",
+        "comment": "\n",
+        "key": "insertLength",
+        "required": true
+      }
+    ],
+    "url": "/core/chat/inputGuide/create",
+    "path": "projects/app/src/pages/api/core/chat/inputGuide/create.ts",
+    "method": "POST"
+  },
+  {
+    "body": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "appId",
+        "required": true
+      },
+      {
+        "type": "string[]",
+        "comment": "\n",
+        "key": "dataIdList",
+        "required": true
+      }
+    ],
+    "url": "/core/chat/inputGuide/delete",
+    "path": "projects/app/src/pages/api/core/chat/inputGuide/delete.ts",
+    "method": "POST"
+  },
+  {
+    "body": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "appId",
+        "required": true
+      }
+    ],
+    "url": "/core/chat/inputGuide/deleteAll",
+    "path": "projects/app/src/pages/api/core/chat/inputGuide/deleteAll.ts",
+    "method": "POST"
+  },
+  {
+    "response": {
+      "type": "PaginationResponse",
+      "comment": "\n"
+    },
+    "url": "/core/chat/inputGuide/list",
+    "path": "projects/app/src/pages/api/core/chat/inputGuide/list.ts",
+    "method": "GET"
+  },
+  {
+    "body": {
+      "type": "OutLinkChatAuthProps & TSTypeLiteral",
+      "comment": "\n"
+    },
+    "response": {
+      "type": "string[]",
+      "comment": "\n"
+    },
+    "url": "/core/chat/inputGuide/query",
+    "path": "projects/app/src/pages/api/core/chat/inputGuide/query.ts",
+    "method": "POST"
+  },
+  {
+    "query": [],
+    "body": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "appId",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "dataId",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "text",
+        "required": true
+      }
+    ],
+    "response": [],
+    "url": "/core/chat/inputGuide/update",
+    "path": "projects/app/src/pages/api/core/chat/inputGuide/update.ts",
+    "method": "POST"
+  },
+  {
+    "url": "/core/chat/item/delete",
+    "path": "projects/app/src/pages/api/core/chat/item/delete.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/chat/item/getSpeech",
+    "path": "projects/app/src/pages/api/core/chat/item/getSpeech.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/chat/outLink/init",
+    "path": "projects/app/src/pages/api/core/chat/outLink/init.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/chat/team/init",
+    "path": "projects/app/src/pages/api/core/chat/team/init.ts",
+    "method": "GET"
+  },
+  {
+    "description": "update chat top, custom title",
+    "url": "/core/chat/updateHistory",
+    "path": "projects/app/src/pages/api/core/chat/updateHistory.ts",
+    "method": "GET"
+  },
+  {
+    "description": "get all dataset by teamId or tmbId",
+    "url": "/core/dataset/allDataset",
+    "path": "projects/app/src/pages/api/core/dataset/allDataset.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/collection/create/csvTable",
+    "path": "projects/app/src/pages/api/core/dataset/collection/create/csvTable.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/collection/create/fileId",
+    "path": "projects/app/src/pages/api/core/dataset/collection/create/fileId.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/collection/create/link",
+    "path": "projects/app/src/pages/api/core/dataset/collection/create/link.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/collection/create/localFile",
+    "path": "projects/app/src/pages/api/core/dataset/collection/create/localFile.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/collection/create/text",
+    "path": "projects/app/src/pages/api/core/dataset/collection/create/text.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/collection/create",
+    "path": "projects/app/src/pages/api/core/dataset/collection/create.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/collection/delete",
+    "path": "projects/app/src/pages/api/core/dataset/collection/delete.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/collection/detail",
+    "path": "projects/app/src/pages/api/core/dataset/collection/detail.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/collection/list",
+    "path": "projects/app/src/pages/api/core/dataset/collection/list.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/collection/paths",
+    "path": "projects/app/src/pages/api/core/dataset/collection/paths.ts",
+    "method": "GET"
+  },
+  {
+    "query": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "collectionId",
+        "required": true
+      }
+    ],
+    "body": [],
+    "response": [
+      {
+        "type": "url",
+        "comment": "\n",
+        "key": "type",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "value",
+        "required": true
+      }
+    ],
+    "url": "/core/dataset/collection/read",
+    "path": "projects/app/src/pages/api/core/dataset/collection/read.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/collection/scrollList",
+    "path": "projects/app/src/pages/api/core/dataset/collection/scrollList.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/collection/sync/link",
+    "path": "projects/app/src/pages/api/core/dataset/collection/sync/link.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/collection/update",
+    "path": "projects/app/src/pages/api/core/dataset/collection/update.ts",
+    "method": "GET"
+  },
+  {
+    "query": [],
+    "body": {
+      "type": "CreateDatasetParams",
+      "comment": "\n"
+    },
+    "response": {
+      "type": "string",
+      "comment": "\n"
+    },
+    "url": "/core/dataset/create",
+    "path": "projects/app/src/pages/api/core/dataset/create.ts",
+    "method": "POST"
+  },
+  {
+    "url": "/core/dataset/data/delete",
+    "path": "projects/app/src/pages/api/core/dataset/data/delete.ts",
+    "method": "GET"
+  },
+  {
+    "response": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "id",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "q",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "a",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "source",
+        "required": true
+      }
+    ],
+    "url": "/core/dataset/data/detail",
+    "path": "projects/app/src/pages/api/core/dataset/data/detail.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/data/insertData",
+    "path": "projects/app/src/pages/api/core/dataset/data/insertData.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/data/list",
+    "path": "projects/app/src/pages/api/core/dataset/data/list.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/data/pushData",
+    "path": "projects/app/src/pages/api/core/dataset/data/pushData.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/data/update",
+    "path": "projects/app/src/pages/api/core/dataset/data/update.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/delete",
+    "path": "projects/app/src/pages/api/core/dataset/delete.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/detail",
+    "path": "projects/app/src/pages/api/core/dataset/detail.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/exportAll",
+    "path": "projects/app/src/pages/api/core/dataset/exportAll.ts",
+    "method": "GET"
+  },
+  {
+    "response": {
+      "type": "TSTypeLiteral[]",
+      "comment": "\n"
+    },
+    "url": "/core/dataset/file/getPreviewChunks",
+    "path": "projects/app/src/pages/api/core/dataset/file/getPreviewChunks.ts",
+    "method": "GET"
+  },
+  {
+    "query": [],
+    "body": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "parentId",
+        "required": false
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "name",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "intro",
+        "required": true
+      }
+    ],
+    "response": [],
+    "url": "/core/dataset/folder/create",
+    "path": "projects/app/src/pages/api/core/dataset/folder/create.ts",
+    "method": "POST"
+  },
+  {
+    "body": [
+      {
+        "type": "ParentIdType",
+        "comment": "\n",
+        "key": "parentId",
+        "required": true
+      },
+      {
+        "type": "DatasetTypeEnum",
+        "comment": "\n",
+        "key": "type",
+        "required": false
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "searchKey",
+        "required": false
+      }
+    ],
+    "url": "/core/dataset/list",
+    "path": "projects/app/src/pages/api/core/dataset/list.ts",
+    "method": "POST"
+  },
+  {
+    "url": "/core/dataset/paths",
+    "path": "projects/app/src/pages/api/core/dataset/paths.ts",
+    "method": "GET"
+  },
+  {
+    "query": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "datasetId",
+        "required": true
+      }
+    ],
+    "body": [],
+    "description": "resume the dataset's inherit permission.",
+    "url": "/core/dataset/resumeInheritPermission",
+    "path": "projects/app/src/pages/api/core/dataset/resumeInheritPermission.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/searchTest",
+    "path": "projects/app/src/pages/api/core/dataset/searchTest.ts",
+    "method": "GET"
+  },
+  {
+    "response": [
+      {
+        "type": "number",
+        "comment": "\n",
+        "key": "rebuildingCount",
+        "required": true
+      },
+      {
+        "type": "number",
+        "comment": "\n",
+        "key": "trainingCount",
+        "required": true
+      }
+    ],
+    "url": "/core/dataset/training/getDatasetTrainingQueue",
+    "path": "projects/app/src/pages/api/core/dataset/training/getDatasetTrainingQueue.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/dataset/training/getQueueLen",
+    "path": "projects/app/src/pages/api/core/dataset/training/getQueueLen.ts",
+    "method": "GET"
+  },
+  {
+    "body": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "datasetId",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "vectorModel",
+        "required": true
+      }
+    ],
+    "response": [],
+    "url": "/core/dataset/training/rebuildEmbedding",
+    "path": "projects/app/src/pages/api/core/dataset/training/rebuildEmbedding.ts",
+    "method": "POST"
+  },
+  {
+    "query": [],
+    "response": {
+      "type": "TSAnyKeyword",
+      "comment": "\n"
+    },
+    "url": "/core/dataset/update",
+    "path": "projects/app/src/pages/api/core/dataset/update.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/core/workflow/debug",
+    "path": "projects/app/src/pages/api/core/workflow/debug.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/lafApi/[...path]",
+    "path": "projects/app/src/pages/api/lafApi/[...path].ts",
+    "method": "GET"
+  },
+  {
+    "url": "/plugins/TFSwitch/index",
+    "path": "projects/app/src/pages/api/plugins/TFSwitch/index.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/plugins/customFeedback/index",
+    "path": "projects/app/src/pages/api/plugins/customFeedback/index.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/plugins/customFeedback/v2/index",
+    "path": "projects/app/src/pages/api/plugins/customFeedback/v2/index.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/plugins/textEditor/index",
+    "path": "projects/app/src/pages/api/plugins/textEditor/index.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/plugins/textEditor/v2/index",
+    "path": "projects/app/src/pages/api/plugins/textEditor/v2/index.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/support/openapi/create",
+    "path": "projects/app/src/pages/api/support/openapi/create.ts",
+    "method": "GET"
+  },
+  {
+    "query": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "id",
+        "required": true
+      }
+    ],
+    "body": [],
+    "response": [],
+    "url": "/support/openapi/delete",
+    "path": "projects/app/src/pages/api/support/openapi/delete.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/support/openapi/list",
+    "path": "projects/app/src/pages/api/support/openapi/list.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/support/openapi/update",
+    "path": "projects/app/src/pages/api/support/openapi/update.ts",
+    "method": "GET"
+  },
+  {
+    "query": [],
+    "body": {
+      "type": "OutLinkEditType & OutLinkEditType & TSTypeLiteral",
+      "comment": "\n"
+    },
+    "response": {
+      "type": "string",
+      "comment": "\n"
+    },
+    "url": "/support/outLink/create",
+    "path": "projects/app/src/pages/api/support/outLink/create.ts",
+    "method": "POST"
+  },
+  {
+    "query": [
+      {
+        "type": "string",
+        "comment": "\n",
+        "key": "id",
+        "required": true
+      }
+    ],
+    "body": [],
+    "response": [],
+    "description": "delete a shareChat by shareChatId",
+    "url": "/support/outLink/delete",
+    "path": "projects/app/src/pages/api/support/outLink/delete.ts",
+    "method": "GET"
+  },
+  {
+    "query": {
+      "type": "TSAnyKeyword",
+      "comment": "\n"
+    },
+    "body": {
+      "type": "TSAnyKeyword",
+      "comment": "\n"
+    },
+    "response": [],
+    "url": "/support/outLink/feishu/[token]",
+    "path": "projects/app/src/pages/api/support/outLink/feishu/[token].ts",
+    "method": "GET"
+  },
+  {
+    "name": "获取应用内所有 Outlink",
+    "author": "Finley",
+    "version": "0.1.0",
+    "query": [
+      {
+        "type": "string",
+        "comment": "\n应用 ID",
+        "key": "appId",
+        "required": true
+      },
+      {
+        "type": "string",
+        "comment": "应用 ID\n类型",
+        "key": "type",
+        "required": true
+      }
+    ],
+    "body": [],
+    "response": {
+      "type": "OutLinkSchema[]",
+      "comment": "响应: 应用内全部 Outlink\n查询应用内全部 Outlink"
+    },
+    "description": "查询应用内全部 Outlink",
+    "url": "/support/outLink/list",
+    "path": "projects/app/src/pages/api/support/outLink/list.ts",
+    "method": "GET"
+  },
+  {
+    "query": {
+      "type": "TSAnyKeyword",
+      "comment": "\n"
+    },
+    "body": {
+      "type": "TSAnyKeyword",
+      "comment": "\n"
+    },
+    "response": [],
+    "url": "/support/outLink/offiaccount/[token]",
+    "path": "projects/app/src/pages/api/support/outLink/offiaccount/[token].ts",
+    "method": "GET"
+  },
+  {
+    "query": [],
+    "body": {
+      "type": "OutLinkEditType & TSTypeLiteral",
+      "comment": "\n"
+    },
+    "response": [],
+    "url": "/support/outLink/update",
+    "path": "projects/app/src/pages/api/support/outLink/update.ts",
+    "method": "POST"
+  },
+  {
+    "query": {
+      "type": "TSAnyKeyword",
+      "comment": "\n"
+    },
+    "body": {
+      "type": "TSAnyKeyword",
+      "comment": "\n"
+    },
+    "response": [],
+    "url": "/support/outLink/wecom/[token]",
+    "path": "projects/app/src/pages/api/support/outLink/wecom/[token].ts",
+    "method": "GET"
+  },
+  {
+    "url": "/support/user/account/loginByPassword",
+    "path": "projects/app/src/pages/api/support/user/account/loginByPassword.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/support/user/account/loginout",
+    "path": "projects/app/src/pages/api/support/user/account/loginout.ts",
+    "method": "GET"
+  },
+  {
+    "query": [],
+    "body": [],
+    "response": [],
+    "url": "/support/user/account/tokenLogin",
+    "path": "projects/app/src/pages/api/support/user/account/tokenLogin.ts",
+    "method": "GET"
+  },
+  {
+    "query": [],
+    "body": {
+      "type": "UserUpdateParams",
+      "comment": "\n"
+    },
+    "response": [],
+    "url": "/support/user/account/update",
+    "path": "projects/app/src/pages/api/support/user/account/update.ts",
+    "method": "POST"
+  },
+  {
+    "url": "/support/user/account/updatePasswordByOld",
+    "path": "projects/app/src/pages/api/support/user/account/updatePasswordByOld.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/support/user/team/limit/datasetSizeLimit",
+    "path": "projects/app/src/pages/api/support/user/team/limit/datasetSizeLimit.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/support/user/team/limit/exportDatasetLimit",
+    "path": "projects/app/src/pages/api/support/user/team/limit/exportDatasetLimit.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/support/user/team/limit/webSyncLimit",
+    "path": "projects/app/src/pages/api/support/user/team/limit/webSyncLimit.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/support/user/team/plan/getTeamPlanStatus",
+    "path": "projects/app/src/pages/api/support/user/team/plan/getTeamPlanStatus.ts",
+    "method": "GET"
+  },
+  {
+    "query": [],
+    "body": [],
+    "response": [],
+    "url": "/support/user/team/update",
+    "path": "projects/app/src/pages/api/support/user/team/update.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/support/wallet/usage/createTrainingUsage",
+    "path": "projects/app/src/pages/api/support/wallet/usage/createTrainingUsage.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/system/img/[id]",
+    "path": "projects/app/src/pages/api/system/img/[id].ts",
+    "method": "GET"
+  },
+  {
+    "url": "/v1/audio/transcriptions",
+    "path": "projects/app/src/pages/api/v1/audio/transcriptions.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/v1/chat/completions",
+    "path": "projects/app/src/pages/api/v1/chat/completions.ts",
+    "method": "GET"
+  },
+  {
+    "url": "/v1/embeddings",
+    "path": "projects/app/src/pages/api/v1/embeddings.ts",
+    "method": "GET"
+  }
+]
