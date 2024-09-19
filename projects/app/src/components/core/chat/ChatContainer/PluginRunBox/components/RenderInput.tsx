@@ -140,7 +140,7 @@ const RenderInput = () => {
             <FormLabel fontSize={'md'} fontWeight={'medium'}>
               {t('chat:file_input')}
             </FormLabel>
-            <QuestionTip label={t('chat:file_input_tip')} />
+            <QuestionTip ml={1} label={t('chat:file_input_tip')} />
             <Box flex={1} />
             {histories.length === 0 && (
               <Button
