@@ -385,6 +385,20 @@ export const emptyTemplates: Record<
         version: '481',
         inputs: [],
         outputs: []
+      },
+      {
+        nodeId: 'pluginConfig',
+        name: i18nT('common:core.module.template.system_config'),
+        intro: '',
+        avatar: 'core/workflow/template/systemConfig',
+        flowNodeType: FlowNodeTypeEnum.pluginConfig,
+        position: {
+          x: 184.66337662472682,
+          y: -216.05298493910115
+        },
+        version: '4811',
+        inputs: [],
+        outputs: []
       }
     ],
     edges: []

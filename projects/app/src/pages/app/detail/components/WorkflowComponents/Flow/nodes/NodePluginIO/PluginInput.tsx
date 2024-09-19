@@ -141,7 +141,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             }}
           />
         </Container>
-        {!!outputs.length && (
+        {!!outputs.filter((output) => output.type !== FlowNodeOutputTypeEnum.hidden).length && (
           <Container>
             <IOTitle text={t('common:common.Output')} />
             <RenderOutput nodeId={nodeId} flowOutputList={outputs} />

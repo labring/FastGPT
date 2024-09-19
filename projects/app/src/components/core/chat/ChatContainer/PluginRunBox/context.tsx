@@ -190,13 +190,17 @@ const PluginRunContextProvider = ({
       const abortSignal = new AbortController();
       chatController.current = abortSignal;
 
-      const newChatList: ChatSiteItemType[] = [
+      const createNewChatList = ({
+        includeFiles = true
+      }: {
+        includeFiles?: boolean;
+      }): ChatSiteItemType[] => [
         {
           dataId: getNanoid(24),
           obj: ChatRoleEnum.Human,
           status: 'finish',
           value: [
-            ...(files
+            ...(includeFiles && files
               ? files.map((file) => ({
                   type: ChatItemValueTypeEnum.file as any,
                   file: {
@@ -232,8 +236,12 @@ const PluginRunContextProvider = ({
           status: 'loading'
         }
       ];
-      setHistories(newChatList);
-      const messages = chats2GPTMessages({ messages: newChatList, reserveId: true });
+
+      setHistories(createNewChatList({}));
+      const messages = chats2GPTMessages({
+        messages: createNewChatList({ includeFiles: false }),
+        reserveId: true
+      });
 
       try {
         const { responseData } = await onStartChat({
