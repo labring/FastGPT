@@ -14,7 +14,7 @@
     "nodes": [
       {
         "nodeId": "pluginInput",
-        "name": "自定义插件输入",
+        "name": "插件开始",
         "intro": "可以配置插件需要哪些输入，利用这些输入来运行插件",
         "avatar": "core/workflow/template/workflowStart",
         "flowNodeType": "pluginInput",
@@ -49,7 +49,7 @@
       },
       {
         "nodeId": "pluginOutput",
-        "name": "自定义插件输出",
+        "name": "插件输出",
         "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
         "avatar": "core/workflow/template/pluginOutput",
         "flowNodeType": "pluginOutput",

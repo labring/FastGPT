@@ -19,6 +19,7 @@ import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ChatBoxInputFormType, UserInputFileItemType } from '../ChatBox/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
+
 type PluginRunContextType = OutLinkChatAuthProps &
   PluginRunBoxProps & {
     isChatting: boolean;

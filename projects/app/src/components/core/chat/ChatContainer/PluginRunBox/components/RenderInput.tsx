@@ -13,6 +13,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useFileUpload } from '../../ChatBox/hooks/useFileUpload';
 import FilePreview from '../../components/FilePreview';
 import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const RenderInput = () => {
   const { t } = useTranslation();
@@ -45,7 +46,6 @@ const RenderInput = () => {
     onSelectFile,
     uploadFiles,
     selectFileIcon,
-    selectFileLabel,
     showSelectFile,
     showSelectImg,
     removeFiles,
@@ -94,6 +94,7 @@ const RenderInput = () => {
     }
   }, [histories]);
 
+  // Parse history file
   const historyFileList = useMemo(() => {
     if (histories.length === 0) return [];
     const historyValue = histories[0].value as UserChatItemValueItemType[];
@@ -103,21 +104,18 @@ const RenderInput = () => {
   useEffect(() => {
     reset(historyFormValues || defaultFormValues);
     replaceFiles(historyFileList as any);
-  }, [defaultFormValues, getValues, historyFormValues, reset]);
+  }, [defaultFormValues, getValues, historyFileList, historyFormValues, replaceFiles, reset]);
 
   const isDisabledInput = histories.length > 0;
-  const hasFileUploading = fileList.some((item) => !item.url);
+  const hasFileUploading = useMemo(() => {
+    return fileList.some((item) => !item.url);
+  }, [fileList]);
 
-  useRequest2(
-    async () => {
-      uploadFiles();
-    },
-    {
-      manual: false,
-      errorToast: t('common:upload_file_error'),
-      refreshDeps: [fileList, outLinkAuthData, chatId]
-    }
-  );
+  useRequest2(uploadFiles, {
+    manual: false,
+    errorToast: t('common:upload_file_error'),
+    refreshDeps: [fileList, outLinkAuthData, chatId]
+  });
 
   return (
     <>
@@ -137,11 +135,12 @@ const RenderInput = () => {
       )}
       {/* file select */}
       {(showSelectFile || showSelectImg) && (
-        <Box mb={2}>
+        <Box mb={5}>
           <Flex alignItems={'center'}>
-            <FormLabel fontSize={'14px'} fontWeight={'medium'}>
-              {selectFileLabel}
+            <FormLabel fontSize={'md'} fontWeight={'medium'}>
+              {t('chat:file_input')}
             </FormLabel>
+            <QuestionTip label={t('chat:file_input_tip')} />
             <Box flex={1} />
             {histories.length === 0 && (
               <Button
@@ -151,7 +150,7 @@ const RenderInput = () => {
                   onOpenSelectFile();
                 }}
               >
-                {t('chat:upload')}
+                {t('chat:select')}
               </Button>
             )}
             <File onSelect={(files) => onSelectFile({ files, fileList })} />
@@ -162,6 +161,7 @@ const RenderInput = () => {
           />
         </Box>
       )}
+      {/* Filed */}
       {pluginInputs.map((input) => {
         return (
           <Controller
@@ -191,6 +191,7 @@ const RenderInput = () => {
           />
         );
       })}
+      {/* Run Button */}
       {onStartChat && onNewChat && (
         <Flex justifyContent={'end'} mt={8}>
           <Button

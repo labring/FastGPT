@@ -402,7 +402,7 @@ const ChatInput = ({
     [
       File,
       TextareaDom,
-      fileList.length,
+      fileList,
       handleSend,
       hasFileUploading,
       havInput,

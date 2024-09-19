@@ -10,7 +10,7 @@
   "modules": [
     {
       "moduleId": "w90mfp",
-      "name": "自定义插件输入",
+      "name": "插件开始",
       "flowType": "pluginInput",
       "showStatus": false,
       "position": {

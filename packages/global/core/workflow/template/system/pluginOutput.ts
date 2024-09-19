@@ -13,7 +13,7 @@ export const PluginOutputModule: FlowNodeTemplateType = {
   unique: true,
   forbidDelete: true,
   avatar: 'core/workflow/template/pluginOutput',
-  name: i18nT('workflow:custom_plugin_output'),
+  name: i18nT('workflow:template.plugin_output'),
   intro: i18nT('workflow:intro_custom_plugin_output'),
   showStatus: false,
   version: '481',

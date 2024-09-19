@@ -360,7 +360,7 @@ export const emptyTemplates: Record<
     nodes: [
       {
         nodeId: 'pluginInput',
-        name: i18nT('common:core.module.template.self_input'),
+        name: i18nT('workflow:template.plugin_start'),
         avatar: 'core/workflow/template/workflowStart',
         flowNodeType: FlowNodeTypeEnum.pluginInput,
         showStatus: false,

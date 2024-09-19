@@ -408,10 +408,11 @@ export const useWorkflow = () => {
   /* node */
   const handleRemoveNode = useMemoizedFn((change: NodeRemoveChange, node: Node) => {
     if (node.data.forbidDelete) {
-      return toast({
+      toast({
         status: 'warning',
         title: t('common:core.workflow.Can not delete node')
       });
+      return false;
     }
 
     // If the node has child nodes, remove the child nodes
@@ -438,6 +439,8 @@ export const useWorkflow = () => {
     setEdges((state) =>
       state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
     );
+
+    return true;
   });
   const handleSelectNode = useMemoizedFn((change: NodeSelectionChange) => {
     // If the node is not selected and the Ctrl key is pressed, select the node
@@ -506,8 +509,9 @@ export const useWorkflow = () => {
     for (const change of changes) {
       if (change.type === 'remove') {
         const node = nodes.find((n) => n.id === change.id);
-        if (node) {
-          handleRemoveNode(change, node);
+        // 如果删除失败，则不继续执行
+        if (node && !handleRemoveNode(change, node)) {
+          return;
         }
       } else if (change.type === 'select') {
         handleSelectNode(change);

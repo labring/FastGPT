@@ -144,7 +144,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
 
       return loadFiles;
     },
-    [maxSelectFiles, maxSize, toast, t]
+    [maxSelectFiles, replaceFiles, toast, t, maxSize]
   );
 
   const uploadFiles = async () => {
