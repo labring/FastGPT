@@ -1,6 +1,5 @@
 import type { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type.d';
 import { MongoDatasetCollection } from './schema';
-import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type.d';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { MongoDatasetTraining } from '../training/schema';
 import { urlsFetch } from '../../../common/string/cheerio';
@@ -12,6 +11,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { ClientSession } from '../../../common/mongo';
 import { PushDatasetDataResponse } from '@fastgpt/global/core/dataset/api';
 import { MongoDatasetCollectionTags } from '../tag/schema';
+import { readFromSecondary } from '../../../common/mongo/utils';
 
 /**
  * get all collection by top collectionId
@@ -160,7 +160,7 @@ export const reloadCollectionChunks = async ({
   const { chunks } = splitText2Chunks({
     text: newRawText,
     chunkLen: col.chunkSize || 512,
-    customReg: col.chunkSplitter ? [col.chunkSplitter] : [],
+    customReg: col.chunkSplitter ? [col.chunkSplitter] : []
   });
 
   // insert to training queue
@@ -204,7 +204,7 @@ export const reloadCollectionChunks = async ({
 };
 
 export const createOrGetCollectionTags = async ({
-  tags = [],
+  tags,
   datasetId,
   teamId,
   session
@@ -213,13 +213,20 @@ export const createOrGetCollectionTags = async ({
   datasetId: string;
   teamId: string;
   session?: ClientSession;
-}): Promise<string[]> => {
-  if (!tags.length) return [];
-  const existingTags = await MongoDatasetCollectionTags.find({
-    teamId,
-    datasetId,
-    $expr: { $in: ['$tag', tags] }
-  });
+}) => {
+  if (!tags) return undefined;
+
+  if (tags.length === 0) return [];
+
+  const existingTags = await MongoDatasetCollectionTags.find(
+    {
+      teamId,
+      datasetId,
+      tag: { $in: tags }
+    },
+    undefined,
+    { session }
+  ).lean();
 
   const existingTagContents = existingTags.map((tag) => tag.tag);
   const newTagContents = tags.filter((tag) => !existingTagContents.includes(tag));
@@ -234,4 +241,30 @@ export const createOrGetCollectionTags = async ({
   );
 
   return [...existingTags.map((tag) => tag._id), ...newTags.map((tag) => tag._id)];
+};
+
+export const collectionTagsToTagLabel = async ({
+  datasetId,
+  tags
+}: {
+  datasetId: string;
+  tags?: string[];
+}) => {
+  if (!tags) return undefined;
+  if (tags.length === 0) return;
+
+  // Get all the tags
+  const collectionTags = await MongoDatasetCollectionTags.find({ datasetId }, undefined, {
+    ...readFromSecondary
+  }).lean();
+  const tagsMap = new Map<string, string>();
+  collectionTags.forEach((tag) => {
+    tagsMap.set(String(tag._id), tag.tag);
+  });
+
+  return tags
+    .map((tag) => {
+      return tagsMap.get(tag) || '';
+    })
+    .filter(Boolean);
 };

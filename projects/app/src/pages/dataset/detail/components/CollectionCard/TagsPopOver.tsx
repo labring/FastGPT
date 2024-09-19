@@ -35,8 +35,8 @@ const TagsPopOver = ({
   const tagList = useMemo(
     () =>
       (collectionTags
-        ?.map((tagId) => {
-          const tagObject = allDatasetTags.find((tag) => tag._id === tagId);
+        ?.map((item) => {
+          const tagObject = allDatasetTags.find((tag) => tag.tag === item);
           return tagObject ? { _id: tagObject._id, tag: tagObject.tag } : null;
         })
         .filter((tag) => tag !== null) as {
@@ -153,9 +153,9 @@ const TagsPopOver = ({
         setIsUpdateLoading(true);
         await putDatasetCollectionById({
           id: currentCollection._id,
-          tags: checkedTags.map((tag) => tag._id)
+          tags: checkedTags.map((tag) => tag.tag)
         });
-        setCollectionTags(checkedTags.map((tag) => tag._id));
+        setCollectionTags(checkedTags.map((tag) => tag.tag));
         setIsUpdateLoading(false);
       }}
       display={showTagManage || overflowTags.length > 0 ? 'block' : 'none'}
