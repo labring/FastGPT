@@ -7,7 +7,18 @@ import { NextAPI } from '@/service/middleware/entry';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 export type OutLinkUpdateQuery = {};
-export type OutLinkUpdateBody = OutLinkEditType & {};
+
+// {
+// _id?: string; // Outlink 的 ID
+// name: string; // Outlink 的名称
+// responseDetail?: boolean; // 是否开启详细回复
+// immediateResponse?: string; // 立即回复的内容
+// defaultResponse?: string; // 默认回复的内容
+// limit?: OutLinkSchema<T>['limit']; // 限制
+// app?: T; // 平台的配置
+// }
+export type OutLinkUpdateBody = OutLinkEditType;
+
 export type OutLinkUpdateResponse = {};
 
 async function handler(
