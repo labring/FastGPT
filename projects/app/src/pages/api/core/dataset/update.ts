@@ -72,7 +72,7 @@ async function handler(
         ...(websiteConfig && { websiteConfig }),
         ...(status && { status }),
         ...(intro !== undefined && { intro }),
-        ...(externalReadUrl && { externalReadUrl }),
+        ...(externalReadUrl !== undefined && { externalReadUrl }),
         // move
         ...(updatedDefaultPermission !== undefined && {
           defaultPermission: updatedDefaultPermission

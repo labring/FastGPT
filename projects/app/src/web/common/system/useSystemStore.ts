@@ -19,8 +19,12 @@ type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: stri
 type State = {
   initd: boolean;
   setInitd: () => void;
+
   lastRoute: string;
   setLastRoute: (e: string) => void;
+  lastAppListRouteType?: string;
+  setLastAppListRouteType: (e?: string) => void;
+
   loginStore?: LoginStoreType;
   setLoginStore: (e: LoginStoreType) => void;
   loading: boolean;
@@ -65,6 +69,12 @@ export const useSystemStore = create<State>()(
         setLastRoute(e) {
           set((state) => {
             state.lastRoute = e;
+          });
+        },
+        lastAppListRouteType: undefined,
+        setLastAppListRouteType(e) {
+          set((state) => {
+            state.lastAppListRouteType = e;
           });
         },
         loginStore: undefined,

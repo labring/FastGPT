@@ -8,6 +8,8 @@ import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getFileContentTypeFromHeader, guessBase64ImageType } from '../../common/file/utils';
 import { serverRequestBaseUrl } from '../../common/api/serverRequest';
+import { i18nT } from '../../../web/i18n/utils';
+import { addLog } from '../../common/system/log';
 
 /* slice chat context by tokens */
 const filterEmptyMessages = (messages: ChatCompletionMessageParam[]) => {
@@ -111,20 +113,62 @@ export const loadRequestMessages = async ({
   useVision?: boolean;
   origin?: string;
 }) => {
+  // Load image to base64
+  const loadImageToBase64 = async (messages: ChatCompletionContentPart[]) => {
+    return Promise.all(
+      messages.map(async (item) => {
+        if (item.type === 'image_url') {
+          // Remove url origin
+          const imgUrl = (() => {
+            if (origin && item.image_url.url.startsWith(origin)) {
+              return item.image_url.url.replace(origin, '');
+            }
+            return item.image_url.url;
+          })();
+
+          // If imgUrl is a local path, load image from local, and set url to base64
+          if (imgUrl.startsWith('/') || process.env.VISION_FOCUS_BASE64 === 'true') {
+            addLog.debug('Load image from local server', {
+              baseUrl: serverRequestBaseUrl,
+              requestUrl: imgUrl
+            });
+            const response = await axios.get(imgUrl, {
+              baseURL: serverRequestBaseUrl,
+              responseType: 'arraybuffer',
+              proxy: false
+            });
+            const base64 = Buffer.from(response.data, 'binary').toString('base64');
+            const imageType =
+              getFileContentTypeFromHeader(response.headers['content-type']) ||
+              guessBase64ImageType(base64);
+
+            return {
+              ...item,
+              image_url: {
+                ...item.image_url,
+                url: `data:${imageType};base64,${base64}`
+              }
+            };
+          }
+        }
+        return item;
+      })
+    );
+  };
   // Split question text and image
-  function parseStringWithImages(input: string): ChatCompletionContentPart[] {
+  const parseStringWithImages = (input: string): ChatCompletionContentPart[] => {
     if (!useVision) {
       return [{ type: 'text', text: input || '' }];
     }
 
     // 正则表达式匹配图片URL
     const imageRegex =
-      /(https?:\/\/[^\s/$.?#].[^\s]*\.(?:png|jpe?g|gif|webp|bmp|tiff?|svg|ico|heic|avif))/i;
+      /(https?:\/\/[^\s/$.?#].[^\s]*\.(?:png|jpe?g|gif|webp|bmp|tiff?|svg|ico|heic|avif))/gi;
 
     const result: ChatCompletionContentPart[] = [];
 
     // 提取所有HTTPS图片URL并添加到result开头
-    const httpsImages = input.match(imageRegex) || [];
+    const httpsImages = [...new Set(Array.from(input.matchAll(imageRegex), (m) => m[0]))];
     httpsImages.forEach((url) => {
       result.push({
         type: 'image_url',
@@ -137,54 +181,27 @@ export const loadRequestMessages = async ({
     // 添加原始input作为文本
     result.push({ type: 'text', text: input });
     return result;
-  }
-  // Load image
+  };
+  // Parse user content(text and img)
   const parseUserContent = async (content: string | ChatCompletionContentPart[]) => {
     if (typeof content === 'string') {
-      return parseStringWithImages(content);
+      return loadImageToBase64(parseStringWithImages(content));
     }
 
     const result = await Promise.all(
       content.map(async (item) => {
         if (item.type === 'text') return parseStringWithImages(item.text);
-        if (item.type === 'file_url') return;
+        if (item.type === 'file_url') return; // LLM not support file_url
 
         if (!item.image_url.url) return item;
-
-        // Remove url origin
-        const imgUrl = (() => {
-          if (origin && item.image_url.url.startsWith(origin)) {
-            return item.image_url.url.replace(origin, '');
-          }
-          return item.image_url.url;
-        })();
-
-        /* Load local image */
-        if (imgUrl.startsWith('/')) {
-          const response = await axios.get(imgUrl, {
-            baseURL: serverRequestBaseUrl,
-            responseType: 'arraybuffer'
-          });
-          const base64 = Buffer.from(response.data, 'binary').toString('base64');
-          const imageType =
-            getFileContentTypeFromHeader(response.headers['content-type']) ||
-            guessBase64ImageType(base64);
-
-          return {
-            ...item,
-            image_url: {
-              ...item.image_url,
-              url: `data:${imageType};base64,${base64}`
-            }
-          };
-        }
 
         return item;
       })
     );
 
-    return result.flat().filter(Boolean);
+    return loadImageToBase64(result.flat().filter(Boolean) as ChatCompletionContentPart[]);
   };
+
   // format GPT messages, concat text messages
   const clearInvalidMessages = (messages: ChatCompletionMessageParam[]) => {
     return messages
@@ -247,7 +264,7 @@ export const loadRequestMessages = async ({
   };
 
   if (messages.length === 0) {
-    return Promise.reject('core.chat.error.Messages empty');
+    return Promise.reject(i18nT('common:core.chat.error.Messages empty'));
   }
 
   // filter messages file
@@ -275,6 +292,7 @@ export const loadRequestMessages = async ({
           content: await parseUserContent(item.content)
         };
       } else if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+        // remove invalid field
         return {
           role: item.role,
           content: item.content,

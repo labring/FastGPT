@@ -449,7 +449,11 @@ const ChatInput = ({
             border: 'none'
           }}
           placeholder={
-            isSpeaking ? t('common:core.chat.Speaking') : t('common:core.chat.Type a message')
+            isSpeaking
+              ? t('common:core.chat.Speaking')
+              : isPc
+                ? t('common:core.chat.Type a message')
+                : t('chat:input_placeholder_phone')
           }
           resize={'none'}
           rows={1}
