@@ -14,15 +14,29 @@
   "workflow": {
     "nodes": [
       {
+        "nodeId": "pluginConfig",
+        "name": "common:core.module.template.system_config",
+        "intro": "",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "pluginConfig",
+        "position": {
+          "x": -90.53591960393504,
+          "y": -17.580286776561252
+        },
+        "version": "4811",
+        "inputs": [],
+        "outputs": []
+      },
+      {
         "nodeId": "pluginInput",
-        "name": "自定义插件输入",
+        "name": "插件开始",
         "intro": "可以配置插件需要哪些输入，利用这些输入来运行插件",
         "avatar": "core/workflow/template/workflowStart",
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 362.9862638626885,
-          "y": 6.16353826540589
+          "x": 368.6800424053505,
+          "y": -17.580286776561252
         },
         "version": "481",
         "inputs": [
@@ -107,14 +121,14 @@
       },
       {
         "nodeId": "pluginOutput",
-        "name": "自定义插件输出",
+        "name": "插件输出",
         "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
         "avatar": "core/workflow/template/pluginOutput",
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1661.4708279314577,
-          "y": 23.877720915480012
+          "x": 1796.2235867744578,
+          "y": 6.419713223438748
         },
         "version": "481",
         "inputs": [
@@ -167,7 +181,7 @@
             "valueType": "dynamic",
             "label": "",
             "required": false,
-            "description": "core.module.input.description.HTTP Dynamic Input",
+            "description": "common:core.module.input.description.HTTP Dynamic Input",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -178,6 +192,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -187,7 +202,9 @@
               ],
               "showDescription": false,
               "showDefaultValue": true
-            }
+            },
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpMethod",
@@ -195,17 +212,33 @@
             "valueType": "string",
             "label": "",
             "value": "POST",
-            "required": true
+            "required": true,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpTimeout",
+            "renderTypeList": ["custom"],
+            "valueType": "number",
+            "label": "",
+            "value": 30,
+            "min": 5,
+            "max": 600,
+            "required": true,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpReqUrl",
             "renderTypeList": ["hidden"],
             "valueType": "string",
             "label": "",
-            "description": "core.module.input.description.Http Request Url",
+            "description": "common:core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "Doc2X/FileImg2text"
+            "value": "Doc2X/FileImg2text",
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpHeader",
@@ -213,9 +246,11 @@
             "valueType": "any",
             "value": [],
             "label": "",
-            "description": "core.module.input.description.Http Request Header",
-            "placeholder": "core.module.input.description.Http Request Header",
-            "required": false
+            "description": "common:core.module.input.description.Http Request Header",
+            "placeholder": "common:core.module.input.description.Http Request Header",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpParams",
@@ -223,7 +258,9 @@
             "valueType": "any",
             "value": [],
             "label": "",
-            "required": false
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpJsonBody",
@@ -231,7 +268,29 @@
             "valueType": "any",
             "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"files\": {{files}},\n  \"img_correction\": {{img_correction}},\n  \"formula\": {{formula}}\n}",
             "label": "",
-            "required": false
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpFormBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpContentType",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "value": "json",
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "renderTypeList": ["reference"],
@@ -249,6 +308,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -278,6 +338,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -307,6 +368,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -336,6 +398,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -354,7 +417,7 @@
           {
             "id": "error",
             "key": "error",
-            "label": "请求错误",
+            "label": "workflow:request_error",
             "description": "HTTP请求错误信息，成功时返回空",
             "valueType": "object",
             "type": "static"
@@ -362,8 +425,8 @@
           {
             "id": "httpRawResponse",
             "key": "httpRawResponse",
-            "label": "原始响应",
             "required": true,
+            "label": "workflow:raw_response",
             "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
             "valueType": "any",
             "type": "static"

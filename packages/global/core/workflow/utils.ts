@@ -33,6 +33,11 @@ import { RuntimeNodeItemType } from './runtime/type';
 import { getReferenceVariableValue } from './runtime/utils';
 import { Input_Template_History, Input_Template_UserChatInput } from './template/input';
 import { i18nT } from '../../../web/i18n/utils';
+import { RuntimeUserPromptType, UserChatItemType } from '../../core/chat/type';
+import { getNanoid } from '../../common/string/tools';
+import { ChatRoleEnum } from '../../core/chat/constants';
+import { runtimePrompt2ChatsValue } from '../../core/chat/adapt';
+import { getPluginRunContent } from '../../core/app/plugin/utils';
 
 export const getHandleId = (nodeId: string, type: 'source' | 'target', key: string) => {
   return `${nodeId}-${type}-${key}`;
@@ -395,3 +400,26 @@ export function replaceEditorVariable({
   }
   return text || '';
 }
+
+/* Get plugin runtime input user query */
+export const getPluginRunUserQuery = ({
+  pluginInputs,
+  variables,
+  files = []
+}: {
+  pluginInputs: FlowNodeInputItemType[];
+  variables: Record<string, any>;
+  files?: RuntimeUserPromptType['files'];
+}): UserChatItemType & { dataId: string } => {
+  return {
+    dataId: getNanoid(24),
+    obj: ChatRoleEnum.Human,
+    value: runtimePrompt2ChatsValue({
+      text: getPluginRunContent({
+        pluginInputs: pluginInputs,
+        variables
+      }),
+      files
+    })
+  };
+};
