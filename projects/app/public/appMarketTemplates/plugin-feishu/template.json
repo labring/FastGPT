@@ -9,14 +9,14 @@
     "nodes": [
       {
         "nodeId": "pluginInput",
-        "name": "自定义插件输入",
+        "name": "插件开始",
         "intro": "自定义配置外部输入，使用插件时，仅暴露自定义配置的输入",
         "avatar": "core/workflow/template/workflowStart",
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 517.5620777851774,
-          "y": -173.55711888178655
+          "x": 535.7465806305546,
+          "y": -201.26482361861054
         },
         "version": "481",
         "inputs": [
@@ -79,14 +79,14 @@
       },
       {
         "nodeId": "pluginOutput",
-        "name": "自定义插件输出",
+        "name": "插件输出",
         "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
-        "avatar": "/imgs/workflow/output.png",
+        "avatar": "core/workflow/template/pluginOutput",
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1668.9410524554828,
-          "y": -153.47815316221283
+          "x": 1776.027569211593,
+          "y": -58.264823618610535
         },
         "version": "481",
         "inputs": [],
@@ -111,7 +111,116 @@
             "valueType": "dynamic",
             "label": "",
             "required": false,
-            "description": "core.module.input.description.HTTP Dynamic Input"
+            "description": "common:core.module.input.description.HTTP Dynamic Input",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": ["custom"],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpTimeout",
+            "renderTypeList": ["custom"],
+            "valueType": "number",
+            "label": "",
+            "value": 30,
+            "min": 5,
+            "max": 600,
+            "required": true,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "label": "",
+            "description": "common:core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "{{url}}",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": ["custom"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "description": "common:core.module.input.description.Http Request Header",
+            "placeholder": "common:core.module.input.description.Http Request Header",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": "{\r\n    \"msg_type\": \"text\",\r\n    \"content\": {\r\n        \"text\": \"{{text}}\"\r\n    }\r\n}",
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpFormBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpContentType",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "value": "json",
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "text",
@@ -124,7 +233,28 @@
               "key": true,
               "valueType": true
             },
-            "value": ["pluginInput", "p0m68Dv5KaIp"]
+            "value": ["pluginInput", "p0m68Dv5KaIp"],
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
           },
           {
             "key": "url",
@@ -137,54 +267,48 @@
               "key": true,
               "valueType": true
             },
-            "value": ["pluginInput", "mv52BrPVE6bm"]
-          },
-          {
-            "key": "system_httpMethod",
-            "renderTypeList": ["custom"],
-            "valueType": "string",
-            "label": "",
-            "value": "POST",
-            "required": true
-          },
-          {
-            "key": "system_httpReqUrl",
-            "renderTypeList": ["hidden"],
-            "valueType": "string",
-            "label": "",
-            "description": "core.module.input.description.Http Request Url",
-            "placeholder": "https://api.ai.com/getInventory",
-            "required": false,
-            "value": "{{url}}"
-          },
-          {
-            "key": "system_httpHeader",
-            "renderTypeList": ["custom"],
-            "valueType": "any",
-            "value": [],
-            "label": "",
-            "description": "core.module.input.description.Http Request Header",
-            "placeholder": "core.module.input.description.Http Request Header",
-            "required": false
-          },
-          {
-            "key": "system_httpParams",
-            "renderTypeList": ["hidden"],
-            "valueType": "any",
-            "value": [],
-            "label": "",
-            "required": false
-          },
-          {
-            "key": "system_httpJsonBody",
-            "renderTypeList": ["hidden"],
-            "valueType": "any",
-            "value": "{\r\n    \"msg_type\": \"text\",\r\n    \"content\": {\r\n        \"text\": \"{{text}}\"\r\n    }\r\n}",
-            "label": "",
-            "required": false
+            "value": ["pluginInput", "mv52BrPVE6bm"],
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
           }
         ],
         "outputs": [
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:request_error",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "required": true,
+            "label": "workflow:raw_response",
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
           {
             "id": "system_addOutputParam",
             "key": "system_addOutputParam",
@@ -195,25 +319,22 @@
               "key": true,
               "valueType": true
             }
-          },
-          {
-            "id": "error",
-            "key": "error",
-            "label": "请求错误",
-            "description": "HTTP请求错误信息，成功时返回空",
-            "valueType": "object",
-            "type": "static"
-          },
-          {
-            "id": "httpRawResponse",
-            "key": "httpRawResponse",
-            "label": "原始响应",
-            "required": true,
-            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
-            "valueType": "any",
-            "type": "static"
           }
         ]
+      },
+      {
+        "nodeId": "q3ccNXiZIHoS",
+        "name": "系统配置",
+        "intro": "",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "pluginConfig",
+        "position": {
+          "x": 99.73879703925843,
+          "y": -201.26482361861054
+        },
+        "version": "4811",
+        "inputs": [],
+        "outputs": []
       }
     ],
     "edges": [

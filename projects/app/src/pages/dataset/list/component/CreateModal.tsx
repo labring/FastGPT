@@ -17,7 +17,6 @@ import { useTranslation } from 'next-i18next';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ComplianceTip from '@/components/common/ComplianceTip/index';

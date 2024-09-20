@@ -49,13 +49,16 @@ import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { updatePluginInputByVariables } from '@fastgpt/global/core/workflow/utils';
+import {
+  getPluginRunUserQuery,
+  updatePluginInputByVariables
+} from '@fastgpt/global/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
-import { getPluginRunUserQuery } from '@fastgpt/service/core/workflow/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
+import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -185,8 +188,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Get obj=Human history
     const userQuestion: UserChatItemType = (() => {
       if (isPlugin) {
-        // TODO：get plugin files from variables
-        return getPluginRunUserQuery({ nodes: app.modules, variables });
+        return getPluginRunUserQuery({
+          pluginInputs: getPluginInputsFromStoreNodes(app.modules),
+          variables,
+          files: variables.files
+        });
       }
 
       const latestHumanChat = chatMessages.pop() as UserChatItemType | undefined;

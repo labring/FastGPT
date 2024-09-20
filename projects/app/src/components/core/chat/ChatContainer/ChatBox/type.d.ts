@@ -22,6 +22,7 @@ export type ChatBoxInputFormType = {
   input: string;
   files: UserInputFileItemType[];
   chatStarted: boolean;
+  [key: string]: any;
 };
 
 export type ChatBoxInputType = {

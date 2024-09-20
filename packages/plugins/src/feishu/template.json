@@ -15,14 +15,14 @@
     "nodes": [
       {
         "nodeId": "pluginInput",
-        "name": "自定义插件输入",
+        "name": "插件开始",
         "intro": "可以配置插件需要哪些输入，利用这些输入来运行插件",
         "avatar": "core/workflow/template/workflowStart",
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 156.37657136084977,
-          "y": 90.73380846709256
+          "x": 194.3171058153904,
+          "y": 125.65095361549629
         },
         "version": "481",
         "inputs": [
@@ -68,14 +68,14 @@
       },
       {
         "nodeId": "pluginOutput",
-        "name": "自定义插件输出",
+        "name": "插件输出",
         "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
         "avatar": "core/workflow/template/pluginOutput",
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 2110.7223589692912,
-          "y": 120.17602722162474
+          "x": 2128.4279417147436,
+          "y": 170.6509536154963
         },
         "version": "481",
         "inputs": [
@@ -110,7 +110,7 @@
             "valueType": "dynamic",
             "label": "",
             "required": false,
-            "description": "core.module.input.description.HTTP Dynamic Input",
+            "description": "common:core.module.input.description.HTTP Dynamic Input",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -121,6 +121,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -130,7 +131,9 @@
               ],
               "showDescription": false,
               "showDefaultValue": true
-            }
+            },
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpMethod",
@@ -138,17 +141,33 @@
             "valueType": "string",
             "label": "",
             "value": "POST",
-            "required": true
+            "required": true,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpTimeout",
+            "renderTypeList": ["custom"],
+            "valueType": "number",
+            "label": "",
+            "value": 30,
+            "min": 5,
+            "max": 600,
+            "required": true,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpReqUrl",
             "renderTypeList": ["hidden"],
             "valueType": "string",
             "label": "",
-            "description": "core.module.input.description.Http Request Url",
+            "description": "common:core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "{{url}}"
+            "value": "{{url}}",
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpHeader",
@@ -156,9 +175,11 @@
             "valueType": "any",
             "value": [],
             "label": "",
-            "description": "core.module.input.description.Http Request Header",
-            "placeholder": "core.module.input.description.Http Request Header",
-            "required": false
+            "description": "common:core.module.input.description.Http Request Header",
+            "placeholder": "common:core.module.input.description.Http Request Header",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpParams",
@@ -166,7 +187,9 @@
             "valueType": "any",
             "value": [],
             "label": "",
-            "required": false
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpJsonBody",
@@ -174,7 +197,29 @@
             "valueType": "any",
             "value": "{{content}}",
             "label": "",
-            "required": false
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpFormBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpContentType",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "value": "json",
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "renderTypeList": ["reference"],
@@ -192,6 +237,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -221,6 +267,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -239,7 +286,7 @@
           {
             "id": "error",
             "key": "error",
-            "label": "请求错误",
+            "label": "workflow:request_error",
             "description": "HTTP请求错误信息，成功时返回空",
             "valueType": "object",
             "type": "static"
@@ -247,8 +294,8 @@
           {
             "id": "httpRawResponse",
             "key": "httpRawResponse",
-            "label": "原始响应",
             "required": true,
+            "label": "workflow:raw_response",
             "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
             "valueType": "any",
             "type": "static"
@@ -290,8 +337,8 @@
         "flowNodeType": "code",
         "showStatus": true,
         "position": {
-          "x": 805.8169457909617,
-          "y": -159.52218926716316
+          "x": 833.6400043909581,
+          "y": -127.34904638450371
         },
         "version": "482",
         "inputs": [
@@ -301,7 +348,7 @@
             "valueType": "dynamic",
             "label": "",
             "required": false,
-            "description": "这些变量会作为代码的运行的输入参数",
+            "description": "workflow:these_variables_will_be_input_parameters_for_code_execution",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -312,6 +359,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -321,19 +369,25 @@
               ],
               "showDescription": false,
               "showDefaultValue": true
-            }
+            },
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "codeType",
             "renderTypeList": ["hidden"],
             "label": "",
-            "value": "js"
+            "value": "js",
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "code",
             "renderTypeList": ["custom"],
             "label": "",
-            "value": "function main({data1}){\n    try{\n        const parseData = JSON.parse(data1)\n        if(typeof parseData === 'object') {\n            return parseData\n        }\n        return {\n            \"msg_type\": \"text\",\n            content: {\n                \"text\": data1\n            }\n        }\n    } catch(err) {\n        return {\n            \"msg_type\": \"text\",\n            content: {\n                \"text\": data1\n            }\n        }\n    }\n}"
+            "value": "function main({data1}){\n    try{\n        const parseData = JSON.parse(data1)\n        if(typeof parseData === 'object') {\n            return parseData\n        }\n        return {\n            \"msg_type\": \"text\",\n            content: {\n                \"text\": data1\n            }\n        }\n    } catch(err) {\n        return {\n            \"msg_type\": \"text\",\n            content: {\n                \"text\": data1\n            }\n        }\n    }\n}",
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "renderTypeList": ["reference"],
@@ -351,6 +405,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -369,14 +424,15 @@
           {
             "id": "system_rawResponse",
             "key": "system_rawResponse",
-            "label": "完整响应数据",
+            "label": "workflow:full_response_data",
             "valueType": "object",
-            "type": "static"
+            "type": "static",
+            "description": ""
           },
           {
             "id": "error",
             "key": "error",
-            "label": "运行错误",
+            "label": "workflow:execution_error",
             "description": "代码运行错误信息，成功时返回空",
             "valueType": "object",
             "type": "static"
@@ -417,6 +473,20 @@
             "label": "content"
           }
         ]
+      },
+      {
+        "nodeId": "xDvVyZbQIrPg",
+        "name": "系统配置",
+        "intro": "",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "pluginConfig",
+        "position": {
+          "x": -272.2181157945658,
+          "y": 125.65095361549629
+        },
+        "version": "4811",
+        "inputs": [],
+        "outputs": []
       }
     ],
     "edges": [
