@@ -23,14 +23,8 @@ export interface I18nNamespaces {
 
 export type I18nNsType = (keyof I18nNamespaces)[];
 
-export type NestedKeyOf<ObjectType extends object> = {
-  [Key in keyof ObjectType & (string | number)]: ObjectType[Key] extends object
-    ? `${Key}` | `${Key}.${NestedKeyOf<ObjectType[Key]>}`
-    : `${Key}`;
-}[keyof ObjectType & (string | number)];
-
 export type ParseKeys<Ns extends keyof I18nNamespaces = keyof I18nNamespaces> = {
-  [K in Ns]: `${K}:${NestedKeyOf<I18nNamespaces[K]>}`;
+  [K in Ns]: `${K}:${keyof I18nNamespaces[K] & string}`;
 }[Ns];
 
 export type I18nKeyFunction = {
