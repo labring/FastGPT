@@ -48,7 +48,7 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
   {
     title: i18nT('app:template.standard_template'),
     desc: '',
-    value: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考内容:
+    value: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
 {{quote}}
@@ -83,7 +83,7 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
   {
     title: i18nT('app:template.standard_strict'),
     desc: '',
-    value: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考内容:
+    value: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
 {{quote}}
@@ -133,7 +133,7 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
   {
     title: i18nT('app:template.standard_template'),
     desc: '',
-    value: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考内容:
+    value: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
 {{quote}}
@@ -164,7 +164,7 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
   {
     title: i18nT('app:template.standard_strict'),
     desc: '',
-    value: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考内容:
+    value: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
 {{quote}}
@@ -207,7 +207,7 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
 ];
 
 // Document quote prompt
-export const Prompt_DocumentQuote = `将 <Reference></Reference> 中的内容作为本次对话的参考内容:
+export const Prompt_DocumentQuote = `将 <Reference></Reference> 中的内容作为本次对话的参考:
 <Reference>
 {{quote}}
 </Reference>
