@@ -782,10 +782,12 @@ const WorkflowContextProvider = ({
 
   /* snapshots */
   const [past, setPast] = useLocalStorageState<SnapshotsType[]>(`${appId}-past`, {
-    defaultValue: []
+    defaultValue: [],
+    listenStorageChange: true
   }) as [SnapshotsType[], (value: SetStateAction<SnapshotsType[]>) => void];
   const [future, setFuture] = useLocalStorageState<SnapshotsType[]>(`${appId}-future`, {
-    defaultValue: []
+    defaultValue: [],
+    listenStorageChange: true
   }) as [SnapshotsType[], (value: SetStateAction<SnapshotsType[]>) => void];
 
   const resetSnapshot = useMemoizedFn((state: SnapshotsType) => {
