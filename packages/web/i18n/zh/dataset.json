@@ -1,17 +1,13 @@
 {
   "Enable": "启用",
-  "collection": {
-    "Create update time": "创建/更新时间",
-    "Training type": "训练模式"
-  },
+  "collection.Create update time": "创建/更新时间",
+  "collection.Training type": "训练模式",
   "collection_tags": "集合标签",
   "common_dataset": "通用知识库",
   "common_dataset_desc": "可通过导入文件、网页链接或手动录入形式构建知识库",
   "confirm_to_rebuild_embedding_tip": "确认为知识库切换索引？\n切换索引是一个非常重量的操作，需要对您知识库内所有数据进行重新索引，时间可能较长，请确保账号内剩余积分充足。\n\n此外，你还需要注意修改选择该知识库的应用，避免它们与其他索引模型知识库混用。",
-  "dataset": {
-    "no_collections": "暂无数据集",
-    "no_tags": "暂无标签"
-  },
+  "dataset.no_collections": "暂无数据集",
+  "dataset.no_tags": "暂无标签",
   "external_file": "外部文件库",
   "external_file_dataset_desc": "可以从外部文件库导入文件构建知识库，文件不会进行二次存储",
   "external_id": "文件阅读 ID",
@@ -23,26 +19,20 @@
   "folder_dataset": "文件夹",
   "rebuild_embedding_start_tip": "切换索引模型任务已开始",
   "rebuilding_index_count": "重建中索引数量：{{count}}",
-  "tag": {
-    "Add New": "新建",
-    "Add_new_tag": "新建标签",
-    "Edit_tag": "编辑标签",
-    "add": "创建",
-    "cancel": "取消选择",
-    "delete_tag_confirm": "确定删除标签？",
-    "manage": "标签管理",
-    "searchOrAddTag": "搜索或添加标签",
-    "tags": "标签",
-    "total_tags": "共{{total}}个标签"
-  },
+  "tag.Add New": "新建",
+  "tag.Add_new_tag": "新建标签",
+  "tag.Edit_tag": "编辑标签",
+  "tag.add": "创建",
+  "tag.cancel": "取消选择",
+  "tag.delete_tag_confirm": "确定删除标签？",
+  "tag.manage": "标签管理",
+  "tag.searchOrAddTag": "搜索或添加标签",
+  "tag.tags": "标签",
+  "tag.total_tags": "共{{total}}个标签",
   "the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt": "知识库有训练中或正在重建的索引",
   "website_dataset": "Web 站点同步",
   "website_dataset_desc": "Web 站点同步允许你直接使用一个网页链接构建知识库",
-  "permission": {
-    "des": {
-      "read": "可查看知识库内容",
-      "write": "可增加和变更知识库内容",
-      "manage": "可管理整个知识库数据和信息"
-    }
-  }
+  "permission.des.read": "可查看知识库内容",
+  "permission.des.write": "可增加和变更知识库内容",
+  "permission.des.manage": "可管理整个知识库数据和信息"
 }

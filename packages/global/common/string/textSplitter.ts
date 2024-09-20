@@ -91,6 +91,13 @@ ${mdSplitString}
   };
 };
 
+/* 
+  1. 自定义分隔符：不需要重叠
+  2. Markdown 标题：不需要重叠；标题嵌套共享。
+  3. 特殊 markdown 语法：不需要重叠
+  4. 段落：尽可能保证它是一个完整的段落。
+  5. 标点分割：重叠
+*/
 const commonSplit = (props: SplitProps): SplitResponse => {
   let { text = '', chunkLen, overlapRatio = 0.2, customReg = [] } = props;
 
