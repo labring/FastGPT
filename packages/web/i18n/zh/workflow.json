@@ -9,10 +9,8 @@
   "can_not_loop": "该节点不支持循环嵌套",
   "choose_another_application_to_call": "选择一个其他应用进行调用",
   "classification_result": "分类结果",
-  "code": {
-    "Reset template": "还原模板",
-    "Reset template confirm": "确认还原代码模板？将会重置所有输入和输出至模板值，请注意保存当前代码。"
-  },
+  "code.Reset template": "还原模板",
+  "code.Reset template confirm": "确认还原代码模板？将会重置所有输入和输出至模板值，请注意保存当前代码。",
   "code_execution": "代码运行",
   "collection_metadata_filter": "集合元数据过滤",
   "complete_extraction_result": "完整提取结果",
@@ -58,10 +56,8 @@
   "http_raw_response_description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
   "http_request": "HTTP 请求",
   "http_request_error_info": "HTTP请求错误信息，成功时返回空",
-  "ifelse": {
-    "Input value": "输入值",
-    "Select value": "选择值"
-  },
+  "ifelse.Input value": "输入值",
+  "ifelse.Select value": "选择值",
   "input_description": "字段描述",
   "input_variable_list": "可输入 / 唤起变量列表",
   "intro_assigned_reply": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
@@ -110,10 +106,8 @@
   "optional_value_type_tip": "可以指定 1 个或多个数据类型，用户在动态添加字段时，仅可选择配置的类型",
   "pan_priority": "触摸板优先",
   "pass_returned_object_as_output_to_next_nodes": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key",
-  "plugin": {
-    "Instruction_Tip": "可以配置一段说明，以解释该插件的用途。每次使用插件前，会显示该段说明。支持标准 Markdown 语法。",
-    "Instructions": "使用说明"
-  },
+  "plugin.Instruction_Tip": "可以配置一段说明，以解释该插件的用途。每次使用插件前，会显示该段说明。支持标准 Markdown 语法。",
+  "plugin.Instructions": "使用说明",
   "plugin_input": "插件输入",
   "question_classification": "问题分类",
   "question_optimization": "问题优化",
@@ -127,29 +121,25 @@
   "regex": "正则",
   "reply_text": "回复的文本",
   "request_error": "请求错误",
-  "response": {
-    "Code log": "Log 日志",
-    "Custom inputs": "自定义输入",
-    "Custom outputs": "自定义输出",
-    "Error": "错误信息",
-    "Read file result": "文档解析结果预览",
-    "read files": "解析的文档"
-  },
+  "response.Code log": "Log 日志",
+  "response.Custom inputs": "自定义输入",
+  "response.Custom outputs": "自定义输出",
+  "response.Error": "错误信息",
+  "response.Read file result": "文档解析结果预览",
+  "response.read files": "解析的文档",
   "select_an_application": "选择一个应用",
   "select_another_application_to_call": "可以选择一个其他应用进行调用",
   "special_array_format": "特殊数组格式，搜索结果为空时，返回空数组。",
   "start_with": "开始为",
   "target_fields_description": "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
-  "template": {
-    "ai_chat": "AI 对话",
-    "ai_chat_intro": "AI 大模型对话",
-    "dataset_search": "知识库搜索",
-    "dataset_search_intro": "调用“语义检索”和“全文检索”能力，从“知识库”中查找可能与问题相关的参考内容",
-    "system_config": "系统配置",
-    "tool_call": "工具调用",
-    "tool_call_intro": "通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。",
-    "workflow_start": "流程开始"
-  },
+  "template.ai_chat": "AI 对话",
+  "template.ai_chat_intro": "AI 大模型对话",
+  "template.dataset_search": "知识库搜索",
+  "template.dataset_search_intro": "调用“语义检索”和“全文检索”能力，从“知识库”中查找可能与问题相关的参考内容",
+  "template.system_config": "系统配置",
+  "template.tool_call": "工具调用",
+  "template.tool_call_intro": "通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。",
+  "template.workflow_start": "流程开始",
   "template.plugin_output": "插件输出",
   "template.plugin_start": "插件开始",
   "text_concatenation": "文本拼接",
@@ -163,12 +153,11 @@
   "update_specified_node_output_or_global_variable": "可以更新指定节点的输出值或更新全局变量",
   "use_user_id": "使用者 ID",
   "user_question": "用户问题",
+  "value_type": "数据类型",
   "variable_picker_tips": "可输入节点名或变量名搜索",
   "variable_update": "变量更新",
-  "workflow": {
-    "My edit": "我的编辑",
-    "Switch_success": "切换成功",
-    "Team cloud": "团队云端",
-    "exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。"
-  }
+  "workflow.My edit": "我的编辑",
+  "workflow.Switch_success": "切换成功",
+  "workflow.Team cloud": "团队云端",
+  "workflow.exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。"
 }

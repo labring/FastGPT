@@ -9,10 +9,8 @@
   "can_not_loop": "This node can't loop.",
   "choose_another_application_to_call": "Select another application to call",
   "classification_result": "Classification Result",
-  "code": {
-    "Reset template": "Reset Template",
-    "Reset template confirm": "Confirm reset code template? This will reset all inputs and outputs to template values. Please save your current code."
-  },
+  "code.Reset template": "Reset Template",
+  "code.Reset template confirm": "Confirm reset code template? This will reset all inputs and outputs to template values. Please save your current code.",
   "code_execution": "Code Execution",
   "collection_metadata_filter": "Collection Metadata Filter",
   "complete_extraction_result": "Complete Extraction Result",
@@ -58,10 +56,8 @@
   "http_raw_response_description": "Raw HTTP response. Only accepts string or JSON type response data.",
   "http_request": "HTTP Request",
   "http_request_error_info": "HTTP request error information, returns empty on success",
-  "ifelse": {
-    "Input value": "Input Value",
-    "Select value": "Select Value"
-  },
+  "ifelse.Input value": "Input Value",
+  "ifelse.Select value": "Select Value",
   "input_description": "Field Description",
   "input_variable_list": "Type / to invoke variable list",
   "intro_assigned_reply": "This module can directly reply with a specified content. Commonly used for guidance or prompts. Non-string content will be converted to string for output.",
@@ -104,10 +100,8 @@
   "optional_value_type_tip": "You can specify one or more data types. When dynamically adding fields, users can only select the configured types.",
   "pan_priority": "Touchpad first",
   "pass_returned_object_as_output_to_next_nodes": "Pass the object returned in the code as output to the next nodes. The variable name needs to correspond to the return key.",
-  "plugin": {
-    "Instruction_Tip": "You can configure an instruction to explain the purpose of the plugin. This instruction will be displayed each time the plugin is used. Supports standard Markdown syntax.",
-    "Instructions": "Instructions"
-  },
+  "plugin.Instruction_Tip": "You can configure an instruction to explain the purpose of the plugin. This instruction will be displayed each time the plugin is used. Supports standard Markdown syntax.",
+  "plugin.Instructions": "Instructions",
   "plugin_input": "Plugin Input",
   "question_classification": "Question Classification",
   "question_optimization": "Question Optimization",
@@ -121,29 +115,25 @@
   "regex": "Regex",
   "reply_text": "Reply Text",
   "request_error": "Request Error",
-  "response": {
-    "Code log": "Code Log",
-    "Custom inputs": "Custom Inputs",
-    "Custom outputs": "Custom Outputs",
-    "Error": "Error",
-    "Read file result": "Read File Result",
-    "read files": "Read Files"
-  },
+  "response.Code log": "Code Log",
+  "response.Custom inputs": "Custom Inputs",
+  "response.Custom outputs": "Custom Outputs",
+  "response.Error": "Error",
+  "response.Read file result": "Read File Result",
+  "response.read files": "Read Files",
   "select_an_application": "Select an Application",
   "select_another_application_to_call": "You can choose another application to call",
   "special_array_format": "Special array format, returns an empty array when the search result is empty.",
   "start_with": "Starts With",
   "target_fields_description": "A target field consists of 'description' and 'key'. Multiple target fields can be extracted.",
-  "template": {
-    "ai_chat": "AI Chat",
-    "ai_chat_intro": "AI Large Model Chat",
-    "dataset_search": "Dataset Search",
-    "dataset_search_intro": "Use 'semantic search' and 'full-text search' capabilities to find potentially relevant reference content from the 'Dataset'.",
-    "system_config": "System Configuration",
-    "tool_call": "Tool Call",
-    "tool_call_intro": "Automatically select one or more functional blocks for calling through the AI model, or call plugins.",
-    "workflow_start": "Workflow Start"
-  },
+  "template.ai_chat": "AI Chat",
+  "template.ai_chat_intro": "AI Large Model Chat",
+  "template.dataset_search": "Dataset Search",
+  "template.dataset_search_intro": "Use 'semantic search' and 'full-text search' capabilities to find potentially relevant reference content from the 'Dataset'.",
+  "template.system_config": "System Configuration",
+  "template.tool_call": "Tool Call",
+  "template.tool_call_intro": "Automatically select one or more functional blocks for calling through the AI model, or call plugins.",
+  "template.workflow_start": "Workflow Start",
   "template.plugin_output": "Plugin output",
   "template.plugin_start": "Plugin start",
   "text_concatenation": "Text Concatenation",
@@ -157,12 +147,11 @@
   "update_specified_node_output_or_global_variable": "Can update the output value of a specified node or update global variables",
   "use_user_id": "User ID",
   "user_question": "User Question",
+  "value_type": "Value type",
   "variable_picker_tips": "Type node name or variable name to search",
   "variable_update": "Variable Update",
-  "workflow": {
-    "My edit": "My Edit",
-    "Switch_success": "Switch Successful",
-    "Team cloud": "Team Cloud",
-    "exit_tips": "Your changes have not been saved. 'Exit directly' will not save your edits."
-  }
+  "workflow.My edit": "My Edit",
+  "workflow.Switch_success": "Switch Successful",
+  "workflow.Team cloud": "Team Cloud",
+  "workflow.exit_tips": "Your changes have not been saved. 'Exit directly' will not save your edits."
 }
