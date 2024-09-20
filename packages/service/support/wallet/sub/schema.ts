@@ -76,6 +76,9 @@ try {
   SubSchema.index({ teamId: 1, type: 1, expiredTime: -1 });
   // timer task. Get standard plan;Get free plan;Clear expired extract plan
   SubSchema.index({ type: 1, expiredTime: -1, currentSubLevel: 1 });
+
+  // unique
+  SubSchema.index({ teamId: 1, type: 1, currentSubLevel: 1 }, { unique: true });
 } catch (error) {
   console.log(error);
 }

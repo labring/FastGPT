@@ -14,13 +14,11 @@
   "key_tips": "You can use the API key to access specific interfaces (cannot access the application, use the in-app API key for that)",
   "link_name": "Share Link Name",
   "new_feishu_bot": "Add New Feishu Bot",
-  "official_account": {
-    "create_modal_title": "Create WeChat Official Account Integration",
-    "desc": "Connect to WeChat Official Account directly via API",
-    "edit_modal_title": "Edit WeChat Official Account Integration",
-    "name": "WeChat Official Account Integration",
-    "params": "WeChat Official Account Parameters"
-  },
+  "official_account.create_modal_title": "Create WeChat Official Account Integration",
+  "official_account.desc": "Connect to WeChat Official Account directly via API",
+  "official_account.edit_modal_title": "Edit WeChat Official Account Integration",
+  "official_account.name": "WeChat Official Account Integration",
+  "official_account.params": "WeChat Official Account Parameters",
   "publish_name": "Name",
   "qpm_is_empty": "QPM cannot be empty",
   "qpm_tips": "Maximum number of queries per minute per IP",
@@ -29,12 +27,10 @@
   "token_auth": "Token Authentication",
   "token_auth_tips": "Token authentication server URL. If provided, a request will be sent to the specified server for authentication before each conversation.",
   "token_auth_use_cases": "View Token Authentication Guide",
-  "wecom": {
-    "api": "WeCom API",
-    "bot": "WeCom Bot",
-    "bot_desc": "Connect to WeCom Bot directly via API",
-    "create_modal_title": "Create WeCom Bot",
-    "edit_modal_title": "Edit WeCom Bot",
-    "title": "Publish to WeCom Bot"
-  }
+  "wecom.api": "WeCom API",
+  "wecom.bot": "WeCom Bot",
+  "wecom.bot_desc": "Connect to WeCom Bot directly via API",
+  "wecom.create_modal_title": "Create WeCom Bot",
+  "wecom.edit_modal_title": "Edit WeCom Bot",
+  "wecom.title": "Publish to WeCom Bot"
 }

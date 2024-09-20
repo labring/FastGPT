@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -41,6 +41,29 @@ import MyRadio from '@/components/common/MyRadio';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+
+export const defaultVariable: VariableItemType = {
+  id: nanoid(),
+  key: 'key',
+  label: 'label',
+  type: VariableInputEnum.input,
+  required: true,
+  maxLen: 50,
+  enums: [{ value: '' }],
+  valueType: WorkflowIOValueTypeEnum.string
+};
+export const addVariable = () => {
+  const newVariable = { ...defaultVariable, key: '', id: '' };
+  return newVariable;
+};
+const valueTypeMap = {
+  [VariableInputEnum.input]: WorkflowIOValueTypeEnum.string,
+  [VariableInputEnum.select]: WorkflowIOValueTypeEnum.string,
+  [VariableInputEnum.textarea]: WorkflowIOValueTypeEnum.string,
+  [VariableInputEnum.custom]: WorkflowIOValueTypeEnum.any
+};
 
 const VariableEdit = ({
   variables = [],
@@ -65,6 +88,7 @@ const VariableEdit = ({
 
   const { isOpen: isOpenEdit, onOpen: onOpenEdit, onClose: onCloseEdit } = useDisclosure();
   const {
+    setValue,
     reset: resetEdit,
     register: registerEdit,
     getValues: getValuesEdit,
@@ -75,6 +99,7 @@ const VariableEdit = ({
   } = useForm<{ variable: VariableItemType }>();
 
   const variableType = watch('variable.type');
+  const valueType = watch('variable.valueType');
 
   const {
     fields: selectEnums,
@@ -96,8 +121,85 @@ const VariableEdit = ({
     });
   }, [variables]);
 
+  const valueTypeSelectList = useMemo(
+    () =>
+      Object.values(FlowValueTypeMap)
+        .map((item) => ({
+          label: t(item.label as any),
+          value: item.value
+        }))
+        .filter(
+          (item) =>
+            ![
+              WorkflowIOValueTypeEnum.arrayAny,
+              WorkflowIOValueTypeEnum.selectApp,
+              WorkflowIOValueTypeEnum.selectDataset,
+              WorkflowIOValueTypeEnum.dynamic
+            ].includes(item.value)
+        ),
+    [t]
+  );
+  const showValueTypeSelect = variableType === VariableInputEnum.custom;
+
+  const onSubmit = useCallback(
+    ({ variable }: { variable: VariableItemType }) => {
+      variable.key = variable.key.trim();
+
+      // check select
+      if (variable.type === VariableInputEnum.select) {
+        const enums = variable.enums.filter((item) => item.value);
+        if (enums.length === 0) {
+          toast({
+            status: 'warning',
+            title: t('common:core.module.variable.variable option is required')
+          });
+          return;
+        }
+      }
+
+      // check repeat key
+      const existingVariable = variables.find(
+        (item) => item.key === variable.key && item.id !== variable.id
+      );
+      if (existingVariable) {
+        toast({
+          status: 'warning',
+          title: t('common:core.module.variable.key already exists')
+        });
+        return;
+      }
+
+      // set valuetype based on variable.type
+      variable.valueType =
+        variable.type === VariableInputEnum.custom
+          ? variable.valueType
+          : valueTypeMap[variable.type];
+
+      // set default required value based on variableType
+      if (variable.type === VariableInputEnum.custom) {
+        variable.required = false;
+      }
+
+      const onChangeVariable = [...variables];
+      // update
+      if (variable.id) {
+        const index = variables.findIndex((item) => item.id === variable.id);
+        onChangeVariable[index] = variable;
+      } else {
+        onChangeVariable.push({
+          ...variable,
+          id: nanoid()
+        });
+      }
+      onChange(onChangeVariable);
+      onCloseEdit();
+    },
+    [onChange, onCloseEdit, t, toast, variables]
+  );
+
   return (
     <Box>
+      {/* Row box */}
       <Flex alignItems={'center'}>
         <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />
         <FormLabel ml={2}>{t('common:core.module.Variable')}</FormLabel>
@@ -117,6 +219,7 @@ const VariableEdit = ({
           {t('common:common.Add New')}
         </Button>
       </Flex>
+      {/* Form render */}
       {formatVariables.length > 0 && (
         <Box mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'} borderBottom="none">
           <TableContainer>
@@ -171,6 +274,7 @@ const VariableEdit = ({
           </TableContainer>
         </Box>
       )}
+      {/* Edit modal */}
       <MyModal
         iconSrc="core/app/simpleMode/variable"
         title={t('common:core.module.Variable Setting')}
@@ -200,6 +304,24 @@ const VariableEdit = ({
                 required: t('common:core.module.variable.key is required')
               })}
             />
+          </Flex>
+          <Flex mt={5} alignItems={'center'}>
+            <FormLabel w={'80px'}>{t('workflow:value_type')}</FormLabel>
+            {showValueTypeSelect ? (
+              <Box flex={1}>
+                <MySelect<WorkflowIOValueTypeEnum>
+                  list={valueTypeSelectList.filter(
+                    (item) => item.value !== WorkflowIOValueTypeEnum.arrayAny
+                  )}
+                  value={valueType}
+                  onchange={(e) => {
+                    setValue('variable.valueType', e);
+                  }}
+                />
+              </Box>
+            ) : (
+              <Box fontSize={'14px'}>{valueTypeMap[variableType]}</Box>
+            )}
           </Flex>
 
           <FormLabel mt={5} mb={2}>
@@ -299,57 +421,7 @@ const VariableEdit = ({
           <Button variant={'whiteBase'} mr={3} onClick={onCloseEdit}>
             {t('common:common.Close')}
           </Button>
-          <Button
-            onClick={handleSubmitEdit(({ variable }) => {
-              variable.key = variable.key.trim();
-
-              // check select
-              if (variable.type === VariableInputEnum.select) {
-                const enums = variable.enums.filter((item) => item.value);
-                if (enums.length === 0) {
-                  toast({
-                    status: 'warning',
-                    title: t('common:core.module.variable.variable option is required')
-                  });
-                  return;
-                }
-              }
-
-              // check repeat key
-              const existingVariable = variables.find(
-                (item) => item.key === variable.key && item.id !== variable.id
-              );
-              if (existingVariable) {
-                toast({
-                  status: 'warning',
-                  title: t('common:core.module.variable.key already exists')
-                });
-                return;
-              }
-
-              // set valuetype based on variable.type
-              variable.valueType = valueTypeMap[variable.type];
-
-              // set default required value based on variableType
-              if (variable.type === VariableInputEnum.custom) {
-                variable.required = false;
-              }
-
-              const onChangeVariable = [...variables];
-              // update
-              if (variable.id) {
-                const index = variables.findIndex((item) => item.id === variable.id);
-                onChangeVariable[index] = variable;
-              } else {
-                onChangeVariable.push({
-                  ...variable,
-                  id: nanoid()
-                });
-              }
-              onChange(onChangeVariable);
-              onCloseEdit();
-            })}
-          >
+          <Button onClick={handleSubmitEdit(onSubmit)}>
             {getValuesEdit('variable.id')
               ? t('common:common.Confirm Update')
               : t('common:common.Add New')}
@@ -361,24 +433,3 @@ const VariableEdit = ({
 };
 
 export default React.memo(VariableEdit);
-
-export const defaultVariable: VariableItemType = {
-  id: nanoid(),
-  key: 'key',
-  label: 'label',
-  type: VariableInputEnum.input,
-  required: true,
-  maxLen: 50,
-  enums: [{ value: '' }],
-  valueType: WorkflowIOValueTypeEnum.string
-};
-export const addVariable = () => {
-  const newVariable = { ...defaultVariable, key: '', id: '' };
-  return newVariable;
-};
-const valueTypeMap = {
-  [VariableInputEnum.input]: WorkflowIOValueTypeEnum.string,
-  [VariableInputEnum.select]: WorkflowIOValueTypeEnum.string,
-  [VariableInputEnum.textarea]: WorkflowIOValueTypeEnum.string,
-  [VariableInputEnum.custom]: WorkflowIOValueTypeEnum.any
-};
