@@ -6,7 +6,7 @@ import {
   ChatSiteItemType,
   RuntimeUserPromptType
 } from '@fastgpt/global/core/chat/type';
-import { FieldArrayWithId, FieldValues, useForm } from 'react-hook-form';
+import { FieldValues, useForm } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -25,6 +25,10 @@ type PluginRunContextType = OutLinkChatAuthProps &
     isChatting: boolean;
     onSubmit: (e: FieldValues, files?: UserInputFileItemType[]) => Promise<any>;
     outLinkAuthData: OutLinkChatAuthProps;
+    lastFormValues: any;
+    setLastFormValues: React.Dispatch<React.SetStateAction<undefined>>;
+    lastFiles: UserInputFileItemType[];
+    setLastFiles: React.Dispatch<React.SetStateAction<UserInputFileItemType[]>>;
   };
 
 export const PluginRunContext = createContext<PluginRunContextType>({
@@ -44,7 +48,15 @@ export const PluginRunContext = createContext<PluginRunContextType>({
   onSubmit: function (e: FieldValues): Promise<any> {
     throw new Error('Function not implemented.');
   },
-  outLinkAuthData: {}
+  outLinkAuthData: {},
+  lastFormValues: [],
+  setLastFormValues: function (value: React.SetStateAction<undefined>): void {
+    throw new Error('Function not implemented.');
+  },
+  lastFiles: [],
+  setLastFiles: function (value: React.SetStateAction<UserInputFileItemType[]>): void {
+    throw new Error('Function not implemented.');
+  }
 });
 
 const PluginRunContextProvider = ({
@@ -56,6 +68,9 @@ const PluginRunContextProvider = ({
   ...props
 }: PluginRunBoxProps & { children: ReactNode }) => {
   const { pluginInputs, onStartChat, setHistories, histories, setTab } = props;
+
+  const [lastFormValues, setLastFormValues] = useState();
+  const [lastFiles, setLastFiles] = useState<UserInputFileItemType[]>([]);
 
   const { toast } = useToast();
   const chatController = useRef(new AbortController());
@@ -265,7 +280,11 @@ const PluginRunContextProvider = ({
     isChatting,
     onSubmit,
     outLinkAuthData,
-    variablesForm
+    variablesForm,
+    lastFormValues,
+    setLastFormValues,
+    lastFiles,
+    setLastFiles
   };
   return <PluginRunContext.Provider value={contextValue}>{children}</PluginRunContext.Provider>;
 };

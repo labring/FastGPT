@@ -14,6 +14,7 @@ import { useFileUpload } from '../../ChatBox/hooks/useFileUpload';
 import FilePreview from '../../components/FilePreview';
 import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { UserInputFileItemType } from '../../ChatBox/type';
 
 const RenderInput = () => {
   const { t } = useTranslation();
@@ -28,7 +29,11 @@ const RenderInput = () => {
     isChatting,
     chatConfig,
     chatId,
-    outLinkAuthData
+    outLinkAuthData,
+    lastFormValues,
+    setLastFormValues,
+    lastFiles,
+    setLastFiles
   } = useContextSelector(PluginRunContext, (v) => v);
 
   const {
@@ -56,6 +61,7 @@ const RenderInput = () => {
     fileSelectConfig: chatConfig?.fileSelectConfig,
     control
   });
+  const isDisabledInput = histories.length > 0;
 
   const defaultFormValues = useMemo(() => {
     return pluginInputs.reduce(
@@ -68,7 +74,7 @@ const RenderInput = () => {
   }, [pluginInputs]);
 
   const historyFormValues = useMemo(() => {
-    if (histories.length === 0) return undefined;
+    if (!isDisabledInput) return undefined;
     const historyValue = histories[0].value;
     try {
       const inputValueString = historyValue.find((item) => item.type === 'text')?.text?.content;
@@ -96,17 +102,25 @@ const RenderInput = () => {
 
   // Parse history file
   const historyFileList = useMemo(() => {
-    if (histories.length === 0) return [];
+    if (!isDisabledInput) return [];
     const historyValue = histories[0].value as UserChatItemValueItemType[];
     return historyValue.filter((item) => item.type === 'file').map((item) => item.file);
   }, [histories]);
 
+  // set history default value
   useEffect(() => {
     reset(historyFormValues || defaultFormValues);
-    replaceFiles(historyFileList as any);
+    replaceFiles(historyFileList as UserInputFileItemType[]);
   }, [defaultFormValues, getValues, historyFileList, historyFormValues, replaceFiles, reset]);
 
-  const isDisabledInput = histories.length > 0;
+  // set last run value
+  useEffect(() => {
+    if (!isDisabledInput && (lastFormValues || lastFiles.length > 0)) {
+      reset(lastFormValues);
+      replaceFiles(lastFiles);
+    }
+  }, [histories.length, lastFormValues, setLastFormValues]);
+
   const hasFileUploading = useMemo(() => {
     return fileList.some((item) => !item.url);
   }, [fileList]);
@@ -198,6 +212,8 @@ const RenderInput = () => {
             isLoading={isChatting || hasFileUploading}
             onClick={() => {
               if (isDisabledInput) {
+                setLastFormValues(historyFormValues);
+                setLastFiles(historyFileList as UserInputFileItemType[]);
                 return onNewChat();
               }
               handleSubmit((e) => onSubmit(e, fileList))();
