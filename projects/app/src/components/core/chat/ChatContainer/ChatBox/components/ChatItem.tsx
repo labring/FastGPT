@@ -174,7 +174,7 @@ const ChatItem = (props: Props) => {
 
     // Check last group is interactive, Auto add a empty text node(animation)
     const lastGroup = groupedValues[groupedValues.length - 1];
-    if (isChatting) {
+    if (isChatting || groupedValues.length === 0) {
       if (
         (lastGroup &&
           lastGroup[lastGroup.length - 1] &&

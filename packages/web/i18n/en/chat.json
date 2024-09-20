@@ -19,6 +19,7 @@
   "input_guide": "Input Guide",
   "input_guide_lexicon": "Lexicon",
   "input_guide_tip": "You can set up some preset questions. When the user inputs a question, related questions from these presets will be suggested.",
+  "input_placeholder_phone": "Please enter your question",
   "insert_input_guide,_some_data_already_exists": "Duplicate data detected, automatically filtered, {{len}} items inserted",
   "is_chatting": "Chatting in progress... please wait until it finishes",
   "items": "Items",

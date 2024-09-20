@@ -37,7 +37,7 @@ const Header = ({
   const router = useRouter();
   const { toast } = useToast();
   const { appId, appDetail, onSaveApp, currentTab } = useContextSelector(AppContext, (v) => v);
-  const { appType } = useSystemStore();
+  const { lastAppListRouteType } = useSystemStore();
 
   const { data: paths = [] } = useRequest2(() => getAppFolderPath(appId), {
     manual: false,
@@ -49,11 +49,11 @@ const Header = ({
         pathname: '/app/list',
         query: {
           parentId,
-          type: appType
+          type: lastAppListRouteType
         }
       });
     },
-    [router, appType]
+    [router, lastAppListRouteType]
   );
 
   const isPublished = useMemo(() => {
