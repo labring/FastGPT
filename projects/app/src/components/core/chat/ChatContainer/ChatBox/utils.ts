@@ -50,18 +50,26 @@ export const checkIsInteractiveByHistories = (chatHistories: ChatSiteItemType[])
     lastAIHistory.value.length - 1
   ] as AIChatItemValueItemType;
 
-  return (
+  if (
     lastMessageValue &&
     lastMessageValue.type === ChatItemValueTypeEnum.interactive &&
-    !!lastMessageValue?.interactive?.params &&
+    !!lastMessageValue?.interactive?.params
+  ) {
+    const params = lastMessageValue.interactive.params;
     // 如果用户选择了，则不认为是交互模式（可能是上一轮以交互结尾，发起的新的一轮对话）
-    !lastMessageValue?.interactive?.params?.userSelectedVal
-  );
+    if ('userSelectOptions' in params && 'userSelectedVal' in params) {
+      return !params.userSelectedVal;
+    } else if ('inputForm' in params && 'submitted' in params) {
+      return !params.submitted;
+    }
+  }
+
+  return false;
 };
 
 export const setUserSelectResultToHistories = (
   histories: ChatSiteItemType[],
-  selectVal: string
+  interactiveVal: string
 ): ChatSiteItemType[] => {
   if (histories.length === 0) return histories;
 
@@ -77,18 +85,33 @@ export const setUserSelectResultToHistories = (
       )
         return val;
 
-      return {
-        ...val,
-        interactive: {
-          ...val.interactive,
-          params: {
-            ...val.interactive.params,
-            userSelectedVal: val.interactive.params.userSelectOptions.find(
-              (item) => item.value === selectVal
-            )?.value
+      if (val.interactive.type === 'userSelect') {
+        return {
+          ...val,
+          interactive: {
+            ...val.interactive,
+            params: {
+              ...val.interactive.params,
+              userSelectedVal: val.interactive.params.userSelectOptions.find(
+                (item) => item.value === interactiveVal
+              )?.value
+            }
           }
-        }
-      };
+        };
+      }
+
+      if (val.interactive.type === 'userInput') {
+        return {
+          ...val,
+          interactive: {
+            ...val.interactive,
+            params: {
+              ...val.interactive.params,
+              submitted: true
+            }
+          }
+        };
+      }
     });
 
     return {

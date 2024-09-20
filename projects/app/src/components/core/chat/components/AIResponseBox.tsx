@@ -7,7 +7,14 @@ import {
   AccordionPanel,
   Box,
   Button,
-  Flex
+  Flex,
+  Input,
+  NumberDecrementStepper,
+  NumberIncrementStepper,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  Textarea
 } from '@chakra-ui/react';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
@@ -15,12 +22,17 @@ import {
   ToolModuleResponseItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { InteractiveNodeResponseItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { isEqual } from 'lodash';
 import { onSendPrompt } from '../ChatContainer/useChat';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import { useTranslation } from 'react-i18next';
+import { Controller, useForm } from 'react-hook-form';
 
 type props = {
   value: UserChatItemValueItemType | AIChatItemValueItemType;
@@ -128,41 +140,143 @@ const RenderInteractive = React.memo(function RenderInteractive({
 }: {
   interactive: InteractiveNodeResponseItemType;
 }) {
+  const { t } = useTranslation();
+  const { register, setValue, handleSubmit: handleSubmitChat, control, reset } = useForm();
+
+  const onSubmit = useCallback((data: any) => {
+    onSendPrompt({
+      text: JSON.stringify(data),
+      isInteractivePrompt: true
+    });
+  }, []);
+
+  useEffect(() => {
+    if (interactive.type === 'userInput') {
+      const defaultValues = interactive.params.inputForm?.reduce(
+        (acc: Record<string, any>, item) => {
+          acc[item.label] = item.value;
+          return acc;
+        },
+        {}
+      );
+      reset(defaultValues);
+    }
+  }, []);
+
   return (
     <>
       {interactive?.params?.description && <Markdown source={interactive.params.description} />}
-      <Flex flexDirection={'column'} gap={2} w={'250px'}>
-        {interactive.params.userSelectOptions?.map((option) => {
-          const selected = option.value === interactive?.params?.userSelectedVal;
+      {interactive.type === 'userSelect' && (
+        <Flex flexDirection={'column'} gap={2} w={'250px'}>
+          {interactive.params.userSelectOptions?.map((option) => {
+            const selected = option.value === interactive?.params?.userSelectedVal;
 
-          return (
-            <Button
-              key={option.key}
-              variant={'whitePrimary'}
-              whiteSpace={'pre-wrap'}
-              isDisabled={interactive?.params?.userSelectedVal !== undefined}
-              {...(selected
-                ? {
-                    _disabled: {
-                      cursor: 'default',
-                      borderColor: 'primary.300',
-                      bg: 'primary.50 !important',
-                      color: 'primary.600'
+            return (
+              <Button
+                key={option.key}
+                variant={'whitePrimary'}
+                whiteSpace={'pre-wrap'}
+                isDisabled={interactive?.params?.userSelectedVal !== undefined}
+                {...(selected
+                  ? {
+                      _disabled: {
+                        cursor: 'default',
+                        borderColor: 'primary.300',
+                        bg: 'primary.50 !important',
+                        color: 'primary.600'
+                      }
                     }
-                  }
-                : {})}
-              onClick={() => {
-                onSendPrompt({
-                  text: option.value,
-                  isInteractivePrompt: true
-                });
-              }}
-            >
-              {option.value}
-            </Button>
-          );
-        })}
-      </Flex>
+                  : {})}
+                onClick={() => {
+                  onSendPrompt({
+                    text: option.value,
+                    isInteractivePrompt: true
+                  });
+                }}
+              >
+                {option.value}
+              </Button>
+            );
+          })}
+        </Flex>
+      )}
+      {interactive.type === 'userInput' && (
+        <Flex flexDirection={'column'} gap={2} w={'250px'}>
+          {interactive.params.inputForm?.map((input) => {
+            return (
+              <Box key={input.label}>
+                <FormLabel required={input.required}>{input.label}</FormLabel>
+                {input.type === FlowNodeInputTypeEnum.input && (
+                  <Input
+                    bg={'white'}
+                    isDisabled={interactive.params.submitted}
+                    {...register(input.label, {
+                      required: input.required
+                    })}
+                  />
+                )}
+                {input.type === FlowNodeInputTypeEnum.textarea && (
+                  <Textarea
+                    isDisabled={interactive.params.submitted}
+                    bg={'white'}
+                    {...register(input.label, {
+                      required: input.required
+                    })}
+                    rows={5}
+                    maxLength={4000}
+                  />
+                )}
+                {input.type === FlowNodeInputTypeEnum.numberInput && (
+                  <NumberInput
+                    step={1}
+                    min={input.min}
+                    max={input.max}
+                    isDisabled={interactive.params.submitted}
+                    bg={'white'}
+                  >
+                    <NumberInputField
+                      bg={'white'}
+                      {...register(input.label, {
+                        required: input.required
+                      })}
+                    />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                )}
+                {input.type === FlowNodeInputTypeEnum.select && (
+                  <Controller
+                    key={input.label}
+                    control={control}
+                    name={input.label}
+                    rules={{ required: input.required }}
+                    render={({ field: { ref, value } }) => {
+                      if (!input.list) return <></>;
+                      return (
+                        <MySelect
+                          ref={ref}
+                          width={'100%'}
+                          list={input.list}
+                          value={value}
+                          isDisabled={interactive.params.submitted}
+                          onchange={(e) => setValue(input.label, e)}
+                        />
+                      );
+                    }}
+                  />
+                )}
+              </Box>
+            );
+          })}
+          {!interactive.params.submitted && (
+            <Flex w={'full'} justifyContent={'end'}>
+              <Button onClick={handleSubmitChat(onSubmit)}>{t('common:Submit')}</Button>
+            </Flex>
+          )}
+        </Flex>
+      )}
     </>
   );
 });
@@ -177,7 +291,7 @@ const AIResponseBox = ({ value, isLastResponseValue, isChatting }: props) => {
   if (
     value.type === ChatItemValueTypeEnum.interactive &&
     value.interactive &&
-    value.interactive.type === 'userSelect'
+    (value.interactive.type === 'userSelect' || value.interactive.type === 'userInput')
   )
     return <RenderInteractive interactive={value.interactive} />;
 };

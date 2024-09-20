@@ -54,6 +54,11 @@ export const getLastInteractiveValue = (histories: ChatItemType[]) => {
     ) {
       return lastValue.interactive;
     }
+
+    // Check is user input
+    if (lastValue.interactive.type === 'userInput' && !lastValue.interactive.params.submitted) {
+      return lastValue.interactive;
+    }
   }
 
   return null;

@@ -182,6 +182,9 @@ export type DispatchNodeResponseType = {
   loopInputValue?: any;
   // loop end
   loopOutputValue?: any;
+
+  // form input
+  formInputResult?: string;
 };
 
 export type DispatchNodeResultType<T = {}> = {

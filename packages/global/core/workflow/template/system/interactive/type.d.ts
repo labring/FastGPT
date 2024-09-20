@@ -47,9 +47,9 @@ type UserInputInteractive = {
   params: {
     description: string;
     inputForm: UserInputFormItemType[];
-    userInputVal: Record<string, any>;
-    submitted: boolean;
+    submitted?: boolean;
   };
 };
 
-export type InteractiveNodeResponseItemType = InteractiveBasicType & UserSelectInteractive;
+export type InteractiveNodeResponseItemType = InteractiveBasicType &
+  (UserSelectInteractive | UserInputInteractive);
