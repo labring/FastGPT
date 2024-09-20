@@ -1,6 +1,6 @@
 import React, { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
-import { PluginRunBoxProps } from './type';
+import { PluginInputFormType, PluginRunBoxProps } from './type';
 import {
   AIChatItemValueItemType,
   ChatSiteItemType,
@@ -16,25 +16,21 @@ import { generatingMessageProps } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useTranslation } from 'next-i18next';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { ChatBoxInputFormType, UserInputFileItemType } from '../ChatBox/type';
+import { UserInputFileItemType } from '../ChatBox/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 
 type PluginRunContextType = OutLinkChatAuthProps &
   PluginRunBoxProps & {
     isChatting: boolean;
-    onSubmit: (e: FieldValues, files?: UserInputFileItemType[]) => Promise<any>;
+    onSubmit: (e: PluginInputFormType, files?: UserInputFileItemType[]) => Promise<any>;
     outLinkAuthData: OutLinkChatAuthProps;
-    lastFormValues: any;
-    setLastFormValues: React.Dispatch<React.SetStateAction<undefined>>;
-    lastFiles: UserInputFileItemType[];
-    setLastFiles: React.Dispatch<React.SetStateAction<UserInputFileItemType[]>>;
+    restartInputStore?: PluginInputFormType;
+    setRestartInputStore: React.Dispatch<React.SetStateAction<PluginInputFormType | undefined>>;
   };
 
 export const PluginRunContext = createContext<PluginRunContextType>({
   pluginInputs: [],
-  //@ts-ignore
-  variablesForm: undefined,
   histories: [],
   setHistories: function (value: React.SetStateAction<ChatSiteItemType[]>): void {
     throw new Error('Function not implemented.');
@@ -49,14 +45,8 @@ export const PluginRunContext = createContext<PluginRunContextType>({
     throw new Error('Function not implemented.');
   },
   outLinkAuthData: {},
-  lastFormValues: [],
-  setLastFormValues: function (value: React.SetStateAction<undefined>): void {
-    throw new Error('Function not implemented.');
-  },
-  lastFiles: [],
-  setLastFiles: function (value: React.SetStateAction<UserInputFileItemType[]>): void {
-    throw new Error('Function not implemented.');
-  }
+  //@ts-ignore
+  variablesForm: undefined
 });
 
 const PluginRunContextProvider = ({
@@ -69,8 +59,7 @@ const PluginRunContextProvider = ({
 }: PluginRunBoxProps & { children: ReactNode }) => {
   const { pluginInputs, onStartChat, setHistories, histories, setTab } = props;
 
-  const [lastFormValues, setLastFormValues] = useState();
-  const [lastFiles, setLastFiles] = useState<UserInputFileItemType[]>([]);
+  const [restartInputStore, setRestartInputStore] = useState<PluginInputFormType>();
 
   const { toast } = useToast();
   const chatController = useRef(new AbortController());
@@ -90,7 +79,7 @@ const PluginRunContextProvider = ({
     [shareId, outLinkUid, teamId, teamToken]
   );
 
-  const variablesForm = useForm<ChatBoxInputFormType>({
+  const variablesForm = useForm<PluginInputFormType>({
     defaultValues: {
       files: []
     }
@@ -191,7 +180,7 @@ const PluginRunContextProvider = ({
   );
 
   const { runAsync: onSubmit } = useRequest2(
-    async (e: FieldValues, files?: UserInputFileItemType[]) => {
+    async (e: PluginInputFormType, files?: UserInputFileItemType[]) => {
       if (!onStartChat) return;
       if (isChatting) {
         toast({
@@ -200,7 +189,6 @@ const PluginRunContextProvider = ({
         });
         return;
       }
-      setTab(PluginRunBoxTabEnum.output);
 
       // reset controller
       abortRequest();
@@ -230,6 +218,7 @@ const PluginRunContextProvider = ({
           status: 'loading'
         }
       ]);
+      setTab(PluginRunBoxTabEnum.output);
 
       const messages = chats2GPTMessages({
         messages: [
@@ -281,10 +270,8 @@ const PluginRunContextProvider = ({
     onSubmit,
     outLinkAuthData,
     variablesForm,
-    lastFormValues,
-    setLastFormValues,
-    lastFiles,
-    setLastFiles
+    restartInputStore,
+    setRestartInputStore
   };
   return <PluginRunContext.Provider value={contextValue}>{children}</PluginRunContext.Provider>;
 };

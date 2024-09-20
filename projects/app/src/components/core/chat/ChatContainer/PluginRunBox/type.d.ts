@@ -6,9 +6,14 @@ import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import React from 'react';
 import { onStartChatType } from '../type';
 
+export type PluginInputFormType = {
+  files: UserInputFileItemType[];
+  [key: string]: any;
+};
+
 export type PluginRunBoxProps = OutLinkChatAuthProps & {
   pluginInputs: FlowNodeInputItemType[];
-  variablesForm: UseFormReturn<ChatBoxInputFormType, any>;
+  variablesForm: UseFormReturn<PluginInputFormType, any>;
   histories: ChatSiteItemType[]; // chatHistories[1] is the response
   setHistories: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
 

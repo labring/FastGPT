@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Controller } from 'react-hook-form';
 import RenderPluginInput from './renderPluginInput';
 import { Box, Button, Flex } from '@chakra-ui/react';
@@ -15,6 +15,7 @@ import FilePreview from '../../components/FilePreview';
 import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { UserInputFileItemType } from '../../ChatBox/type';
+import { PluginInputFormType } from '../type';
 
 const RenderInput = () => {
   const { t } = useTranslation();
@@ -30,10 +31,8 @@ const RenderInput = () => {
     chatConfig,
     chatId,
     outLinkAuthData,
-    lastFormValues,
-    setLastFormValues,
-    lastFiles,
-    setLastFiles
+    restartInputStore,
+    setRestartInputStore
   } = useContextSelector(PluginRunContext, (v) => v);
 
   const {
@@ -63,63 +62,73 @@ const RenderInput = () => {
   });
   const isDisabledInput = histories.length > 0;
 
-  const defaultFormValues = useMemo(() => {
-    return pluginInputs.reduce(
+  const onClickNewChat = useCallback(
+    (e: PluginInputFormType, files: UserInputFileItemType[] = []) => {
+      setRestartInputStore({
+        ...e,
+        files
+      });
+      onNewChat?.();
+    },
+    [onNewChat, setRestartInputStore]
+  );
+
+  useEffect(() => {
+    // Set last run value
+    if (!isDisabledInput && restartInputStore) {
+      reset(restartInputStore);
+      return;
+    }
+
+    // Set history to default value
+
+    const defaultFormValues = pluginInputs.reduce(
       (acc, input) => {
         acc[input.key] = input.defaultValue;
         return acc;
       },
       {} as Record<string, any>
     );
-  }, [pluginInputs]);
 
-  const historyFormValues = useMemo(() => {
-    if (!isDisabledInput) return undefined;
-    const historyValue = histories[0].value;
-    try {
-      const inputValueString = historyValue.find((item) => item.type === 'text')?.text?.content;
-      return (
-        inputValueString &&
-        JSON.parse(inputValueString).reduce(
-          (
-            acc: Record<string, any>,
-            {
-              key,
-              value
-            }: {
-              key: string;
-              value: any;
-            }
-          ) => ({ ...acc, [key]: value }),
-          {}
-        )
-      );
-    } catch (error) {
-      console.error('Failed to parse input value:', error);
-      return undefined;
-    }
-  }, [histories]);
+    const historyFormValues = (() => {
+      if (!isDisabledInput) return undefined;
+      const historyValue = histories[0].value;
+      try {
+        const inputValueString = historyValue.find((item) => item.type === 'text')?.text?.content;
+        return (
+          inputValueString &&
+          JSON.parse(inputValueString).reduce(
+            (
+              acc: Record<string, any>,
+              {
+                key,
+                value
+              }: {
+                key: string;
+                value: any;
+              }
+            ) => ({ ...acc, [key]: value }),
+            {}
+          )
+        );
+      } catch (error) {
+        console.error('Failed to parse input value:', error);
+        return undefined;
+      }
+    })();
 
-  // Parse history file
-  const historyFileList = useMemo(() => {
-    if (!isDisabledInput) return [];
-    const historyValue = histories[0].value as UserChatItemValueItemType[];
-    return historyValue.filter((item) => item.type === 'file').map((item) => item.file);
-  }, [histories]);
+    // Parse history file
+    const historyFileList = (() => {
+      if (!isDisabledInput) return [];
+      const historyValue = histories[0].value as UserChatItemValueItemType[];
+      return historyValue.filter((item) => item.type === 'file').map((item) => item.file);
+    })();
 
-  // set history default value
-  useEffect(() => {
-    reset(historyFormValues || defaultFormValues);
-    replaceFiles(historyFileList as UserInputFileItemType[]);
-  }, [defaultFormValues, getValues, historyFileList, historyFormValues, replaceFiles, reset]);
-
-  // set last run value
-  useEffect(() => {
-    if (!isDisabledInput && (lastFormValues || lastFiles.length > 0)) {
-      reset(lastFormValues);
-      replaceFiles(lastFiles);
-    }
-  }, [histories.length, lastFormValues, setLastFormValues]);
+    reset({
+      ...(historyFormValues || defaultFormValues),
+      files: historyFileList
+    });
+  }, [getValues, histories, isDisabledInput, pluginInputs, replaceFiles, reset, restartInputStore]);
 
   const hasFileUploading = useMemo(() => {
     return fileList.some((item) => !item.url);
@@ -211,12 +220,13 @@ const RenderInput = () => {
           <Button
             isLoading={isChatting || hasFileUploading}
             onClick={() => {
-              if (isDisabledInput) {
-                setLastFormValues(historyFormValues);
-                setLastFiles(historyFileList as UserInputFileItemType[]);
-                return onNewChat();
-              }
-              handleSubmit((e) => onSubmit(e, fileList))();
+              handleSubmit((e) => {
+                if (isDisabledInput) {
+                  onClickNewChat(e, fileList);
+                } else {
+                  onSubmit(e, fileList);
+                }
+              })();
             }}
           >
             {isDisabledInput ? t('common:common.Restart') : t('common:common.Run')}
