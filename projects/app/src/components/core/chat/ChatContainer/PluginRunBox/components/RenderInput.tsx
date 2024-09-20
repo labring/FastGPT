@@ -35,7 +35,6 @@ const RenderInput = () => {
     lastFiles,
     setLastFiles
   } = useContextSelector(PluginRunContext, (v) => v);
-  console.log(chatConfig);
 
   const {
     control,
