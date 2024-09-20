@@ -145,6 +145,7 @@ const DetailLogsModal = ({
           {isPlugin ? (
             <Box px={5} pt={2} h={'100%'}>
               <PluginRunBox
+                chatConfig={chat?.app?.chatConfig}
                 pluginInputs={chat?.app.pluginInputs}
                 variablesForm={variablesForm}
                 histories={chatRecords}
