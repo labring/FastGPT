@@ -14,8 +14,7 @@ import { useFileUpload } from '../../ChatBox/hooks/useFileUpload';
 import FilePreview from '../../components/FilePreview';
 import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { UserInputFileItemType } from '../../ChatBox/type';
-import { PluginInputFormType } from '../type';
+import { ChatBoxInputFormType, UserInputFileItemType } from '../../ChatBox/type';
 
 const RenderInput = () => {
   const { t } = useTranslation();
@@ -63,7 +62,7 @@ const RenderInput = () => {
   const isDisabledInput = histories.length > 0;
 
   const onClickNewChat = useCallback(
-    (e: PluginInputFormType, files: UserInputFileItemType[] = []) => {
+    (e: ChatBoxInputFormType, files: UserInputFileItemType[] = []) => {
       setRestartInputStore({
         ...e,
         files

@@ -1,6 +1,6 @@
 import React, { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
-import { PluginInputFormType, PluginRunBoxProps } from './type';
+import { PluginRunBoxProps } from './type';
 import {
   AIChatItemValueItemType,
   ChatSiteItemType,
@@ -16,17 +16,17 @@ import { generatingMessageProps } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useTranslation } from 'next-i18next';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { UserInputFileItemType } from '../ChatBox/type';
+import { ChatBoxInputFormType, UserInputFileItemType } from '../ChatBox/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 
 type PluginRunContextType = OutLinkChatAuthProps &
   PluginRunBoxProps & {
     isChatting: boolean;
-    onSubmit: (e: PluginInputFormType, files?: UserInputFileItemType[]) => Promise<any>;
+    onSubmit: (e: ChatBoxInputFormType, files?: UserInputFileItemType[]) => Promise<any>;
     outLinkAuthData: OutLinkChatAuthProps;
-    restartInputStore?: PluginInputFormType;
-    setRestartInputStore: React.Dispatch<React.SetStateAction<PluginInputFormType | undefined>>;
+    restartInputStore?: ChatBoxInputFormType;
+    setRestartInputStore: React.Dispatch<React.SetStateAction<ChatBoxInputFormType | undefined>>;
   };
 
 export const PluginRunContext = createContext<PluginRunContextType>({
@@ -59,7 +59,7 @@ const PluginRunContextProvider = ({
 }: PluginRunBoxProps & { children: ReactNode }) => {
   const { pluginInputs, onStartChat, setHistories, histories, setTab } = props;
 
-  const [restartInputStore, setRestartInputStore] = useState<PluginInputFormType>();
+  const [restartInputStore, setRestartInputStore] = useState<ChatBoxInputFormType>();
 
   const { toast } = useToast();
   const chatController = useRef(new AbortController());
@@ -79,7 +79,7 @@ const PluginRunContextProvider = ({
     [shareId, outLinkUid, teamId, teamToken]
   );
 
-  const variablesForm = useForm<PluginInputFormType>({
+  const variablesForm = useForm<ChatBoxInputFormType>({
     defaultValues: {
       files: []
     }
@@ -180,7 +180,7 @@ const PluginRunContextProvider = ({
   );
 
   const { runAsync: onSubmit } = useRequest2(
-    async (e: PluginInputFormType, files?: UserInputFileItemType[]) => {
+    async (e: ChatBoxInputFormType, files?: UserInputFileItemType[]) => {
       if (!onStartChat) return;
       if (isChatting) {
         toast({
