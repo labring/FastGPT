@@ -43,7 +43,6 @@ import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import TemplateMarketModal from './components/TemplateMarketModal';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const CreateModal = dynamic(() => import('./components/CreateModal'));
 const EditFolderModal = dynamic(
@@ -71,7 +70,6 @@ const MyApps = () => {
     setSearchKey
   } = useContextSelector(AppListContext, (v) => v);
   const { userInfo } = useUserStore();
-  const { setAppType } = useSystemStore();
 
   const [createAppType, setCreateAppType] = useState<CreateAppType>();
   const {
@@ -173,13 +171,12 @@ const MyApps = () => {
               fontSize={['sm', 'md']}
               flexShrink={0}
               onChange={(e) => {
-                setAppType(e);
-                // router.push({
-                //   query: {
-                //     ...router.query,
-                //     type: e
-                //   }
-                // });
+                router.push({
+                  query: {
+                    ...router.query,
+                    type: e
+                  }
+                });
               }}
             />
             <Box flex={1} />

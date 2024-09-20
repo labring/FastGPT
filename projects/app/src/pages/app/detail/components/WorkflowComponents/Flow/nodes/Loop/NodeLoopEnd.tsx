@@ -12,7 +12,7 @@ import {
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import { AppContext } from '../../../../context';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
 
 const typeMap = {

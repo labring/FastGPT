@@ -1,17 +1,13 @@
 {
   "Enable": "Enable",
-  "collection": {
-    "Create update time": "Creation/Update Time",
-    "Training type": "Training Mode"
-  },
+  "collection.Create update time": "Creation/Update Time",
+  "collection.Training type": "Training Mode",
   "collection_tags": "Collection Tags",
   "common_dataset": "General Dataset",
   "common_dataset_desc": "Build a Dataset by importing files, web links, or manual input.",
   "confirm_to_rebuild_embedding_tip": "Are you sure you want to switch the index for the Dataset?\nSwitching the index is a significant operation that requires re-indexing all data in your Dataset, which may take a long time. Please ensure your account has sufficient remaining points.\n\nAdditionally, you need to update the applications that use this Dataset to avoid conflicts with other indexed model Datasets.",
-  "dataset": {
-    "no_collections": "No datasets available",
-    "no_tags": "No tags available"
-  },
+  "dataset.no_collections": "No datasets available",
+  "dataset.no_tags": "No tags available",
   "external_file": "External File Library",
   "external_file_dataset_desc": "Import files from an external file library to build a Dataset. The files will not be stored again.",
   "external_id": "File Reading ID",
@@ -21,27 +17,21 @@
   "file_model_function_tip": "Enhances indexing and QA generation",
   "filename": "Filename",
   "folder_dataset": "Folder",
-  "permission": {
-    "des": {
-      "manage": "Can manage the entire knowledge base data and information",
-      "read": "View knowledge base content",
-      "write": "Ability to add and change knowledge base content"
-    }
-  },
+  "permission.des.manage": "Can manage the entire knowledge base data and information",
+  "permission.des.read": "View knowledge base content",
+  "permission.des.write": "Ability to add and change knowledge base content",
   "rebuild_embedding_start_tip": "Index model switching task has started",
   "rebuilding_index_count": "Number of indexes being rebuilt: {{count}}",
-  "tag": {
-    "Add New": "Add New",
-    "Add_new_tag": "Add New Tag",
-    "Edit_tag": "Edit Tag",
-    "add": "Create",
-    "cancel": "Cancel",
-    "delete_tag_confirm": "Confirm to delete the tag?",
-    "manage": "Tagging",
-    "searchOrAddTag": "Search or Add Tag",
-    "tags": "Tags",
-    "total_tags": "Total {{total}} tags"
-  },
+  "tag.Add New": "Add New",
+  "tag.Add_new_tag": "Add New Tag",
+  "tag.Edit_tag": "Edit Tag",
+  "tag.add": "Create",
+  "tag.cancel": "Cancel",
+  "tag.delete_tag_confirm": "Confirm to delete the tag?",
+  "tag.manage": "Tagging",
+  "tag.searchOrAddTag": "Search or Add Tag",
+  "tag.tags": "Tags",
+  "tag.total_tags": "Total {{total}} tags",
   "the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt": "The Dataset has indexes that are being trained or rebuilt",
   "website_dataset": "Website Sync",
   "website_dataset_desc": "Website sync allows you to build a Dataset directly using a web link."

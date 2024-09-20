@@ -10,7 +10,7 @@ import { Background, NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import RenderInput from '../render/RenderInput';
 import { Box } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';

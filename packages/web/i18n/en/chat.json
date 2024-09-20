@@ -31,9 +31,7 @@
   "no_workflow_response": "No workflow data",
   "plugins_output": "Plugin Output",
   "question_tip": "From top to bottom, the response order of each module",
-  "response": {
-    "node_inputs": "Node Inputs"
-  },
+  "response.node_inputs": "Node Inputs",
   "select": "Select",
   "select_file": "Upload File",
   "select_file_img": "Upload file / image",

@@ -14,13 +14,11 @@
   "key_tips": "你可以使用 API 密钥访问一些特定的接口（无法访问应用，访问应用需使用应用内的 API key）",
   "link_name": "分享链接的名字",
   "new_feishu_bot": "新增飞书机器人",
-  "official_account": {
-    "create_modal_title": "创建微信公众号接入",
-    "desc": "通过 API 直接接入微信公众号",
-    "edit_modal_title": "编辑微信公众号接入",
-    "name": "微信公众号接入",
-    "params": "微信公众号参数"
-  },
+  "official_account.create_modal_title": "创建微信公众号接入",
+  "official_account.desc": "通过 API 直接接入微信公众号",
+  "official_account.edit_modal_title": "编辑微信公众号接入",
+  "official_account.name": "微信公众号接入",
+  "official_account.params": "微信公众号参数",
   "publish_name": "名称",
   "qpm_is_empty": "QPM 不能为空",
   "qpm_tips": "每个 IP 每分钟最多提问多少次",
@@ -29,12 +27,10 @@
   "token_auth": "身份验证",
   "token_auth_tips": "身份校验服务器地址，如填写该值，每次对话前都会向指定服务器发送一个请求，进行身份校验",
   "token_auth_use_cases": "查看身份验证使用说明",
-  "wecom": {
-    "api": "企微 API",
-    "bot": "企业微信机器人",
-    "bot_desc": "通过 API 直接接入企业微信机器人",
-    "create_modal_title": "创建企微机器人",
-    "edit_modal_title": "编辑企微机器人",
-    "title": "发布到企业微信机器人"
-  }
+  "wecom.api": "企微 API",
+  "wecom.bot": "企业微信机器人",
+  "wecom.bot_desc": "通过 API 直接接入企业微信机器人",
+  "wecom.create_modal_title": "创建企微机器人",
+  "wecom.edit_modal_title": "编辑企微机器人",
+  "wecom.title": "发布到企业微信机器人"
 }

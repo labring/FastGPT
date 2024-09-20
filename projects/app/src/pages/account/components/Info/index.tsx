@@ -451,13 +451,12 @@ const PlanUsage = () => {
           </Button>
         </Flex>
         <Box px={[5, 7]} pb={[3, 6]}>
-          {isFreeTeam ? (
-            <>
-              <Box mt="2" color={'#485264'} fontSize="sm">
-                {t('common:info.free_plan')}
-              </Box>
-            </>
-          ) : (
+          {isFreeTeam && (
+            <Box mt="2" color={'#485264'} fontSize="sm">
+              {t('common:info.free_plan')}
+            </Box>
+          )}
+          {standardPlan.currentSubLevel !== StandardSubLevelEnum.free && (
             <Flex mt="2" color={'#485264'} fontSize="xs">
               <Box>{t('common:support.wallet.Plan expired time')}:</Box>
               <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>
