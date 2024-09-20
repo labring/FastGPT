@@ -31,6 +31,7 @@ import SaveAndPublishModal from '../WorkflowComponents/Flow/components/SaveAndPu
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useDebounceEffect } from 'ahooks';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const PublishHistories = dynamic(() => import('../WorkflowPublishHistoriesSlider'));
 
@@ -66,6 +67,7 @@ const Header = () => {
     future,
     setPast
   } = useContextSelector(WorkflowContext, (v) => v);
+  const { appType } = useSystemStore();
 
   // Check if the workflow is published
   const [isPublished, setIsPublished] = useState(false);
@@ -136,7 +138,8 @@ const Header = () => {
       router.push({
         pathname: '/app/list',
         query: {
-          parentId: appDetail.parentId
+          parentId: appDetail.parentId,
+          type: appType
         }
       });
     } catch (error) {}

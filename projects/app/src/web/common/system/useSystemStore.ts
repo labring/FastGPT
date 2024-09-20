@@ -41,12 +41,20 @@ type State = {
   reRankModelList: ReRankModelItemType[];
   whisperModel?: WhisperModelType;
   initStaticData: (e: InitDateResponse) => void;
+  appType?: string;
+  setAppType: (e?: string) => void;
 };
 
 export const useSystemStore = create<State>()(
   devtools(
     persist(
       immer((set, get) => ({
+        appType: undefined,
+        setAppType(e) {
+          set((state) => {
+            state.appType = e;
+          });
+        },
         initd: false,
         setInitd() {
           set((state) => {
