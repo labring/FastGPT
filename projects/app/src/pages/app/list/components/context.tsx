@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback, useState } from 'react';
+import React, { ReactNode, useCallback, useEffect, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -14,6 +14,7 @@ import { AppUpdateParams } from '@/global/core/app/api';
 import dynamic from 'next/dynamic';
 import { useI18n } from '@/web/context/I18n';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 type AppListContextType = {
@@ -134,6 +135,11 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
       }))
     );
   }, []);
+
+  const { setLastAppListRouteType } = useSystemStore();
+  useEffect(() => {
+    setLastAppListRouteType(type);
+  }, [setLastAppListRouteType, type]);
 
   const contextValue: AppListContextType = {
     parentId,

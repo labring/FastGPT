@@ -67,7 +67,8 @@ const Header = () => {
     future,
     setPast
   } = useContextSelector(WorkflowContext, (v) => v);
-  const { appType } = useSystemStore();
+
+  const { lastAppListRouteType } = useSystemStore();
 
   // Check if the workflow is published
   const [isPublished, setIsPublished] = useState(false);
@@ -139,11 +140,11 @@ const Header = () => {
         pathname: '/app/list',
         query: {
           parentId: appDetail.parentId,
-          type: appType
+          type: lastAppListRouteType
         }
       });
     } catch (error) {}
-  }, [appDetail._id, appDetail.parentId, router]);
+  }, [appDetail._id, appDetail.parentId, lastAppListRouteType, router]);
 
   const Render = useMemo(() => {
     return (
