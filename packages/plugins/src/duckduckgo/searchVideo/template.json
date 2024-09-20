@@ -14,14 +14,14 @@
     "nodes": [
       {
         "nodeId": "pluginInput",
-        "name": "自定义插件输入",
+        "name": "插件开始",
         "intro": "可以配置插件需要哪些输入，利用这些输入来运行插件",
-        "avatar": "/imgs/workflow/input.png",
+        "avatar": "core/workflow/template/workflowStart",
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 393.68844551739926,
-          "y": -58.80666875994541
+          "x": 429.8213651162415,
+          "y": -79.06127656499825
         },
         "version": "481",
         "inputs": [
@@ -49,14 +49,14 @@
       },
       {
         "nodeId": "pluginOutput",
-        "name": "自定义插件输出",
+        "name": "插件输出",
         "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
-        "avatar": "/imgs/workflow/output.png",
+        "avatar": "core/workflow/template/pluginOutput",
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1795.6509902691012,
-          "y": -47.04550785550961
+          "x": 1781.1978224295642,
+          "y": -60.56127656499825
         },
         "version": "481",
         "inputs": [
@@ -76,7 +76,7 @@
         "nodeId": "hjnVuJAOwyXV",
         "name": "HTTP 请求",
         "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
-        "avatar": "/imgs/workflow/http.png",
+        "avatar": "core/workflow/template/httpRequest",
         "flowNodeType": "httpRequest468",
         "showStatus": true,
         "position": {
@@ -91,7 +91,7 @@
             "valueType": "dynamic",
             "label": "",
             "required": false,
-            "description": "core.module.input.description.HTTP Dynamic Input",
+            "description": "common:core.module.input.description.HTTP Dynamic Input",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -102,6 +102,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -111,7 +112,9 @@
               ],
               "showDescription": false,
               "showDefaultValue": true
-            }
+            },
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpMethod",
@@ -119,17 +122,33 @@
             "valueType": "string",
             "label": "",
             "value": "POST",
-            "required": true
+            "required": true,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpTimeout",
+            "renderTypeList": ["custom"],
+            "valueType": "number",
+            "label": "",
+            "value": 30,
+            "min": 5,
+            "max": 600,
+            "required": true,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpReqUrl",
             "renderTypeList": ["hidden"],
             "valueType": "string",
             "label": "",
-            "description": "core.module.input.description.Http Request Url",
+            "description": "common:core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "duckduckgo/searchVideo"
+            "value": "duckduckgo/searchVideo",
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpHeader",
@@ -137,9 +156,11 @@
             "valueType": "any",
             "value": [],
             "label": "",
-            "description": "core.module.input.description.Http Request Header",
-            "placeholder": "core.module.input.description.Http Request Header",
-            "required": false
+            "description": "common:core.module.input.description.Http Request Header",
+            "placeholder": "common:core.module.input.description.Http Request Header",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpParams",
@@ -147,7 +168,9 @@
             "valueType": "any",
             "value": [],
             "label": "",
-            "required": false
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpJsonBody",
@@ -155,7 +178,29 @@
             "valueType": "any",
             "value": "{\n  \"query\": \"{{query}}\"\n}",
             "label": "",
-            "required": false
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpFormBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpContentType",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "value": "json",
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "renderTypeList": ["reference"],
@@ -173,6 +218,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -188,6 +234,23 @@
           }
         ],
         "outputs": [
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:request_error",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "required": true,
+            "label": "workflow:raw_response",
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
           {
             "id": "system_addOutputParam",
             "key": "system_addOutputParam",
@@ -216,23 +279,6 @@
             }
           },
           {
-            "id": "error",
-            "key": "error",
-            "label": "请求错误",
-            "description": "HTTP请求错误信息，成功时返回空",
-            "valueType": "object",
-            "type": "static"
-          },
-          {
-            "id": "httpRawResponse",
-            "key": "httpRawResponse",
-            "label": "原始响应",
-            "required": true,
-            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
-            "valueType": "any",
-            "type": "static"
-          },
-          {
             "id": "lEyy5QqyIBrK",
             "valueType": "string",
             "type": "dynamic",
@@ -240,6 +286,20 @@
             "label": "result"
           }
         ]
+      },
+      {
+        "nodeId": "iyF6yGGXuyWn",
+        "name": "系统配置",
+        "intro": "",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "pluginConfig",
+        "position": {
+          "x": -8.638252966148258,
+          "y": -103.56127656499825
+        },
+        "version": "4811",
+        "inputs": [],
+        "outputs": []
       }
     ],
     "edges": [

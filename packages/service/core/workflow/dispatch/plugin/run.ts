@@ -13,8 +13,9 @@ import { authPluginByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { computedPluginUsage } from '../../../app/plugin/utils';
 import { filterSystemVariables } from '../utils';
-import { getPluginRunUserQuery } from '../../utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
+import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 
 type RunPluginProps = ModuleDispatchProps<{
   [key: string]: any;
@@ -79,7 +80,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     },
     variables: runtimeVariables,
     query: getPluginRunUserQuery({
-      nodes: plugin.nodes,
+      pluginInputs: getPluginInputsFromStoreNodes(plugin.nodes),
       variables: runtimeVariables,
       files
     }).value,

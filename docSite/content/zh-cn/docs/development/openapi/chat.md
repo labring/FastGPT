@@ -332,7 +332,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
         },
         {
             "nodeId": "pluginOutput",
-            "moduleName": "自定义插件输出",
+            "moduleName": "插件输出",
             "moduleType": "pluginOutput",
             "totalPoints": 0,
             "pluginOutput": {
@@ -430,7 +430,7 @@ event: answer
 data: [DONE]
 
 event: flowResponses
-data: [{"nodeId":"fdDgXQ6SYn8v","moduleName":"AI 对话","moduleType":"chatNode","totalPoints":0.033,"model":"FastAI-3.5","tokens":33,"query":"你好","maxToken":2000,"historyPreview":[{"obj":"Human","value":"你好"},{"obj":"AI","value":"你好！有什么可以帮助你的吗？"}],"contextTotalLen":2,"runningTime":1.42},{"nodeId":"pluginOutput","moduleName":"自定义插件输出","moduleType":"pluginOutput","totalPoints":0,"pluginOutput":{"result":"你好！有什么可以帮助你的吗？"},"runningTime":0}]
+data: [{"nodeId":"fdDgXQ6SYn8v","moduleName":"AI 对话","moduleType":"chatNode","totalPoints":0.033,"model":"FastAI-3.5","tokens":33,"query":"你好","maxToken":2000,"historyPreview":[{"obj":"Human","value":"你好"},{"obj":"AI","value":"你好！有什么可以帮助你的吗？"}],"contextTotalLen":2,"runningTime":1.42},{"nodeId":"pluginOutput","moduleName":"插件输出","moduleType":"pluginOutput","totalPoints":0,"pluginOutput":{"result":"你好！有什么可以帮助你的吗？"},"runningTime":0}]
 ```
 
 {{< /markdownify >}}

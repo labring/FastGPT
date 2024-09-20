@@ -430,7 +430,8 @@ const ChatBox = (
                   file: {
                     type: file.type,
                     name: file.name,
-                    url: file.url || ''
+                    url: file.url || '',
+                    icon: file.icon || ''
                   }
                 })),
                 ...(text

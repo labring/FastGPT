@@ -810,7 +810,6 @@
       "QueryExtension": {
         "placeholder": "For example:\nQuestions about the introduction and use of Python.\nThe current conversation is related to the game 'GTA5'."
       },
-      "Quote prompt setting": "Quote Prompt Configuration",
       "Select app": "Select App",
       "Setting quote prompt": "Configure Quote Prompt",
       "Variable": "Global Variable",
@@ -899,7 +898,6 @@
         "empty_plugin": "Blank plugin",
         "empty_workflow": "Blank workflow",
         "http body placeholder": "Same syntax as Apifox",
-        "self_input": "Custom plug-in input",
         "self_output": "Custom plug-in output",
         "system_config": "System configuration",
         "system_config_info": "Can configure application system parameters",
@@ -1384,10 +1382,6 @@
   },
   "tag_list": "Tag List",
   "team_tag": "Team Tag",
-  "template": {
-    "Quote Content Tip": "You can customize the structure of the quoted content to better adapt to different scenarios. You can use some variables to configure the template:\n{{q}} - Search content, {{a}} - Expected content, {{source}} - Source, {{sourceId}} - Source file name, {{index}} - The nth quote, they are all optional. Below is the default value:\n{{default}}",
-    "Quote Prompt Tip": "You can use {{quote}} to insert the quote content template, and use {{question}} to insert the question. Below is the default value:\n{{default}}"
-  },
   "textarea_variable_picker_tip": "Enter \"/\" to select a variable",
   "tool_field": "Tool Field Parameter Configuration",
   "undefined_var": "Referenced an undefined variable, add it automatically?",

@@ -810,7 +810,6 @@
       "QueryExtension": {
         "placeholder": "例如：\n关于 Python 的介绍和使用等问题。\n当前对话与游戏《GTA5》有关。"
       },
-      "Quote prompt setting": "引用提示词配置",
       "Select app": "选择应用",
       "Setting quote prompt": "配置引用提示词",
       "Variable": "全局变量",
@@ -899,8 +898,7 @@
         "empty_plugin": "空白插件",
         "empty_workflow": "空白工作流",
         "http body placeholder": "与 Apifox 相同的语法",
-        "self_input": "自定义插件输入",
-        "self_output": "自定义插件输出",
+        "self_output": "插件输出",
         "system_config": "系统配置",
         "system_config_info": "可以配置应用的系统参数",
         "work_start": "流程开始"
@@ -1384,10 +1382,6 @@
   },
   "tag_list": "标签列表",
   "team_tag": "团队标签",
-  "template": {
-    "Quote Content Tip": "可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置：\n{{q}} - 检索内容，{{a}} - 预期内容，{{source}} - 来源，{{sourceId}} - 来源文件名，{{index}} - 第 n 个引用，他们都是可选的，下面是默认值：\n{{default}}",
-    "Quote Prompt Tip": "可以用 {{quote}} 来插入引用内容模板，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"
-  },
   "textarea_variable_picker_tip": "输入\"/\"可选择变量",
   "tool_field": "工具字段参数配置",
   "undefined_var": "引用了未定义的变量，是否自动添加？",

@@ -2,14 +2,18 @@ import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { useCallback, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './PluginRunBox/constants';
-import { ComponentRef as ChatComponentRef, SendPromptFnType } from './ChatBox/type';
+import {
+  ChatBoxInputFormType,
+  ComponentRef as ChatComponentRef,
+  SendPromptFnType
+} from './ChatBox/type';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 
 export const useChat = () => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
 
   const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([]);
-  const variablesForm = useForm();
+  const variablesForm = useForm<ChatBoxInputFormType>();
   // plugin
   const [pluginRunTab, setPluginRunTab] = useState<PluginRunBoxTabEnum>(PluginRunBoxTabEnum.input);
 
