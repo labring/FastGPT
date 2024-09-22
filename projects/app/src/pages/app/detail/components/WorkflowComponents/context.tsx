@@ -344,7 +344,7 @@ const WorkflowContextProvider = ({
   const [workflowControlMode, setWorkflowControlMode] = useLocalStorageState<'drag' | 'select'>(
     'workflow-control-mode',
     {
-      defaultValue: 'select',
+      defaultValue: 'drag',
       listenStorageChange: true
     }
   );
