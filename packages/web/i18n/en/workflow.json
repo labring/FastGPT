@@ -130,6 +130,8 @@
   "template.ai_chat_intro": "AI Large Model Chat",
   "template.dataset_search": "Dataset Search",
   "template.dataset_search_intro": "Use 'semantic search' and 'full-text search' capabilities to find potentially relevant reference content from the 'Dataset'.",
+  "template.forbid_stream": "Forbid stream mode",
+  "template.forbid_stream_desc": "Forces the output mode of nested application streams to be disabled",
   "template.plugin_output": "Plugin output",
   "template.plugin_start": "Plugin start",
   "template.system_config": "System Configuration",

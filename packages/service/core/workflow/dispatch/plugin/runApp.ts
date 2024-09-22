@@ -22,6 +22,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
   [NodeInputKeyEnum.history]?: ChatItemType[] | number;
   [NodeInputKeyEnum.fileUrlList]?: string[];
+  [NodeInputKeyEnum.forbidStream]?: boolean;
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -39,7 +40,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     variables
   } = props;
 
-  const { userChatInput, history, ...childrenAppVariables } = params;
+  const { system_forbid_stream = false, userChatInput, history, ...childrenAppVariables } = params;
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
@@ -77,6 +78,13 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
   const { flowResponses, flowUsages, assistantResponses, runTimes } = await dispatchWorkFlow({
     ...props,
+    // Rewrite stream mode
+    ...(system_forbid_stream
+      ? {
+          stream: false,
+          workflowStreamResponse: undefined
+        }
+      : {}),
     runningAppInfo: {
       id: String(appData._id),
       teamId: String(appData.teamId),
