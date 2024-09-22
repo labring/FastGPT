@@ -28,7 +28,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   const {
     node: { pluginId },
     runningAppInfo,
-    mode,
     query,
     params: { system_forbid_stream = false, ...data } // Plugin input
   } = props;
@@ -105,9 +104,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   }
 
   const usagePoints = await computedPluginUsage(plugin, flowUsages);
+  const childStreamResponse = system_forbid_stream ? false : props.stream;
 
   return {
-    assistantResponses,
+    // 嵌套运行时，如果 childApp stream=false，实际上不会有任何内容输出给用户，所以不需要存储
+    assistantResponses: childStreamResponse ? assistantResponses : [],
     // responseData, // debug
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
@@ -115,7 +116,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       totalPoints: usagePoints,
       pluginOutput: output?.pluginOutput,
       pluginDetail:
-        mode === 'test' && plugin.teamId // Not system plugin
+        pluginData && pluginData.permission.hasWritePer // Not system plugin
           ? flowResponses.filter((item) => {
               const filterArr = [FlowNodeTypeEnum.pluginOutput];
               return !filterArr.includes(item.moduleType as any);

@@ -56,14 +56,17 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     per: ReadPermissionVal
   });
   const { nodes, edges, chatConfig } = await getAppLatestVersion(pluginId);
+  const childStreamResponse = system_forbid_stream ? false : props.stream;
 
   // Auto line
-  workflowStreamResponse?.({
-    event: SseResponseEventEnum.answer,
-    data: textAdaptGptResponse({
-      text: '\n'
-    })
-  });
+  if (childStreamResponse) {
+    workflowStreamResponse?.({
+      event: SseResponseEventEnum.answer,
+      data: textAdaptGptResponse({
+        text: '\n'
+      })
+    });
+  }
 
   const chatHistories = getHistories(history, histories);
   const { files } = chatValue2RuntimePrompt(query);
@@ -118,14 +121,14 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const usagePoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
   return {
-    assistantResponses,
+    assistantResponses: childStreamResponse ? assistantResponses : [],
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: appData.avatar,
       totalPoints: usagePoints,
       query: userChatInput,
       textOutput: text,
-      pluginDetail: mode === 'test' ? flowResponses : undefined
+      pluginDetail: appData.permission.hasWritePer ? flowResponses : undefined
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
