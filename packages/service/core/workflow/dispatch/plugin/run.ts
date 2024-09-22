@@ -104,8 +104,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     output.moduleLogo = plugin.avatar;
   }
 
-  const isError = !!output?.pluginOutput?.error;
-  const usagePoints = isError ? 0 : await computedPluginUsage(plugin, flowUsages);
+  const usagePoints = await computedPluginUsage(plugin, flowUsages);
 
   return {
     assistantResponses,
@@ -116,7 +115,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       totalPoints: usagePoints,
       pluginOutput: output?.pluginOutput,
       pluginDetail:
-        mode === 'test' && plugin.teamId === runningAppInfo.teamId
+        mode === 'test' && plugin.teamId // Not system plugin
           ? flowResponses.filter((item) => {
               const filterArr = [FlowNodeTypeEnum.pluginOutput];
               return !filterArr.includes(item.moduleType as any);

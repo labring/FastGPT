@@ -34,6 +34,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     runningAppInfo,
     histories,
     query,
+    mode,
     node: { pluginId },
     workflowStreamResponse,
     params,
@@ -114,21 +115,26 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
   const { text } = chatValue2RuntimePrompt(assistantResponses);
 
+  const usagePoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
+
   return {
     assistantResponses,
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: appData.avatar,
+      totalPoints: usagePoints,
       query: userChatInput,
       textOutput: text,
-      totalPoints: flowResponses.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
+      pluginDetail: mode === 'test' ? flowResponses : undefined
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: appData.name,
-        totalPoints: flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
+        totalPoints: usagePoints,
+        tokens: 0
       }
     ],
+    [DispatchNodeResponseKeyEnum.toolResponses]: text,
     answerText: text,
     history: completeMessages
   };
