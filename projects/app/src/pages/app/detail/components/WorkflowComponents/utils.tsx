@@ -52,7 +52,7 @@ export const uiWorkflow2StoreWorkflow = ({
         return handleIdList.includes(item.sourceHandle) && handleIdList.includes(item.targetHandle);
       }
     );
-  console.log(formatEdges, '======');
+
   return {
     nodes: formatNodes,
     edges: formatEdges
