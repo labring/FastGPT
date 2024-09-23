@@ -497,7 +497,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     result: Record<string, any>;
   }> {
     // push run status messages
-    if (node.showStatus) {
+    if (node.showStatus && !props.isToolCall) {
       props.workflowStreamResponse?.({
         event: SseResponseEventEnum.flowNodeStatus,
         data: {
