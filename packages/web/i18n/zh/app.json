@@ -81,7 +81,7 @@
   "permission.des.write": "可查看和编辑应用",
   "plugin_cost_per_times": "{{cost}}/次",
   "plugin_dispatch": "插件调用",
-  "plugin_dispatch_tip": "给模型附加额外的能力，具体调用哪些插件，将由模型自主决定。\n若选择了插件，知识库调用将自动作为一个特殊的插件。",
+  "plugin_dispatch_tip": "给模型附加获取外部数据的能力，具体调用哪些插件，将由模型自主决定，所有插件都将以非流模式运行。\n若选择了插件，知识库调用将自动作为一个特殊的插件。",
   "publish_channel": "发布渠道",
   "publish_success": "发布成功",
   "saved_success": "保存成功",
