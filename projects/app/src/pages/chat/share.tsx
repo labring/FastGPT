@@ -356,17 +356,13 @@ const OutLink = ({
 
 const Render = (props: Props) => {
   const { shareId, authToken } = props;
-  const { localUId, setLocalUId } = useShareChatStore();
+  const { localUId, loaded } = useShareChatStore();
 
   const contextParams = useMemo(() => {
-    if (!localUId) {
-      const localId = `shareChat-${Date.now()}-${nanoid()}`;
-      setLocalUId(localId);
-      return { shareId, outLinkUid: authToken || localId };
-    }
-
     return { shareId, outLinkUid: authToken || localUId };
-  }, []);
+  }, [authToken, localUId, shareId]);
+
+  if (!loaded || !contextParams.outLinkUid) return <></>;
 
   return (
     <ChatContextProvider params={contextParams}>
@@ -375,7 +371,7 @@ const Render = (props: Props) => {
   );
 };
 
-export default Render;
+export default React.memo(Render);
 
 export async function getServerSideProps(context: any) {
   const shareId = context?.query?.shareId || '';
