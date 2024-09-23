@@ -90,7 +90,7 @@ export const useUserStore = create<State>()(
           if (!useSystemStore.getState()?.feConfigs?.isPlus) return [];
 
           const randomRefresh = Math.random() > 0.7;
-          if (!randomRefresh && !init && get().teamMembers.length)
+          if (!randomRefresh && !init && get().teamMembers?.length)
             return Promise.resolve(get().teamMembers);
 
           const res = await getTeamMembers();

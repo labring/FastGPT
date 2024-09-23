@@ -1,22 +1,22 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
-import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet(
-  'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWSYZ1234567890_',
-  24
-);
 
 type State = {
   localUId: string;
+  setLocalUId: (id: string) => void;
 };
 
 export const useShareChatStore = create<State>()(
   devtools(
     persist(
       immer((set, get) => ({
-        localUId: `shareChat-${Date.now()}-${nanoid()}`
+        localUId: '',
+        setLocalUId(id) {
+          set((state) => {
+            state.localUId = id;
+          });
+        }
       })),
       {
         name: 'shareChatStore'

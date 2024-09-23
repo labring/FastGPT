@@ -89,6 +89,7 @@ const InputLabel = ({ nodeId, input }: Props) => {
     required,
     selectedTypeIndex,
     t,
+    valueDesc,
     valueType
   ]);
 

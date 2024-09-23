@@ -12,17 +12,18 @@ import {
 import { responseWrite } from '../../../common/response';
 import { NextApiResponse } from 'next';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export const getWorkflowResponseWrite = ({
   res,
   detail,
   streamResponse,
-  id
+  id = getNanoid(24)
 }: {
   res?: NextApiResponse;
   detail: boolean;
   streamResponse: boolean;
-  id: string;
+  id?: string;
 }) => {
   return ({
     write,

@@ -20,7 +20,7 @@
       "charsPointsPrice": 0, // n积分/1k token（商业版）
       "censor": false, // 是否开启敏感校验（商业版）
       "vision": true, // 是否支持图片输入
-      "datasetProcess": true, // 是否设置为知识库处理模型（QA），务必保证至少有一个为true，否则知识库会报错
+      "datasetProcess": true, // 是否设置为文本理解模型（QA），务必保证至少有一个为true，否则知识库会报错
       "usedInClassify": true, // 是否用于问题分类（务必保证至少有一个为true）
       "usedInExtractFields": true, // 是否用于内容提取（务必保证至少有一个为true）
       "usedInToolCall": true, // 是否用于工具调用（务必保证至少有一个为true）
@@ -44,7 +44,7 @@
       "charsPointsPrice": 0,
       "censor": false,
       "vision": true,
-      "datasetProcess": false,
+      "datasetProcess": true,
       "usedInClassify": true,
       "usedInExtractFields": true,
       "usedInToolCall": true,
@@ -68,7 +68,7 @@
       "charsPointsPrice": 0,
       "censor": false,
       "vision": false,
-      "datasetProcess": false,
+      "datasetProcess": true,
       "usedInClassify": true,
       "usedInExtractFields": true,
       "usedInToolCall": true,
@@ -97,7 +97,7 @@
       "charsPointsPrice": 0,
       "censor": false,
       "vision": false,
-      "datasetProcess": false,
+      "datasetProcess": true,
       "usedInClassify": true,
       "usedInExtractFields": true,
       "usedInToolCall": true,

@@ -34,7 +34,7 @@ export async function splitCombinePluginId(id: string) {
   return { source, pluginId: id };
 }
 
-const getPluginTemplateById = async (
+const getChildAppTemplateById = async (
   id: string
 ): Promise<SystemPluginTemplateItemType & { teamId?: string }> => {
   const { source, pluginId } = await splitCombinePluginId(id);
@@ -69,44 +69,48 @@ const getPluginTemplateById = async (
 };
 
 /* format plugin modules to plugin preview module */
-export async function getPluginPreviewNode({ id }: { id: string }): Promise<FlowNodeTemplateType> {
-  const plugin = await getPluginTemplateById(id);
-  const isPlugin = !!plugin.workflow.nodes.find(
+export async function getChildAppPreviewNode({
+  id
+}: {
+  id: string;
+}): Promise<FlowNodeTemplateType> {
+  const app = await getChildAppTemplateById(id);
+  const isPlugin = !!app.workflow.nodes.find(
     (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
   );
 
   return {
     id: getNanoid(),
-    pluginId: plugin.id,
-    templateType: plugin.templateType,
+    pluginId: app.id,
+    templateType: app.templateType,
     flowNodeType: isPlugin ? FlowNodeTypeEnum.pluginModule : FlowNodeTypeEnum.appModule,
-    avatar: plugin.avatar,
-    name: plugin.name,
-    intro: plugin.intro,
-    inputExplanationUrl: plugin.inputExplanationUrl,
-    showStatus: plugin.showStatus,
+    avatar: app.avatar,
+    name: app.name,
+    intro: app.intro,
+    inputExplanationUrl: app.inputExplanationUrl,
+    showStatus: app.showStatus,
     isTool: isPlugin,
-    version: plugin.version,
+    version: app.version,
     sourceHandle: getHandleConfig(true, true, true, true),
     targetHandle: getHandleConfig(true, true, true, true),
     ...(isPlugin
-      ? pluginData2FlowNodeIO({ nodes: plugin.workflow.nodes })
-      : appData2FlowNodeIO({ chatConfig: plugin.workflow.chatConfig }))
+      ? pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
+      : appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig }))
   };
 }
 
 /* run plugin time */
-export async function getPluginRuntimeById(id: string): Promise<PluginRuntimeType> {
-  const plugin = await getPluginTemplateById(id);
+export async function getChildAppRuntimeById(id: string): Promise<PluginRuntimeType> {
+  const app = await getChildAppTemplateById(id);
 
   return {
-    id: plugin.id,
-    teamId: plugin.teamId,
-    name: plugin.name,
-    avatar: plugin.avatar,
-    showStatus: plugin.showStatus,
-    currentCost: plugin.currentCost,
-    nodes: plugin.workflow.nodes,
-    edges: plugin.workflow.edges
+    id: app.id,
+    teamId: app.teamId,
+    name: app.name,
+    avatar: app.avatar,
+    showStatus: app.showStatus,
+    currentCost: app.currentCost,
+    nodes: app.workflow.nodes,
+    edges: app.workflow.edges
   };
 }
