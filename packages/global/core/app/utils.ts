@@ -111,7 +111,7 @@ export const appWorkflow2Form = ({
         intro: node.intro || '',
         flowNodeType: node.flowNodeType,
         showStatus: node.showStatus,
-        version: '481',
+        version: node.version,
         inputs: node.inputs,
         outputs: node.outputs,
         templateType: FlowNodeTemplateTypeEnum.other
