@@ -378,7 +378,23 @@ export function form2AppWorkflow(
               y: 545
             },
             version: tool.version,
-            inputs: tool.inputs,
+            inputs: tool.inputs.map((input) => {
+              // Special key value
+              if (input.key === NodeInputKeyEnum.forbidStream) {
+                input.value = true;
+              }
+              // Special tool
+              if (
+                tool.flowNodeType === FlowNodeTypeEnum.appModule &&
+                input.key === NodeInputKeyEnum.history
+              ) {
+                return {
+                  ...input,
+                  value: formData.aiSettings.maxHistories
+                };
+              }
+              return input;
+            }),
             outputs: tool.outputs
           }
         ],

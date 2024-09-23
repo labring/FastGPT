@@ -23,6 +23,7 @@ export const Input_Template_UserChatInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
   valueType: WorkflowIOValueTypeEnum.string,
   label: i18nT('workflow:user_question'),
+  toolDescription: i18nT('workflow:user_question'),
   required: true
 };
 
