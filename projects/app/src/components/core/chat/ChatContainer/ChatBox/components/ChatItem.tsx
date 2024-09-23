@@ -95,7 +95,7 @@ const AIContentCard = React.memo(function AIContentCard({
           <AIResponseBox
             key={key}
             value={value}
-            isLastChild={isLastChild && i === chatValue.length - 1}
+            isLastResponseValue={isLastChild && i === chatValue.length - 1}
             isChatting={isChatting}
           />
         );
