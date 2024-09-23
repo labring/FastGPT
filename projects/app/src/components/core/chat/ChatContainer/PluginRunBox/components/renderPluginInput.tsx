@@ -110,9 +110,9 @@ const RenderPluginInput = ({
               *
             </Box>
           )}
-          {input.label}
+          {t(input.label as any)}
         </Box>
-        {input.description && <QuestionTip ml={2} label={input.description} />}
+        {input.description && <QuestionTip ml={2} label={t(input.description as any)} />}
       </Flex>
       {render}
     </Box>

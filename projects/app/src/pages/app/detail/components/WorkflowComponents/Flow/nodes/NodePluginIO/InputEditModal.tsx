@@ -250,7 +250,8 @@ const FieldEditModal = ({
         }
       }
 
-      if (isToolInput) {
+      // Focus remove toolDescription
+      if (isToolInput && data.renderTypeList.includes(FlowNodeInputTypeEnum.reference)) {
         data.toolDescription = data.description;
       } else {
         data.toolDescription = undefined;

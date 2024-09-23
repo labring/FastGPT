@@ -24,7 +24,7 @@ import { onSendPrompt } from '../ChatContainer/useChat';
 
 type props = {
   value: UserChatItemValueItemType | AIChatItemValueItemType;
-  isLastChild: boolean;
+  isLastResponseValue: boolean;
   isChatting: boolean;
 };
 
@@ -167,11 +167,13 @@ const RenderInteractive = React.memo(function RenderInteractive({
   );
 });
 
-const AIResponseBox = ({ value, isLastChild, isChatting }: props) => {
+const AIResponseBox = ({ value, isLastResponseValue, isChatting }: props) => {
   if (value.type === ChatItemValueTypeEnum.text && value.text)
-    return <RenderText showAnimation={isChatting && isLastChild} text={value.text.content} />;
+    return (
+      <RenderText showAnimation={isChatting && isLastResponseValue} text={value.text.content} />
+    );
   if (value.type === ChatItemValueTypeEnum.tool && value.tools)
-    return <RenderTool showAnimation={isChatting && isLastChild} tools={value.tools} />;
+    return <RenderTool showAnimation={isChatting} tools={value.tools} />;
   if (
     value.type === ChatItemValueTypeEnum.interactive &&
     value.interactive &&

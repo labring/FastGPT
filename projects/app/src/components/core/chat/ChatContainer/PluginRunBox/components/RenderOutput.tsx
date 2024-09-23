@@ -33,7 +33,7 @@ const RenderOutput = () => {
                   <AIResponseBox
                     key={key}
                     value={value}
-                    isLastChild={true}
+                    isLastResponseValue={true}
                     isChatting={isChatting}
                   />
                 );
