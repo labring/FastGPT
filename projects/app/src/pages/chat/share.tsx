@@ -2,12 +2,13 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
-import { useShareChatStore } from '@/web/core/chat/storeShareChat';
 import SideBar from '@/components/SideBar';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
-
+const nanoid = customAlphabet(
+  'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWSYZ1234567890_',
+  24
+);
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 
@@ -16,7 +17,7 @@ import ChatHeader from './components/ChatHeader';
 import ChatHistorySlider from './components/ChatHistorySlider';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
-import { delChatRecordById, getChatHistories, getInitOutLinkChatInfo } from '@/web/core/chat/api';
+import { delChatRecordById, getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
@@ -36,6 +37,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import dynamic from 'next/dynamic';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useShareChatStore } from '@/web/core/chat/storeShareChat';
 const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
 type Props = {
@@ -46,7 +48,14 @@ type Props = {
   authToken: string;
 };
 
-const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
+const OutLink = ({
+  outLinkUid,
+  appName,
+  appIntro,
+  appAvatar
+}: Props & {
+  outLinkUid: string;
+}) => {
   const { t } = useTranslation();
   const router = useRouter();
   const {
@@ -69,14 +78,9 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
   const [isEmbed, setIdEmbed] = useState(true);
 
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
-  const appId = chatData.appId;
-
-  const { localUId } = useShareChatStore();
-  const outLinkUid: string = authToken || localUId;
 
   const {
     onUpdateHistoryTitle,
-    loadHistories,
     onUpdateHistory,
     onClearHistories,
     onDelHistory,
@@ -212,7 +216,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
       onError(e: any) {
         console.log(e);
         if (chatId) {
-          onChangeChatId('');
+          onChangeChatId();
         }
       },
       onFinally() {
@@ -352,16 +356,21 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
 
 const Render = (props: Props) => {
   const { shareId, authToken } = props;
-  const { localUId } = useShareChatStore();
-  const outLinkUid: string = authToken || localUId;
+  const { localUId, setLocalUId } = useShareChatStore();
 
   const contextParams = useMemo(() => {
-    return { shareId, outLinkUid };
-  }, [shareId, outLinkUid]);
+    if (!localUId) {
+      const localId = `shareChat-${Date.now()}-${nanoid()}`;
+      setLocalUId(localId);
+      return { shareId, outLinkUid: authToken || localId };
+    }
+
+    return { shareId, outLinkUid: authToken || localUId };
+  }, []);
 
   return (
     <ChatContextProvider params={contextParams}>
-      <OutLink {...props} />;
+      <OutLink {...props} outLinkUid={contextParams.outLinkUid} />;
     </ChatContextProvider>
   );
 };

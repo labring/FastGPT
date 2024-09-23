@@ -240,7 +240,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       res,
       detail,
       streamResponse: stream,
-      id: chatId || getNanoid(24)
+      id: chatId
     });
 
     /* start flow controller */

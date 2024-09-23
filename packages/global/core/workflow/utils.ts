@@ -31,7 +31,11 @@ import {
 import { IfElseResultEnum } from './template/system/ifElse/constant';
 import { RuntimeNodeItemType } from './runtime/type';
 import { getReferenceVariableValue } from './runtime/utils';
-import { Input_Template_History, Input_Template_UserChatInput } from './template/input';
+import {
+  Input_Template_History,
+  Input_Template_Stream_MODE,
+  Input_Template_UserChatInput
+} from './template/input';
 import { i18nT } from '../../../web/i18n/utils';
 import { RuntimeUserPromptType, UserChatItemType } from '../../core/chat/type';
 import { getNanoid } from '../../common/string/tools';
@@ -179,17 +183,21 @@ export const pluginData2FlowNodeIO = ({
   const pluginOutput = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginOutput);
 
   return {
-    inputs:
-      pluginInput?.inputs.map((item) => ({
-        ...item,
-        ...getModuleInputUiField(item),
-        value: getOrInitModuleInputValue(item),
-        canEdit: false,
-        renderTypeList:
-          item.renderTypeList[0] === FlowNodeInputTypeEnum.customVariable
-            ? [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input]
-            : item.renderTypeList
-      })) || [],
+    inputs: pluginInput
+      ? [
+          Input_Template_Stream_MODE,
+          ...pluginInput?.inputs.map((item) => ({
+            ...item,
+            ...getModuleInputUiField(item),
+            value: getOrInitModuleInputValue(item),
+            canEdit: false,
+            renderTypeList:
+              item.renderTypeList[0] === FlowNodeInputTypeEnum.customVariable
+                ? [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input]
+                : item.renderTypeList
+          }))
+        ]
+      : [],
     outputs: pluginOutput
       ? [
           ...pluginOutput.inputs.map((item) => ({
@@ -250,6 +258,7 @@ export const appData2FlowNodeIO = ({
 
   return {
     inputs: [
+      Input_Template_Stream_MODE,
       Input_Template_History,
       Input_Template_UserChatInput,
       // ...(showFileLink ? [Input_Template_File_Link] : []),

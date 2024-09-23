@@ -4,7 +4,11 @@ import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
 import { loadRequestMessages } from '../../chat/utils';
 import { llmCompletionsBodyFormat } from '../utils';
 
-export const Prompt_QuestionGuide = `你是一个AI智能助手，可以回答和解决我的问题。请结合前面的对话记录，帮我生成 3 个问题，引导我继续提问，生成问题的语言要与原问题相同。问题的长度应小于20个字符，按 JSON 格式返回: ["问题1", "问题2", "问题3"]`;
+export const Prompt_QuestionGuide = `你是一个AI智能助手，你的任务是结合对话记录，推测我下一步的问题。
+你需要生成 3 个可能的问题，引导我继续提问，生成的问题要求：
+1. 生成问题的语言，与最后一个用户提问语言一致。
+2. 问题的长度应小于20个字符。
+3. 按 JSON 格式返回: ["question1", "question2", "question3"]。`;
 
 export async function createQuestionGuide({
   messages,

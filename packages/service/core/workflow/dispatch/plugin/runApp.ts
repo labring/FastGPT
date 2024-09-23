@@ -22,6 +22,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
   [NodeInputKeyEnum.history]?: ChatItemType[] | number;
   [NodeInputKeyEnum.fileUrlList]?: string[];
+  [NodeInputKeyEnum.forbidStream]?: boolean;
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -33,13 +34,14 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     runningAppInfo,
     histories,
     query,
+    mode,
     node: { pluginId },
     workflowStreamResponse,
     params,
     variables
   } = props;
 
-  const { userChatInput, history, ...childrenAppVariables } = params;
+  const { system_forbid_stream = false, userChatInput, history, ...childrenAppVariables } = params;
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
@@ -54,14 +56,17 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     per: ReadPermissionVal
   });
   const { nodes, edges, chatConfig } = await getAppLatestVersion(pluginId);
+  const childStreamResponse = system_forbid_stream ? false : props.stream;
 
   // Auto line
-  workflowStreamResponse?.({
-    event: SseResponseEventEnum.answer,
-    data: textAdaptGptResponse({
-      text: '\n'
-    })
-  });
+  if (childStreamResponse) {
+    workflowStreamResponse?.({
+      event: SseResponseEventEnum.answer,
+      data: textAdaptGptResponse({
+        text: '\n'
+      })
+    });
+  }
 
   const chatHistories = getHistories(history, histories);
   const { files } = chatValue2RuntimePrompt(query);
@@ -77,6 +82,13 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
   const { flowResponses, flowUsages, assistantResponses, runTimes } = await dispatchWorkFlow({
     ...props,
+    // Rewrite stream mode
+    ...(system_forbid_stream
+      ? {
+          stream: false,
+          workflowStreamResponse: undefined
+        }
+      : {}),
     runningAppInfo: {
       id: String(appData._id),
       teamId: String(appData.teamId),
@@ -106,21 +118,26 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
   const { text } = chatValue2RuntimePrompt(assistantResponses);
 
+  const usagePoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
+
   return {
-    assistantResponses,
+    assistantResponses: childStreamResponse ? assistantResponses : [],
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: appData.avatar,
+      totalPoints: usagePoints,
       query: userChatInput,
       textOutput: text,
-      totalPoints: flowResponses.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
+      pluginDetail: appData.permission.hasWritePer ? flowResponses : undefined
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: appData.name,
-        totalPoints: flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
+        totalPoints: usagePoints,
+        tokens: 0
       }
     ],
+    [DispatchNodeResponseKeyEnum.toolResponses]: text,
     answerText: text,
     history: completeMessages
   };

@@ -166,7 +166,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           status: 'error'
         });
         if (chatId) {
-          onChangeChatId('');
+          onChangeChatId();
         }
       },
       onFinally() {

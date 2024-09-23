@@ -116,8 +116,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,
       detail: true,
-      streamResponse: true,
-      id: getNanoid(24)
+      streamResponse: true
     });
 
     /* start process */

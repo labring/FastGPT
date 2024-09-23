@@ -3,7 +3,7 @@
  */
 import type { NextApiResponse } from 'next';
 import {
-  getPluginPreviewNode,
+  getChildAppPreviewNode,
   splitCombinePluginId
 } from '@fastgpt/service/core/app/plugin/controller';
 import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -27,7 +27,7 @@ async function handler(
     await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
   }
 
-  return getPluginPreviewNode({ id: appId });
+  return getChildAppPreviewNode({ id: appId });
 }
 
 export default NextAPI(handler);

@@ -105,3 +105,12 @@ export const Input_Template_Node_Height: FlowNodeInputItemType = {
   label: '',
   value: 900
 };
+
+export const Input_Template_Stream_MODE: FlowNodeInputItemType = {
+  key: NodeInputKeyEnum.forbidStream,
+  renderTypeList: [FlowNodeInputTypeEnum.switch],
+  valueType: WorkflowIOValueTypeEnum.boolean,
+  label: i18nT('workflow:template.forbid_stream'),
+  description: i18nT('workflow:template.forbid_stream_desc'),
+  value: false
+};
