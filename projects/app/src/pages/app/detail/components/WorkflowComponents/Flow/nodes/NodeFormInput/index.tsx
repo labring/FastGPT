@@ -76,7 +76,6 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             });
           } else {
             const output = outputs.find((output) => output.key === editField.label);
-
             onChangeNode({
               nodeId,
               type: 'updateInput',
@@ -138,6 +137,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               {!!editField && (
                 <InputFormEditModal
                   defaultValue={editField}
+                  labels={inputs.map((item) => item.label)}
                   onClose={() => {
                     setEditField(undefined);
                   }}

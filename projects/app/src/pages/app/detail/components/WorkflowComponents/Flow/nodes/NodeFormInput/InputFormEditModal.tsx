@@ -21,11 +21,13 @@ export const defaultFormInput = {
 const InputFormEditModal = ({
   defaultValue,
   onClose,
-  onSubmit
+  onSubmit,
+  labels
 }: {
   defaultValue: UserInputFormItemType;
   onClose: () => void;
   onSubmit: (data: UserInputFormItemType) => void;
+  labels: string[];
 }) => {
   const isEdit = !!defaultValue.label;
   const { t } = useTranslation();
@@ -73,6 +75,17 @@ const InputFormEditModal = ({
 
   const onSubmitSuccess = useCallback(
     (data: UserInputFormItemType, action: 'confirm' | 'continue') => {
+      const isChangeKey = defaultValue.label !== data.label;
+      if (labels.includes(data.label)) {
+        if (!isEdit || isChangeKey) {
+          toast({
+            status: 'warning',
+            title: t('workflow:field_name_already_exists')
+          });
+          return;
+        }
+      }
+
       if (action === 'confirm') {
         onSubmit(data);
         onClose();
