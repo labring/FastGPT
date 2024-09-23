@@ -120,6 +120,7 @@ console.log("Chat box loaded")
   return (
     <MyModal
       isOpen
+      isCentered
       iconSrc="/imgs/modal/usingWay.svg"
       title={t('common:core.app.outLink.Select Using Way')}
       onClose={onClose}
