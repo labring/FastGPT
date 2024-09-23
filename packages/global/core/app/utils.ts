@@ -97,7 +97,10 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchExtensionBg
       );
-    } else if (node.flowNodeType === FlowNodeTypeEnum.pluginModule) {
+    } else if (
+      node.flowNodeType === FlowNodeTypeEnum.pluginModule ||
+      node.flowNodeType === FlowNodeTypeEnum.appModule
+    ) {
       if (!node.pluginId) return;
 
       defaultAppForm.selectedTools.push({
