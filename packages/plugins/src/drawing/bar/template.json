@@ -1,0 +1,406 @@
+{
+  "author": "",
+  "version": "486",
+  "name": "柱状图",
+  "avatar": "/imgs/workflow/柱状图.svg",
+  "intro": "根据数据生成柱状图",
+  "showStatus": true,
+  "weight": 10,
+
+  "isTool": true,
+  "templateType": "search",
+
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "自定义插件输入",
+        "intro": "可以配置插件需要哪些输入，利用这些输入来运行插件",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 500.64141627084007,
+          "y": -172.0700284904984
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "categories",
+            "label": "categories",
+            "description": "柱状图x轴数据",
+            "required": false,
+            "toolDescription": "柱状图x轴数据"
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "values",
+            "label": "values",
+            "description": "柱状图y轴数据",
+            "required": false,
+            "toolDescription": "柱状图y轴数据"
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "title",
+            "label": "title",
+            "description": "柱状图标题",
+            "required": false,
+            "toolDescription": "柱状图标题"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "query",
+            "valueType": "string",
+            "key": "categories",
+            "label": "categories",
+            "type": "hidden"
+          },
+          {
+            "id": "values",
+            "valueType": "string",
+            "key": "values",
+            "label": "values",
+            "type": "hidden"
+          },
+          {
+            "id": "title",
+            "valueType": "string",
+            "key": "title",
+            "label": "title",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "自定义插件输出",
+        "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
+        "avatar": "core/workflow/template/pluginOutput",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 1705.9528428464741,
+          "y": -181.10460253877415
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "图表URL",
+            "label": "图表URL",
+            "description": "",
+            "value": [
+              "jxwqSWGygxDb",
+              "iPdhx4DVBqPJ"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "原始响应",
+            "label": "原始响应",
+            "description": "",
+            "value": [
+              "jxwqSWGygxDb",
+              "httpRawResponse"
+            ]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "jxwqSWGygxDb",
+        "name": "饼图",
+        "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
+        "avatar": "core/workflow/template/httpRequest",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 1097.5788710681393,
+          "y": -411.72824892511545
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": [
+              "addInputParam"
+            ],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "core.module.input.description.HTTP Dynamic Input",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            }
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "label": "",
+            "description": "core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "drawing/bar"
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "description": "core.module.input.description.Http Request Header",
+            "placeholder": "core.module.input.description.Http Request Header",
+            "required": false
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": "{\r\n  \"title\": \"{{title}}\",\r\n  \"categories\":\"{{categories}}\",\r\n  \"values\":{{values}}\r\n}",
+            "label": "",
+            "required": false
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "categories",
+            "label": "categories",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "query"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "values",
+            "label": "values",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "values"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "title",
+            "label": "title",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "title"
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "error",
+            "key": "error",
+            "label": "请求错误",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "label": "原始响应",
+            "required": true,
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            }
+          },
+          {
+            "id": "iPdhx4DVBqPJ",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "result",
+            "label": "result"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "pluginInput",
+        "target": "jxwqSWGygxDb",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "jxwqSWGygxDb-target-left"
+      },
+      {
+        "source": "jxwqSWGygxDb",
+        "target": "pluginOutput",
+        "sourceHandle": "jxwqSWGygxDb-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      }
+    ]
+  }
+}
