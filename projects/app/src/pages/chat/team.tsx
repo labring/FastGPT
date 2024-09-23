@@ -76,20 +76,22 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     resetVariables,
     useChatPagination
   } = useChat();
-
+  const params = useMemo(() => {
+    return {
+      appId,
+      chatId,
+      teamId,
+      teamToken,
+      type: GetChatTypeEnum.team
+    };
+  }, [appId, chatId, teamId, teamToken]);
   const {
     data: chatRecords,
     ScrollData,
     isLoading: isLoadChatRecords,
     setData: setChatRecords,
     total: totalRecordsCount
-  } = useChatPagination({
-    appId,
-    chatId,
-    teamId,
-    teamToken,
-    type: GetChatTypeEnum.team
-  });
+  } = useChatPagination(params);
 
   const startChat = useCallback(
     async ({

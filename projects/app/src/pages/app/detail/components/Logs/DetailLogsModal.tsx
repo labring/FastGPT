@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Flex, Box, useTheme } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
@@ -32,7 +32,14 @@ const DetailLogsModal = ({
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const theme = useTheme();
-
+  const params = useMemo(() => {
+    return {
+      chatId,
+      appId,
+      loadCustomFeedbacks: true,
+      type: GetChatTypeEnum.normal
+    };
+  }, [appId, chatId]);
   const {
     ChatBoxRef,
     variablesForm,
@@ -48,12 +55,7 @@ const DetailLogsModal = ({
     isLoading: isLoadChatRecords,
     setData: setChatRecords,
     total: totalRecordsCount
-  } = useChatPagination({
-    chatId,
-    appId,
-    loadCustomFeedbacks: true,
-    type: GetChatTypeEnum.normal
-  });
+  } = useChatPagination(params);
 
   const { data: chat, isFetching } = useQuery(
     ['getChatDetail', chatId],

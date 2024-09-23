@@ -79,18 +79,20 @@ const Chat = ({
 
   const { userInfo } = useUserStore();
   const { isPc } = useSystem();
-
+  const params = useMemo(() => {
+    return {
+      chatId,
+      appId,
+      type: GetChatTypeEnum.normal
+    };
+  }, [appId, chatId]);
   const {
     data: chatRecords,
     ScrollData,
     isLoading: isLoadChatRecords,
     setData: setChatRecords,
     total: totalRecordsCount
-  } = useChatPagination({
-    chatId,
-    appId,
-    type: GetChatTypeEnum.normal
-  });
+  } = useChatPagination(params);
 
   // get chat app info
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);

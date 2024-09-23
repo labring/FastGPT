@@ -75,13 +75,14 @@ async function handler(
     pageNum
   });
 
-  if (type === 'outLink')
+  if (type === 'outLink') {
     app.type !== AppTypeEnum.plugin &&
       histories.forEach((item) => {
         if (item.obj === ChatRoleEnum.AI) {
           item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
         }
       });
+  }
 
   return {
     pageNum,

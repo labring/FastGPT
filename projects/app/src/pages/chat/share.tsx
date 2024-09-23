@@ -178,19 +178,22 @@ const OutLink = ({
     ]
   );
 
+  const params = useMemo(() => {
+    return {
+      chatId,
+      shareId,
+      outLinkUid,
+      appId: chatData.appId,
+      type: GetChatTypeEnum.outLink
+    };
+  }, [chatData.appId, chatId, outLinkUid, shareId]);
   const {
     data: chatRecords,
     ScrollData,
     isLoading: isLoadChatRecords,
     setData: setChatRecords,
     total: totalRecordsCount
-  } = useChatPagination({
-    chatId,
-    shareId,
-    outLinkUid,
-    appId,
-    type: GetChatTypeEnum.outLink
-  });
+  } = useChatPagination(params);
 
   const { loading: isLoading } = useRequest2(
     async () => {

@@ -4,6 +4,7 @@ import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+
 import {
   useBoolean,
   useLockFn,
@@ -31,7 +32,8 @@ export function usePagination<ResT = any>({
   onChange,
   refreshDeps,
   showTextTip = true,
-  scrollLoadType = 'button'
+  scrollLoadType = 'button',
+  EmptyTip
 }: {
   api: (data: any) => Promise<PagingData<ResT>>;
   pageSize?: number;
@@ -43,6 +45,7 @@ export function usePagination<ResT = any>({
   throttleWait?: number;
   showTextTip?: boolean;
   scrollLoadType?: 'top' | 'button';
+  EmptyTip?: React.JSX.Element;
 }) {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -57,7 +60,10 @@ export function usePagination<ResT = any>({
   const [total, setTotal] = useState(0);
   const [data, setData] = useState<ResT[]>([]);
 
+  const isEmpty = total === 0 && !isLoading;
+
   const maxPage = useMemo(() => Math.ceil(total / pageSize) || 1, [pageSize, total]);
+  noMore.current = data.length >= total;
 
   const fetchData = useLockFn(async (num: number = pageNum) => {
     if (noMore.current && num !== 1) return;
@@ -71,11 +77,7 @@ export function usePagination<ResT = any>({
       });
 
       // Check total and set
-      res.total && setTotal(res.total);
-
-      if (res.total !== undefined && res.total <= data.length + res.data.length) {
-        noMore.current = true;
-      }
+      res.total !== undefined && setTotal(res.total);
 
       setPageNum(num);
 
@@ -169,6 +171,7 @@ export function usePagination<ResT = any>({
   // Reload data
   const { runAsync: refresh } = useRequest(
     async () => {
+      noMore.current = false;
       setData([]);
       defaultRequest && fetchData(1);
     },
@@ -190,7 +193,7 @@ export function usePagination<ResT = any>({
     } & BoxProps) => {
       const loadText = (() => {
         if (isLoading) return t('common:common.is_requesting');
-        if (total <= data.length) return t('common:common.request_end');
+        if (noMore.current) return t('common:common.request_end');
         return t('common:common.request_more');
       })();
 
@@ -216,7 +219,7 @@ export function usePagination<ResT = any>({
       return (
         <Box {...props} ref={ScrollContainerRef} overflow={'overlay'}>
           {children}
-          {showTextTip && (
+          {showTextTip && !isEmpty && (
             <Box
               mt={2}
               fontSize={'xs'}
@@ -231,6 +234,7 @@ export function usePagination<ResT = any>({
               {loadText}
             </Box>
           )}
+          {isEmpty && EmptyTip}
         </Box>
       );
     }

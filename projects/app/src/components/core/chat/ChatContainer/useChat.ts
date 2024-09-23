@@ -17,7 +17,7 @@ import { GetChatRecordsProps } from '@/global/core/chat/api';
 
 export const useChat = () => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
-  const variablesForm = useForm();
+  const variablesForm = useForm<ChatBoxInputFormType>();
   // plugin
   const [pluginRunTab, setPluginRunTab] = useState<PluginRunBoxTabEnum>(PluginRunBoxTabEnum.input);
 
@@ -57,7 +57,7 @@ export const useChat = () => {
       params,
       pageSize: 10,
       type: 'scroll',
-      refreshDeps: [...Object.values(params)],
+      refreshDeps: [params],
       scrollLoadType: 'top'
     });
 

@@ -67,7 +67,8 @@ const DataCard = () => {
     pageSize: 10,
     type: 'scroll',
     params: scrollParams,
-    refreshDeps: [searchText, collectionId]
+    refreshDeps: [searchText, collectionId],
+    EmptyTip: <EmptyTip text={t('common:core.dataset.data.Empty Tip')} />
   });
 
   const [editDataId, setEditDataId] = useState<string>();
@@ -163,7 +164,7 @@ const DataCard = () => {
           />
         </Flex>
         {/* data */}
-        <ScrollData flex={'1 0 0'} px={5} pb={5}>
+        <ScrollData px={5} pb={5}>
           <Flex flexDir={'column'} gap={2}>
             {datasetDataList.map((item, index) => (
               <Card
@@ -303,9 +304,6 @@ const DataCard = () => {
             ))}
           </Flex>
         </ScrollData>
-        {total === 0 && !isLoading && (
-          <EmptyTip text={t('common:core.dataset.data.Empty Tip')}></EmptyTip>
-        )}
       </Flex>
 
       {editDataId !== undefined && collection && (

@@ -725,6 +725,7 @@
   "core.module.template.empty_workflow": "空白工作流",
   "core.module.template.http body placeholder": "与 Apifox 相同的语法",
   "core.module.template.self_output": "插件输出",
+  "core.module.template.self_input": "插件输入",
   "core.module.template.system_config": "系统配置",
   "core.module.template.system_config_info": "可以配置应用的系统参数",
   "core.module.template.work_start": "流程开始",

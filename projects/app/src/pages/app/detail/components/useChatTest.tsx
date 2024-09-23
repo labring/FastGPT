@@ -12,7 +12,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 import { useChat } from '@/components/core/chat/ChatContainer/useChat';
-import { Box } from '@chakra-ui/react';
+import { Box, BoxProps } from '@chakra-ui/react';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
@@ -62,9 +62,21 @@ export const useChatTest = ({
     return nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs || [];
   }, [nodes]);
 
-  const ScrollData = useCallback(({ children }: { children: React.ReactNode }) => {
-    return <Box overflow={'overlay'}>{children}</Box>;
-  }, []);
+  const ScrollData = useCallback(
+    ({
+      children,
+      ...props
+    }: {
+      children: React.ReactNode;
+    } & BoxProps) => {
+      return (
+        <Box {...props} overflow={'overlay'}>
+          {children}
+        </Box>
+      );
+    },
+    []
+  );
 
   const { ChatBoxRef, variablesForm, pluginRunTab, setPluginRunTab, clearChatRecords } = useChat();
 
@@ -80,7 +92,10 @@ export const useChatTest = ({
           chatConfig={appDetail.chatConfig}
           tab={pluginRunTab}
           setTab={setPluginRunTab}
-          onNewChat={() => setChatRecords([])}
+          onNewChat={() => {
+            clearChatRecords();
+            setChatRecords([]);
+          }}
           onStartChat={startChat}
         />
       </Box>
