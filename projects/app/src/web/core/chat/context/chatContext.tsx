@@ -195,7 +195,7 @@ const ChatContextProvider = ({
         setHistories([]);
       },
       onFinally() {
-        onChangeChatId('');
+        onChangeChatId();
       }
     }
   );

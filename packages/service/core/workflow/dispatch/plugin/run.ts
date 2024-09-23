@@ -2,7 +2,7 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import { dispatchWorkFlow } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getPluginRuntimeById } from '../../../app/plugin/controller';
+import { getChildAppRuntimeById } from '../../../app/plugin/controller';
 import {
   getWorkflowEntryNodeIds,
   initWorkflowEdgeStatus,
@@ -16,8 +16,10 @@ import { filterSystemVariables } from '../utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 type RunPluginProps = ModuleDispatchProps<{
+  [NodeInputKeyEnum.forbidStream]?: boolean;
   [key: string]: any;
 }>;
 type RunPluginResponse = DispatchNodeResultType<{}>;
@@ -26,9 +28,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   const {
     node: { pluginId },
     runningAppInfo,
-    mode,
     query,
-    params: data // Plugin input
+    params: { system_forbid_stream = false, ...data } // Plugin input
   } = props;
 
   if (!pluginId) {
@@ -44,7 +45,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     per: ReadPermissionVal
   });
 
-  const plugin = await getPluginRuntimeById(pluginId);
+  const plugin = await getChildAppRuntimeById(pluginId);
 
   const runtimeNodes = storeNodes2RuntimeNodes(
     plugin.nodes,
@@ -73,6 +74,13 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
   const { flowResponses, flowUsages, assistantResponses, runTimes } = await dispatchWorkFlow({
     ...props,
+    // Rewrite stream mode
+    ...(system_forbid_stream
+      ? {
+          stream: false,
+          workflowStreamResponse: undefined
+        }
+      : {}),
     runningAppInfo: {
       id: String(plugin.id),
       teamId: plugin.teamId || '',
@@ -95,11 +103,12 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     output.moduleLogo = plugin.avatar;
   }
 
-  const isError = !!output?.pluginOutput?.error;
-  const usagePoints = isError ? 0 : await computedPluginUsage(plugin, flowUsages);
+  const usagePoints = await computedPluginUsage(plugin, flowUsages);
+  const childStreamResponse = system_forbid_stream ? false : props.stream;
 
   return {
-    assistantResponses,
+    // 嵌套运行时，如果 childApp stream=false，实际上不会有任何内容输出给用户，所以不需要存储
+    assistantResponses: childStreamResponse ? assistantResponses : [],
     // responseData, // debug
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
@@ -107,7 +116,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       totalPoints: usagePoints,
       pluginOutput: output?.pluginOutput,
       pluginDetail:
-        mode === 'test' && plugin.teamId === runningAppInfo.teamId
+        pluginData && pluginData.permission.hasWritePer // Not system plugin
           ? flowResponses.filter((item) => {
               const filterArr = [FlowNodeTypeEnum.pluginOutput];
               return !filterArr.includes(item.moduleType as any);

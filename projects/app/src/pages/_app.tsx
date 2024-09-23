@@ -11,10 +11,24 @@ import { useInitApp } from '@/web/context/useInitApp';
 import { useTranslation } from 'next-i18next';
 import '@/web/styles/reset.scss';
 import NextHead from '@/components/common/NextHead';
+import { useEffect } from 'react';
 
 function App({ Component, pageProps }: AppProps) {
   const { feConfigs, scripts, title } = useInitApp();
   const { t } = useTranslation();
+
+  // Forbid touch scale
+  useEffect(() => {
+    document.addEventListener(
+      'wheel',
+      function (e) {
+        if (e.ctrlKey && Math.abs(e.deltaY) !== 0) {
+          e.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+  }, []);
 
   return (
     <>

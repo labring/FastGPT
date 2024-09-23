@@ -13,6 +13,7 @@ export const computedPluginUsage = async (
 ) => {
   const { source } = await splitCombinePluginId(plugin.id);
 
+  // Commercial plugin: n points per times
   if (source === PluginSourceEnum.commercial) {
     return plugin.currentCost ?? 0;
   }

@@ -113,7 +113,7 @@ const Chat = ({
         if (e?.code === 501) {
           router.replace('/app/list');
         } else if (chatId) {
-          onChangeChatId('');
+          onChangeChatId();
         }
       },
       onFinally() {

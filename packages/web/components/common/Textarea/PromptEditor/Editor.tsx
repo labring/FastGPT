@@ -6,7 +6,7 @@
  *
  */
 
-import { useState, useRef, useTransition } from 'react';
+import { useState, useRef, useTransition, useCallback } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -75,7 +75,7 @@ export default function Editor({
   };
 
   const initialY = useRef(0);
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
     initialY.current = e.clientY;
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -91,7 +91,7 @@ export default function Editor({
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  };
+  }, []);
 
   useDeepCompareEffect(() => {
     if (focus) return;
@@ -153,8 +153,8 @@ export default function Editor({
           }}
         />
         <VariableLabelPlugin variables={variableLabels} />
-        <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
         <VariablePlugin variables={variables} />
+        <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
         <VariablePickerPlugin variables={variableLabels.length > 0 ? [] : variables} />
         <OnBlurPlugin onBlur={onBlur} />
       </LexicalComposer>

@@ -135,7 +135,7 @@ CHAT_API_KEY=sk-xxxxxx
       "charsPointsPrice": 0, 
       "censor": false,
       "vision": false, // 是否支持图片输入
-      "datasetProcess": false, // 是否设置为知识库处理模型
+      "datasetProcess": true, // 是否设置为知识库处理模型
       "usedInClassify": true, // 是否用于问题分类
       "usedInExtractFields": true, // 是否用于字段提取
       "usedInToolCall": true, // 是否用于工具调用

@@ -262,7 +262,8 @@ const Header = () => {
                           await onClickSave({});
                           toast({
                             status: 'success',
-                            title: t('app:saved_success')
+                            title: t('app:saved_success'),
+                            position: 'top-right'
                           });
                           onClose();
                           setIsSave(false);
@@ -332,7 +333,8 @@ const Header = () => {
                 onBack();
                 toast({
                   status: 'success',
-                  title: t('app:saved_success')
+                  title: t('app:saved_success'),
+                  position: 'top-right'
                 });
               }}
             >

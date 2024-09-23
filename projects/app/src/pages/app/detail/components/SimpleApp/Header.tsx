@@ -85,7 +85,8 @@ const Header = ({
       });
       toast({
         status: 'success',
-        title: t('app:publish_success')
+        title: t('app:publish_success'),
+        position: 'top-right'
       });
     },
     [onSaveApp, t, toast]

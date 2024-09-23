@@ -70,6 +70,7 @@ export enum NodeInputKeyEnum {
   anyInput = 'system_anyInput',
   textareaInput = 'system_textareaInput',
   addInputParam = 'system_addInputParam',
+  forbidStream = 'system_forbid_stream',
 
   // history
   historyMaxAmount = 'maxContext',
