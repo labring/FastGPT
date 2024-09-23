@@ -2,7 +2,7 @@
   "author": "",
   "version": "486",
   "name": "柱状图",
-  "avatar": "/imgs/workflow/柱状图.svg",
+  "avatar": "core/workflow/template/bar",
   "intro": "根据数据生成柱状图",
   "showStatus": true,
   "weight": 10,
