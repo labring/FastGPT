@@ -154,7 +154,7 @@ const RenderInteractive = React.memo(function RenderInteractive({
     if (interactive.type === 'userInput') {
       const defaultValues = interactive.params.inputForm?.reduce(
         (acc: Record<string, any>, item) => {
-          acc[item.label] = item.value;
+          acc[item.label] = !!item.value ? item.value : item.defaultValue;
           return acc;
         },
         {}

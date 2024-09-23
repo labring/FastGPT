@@ -153,7 +153,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     <Th borderBottomLeftRadius={'none !important'}>
                       {t('common:core.module.input_name')}
                     </Th>
-                    <Th>{t('common:core.module.input_type')}</Th>
+                    <Th>{t('common:core.module.input_description')}</Th>
                     <Th>{t('common:common.Require Input')}</Th>
                     <Th borderBottomRightRadius={'none !important'}>{t('user:operations')}</Th>
                   </Tr>
@@ -171,7 +171,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                             {item.label}
                           </Flex>
                         </Td>
-                        <Td>{item.valueType}</Td>
+                        <Td>{item.description}</Td>
                         <Td>{item.required ? '✅' : ''}</Td>
                         <Td>
                           <MyIcon
