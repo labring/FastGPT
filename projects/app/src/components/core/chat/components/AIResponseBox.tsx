@@ -33,6 +33,7 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useTranslation } from 'react-i18next';
 import { Controller, useForm } from 'react-hook-form';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 type props = {
   value: UserChatItemValueItemType | AIChatItemValueItemType;
@@ -205,10 +206,14 @@ const RenderInteractive = React.memo(function RenderInteractive({
           {interactive.params.inputForm?.map((input) => {
             return (
               <Box key={input.label}>
-                <FormLabel required={input.required}>{input.label}</FormLabel>
+                <Flex mb={1}>
+                  <FormLabel required={input.required}>{input.label}</FormLabel>
+                  <QuestionTip ml={1} label={input.description} />
+                </Flex>
                 {input.type === FlowNodeInputTypeEnum.input && (
                   <Input
                     bg={'white'}
+                    maxLength={input.maxLength}
                     isDisabled={interactive.params.submitted}
                     {...register(input.label, {
                       required: input.required
@@ -223,7 +228,7 @@ const RenderInteractive = React.memo(function RenderInteractive({
                       required: input.required
                     })}
                     rows={5}
-                    maxLength={4000}
+                    maxLength={input.maxLength || 4000}
                   />
                 )}
                 {input.type === FlowNodeInputTypeEnum.numberInput && (
