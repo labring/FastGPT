@@ -24,6 +24,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
 const Header = ({
   appForm,
@@ -38,6 +39,7 @@ const Header = ({
   const { toast } = useToast();
   const { appId, appDetail, onSaveApp, currentTab } = useContextSelector(AppContext, (v) => v);
   const { lastAppListRouteType } = useSystemStore();
+  const { allDatasets } = useDatasetStore();
 
   const { data: paths = [] } = useRequest2(() => getAppFolderPath(appId), {
     manual: false,
@@ -70,7 +72,7 @@ const Header = ({
         chatConfig: data.chatConfig
       }
     );
-  }, [appDetail.chatConfig, appDetail.modules, appForm, t]);
+  }, [appDetail.chatConfig, appDetail.modules, appForm, allDatasets, t]);
 
   const onSubmitPublish = useCallback(
     async (data: AppSimpleEditFormType) => {
