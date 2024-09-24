@@ -40,4 +40,5 @@ export type SendPromptFnType = (
 
 export type ComponentRef = {
   restartChat: () => void;
+  scrollToBottom: (behavior?: 'smooth' | 'auto') => void;
 };

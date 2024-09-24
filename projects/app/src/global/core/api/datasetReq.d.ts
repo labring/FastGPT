@@ -10,7 +10,6 @@ import { UploadChunkItemType } from '@fastgpt/global/core/dataset/type';
 import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { PaginationProps } from '@fastgpt/web/common/fetch/type';
 
 /* ===== dataset ===== */
 

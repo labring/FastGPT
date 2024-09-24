@@ -17,7 +17,7 @@ import {
   defaultWhisperConfig
 } from '@fastgpt/global/core/app/constants';
 import { createContext } from 'use-context-selector';
-import { FieldValues, UseFormReturn } from 'react-hook-form';
+import { UseFormReturn } from 'react-hook-form';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { getChatResData } from '@/web/core/chat/api';
 import { ChatBoxInputFormType } from './type';

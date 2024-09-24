@@ -14,10 +14,10 @@ export type ChatInputGuideProps = PaginationProps<{
 export type ChatInputGuideResponse = PaginationResponse<ChatInputGuideSchemaType>;
 
 async function handler(
-  req: ApiRequestProps<{}, ChatInputGuideProps>,
+  req: ApiRequestProps<ChatInputGuideProps>,
   res: NextApiResponse<any>
 ): Promise<ChatInputGuideResponse> {
-  const { appId, pageSize, current, searchKey } = req.query;
+  const { appId, pageSize, offset, searchKey } = req.body;
 
   await authApp({ req, appId, authToken: true, per: ReadPermissionVal });
 
@@ -27,10 +27,7 @@ async function handler(
   };
 
   const [result, total] = await Promise.all([
-    MongoChatInputGuide.find(params)
-      .sort({ _id: -1 })
-      .skip(pageSize * (current - 1))
-      .limit(pageSize),
+    MongoChatInputGuide.find(params).sort({ _id: -1 }).skip(offset).limit(pageSize),
     MongoChatInputGuide.countDocuments(params)
   ]);
 

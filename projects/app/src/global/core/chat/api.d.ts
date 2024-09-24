@@ -2,7 +2,8 @@ import type { AppChatConfigType, AppTTSConfigType } from '@fastgpt/global/core/a
 import { AdminFbkType, ChatItemType } from '@fastgpt/global/core/chat/type';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat.d';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-
+import { RequestPaging } from '@/types';
+import { GetChatTypeEnum } from '@/global/core/chat/constants';
 export type GetChatSpeechProps = {
   ttsConfig: AppTTSConfigType;
   input: string;
@@ -15,6 +16,14 @@ export type InitChatProps = {
   chatId?: string;
   loadCustomFeedbacks?: boolean;
 };
+
+export type GetChatRecordsProps = OutLinkChatAuthProps & {
+  appId: string;
+  chatId?: string;
+  loadCustomFeedbacks?: boolean;
+  type: `${GetChatTypeEnum}`;
+};
+
 export type InitOutLinkChatProps = {
   chatId?: string;
   shareId: string;
@@ -32,7 +41,6 @@ export type InitChatResponse = {
   userAvatar?: string;
   title?: string;
   variables: Record<string, any>;
-  history: ChatItemType[];
   app: {
     chatConfig?: AppChatConfigType;
     chatModels?: string[];

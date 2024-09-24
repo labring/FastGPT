@@ -25,7 +25,7 @@ export const getCountChatInputGuideTotal = (data: countChatInputGuideTotalQuery)
  * Get chat input guide list
  */
 export const getChatInputGuideList = (data: ChatInputGuideProps) =>
-  GET<ChatInputGuideResponse>(`/core/chat/inputGuide/list`, data);
+  POST<ChatInputGuideResponse>(`/core/chat/inputGuide/list`, data);
 
 export const queryChatInputGuideList = (data: QueryChatInputGuideBody, url?: string) => {
   if (url) {

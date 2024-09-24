@@ -1,4 +1,3 @@
-import { connectToDatabase } from '@/service/mongo';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
@@ -18,7 +17,7 @@ async function handler(
   req: ApiRequestProps<getHistoriesBody, getHistoriesQuery>,
   res: ApiResponseType<any>
 ): Promise<PaginationResponse<getHistoriesResponse>> {
-  const { appId, shareId, outLinkUid, teamId, teamToken, current, pageSize } =
+  const { appId, shareId, outLinkUid, teamId, teamToken, offset, pageSize } =
     req.body as getHistoriesBody;
 
   const match = await (async () => {
@@ -63,7 +62,7 @@ async function handler(
   const [data, total] = await Promise.all([
     await MongoChat.find(match, 'chatId title top customTitle appId updateTime')
       .sort({ top: -1, updateTime: -1 })
-      .skip((current - 1) * pageSize)
+      .skip(offset)
       .limit(pageSize),
     MongoChat.countDocuments(match)
   ]);
