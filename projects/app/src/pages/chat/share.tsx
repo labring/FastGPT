@@ -49,10 +49,7 @@ type Props = {
 };
 
 const OutLink = ({
-  outLinkUid,
-  appName,
-  appIntro,
-  appAvatar
+  outLinkUid
 }: Props & {
   outLinkUid: string;
 }) => {
@@ -240,8 +237,6 @@ const OutLink = ({
 
   return (
     <>
-      <NextHead title={appName} desc={appIntro} icon={appAvatar} />
-
       <PageContainer
         isLoading={loading}
         {...(isEmbed
@@ -367,17 +362,26 @@ const OutLink = ({
 const Render = (props: Props) => {
   const { shareId, authToken } = props;
   const { localUId, loaded } = useShareChatStore();
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const contextParams = useMemo(() => {
     return { shareId, outLinkUid: authToken || localUId };
   }, [authToken, localUId, shareId]);
 
-  if (!loaded || !contextParams.outLinkUid) return <></>;
+  useMount(() => {
+    setIsLoaded(true);
+  });
+  const systemLoaded = isLoaded && loaded && contextParams.outLinkUid;
 
   return (
-    <ChatContextProvider params={contextParams}>
-      <OutLink {...props} outLinkUid={contextParams.outLinkUid} />;
-    </ChatContextProvider>
+    <>
+      <NextHead title={props.appName} desc={props.appIntro} icon={props.appAvatar} />
+      {systemLoaded && (
+        <ChatContextProvider params={contextParams}>
+          <OutLink {...props} outLinkUid={contextParams.outLinkUid} />;
+        </ChatContextProvider>
+      )}
+    </>
   );
 };
 

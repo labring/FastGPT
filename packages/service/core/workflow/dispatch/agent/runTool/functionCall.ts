@@ -255,17 +255,6 @@ export const runToolWithFunctionCall = async (
     ];
     // console.log(tokens, 'tool');
 
-    // Run tool status
-    if (node.showStatus) {
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.flowNodeStatus,
-        data: {
-          status: 'running',
-          name: node.name
-        }
-      });
-    }
-
     // tool assistant
     const toolAssistants = toolsRunResponse
       .map((item) => {

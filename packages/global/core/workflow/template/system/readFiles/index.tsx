@@ -13,7 +13,7 @@ import {
 import { FlowNodeTemplateType } from '../../../type/node';
 import { getHandleConfig } from '../../utils';
 
-export const ReadFilesNodes: FlowNodeTemplateType = {
+export const ReadFilesNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.readFiles,
   templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.readFiles,
