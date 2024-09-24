@@ -4,11 +4,7 @@ import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/reac
 import { streamFetch } from '@/web/common/api/fetch';
 import SideBar from '@/components/SideBar';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet(
-  'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWSYZ1234567890_',
-  24
-);
+
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 
@@ -19,7 +15,6 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import { delChatRecordById, getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
-import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { OutLinkWithAppType } from '@fastgpt/global/support/outLink/type';
 import { addLog } from '@fastgpt/service/common/system/log';
@@ -87,14 +82,6 @@ const OutLink = ({
     onChangeChatId
   } = useContextSelector(ChatContext, (v) => v);
 
-  const {
-    ChatBoxRef,
-    variablesForm,
-    pluginRunTab,
-    setPluginRunTab,
-    resetVariables,
-    useChatScrollData
-  } = useChat();
   const params = useMemo(() => {
     return {
       chatId,
@@ -105,11 +92,16 @@ const OutLink = ({
     };
   }, [chatData.appId, chatId, outLinkUid, shareId]);
   const {
-    data: chatRecords,
+    ChatBoxRef,
+    variablesForm,
+    pluginRunTab,
+    setPluginRunTab,
+    resetVariables,
+    chatRecords,
     ScrollData,
-    setData: setChatRecords,
-    total: totalRecordsCount
-  } = useChatScrollData(params);
+    setChatRecords,
+    totalRecordsCount
+  } = useChat(params);
 
   const startChat = useCallback(
     async ({
@@ -233,6 +225,73 @@ const OutLink = ({
   useMount(() => {
     setIdEmbed(window !== top);
   });
+
+  const RenderHistoryList = useMemo(() => {
+    const Children = (
+      <ChatHistorySlider
+        appName={chatData.app.name}
+        appAvatar={chatData.app.avatar}
+        confirmClearText={t('common:core.chat.Confirm to clear share chat history')}
+        onDelHistory={({ chatId }) =>
+          onDelHistory({ appId: chatData.appId, chatId, shareId, outLinkUid })
+        }
+        onClearHistory={() => {
+          onClearHistories({ shareId, outLinkUid });
+        }}
+        onSetHistoryTop={(e) => {
+          onUpdateHistory({
+            ...e,
+            appId: chatData.appId,
+            shareId,
+            outLinkUid
+          });
+        }}
+        onSetCustomTitle={(e) => {
+          onUpdateHistory({
+            appId: chatData.appId,
+            chatId: e.chatId,
+            customTitle: e.title,
+            shareId,
+            outLinkUid
+          });
+        }}
+      />
+    );
+
+    if (showHistory !== '1') return null;
+
+    return isPc ? (
+      <SideBar>{Children}</SideBar>
+    ) : (
+      <Drawer
+        isOpen={isOpenSlider}
+        placement="left"
+        autoFocus={false}
+        size={'xs'}
+        onClose={onCloseSlider}
+      >
+        <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
+        <DrawerContent maxWidth={'75vw'} boxShadow={'2px 0 10px rgba(0,0,0,0.15)'}>
+          {Children}
+        </DrawerContent>
+      </Drawer>
+    );
+  }, [
+    chatData.app.avatar,
+    chatData.app.name,
+    chatData.appId,
+    isOpenSlider,
+    isPc,
+    onClearHistories,
+    onCloseSlider,
+    onDelHistory,
+    onUpdateHistory,
+    outLinkUid,
+    shareId,
+    showHistory,
+    t
+  ]);
+
   const loading = isLoading;
 
   return (
@@ -244,54 +303,7 @@ const OutLink = ({
           : { p: [0, 5] })}
       >
         <Flex h={'100%'} flexDirection={['column', 'row']}>
-          {showHistory === '1' &&
-            ((children: React.ReactNode) => {
-              return isPc ? (
-                <SideBar>{children}</SideBar>
-              ) : (
-                <Drawer
-                  isOpen={isOpenSlider}
-                  placement="left"
-                  autoFocus={false}
-                  size={'xs'}
-                  onClose={onCloseSlider}
-                >
-                  <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
-                  <DrawerContent maxWidth={'75vw'} boxShadow={'2px 0 10px rgba(0,0,0,0.15)'}>
-                    {children}
-                  </DrawerContent>
-                </Drawer>
-              );
-            })(
-              <ChatHistorySlider
-                appName={chatData.app.name}
-                appAvatar={chatData.app.avatar}
-                confirmClearText={t('common:core.chat.Confirm to clear share chat history')}
-                onDelHistory={({ chatId }) =>
-                  onDelHistory({ appId: chatData.appId, chatId, shareId, outLinkUid })
-                }
-                onClearHistory={() => {
-                  onClearHistories({ shareId, outLinkUid });
-                }}
-                onSetHistoryTop={(e) => {
-                  onUpdateHistory({
-                    ...e,
-                    appId: chatData.appId,
-                    shareId,
-                    outLinkUid
-                  });
-                }}
-                onSetCustomTitle={(e) => {
-                  onUpdateHistory({
-                    appId: chatData.appId,
-                    chatId: e.chatId,
-                    customTitle: e.title,
-                    shareId,
-                    outLinkUid
-                  });
-                }}
-              />
-            )}
+          {RenderHistoryList}
 
           {/* chat container */}
           <Flex
