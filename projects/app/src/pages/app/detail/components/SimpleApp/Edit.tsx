@@ -18,17 +18,25 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { storeEdgesRenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import { uiWorkflow2StoreWorkflow } from '../WorkflowComponents/utils';
+import { SnapshotsType } from '../WorkflowComponents/context';
 
 const Edit = ({
   appForm,
-  setAppForm
+  setAppForm,
+  past,
+  saveSnapshot
 }: {
   appForm: AppSimpleEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppSimpleEditFormType>>;
+  past: SnapshotsType[];
+  saveSnapshot: (
+    this: any,
+    { pastNodes, pastEdges, chatConfig, customTitle, isSaved }: any
+  ) => Promise<boolean>;
 }) => {
   const { isPc } = useSystem();
   const { loadAllDatasets } = useDatasetStore();
-  const { appDetail, saveSnapshot, past } = useContextSelector(AppContext, (v) => v);
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { t } = useTranslation();
 
   // show selected dataset

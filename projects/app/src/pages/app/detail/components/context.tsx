@@ -11,13 +11,8 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import dynamic from 'next/dynamic';
 import { useDisclosure } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { useLocalStorageState, useMemoizedFn } from 'ahooks';
-import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
-import { compareSnapshot } from '@/web/core/workflow/utils';
-import { SnapshotsType } from './WorkflowComponents/context';
-import { Node, Edge } from 'reactflow';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
 const TagsEditModal = dynamic(() => import('./TagsEditModal'));
@@ -49,16 +44,6 @@ type AppContextType = {
     | undefined;
   reloadAppLatestVersion: () => void;
   reloadApp: () => void;
-
-  past: SnapshotsType[];
-  setPast: Dispatch<SetStateAction<SnapshotsType[]>>;
-  saveSnapshot: (params: {
-    pastNodes?: Node<FlowNodeItemType>[];
-    pastEdges?: Edge[];
-    customTitle?: string;
-    chatConfig?: AppChatConfigType;
-    isSaved?: boolean;
-  }) => Promise<boolean>;
 };
 
 export const AppContext = createContext<AppContextType>({
@@ -92,13 +77,6 @@ export const AppContext = createContext<AppContextType>({
     throw new Error('Function not implemented.');
   },
   reloadApp: function (): void {
-    throw new Error('Function not implemented.');
-  },
-  saveSnapshot: function (): Promise<boolean> {
-    throw new Error('Function not implemented.');
-  },
-  past: [],
-  setPast: function (): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -200,53 +178,6 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   );
   const onDelApp = useCallback(() => openConfirmDel(deleteApp)(), [deleteApp, openConfirmDel]);
 
-  const [past, setPast] = useLocalStorageState<SnapshotsType[]>(`${appId}-past`, {
-    defaultValue: [],
-    listenStorageChange: true
-  }) as [SnapshotsType[], (value: SetStateAction<SnapshotsType[]>) => void];
-
-  const saveSnapshot = useMemoizedFn(
-    async ({ pastNodes, pastEdges, chatConfig, customTitle, isSaved }) => {
-      const pastState = past[0];
-      const isPastEqual = compareSnapshot(
-        {
-          nodes: pastNodes,
-          edges: pastEdges,
-          chatConfig: chatConfig
-        },
-        {
-          nodes: pastState?.nodes,
-          edges: pastState?.edges,
-          chatConfig: pastState?.chatConfig
-        }
-      );
-      if (isPastEqual) return false;
-
-      setPast((past) => [
-        {
-          nodes: pastNodes,
-          edges: pastEdges,
-          title: customTitle || formatTime2YMDHMS(new Date()),
-          chatConfig,
-          isSaved
-        },
-        ...past.slice(0, 199)
-      ]);
-      return true;
-    }
-  );
-
-  useEffect(() => {
-    const keys = Object.keys(localStorage);
-    const snapshotKeys = keys.filter((key) => key.endsWith('-past') || key.endsWith('-future'));
-    snapshotKeys.forEach((key) => {
-      const keyAppId = key.split('-')[0];
-      if (keyAppId !== appId) {
-        localStorage.removeItem(key);
-      }
-    });
-  }, [appId]);
-
   const contextValue: AppContextType = {
     appId,
     currentTab,
@@ -261,10 +192,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     onSaveApp,
     appLatestVersion,
     reloadAppLatestVersion,
-    reloadApp,
-    past,
-    setPast,
-    saveSnapshot
+    reloadApp
   };
 
   return (

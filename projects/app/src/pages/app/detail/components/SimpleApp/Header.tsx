@@ -35,16 +35,24 @@ const PublishHistories = dynamic(() => import('../PublishHistoriesSlider'));
 
 const Header = ({
   appForm,
-  setAppForm
+  setAppForm,
+  past,
+  setPast,
+  saveSnapshot
 }: {
   appForm: AppSimpleEditFormType;
   setAppForm: (form: AppSimpleEditFormType) => void;
+  past: SnapshotsType[];
+  setPast: (value: React.SetStateAction<SnapshotsType[]>) => void;
+  saveSnapshot: (
+    this: any,
+    { pastNodes, pastEdges, chatConfig, customTitle, isSaved }: any
+  ) => Promise<boolean>;
 }) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const router = useRouter();
-  const { appId, appDetail, onSaveApp, currentTab, past, setPast, saveSnapshot } =
-    useContextSelector(AppContext, (v) => v);
+  const { appId, appDetail, onSaveApp, currentTab } = useContextSelector(AppContext, (v) => v);
   const { lastAppListRouteType } = useSystemStore();
   const { allDatasets } = useDatasetStore();
 
