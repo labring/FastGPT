@@ -155,6 +155,7 @@
   "update_specified_node_output_or_global_variable": "可以更新指定节点的输出值或更新全局变量",
   "use_user_id": "使用者 ID",
   "user_question": "用户问题",
+  "user_question_tool_desc": "用户输入的问题（问题需要完善）",
   "value_type": "数据类型",
   "variable_picker_tips": "可输入节点名或变量名搜索",
   "variable_update": "变量更新",
