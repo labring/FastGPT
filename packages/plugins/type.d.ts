@@ -7,3 +7,6 @@ declare global {
   var systemPlugins: SystemPluginTemplateItemType[];
   var systemPluginCb: Record<string, (e: any) => SystemPluginResponseType>;
 }
+declare namespace echarts {
+  function getInstanceByDom(dom: HTMLElement): ECharts;
+}
