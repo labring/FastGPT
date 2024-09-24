@@ -110,7 +110,8 @@
       "name": "群组名称"
     },
     "manage_collaborators": "管理协作者",
-    "no_collaborators": "暂无协作者"
+    "no_collaborators": "暂无协作者",
+    "belong_to_group": "所属成员组"
   },
   "team.write_role_member": "可写权限",
   "usage": {
