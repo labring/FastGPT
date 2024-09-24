@@ -11,12 +11,12 @@ import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import { getChatRecords } from '@/web/core/chat/api';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { GetChatRecordsProps } from '@/global/core/chat/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { PaginationResponse } from '../../../../../../../packages/web/common/fetch/type';
+import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import type { getPaginationRecordsBody } from '@/pages/api/core/chat/getPaginationRecords';
+import { GetChatTypeEnum } from '@/global/core/chat/constants';
 
-export const useChat = () => {
+export const useChat = (params?: { chatId?: string; appId: string; type?: GetChatTypeEnum }) => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
   const variablesForm = useForm<ChatBoxInputFormType>();
   // plugin
@@ -49,38 +49,41 @@ export const useChat = () => {
     ChatBoxRef.current?.restartChat?.();
   }, [variablesForm]);
 
-  const useChatScrollData = useCallback((params: GetChatRecordsProps) => {
-    return useScrollPagination(
-      async (data: getPaginationRecordsBody): Promise<PaginationResponse<ChatSiteItemType>> => {
-        const res = await getChatRecords(data);
+  const {
+    data: chatRecords,
+    ScrollData,
+    setData: setChatRecords,
+    total: totalRecordsCount
+  } = useScrollPagination(
+    async (data: getPaginationRecordsBody): Promise<PaginationResponse<ChatSiteItemType>> => {
+      const res = await getChatRecords(data);
 
-        // First load scroll to bottom
-        if (data.offset === 0) {
-          function scrollToBottom() {
-            requestAnimationFrame(
-              ChatBoxRef?.current ? () => ChatBoxRef?.current?.scrollToBottom?.() : scrollToBottom
-            );
-          }
-          scrollToBottom();
+      // First load scroll to bottom
+      if (data.offset === 0) {
+        function scrollToBottom() {
+          requestAnimationFrame(
+            ChatBoxRef?.current ? () => ChatBoxRef?.current?.scrollToBottom?.() : scrollToBottom
+          );
         }
-
-        return {
-          ...res,
-          list: res.list.map((item) => ({
-            ...item,
-            dataId: item.dataId || getNanoid(),
-            status: ChatStatusEnum.finish
-          }))
-        };
-      },
-      {
-        pageSize: 10,
-        refreshDeps: [params],
-        params,
-        scrollLoadType: 'top'
+        scrollToBottom();
       }
-    );
-  }, []);
+
+      return {
+        ...res,
+        list: res.list.map((item) => ({
+          ...item,
+          dataId: item.dataId || getNanoid(),
+          status: ChatStatusEnum.finish
+        }))
+      };
+    },
+    {
+      pageSize: 10,
+      refreshDeps: [params],
+      params,
+      scrollLoadType: 'top'
+    }
+  );
 
   return {
     ChatBoxRef,
@@ -89,7 +92,10 @@ export const useChat = () => {
     setPluginRunTab,
     clearChatRecords,
     resetVariables,
-    useChatScrollData
+    chatRecords,
+    ScrollData,
+    setChatRecords,
+    totalRecordsCount
   };
 };
 

@@ -67,14 +67,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     onChangeChatId
   } = useContextSelector(ChatContext, (v) => v);
 
-  const {
-    ChatBoxRef,
-    variablesForm,
-    pluginRunTab,
-    setPluginRunTab,
-    resetVariables,
-    useChatScrollData
-  } = useChat();
   const params = useMemo(() => {
     return {
       appId,
@@ -85,11 +77,16 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     };
   }, [appId, chatId, teamId, teamToken]);
   const {
-    data: chatRecords,
+    ChatBoxRef,
+    variablesForm,
+    pluginRunTab,
+    setPluginRunTab,
+    resetVariables,
+    chatRecords,
     ScrollData,
-    setData: setChatRecords,
-    total: totalRecordsCount
-  } = useChatScrollData(params);
+    setChatRecords,
+    totalRecordsCount
+  } = useChat(params);
 
   const startChat = useCallback(
     async ({
@@ -181,6 +178,61 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     }
   );
 
+  const RenderHistoryList = useMemo(() => {
+    const Children = (
+      <ChatHistorySlider
+        appId={appId}
+        appName={chatData.app.name}
+        appAvatar={chatData.app.avatar}
+        confirmClearText={t('common:core.chat.Confirm to clear history')}
+        onDelHistory={(e) => onDelHistory({ ...e, appId, teamId, teamToken })}
+        onClearHistory={() => {
+          onClearHistories({ appId, teamId, teamToken });
+        }}
+        onSetHistoryTop={(e) => {
+          onUpdateHistory({ ...e, teamId, teamToken, appId });
+        }}
+        onSetCustomTitle={async (e) => {
+          onUpdateHistory({
+            appId,
+            chatId: e.chatId,
+            customTitle: e.title,
+            teamId,
+            teamToken
+          });
+        }}
+      />
+    );
+
+    return isPc || !appId ? (
+      <SideBar>{Children}</SideBar>
+    ) : (
+      <Drawer
+        isOpen={isOpenSlider}
+        placement="left"
+        autoFocus={false}
+        size={'xs'}
+        onClose={onCloseSlider}
+      >
+        <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
+        <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
+      </Drawer>
+    );
+  }, [
+    appId,
+    chatData.app.avatar,
+    chatData.app.name,
+    isOpenSlider,
+    isPc,
+    onClearHistories,
+    onCloseSlider,
+    onDelHistory,
+    onUpdateHistory,
+    t,
+    teamId,
+    teamToken
+  ]);
+
   const loading = isLoading;
 
   return (
@@ -195,45 +247,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
       <PageContainer isLoading={loading} flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
         <Flex h={'100%'} flexDirection={['column', 'row']} bg={'white'}>
-          {((children: React.ReactNode) => {
-            return isPc || !appId ? (
-              <SideBar>{children}</SideBar>
-            ) : (
-              <Drawer
-                isOpen={isOpenSlider}
-                placement="left"
-                autoFocus={false}
-                size={'xs'}
-                onClose={onCloseSlider}
-              >
-                <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
-                <DrawerContent maxWidth={'75vw'}>{children}</DrawerContent>
-              </Drawer>
-            );
-          })(
-            <ChatHistorySlider
-              appId={appId}
-              appName={chatData.app.name}
-              appAvatar={chatData.app.avatar}
-              confirmClearText={t('common:core.chat.Confirm to clear history')}
-              onDelHistory={(e) => onDelHistory({ ...e, appId, teamId, teamToken })}
-              onClearHistory={() => {
-                onClearHistories({ appId, teamId, teamToken });
-              }}
-              onSetHistoryTop={(e) => {
-                onUpdateHistory({ ...e, teamId, teamToken, appId });
-              }}
-              onSetCustomTitle={async (e) => {
-                onUpdateHistory({
-                  appId,
-                  chatId: e.chatId,
-                  customTitle: e.title,
-                  teamId,
-                  teamToken
-                });
-              }}
-            />
-          )}
+          {RenderHistoryList}
           {/* chat container */}
           <Flex
             position={'relative'}
