@@ -18,7 +18,7 @@ import {
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyInput from '@/components/MyInput';
 import { DatasetTagType } from '@fastgpt/global/core/dataset/type';
-import { ScrollListType, useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { ScrollListType, useVirtualScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
@@ -127,7 +127,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     isLoading: isRequesting,
     fetchData,
     total: tagsTotal
-  } = useScrollPagination(getDatasetCollectionTags, {
+  } = useVirtualScrollPagination(getDatasetCollectionTags, {
     refreshDeps: [''],
     // debounceWait: 300,
 
@@ -146,7 +146,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     scrollDataList: collectionsList,
     ScrollList: ScrollListCollections,
     isLoading: collectionsListLoading
-  } = useScrollPagination(getScrollCollectionList, {
+  } = useVirtualScrollPagination(getScrollCollectionList, {
     refreshDeps: [searchText],
     // debounceWait: 300,
 

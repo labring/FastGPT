@@ -13,26 +13,25 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
-import { RequestPaging } from '@/types';
+import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { ChatItemType } from '@fastgpt/global/core/chat/type';
 
 export type getPaginationRecordsQuery = {};
 
-export type getPaginationRecordsBody = RequestPaging & GetChatRecordsProps;
+export type getPaginationRecordsBody = PaginationProps & GetChatRecordsProps;
 
-export type getPaginationRecordsResponse = {};
+export type getPaginationRecordsResponse = PaginationResponse<ChatItemType>;
 
 async function handler(
   req: ApiRequestProps<getPaginationRecordsBody, getPaginationRecordsQuery>,
   res: ApiResponseType<any>
 ): Promise<getPaginationRecordsResponse> {
-  const { chatId, appId, pageNum = 1, pageSize = 10, loadCustomFeedbacks, type } = req.body;
+  const { chatId, appId, offset, pageSize = 10, loadCustomFeedbacks, type } = req.body;
 
   if (!appId || !chatId) {
     return {
-      data: [],
-      total: 0,
-      pageNum,
-      pageSize
+      list: [],
+      total: 0
     };
   }
 
@@ -71,9 +70,9 @@ async function handler(
   const { total, histories } = await getChatItems({
     appId,
     chatId,
-    pageSize,
     field: fieldMap[type],
-    pageNum
+    offset,
+    limit: pageSize
   });
 
   // Remove important information
@@ -86,9 +85,7 @@ async function handler(
   }
 
   return {
-    pageNum,
-    pageSize,
-    data: isPlugin ? histories : transformPreviewHistories(histories),
+    list: isPlugin ? histories : transformPreviewHistories(histories),
     total
   };
 }

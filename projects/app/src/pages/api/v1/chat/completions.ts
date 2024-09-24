@@ -208,8 +208,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       getChatItems({
         appId: app._id,
         chatId,
-        pageNum: 1,
-        pageSize: limit,
+        offset: 0,
+        limit,
         field: `dataId obj value nodeOutputs`
       }),
       getAppLatestVersion(app._id, app),

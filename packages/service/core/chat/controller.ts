@@ -9,14 +9,14 @@ import { MongoChat } from './chatSchema';
 export async function getChatItems({
   appId,
   chatId,
-  pageNum,
-  pageSize,
+  offset,
+  limit,
   field
 }: {
   appId: string;
   chatId?: string;
-  pageNum: number;
-  pageSize: number;
+  offset: number;
+  limit: number;
   field: string;
 }): Promise<{ histories: ChatItemType[]; total: number }> {
   if (!chatId) {
@@ -24,11 +24,7 @@ export async function getChatItems({
   }
 
   const [histories, total] = await Promise.all([
-    MongoChatItem.find({ chatId, appId }, field)
-      .sort({ _id: -1 })
-      .skip((pageNum - 1) * pageSize)
-      .limit(pageSize)
-      .lean(),
+    MongoChatItem.find({ chatId, appId }, field).sort({ _id: -1 }).skip(offset).limit(limit).lean(),
     MongoChatItem.countDocuments({ chatId, appId })
   ]);
   histories.reverse();

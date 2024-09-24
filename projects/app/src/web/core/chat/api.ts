@@ -26,8 +26,10 @@ import { UpdateChatFeedbackProps } from '@fastgpt/global/core/chat/api';
 import { AuthTeamTagTokenProps } from '@fastgpt/global/support/user/team/tag';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import { PagingData } from '@/types';
-import { getPaginationRecordsQuery } from '@/pages/api/core/chat/getPaginationRecords';
+import type {
+  getPaginationRecordsBody,
+  getPaginationRecordsResponse
+} from '@/pages/api/core/chat/getPaginationRecords';
 
 /**
  * 获取初始化聊天内容
@@ -50,8 +52,8 @@ export const getChatHistories = (data: PaginationProps<GetHistoriesProps>) =>
 export const getChatResData = (data: getResDataQuery) =>
   GET<ChatHistoryItemResType[]>(`/core/chat/getResData`, data);
 
-export const getChatRecords = (data: getPaginationRecordsQuery) =>
-  POST<PagingData<ChatItemType>>('core/chat/getPaginationRecords', data);
+export const getChatRecords = (data: getPaginationRecordsBody) =>
+  POST<getPaginationRecordsResponse>('core/chat/getPaginationRecords', data);
 
 /**
  * delete one history

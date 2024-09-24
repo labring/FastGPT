@@ -8,11 +8,13 @@ import {
   SendPromptFnType
 } from './ChatBox/type';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
-import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getChatRecords } from '@/web/core/chat/api';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { GetChatRecordsProps } from '@/global/core/chat/api';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { PaginationResponse } from '../../../../../../../packages/web/common/fetch/type';
+import type { getPaginationRecordsBody } from '@/pages/api/core/chat/getPaginationRecords';
 
 export const useChat = () => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
@@ -47,13 +49,13 @@ export const useChat = () => {
     ChatBoxRef.current?.restartChat?.();
   }, [variablesForm]);
 
-  const useChatPagination = useCallback((params: GetChatRecordsProps) => {
-    return usePagination<ChatSiteItemType>({
-      api: async (data) => {
+  const useChatScrollData = useCallback((params: GetChatRecordsProps) => {
+    return useScrollPagination(
+      async (data: getPaginationRecordsBody): Promise<PaginationResponse<ChatSiteItemType>> => {
         const res = await getChatRecords(data);
 
         // First load scroll to bottom
-        if (res.pageNum === 1) {
+        if (data.offset === 0) {
           function scrollToBottom() {
             requestAnimationFrame(
               ChatBoxRef?.current ? () => ChatBoxRef?.current?.scrollToBottom?.() : scrollToBottom
@@ -64,19 +66,20 @@ export const useChat = () => {
 
         return {
           ...res,
-          data: res.data.map((item) => ({
+          list: res.list.map((item) => ({
             ...item,
             dataId: item.dataId || getNanoid(),
             status: ChatStatusEnum.finish
           }))
         };
       },
-      params,
-      pageSize: 10,
-      type: 'scroll',
-      refreshDeps: [params],
-      scrollLoadType: 'top'
-    });
+      {
+        pageSize: 10,
+        refreshDeps: [params],
+        params,
+        scrollLoadType: 'top'
+      }
+    );
   }, []);
 
   return {
@@ -86,7 +89,7 @@ export const useChat = () => {
     setPluginRunTab,
     clearChatRecords,
     resetVariables,
-    useChatPagination
+    useChatScrollData
   };
 };
 

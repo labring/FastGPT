@@ -5,15 +5,11 @@ import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
 import type { InitChatProps, InitChatResponse } from '@/global/core/chat/api.d';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { transformPreviewHistories } from '@/global/core/chat/utils';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 async function handler(
   req: NextApiRequest,

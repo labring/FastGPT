@@ -77,14 +77,14 @@ const Chat = ({
     pluginRunTab,
     setPluginRunTab,
     resetVariables,
-    useChatPagination
+    useChatScrollData
   } = useChat();
   const {
     data: chatRecords,
     ScrollData,
     setData: setChatRecords,
     total: totalRecordsCount
-  } = useChatPagination(params);
+  } = useChatScrollData(params);
 
   // get chat app info
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);

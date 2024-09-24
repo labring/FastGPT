@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { getPublishList, postRevertVersion } from '@/web/core/app/api/version';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useVirtualScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import CustomRightDrawer from '@fastgpt/web/components/common/MyDrawer/CustomRightDrawer';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex } from '@chakra-ui/react';
@@ -41,7 +41,7 @@ const PublishHistoriesSlider = ({
 
   const [selectedHistoryId, setSelectedHistoryId] = useState<string>();
 
-  const { scrollDataList, ScrollList, isLoading } = useScrollPagination(getPublishList, {
+  const { scrollDataList, ScrollList, isLoading } = useVirtualScrollPagination(getPublishList, {
     itemHeight: 49,
     overscan: 20,
 

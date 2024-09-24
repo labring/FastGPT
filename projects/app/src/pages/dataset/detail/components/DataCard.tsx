@@ -15,7 +15,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
 import InputDataModal from '../components/InputDataModal';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
-import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
@@ -27,8 +26,8 @@ import TagsPopOver from './CollectionCard/TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import Markdown from '@/components/Markdown';
-import { DatasetDataListItemType } from '@/global/core/dataset/type';
 import { useMemoizedFn } from 'ahooks';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
 const DataCard = () => {
   const theme = useTheme();
@@ -60,12 +59,10 @@ const DataCard = () => {
     data: datasetDataList,
     ScrollData,
     total,
-    refresh,
+    refreshList,
     setData: setDatasetDataList
-  } = usePagination<DatasetDataListItemType>({
-    api: getDatasetDataList,
+  } = useScrollPagination(getDatasetDataList, {
     pageSize: 15,
-    type: 'scroll',
     params: scrollParams,
     refreshDeps: [searchText, collectionId],
     EmptyTip: EmptyTipDom
@@ -320,7 +317,7 @@ const DataCard = () => {
           onClose={() => setEditDataId(undefined)}
           onSuccess={(data) => {
             if (editDataId === '') {
-              refresh();
+              refreshList();
               return;
             }
             setDatasetDataList((prev) => {

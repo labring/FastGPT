@@ -96,7 +96,7 @@ const OutLink = ({
     pluginRunTab,
     setPluginRunTab,
     resetVariables,
-    useChatPagination
+    useChatScrollData
   } = useChat();
   const params = useMemo(() => {
     return {
@@ -113,7 +113,7 @@ const OutLink = ({
     isLoading: isLoadChatRecords,
     setData: setChatRecords,
     total: totalRecordsCount
-  } = useChatPagination(params);
+  } = useChatScrollData(params);
 
   const startChat = useCallback(
     async ({

@@ -47,7 +47,7 @@ const DetailLogsModal = ({
     pluginRunTab,
     setPluginRunTab,
     resetVariables,
-    useChatPagination
+    useChatScrollData
   } = useChat();
   const {
     data: chatRecords,
@@ -55,7 +55,7 @@ const DetailLogsModal = ({
     isLoading: isLoadChatRecords,
     setData: setChatRecords,
     total: totalRecordsCount
-  } = useChatPagination(params);
+  } = useChatScrollData(params);
 
   const { data: chat, isFetching } = useQuery(
     ['getChatDetail', chatId],

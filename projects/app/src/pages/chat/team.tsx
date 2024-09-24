@@ -74,7 +74,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     pluginRunTab,
     setPluginRunTab,
     resetVariables,
-    useChatPagination
+    useChatScrollData
   } = useChat();
   const params = useMemo(() => {
     return {
@@ -91,7 +91,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     isLoading: isLoadChatRecords,
     setData: setChatRecords,
     total: totalRecordsCount
-  } = useChatPagination(params);
+  } = useChatScrollData(params);
 
   const startChat = useCallback(
     async ({

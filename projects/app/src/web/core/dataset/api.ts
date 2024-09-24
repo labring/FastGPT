@@ -48,11 +48,14 @@ import type {
 import type { readCollectionSourceResponse } from '@/pages/api/core/dataset/collection/read';
 import type { GetDatasetListBody } from '@/pages/api/core/dataset/list';
 import type { UpdateDatasetCollectionParams } from '@/pages/api/core/dataset/collection/update';
-import type { GetDatasetDataListProps } from '@/pages/api/core/dataset/data/list';
+import type {
+  GetDatasetDataListProps,
+  GetDatasetDataListRes
+} from '@/pages/api/core/dataset/data/list';
 import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
 import type { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
-import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import { GetScrollCollectionsProps } from '@/pages/api/core/dataset/collection/scrollList';
+import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { GetScrollCollectionsProps } from '@/pages/api/core/dataset/collection/scrollList';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -156,7 +159,7 @@ export const getScrollCollectionList = (data: GetScrollCollectionsProps) =>
 /* =============================== data ==================================== */
 /* get dataset list */
 export const getDatasetDataList = (data: GetDatasetDataListProps) =>
-  POST<PagingData<DatasetDataListItemType>>(`/core/dataset/data/list`, data);
+  POST<GetDatasetDataListRes>(`/core/dataset/data/list`, data);
 
 export const getDatasetDataItemById = (id: string) =>
   GET<DatasetDataItemType>(`/core/dataset/data/detail`, { id });
