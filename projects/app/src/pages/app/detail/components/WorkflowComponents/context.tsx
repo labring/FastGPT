@@ -39,7 +39,7 @@ import { defaultRunningStatus } from './constants';
 import { checkNodeRunStatus } from '@fastgpt/global/core/workflow/runtime/utils';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { AppChatConfigType, AppSchema } from '@fastgpt/global/core/app/type';
 import { AppContext } from '@/pages/app/detail/components/context';
 import ChatTest from './Flow/ChatTest';
 import { useDisclosure } from '@chakra-ui/react';
@@ -47,7 +47,6 @@ import { uiWorkflow2StoreWorkflow } from './utils';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { formatTime2YMDHMS, formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
-import type { InitProps } from '@/pages/app/detail/components/PublishHistoriesSlider';
 import { cloneDeep } from 'lodash';
 import { SetState } from 'ahooks/lib/createUseStorageState';
 
@@ -60,6 +59,18 @@ export type SnapshotsType = {
   chatConfig: AppChatConfigType;
   isSaved?: boolean;
 };
+export type SaveSnapshotParams = {
+  pastNodes?: Node[];
+  pastEdges?: Edge[];
+  customTitle?: string;
+  chatConfig?: AppChatConfigType;
+};
+export type InitProps = {
+  nodes: AppSchema['modules'];
+  edges: AppSchema['edges'];
+  chatConfig: AppSchema['chatConfig'];
+};
+
 type WorkflowContextType = {
   appId?: string;
   basicNodeTemplates: FlowNodeTemplateType[];
