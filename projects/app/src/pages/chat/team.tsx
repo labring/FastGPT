@@ -26,7 +26,7 @@ import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatCo
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { InitChatResponse } from '@/global/core/chat/api';
-import { defaultChatData } from '@/global/core/chat/constants';
+import { defaultChatData, GetChatTypeEnum } from '@/global/core/chat/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useChat } from '@/components/core/chat/ChatContainer/useChat';
@@ -58,7 +58,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
   const {
     onUpdateHistoryTitle,
-    loadHistories,
     onUpdateHistory,
     onClearHistories,
     onDelHistory,
@@ -70,13 +69,27 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
   const {
     ChatBoxRef,
-    chatRecords,
-    setChatRecords,
     variablesForm,
     pluginRunTab,
     setPluginRunTab,
-    resetChatRecords
+    resetVariables,
+    useChatScrollData
   } = useChat();
+  const params = useMemo(() => {
+    return {
+      appId,
+      chatId,
+      teamId,
+      teamToken,
+      type: GetChatTypeEnum.team
+    };
+  }, [appId, chatId, teamId, teamToken]);
+  const {
+    data: chatRecords,
+    ScrollData,
+    setData: setChatRecords,
+    total: totalRecordsCount
+  } = useChatScrollData(params);
 
   const startChat = useCallback(
     async ({
@@ -138,22 +151,15 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   );
 
   // get chat app info
-  const { loading } = useRequest2(
+  const { loading: isLoading } = useRequest2(
     async () => {
       if (!appId || forbidLoadChat.current) return;
 
       const res = await getTeamChatInfo({ teamId, appId, chatId, teamToken });
       setChatData(res);
 
-      const history = res.history.map((item) => ({
-        ...item,
-        dataId: item.dataId || nanoid(),
-        status: ChatStatusEnum.finish
-      }));
-
       // reset chat records
-      resetChatRecords({
-        records: history,
+      resetVariables({
         variables: res.variables
       });
     },
@@ -174,6 +180,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       }
     }
   );
+
+  const loading = isLoading;
 
   return (
     <Flex h={'100%'}>
@@ -235,7 +243,13 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
             flexDirection={'column'}
           >
             {/* header */}
-            <ChatHeader apps={myApps} chatData={chatData} history={chatRecords} showHistory />
+            <ChatHeader
+              totalRecordsCount={totalRecordsCount}
+              apps={myApps}
+              chatData={chatData}
+              history={chatRecords}
+              showHistory
+            />
             {/* chat box */}
             <Box flex={1}>
               {chatData.app.type === AppTypeEnum.plugin ? (
@@ -253,6 +267,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
               ) : (
                 <ChatBox
                   ref={ChatBoxRef}
+                  ScrollData={ScrollData}
                   chatHistories={chatRecords}
                   setChatHistories={setChatRecords}
                   variablesForm={variablesForm}

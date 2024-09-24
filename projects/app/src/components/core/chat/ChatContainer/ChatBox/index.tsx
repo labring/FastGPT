@@ -16,7 +16,7 @@ import type {
 } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Flex, Checkbox } from '@chakra-ui/react';
+import { Box, Flex, Checkbox, BoxProps } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -44,7 +44,11 @@ import ChatInput from './Input/ChatInput';
 import ChatBoxDivider from '../../Divider';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatItemValueTypeEnum,
+  ChatRoleEnum,
+  ChatStatusEnum
+} from '@fastgpt/global/core/chat/constants';
 import {
   checkIsInteractiveByHistories,
   formatChatValue2InputType,
@@ -86,7 +90,13 @@ type Props = OutLinkChatAuthProps &
     userAvatar?: string;
     active?: boolean; // can use
     appId: string;
-
+    ScrollData: ({
+      children,
+      ...props
+    }: {
+      children: React.ReactNode;
+      ScrollContainerRef?: React.RefObject<HTMLDivElement>;
+    } & BoxProps) => React.JSX.Element;
     // not chat test params
 
     onStartChat?: (e: StartChatFnProps) => Promise<
@@ -113,7 +123,8 @@ const ChatBox = (
     teamId,
     teamToken,
     onStartChat,
-    onDelMessage
+    onDelMessage,
+    ScrollData
   }: Props,
   ref: ForwardedRef<ComponentRef>
 ) => {
@@ -171,7 +182,7 @@ const ChatBox = (
   const chatStarted = chatStartedWatch || chatHistories.length > 0 || variableList.length === 0;
 
   // 滚动到底部
-  const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
+  const scrollToBottom = useMemoizedFn((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
     setTimeout(() => {
       if (!ChatBoxRef.current) {
         setTimeout(() => {
@@ -184,7 +195,7 @@ const ChatBox = (
         });
       }
     }, delay);
-  }, []);
+  });
 
   // 聊天信息生成中……获取当前滚动条位置，判断是否需要滚动到底部
   const { run: generatingScroll } = useThrottleFn(
@@ -201,7 +212,7 @@ const ChatBox = (
     }
   );
 
-  const generatingMessage = useCallback(
+  const generatingMessage = useMemoizedFn(
     ({
       event,
       text = '',
@@ -311,27 +322,23 @@ const ChatBox = (
         })
       );
       generatingScroll();
-    },
-    [generatingScroll, setChatHistories, splitText2Audio, variablesForm]
+    }
   );
 
   // 重置输入内容
-  const resetInputVal = useCallback(
-    ({ text = '', files = [] }: ChatBoxInputType) => {
-      if (!TextareaDom.current) return;
-      setValue('files', files);
-      setValue('input', text);
+  const resetInputVal = useMemoizedFn(({ text = '', files = [] }: ChatBoxInputType) => {
+    if (!TextareaDom.current) return;
+    setValue('files', files);
+    setValue('input', text);
 
-      setTimeout(() => {
-        /* 回到最小高度 */
-        if (TextareaDom.current) {
-          TextareaDom.current.style.height =
-            text === '' ? textareaMinH : `${TextareaDom.current.scrollHeight}px`;
-        }
-      }, 100);
-    },
-    [setValue]
-  );
+    setTimeout(() => {
+      /* 回到最小高度 */
+      if (TextareaDom.current) {
+        TextareaDom.current.style.height =
+          text === '' ? textareaMinH : `${TextareaDom.current.scrollHeight}px`;
+      }
+    }, 100);
+  });
 
   // create question guide
   const createQuestionGuide = useCallback(
@@ -363,11 +370,11 @@ const ChatBox = (
   );
 
   /* Abort chat completions, questionGuide */
-  const abortRequest = useCallback(() => {
+  const abortRequest = useMemoizedFn(() => {
     chatController.current?.abort('stop');
     questionGuideController.current?.abort('stop');
     pluginController.current?.abort('stop');
-  }, []);
+  });
 
   /**
    * user confirm send prompt
@@ -445,7 +452,7 @@ const ChatBox = (
                     ]
                   : [])
               ] as UserChatItemValueItemType[],
-              status: 'finish'
+              status: ChatStatusEnum.finish
             },
             // 普通 chat 模式，需要增加一个 AI 来接收响应消息
             {
@@ -459,7 +466,7 @@ const ChatBox = (
                   }
                 }
               ],
-              status: 'loading'
+              status: ChatStatusEnum.loading
             }
           ];
 
@@ -506,7 +513,7 @@ const ChatBox = (
                 if (index !== state.length - 1) return item;
                 return {
                   ...item,
-                  status: 'finish',
+                  status: ChatStatusEnum.finish,
                   responseData: item.responseData
                     ? [...item.responseData, ...responseData]
                     : responseData
@@ -548,7 +555,7 @@ const ChatBox = (
                 if (index !== state.length - 1) return item;
                 return {
                   ...item,
-                  status: 'finish'
+                  status: ChatStatusEnum.finish
                 };
               })
             );
@@ -806,7 +813,7 @@ const ChatBox = (
     if (!chatContent) return;
 
     return {
-      status: chatContent.status || 'loading',
+      status: chatContent.status || ChatStatusEnum.loading,
       name: t(chatContent.moduleName || ('' as any)) || t('common:common.Loading')
     };
   }, [chatHistories, isChatting, t]);
@@ -854,14 +861,26 @@ const ChatBox = (
   useImperativeHandle(ref, () => ({
     restartChat() {
       abortRequest();
+
+      setChatHistories([]);
       setValue('chatStarted', false);
-      scrollToBottom('smooth', 500);
+    },
+    scrollToBottom(behavior = 'auto') {
+      scrollToBottom(behavior, 500);
     }
   }));
 
   const RenderRecords = useMemo(() => {
     return (
-      <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'} px={[4, 0]} pb={3}>
+      <ScrollData
+        ScrollContainerRef={ChatBoxRef}
+        flex={'1 0 0'}
+        h={0}
+        w={'100%'}
+        overflow={'overlay'}
+        px={[4, 0]}
+        pb={3}
+      >
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {showEmpty && <Empty />}
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
@@ -957,9 +976,10 @@ const ChatBox = (
             ))}
           </Box>
         </Box>
-      </Box>
+      </ScrollData>
     );
   }, [
+    ScrollData,
     appAvatar,
     chatForm,
     chatHistories,

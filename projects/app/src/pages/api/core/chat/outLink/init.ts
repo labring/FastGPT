@@ -3,8 +3,6 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import type { InitChatResponse, InitOutLinkChatProps } from '@/global/core/chat/api.d';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -13,8 +11,6 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { transformPreviewHistories } from '@/global/core/chat/utils';
 import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -39,19 +35,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     throw new Error(ChatErrEnum.unAuthChat);
   }
 
-  const [{ histories }, { nodes, chatConfig }] = await Promise.all([
-    getChatItems({
-      appId: app._id,
-      chatId,
-      limit: 30,
-      field: `dataId obj value userGoodFeedback userBadFeedback ${
-        shareChat.responseDetail || app.type === AppTypeEnum.plugin
-          ? `adminFeedback ${DispatchNodeResponseKeyEnum.nodeResponse}`
-          : ''
-      } `
-    }),
-    getAppLatestVersion(app._id, app)
-  ]);
+  const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
+  // pick share response field
 
   jsonRes<InitChatResponse>(res, {
     data: {
@@ -61,7 +46,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       //@ts-ignore
       userAvatar: tmb?.userId?.avatar,
       variables: chat?.variables || {},
-      history: app.type === AppTypeEnum.plugin ? histories : transformPreviewHistories(histories),
       app: {
         chatConfig: getAppChatConfig({
           chatConfig,

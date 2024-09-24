@@ -208,6 +208,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       getChatItems({
         appId: app._id,
         chatId,
+        offset: 0,
         limit,
         field: `dataId obj value nodeOutputs`
       }),
@@ -555,6 +556,7 @@ const authHeaderRequest = async ({
       };
     } else {
       // token_auth
+
       if (!appId) {
         return Promise.reject('appId is empty');
       }

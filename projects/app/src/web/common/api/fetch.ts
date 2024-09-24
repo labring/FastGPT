@@ -100,7 +100,7 @@ export const streamFetch = ({
         return finish();
       }
 
-      window.windowHidden
+      document.hidden
         ? setTimeout(animateResponseText, 16)
         : requestAnimationFrame(animateResponseText);
     }

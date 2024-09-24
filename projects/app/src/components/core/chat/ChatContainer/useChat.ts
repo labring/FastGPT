@@ -8,20 +8,23 @@ import {
   SendPromptFnType
 } from './ChatBox/type';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
+import { getChatRecords } from '@/web/core/chat/api';
+import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { GetChatRecordsProps } from '@/global/core/chat/api';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { PaginationResponse } from '../../../../../../../packages/web/common/fetch/type';
+import type { getPaginationRecordsBody } from '@/pages/api/core/chat/getPaginationRecords';
 
 export const useChat = () => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
-
-  const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([]);
   const variablesForm = useForm<ChatBoxInputFormType>();
   // plugin
   const [pluginRunTab, setPluginRunTab] = useState<PluginRunBoxTabEnum>(PluginRunBoxTabEnum.input);
 
-  const resetChatRecords = useCallback(
-    (props?: { records?: ChatSiteItemType[]; variables?: Record<string, any> }) => {
-      const { records = [], variables = {} } = props || {};
-
-      setChatRecords(records);
+  const resetVariables = useCallback(
+    (props?: { variables?: Record<string, any> }) => {
+      const { variables = {} } = props || {};
 
       // Reset to empty input
       const data = variablesForm.getValues();
@@ -33,20 +36,11 @@ export const useChat = () => {
         ...data,
         ...variables
       });
-
-      setTimeout(
-        () => {
-          ChatBoxRef.current?.restartChat?.();
-        },
-        ChatBoxRef.current?.restartChat ? 0 : 500
-      );
     },
-    [variablesForm, setChatRecords]
+    [variablesForm]
   );
 
   const clearChatRecords = useCallback(() => {
-    setChatRecords([]);
-
     const data = variablesForm.getValues();
     for (const key in data) {
       variablesForm.setValue(key, '');
@@ -55,15 +49,47 @@ export const useChat = () => {
     ChatBoxRef.current?.restartChat?.();
   }, [variablesForm]);
 
+  const useChatScrollData = useCallback((params: GetChatRecordsProps) => {
+    return useScrollPagination(
+      async (data: getPaginationRecordsBody): Promise<PaginationResponse<ChatSiteItemType>> => {
+        const res = await getChatRecords(data);
+
+        // First load scroll to bottom
+        if (data.offset === 0) {
+          function scrollToBottom() {
+            requestAnimationFrame(
+              ChatBoxRef?.current ? () => ChatBoxRef?.current?.scrollToBottom?.() : scrollToBottom
+            );
+          }
+          scrollToBottom();
+        }
+
+        return {
+          ...res,
+          list: res.list.map((item) => ({
+            ...item,
+            dataId: item.dataId || getNanoid(),
+            status: ChatStatusEnum.finish
+          }))
+        };
+      },
+      {
+        pageSize: 10,
+        refreshDeps: [params],
+        params,
+        scrollLoadType: 'top'
+      }
+    );
+  }, []);
+
   return {
     ChatBoxRef,
-    chatRecords,
-    setChatRecords,
     variablesForm,
     pluginRunTab,
     setPluginRunTab,
     clearChatRecords,
-    resetChatRecords
+    resetVariables,
+    useChatScrollData
   };
 };
 

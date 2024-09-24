@@ -9,23 +9,24 @@ import { MongoChat } from './chatSchema';
 export async function getChatItems({
   appId,
   chatId,
-  limit = 30,
+  offset,
+  limit,
   field
 }: {
   appId: string;
   chatId?: string;
-  limit?: number;
+  offset: number;
+  limit: number;
   field: string;
-}): Promise<{ histories: ChatItemType[] }> {
+}): Promise<{ histories: ChatItemType[]; total: number }> {
   if (!chatId) {
-    return { histories: [] };
+    return { histories: [], total: 0 };
   }
 
-  const histories = await MongoChatItem.find({ appId, chatId }, field)
-    .sort({ _id: -1 })
-    .limit(limit)
-    .lean();
-
+  const [histories, total] = await Promise.all([
+    MongoChatItem.find({ chatId, appId }, field).sort({ _id: -1 }).skip(offset).limit(limit).lean(),
+    MongoChatItem.countDocuments({ chatId, appId })
+  ]);
   histories.reverse();
 
   histories.forEach((item) => {
@@ -33,7 +34,7 @@ export async function getChatItems({
     item.value = adaptStringValue(item.value);
   });
 
-  return { histories };
+  return { histories, total };
 }
 
 /* Temporary adaptation for old conversation records */
