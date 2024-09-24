@@ -3,13 +3,11 @@ import React, { useCallback, useMemo } from 'react';
 import { AppContext, TabEnum } from './context';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const RouteTab = () => {
   const { t } = useTranslation();
-  const { appT } = useI18n();
   const router = useRouter();
   const { appDetail, currentTab } = useContextSelector(AppContext, (v) => v);
 
@@ -28,20 +26,21 @@ const RouteTab = () => {
   const tabList = useMemo(
     () => [
       {
-        label: appDetail.type === AppTypeEnum.plugin ? appT('setting_plugin') : appT('setting_app'),
+        label:
+          appDetail.type === AppTypeEnum.plugin ? t('app:setting_plugin') : t('app:setting_app'),
         id: TabEnum.appEdit
       },
       ...(appDetail.permission.hasManagePer
         ? [
             {
-              label: appT('publish_channel'),
+              label: t('app:publish_channel'),
               id: TabEnum.publish
             },
-            { label: appT('chat_logs'), id: TabEnum.logs }
+            { label: t('app:chat_logs'), id: TabEnum.logs }
           ]
         : [])
     ],
-    [appDetail.permission.hasManagePer, appDetail.type, appT]
+    [appDetail.permission.hasManagePer, appDetail.type]
   );
 
   return (
@@ -51,6 +50,7 @@ const RouteTab = () => {
           key={tab.id}
           px={2}
           py={0.5}
+          fontWeight={'medium'}
           {...(currentTab === tab.id
             ? {
                 color: 'primary.700'

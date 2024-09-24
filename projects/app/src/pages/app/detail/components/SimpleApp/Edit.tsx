@@ -15,21 +15,46 @@ import { cardStyles } from '../constants';
 
 import styles from './styles.module.scss';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { storeEdgesRenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { useTranslation } from 'next-i18next';
+import { uiWorkflow2StoreWorkflow } from '../WorkflowComponents/utils';
+import { SnapshotsType } from '../WorkflowComponents/context';
 
 const Edit = ({
   appForm,
-  setAppForm
+  setAppForm,
+  past,
+  saveSnapshot
 }: {
   appForm: AppSimpleEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppSimpleEditFormType>>;
+  past: SnapshotsType[];
+  saveSnapshot: (
+    this: any,
+    { pastNodes, pastEdges, chatConfig, customTitle, isSaved }: any
+  ) => Promise<boolean>;
 }) => {
   const { isPc } = useSystem();
   const { loadAllDatasets } = useDatasetStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const { t } = useTranslation();
 
   // show selected dataset
   useMount(() => {
     loadAllDatasets();
+    saveSnapshot({
+      pastNodes: appDetail.modules?.map((item) => storeNode2FlowNode({ item, t })),
+      pastEdges: appDetail.edges?.map((item) => storeEdgesRenderEdge({ edge: item })),
+      chatConfig: appDetail.chatConfig,
+      isSaved: true
+    });
+    if (past.length > 0) {
+      const storeWorkflow = uiWorkflow2StoreWorkflow(past[0]);
+      const currentAppForm = appWorkflow2Form({ ...storeWorkflow, chatConfig: past[0].chatConfig });
+
+      setAppForm(currentAppForm);
+      return;
+    }
     setAppForm(
       appWorkflow2Form({
         nodes: appDetail.modules,
@@ -52,7 +77,7 @@ const Edit = ({
       display={['block', 'flex']}
       flex={'1 0 0'}
       h={0}
-      pt={[2, 1.5]}
+      mt={[4, 0]}
       gap={1}
       borderRadius={'lg'}
       overflowY={['auto', 'unset']}
@@ -73,7 +98,7 @@ const Edit = ({
         </Box>
       </Box>
       {isPc && (
-        <Box {...cardStyles} boxShadow={'3'} flex={'2 0 0'} w={0}>
+        <Box {...cardStyles} boxShadow={'3'} flex={'2 0 0'} w={0} mb={3}>
           <ChatTest appForm={appForm} />
         </Box>
       )}

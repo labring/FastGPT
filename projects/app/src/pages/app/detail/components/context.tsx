@@ -1,4 +1,4 @@
-import { Dispatch, ReactNode, SetStateAction, useCallback, useState } from 'react';
+import { Dispatch, ReactNode, SetStateAction, useCallback, useEffect, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { defaultApp } from '@/web/core/app/constants';
 import { delAppById, getAppDetailById, putAppById } from '@/web/core/app/api';
@@ -11,7 +11,6 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import dynamic from 'next/dynamic';
 import { useDisclosure } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useI18n } from '@/web/context/I18n';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 

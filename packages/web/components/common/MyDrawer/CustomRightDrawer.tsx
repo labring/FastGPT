@@ -16,6 +16,8 @@ const CustomRightDrawer = ({
   iconSrc,
   title,
   maxW = ['90vw', '30vw'],
+  top = 16,
+  bottom = 0,
   children,
   isLoading,
   showMask = true,
@@ -31,8 +33,8 @@ const CustomRightDrawer = ({
       zIndex={100}
       maxW={maxW}
       w={'100%'}
-      top={'60px'}
-      bottom={0}
+      top={top}
+      bottom={bottom}
       borderLeftRadius={'lg'}
       border={'base'}
       boxShadow={'2'}
