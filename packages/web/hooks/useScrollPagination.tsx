@@ -1,4 +1,4 @@
-import React, { ReactNode, RefObject, useRef, useState } from 'react';
+import React, { ReactNode, RefObject, useMemo, useRef, useState } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -270,29 +270,27 @@ export function useScrollPagination<
       children: ReactNode;
       ScrollContainerRef?: RefObject<HTMLDivElement>;
     } & BoxProps) => {
-      if (ScrollContainerRef) {
-        ScrollRef = ScrollContainerRef;
-      }
-      const loadText = (() => {
+      const ref = ScrollContainerRef || ScrollRef;
+      const loadText = useMemo(() => {
         if (isLoading) return t('common:common.is_requesting');
         if (noMore) return t('common:common.request_end');
         return t('common:common.request_more');
-      })();
+      }, [isLoading, noMore]);
 
-      const scroll = useScroll(ScrollRef);
+      const scroll = useScroll(ref);
 
       // Watch scroll position
       useThrottleEffect(
         () => {
-          if (!ScrollRef?.current || noMore) return;
-          const { scrollTop, scrollHeight, clientHeight } = ScrollRef.current;
+          if (!ref?.current || noMore) return;
+          const { scrollTop, scrollHeight, clientHeight } = ref.current;
 
           if (
             (scrollLoadType === 'bottom' &&
               scrollTop + clientHeight >= scrollHeight - thresholdVal) ||
             (scrollLoadType === 'top' && scrollTop < thresholdVal)
           ) {
-            loadData(false, ScrollRef);
+            loadData(false, ref);
           }
         },
         [scroll],
@@ -300,7 +298,7 @@ export function useScrollPagination<
       );
 
       return (
-        <Box {...props} ref={ScrollRef} overflow={'overlay'}>
+        <Box {...props} ref={ref} overflow={'overlay'}>
           {scrollLoadType === 'top' && total > 0 && isLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
               {t('common:common.is_requesting')}

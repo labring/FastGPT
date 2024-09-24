@@ -58,7 +58,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
   const {
     onUpdateHistoryTitle,
-    loadHistories,
     onUpdateHistory,
     onClearHistories,
     onDelHistory,
@@ -88,7 +87,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const {
     data: chatRecords,
     ScrollData,
-    isLoading: isLoadChatRecords,
     setData: setChatRecords,
     total: totalRecordsCount
   } = useChatScrollData(params);
@@ -183,7 +181,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     }
   );
 
-  const loading = isLoadChatRecords || isLoading;
+  const loading = isLoading;
 
   return (
     <Flex h={'100%'}>

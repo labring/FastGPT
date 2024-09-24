@@ -29,6 +29,5 @@ declare global {
     umami?: {
       track: (event: TrackEventName, data: any) => void;
     };
-    windowHidden: boolean;
   }
 }

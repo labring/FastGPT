@@ -182,7 +182,7 @@ const ChatBox = (
   const chatStarted = chatStartedWatch || chatHistories.length > 0 || variableList.length === 0;
 
   // 滚动到底部
-  const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
+  const scrollToBottom = useMemoizedFn((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
     setTimeout(() => {
       if (!ChatBoxRef.current) {
         setTimeout(() => {
@@ -195,7 +195,7 @@ const ChatBox = (
         });
       }
     }, delay);
-  }, []);
+  });
 
   // 聊天信息生成中……获取当前滚动条位置，判断是否需要滚动到底部
   const { run: generatingScroll } = useThrottleFn(
@@ -212,7 +212,7 @@ const ChatBox = (
     }
   );
 
-  const generatingMessage = useCallback(
+  const generatingMessage = useMemoizedFn(
     ({
       event,
       text = '',
@@ -322,27 +322,23 @@ const ChatBox = (
         })
       );
       generatingScroll();
-    },
-    [generatingScroll, setChatHistories, splitText2Audio, variablesForm]
+    }
   );
 
   // 重置输入内容
-  const resetInputVal = useCallback(
-    ({ text = '', files = [] }: ChatBoxInputType) => {
-      if (!TextareaDom.current) return;
-      setValue('files', files);
-      setValue('input', text);
+  const resetInputVal = useMemoizedFn(({ text = '', files = [] }: ChatBoxInputType) => {
+    if (!TextareaDom.current) return;
+    setValue('files', files);
+    setValue('input', text);
 
-      setTimeout(() => {
-        /* 回到最小高度 */
-        if (TextareaDom.current) {
-          TextareaDom.current.style.height =
-            text === '' ? textareaMinH : `${TextareaDom.current.scrollHeight}px`;
-        }
-      }, 100);
-    },
-    [setValue]
-  );
+    setTimeout(() => {
+      /* 回到最小高度 */
+      if (TextareaDom.current) {
+        TextareaDom.current.style.height =
+          text === '' ? textareaMinH : `${TextareaDom.current.scrollHeight}px`;
+      }
+    }, 100);
+  });
 
   // create question guide
   const createQuestionGuide = useCallback(
@@ -374,11 +370,11 @@ const ChatBox = (
   );
 
   /* Abort chat completions, questionGuide */
-  const abortRequest = useCallback(() => {
+  const abortRequest = useMemoizedFn(() => {
     chatController.current?.abort('stop');
     questionGuideController.current?.abort('stop');
     pluginController.current?.abort('stop');
-  }, []);
+  });
 
   /**
    * user confirm send prompt

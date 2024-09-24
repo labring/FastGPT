@@ -110,7 +110,6 @@ const OutLink = ({
   const {
     data: chatRecords,
     ScrollData,
-    isLoading: isLoadChatRecords,
     setData: setChatRecords,
     total: totalRecordsCount
   } = useChatScrollData(params);
@@ -237,7 +236,7 @@ const OutLink = ({
   useMount(() => {
     setIdEmbed(window !== top);
   });
-  const loading = isLoadChatRecords || isLoading;
+  const loading = isLoading;
 
   return (
     <>

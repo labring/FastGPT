@@ -52,7 +52,6 @@ const DetailLogsModal = ({
   const {
     data: chatRecords,
     ScrollData,
-    isLoading: isLoadChatRecords,
     setData: setChatRecords,
     total: totalRecordsCount
   } = useChatScrollData(params);
@@ -72,7 +71,7 @@ const DetailLogsModal = ({
   const title = chat?.title;
   const chatModels = chat?.app?.chatModels;
   const isPlugin = chat?.app.type === AppTypeEnum.plugin;
-  const loading = isFetching || isLoadChatRecords;
+  const loading = isFetching;
 
   return (
     <>
