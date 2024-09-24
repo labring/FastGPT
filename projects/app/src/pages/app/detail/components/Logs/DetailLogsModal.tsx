@@ -47,14 +47,11 @@ const DetailLogsModal = ({
     pluginRunTab,
     setPluginRunTab,
     resetVariables,
-    useChatScrollData
-  } = useChat();
-  const {
-    data: chatRecords,
+    chatRecords,
     ScrollData,
-    setData: setChatRecords,
-    total: totalRecordsCount
-  } = useChatScrollData(params);
+    setChatRecords,
+    totalRecordsCount
+  } = useChat(params);
 
   const { data: chat, isFetching } = useQuery(
     ['getChatDetail', chatId],
