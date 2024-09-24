@@ -3,10 +3,15 @@ import { MongoGroupMemberModel } from './groupMemberSchema';
 import { TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '../schema';
-import { getGroupPer } from '../controller';
+import { getGroupPer, parseHeaderCert } from '../controller';
 import { MongoMemberGroupModel } from './memberGroupSchema';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { ClientSession } from 'mongoose';
+import { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
+import { AuthModeType, AuthResponseType } from '../type';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
+import { getTmbInfoByTmbId } from '../../user/team/controller';
 
 /**
  * Get the default group of a team
@@ -14,7 +19,6 @@ import { ClientSession } from 'mongoose';
  * @param{string} obj.teamId
  * @param{ClientSession} obj.session
  */
-
 export const getTeamDefaultGroup = async ({
   teamId,
   session
@@ -133,4 +137,38 @@ export const getGroupPermission = async ({
   ).map((item) => item.permission);
 
   return getGroupPer(groupPermissions);
+};
+
+// auth group member role
+export const authGroupMemberRole = async ({
+  groupId,
+  role,
+  ...props
+}: {
+  groupId: string;
+  role: `${GroupMemberRole}`[];
+} & AuthModeType): Promise<AuthResponseType> => {
+  const result = await parseHeaderCert(props);
+  const { teamId, tmbId, isRoot } = result;
+  if (isRoot) {
+    return {
+      ...result,
+      permission: new TeamPermission({
+        isOwner: true
+      }),
+      teamId,
+      tmbId
+    };
+  }
+  const groupMember = await MongoGroupMemberModel.findOne({ groupId, tmbId });
+  const tmb = await getTmbInfoByTmbId({ tmbId });
+  if (tmb.permission.hasManagePer || (groupMember && role.includes(groupMember.role))) {
+    return {
+      ...result,
+      permission: tmb.permission,
+      teamId,
+      tmbId
+    };
+  }
+  return Promise.reject(TeamErrEnum.unAuthTeam);
 };

@@ -1,4 +1,3 @@
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import AvatarGroup from '@fastgpt/web/components/common/Avatar/AvatarGroup';
 import { Box, HStack, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -12,10 +11,18 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { deleteGroup } from '@/web/support/user/team/group/api';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
+import MemberTag from '../../Info/MemberTag';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
-function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }) {
+function MemberTable({
+  onEditGroup,
+  onManageMember
+}: {
+  onEditGroup: (groupId: string) => void;
+  onManageMember: (groupId: string) => void;
+}) {
   const { t } = useTranslation();
-  const { userInfo, teamMembers } = useUserStore();
+  const { userInfo } = useUserStore();
 
   const { ConfirmModal: ConfirmDeleteGroupModal, openConfirm: openDeleteGroupModal } = useConfirm({
     type: 'delete',
@@ -28,7 +35,6 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
   );
 
   const { runAsync: delDeleteGroup, loading: isLoadingDeleteGroup } = useRequest2(deleteGroup, {
-    manual: true,
     onSuccess: () => Promise.all([refetchGroups(), refetchMembers()])
   });
 
@@ -39,6 +45,7 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
           <Thead bg={'myWhite.400'}>
             <Tr>
               <Th borderRadius={'none !important'}>{t('user:team.group.name')}</Th>
+              <Th>{t('user:owner')}</Th>
               <Th>{t('user:team.group.members')}</Th>
               <Th borderRadius={'none !important'}>{t('common:common.Action')}</Th>
             </Tr>
@@ -48,21 +55,50 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
               <Tr key={group._id} overflow={'unset'}>
                 <Td>
                   <HStack>
-                    <Avatar src={group.avatar} w={['18px', '22px']} />
-                    <Box maxW={'150px'} className={'textEllipsis'}>
-                      {group.name === DefaultGroupName ? userInfo?.team.teamName : group.name}
+                    <MemberTag
+                      name={
+                        group.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : group.name
+                      }
+                      avatar={group.avatar}
+                    />
+                    <Box>
+                      ({group.name === DefaultGroupName ? members.length : group.members.length})
                     </Box>
                   </HStack>
                 </Td>
                 <Td>
-                  <AvatarGroup
-                    avatars={
+                  <MemberTag
+                    name={
                       group.name === DefaultGroupName
-                        ? teamMembers.map((v) => v.avatar)
-                        : group.members.map((v) => members.find((m) => m.tmbId === v)?.avatar ?? '')
+                        ? members.find((item) => item.role === 'owner')?.memberName ?? ''
+                        : members.find(
+                            (item) =>
+                              item.tmbId ===
+                              group.members.find((item) => item.role === 'owner')?.tmbId
+                          )?.memberName ?? ''
                     }
-                    groupId={group._id}
+                    avatar={
+                      group.name === DefaultGroupName
+                        ? group.avatar
+                        : members.find((item) => item.role === 'owner')?.avatar ?? ''
+                    }
                   />
+                </Td>
+                <Td>
+                  {group.name === DefaultGroupName ? (
+                    <AvatarGroup avatars={members.map((v) => v.avatar)} groupId={group._id} />
+                  ) : (
+                    <MyTooltip label={t('user:team.group.manage_member')}>
+                      <Box cursor="pointer" onClick={() => onManageMember(group._id)}>
+                        <AvatarGroup
+                          avatars={group.members.map(
+                            (v) => members.find((m) => m.tmbId === v.tmbId)?.avatar ?? ''
+                          )}
+                          groupId={group._id}
+                        />
+                      </Box>
+                    </MyTooltip>
+                  )}
                 </Td>
                 <Td>
                   {userInfo?.team.permission.hasManagePer && group.name !== DefaultGroupName && (
@@ -72,7 +108,21 @@ function MemberTable({ onEditGroup }: { onEditGroup: (groupId: string) => void }
                         {
                           children: [
                             {
-                              label: t('common:common.Edit'),
+                              label: t('user:team.group.edit_info'),
+                              icon: 'edit',
+                              onClick: () => {
+                                onEditGroup(group._id);
+                              }
+                            },
+                            {
+                              label: t('user:team.group.manage_member'),
+                              icon: 'edit',
+                              onClick: () => {
+                                onManageMember(group._id);
+                              }
+                            },
+                            {
+                              label: t('user:team.group.transfer_owner'),
                               icon: 'edit',
                               onClick: () => {
                                 onEditGroup(group._id);

@@ -1,5 +1,6 @@
 import { TeamMemberItemType } from 'support/user/team/type';
 import { TeamPermission } from '../user/controller';
+import { GroupMemberRole } from './constant';
 
 type MemberGroupSchemaType = {
   _id: string;
@@ -11,10 +12,14 @@ type MemberGroupSchemaType = {
 type GroupMemberSchemaType = {
   groupId: string;
   tmbId: string;
+  role: `${GroupMemberRole}`;
 };
 
 type MemberGroupType = MemberGroupSchemaType & {
-  members: string[]; // we can get tmb's info from other api. there is no need but only need to get tmb's id
+  members: {
+    tmbId: string;
+    role: `${GroupMemberRole}`;
+  }[]; // we can get tmb's info from other api. there is no need but only need to get tmb's id
   permission: TeamPermission;
 };
 

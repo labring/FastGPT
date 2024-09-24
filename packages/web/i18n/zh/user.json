@@ -105,6 +105,9 @@
       "default_group": "默认群组",
       "delete_confirm": "确认删除群组？",
       "edit": "编辑群组",
+      "edit_info": "编辑信息",
+      "manage_member": "管理成员",
+      "transfer_owner": "转让所有者",
       "group": "群组",
       "members": "成员",
       "name": "群组名称"
@@ -120,5 +123,6 @@
     "share": "分享链接",
     "wecom": "企业微信"
   },
-  "usage_record": "使用记录"
+  "usage_record": "使用记录",
+  "owner": "所有者"
 }
