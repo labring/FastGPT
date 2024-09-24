@@ -13,7 +13,7 @@ import { ClearHistoriesProps, DelHistoryProps, UpdateHistoryProps } from '@/glob
 import { BoxProps, useDisclosure } from '@chakra-ui/react';
 import { useChatStore } from './storeChat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useVirtualScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
 type ChatContextValueType = {
   params: Record<string, string | number>;
@@ -111,7 +111,7 @@ const ChatContextProvider = ({
     setData: setHistories,
     fetchData: loadHistories,
     totalData: histories
-  } = useScrollPagination(getChatHistories, {
+  } = useVirtualScrollPagination(getChatHistories, {
     overscan: 30,
     pageSize: 30,
     itemHeight: 52,
@@ -132,7 +132,6 @@ const ChatContextProvider = ({
           }
         });
       }
-
       onCloseSlider();
     },
     [chatId, onCloseSlider, router, setLastChatId]

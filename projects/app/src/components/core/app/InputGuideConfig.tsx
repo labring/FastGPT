@@ -28,7 +28,7 @@ import {
   putChatInputGuide
 } from '@/web/core/chat/inputGuide/api';
 import { useQuery } from '@tanstack/react-query';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useVirtualScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
@@ -204,7 +204,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
     isLoading: isRequesting,
     fetchData,
     scroll2Top
-  } = useScrollPagination(getChatInputGuideList, {
+  } = useVirtualScrollPagination(getChatInputGuideList, {
     refreshDeps: [searchKey],
     // debounceWait: 300,
 

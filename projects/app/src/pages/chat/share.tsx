@@ -28,7 +28,7 @@ import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
 import { InitChatResponse } from '@/global/core/chat/api';
-import { defaultChatData } from '@/global/core/chat/constants';
+import { defaultChatData, GetChatTypeEnum } from '@/global/core/chat/constants';
 import { useMount } from 'ahooks';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -92,13 +92,27 @@ const OutLink = ({
 
   const {
     ChatBoxRef,
-    chatRecords,
-    setChatRecords,
     variablesForm,
     pluginRunTab,
     setPluginRunTab,
-    resetChatRecords
+    resetVariables,
+    useChatScrollData
   } = useChat();
+  const params = useMemo(() => {
+    return {
+      chatId,
+      shareId,
+      outLinkUid,
+      appId: chatData.appId,
+      type: GetChatTypeEnum.outLink
+    };
+  }, [chatData.appId, chatId, outLinkUid, shareId]);
+  const {
+    data: chatRecords,
+    ScrollData,
+    setData: setChatRecords,
+    total: totalRecordsCount
+  } = useChatScrollData(params);
 
   const startChat = useCallback(
     async ({
@@ -179,7 +193,7 @@ const OutLink = ({
     ]
   );
 
-  const { loading } = useRequest2(
+  const { loading: isLoading } = useRequest2(
     async () => {
       if (!shareId || !outLinkUid || forbidLoadChat.current) return;
 
@@ -190,14 +204,7 @@ const OutLink = ({
       });
       setChatData(res);
 
-      const history = res.history.map((item) => ({
-        ...item,
-        dataId: item.dataId || nanoid(),
-        status: ChatStatusEnum.finish
-      }));
-
-      resetChatRecords({
-        records: history,
+      resetVariables({
         variables: res.variables
       });
     },
@@ -229,6 +236,7 @@ const OutLink = ({
   useMount(() => {
     setIdEmbed(window !== top);
   });
+  const loading = isLoading;
 
   return (
     <>
@@ -303,6 +311,7 @@ const OutLink = ({
               <ChatHeader
                 chatData={chatData}
                 history={chatRecords}
+                totalRecordsCount={totalRecordsCount}
                 showHistory={showHistory === '1'}
               />
             ) : null}
@@ -322,6 +331,7 @@ const OutLink = ({
                 />
               ) : (
                 <ChatBox
+                  ScrollData={ScrollData}
                   ref={ChatBoxRef}
                   chatHistories={chatRecords}
                   setChatHistories={setChatRecords}

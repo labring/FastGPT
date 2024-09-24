@@ -13,6 +13,11 @@ export const defaultChatData: InitChatResponse = {
     pluginInputs: []
   },
   title: '',
-  variables: {},
-  history: []
+  variables: {}
 };
+
+export enum GetChatTypeEnum {
+  normal = 'normal',
+  outLink = 'outLink',
+  team = 'team'
+}

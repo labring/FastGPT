@@ -4,7 +4,7 @@ import {
   getWorkflowVersionList,
   updateAppVersion
 } from '@/web/core/app/api/version';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useVirtualScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import CustomRightDrawer from '@fastgpt/web/components/common/MyDrawer/CustomRightDrawer';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, Input } from '@chakra-ui/react';
@@ -180,7 +180,7 @@ const TeamCloud = () => {
   const { loadAndGetTeamMembers } = useUserStore();
   const { feConfigs } = useSystemStore();
 
-  const { scrollDataList, ScrollList, isLoading, fetchData } = useScrollPagination(
+  const { scrollDataList, ScrollList, isLoading, fetchData } = useVirtualScrollPagination(
     getWorkflowVersionList,
     {
       itemHeight: 40,

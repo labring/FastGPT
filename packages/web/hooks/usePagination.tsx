@@ -1,9 +1,10 @@
-import { useRef, useState, useCallback, useMemo } from 'react';
+import { useRef, useState, useCallback, RefObject, ReactNode, useMemo } from 'react';
 import { IconButton, Flex, Box, Input, BoxProps } from '@chakra-ui/react';
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+
 import {
   useBoolean,
   useLockFn,
@@ -12,6 +13,8 @@ import {
   useScroll,
   useThrottleEffect
 } from 'ahooks';
+
+const thresholdVal = 200;
 
 type PagingData<T> = {
   pageNum: number;
@@ -27,7 +30,9 @@ export function usePagination<ResT = any>({
   defaultRequest = true,
   type = 'button',
   onChange,
-  refreshDeps
+  refreshDeps,
+  scrollLoadType = 'bottom',
+  EmptyTip
 }: {
   api: (data: any) => Promise<PagingData<ResT>>;
   pageSize?: number;
@@ -36,61 +41,83 @@ export function usePagination<ResT = any>({
   type?: 'button' | 'scroll';
   onChange?: (pageNum: number) => void;
   refreshDeps?: any[];
+  throttleWait?: number;
+  scrollLoadType?: 'top' | 'bottom';
+  EmptyTip?: React.JSX.Element;
 }) {
   const { toast } = useToast();
   const { t } = useTranslation();
-  const [pageNum, setPageNum] = useState(1);
-
-  const ScrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const noMore = useRef(false);
 
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
 
   const [total, setTotal] = useState(0);
   const [data, setData] = useState<ResT[]>([]);
+  const totalDataLength = useMemo(() => Math.max(total, data.length), [total, data.length]);
 
-  const maxPage = useMemo(() => Math.ceil(total / pageSize) || 1, [pageSize, total]);
+  const isEmpty = total === 0 && !isLoading;
+  const pageNum = useMemo(() => Math.ceil(data.length / pageSize), [data.length, pageSize]);
+  const noMore = data.length >= totalDataLength;
 
-  const fetchData = useLockFn(async (num: number = pageNum) => {
-    if (noMore.current && num !== 1) return;
-    setTrue();
+  const fetchData = useLockFn(
+    async (num: number = pageNum, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
+      if (noMore && num !== 1) return;
+      setTrue();
 
-    try {
-      const res: PagingData<ResT> = await api({
-        pageNum: num,
-        pageSize,
-        ...params
-      });
+      try {
+        const res: PagingData<ResT> = await api({
+          pageNum: num,
+          pageSize,
+          ...params
+        });
 
-      // Check total and set
-      res.total !== undefined && setTotal(res.total);
+        // Check total and set
+        res.total !== undefined && setTotal(res.total);
 
-      if (res.total !== undefined && res.total <= data.length + res.data.length) {
-        noMore.current = true;
+        if (type === 'scroll') {
+          if (scrollLoadType === 'top') {
+            const prevHeight = ScrollContainerRef?.current?.scrollHeight || 0;
+            const prevScrollTop = ScrollContainerRef?.current?.scrollTop || 0;
+            // 使用 requestAnimationFrame 来调整滚动位置
+            function adjustScrollPosition() {
+              requestAnimationFrame(
+                ScrollContainerRef?.current
+                  ? () => {
+                      if (ScrollContainerRef?.current) {
+                        const newHeight = ScrollContainerRef.current.scrollHeight;
+                        const heightDiff = newHeight - prevHeight;
+                        ScrollContainerRef.current.scrollTop = prevScrollTop + heightDiff;
+                      }
+                    }
+                  : adjustScrollPosition
+              );
+            }
+
+            setData((prevData) => (num === 1 ? res.data : [...res.data, ...prevData]));
+            adjustScrollPosition();
+          } else {
+            setData((prevData) => (num === 1 ? res.data : [...prevData, ...res.data]));
+          }
+        } else {
+          setData(res.data);
+        }
+
+        onChange?.(num);
+      } catch (error: any) {
+        toast({
+          title: getErrText(error, t('common:core.chat.error.data_error')),
+          status: 'error'
+        });
+        console.log(error);
       }
 
-      setPageNum(num);
-
-      if (type === 'scroll') {
-        setData((prevData) => (num === 1 ? res.data : [...prevData, ...res.data]));
-      } else {
-        setData(res.data);
-      }
-
-      onChange?.(num);
-    } catch (error: any) {
-      toast({
-        title: getErrText(error, t('common:core.chat.error.data_error')),
-        status: 'error'
-      });
-      console.log(error);
+      setFalse();
     }
+  );
 
-    setFalse();
-  });
-
+  // Button pagination
   const Pagination = useCallback(() => {
+    const maxPage = Math.ceil(totalDataLength / pageSize);
+
     return (
       <Flex alignItems={'center'} justifyContent={'end'}>
         <IconButton
@@ -151,7 +178,74 @@ export function usePagination<ResT = any>({
         />
       </Flex>
     );
-  }, [isLoading, maxPage, fetchData, pageNum]);
+  }, [isLoading, totalDataLength, pageSize, fetchData, pageNum]);
+
+  // Scroll pagination
+  const DefaultRef = useRef<HTMLDivElement>(null);
+  const ScrollData = useMemoizedFn(
+    ({
+      children,
+      ScrollContainerRef,
+      ...props
+    }: {
+      children: ReactNode;
+      ScrollContainerRef?: RefObject<HTMLDivElement>;
+    } & BoxProps) => {
+      const ref = ScrollContainerRef || DefaultRef;
+      const loadText = (() => {
+        if (isLoading) return t('common:common.is_requesting');
+        if (noMore) return t('common:common.request_end');
+        return t('common:common.request_more');
+      })();
+
+      const scroll = useScroll(ref);
+
+      // Watch scroll position
+      useThrottleEffect(
+        () => {
+          if (!ref?.current || type !== 'scroll' || noMore) return;
+          const { scrollTop, scrollHeight, clientHeight } = ref.current;
+
+          if (
+            (scrollLoadType === 'bottom' &&
+              scrollTop + clientHeight >= scrollHeight - thresholdVal) ||
+            (scrollLoadType === 'top' && scrollTop < thresholdVal)
+          ) {
+            fetchData(pageNum + 1, ref);
+          }
+        },
+        [scroll],
+        { wait: 50 }
+      );
+
+      return (
+        <Box {...props} ref={ref} overflow={'overlay'}>
+          {scrollLoadType === 'top' && total > 0 && isLoading && (
+            <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
+              {t('common:common.is_requesting')}
+            </Box>
+          )}
+          {children}
+          {scrollLoadType === 'bottom' && !isEmpty && (
+            <Box
+              mt={2}
+              fontSize={'xs'}
+              color={'blackAlpha.500'}
+              textAlign={'center'}
+              cursor={loadText === t('common:common.request_more') ? 'pointer' : 'default'}
+              onClick={() => {
+                if (loadText !== t('common:common.request_more')) return;
+                fetchData(pageNum + 1);
+              }}
+            >
+              {loadText}
+            </Box>
+          )}
+          {isEmpty && EmptyTip}
+        </Box>
+      );
+    }
+  );
 
   // Reload data
   const { runAsync: refresh } = useRequest(
@@ -166,53 +260,10 @@ export function usePagination<ResT = any>({
     }
   );
 
-  const ScrollData = useMemoizedFn(
-    ({ children, ...props }: { children: React.ReactNode } & BoxProps) => {
-      const loadText = (() => {
-        if (isLoading) return t('common:common.is_requesting');
-        if (total <= data.length) return t('common:common.request_end');
-        return t('common:common.request_more');
-      })();
-
-      return (
-        <Box {...props} ref={ScrollContainerRef} overflow={'overlay'}>
-          {children}
-          <Box
-            mt={2}
-            fontSize={'xs'}
-            color={'blackAlpha.500'}
-            textAlign={'center'}
-            cursor={loadText === t('common:common.request_more') ? 'pointer' : 'default'}
-            onClick={() => {
-              if (loadText !== t('common:common.request_more')) return;
-              fetchData(pageNum + 1);
-            }}
-          >
-            {loadText}
-          </Box>
-        </Box>
-      );
-    }
-  );
-
-  // Scroll check
-  const scroll = useScroll(ScrollContainerRef);
-  useThrottleEffect(
-    () => {
-      if (!ScrollContainerRef?.current || type !== 'scroll' || total === 0) return;
-      const { scrollTop, scrollHeight, clientHeight } = ScrollContainerRef.current;
-      if (scrollTop + clientHeight >= scrollHeight - 100) {
-        fetchData(pageNum + 1);
-      }
-    },
-    [scroll],
-    { wait: 50 }
-  );
-
   return {
     pageNum,
     pageSize,
-    total,
+    total: totalDataLength,
     data,
     setData,
     isLoading,

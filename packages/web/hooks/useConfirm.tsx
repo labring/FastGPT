@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDisclosure, Button, ModalBody, ModalFooter } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '../components/common/MyModal';
+import { useMemoizedFn } from 'ahooks';
 
 export const useConfirm = (props?: {
   title?: string;
@@ -44,7 +45,7 @@ export const useConfirm = (props?: {
   const confirmCb = useRef<Function>();
   const cancelCb = useRef<any>();
 
-  const openConfirm = useCallback(
+  const openConfirm = useMemoizedFn(
     (confirm?: Function, cancel?: any, customContent?: string | React.ReactNode) => {
       confirmCb.current = confirm;
       cancelCb.current = cancel;
@@ -52,11 +53,10 @@ export const useConfirm = (props?: {
       customContent && setCustomContent(customContent);
 
       return onOpen;
-    },
-    []
+    }
   );
 
-  const ConfirmModal = useCallback(
+  const ConfirmModal = useMemoizedFn(
     ({
       closeText = t('common:common.Cancel'),
       confirmText = t('common:common.Confirm'),
@@ -128,8 +128,7 @@ export const useConfirm = (props?: {
           )}
         </MyModal>
       );
-    },
-    [customContent, hideFooter, iconSrc, isOpen, map.variant, onClose, showCancel, t, title]
+    }
   );
 
   return {
