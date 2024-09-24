@@ -149,6 +149,7 @@
   "update_specified_node_output_or_global_variable": "Can update the output value of a specified node or update global variables",
   "use_user_id": "User ID",
   "user_question": "User Question",
+  "user_question_tool_desc": "User input questions (questions need to be improved)",
   "value_type": "Value type",
   "variable_picker_tips": "Type node name or variable name to search",
   "variable_update": "Variable Update",

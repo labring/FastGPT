@@ -178,6 +178,11 @@ export const loadRequestMessages = async ({
       });
     });
 
+    // Too many images or too long text, return text
+    if (httpsImages.length > 4 || input.length > 1000) {
+      return [{ type: 'text', text: input || '' }];
+    }
+
     // 添加原始input作为文本
     result.push({ type: 'text', text: input });
     return result;
