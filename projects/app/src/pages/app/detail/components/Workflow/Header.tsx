@@ -22,18 +22,16 @@ import { useRouter } from 'next/router';
 import AppCard from '../WorkflowComponents/AppCard';
 import { uiWorkflow2StoreWorkflow } from '../WorkflowComponents/utils';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { compareSnapshot } from '@/web/core/workflow/utils';
-import SaveAndPublishModal from '../WorkflowComponents/Flow/components/SaveAndPublish';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useDebounceEffect } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import SaveButton from './components/SaveButton';
 
-const PublishHistories = dynamic(() => import('../WorkflowPublishHistoriesSlider'));
+const PublishHistories = dynamic(() => import('../PublishHistoriesSlider'));
 
 const Header = () => {
   const { t } = useTranslation();
@@ -48,12 +46,6 @@ const Header = () => {
     onOpen: onOpenBackConfirm,
     onClose: onCloseBackConfirm
   } = useDisclosure();
-  const {
-    isOpen: isSaveAndPublishModalOpen,
-    onOpen: onSaveAndPublishModalOpen,
-    onClose: onSaveAndPublishModalClose
-  } = useDisclosure();
-  const [isSave, setIsSave] = useState(false);
 
   const {
     flowData2StoreData,
@@ -65,7 +57,9 @@ const Header = () => {
     edges,
     past,
     future,
-    setPast
+    setPast,
+    saveSnapshot,
+    resetSnapshot
   } = useContextSelector(WorkflowContext, (v) => v);
 
   const { lastAppListRouteType } = useSystemStore();
@@ -227,81 +221,11 @@ const Header = () => {
                 {t('common:core.workflow.Run')}
               </Button>
               {!historiesDefaultData && (
-                <MyPopover
-                  placement={'bottom-end'}
-                  hasArrow={false}
-                  offset={[2, 4]}
-                  w={'116px'}
-                  onOpenFunc={() => setIsSave(true)}
-                  onCloseFunc={() => setIsSave(false)}
-                  trigger={'hover'}
-                  Trigger={
-                    <Button
-                      size={'sm'}
-                      rightIcon={
-                        <MyIcon
-                          name={isSave ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
-                          w={['14px', '16px']}
-                        />
-                      }
-                    >
-                      <Box>{t('common:common.Save')}</Box>
-                    </Button>
-                  }
-                >
-                  {({ onClose }) => (
-                    <MyBox p={1.5}>
-                      <MyBox
-                        display={'flex'}
-                        size={'md'}
-                        px={1}
-                        py={1.5}
-                        rounded={'4px'}
-                        _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
-                        cursor={'pointer'}
-                        isLoading={loading}
-                        onClick={async () => {
-                          await onClickSave({});
-                          toast({
-                            status: 'success',
-                            title: t('app:saved_success'),
-                            position: 'top-right'
-                          });
-                          onClose();
-                          setIsSave(false);
-                        }}
-                      >
-                        <MyIcon name={'core/workflow/upload'} w={'16px'} mr={2} />
-                        <Box fontSize={'sm'}>{t('common:core.workflow.Save to cloud')}</Box>
-                      </MyBox>
-                      <Flex
-                        px={1}
-                        py={1.5}
-                        rounded={'4px'}
-                        _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
-                        cursor={'pointer'}
-                        onClick={() => {
-                          const data = flowData2StoreDataAndCheck();
-                          if (data) {
-                            onSaveAndPublishModalOpen();
-                          }
-                          onClose();
-                          setIsSave(false);
-                        }}
-                      >
-                        <MyIcon name={'core/workflow/publish'} w={'16px'} mr={2} />
-                        <Box fontSize={'sm'}>{t('common:core.workflow.Save and publish')}</Box>
-                        {isSaveAndPublishModalOpen && (
-                          <SaveAndPublishModal
-                            isLoading={loading}
-                            onClose={onSaveAndPublishModalClose}
-                            onClickSave={onClickSave}
-                          />
-                        )}
-                      </Flex>
-                    </MyBox>
-                  )}
-                </MyPopover>
+                <SaveButton
+                  isLoading={loading}
+                  onClickSave={onClickSave}
+                  checkData={flowData2StoreDataAndCheck}
+                />
               )}
             </HStack>
           )}
@@ -311,8 +235,12 @@ const Header = () => {
             onClose={() => {
               setHistoriesDefaultData(undefined);
             }}
+            past={past}
+            saveSnapshot={saveSnapshot}
+            resetSnapshot={resetSnapshot}
           />
         )}
+
         <MyModal
           isOpen={isOpenBackConfirm}
           onClose={onCloseBackConfirm}
@@ -358,16 +286,13 @@ const Header = () => {
     loading,
     isV2Workflow,
     historiesDefaultData,
-    isSave,
     onClickSave,
     setHistoriesDefaultData,
     appDetail.chatConfig,
     flowData2StoreDataAndCheck,
     setWorkflowTestData,
-    isSaveAndPublishModalOpen,
-    onSaveAndPublishModalClose,
     toast,
-    onSaveAndPublishModalOpen
+    past
   ]);
 
   return Render;
