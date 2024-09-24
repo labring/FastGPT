@@ -132,7 +132,6 @@ const ChatContextProvider = ({
           }
         });
       }
-
       onCloseSlider();
     },
     [chatId, onCloseSlider, router, setLastChatId]

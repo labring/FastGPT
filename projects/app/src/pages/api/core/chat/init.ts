@@ -45,17 +45,8 @@ async function handler(
   }
 
   // get app and history
-  const [{ histories }, { nodes, chatConfig }] = await Promise.all([
-    getChatItems({
-      appId,
-      chatId,
-      limit: 30,
-      field: `dataId obj value adminFeedback userBadFeedback userGoodFeedback ${
-        DispatchNodeResponseKeyEnum.nodeResponse
-      } ${loadCustomFeedbacks ? 'customFeedbacks' : ''}`
-    }),
-    getAppLatestVersion(app._id, app)
-  ]);
+  const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
+
   const pluginInputs =
     app?.modules?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ?? [];
 
@@ -65,7 +56,6 @@ async function handler(
     title: chat?.title,
     userAvatar: undefined,
     variables: chat?.variables || {},
-    history: app.type === AppTypeEnum.plugin ? histories : transformPreviewHistories(histories),
     app: {
       chatConfig: getAppChatConfig({
         chatConfig,

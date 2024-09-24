@@ -208,7 +208,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       getChatItems({
         appId: app._id,
         chatId,
-        limit,
+        pageNum: 1,
+        pageSize: limit,
         field: `dataId obj value nodeOutputs`
       }),
       getAppLatestVersion(app._id, app),
@@ -555,6 +556,7 @@ const authHeaderRequest = async ({
       };
     } else {
       // token_auth
+
       if (!appId) {
         return Promise.reject('appId is empty');
       }

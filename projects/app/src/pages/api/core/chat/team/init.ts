@@ -45,15 +45,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   // get app and history
-  const [{ histories }, { nodes, chatConfig }] = await Promise.all([
-    getChatItems({
-      appId,
-      chatId,
-      limit: 30,
-      field: `dataId obj value userGoodFeedback userBadFeedback adminFeedback ${DispatchNodeResponseKeyEnum.nodeResponse}`
-    }),
-    getAppLatestVersion(app._id, app)
-  ]);
+  const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
+
+  // pick share response field
 
   jsonRes<InitChatResponse>(res, {
     data: {
@@ -62,7 +56,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       title: chat?.title,
       userAvatar: team?.avatar,
       variables: chat?.variables || {},
-      history: app.type === AppTypeEnum.plugin ? histories : transformPreviewHistories(histories),
       app: {
         chatConfig: getAppChatConfig({
           chatConfig,
