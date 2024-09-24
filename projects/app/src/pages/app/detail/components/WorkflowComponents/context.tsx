@@ -63,7 +63,7 @@ export type SaveSnapshotParams = {
   pastNodes?: Node[];
   pastEdges?: Edge[];
   customTitle?: string;
-  chatConfig?: AppChatConfigType;
+  chatConfig: AppChatConfigType;
 };
 export type InitProps = {
   nodes: AppSchema['modules'];
@@ -892,6 +892,18 @@ const WorkflowContextProvider = ({
     }
   });
 
+  // remove other app's snapshot
+  useEffect(() => {
+    const keys = Object.keys(localStorage);
+    const snapshotKeys = keys.filter((key) => key.endsWith('-past') || key.endsWith('-future'));
+    snapshotKeys.forEach((key) => {
+      const keyAppId = key.split('-')[0];
+      if (keyAppId !== appId) {
+        localStorage.removeItem(key);
+      }
+    });
+  }, [appId]);
+
   const initData = useMemoizedFn(
     async (e: Parameters<WorkflowContextType['initData']>[0], isInit?: boolean) => {
       /* 
@@ -924,18 +936,6 @@ const WorkflowContextProvider = ({
       }
     }
   );
-
-  // remove other app's snapshot
-  useEffect(() => {
-    const keys = Object.keys(localStorage);
-    const snapshotKeys = keys.filter((key) => key.endsWith('-past') || key.endsWith('-future'));
-    snapshotKeys.forEach((key) => {
-      const keyAppId = key.split('-')[0];
-      if (keyAppId !== appId) {
-        localStorage.removeItem(key);
-      }
-    });
-  }, [appId]);
 
   /* Version histories */
   const [historiesDefaultData, setHistoriesDefaultData] = useState<InitProps>();
