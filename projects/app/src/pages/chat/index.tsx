@@ -77,14 +77,11 @@ const Chat = ({
     pluginRunTab,
     setPluginRunTab,
     resetVariables,
-    useChatScrollData
-  } = useChat();
-  const {
-    data: chatRecords,
+    chatRecords,
     ScrollData,
-    setData: setChatRecords,
-    total: totalRecordsCount
-  } = useChatScrollData(params);
+    setChatRecords,
+    totalRecordsCount
+  } = useChat(params);
 
   // get chat app info
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
@@ -166,6 +163,57 @@ const Chat = ({
   );
   const loading = isLoading;
 
+  const RenderHistorySlider = useMemo(() => {
+    const Children = (
+      <ChatHistorySlider
+        confirmClearText={t('common:core.chat.Confirm to clear history')}
+        appId={appId}
+        appName={chatData.app.name}
+        appAvatar={chatData.app.avatar}
+        onDelHistory={(e) => onDelHistory({ ...e, appId })}
+        onClearHistory={() => {
+          onClearHistories({ appId });
+        }}
+        onSetHistoryTop={(e) => {
+          onUpdateHistory({ ...e, appId });
+        }}
+        onSetCustomTitle={async (e) => {
+          onUpdateHistory({
+            appId,
+            chatId: e.chatId,
+            customTitle: e.title
+          });
+        }}
+      />
+    );
+
+    return isPc || !appId ? (
+      <SideBar>{Children}</SideBar>
+    ) : (
+      <Drawer
+        isOpen={isOpenSlider}
+        placement="left"
+        autoFocus={false}
+        size={'xs'}
+        onClose={onCloseSlider}
+      >
+        <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
+        <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
+      </Drawer>
+    );
+  }, [
+    appId,
+    chatData.app.avatar,
+    chatData.app.name,
+    isOpenSlider,
+    isPc,
+    onClearHistories,
+    onCloseSlider,
+    onDelHistory,
+    onUpdateHistory,
+    t
+  ]);
+
   return (
     <Flex h={'100%'}>
       <NextHead title={chatData.app.name} icon={chatData.app.avatar}></NextHead>
@@ -179,43 +227,7 @@ const Chat = ({
       <PageContainer isLoading={loading} flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
         <Flex h={'100%'} flexDirection={['column', 'row']}>
           {/* pc always show history. */}
-          {((children: React.ReactNode) => {
-            return isPc || !appId ? (
-              <SideBar>{children}</SideBar>
-            ) : (
-              <Drawer
-                isOpen={isOpenSlider}
-                placement="left"
-                autoFocus={false}
-                size={'xs'}
-                onClose={onCloseSlider}
-              >
-                <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
-                <DrawerContent maxWidth={'75vw'}>{children}</DrawerContent>
-              </Drawer>
-            );
-          })(
-            <ChatHistorySlider
-              confirmClearText={t('common:core.chat.Confirm to clear history')}
-              appId={appId}
-              appName={chatData.app.name}
-              appAvatar={chatData.app.avatar}
-              onDelHistory={(e) => onDelHistory({ ...e, appId })}
-              onClearHistory={() => {
-                onClearHistories({ appId });
-              }}
-              onSetHistoryTop={(e) => {
-                onUpdateHistory({ ...e, appId });
-              }}
-              onSetCustomTitle={async (e) => {
-                onUpdateHistory({
-                  appId,
-                  chatId: e.chatId,
-                  customTitle: e.title
-                });
-              }}
-            />
-          )}
+          {RenderHistorySlider}
           {/* chat container */}
           <Flex
             position={'relative'}
