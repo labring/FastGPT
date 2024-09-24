@@ -69,7 +69,7 @@ const Edit = ({
       display={['block', 'flex']}
       flex={'1 0 0'}
       h={0}
-      pt={[2, 1.5]}
+      mt={[4, 0]}
       gap={1}
       borderRadius={'lg'}
       overflowY={['auto', 'unset']}
@@ -90,7 +90,7 @@ const Edit = ({
         </Box>
       </Box>
       {isPc && (
-        <Box {...cardStyles} boxShadow={'3'} flex={'2 0 0'} w={0}>
+        <Box {...cardStyles} boxShadow={'3'} flex={'2 0 0'} w={0} mb={3}>
           <ChatTest appForm={appForm} />
         </Box>
       )}

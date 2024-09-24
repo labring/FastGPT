@@ -40,6 +40,7 @@ export const iconPaths = {
   'common/language/en': () => import('./icons/common/language/en.svg'),
   'common/language/zh': () => import('./icons/common/language/zh.svg'),
   'common/leftArrowLight': () => import('./icons/common/leftArrowLight.svg'),
+  'common/line': () => import('./icons/common/line.svg'),
   'common/lineChange': () => import('./icons/common/lineChange.svg'),
   'common/linkBlue': () => import('./icons/common/linkBlue.svg'),
   'common/list': () => import('./icons/common/list.svg'),

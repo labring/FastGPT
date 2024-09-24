@@ -29,12 +29,16 @@ const PublishHistoriesSlider = ({
   onClose,
   past,
   saveSnapshot,
-  resetSnapshot
+  resetSnapshot,
+  top,
+  bottom
 }: {
   onClose: () => void;
   past: SnapshotsType[];
   saveSnapshot: (params: SaveSnapshotParams) => Promise<boolean>;
   resetSnapshot: (state: SnapshotsType) => void;
+  top?: string | number;
+  bottom?: string | number;
 }) => {
   const { t } = useTranslation();
   const [currentTab, setCurrentTab] = useState<'myEdit' | 'teamCloud'>('myEdit');
@@ -65,6 +69,8 @@ const PublishHistoriesSlider = ({
         px={0}
         showMask={false}
         overflow={'unset'}
+        top={top}
+        bottom={bottom}
       >
         {currentTab === 'myEdit' ? (
           <MyEdit past={past} saveSnapshot={saveSnapshot} resetSnapshot={resetSnapshot} />

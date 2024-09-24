@@ -145,19 +145,20 @@ const Header = ({
   );
 
   return (
-    <Box>
+    <Box h={14}>
       {!isPc && (
-        <Flex pt={2} justifyContent={'center'}>
+        <Flex justifyContent={'center'}>
           <RouteTab />
         </Flex>
       )}
-      <Flex pt={[2, 3]} alignItems={'flex-start'} position={'relative'}>
+      <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'}>
         <Box flex={'1'}>
           <FolderPath
             rootName={t('app:all_apps')}
             paths={paths}
             hoverStyle={{ color: 'primary.600' }}
             onClick={onClickRoute}
+            fontSize={'14px'}
           />
         </Box>
         {isPc && (
@@ -166,7 +167,7 @@ const Header = ({
           </Box>
         )}
         {currentTab === TabEnum.appEdit && (
-          <Flex alignItems={'center'} h={8}>
+          <Flex alignItems={'center'}>
             {!historiesDefaultData && (
               <>
                 {isPc && (
@@ -219,6 +220,8 @@ const Header = ({
           past={past}
           saveSnapshot={saveSnapshot}
           resetSnapshot={resetSnapshot}
+          top={14}
+          bottom={3}
         />
       )}
     </Box>

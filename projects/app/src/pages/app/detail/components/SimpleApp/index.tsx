@@ -24,12 +24,12 @@ const SimpleEdit = () => {
   });
 
   return (
-    <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]} pb={3}>
+    <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]}>
       <Header appForm={appForm} setAppForm={setAppForm} />
       {currentTab === TabEnum.appEdit ? (
         <Edit appForm={appForm} setAppForm={setAppForm} />
       ) : (
-        <Box flex={'1 0 0'} h={0} mt={4}>
+        <Box flex={'1 0 0'} h={0} mt={[4, 0]}>
           {currentTab === TabEnum.publish && <PublishChannel />}
           {currentTab === TabEnum.logs && <Logs />}
         </Box>
