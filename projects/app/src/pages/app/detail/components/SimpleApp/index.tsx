@@ -9,13 +9,15 @@ import dynamic from 'next/dynamic';
 import { Box, Flex } from '@chakra-ui/react';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { useTranslation } from 'next-i18next';
+import useSnapshots from './useSnapshots';
 
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
 
 const SimpleEdit = () => {
   const { t } = useTranslation();
-  const { currentTab } = useContextSelector(AppContext, (v) => v);
+  const { currentTab, appDetail } = useContextSelector(AppContext, (v) => v);
+  const { past, setPast, saveSnapshot } = useSnapshots(appDetail._id);
 
   const [appForm, setAppForm] = useState(getDefaultAppForm());
 
@@ -24,12 +26,18 @@ const SimpleEdit = () => {
   });
 
   return (
-    <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]} pb={3}>
-      <Header appForm={appForm} setAppForm={setAppForm} />
+    <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]}>
+      <Header
+        appForm={appForm}
+        setAppForm={setAppForm}
+        past={past}
+        setPast={setPast}
+        saveSnapshot={saveSnapshot}
+      />
       {currentTab === TabEnum.appEdit ? (
-        <Edit appForm={appForm} setAppForm={setAppForm} />
+        <Edit appForm={appForm} setAppForm={setAppForm} past={past} saveSnapshot={saveSnapshot} />
       ) : (
-        <Box flex={'1 0 0'} h={0} mt={4}>
+        <Box flex={'1 0 0'} h={0} mt={[4, 0]}>
           {currentTab === TabEnum.publish && <PublishChannel />}
           {currentTab === TabEnum.logs && <Logs />}
         </Box>
