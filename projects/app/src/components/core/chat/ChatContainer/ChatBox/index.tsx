@@ -868,7 +868,9 @@ const ChatBox = (
 
       setChatHistories([]);
       setValue('chatStarted', false);
-      scrollToBottom('smooth', 500);
+    },
+    scrollToBottom(behavior = 'auto') {
+      scrollToBottom(behavior, 500);
     }
   }));
 

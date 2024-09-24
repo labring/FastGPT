@@ -1,12 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
-import {
-  delChatRecordById,
-  getChatHistories,
-  getChatRecords,
-  getInitChatInfo
-} from '@/web/core/chat/api';
+import { delChatRecordById, getInitChatInfo } from '@/web/core/chat/api';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useChatStore } from '@/web/core/chat/context/storeChat';
@@ -21,14 +16,12 @@ import SliderApps from './components/SliderApps';
 import ChatHeader from './components/ChatHeader';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
-import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getMyApps } from '@/web/core/app/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
-import { useMount } from 'ahooks';
+import { useCreation, useMount } from 'ahooks';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import { defaultChatData, GetChatTypeEnum } from '@/global/core/chat/constants';
@@ -56,6 +49,8 @@ const Chat = ({
   const router = useRouter();
   const theme = useTheme();
   const { t } = useTranslation();
+  const { userInfo } = useUserStore();
+  const { isPc } = useSystem();
   const { setLastChatAppId } = useChatStore();
 
   const {
@@ -68,6 +63,14 @@ const Chat = ({
     onChangeChatId,
     onUpdateHistoryTitle
   } = useContextSelector(ChatContext, (v) => v);
+
+  const params = useCreation(() => {
+    return {
+      chatId,
+      appId,
+      type: GetChatTypeEnum.normal
+    };
+  }, [appId, chatId]);
   const {
     ChatBoxRef,
     variablesForm,
@@ -76,20 +79,9 @@ const Chat = ({
     resetVariables,
     useChatPagination
   } = useChat();
-
-  const { userInfo } = useUserStore();
-  const { isPc } = useSystem();
-  const params = useMemo(() => {
-    return {
-      chatId,
-      appId,
-      type: GetChatTypeEnum.normal
-    };
-  }, [appId, chatId]);
   const {
     data: chatRecords,
     ScrollData,
-    isLoading: isLoadChatRecords,
     setData: setChatRecords,
     total: totalRecordsCount
   } = useChatPagination(params);
@@ -98,6 +90,7 @@ const Chat = ({
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
   const isPlugin = chatData.app.type === AppTypeEnum.plugin;
 
+  // Load chat init data
   const { loading: isLoading } = useRequest2(
     async () => {
       if (!appId || forbidLoadChat.current) return;
@@ -105,7 +98,7 @@ const Chat = ({
       const res = await getInitChatInfo({ appId, chatId });
 
       setChatData(res);
-      // reset chat records
+      // reset chat variables
       resetVariables({
         variables: res.variables
       });
@@ -171,7 +164,7 @@ const Chat = ({
     },
     [chatId, appId, onUpdateHistoryTitle, forbidLoadChat, onChangeChatId]
   );
-  const loading = isLoadChatRecords || isLoading;
+  const loading = isLoading;
 
   return (
     <Flex h={'100%'}>

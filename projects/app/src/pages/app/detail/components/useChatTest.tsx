@@ -62,23 +62,26 @@ export const useChatTest = ({
     return nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs || [];
   }, [nodes]);
 
+  const { ChatBoxRef, variablesForm, pluginRunTab, setPluginRunTab, clearChatRecords } = useChat();
+
+  // Mock ScrollData
   const ScrollData = useCallback(
     ({
       children,
+      ScrollContainerRef,
       ...props
     }: {
+      ScrollContainerRef?: React.RefObject<HTMLDivElement>;
       children: React.ReactNode;
     } & BoxProps) => {
       return (
-        <Box {...props} overflow={'overlay'}>
+        <Box ref={ScrollContainerRef} {...props} overflow={'overlay'}>
           {children}
         </Box>
       );
     },
     []
   );
-
-  const { ChatBoxRef, variablesForm, pluginRunTab, setPluginRunTab, clearChatRecords } = useChat();
 
   const CustomChatContainer = useMemoizedFn(() =>
     appDetail.type === AppTypeEnum.plugin ? (

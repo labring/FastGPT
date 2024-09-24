@@ -32,6 +32,7 @@ const DetailLogsModal = ({
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const theme = useTheme();
+
   const params = useMemo(() => {
     return {
       chatId,
@@ -48,7 +49,6 @@ const DetailLogsModal = ({
     resetVariables,
     useChatPagination
   } = useChat();
-
   const {
     data: chatRecords,
     ScrollData,

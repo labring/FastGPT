@@ -53,14 +53,13 @@ export function useScrollPagination<
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef(null);
-
-  const noMore = useRef(false);
-
   const { toast } = useToast();
-  const [current, setCurrent] = useState(1);
+
   const [data, setData] = useState<TData['list']>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
+
+  const noMore = data.length >= total;
 
   const [list] = useVirtualList<TData['list'][0]>(data, {
     containerTarget: containerRef,
@@ -69,28 +68,26 @@ export function useScrollPagination<
     overscan
   });
 
-  const loadData = useLockFn(async (num: number = current) => {
-    if (noMore.current && num !== 1) return;
+  const loadData = useLockFn(async (init = false) => {
+    if (noMore && !init) return;
+
+    const offset = init ? 0 : data.length;
 
     setTrue();
 
     try {
       const res = await api({
-        current: num,
+        offset,
         pageSize,
         ...defaultParams
       } as TParams);
 
       setTotal(res.total);
-      setCurrent(num);
 
-      if (num === 1) {
+      if (offset === 0) {
         // init or reload
         setData(res.list);
-        noMore.current = res.list.length >= res.total;
       } else {
-        const totalLength = data.length + res.list.length;
-        noMore.current = totalLength >= res.total;
         setData((prev) => [...prev, ...res.list]);
       }
     } catch (error: any) {
@@ -125,7 +122,7 @@ export function useScrollPagination<
         <MyBox isLoading={isLoading} ref={containerRef} overflow={'overlay'} {...props}>
           <Box ref={wrapperRef}>
             {children}
-            {noMore.current && list.length > 0 && (
+            {noMore && list.length > 0 && (
               <Box py={4} textAlign={'center'} color={'myGray.600'} fontSize={'xs'}>
                 {t('common:common.No more data')}
               </Box>
@@ -141,7 +138,7 @@ export function useScrollPagination<
   // Reload data
   useRequest(
     async () => {
-      loadData(1);
+      loadData(true);
     },
     {
       manual: false,
@@ -155,9 +152,9 @@ export function useScrollPagination<
     () => {
       if (!containerRef.current || list.length === 0) return;
       const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-      console.log('=======', 111111);
-      if (scrollTop + clientHeight >= scrollHeight - 100) {
-        loadData(current + 1);
+
+      if (scrollTop + clientHeight >= scrollHeight - 200) {
+        loadData(false);
       }
     },
     [scroll],

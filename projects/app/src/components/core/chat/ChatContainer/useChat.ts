@@ -1,5 +1,5 @@
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './PluginRunBox/constants';
 import {
@@ -9,7 +9,6 @@ import {
 } from './ChatBox/type';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { PagingData } from '@/types';
 import { getChatRecords } from '@/web/core/chat/api';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -39,10 +38,29 @@ export const useChat = () => {
     [variablesForm]
   );
 
-  const useChatPagination = (params: GetChatRecordsProps) => {
-    const { data, ScrollData, isLoading, setData, refresh, getData, total } = usePagination({
-      api: async (data): Promise<PagingData<ChatSiteItemType>> => {
+  const clearChatRecords = useCallback(() => {
+    const data = variablesForm.getValues();
+    for (const key in data) {
+      variablesForm.setValue(key, '');
+    }
+
+    ChatBoxRef.current?.restartChat?.();
+  }, [variablesForm]);
+
+  const useChatPagination = useCallback((params: GetChatRecordsProps) => {
+    return usePagination<ChatSiteItemType>({
+      api: async (data) => {
         const res = await getChatRecords(data);
+
+        // First load scroll to bottom
+        if (res.pageNum === 1) {
+          function scrollToBottom() {
+            requestAnimationFrame(
+              ChatBoxRef?.current ? () => ChatBoxRef?.current?.scrollToBottom?.() : scrollToBottom
+            );
+          }
+          scrollToBottom();
+        }
 
         return {
           ...res,
@@ -53,32 +71,14 @@ export const useChat = () => {
           }))
         };
       },
-      showTextTip: false,
       params,
       pageSize: 10,
       type: 'scroll',
       refreshDeps: [params],
       scrollLoadType: 'top'
     });
+  }, []);
 
-    return {
-      data,
-      ScrollData,
-      isLoading,
-      setData,
-      refresh,
-      getData,
-      total
-    };
-  };
-  const clearChatRecords = useCallback(() => {
-    const data = variablesForm.getValues();
-    for (const key in data) {
-      variablesForm.setValue(key, '');
-    }
-
-    ChatBoxRef.current?.restartChat?.();
-  }, [variablesForm]);
   return {
     ChatBoxRef,
     variablesForm,

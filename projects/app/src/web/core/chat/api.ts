@@ -38,8 +38,7 @@ export const getInitOutLinkChatInfo = (data: InitOutLinkChatProps) =>
   GET<InitChatResponse>(`/core/chat/outLink/init`, data);
 export const getTeamChatInfo = (data: InitTeamChatProps) =>
   GET<InitChatResponse>(`/core/chat/team/init`, data);
-export const getChatRecords = (data: getPaginationRecordsQuery) =>
-  GET<PagingData<ChatItemType>>('core/chat/getPaginationRecords', data);
+
 /**
  * get current window history(appid or shareId)
  */
@@ -50,6 +49,10 @@ export const getChatHistories = (data: PaginationProps<GetHistoriesProps>) =>
  */
 export const getChatResData = (data: getResDataQuery) =>
   GET<ChatHistoryItemResType[]>(`/core/chat/getResData`, data);
+
+export const getChatRecords = (data: getPaginationRecordsQuery) =>
+  POST<PagingData<ChatItemType>>('core/chat/getPaginationRecords', data);
+
 /**
  * delete one history
  */

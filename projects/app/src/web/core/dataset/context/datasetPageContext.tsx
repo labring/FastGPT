@@ -142,7 +142,7 @@ export const DatasetPageContextProvider = ({
       const { list } = await getDatasetCollectionTags({
         datasetId: datasetDetail._id,
         searchText: searchTagKey,
-        current: 1,
+        offset: 0,
         pageSize: 15
       });
       return list;

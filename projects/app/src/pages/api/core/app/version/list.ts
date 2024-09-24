@@ -3,6 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
 
 type Props = PaginationProps<{
   appId: string;
@@ -10,8 +11,8 @@ type Props = PaginationProps<{
 
 type Response = PaginationResponse<AppVersionSchemaType>;
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<Response> {
-  const { current, pageSize, appId } = req.body as Props;
+async function handler(req: ApiRequestProps<Props>, res: NextApiResponse<any>): Promise<Response> {
+  const { offset, pageSize, appId } = req.body;
 
   const [result, total] = await Promise.all([
     MongoAppVersion.find({
@@ -20,7 +21,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
       .sort({
         time: -1
       })
-      .skip((current - 1) * pageSize)
+      .skip(offset)
       .limit(pageSize),
     MongoAppVersion.countDocuments({ appId })
   ]);

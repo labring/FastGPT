@@ -5,7 +5,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { adaptStringValue, getChatItems } from '@fastgpt/service/core/chat/controller';
+import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -15,9 +15,9 @@ import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { RequestPaging } from '@/types';
 
-export type getPaginationRecordsQuery = RequestPaging & GetChatRecordsProps;
+export type getPaginationRecordsQuery = {};
 
-export type getPaginationRecordsBody = {};
+export type getPaginationRecordsBody = RequestPaging & GetChatRecordsProps;
 
 export type getPaginationRecordsResponse = {};
 
@@ -25,33 +25,36 @@ async function handler(
   req: ApiRequestProps<getPaginationRecordsBody, getPaginationRecordsQuery>,
   res: ApiResponseType<any>
 ): Promise<getPaginationRecordsResponse> {
-  const { chatId, appId, pageNum = 1, pageSize = 10, loadCustomFeedbacks, type } = req.query;
-  if (!appId || !chatId)
+  const { chatId, appId, pageNum = 1, pageSize = 10, loadCustomFeedbacks, type } = req.body;
+
+  if (!appId || !chatId) {
     return {
       data: [],
       total: 0,
       pageNum,
       pageSize
     };
+  }
 
   const [app] = await Promise.all([
-    MongoApp.findById(appId).lean(),
+    MongoApp.findById(appId, 'type').lean(),
     authChatCrud({
       req,
       authToken: true,
-      ...req.query,
+      ...req.body,
       per: ReadPermissionVal
     })
   ]);
   if (!app) {
     return Promise.reject(AppErrEnum.unExist);
   }
+  const isPlugin = app.type === AppTypeEnum.plugin;
 
   const shareChat = await (async () => {
     if (type === GetChatTypeEnum.outLink)
       return await authOutLink({
-        shareId: req.query.shareId,
-        outLinkUid: req.query.outLinkUid
+        shareId: req.body.shareId,
+        outLinkUid: req.body.outLinkUid
       }).then((result) => result.shareChat);
   })();
 
@@ -59,10 +62,8 @@ async function handler(
     [GetChatTypeEnum.normal]: `dataId obj value adminFeedback userBadFeedback userGoodFeedback ${
       DispatchNodeResponseKeyEnum.nodeResponse
     } ${loadCustomFeedbacks ? 'customFeedbacks' : ''}`,
-    [GetChatTypeEnum.outLink]: `dataId obj value userGoodFeedback userBadFeedback ${
-      shareChat?.responseDetail || app.type === AppTypeEnum.plugin
-        ? `adminFeedback ${DispatchNodeResponseKeyEnum.nodeResponse}`
-        : ''
+    [GetChatTypeEnum.outLink]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback ${
+      shareChat?.responseDetail || isPlugin ? `${DispatchNodeResponseKeyEnum.nodeResponse}` : ''
     } `,
     [GetChatTypeEnum.team]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback ${DispatchNodeResponseKeyEnum.nodeResponse}`
   };
@@ -75,19 +76,19 @@ async function handler(
     pageNum
   });
 
-  if (type === 'outLink') {
-    app.type !== AppTypeEnum.plugin &&
-      histories.forEach((item) => {
-        if (item.obj === ChatRoleEnum.AI) {
-          item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
-        }
-      });
+  // Remove important information
+  if (type === 'outLink' && app.type !== AppTypeEnum.plugin) {
+    histories.forEach((item) => {
+      if (item.obj === ChatRoleEnum.AI) {
+        item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
+      }
+    });
   }
 
   return {
     pageNum,
     pageSize,
-    data: app.type === AppTypeEnum.plugin ? histories : transformPreviewHistories(histories),
+    data: isPlugin ? histories : transformPreviewHistories(histories),
     total
   };
 }

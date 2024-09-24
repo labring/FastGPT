@@ -142,13 +142,13 @@ export const getDatasetCollectionTags = (
     datasetId: string;
     searchText?: string;
   }>
-) => GET<PaginationResponse<DatasetTagType>>(`/proApi/core/dataset/tag/list`, data);
+) => POST<PaginationResponse<DatasetTagType>>(`/proApi/core/dataset/tag/list`, data);
 export const getTagUsage = (datasetId: string) =>
   GET<TagUsageType[]>(`/proApi/core/dataset/tag/tagUsage?datasetId=${datasetId}`);
 export const getAllTags = (datasetId: string) =>
   GET<{ list: DatasetTagType[] }>(`/proApi/core/dataset/tag/getAllTags?datasetId=${datasetId}`);
 export const getScrollCollectionList = (data: GetScrollCollectionsProps) =>
-  GET<PaginationResponse<DatasetCollectionsListItemType>>(
+  POST<PaginationResponse<DatasetCollectionsListItemType>>(
     `/core/dataset/collection/scrollList`,
     data
   );

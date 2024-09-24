@@ -98,6 +98,22 @@ const OutLink = ({
     resetVariables,
     useChatPagination
   } = useChat();
+  const params = useMemo(() => {
+    return {
+      chatId,
+      shareId,
+      outLinkUid,
+      appId: chatData.appId,
+      type: GetChatTypeEnum.outLink
+    };
+  }, [chatData.appId, chatId, outLinkUid, shareId]);
+  const {
+    data: chatRecords,
+    ScrollData,
+    isLoading: isLoadChatRecords,
+    setData: setChatRecords,
+    total: totalRecordsCount
+  } = useChatPagination(params);
 
   const startChat = useCallback(
     async ({
@@ -177,23 +193,6 @@ const OutLink = ({
       onChangeChatId
     ]
   );
-
-  const params = useMemo(() => {
-    return {
-      chatId,
-      shareId,
-      outLinkUid,
-      appId: chatData.appId,
-      type: GetChatTypeEnum.outLink
-    };
-  }, [chatData.appId, chatId, outLinkUid, shareId]);
-  const {
-    data: chatRecords,
-    ScrollData,
-    isLoading: isLoadChatRecords,
-    setData: setChatRecords,
-    total: totalRecordsCount
-  } = useChatPagination(params);
 
   const { loading: isLoading } = useRequest2(
     async () => {
