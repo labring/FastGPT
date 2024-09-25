@@ -17,7 +17,7 @@ const PublishChannel = dynamic(() => import('../Publish'));
 const SimpleEdit = () => {
   const { t } = useTranslation();
   const { currentTab, appDetail } = useContextSelector(AppContext, (v) => v);
-  const { past, setPast, saveSnapshot } = useSnapshots(appDetail._id);
+  const { pastForm, setPastForm, saveSnapshot } = useSnapshots(appDetail._id);
 
   const [appForm, setAppForm] = useState(getDefaultAppForm());
 
@@ -30,12 +30,17 @@ const SimpleEdit = () => {
       <Header
         appForm={appForm}
         setAppForm={setAppForm}
-        past={past}
-        setPast={setPast}
+        past={pastForm}
+        setPast={setPastForm}
         saveSnapshot={saveSnapshot}
       />
       {currentTab === TabEnum.appEdit ? (
-        <Edit appForm={appForm} setAppForm={setAppForm} past={past} saveSnapshot={saveSnapshot} />
+        <Edit
+          appForm={appForm}
+          setAppForm={setAppForm}
+          past={pastForm}
+          saveSnapshot={saveSnapshot}
+        />
       ) : (
         <Box flex={'1 0 0'} h={0} mt={[4, 0]}>
           {currentTab === TabEnum.publish && <PublishChannel />}

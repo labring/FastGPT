@@ -24,6 +24,9 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { versionListResponse } from '@/pages/api/core/app/version/list';
+import { PastFormType, SaveSnapshotFnType } from './SimpleApp/useSnapshots';
+import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
+import { uiWorkflow2StoreWorkflow } from './WorkflowComponents/utils';
 
 const PublishHistoriesSlider = ({
   onClose,
@@ -31,12 +34,18 @@ const PublishHistoriesSlider = ({
   saveSnapshot,
   resetSnapshot,
   top,
-  bottom
+  bottom,
+  pastForm,
+  saveFormSnapshot,
+  resetFormSnapshot
 }: {
   onClose: () => void;
-  past: SnapshotsType[];
-  saveSnapshot: (params: SaveSnapshotParams) => Promise<boolean>;
-  resetSnapshot: (state: SnapshotsType) => void;
+  past?: SnapshotsType[];
+  saveSnapshot?: (params: SaveSnapshotParams) => Promise<boolean>;
+  resetSnapshot?: (state: SnapshotsType) => void;
+  pastForm?: PastFormType[];
+  saveFormSnapshot?: SaveSnapshotFnType;
+  resetFormSnapshot?: (state: PastFormType) => void;
   top?: string | number;
   bottom?: string | number;
 }) => {
@@ -73,9 +82,21 @@ const PublishHistoriesSlider = ({
         bottom={bottom}
       >
         {currentTab === 'myEdit' ? (
-          <MyEdit past={past} saveSnapshot={saveSnapshot} resetSnapshot={resetSnapshot} />
+          <MyEdit
+            past={past}
+            saveSnapshot={saveSnapshot}
+            resetSnapshot={resetSnapshot}
+            pastForm={pastForm}
+            saveFormSnapshot={saveFormSnapshot}
+            resetFormSnapshot={resetFormSnapshot}
+          />
         ) : (
-          <TeamCloud saveSnapshot={saveSnapshot} resetSnapshot={resetSnapshot} />
+          <TeamCloud
+            saveSnapshot={saveSnapshot}
+            resetSnapshot={resetSnapshot}
+            saveFormSnapshot={saveFormSnapshot}
+            resetFormSnapshot={resetFormSnapshot}
+          />
         )}
       </CustomRightDrawer>
     </>
@@ -87,18 +108,24 @@ export default React.memo(PublishHistoriesSlider);
 const MyEdit = ({
   past,
   saveSnapshot,
-  resetSnapshot
+  resetSnapshot,
+  pastForm,
+  saveFormSnapshot,
+  resetFormSnapshot
 }: {
-  past: SnapshotsType[];
-  saveSnapshot: (params: SaveSnapshotParams) => Promise<boolean>;
-  resetSnapshot: (state: SnapshotsType) => void;
+  past?: SnapshotsType[];
+  saveSnapshot?: (params: SaveSnapshotParams) => Promise<boolean>;
+  resetSnapshot?: (state: SnapshotsType) => void;
+  pastForm?: PastFormType[];
+  saveFormSnapshot?: SaveSnapshotFnType;
+  resetFormSnapshot?: (state: PastFormType) => void;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
 
   return (
     <Flex px={5} flex={'1 0 0'} flexDirection={'column'}>
-      {past.length > 0 && (
+      {!!past && (
         <Box py={2} px={3}>
           <Button
             variant={'whiteBase'}
@@ -107,15 +134,47 @@ const MyEdit = ({
             onClick={async () => {
               const initialSnapshot = past[past.length - 1];
 
-              const res = await saveSnapshot({
-                pastNodes: initialSnapshot.nodes,
-                pastEdges: initialSnapshot.edges,
-                chatConfig: initialSnapshot.chatConfig,
-                customTitle: t(`app:app.version_initial_copy`)
-              });
+              if (saveSnapshot && resetSnapshot) {
+                const res = await saveSnapshot({
+                  pastNodes: initialSnapshot.nodes,
+                  pastEdges: initialSnapshot.edges,
+                  chatConfig: initialSnapshot.chatConfig,
+                  customTitle: t(`app:app.version_initial_copy`)
+                });
 
-              if (res) {
-                resetSnapshot(initialSnapshot);
+                if (res) {
+                  resetSnapshot(initialSnapshot);
+                }
+              }
+
+              toast({
+                title: t('workflow:workflow.Switch_success'),
+                status: 'success'
+              });
+            }}
+          >
+            {t('app:app.version_back')}
+          </Button>
+        </Box>
+      )}
+      {!!pastForm && (
+        <Box py={2} px={3}>
+          <Button
+            variant={'whiteBase'}
+            w={'full'}
+            h={'30px'}
+            onClick={async () => {
+              const initialSnapshot = pastForm[pastForm.length - 1];
+
+              if (saveFormSnapshot && resetFormSnapshot) {
+                const res = await saveFormSnapshot({
+                  appForm: initialSnapshot.appForm,
+                  customTitle: t(`app:app.version_initial_copy`)
+                });
+
+                if (res) {
+                  resetFormSnapshot(initialSnapshot);
+                }
               }
 
               toast({
@@ -129,20 +188,20 @@ const MyEdit = ({
         </Box>
       )}
       <Flex flex={'1 0 0'} flexDirection={'column'} overflow={'auto'}>
-        {past.map((item, index) => {
-          return (
-            <Flex
-              key={index}
-              alignItems={'center'}
-              py={2}
-              px={3}
-              borderRadius={'md'}
-              cursor={'pointer'}
-              fontWeight={500}
-              _hover={{
-                bg: 'primary.50'
-              }}
-              onClick={async () => {
+        {past?.map((item, index) => (
+          <Flex
+            key={index}
+            alignItems={'center'}
+            py={2}
+            px={3}
+            borderRadius={'md'}
+            cursor={'pointer'}
+            fontWeight={500}
+            _hover={{
+              bg: 'primary.50'
+            }}
+            onClick={async () => {
+              if (saveSnapshot && resetSnapshot) {
                 const res = await saveSnapshot({
                   pastNodes: item.nodes,
                   pastEdges: item.edges,
@@ -152,46 +211,107 @@ const MyEdit = ({
                 if (res) {
                   resetSnapshot(item);
                 }
+              }
 
-                toast({
-                  title: t('workflow:workflow.Switch_success'),
-                  status: 'success'
-                });
-              }}
+              toast({
+                title: t('workflow:workflow.Switch_success'),
+                status: 'success'
+              });
+            }}
+          >
+            <Box
+              w={'12px'}
+              h={'12px'}
+              borderWidth={'2px'}
+              borderColor={'primary.600'}
+              borderRadius={'50%'}
+              position={'relative'}
+              {...(index !== past.length - 1 && {
+                _after: {
+                  content: '""',
+                  height: '26px',
+                  width: '2px',
+                  bgColor: 'myGray.250',
+                  position: 'absolute',
+                  top: '10px',
+                  left: '3px'
+                }
+              })}
+            ></Box>
+            <Box
+              ml={3}
+              flex={'1 0 0'}
+              fontSize={'sm'}
+              overflow="hidden"
+              textOverflow="ellipsis"
+              whiteSpace="nowrap"
+              color={'myGray.900'}
             >
-              <Box
-                w={'12px'}
-                h={'12px'}
-                borderWidth={'2px'}
-                borderColor={'primary.600'}
-                borderRadius={'50%'}
-                position={'relative'}
-                {...(index !== past.length - 1 && {
-                  _after: {
-                    content: '""',
-                    height: '26px',
-                    width: '2px',
-                    bgColor: 'myGray.250',
-                    position: 'absolute',
-                    top: '10px',
-                    left: '3px'
-                  }
-                })}
-              ></Box>
-              <Box
-                ml={3}
-                flex={'1 0 0'}
-                fontSize={'sm'}
-                overflow="hidden"
-                textOverflow="ellipsis"
-                whiteSpace="nowrap"
-                color={'myGray.900'}
-              >
-                {item.title}
-              </Box>
-            </Flex>
-          );
-        })}
+              {item.title}
+            </Box>
+          </Flex>
+        ))}
+        {pastForm?.map((item, index) => (
+          <Flex
+            key={index}
+            alignItems={'center'}
+            py={2}
+            px={3}
+            borderRadius={'md'}
+            cursor={'pointer'}
+            fontWeight={500}
+            _hover={{
+              bg: 'primary.50'
+            }}
+            onClick={async () => {
+              if (saveFormSnapshot && resetFormSnapshot) {
+                const res = await saveFormSnapshot({
+                  appForm: item.appForm,
+                  customTitle: `${t('app:app.version_copy')}-${item.title}`
+                });
+                if (res) {
+                  resetFormSnapshot(item);
+                }
+              }
+
+              toast({
+                title: t('workflow:workflow.Switch_success'),
+                status: 'success'
+              });
+            }}
+          >
+            <Box
+              w={'12px'}
+              h={'12px'}
+              borderWidth={'2px'}
+              borderColor={'primary.600'}
+              borderRadius={'50%'}
+              position={'relative'}
+              {...(index !== pastForm.length - 1 && {
+                _after: {
+                  content: '""',
+                  height: '26px',
+                  width: '2px',
+                  bgColor: 'myGray.250',
+                  position: 'absolute',
+                  top: '10px',
+                  left: '3px'
+                }
+              })}
+            ></Box>
+            <Box
+              ml={3}
+              flex={'1 0 0'}
+              fontSize={'sm'}
+              overflow="hidden"
+              textOverflow="ellipsis"
+              whiteSpace="nowrap"
+              color={'myGray.900'}
+            >
+              {item.title}
+            </Box>
+          </Flex>
+        ))}
         <Box py={2} textAlign={'center'} color={'myGray.600'} fontSize={'xs'}>
           {t('common:common.No more data')}
         </Box>
@@ -202,10 +322,14 @@ const MyEdit = ({
 
 const TeamCloud = ({
   saveSnapshot,
-  resetSnapshot
+  resetSnapshot,
+  saveFormSnapshot,
+  resetFormSnapshot
 }: {
-  saveSnapshot: (params: SaveSnapshotParams) => Promise<boolean>;
-  resetSnapshot: (state: SnapshotsType) => void;
+  saveSnapshot?: (params: SaveSnapshotParams) => Promise<boolean>;
+  resetSnapshot?: (state: SnapshotsType) => void;
+  saveFormSnapshot?: SaveSnapshotFnType;
+  resetFormSnapshot?: (state: PastFormType) => void;
 }) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -246,14 +370,34 @@ const TeamCloud = ({
         chatConfig: versionDetail.chatConfig
       };
 
-      await saveSnapshot({
-        pastNodes: state.nodes,
-        pastEdges: state.edges,
-        chatConfig: state.chatConfig,
-        customTitle: `${t('app:app.version_copy')}-${state.title}`
-      });
+      if (saveSnapshot && resetSnapshot) {
+        const res = await saveSnapshot({
+          pastNodes: state.nodes,
+          pastEdges: state.edges,
+          chatConfig: state.chatConfig,
+          customTitle: `${t('app:app.version_copy')}-${state.title}`
+        });
 
-      resetSnapshot(state);
+        if (res) {
+          resetSnapshot(state);
+        }
+      }
+
+      if (saveFormSnapshot && resetFormSnapshot) {
+        const storeWorkflow = uiWorkflow2StoreWorkflow(state);
+        const appForm = appWorkflow2Form({ ...storeWorkflow, chatConfig: state.chatConfig });
+        const formRes = await saveFormSnapshot({
+          appForm,
+          customTitle: `${t('app:app.version_copy')}-${state.title}`
+        });
+
+        if (formRes) {
+          resetFormSnapshot({
+            appForm
+          });
+        }
+      }
+
       toast({
         title: t('workflow:workflow.Switch_success'),
         status: 'success'

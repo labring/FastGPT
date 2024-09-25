@@ -15,11 +15,8 @@ import { cardStyles } from '../constants';
 
 import styles from './styles.module.scss';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
-import { uiWorkflow2StoreWorkflow } from '../WorkflowComponents/utils';
-import { SnapshotsType } from '../WorkflowComponents/context';
-import { SaveSnapshotFnType } from './useSnapshots';
+import { PastFormType, SaveSnapshotFnType } from './useSnapshots';
 
 const Edit = ({
   appForm,
@@ -29,7 +26,7 @@ const Edit = ({
 }: {
   appForm: AppSimpleEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppSimpleEditFormType>>;
-  past: SnapshotsType[];
+  past: PastFormType[];
   saveSnapshot: SaveSnapshotFnType;
 }) => {
   const { isPc } = useSystem();
@@ -44,16 +41,16 @@ const Edit = ({
 
     // Get the latest snapshot
     if (past.length > 0) {
-      const storeWorkflow = uiWorkflow2StoreWorkflow(past[0]);
-      const currentAppForm = appWorkflow2Form({ ...storeWorkflow, chatConfig: past[0].chatConfig });
-
-      return setAppForm(currentAppForm);
+      return setAppForm(past[0].appForm);
     }
 
-    // Set the first snapshot
+    // // Set the first snapshot
+    const appForm = appWorkflow2Form({
+      nodes: appDetail.modules,
+      chatConfig: appDetail.chatConfig
+    });
     saveSnapshot({
-      pastNodes: appDetail.modules?.map((item) => storeNode2FlowNode({ item, t })),
-      chatConfig: appDetail.chatConfig,
+      appForm,
       isSaved: true
     });
 

@@ -1,49 +1,39 @@
 import { useLocalStorageState, useMemoizedFn } from 'ahooks';
-import { SaveSnapshotParams, SnapshotsType } from '../WorkflowComponents/context';
+import { SaveSnapshotParams } from '../WorkflowComponents/context';
 import { SetStateAction, useEffect } from 'react';
-import { compareSnapshot } from '@/web/core/workflow/utils';
+import { compareAppForm, compareSnapshot } from '@/web/core/workflow/utils';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import { Node } from 'reactflow';
+import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 
-export type SaveSnapshotFnType = (
-  props: SaveSnapshotParams & {
-    isSaved?: boolean;
-  }
-) => Promise<boolean>;
+export type SaveSnapshotFnType = (props: {
+  appForm: AppSimpleEditFormType;
+  customTitle?: string;
+  isSaved?: boolean;
+}) => Promise<boolean>;
+
+export type PastFormType = {
+  appForm: AppSimpleEditFormType;
+  title?: string;
+  isSaved?: boolean;
+};
 
 const useSnapshots = (appId: string) => {
-  const [past, setPast] = useLocalStorageState<SnapshotsType[]>(`${appId}-past-simple`, {
+  const [pastForm, setPastForm] = useLocalStorageState<PastFormType[]>(`${appId}-past-simple`, {
     defaultValue: [],
     listenStorageChange: true
-  }) as [SnapshotsType[], (value: SetStateAction<SnapshotsType[]>) => void];
+  }) as [PastFormType[], (value: SetStateAction<PastFormType[]>) => void];
 
   const saveSnapshot: SaveSnapshotFnType = useMemoizedFn(
-    async ({ pastNodes, chatConfig, customTitle, isSaved }) => {
-      if (!pastNodes) return false;
+    async ({ appForm, customTitle, isSaved }) => {
+      const pastState = pastForm[0];
 
-      const pastState = past[0];
-
-      const isPastEqual = compareSnapshot(
-        {
-          nodes: pastNodes,
-          edges: [],
-          chatConfig: chatConfig
-        },
-        {
-          nodes: pastState?.nodes,
-          edges: pastState?.edges,
-          chatConfig: pastState?.chatConfig
-        }
-      );
+      const isPastEqual = compareAppForm(appForm, pastState?.appForm);
       if (isPastEqual) return false;
 
-      setPast((past) => [
+      setPastForm((past) => [
         {
-          nodes: pastNodes,
-          edges: [],
+          appForm,
           title: customTitle || formatTime2YMDHMS(new Date()),
-          chatConfig,
           isSaved
         },
         ...past.slice(0, 199)
@@ -64,7 +54,7 @@ const useSnapshots = (appId: string) => {
     });
   }, [appId]);
 
-  return { past, setPast, saveSnapshot };
+  return { pastForm, setPastForm, saveSnapshot };
 };
 
 export default useSnapshots;

@@ -32,7 +32,7 @@ import {
 } from '@fastgpt/global/core/workflow/type/io';
 import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { AppChatConfigType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash';
 import { getInputComponentProps } from '@fastgpt/global/core/workflow/node/io/utils';
 import { workflowSystemVariables } from '../app/utils';
@@ -546,4 +546,71 @@ export const compareSnapshot = (
   });
 
   return isEqual(node1, node2);
+};
+
+export const compareAppForm = (
+  appForm1?: AppSimpleEditFormType,
+  appForm2?: AppSimpleEditFormType
+) => {
+  if (!appForm1 || !appForm2) return false;
+  // 比较 aiSettings
+  if (
+    appForm1?.aiSettings &&
+    appForm2?.aiSettings &&
+    !isEqual(appForm1.aiSettings, appForm2.aiSettings)
+  ) {
+    console.log('aiSettings not equal');
+    return false;
+  }
+
+  // 比较 dataset
+  if (appForm1?.dataset && appForm2?.dataset && !isEqual(appForm1.dataset, appForm2.dataset)) {
+    console.log('dataset not equal');
+    return false;
+  }
+
+  // 比较 selectedTools
+  if (
+    appForm1?.selectedTools &&
+    appForm2?.selectedTools &&
+    !isEqual(appForm1.selectedTools, appForm2.selectedTools)
+  ) {
+    console.log('selectedTools not equal');
+    return false;
+  }
+
+  // 比较 chatConfig
+  if (
+    appForm1?.chatConfig &&
+    appForm2?.chatConfig &&
+    !isEqual(
+      {
+        welcomeText: appForm1.chatConfig?.welcomeText || '',
+        variables: appForm1.chatConfig?.variables || [],
+        questionGuide: appForm1.chatConfig?.questionGuide || false,
+        ttsConfig: appForm1.chatConfig?.ttsConfig || undefined,
+        whisperConfig: appForm1.chatConfig?.whisperConfig || undefined,
+        scheduledTriggerConfig: appForm1.chatConfig?.scheduledTriggerConfig || undefined,
+        chatInputGuide: appForm1.chatConfig?.chatInputGuide || undefined,
+        fileSelectConfig: appForm1.chatConfig?.fileSelectConfig || undefined,
+        instruction: appForm1.chatConfig?.instruction || ''
+      },
+      {
+        welcomeText: appForm2.chatConfig?.welcomeText || '',
+        variables: appForm2.chatConfig?.variables || [],
+        questionGuide: appForm2.chatConfig?.questionGuide || false,
+        ttsConfig: appForm2.chatConfig?.ttsConfig || undefined,
+        whisperConfig: appForm2.chatConfig?.whisperConfig || undefined,
+        scheduledTriggerConfig: appForm2.chatConfig?.scheduledTriggerConfig || undefined,
+        chatInputGuide: appForm2.chatConfig?.chatInputGuide || undefined,
+        fileSelectConfig: appForm2.chatConfig?.fileSelectConfig || undefined,
+        instruction: appForm2.chatConfig?.instruction || ''
+      }
+    )
+  ) {
+    console.log('chatConfig not equal');
+    return false;
+  }
+
+  return true;
 };

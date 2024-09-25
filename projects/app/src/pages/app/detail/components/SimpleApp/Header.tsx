@@ -22,15 +22,9 @@ import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import SaveButton from '../Workflow/components/SaveButton';
 import dynamic from 'next/dynamic';
 import { useDebounceEffect } from 'ahooks';
-import { InitProps, SnapshotsType } from '../WorkflowComponents/context';
-import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
-import {
-  compareSnapshot,
-  storeEdgesRenderEdge,
-  storeNode2FlowNode
-} from '@/web/core/workflow/utils';
-import { uiWorkflow2StoreWorkflow } from '../WorkflowComponents/utils';
-import { SaveSnapshotFnType } from './useSnapshots';
+import { InitProps } from '../WorkflowComponents/context';
+import { compareAppForm } from '@/web/core/workflow/utils';
+import { PastFormType, SaveSnapshotFnType } from './useSnapshots';
 
 const PublishHistories = dynamic(() => import('../PublishHistoriesSlider'));
 
@@ -43,8 +37,8 @@ const Header = ({
 }: {
   appForm: AppSimpleEditFormType;
   setAppForm: (form: AppSimpleEditFormType) => void;
-  past: SnapshotsType[];
-  setPast: (value: React.SetStateAction<SnapshotsType[]>) => void;
+  past: PastFormType[];
+  setPast: (value: React.SetStateAction<PastFormType[]>) => void;
   saveSnapshot: SaveSnapshotFnType;
 }) => {
   const { t } = useTranslation();
@@ -104,11 +98,8 @@ const Header = ({
   const [historiesDefaultData, setHistoriesDefaultData] = useState<InitProps>();
 
   const resetSnapshot = useCallback(
-    (data: SnapshotsType) => {
-      const storeWorkflow = uiWorkflow2StoreWorkflow(data);
-      const currentAppForm = appWorkflow2Form({ ...storeWorkflow, chatConfig: data.chatConfig });
-
-      setAppForm(currentAppForm);
+    (data: PastFormType) => {
+      setAppForm(data.appForm);
     },
     [setAppForm]
   );
@@ -116,11 +107,9 @@ const Header = ({
   // Save snapshot to local
   useDebounceEffect(
     () => {
-      const data = form2AppWorkflow(appForm, t);
-
       saveSnapshot({
-        pastNodes: data.nodes?.map((item) => storeNode2FlowNode({ item, t })),
-        chatConfig: data.chatConfig
+        appForm,
+        isSaved: past.length === 0
       });
     },
     [appForm],
@@ -132,23 +121,10 @@ const Header = ({
   useDebounceEffect(
     () => {
       const savedSnapshot = past.find((snapshot) => snapshot.isSaved);
-      const editFormData = form2AppWorkflow(appForm, t);
-      console.log(savedSnapshot?.nodes, editFormData.chatConfig);
-      const val = compareSnapshot(
-        {
-          nodes: savedSnapshot?.nodes,
-          edges: [],
-          chatConfig: savedSnapshot?.chatConfig
-        },
-        {
-          nodes: editFormData.nodes?.map((item) => storeNode2FlowNode({ item, t })),
-          edges: [],
-          chatConfig: editFormData.chatConfig
-        }
-      );
+      const val = compareAppForm(savedSnapshot?.appForm, appForm);
       setIsPublished(val);
     },
-    [past, allDatasets],
+    [past.length, allDatasets],
     { wait: 500 }
   );
 
@@ -225,9 +201,9 @@ const Header = ({
           onClose={() => {
             setHistoriesDefaultData(undefined);
           }}
-          past={past}
-          saveSnapshot={saveSnapshot}
-          resetSnapshot={resetSnapshot}
+          pastForm={past}
+          saveFormSnapshot={saveSnapshot}
+          resetFormSnapshot={resetSnapshot}
           top={14}
           bottom={3}
         />
