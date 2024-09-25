@@ -23,7 +23,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import type { versionListResponse } from '@/pages/api/core/app/version/list';
+import type { VersionListItemType } from '@fastgpt/global/core/app/version';
 
 const PublishHistoriesSlider = ({
   onClose,
@@ -234,7 +234,7 @@ const TeamCloud = ({
   const { toast } = useToast();
 
   const { runAsync: onChangeVersion, loading: isLoadingVersion } = useRequest2(
-    async (versionItem: versionListResponse) => {
+    async (versionItem: VersionListItemType) => {
       const versionDetail = await getAppVersionDetail(versionItem._id, versionItem.appId);
 
       if (!versionDetail) return;
