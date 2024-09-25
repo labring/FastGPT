@@ -440,14 +440,14 @@ export const getLatestNodeTemplate = (
 
 export const compareSnapshot = (
   snapshot1: {
-    nodes: Node<FlowNodeItemType, string | undefined>[] | undefined;
+    nodes?: Node[];
     edges: Edge<any>[] | undefined;
-    chatConfig: AppChatConfigType | undefined;
+    chatConfig?: AppChatConfigType;
   },
   snapshot2: {
-    nodes: Node<FlowNodeItemType, string | undefined>[];
+    nodes?: Node[];
     edges: Edge<any>[];
-    chatConfig: AppChatConfigType;
+    chatConfig?: AppChatConfigType;
   }
 ) => {
   const clone1 = cloneDeep(snapshot1);
