@@ -279,20 +279,22 @@ const Header = () => {
     currentTab,
     isPublished,
     onBack,
-    isOpenBackConfirm,
     onOpenBackConfirm,
-    onCloseBackConfirm,
-    t,
-    loading,
     isV2Workflow,
     historiesDefaultData,
+    t,
+    loading,
     onClickSave,
+    flowData2StoreDataAndCheck,
+    past,
+    saveSnapshot,
+    resetSnapshot,
+    isOpenBackConfirm,
+    onCloseBackConfirm,
     setHistoriesDefaultData,
     appDetail.chatConfig,
-    flowData2StoreDataAndCheck,
     setWorkflowTestData,
-    toast,
-    past
+    toast
   ]);
 
   return Render;

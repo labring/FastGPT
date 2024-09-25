@@ -30,6 +30,7 @@ import {
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
 import { uiWorkflow2StoreWorkflow } from '../WorkflowComponents/utils';
+import { SaveSnapshotFnType } from './useSnapshots';
 
 const PublishHistories = dynamic(() => import('../PublishHistoriesSlider'));
 
@@ -44,15 +45,12 @@ const Header = ({
   setAppForm: (form: AppSimpleEditFormType) => void;
   past: SnapshotsType[];
   setPast: (value: React.SetStateAction<SnapshotsType[]>) => void;
-  saveSnapshot: (
-    this: any,
-    { pastNodes, pastEdges, chatConfig, customTitle, isSaved }: any
-  ) => Promise<boolean>;
+  saveSnapshot: SaveSnapshotFnType;
 }) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const router = useRouter();
-  const { appId, appDetail, onSaveApp, currentTab } = useContextSelector(AppContext, (v) => v);
+  const { appId, onSaveApp, currentTab } = useContextSelector(AppContext, (v) => v);
   const { lastAppListRouteType } = useSystemStore();
   const { allDatasets } = useDatasetStore();
 
@@ -62,8 +60,6 @@ const Header = ({
   });
   const onClickRoute = useCallback(
     (parentId: string) => {
-      localStorage.removeItem(`${appDetail._id}-past`);
-
       router.push({
         pathname: '/app/list',
         query: {
@@ -74,8 +70,6 @@ const Header = ({
     },
     [router, lastAppListRouteType]
   );
-
-  const [isPublished, setIsPublished] = useState(false);
 
   const { runAsync: onClickSave, loading } = useRequest2(
     async ({
@@ -109,20 +103,23 @@ const Header = ({
 
   const [historiesDefaultData, setHistoriesDefaultData] = useState<InitProps>();
 
-  const resetSnapshot = (data: SnapshotsType) => {
-    const storeWorkflow = uiWorkflow2StoreWorkflow(data);
-    const currentAppForm = appWorkflow2Form({ ...storeWorkflow, chatConfig: data.chatConfig });
+  const resetSnapshot = useCallback(
+    (data: SnapshotsType) => {
+      const storeWorkflow = uiWorkflow2StoreWorkflow(data);
+      const currentAppForm = appWorkflow2Form({ ...storeWorkflow, chatConfig: data.chatConfig });
 
-    setAppForm(currentAppForm);
-  };
+      setAppForm(currentAppForm);
+    },
+    [setAppForm]
+  );
 
+  // Save snapshot to local
   useDebounceEffect(
     () => {
       const data = form2AppWorkflow(appForm, t);
 
       saveSnapshot({
         pastNodes: data.nodes?.map((item) => storeNode2FlowNode({ item, t })),
-        pastEdges: data.edges?.map((item) => storeEdgesRenderEdge({ edge: item })),
         chatConfig: data.chatConfig
       });
     },
@@ -130,10 +127,13 @@ const Header = ({
     { wait: 500 }
   );
 
+  // Check if the workflow is published
+  const [isPublished, setIsPublished] = useState(false);
   useDebounceEffect(
     () => {
       const savedSnapshot = past.find((snapshot) => snapshot.isSaved);
-      const data = form2AppWorkflow(appForm, t);
+      const editFormData = form2AppWorkflow(appForm, t);
+      console.log(savedSnapshot?.nodes, editFormData.chatConfig);
       const val = compareSnapshot(
         {
           nodes: savedSnapshot?.nodes,
@@ -141,14 +141,14 @@ const Header = ({
           chatConfig: savedSnapshot?.chatConfig
         },
         {
-          nodes: data.nodes?.map((item) => storeNode2FlowNode({ item, t })),
+          nodes: editFormData.nodes?.map((item) => storeNode2FlowNode({ item, t })),
           edges: [],
-          chatConfig: data.chatConfig
+          chatConfig: editFormData.chatConfig
         }
       );
       setIsPublished(val);
     },
-    [past],
+    [past, allDatasets],
     { wait: 500 }
   );
 
