@@ -38,6 +38,15 @@ function MemberTable({
     onSuccess: () => Promise.all([refetchGroups(), refetchMembers()])
   });
 
+  const hasManagePer = (group: (typeof groups)[0]) => {
+    return (
+      userInfo?.team.permission.hasManagePer ||
+      ['admin', 'owner'].includes(
+        group.members.find((item) => item.tmbId === userInfo?.team.tmbId)?.role ?? ''
+      )
+    );
+  };
+
   return (
     <MyBox isLoading={isLoadingDeleteGroup}>
       <TableContainer overflow={'unset'} fontSize={'sm'}>
@@ -79,15 +88,18 @@ function MemberTable({
                     }
                     avatar={
                       group.name === DefaultGroupName
-                        ? group.avatar
-                        : members.find((item) => item.role === 'owner')?.avatar ?? ''
+                        ? members.find((item) => item.role === 'owner')?.avatar ?? ''
+                        : members.find(
+                            (i) =>
+                              i.tmbId === group.members.find((item) => item.role === 'owner')?.tmbId
+                          )?.avatar ?? ''
                     }
                   />
                 </Td>
                 <Td>
                   {group.name === DefaultGroupName ? (
                     <AvatarGroup avatars={members.map((v) => v.avatar)} groupId={group._id} />
-                  ) : (
+                  ) : hasManagePer(group) ? (
                     <MyTooltip label={t('user:team.group.manage_member')}>
                       <Box cursor="pointer" onClick={() => onManageMember(group._id)}>
                         <AvatarGroup
@@ -98,10 +110,17 @@ function MemberTable({
                         />
                       </Box>
                     </MyTooltip>
+                  ) : (
+                    <AvatarGroup
+                      avatars={group.members.map(
+                        (v) => members.find((m) => m.tmbId === v.tmbId)?.avatar ?? ''
+                      )}
+                      groupId={group._id}
+                    />
                   )}
                 </Td>
                 <Td>
-                  {userInfo?.team.permission.hasManagePer && group.name !== DefaultGroupName && (
+                  {hasManagePer(group) && group.name !== DefaultGroupName && (
                     <MyMenu
                       Button={<MyIcon name={'edit'} cursor={'pointer'} w="1rem" />}
                       menuList={[

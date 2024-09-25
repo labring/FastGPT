@@ -110,7 +110,16 @@
       "transfer_owner": "转让所有者",
       "group": "群组",
       "members": "成员",
-      "name": "群组名称"
+      "name": "群组名称",
+      "role": {
+        "admin": "管理员",
+        "member": "成员",
+        "owner": "所有者"
+      },
+      "toast": {
+        "can_not_delete_owner": "不能删除所有者, 请先转让"
+      },
+      "set_as_admin": "设为管理员"
     },
     "manage_collaborators": "管理协作者",
     "no_collaborators": "暂无协作者",

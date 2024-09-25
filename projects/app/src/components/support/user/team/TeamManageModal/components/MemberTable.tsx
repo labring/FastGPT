@@ -9,7 +9,6 @@ import { delRemoveMember } from '@/web/support/user/team/api';
 import Tag from '@fastgpt/web/components/common/Tag';
 import Icon from '@fastgpt/web/components/common/Icon';
 import GroupTags from '@/components/support/permission/Group/GroupTags';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { TeamModalContext } from '../context';
 
@@ -56,7 +55,7 @@ function MemberTable() {
                 <Td>
                   <GroupTags
                     names={groups
-                      ?.filter((group) => group.members.includes(item.tmbId))
+                      ?.filter((group) => group.members.map((m) => m.tmbId).includes(item.tmbId))
                       .map((g) => g.name)}
                     max={3}
                   />

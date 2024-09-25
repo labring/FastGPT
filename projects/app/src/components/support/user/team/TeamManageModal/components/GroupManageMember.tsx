@@ -14,6 +14,7 @@ import {
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import Tag from '@fastgpt/web/components/common/Tag';
 
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useState } from 'react';
@@ -21,17 +22,26 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { TeamModalContext } from '../context';
 import { putUpdateGroup } from '@/web/support/user/team/group/api';
+import { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 export type GroupFormType = {
-  members: string[];
+  members: {
+    tmbId: string;
+    role: `${GroupMemberRole}`;
+  }[];
 };
 
 function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGroupId?: string }) {
   // TODO:
-  // 1. Owner can not be deleted
+  // 1. Owner can not be deleted, toast
   // 2. Owner/Admin can manage members
   // 3. Owner can add/remove admins
   const { t } = useTranslation();
+  const { userInfo } = useUserStore();
+  const { toast } = useToast();
+  const [hoveredMemberId, setHoveredMemberId] = useState<string | undefined>(undefined);
   const {
     members: allMembers,
     refetchGroups,
@@ -55,11 +65,11 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
   }, [searchKey, allMembers]);
 
   const { run: onUpdate, loading: isLoadingUpdate } = useRequest2(
-    async (data: GroupFormType) => {
-      if (!editGroupId) return;
+    async () => {
+      if (!editGroupId || !members.length) return;
       return putUpdateGroup({
         groupId: editGroupId,
-        memberList: data.members.map((item) => ({ tmbId: item, role: 'member' }))
+        memberList: members
       });
     },
     {
@@ -67,12 +77,26 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
     }
   );
 
-  const isLoading = isLoadingUpdate;
   const isSelected = (memberId: string) => {
     return members.find((item) => item.tmbId === memberId);
   };
 
+  const myRole = useMemo(() => {
+    return userInfo?.team.role === 'owner'
+      ? 'owner'
+      : userInfo?.team.permission.hasManagePer
+        ? 'admin'
+        : members.find((item) => item.tmbId === userInfo?.team.tmbId)?.role ?? 'member';
+  }, [members, userInfo]);
+
   const handleToggleSelect = (memberId: string) => {
+    if (myRole === 'owner' && memberId === members.find((item) => item.role === 'owner')?.tmbId) {
+      toast({
+        title: t('user:team.group.toast.can_not_delete_owner'),
+        status: 'error'
+      });
+      return;
+    }
     if (isSelected(memberId)) {
       setMembers(members.filter((item) => item.tmbId !== memberId));
     } else {
@@ -80,6 +104,22 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
     }
   };
 
+  const handleToggleAdmin = (memberId: string) => {
+    if (myRole === 'owner' && isSelected(memberId)) {
+      const oldRole = members.find((item) => item.tmbId === memberId)?.role;
+      if (oldRole === 'admin') {
+        setMembers(
+          members.map((item) => (item.tmbId === memberId ? { ...item, role: 'member' } : item))
+        );
+      } else {
+        setMembers(
+          members.map((item) => (item.tmbId === memberId ? { ...item, role: 'admin' } : item))
+        );
+      }
+    }
+  };
+
+  const isLoading = isLoadingUpdate;
   return (
     <MyModal
       onClose={onClose}
@@ -154,11 +194,13 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
               {members.map((member) => {
                 return (
                   <HStack
+                    onMouseEnter={() => setHoveredMemberId(member.tmbId)}
+                    onMouseLeave={() => setHoveredMemberId(undefined)}
                     justifyContent="space-between"
                     py="2"
                     px={3}
                     borderRadius={'md'}
-                    key={member.tmbId}
+                    key={member.tmbId + member.role}
                     _hover={{ bg: 'myGray.50' }}
                     _notLast={{ mb: 2 }}
                   >
@@ -169,14 +211,45 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
                     />
                     <Box w="full">
                       {allMembers.find((item) => item.tmbId === member.tmbId)?.memberName}
+                      {(() => {
+                        if (member.role === 'owner') {
+                          return <Tag ml={2}>{t('user:team.group.role.owner')}</Tag>;
+                        } else if (member.role === 'admin') {
+                          return (
+                            <Tag
+                              ml={2}
+                              cursor={'pointer'}
+                              onClick={() => handleToggleAdmin(member.tmbId)}
+                            >
+                              {t('user:team.group.role.admin')}
+                            </Tag>
+                          );
+                        } else if (member.role === 'member') {
+                          return (
+                            myRole === 'owner' &&
+                            hoveredMemberId === member.tmbId && (
+                              <Tag
+                                ml={2}
+                                color={'red.600'}
+                                cursor={'pointer'}
+                                onClick={() => handleToggleAdmin(member.tmbId)}
+                              >
+                                {t('user:team.group.set_as_admin')}
+                              </Tag>
+                            )
+                          );
+                        }
+                      })()}
                     </Box>
-                    <MyIcon
-                      name={'common/closeLight'}
-                      w={'1rem'}
-                      cursor={'pointer'}
-                      _hover={{ color: 'red.600' }}
-                      onClick={() => handleToggleSelect(member.tmbId)}
-                    />
+                    {(myRole === 'owner' || (myRole === 'admin' && member.role === 'member')) && (
+                      <MyIcon
+                        name={'common/closeLight'}
+                        w={'1rem'}
+                        cursor={'pointer'}
+                        _hover={{ color: 'red.600' }}
+                        onClick={() => handleToggleSelect(member.tmbId)}
+                      />
+                    )}
                   </HStack>
                 );
               })}
@@ -185,7 +258,9 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
         </Grid>
       </ModalBody>
       <ModalFooter alignItems="flex-end">
-        <Button isLoading={isLoading}>{t('common:common.Save')}</Button>
+        <Button isLoading={isLoading} onClick={onUpdate}>
+          {t('common:common.Save')}
+        </Button>
       </ModalFooter>
     </MyModal>
   );
