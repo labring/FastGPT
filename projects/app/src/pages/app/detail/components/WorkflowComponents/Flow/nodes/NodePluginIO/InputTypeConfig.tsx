@@ -22,52 +22,55 @@ import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSele
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import React, { useMemo } from 'react';
-import { useFieldArray } from 'react-hook-form';
+import { useFieldArray, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const InputTypeConfig = ({
-  onSubmitSuccess,
-  onSubmitError,
+  form,
   isEdit,
+  onClose,
+  type,
   inputType,
   maxLength,
   max,
   min,
   selectValueTypeList,
-  onClose,
-  control,
-  register,
-  handleSubmit,
-  setValue,
+  defaultJsonValue,
   isToolInput,
   setIsToolInput,
   valueType,
   defaultValueType,
-  defaultJsonValue,
-  type
+  onSubmitSuccess,
+  onSubmitError
 }: {
-  onSubmitSuccess: (data: any, action: 'confirm' | 'continue') => void;
-  onSubmitError: (e: Object) => void;
+  // Common fields
+  form: UseFormReturn<any>;
   isEdit: boolean;
+  onClose: () => void;
+  type: 'plugin' | 'formInput';
   inputType: FlowNodeInputTypeEnum;
+
   maxLength?: number;
   max?: number;
   min?: number;
+
   selectValueTypeList?: WorkflowIOValueTypeEnum[];
-  onClose: () => void;
-  control: any;
-  register: any;
-  handleSubmit: any;
-  setValue: any;
+  defaultJsonValue?: string;
+
+  // Plugin-specific fields
   isToolInput?: boolean;
   setIsToolInput?: () => void;
   valueType?: WorkflowIOValueTypeEnum;
   defaultValueType?: WorkflowIOValueTypeEnum;
-  defaultJsonValue?: string;
-  type: 'plugin' | 'formInput';
+
+  // Update methods
+  onSubmitSuccess: (data: any, action: 'confirm' | 'continue') => void;
+  onSubmitError: (e: Object) => void;
 }) => {
   const { t } = useTranslation();
+
+  const { register, setValue, handleSubmit, control } = form;
 
   const {
     fields: selectEnums,

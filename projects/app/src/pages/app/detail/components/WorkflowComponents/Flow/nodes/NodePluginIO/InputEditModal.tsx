@@ -132,12 +132,13 @@ const FieldEditModal = ({
   );
 
   const isEdit = !!defaultValue.key;
-  const { register, getValues, setValue, handleSubmit, watch, control, reset } = useForm({
+  const form = useForm({
     defaultValues: {
       ...defaultValue,
       list: defaultValue.list?.length ? defaultValue.list : [{ label: '', value: '' }]
     }
   });
+  const { getValues, setValue, watch, reset } = form;
 
   const inputType = watch('renderTypeList.0') || FlowNodeInputTypeEnum.reference;
   const valueType = watch('valueType');
@@ -317,25 +318,22 @@ const FieldEditModal = ({
         </Stack>
         {/* input type config */}
         <InputTypeConfig
-          onSubmitSuccess={onSubmitSuccess}
-          onSubmitError={onSubmitError}
+          form={form}
+          type={'plugin'}
           isEdit={isEdit}
+          onClose={onClose}
           inputType={inputType}
           maxLength={maxLength}
           max={max}
           min={min}
           selectValueTypeList={selectValueTypeList}
-          onClose={onClose}
-          control={control}
-          register={register}
-          handleSubmit={handleSubmit}
-          setValue={setValue}
+          defaultJsonValue={defaultJsonValue}
           isToolInput={isToolInput}
           setIsToolInput={setIsToolInput}
           valueType={valueType}
           defaultValueType={defaultValueType}
-          defaultJsonValue={defaultJsonValue}
-          type={'plugin'}
+          onSubmitSuccess={onSubmitSuccess}
+          onSubmitError={onSubmitError}
         />
       </Flex>
     </MyModal>

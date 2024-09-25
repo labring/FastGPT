@@ -10,35 +10,38 @@ import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import InputTypeConfig from '../NodePluginIO/InputTypeConfig';
 
-export const defaultFormInput = {
+export const defaultFormInput: UserInputFormItemType = {
   type: FlowNodeInputTypeEnum.input,
+  key: '',
   label: '',
   value: '',
   valueType: WorkflowIOValueTypeEnum.string,
   required: false
 };
 
+// Modal for add or edit user input form items
 const InputFormEditModal = ({
   defaultValue,
   onClose,
   onSubmit,
-  labels
+  keys
 }: {
   defaultValue: UserInputFormItemType;
   onClose: () => void;
   onSubmit: (data: UserInputFormItemType) => void;
-  labels: string[];
+  keys: string[];
 }) => {
-  const isEdit = !!defaultValue.label;
+  const isEdit = !!defaultValue.key;
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const { register, setValue, handleSubmit, watch, control, reset } = useForm({
+  const form = useForm({
     defaultValues: {
       ...defaultValue,
       list: defaultValue.list?.length ? defaultValue.list : [{ label: '', value: '' }]
     }
   });
+  const { setValue, watch, reset } = form;
 
   const inputType = watch('type') || FlowNodeInputTypeEnum.input;
 
@@ -75,8 +78,8 @@ const InputFormEditModal = ({
 
   const onSubmitSuccess = useCallback(
     (data: UserInputFormItemType, action: 'confirm' | 'continue') => {
-      const isChangeKey = defaultValue.label !== data.label;
-      if (labels.includes(data.label)) {
+      const isChangeKey = defaultValue.key !== data.key;
+      if (keys.includes(data.key)) {
         if (!isEdit || isChangeKey) {
           toast({
             status: 'warning',
@@ -85,6 +88,8 @@ const InputFormEditModal = ({
           return;
         }
       }
+
+      data.key = data.label;
 
       if (action === 'confirm') {
         onSubmit(data);
@@ -177,19 +182,16 @@ const InputFormEditModal = ({
           </Flex>
         </Stack>
         <InputTypeConfig
-          onSubmitSuccess={onSubmitSuccess}
-          onSubmitError={onSubmitError}
+          form={form}
+          type={'formInput'}
           isEdit={isEdit}
           inputType={inputType}
           maxLength={maxLength}
           max={max}
           min={min}
           onClose={onClose}
-          control={control}
-          register={register}
-          handleSubmit={handleSubmit}
-          setValue={setValue}
-          type={'formInput'}
+          onSubmitSuccess={onSubmitSuccess}
+          onSubmitError={onSubmitError}
         />
       </Flex>
     </MyModal>

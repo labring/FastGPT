@@ -11,6 +11,7 @@ export type UserSelectOptionItemType = {
 
 export type UserInputFormItemType = {
   type: FlowNodeInputTypeEnum;
+  key: string;
   label: string;
   value: any;
   valueType: WorkflowIOValueTypeEnum;

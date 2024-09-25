@@ -153,7 +153,12 @@ export const updateInteractiveChat = async ({
     return;
   }
 
-  const parsedUserInteractiveVal = JSON.parse(userInteractiveVal);
+  let parsedUserInteractiveVal;
+  try {
+    parsedUserInteractiveVal = JSON.parse(userInteractiveVal);
+  } catch (error) {
+    parsedUserInteractiveVal = userInteractiveVal;
+  }
   interactiveValue.interactive =
     interactiveValue.interactive.type === 'userSelect'
       ? {

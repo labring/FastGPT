@@ -44,7 +44,12 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
   node.isEntry = false;
 
   const { text } = chatValue2RuntimePrompt(query);
-  const userInputVal = JSON.parse(text);
+  let userInputVal;
+  try {
+    userInputVal = JSON.parse(text);
+  } catch (error) {
+    userInputVal = text;
+  }
 
   return {
     [DispatchNodeResponseKeyEnum.rewriteHistories]: histories.slice(0, -2), // Removes the current session record as the history of subsequent nodes

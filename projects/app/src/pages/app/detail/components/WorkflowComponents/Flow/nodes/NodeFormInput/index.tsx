@@ -21,8 +21,7 @@ import {
   Td,
   Th,
   Thead,
-  Tr,
-  useDisclosure
+  Tr
 } from '@chakra-ui/react';
 import { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { useTranslation } from 'react-i18next';
@@ -52,7 +51,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         const inputs = value as UserInputFormItemType[];
 
         const onSubmit = (data: UserInputFormItemType) => {
-          if (!editField?.label) {
+          if (!editField?.key) {
             onChangeNode({
               nodeId,
               type: 'updateInput',
@@ -67,15 +66,15 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               nodeId,
               type: 'addOutput',
               value: {
-                id: data.label,
+                id: data.key,
                 valueType: data.valueType,
-                key: data.label,
+                key: data.key,
                 label: data.label,
                 type: FlowNodeOutputTypeEnum.static
               }
             });
           } else {
-            const output = outputs.find((output) => output.key === editField.label);
+            const output = outputs.find((output) => output.key === editField.key);
             onChangeNode({
               nodeId,
               type: 'updateInput',
@@ -83,24 +82,24 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               value: {
                 ...props,
                 key,
-                value: inputs.map((input) => (input.label === editField.label ? data : input))
+                value: inputs.map((input) => (input.key === editField.key ? data : input))
               }
             });
             onChangeNode({
               nodeId,
               type: 'replaceOutput',
-              key: editField.label,
+              key: editField.key,
               value: {
                 ...(output as FlowNodeOutputItemType),
                 valueType: data.valueType,
-                key: data.label,
+                key: data.key,
                 label: data.label
               }
             });
           }
         };
 
-        const onDelete = (label: string) => {
+        const onDelete = (valueKey: string) => {
           onChangeNode({
             nodeId,
             type: 'updateInput',
@@ -108,13 +107,13 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             value: {
               ...props,
               key,
-              value: inputs.filter((input) => input.label !== label)
+              value: inputs.filter((input) => input.key !== valueKey)
             }
           });
           onChangeNode({
             nodeId,
             type: 'delOutput',
-            key: label
+            key: valueKey
           });
         };
 
@@ -137,7 +136,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               {!!editField && (
                 <InputFormEditModal
                   defaultValue={editField}
-                  labels={inputs.map((item) => item.label)}
+                  keys={inputs.map((item) => item.key)}
                   onClose={() => {
                     setEditField(undefined);
                   }}
@@ -191,7 +190,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                             ml={2}
                             _hover={{ color: 'red.500' }}
                             onClick={() => {
-                              onDelete(item.label);
+                              onDelete(item.key);
                             }}
                           />
                         </Td>
