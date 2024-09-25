@@ -1,8 +1,16 @@
 import { useLocalStorageState, useMemoizedFn } from 'ahooks';
-import { SnapshotsType } from '../WorkflowComponents/context';
-import { SetStateAction } from 'react';
+import { SaveSnapshotParams, SnapshotsType } from '../WorkflowComponents/context';
+import { SetStateAction, useEffect } from 'react';
 import { compareSnapshot } from '@/web/core/workflow/utils';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { Node } from 'reactflow';
+
+export type SaveSnapshotFnType = (
+  props: SaveSnapshotParams & {
+    isSaved?: boolean;
+  }
+) => Promise<boolean>;
 
 const useSnapshots = (appId: string) => {
   const [past, setPast] = useLocalStorageState<SnapshotsType[]>(`${appId}-past-simple`, {
@@ -10,13 +18,16 @@ const useSnapshots = (appId: string) => {
     listenStorageChange: true
   }) as [SnapshotsType[], (value: SetStateAction<SnapshotsType[]>) => void];
 
-  const saveSnapshot = useMemoizedFn(
-    async ({ pastNodes, pastEdges, chatConfig, customTitle, isSaved }) => {
+  const saveSnapshot: SaveSnapshotFnType = useMemoizedFn(
+    async ({ pastNodes, chatConfig, customTitle, isSaved }) => {
+      if (!pastNodes) return false;
+
       const pastState = past[0];
+
       const isPastEqual = compareSnapshot(
         {
           nodes: pastNodes,
-          edges: pastEdges,
+          edges: [],
           chatConfig: chatConfig
         },
         {
@@ -30,7 +41,7 @@ const useSnapshots = (appId: string) => {
       setPast((past) => [
         {
           nodes: pastNodes,
-          edges: pastEdges,
+          edges: [],
           title: customTitle || formatTime2YMDHMS(new Date()),
           chatConfig,
           isSaved
@@ -40,6 +51,18 @@ const useSnapshots = (appId: string) => {
       return true;
     }
   );
+
+  // remove other app's snapshot
+  useEffect(() => {
+    const keys = Object.keys(localStorage);
+    const snapshotKeys = keys.filter((key) => key.endsWith('-past-simple'));
+    snapshotKeys.forEach((key) => {
+      const keyAppId = key.split('-')[0];
+      if (keyAppId !== appId) {
+        localStorage.removeItem(key);
+      }
+    });
+  }, [appId]);
 
   return { past, setPast, saveSnapshot };
 };

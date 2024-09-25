@@ -15,10 +15,11 @@ import { cardStyles } from '../constants';
 
 import styles from './styles.module.scss';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { storeEdgesRenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import { uiWorkflow2StoreWorkflow } from '../WorkflowComponents/utils';
 import { SnapshotsType } from '../WorkflowComponents/context';
+import { SaveSnapshotFnType } from './useSnapshots';
 
 const Edit = ({
   appForm,
@@ -29,32 +30,33 @@ const Edit = ({
   appForm: AppSimpleEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppSimpleEditFormType>>;
   past: SnapshotsType[];
-  saveSnapshot: (
-    this: any,
-    { pastNodes, pastEdges, chatConfig, customTitle, isSaved }: any
-  ) => Promise<boolean>;
+  saveSnapshot: SaveSnapshotFnType;
 }) => {
   const { isPc } = useSystem();
   const { loadAllDatasets } = useDatasetStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { t } = useTranslation();
 
-  // show selected dataset
+  // Init app form
   useMount(() => {
+    // show selected dataset
     loadAllDatasets();
-    saveSnapshot({
-      pastNodes: appDetail.modules?.map((item) => storeNode2FlowNode({ item, t })),
-      pastEdges: appDetail.edges?.map((item) => storeEdgesRenderEdge({ edge: item })),
-      chatConfig: appDetail.chatConfig,
-      isSaved: true
-    });
+
+    // Get the latest snapshot
     if (past.length > 0) {
       const storeWorkflow = uiWorkflow2StoreWorkflow(past[0]);
       const currentAppForm = appWorkflow2Form({ ...storeWorkflow, chatConfig: past[0].chatConfig });
 
-      setAppForm(currentAppForm);
-      return;
+      return setAppForm(currentAppForm);
     }
+
+    // Set the first snapshot
+    saveSnapshot({
+      pastNodes: appDetail.modules?.map((item) => storeNode2FlowNode({ item, t })),
+      chatConfig: appDetail.chatConfig,
+      isSaved: true
+    });
+
     setAppForm(
       appWorkflow2Form({
         nodes: appDetail.modules,

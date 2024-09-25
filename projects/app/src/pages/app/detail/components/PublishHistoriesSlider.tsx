@@ -23,7 +23,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { versionListResponse } from '@/pages/api/core/app/version/listWorkflow';
+import type { versionListResponse } from '@/pages/api/core/app/version/list';
 
 const PublishHistoriesSlider = ({
   onClose,
