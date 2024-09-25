@@ -119,7 +119,8 @@
       "toast": {
         "can_not_delete_owner": "不能删除所有者, 请先转让"
       },
-      "set_as_admin": "设为管理员"
+      "set_as_admin": "设为管理员",
+      "keep_admin": "保留管理员权限"
     },
     "manage_collaborators": "管理协作者",
     "no_collaborators": "暂无协作者",

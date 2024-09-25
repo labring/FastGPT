@@ -1,4 +1,4 @@
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { putUpdateGroup } from '@/web/support/user/team/group/api';
 import {
   Box,
   Flex,
@@ -7,50 +7,82 @@ import {
   ModalBody,
   ModalFooter,
   Button,
-  useDisclosure
+  useDisclosure,
+  Checkbox
 } from '@chakra-ui/react';
 import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import Icon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import MyTag from '@fastgpt/web/components/common/Tag';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { TeamModalContext } from '../context';
+import { useContextSelector } from 'use-context-selector';
 
 export type ChangeOwnerModalProps = {
-  avatar?: string;
-  name: string;
-  onChangeOwner: (tmbId: string) => Promise<unknown>;
+  groupId: string;
 };
 
 export function ChangeOwnerModal({
   onClose,
-  avatar,
-  name,
-  onChangeOwner
+  groupId
 }: ChangeOwnerModalProps & { onClose: () => void }) {
   const { t } = useTranslation();
-  const { loadAndGetTeamMembers } = useUserStore();
-
   const [inputValue, setInputValue] = React.useState('');
+  const {
+    members: allMembers,
+    groups,
+    refetchGroups
+  } = useContextSelector(TeamModalContext, (v) => v);
+  const group = useMemo(() => {
+    return groups.find((item) => item._id === groupId);
+  }, [groupId, groups]);
 
-  const { data: teamMembers = [] } = useRequest2(loadAndGetTeamMembers, {
-    manual: false
+  const memberList = allMembers.filter((item) => {
+    return item.memberName.toLowerCase().includes(inputValue.toLowerCase());
   });
-  const memberList = teamMembers.filter((item) => {
-    return item.memberName.includes(inputValue);
-  });
+
+  const OldOwnerId = useMemo(() => {
+    return group?.members.find((item) => item.role === 'owner')?.tmbId;
+  }, [group]);
+
+  const [keepAdmin, setKeepAdmin] = useState(true);
 
   const {
     isOpen: isOpenMemberListMenu,
     onClose: onCloseMemberListMenu,
     onOpen: onOpenMemberListMenu
   } = useDisclosure();
+
   const [selectedMember, setSelectedMember] = useState<TeamMemberItemType | null>(null);
 
+  const onChangeOwner = async (tmbId: string) => {
+    if (!group) {
+      return;
+    }
+
+    const newMemberList = group.members
+      .map((item) => {
+        if (item.tmbId === OldOwnerId) {
+          if (keepAdmin) {
+            return { tmbId: OldOwnerId, role: 'admin' };
+          }
+          return { tmbId: OldOwnerId, role: 'member' };
+        }
+        return item;
+      })
+      .filter((item) => item.tmbId !== tmbId) as any;
+
+    newMemberList.push({ tmbId, role: 'owner' });
+
+    return putUpdateGroup({
+      groupId,
+      memberList: newMemberList
+    });
+  };
+
   const { runAsync, loading } = useRequest2(onChangeOwner, {
-    onSuccess: onClose,
+    onSuccess: () => Promise.all([onClose(), refetchGroups()]),
     successToast: t('common:permission.change_owner_success'),
     errorToast: t('common:permission.change_owner_failed')
   });
@@ -72,8 +104,8 @@ export function ChangeOwnerModal({
     >
       <ModalBody>
         <HStack>
-          <Avatar src={avatar} w={'1.75rem'} borderRadius={'md'} />
-          <Box>{name}</Box>
+          <Avatar src={group?.avatar} w={'1.75rem'} borderRadius={'md'} />
+          <Box>{group?.name}</Box>
         </HStack>
         <Flex mt={4} justify="start" flexDirection="column">
           <Box fontSize="14px" fontWeight="500" color="myGray.900">
@@ -100,11 +132,6 @@ export function ChangeOwnerModal({
                 onOpenMemberListMenu();
                 setSelectedMember(null);
               }}
-              // onBlur={() => {
-              //   setTimeout(() => {
-              //     onCloseMemberListMenu();
-              //   }, 10);
-              // }}
               {...(selectedMember && { pl: '10' })}
             />
           </Flex>
@@ -145,10 +172,16 @@ export function ChangeOwnerModal({
             </Flex>
           )}
 
-          <MyTag mt="4" colorSchema="blue">
-            <Icon name="common/info" w="1rem" />
-            <Box ml="2">{t('common:permission.change_owner_tip')}</Box>
-          </MyTag>
+          <Box mt="4">
+            <Checkbox
+              isChecked={keepAdmin}
+              onChange={(e) => {
+                setKeepAdmin(e.target.checked);
+              }}
+            >
+              {t('user:team.group.keep_admin')}
+            </Checkbox>
+          </Box>
         </Flex>
       </ModalBody>
       <ModalFooter>

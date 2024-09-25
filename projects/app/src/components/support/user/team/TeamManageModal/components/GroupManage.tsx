@@ -1,5 +1,16 @@
 import AvatarGroup from '@fastgpt/web/components/common/Avatar/AvatarGroup';
-import { Box, HStack, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import {
+  Box,
+  HStack,
+  Table,
+  TableContainer,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  useDisclosure
+} from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -13,6 +24,10 @@ import { deleteGroup } from '@/web/support/user/team/group/api';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import MemberTag from '../../Info/MemberTag';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import dynamic from 'next/dynamic';
+import { useState } from 'react';
+
+const ChangeOwnerModal = dynamic(() => import('./GroupTransferOwnerModal'));
 
 function MemberTable({
   onEditGroup,
@@ -23,6 +38,7 @@ function MemberTable({
 }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
+  const [editGroupId, setEditGroupId] = useState<string>();
 
   const { ConfirmModal: ConfirmDeleteGroupModal, openConfirm: openDeleteGroupModal } = useConfirm({
     type: 'delete',
@@ -45,6 +61,17 @@ function MemberTable({
         group.members.find((item) => item.tmbId === userInfo?.team.tmbId)?.role ?? ''
       )
     );
+  };
+
+  const {
+    isOpen: isOpenChangeOwner,
+    onOpen: onOpenChangeOwner,
+    onClose: onCloseChangeOwner
+  } = useDisclosure();
+
+  const onChangeOwner = (groupId: string) => {
+    setEditGroupId(groupId);
+    onOpenChangeOwner();
   };
 
   return (
@@ -135,16 +162,16 @@ function MemberTable({
                             },
                             {
                               label: t('user:team.group.manage_member'),
-                              icon: 'edit',
+                              icon: 'support/team/group',
                               onClick: () => {
                                 onManageMember(group._id);
                               }
                             },
                             {
                               label: t('user:team.group.transfer_owner'),
-                              icon: 'edit',
+                              icon: 'modal/changePer',
                               onClick: () => {
-                                onEditGroup(group._id);
+                                onChangeOwner(group._id);
                               }
                             },
                             {
@@ -167,6 +194,9 @@ function MemberTable({
         </Table>
       </TableContainer>
       <ConfirmDeleteGroupModal />
+      {isOpenChangeOwner && editGroupId && (
+        <ChangeOwnerModal groupId={editGroupId} onClose={onCloseChangeOwner} />
+      )}
     </MyBox>
   );
 }
