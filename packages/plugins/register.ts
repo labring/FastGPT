@@ -24,7 +24,7 @@ const packagePluginList = [
   'duckduckgo/searchNews',
   'duckduckgo/searchVideo',
   'drawing',
-  'drawing/bar'
+  'drawing/baseChart'
 ];
 
 export const list = [...staticPluginList, ...packagePluginList];
