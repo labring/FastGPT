@@ -171,7 +171,7 @@ const ChatHistorySlider = ({
         )}
       </Flex>
 
-      <ScrollData flex={'1 0 0'} px={[2, 5]} overflow={'overlay'}>
+      <ScrollData flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
         {/* chat history */}
         <>
           {concatHistory.map((item, i) => (
