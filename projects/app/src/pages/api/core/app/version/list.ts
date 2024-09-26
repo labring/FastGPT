@@ -1,26 +1,25 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { VersionListItemType } from '@fastgpt/global/core/app/version';
 
-type Props = PaginationProps<{
+export type versionListBody = PaginationProps<{
   appId: string;
 }>;
 
-export type versionListResponse = {
-  _id: string;
-  appId: string;
-  versionName: string;
-  time: Date;
-  isPublish: boolean | undefined;
-  tmbId: string;
-};
+export type versionListResponse = PaginationResponse<VersionListItemType>;
 
-type Response = PaginationResponse<versionListResponse>;
-
-async function handler(req: ApiRequestProps<Props>, res: NextApiResponse<any>): Promise<Response> {
+async function handler(
+  req: ApiRequestProps<versionListBody>,
+  res: NextApiResponse<any>
+): Promise<versionListResponse> {
   const { offset, pageSize, appId } = req.body;
+
+  await authApp({ appId, req, per: WritePermissionVal, authToken: true });
 
   const [result, total] = await Promise.all([
     MongoAppVersion.find(

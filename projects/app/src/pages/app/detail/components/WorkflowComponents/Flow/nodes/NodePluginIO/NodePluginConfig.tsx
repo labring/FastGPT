@@ -10,7 +10,7 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { AppContext } from '../../../../context';
 import { AppChatConfigType, AppDetailType } from '@fastgpt/global/core/app/type';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
-import { useCreation } from 'ahooks';
+import { useCreation, useMount } from 'ahooks';
 import ChatFunctionTip from '@/components/core/app/Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { WorkflowContext } from '../../../context';
@@ -35,7 +35,7 @@ const NodePluginConfig = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     });
   }, [data, appDetail]);
 
-  useCreation(() => {
+  useMount(() => {
     setAppDetail((state) => ({
       ...state,
       chatConfig: {
@@ -43,7 +43,7 @@ const NodePluginConfig = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         ...chatConfig
       }
     }));
-  }, []);
+  });
 
   const componentsProps = useMemo(
     () => ({

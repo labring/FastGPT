@@ -7,38 +7,36 @@ import {
 import { useVirtualScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import CustomRightDrawer from '@fastgpt/web/components/common/MyDrawer/CustomRightDrawer';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, Input } from '@chakra-ui/react';
+import { Box, BoxProps, Button, Flex, Input } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import { SaveSnapshotParams, SnapshotsType } from './WorkflowComponents/context';
+import type { WorkflowSnapshotsType } from './WorkflowComponents/context';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import Tag from '@fastgpt/web/components/common/Tag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { storeEdgesRenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import type { versionListResponse } from '@/pages/api/core/app/version/list';
+import type { AppVersionSchemaType, VersionListItemType } from '@fastgpt/global/core/app/version';
+import type { SimpleAppSnapshotType } from './SimpleApp/useSnapshots';
 
-const PublishHistoriesSlider = ({
+const PublishHistoriesSlider = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
   onClose,
   past,
-  saveSnapshot,
-  resetSnapshot,
-  top,
-  bottom
+  onSwitchTmpVersion,
+  onSwitchCloudVersion,
+  positionStyles
 }: {
   onClose: () => void;
-  past: SnapshotsType[];
-  saveSnapshot: (params: SaveSnapshotParams) => Promise<boolean>;
-  resetSnapshot: (state: SnapshotsType) => void;
-  top?: string | number;
-  bottom?: string | number;
+  past: T[];
+  onSwitchTmpVersion: (params: T, customTitle: string) => void;
+  onSwitchCloudVersion: (appVersion: AppVersionSchemaType) => void;
+  positionStyles?: BoxProps;
 }) => {
   const { t } = useTranslation();
   const [currentTab, setCurrentTab] = useState<'myEdit' | 'teamCloud'>('myEdit');
@@ -69,29 +67,26 @@ const PublishHistoriesSlider = ({
         px={0}
         showMask={false}
         overflow={'unset'}
-        top={top}
-        bottom={bottom}
+        {...positionStyles}
       >
         {currentTab === 'myEdit' ? (
-          <MyEdit past={past} saveSnapshot={saveSnapshot} resetSnapshot={resetSnapshot} />
+          <MyEdit past={past} onSwitchTmpVersion={onSwitchTmpVersion} />
         ) : (
-          <TeamCloud saveSnapshot={saveSnapshot} resetSnapshot={resetSnapshot} />
+          <TeamCloud onSwitchCloudVersion={onSwitchCloudVersion} />
         )}
       </CustomRightDrawer>
     </>
   );
 };
 
-export default React.memo(PublishHistoriesSlider);
+export default PublishHistoriesSlider;
 
-const MyEdit = ({
+const MyEdit = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
   past,
-  saveSnapshot,
-  resetSnapshot
+  onSwitchTmpVersion
 }: {
-  past: SnapshotsType[];
-  saveSnapshot: (params: SaveSnapshotParams) => Promise<boolean>;
-  resetSnapshot: (state: SnapshotsType) => void;
+  past: T[];
+  onSwitchTmpVersion: (params: T, customTitle: string) => void;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -107,24 +102,14 @@ const MyEdit = ({
             onClick={async () => {
               const initialSnapshot = past[past.length - 1];
 
-              const res = await saveSnapshot({
-                pastNodes: initialSnapshot.nodes,
-                pastEdges: initialSnapshot.edges,
-                chatConfig: initialSnapshot.chatConfig,
-                customTitle: t(`app:app.version_initial_copy`)
-              });
-
-              if (res) {
-                resetSnapshot(initialSnapshot);
-              }
-
+              onSwitchTmpVersion(initialSnapshot, t(`app:version_initial_copy`));
               toast({
                 title: t('workflow:workflow.Switch_success'),
                 status: 'success'
               });
             }}
           >
-            {t('app:app.version_back')}
+            {t('app:version_back')}
           </Button>
         </Box>
       )}
@@ -142,17 +127,8 @@ const MyEdit = ({
               _hover={{
                 bg: 'primary.50'
               }}
-              onClick={async () => {
-                const res = await saveSnapshot({
-                  pastNodes: item.nodes,
-                  pastEdges: item.edges,
-                  chatConfig: item.chatConfig,
-                  customTitle: `${t('app:app.version_copy')}-${item.title}`
-                });
-                if (res) {
-                  resetSnapshot(item);
-                }
-
+              onClick={() => {
+                onSwitchTmpVersion(item, `${t('app:version_copy')}-${item.title}`);
                 toast({
                   title: t('workflow:workflow.Switch_success'),
                   status: 'success'
@@ -201,18 +177,16 @@ const MyEdit = ({
 };
 
 const TeamCloud = ({
-  saveSnapshot,
-  resetSnapshot
+  onSwitchCloudVersion
 }: {
-  saveSnapshot: (params: SaveSnapshotParams) => Promise<boolean>;
-  resetSnapshot: (state: SnapshotsType) => void;
+  onSwitchCloudVersion: (appVersion: AppVersionSchemaType) => void;
 }) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { loadAndGetTeamMembers } = useUserStore();
   const { feConfigs } = useSystemStore();
 
-  const { scrollDataList, ScrollList, isLoading, fetchData } = useVirtualScrollPagination(
+  const { scrollDataList, ScrollList, isLoading, fetchData, setData } = useVirtualScrollPagination(
     getWorkflowVersionList,
     {
       itemHeight: 40,
@@ -230,34 +204,35 @@ const TeamCloud = ({
   const [editIndex, setEditIndex] = useState<number | undefined>(undefined);
   const [hoveredIndex, setHoveredIndex] = useState<number | undefined>(undefined);
 
-  const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
 
   const { runAsync: onChangeVersion, loading: isLoadingVersion } = useRequest2(
-    async (versionItem: versionListResponse) => {
+    async (versionItem: VersionListItemType) => {
       const versionDetail = await getAppVersionDetail(versionItem._id, versionItem.appId);
 
       if (!versionDetail) return;
 
-      const state = {
-        nodes: versionDetail.nodes?.map((item) => storeNode2FlowNode({ item, t })),
-        edges: versionDetail.edges?.map((item) => storeEdgesRenderEdge({ edge: item })),
-        title: versionItem.versionName,
-        chatConfig: versionDetail.chatConfig
-      };
-
-      await saveSnapshot({
-        pastNodes: state.nodes,
-        pastEdges: state.edges,
-        chatConfig: state.chatConfig,
-        customTitle: `${t('app:app.version_copy')}-${state.title}`
-      });
-
-      resetSnapshot(state);
+      onSwitchCloudVersion(versionDetail);
       toast({
         title: t('workflow:workflow.Switch_success'),
         status: 'success'
       });
+    }
+  );
+
+  const { runAsync: onUpdateVersion, loading: isEditing } = useRequest2(
+    async (item: VersionListItemType, name: string) => {
+      await updateAppVersion({
+        appId: item.appId,
+        versionName: name,
+        versionId: item._id
+      });
+      setData((state) =>
+        state.map((version) =>
+          version._id === item._id ? { ...version, versionName: name } : version
+        )
+      );
+      setEditIndex(undefined);
     }
   );
 
@@ -361,16 +336,12 @@ const TeamCloud = ({
                   h={8}
                   defaultValue={item.versionName || formatTime2YMDHMS(item.time)}
                   onClick={(e) => e.stopPropagation()}
-                  onBlur={async (e) => {
-                    setIsEditing(true);
-                    await updateAppVersion({
-                      appId: item.appId,
-                      versionName: e.target.value,
-                      versionId: item._id
-                    });
-                    await fetchData();
-                    setEditIndex(undefined);
-                    setIsEditing(false);
+                  onBlur={(e) => onUpdateVersion(item, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      // @ts-ignore
+                      onUpdateVersion(item, e.target.value);
+                    }
                   }}
                 />
               </MyBox>

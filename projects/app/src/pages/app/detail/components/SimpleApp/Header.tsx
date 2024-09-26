@@ -20,32 +20,30 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import SaveButton from '../Workflow/components/SaveButton';
-import dynamic from 'next/dynamic';
-import { useDebounceEffect } from 'ahooks';
-import { InitProps, SnapshotsType } from '../WorkflowComponents/context';
+import { useBoolean, useDebounceEffect } from 'ahooks';
 import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
 import {
-  compareSnapshot,
-  storeEdgesRenderEdge,
-  storeNode2FlowNode
-} from '@/web/core/workflow/utils';
-import { uiWorkflow2StoreWorkflow } from '../WorkflowComponents/utils';
-import { SaveSnapshotFnType } from './useSnapshots';
-
-const PublishHistories = dynamic(() => import('../PublishHistoriesSlider'));
+  compareSimpleAppSnapshot,
+  onSaveSnapshotFnType,
+  SimpleAppSnapshotType
+} from './useSnapshots';
+import PublishHistories from '../PublishHistoriesSlider';
+import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 
 const Header = ({
+  forbiddenSaveSnapshot,
   appForm,
   setAppForm,
   past,
   setPast,
   saveSnapshot
 }: {
+  forbiddenSaveSnapshot: React.MutableRefObject<boolean>;
   appForm: AppSimpleEditFormType;
   setAppForm: (form: AppSimpleEditFormType) => void;
-  past: SnapshotsType[];
-  setPast: (value: React.SetStateAction<SnapshotsType[]>) => void;
-  saveSnapshot: SaveSnapshotFnType;
+  past: SimpleAppSnapshotType[];
+  setPast: (value: React.SetStateAction<SimpleAppSnapshotType[]>) => void;
+  saveSnapshot: onSaveSnapshotFnType;
 }) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -101,30 +99,43 @@ const Header = ({
     }
   );
 
-  const [historiesDefaultData, setHistoriesDefaultData] = useState<InitProps>();
+  const [isShowHistories, { setTrue: setIsShowHistories, setFalse: closeHistories }] =
+    useBoolean(false);
 
-  const resetSnapshot = useCallback(
-    (data: SnapshotsType) => {
-      const storeWorkflow = uiWorkflow2StoreWorkflow(data);
-      const currentAppForm = appWorkflow2Form({ ...storeWorkflow, chatConfig: data.chatConfig });
+  const onSwitchTmpVersion = useCallback(
+    (data: SimpleAppSnapshotType, customTitle: string) => {
+      setAppForm(data.appForm);
 
-      setAppForm(currentAppForm);
-    },
-    [setAppForm]
-  );
+      // Remove multiple "copy-"
+      const copyText = t('app:version_copy');
+      const regex = new RegExp(`(${copyText}-)\\1+`, 'g');
+      const title = customTitle.replace(regex, `$1`);
 
-  // Save snapshot to local
-  useDebounceEffect(
-    () => {
-      const data = form2AppWorkflow(appForm, t);
-
-      saveSnapshot({
-        pastNodes: data.nodes?.map((item) => storeNode2FlowNode({ item, t })),
-        chatConfig: data.chatConfig
+      return saveSnapshot({
+        appForm: data.appForm,
+        title
       });
     },
-    [appForm],
-    { wait: 500 }
+    [saveSnapshot, setAppForm, t]
+  );
+  const onSwitchCloudVersion = useCallback(
+    (appVersion: AppVersionSchemaType) => {
+      const appForm = appWorkflow2Form({
+        nodes: appVersion.nodes,
+        chatConfig: appVersion.chatConfig
+      });
+
+      const res = saveSnapshot({
+        appForm,
+        title: `${t('app:version_copy')}-${appVersion.versionName}`
+      });
+      forbiddenSaveSnapshot.current = true;
+
+      setAppForm(appForm);
+
+      return res;
+    },
+    [forbiddenSaveSnapshot, saveSnapshot, setAppForm, t]
   );
 
   // Check if the workflow is published
@@ -132,20 +143,7 @@ const Header = ({
   useDebounceEffect(
     () => {
       const savedSnapshot = past.find((snapshot) => snapshot.isSaved);
-      const editFormData = form2AppWorkflow(appForm, t);
-      console.log(savedSnapshot?.nodes, editFormData.chatConfig);
-      const val = compareSnapshot(
-        {
-          nodes: savedSnapshot?.nodes,
-          edges: [],
-          chatConfig: savedSnapshot?.chatConfig
-        },
-        {
-          nodes: editFormData.nodes?.map((item) => storeNode2FlowNode({ item, t })),
-          edges: [],
-          chatConfig: editFormData.chatConfig
-        }
-      );
+      const val = compareSimpleAppSnapshot(savedSnapshot?.appForm, appForm);
       setIsPublished(val);
     },
     [past, allDatasets],
@@ -176,7 +174,7 @@ const Header = ({
         )}
         {currentTab === TabEnum.appEdit && (
           <Flex alignItems={'center'}>
-            {!historiesDefaultData && (
+            {!isShowHistories && (
               <>
                 {isPc && (
                   <MyTag
@@ -204,14 +202,7 @@ const Header = ({
                   size={'sm'}
                   w={'30px'}
                   variant={'whitePrimary'}
-                  onClick={() => {
-                    const { nodes, edges } = form2AppWorkflow(appForm, t);
-                    setHistoriesDefaultData({
-                      nodes,
-                      edges,
-                      chatConfig: appForm.chatConfig
-                    });
-                  }}
+                  onClick={setIsShowHistories}
                 />
                 <SaveButton isLoading={loading} onClickSave={onClickSave} />
               </>
@@ -220,16 +211,16 @@ const Header = ({
         )}
       </Flex>
 
-      {historiesDefaultData && currentTab === TabEnum.appEdit && (
-        <PublishHistories
-          onClose={() => {
-            setHistoriesDefaultData(undefined);
-          }}
+      {isShowHistories && currentTab === TabEnum.appEdit && (
+        <PublishHistories<SimpleAppSnapshotType>
+          onClose={closeHistories}
           past={past}
-          saveSnapshot={saveSnapshot}
-          resetSnapshot={resetSnapshot}
-          top={14}
-          bottom={3}
+          onSwitchTmpVersion={onSwitchTmpVersion}
+          onSwitchCloudVersion={onSwitchCloudVersion}
+          positionStyles={{
+            top: 14,
+            bottom: 3
+          }}
         />
       )}
     </Box>
