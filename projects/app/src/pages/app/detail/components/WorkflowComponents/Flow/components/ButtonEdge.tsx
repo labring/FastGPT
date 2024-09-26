@@ -1,10 +1,11 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { BezierEdge, getBezierPath, EdgeLabelRenderer, EdgeProps } from 'reactflow';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
+import { useThrottleEffect } from 'ahooks';
 
 const ButtonEdge = (props: EdgeProps) => {
   const { nodes, nodeList, setEdges, workflowDebugData, hoverEdgeId } = useContextSelector(
@@ -28,13 +29,11 @@ const ButtonEdge = (props: EdgeProps) => {
     style
   } = props;
 
+  // If parentNode is folded, the edge will not be displayed
   const parentNode = useMemo(() => {
-    for (const node of nodeList) {
-      if ((node.nodeId === source || node.nodeId === target) && node.parentNodeId) {
-        return nodeList.find((parent) => parent.nodeId === node.parentNodeId);
-      }
-    }
-    return undefined;
+    return nodeList.find(
+      (node) => (node.nodeId === source || node.nodeId === target) && node.parentNodeId
+    );
   }, [nodeList, source, target]);
 
   const defaultZIndex = useMemo(
@@ -52,12 +51,20 @@ const ButtonEdge = (props: EdgeProps) => {
     [setEdges]
   );
 
-  const highlightEdge = useMemo(() => {
-    const connectNode = nodes.find((node) => {
-      return node.selected && (node.id === props.source || node.id === props.target);
-    });
-    return !!(connectNode || selected);
-  }, [nodes, props.source, props.target, selected]);
+  // Selected edge or source/target node selected
+  const [highlightEdge, setHighlightEdge] = useState(false);
+  useThrottleEffect(
+    () => {
+      const connectNode = nodes.find((node) => {
+        return node.selected && (node.id === props.source || node.id === props.target);
+      });
+      setHighlightEdge(!!connectNode || !!selected);
+    },
+    [nodes, selected, props.source, props.target],
+    {
+      wait: 100
+    }
+  );
 
   const [, labelX, labelY] = getBezierPath({
     sourceX,

@@ -429,7 +429,6 @@
   "core.chat.response.Read complete response tips": "点击查看详细流程",
   "core.chat.response.Tool call tokens": "工具调用 tokens 消耗",
   "core.chat.response.context total length": "上下文总长度",
-  "core.chat.response.form_input_result": "表单输入结果",
   "core.chat.response.loop_input": "输入数组",
   "core.chat.response.loop_input_element": "输入数组元素",
   "core.chat.response.loop_output": "输出数组",
