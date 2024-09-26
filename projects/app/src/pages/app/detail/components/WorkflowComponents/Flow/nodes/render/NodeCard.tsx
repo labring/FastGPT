@@ -9,7 +9,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
-import { ToolTargetHandle } from './Handle/ToolHandle';
+import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
@@ -64,6 +64,24 @@ const NodeCard = (props: Props) => {
     debugResult,
     isFolded
   } = props;
+  console.log('isTool', {
+    children,
+    avatar,
+    name,
+    intro,
+    minW,
+    maxW,
+    minH,
+    w,
+    h,
+    nodeId,
+    selected,
+    menuForbid,
+    isTool,
+    isError,
+    debugResult,
+    isFolded
+  });
 
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const setHoverNodeId = useContextSelector(WorkflowContext, (v) => v.setHoverNodeId);
@@ -165,31 +183,38 @@ const NodeCard = (props: Props) => {
 
           {/* avatar and name */}
           <Flex alignItems={'center'}>
-            <Box
-              mr={2}
-              cursor={'pointer'}
-              rounded={'sm'}
-              _hover={{ bg: 'myGray.200' }}
-              onClick={() => {
-                onChangeNode({
-                  nodeId,
-                  type: 'attr',
-                  key: 'isFolded',
-                  value: !isFolded
-                });
-              }}
-            >
-              {!isFolded ? (
-                <MyIcon name={'core/chat/chevronDown'} w={'24px'} h={'24px'} color={'myGray.500'} />
-              ) : (
-                <MyIcon
-                  name={'core/chat/chevronRight'}
-                  w={'24px'}
-                  h={'24px'}
-                  color={'myGray.500'}
-                />
-              )}
-            </Box>
+            {node?.flowNodeType !== FlowNodeTypeEnum.stopTool && (
+              <Box
+                mr={2}
+                cursor={'pointer'}
+                rounded={'sm'}
+                _hover={{ bg: 'myGray.200' }}
+                onClick={() => {
+                  onChangeNode({
+                    nodeId,
+                    type: 'attr',
+                    key: 'isFolded',
+                    value: !isFolded
+                  });
+                }}
+              >
+                {!isFolded ? (
+                  <MyIcon
+                    name={'core/chat/chevronDown'}
+                    w={'24px'}
+                    h={'24px'}
+                    color={'myGray.500'}
+                  />
+                ) : (
+                  <MyIcon
+                    name={'core/chat/chevronRight'}
+                    w={'24px'}
+                    h={'24px'}
+                    color={'myGray.500'}
+                  />
+                )}
+              </Box>
+            )}
             <Avatar src={avatar} borderRadius={'sm'} objectFit={'contain'} w={'30px'} h={'30px'} />
             <Box ml={3} fontSize={'md'} fontWeight={'medium'}>
               {t(name as any)}
@@ -272,6 +297,8 @@ const NodeCard = (props: Props) => {
   }, [
     showToolHandle,
     nodeId,
+    node?.flowNodeType,
+    isFolded,
     avatar,
     t,
     name,
@@ -283,10 +310,9 @@ const NodeCard = (props: Props) => {
     nodeList,
     intro,
     ConfirmSyncModal,
-    onOpenCustomTitleModal,
     onChangeNode,
-    toast,
-    isFolded
+    onOpenCustomTitleModal,
+    toast
   ]);
   const RenderHandle = useMemo(() => {
     return (
@@ -296,6 +322,10 @@ const NodeCard = (props: Props) => {
       </>
     );
   }, [nodeId, isFolded]);
+  const RenderToolHandle = useMemo(
+    () => (node?.flowNodeType === FlowNodeTypeEnum.tools ? <ToolSourceHandle /> : null),
+    [node?.flowNodeType]
+  );
 
   return (
     <Flex
@@ -337,6 +367,7 @@ const NodeCard = (props: Props) => {
       {Header}
       {!isFolded && children}
       {RenderHandle}
+      {RenderToolHandle}
 
       <EditTitleModal maxLength={20} />
     </Flex>
