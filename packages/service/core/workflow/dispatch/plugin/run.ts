@@ -47,6 +47,16 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
   const plugin = await getChildAppRuntimeById(pluginId);
 
+  const outputFilterMap = plugin.nodes
+    .find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginOutput)!
+    .inputs.reduce(
+      (acc, cur) => {
+        acc[cur.key] = cur.isToolOutput === false ? false : true;
+        return acc;
+      },
+      {} as Record<string, boolean>
+    );
+
   const runtimeNodes = storeNodes2RuntimeNodes(
     plugin.nodes,
     getWorkflowEntryNodeIds(plugin.nodes)
@@ -130,7 +140,17 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         tokens: 0
       }
     ],
-    [DispatchNodeResponseKeyEnum.toolResponses]: output?.pluginOutput ? output.pluginOutput : {},
+    [DispatchNodeResponseKeyEnum.toolResponses]: output?.pluginOutput
+      ? Object.keys(output.pluginOutput)
+          .filter((key) => outputFilterMap[key])
+          .reduce(
+            (acc, key) => {
+              acc[key] = output.pluginOutput![key];
+              return acc;
+            },
+            {} as Record<string, any>
+          )
+      : {},
     ...(output ? output.pluginOutput : {})
   };
 };

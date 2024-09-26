@@ -54,6 +54,7 @@ export type FlowNodeInputItemType = InputComponentPropsType & {
   // render components params
   canEdit?: boolean; // dynamic inputs
   isPro?: boolean; // Pro version field
+  isToolOutput?: boolean;
 };
 
 export type FlowNodeOutputItemType = {

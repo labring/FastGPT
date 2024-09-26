@@ -25,13 +25,11 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useI18n } from '@/web/context/I18n';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { isWorkflowStartOutput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
-import { defaultInput } from '../render/RenderInput/FieldEditModal';
+import PluginOutputEditModal, { defaultInput } from './PluginOutputEditModal';
 
-const FieldEditModal = dynamic(() => import('../render/RenderInput/FieldEditModal'));
-
-const customInputConfig = {
+const customOutputConfig = {
   selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
-  showDescription: true,
+
   showDefaultValue: true
 };
 
@@ -78,8 +76,8 @@ const NodePluginOutput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         </Box>
       </Container>
       {!!editField && (
-        <FieldEditModal
-          customInputConfig={customInputConfig}
+        <PluginOutputEditModal
+          customOutputConfig={customOutputConfig}
           defaultInput={editField}
           keys={inputs.map((input) => input.key)}
           onClose={() => setEditField(undefined)}
@@ -171,31 +169,46 @@ function Reference({
 
   return (
     <>
-      <Flex alignItems={'center'} mb={1}>
-        <FormLabel required={input.required}>{input.label}</FormLabel>
-        {input.description && <QuestionTip ml={0.5} label={input.description}></QuestionTip>}
-        {/* value */}
-        <ValueTypeLabel valueType={input.valueType} valueDesc={input.valueDesc} />
+      <Flex alignItems={'center'} justify={'space-between'} mb={1}>
+        <Flex>
+          <FormLabel required={input.required}>{input.label}</FormLabel>
+          {input.description && <QuestionTip ml={0.5} label={input.description}></QuestionTip>}
+          {/* value */}
+          <ValueTypeLabel valueType={input.valueType} valueDesc={input.valueDesc} />
 
-        <MyIcon
-          name={'common/settingLight'}
-          w={'14px'}
-          cursor={'pointer'}
-          ml={3}
-          color={'myGray.600'}
-          _hover={{ color: 'primary.500' }}
-          onClick={() => setEditField(input)}
-        />
+          <MyIcon
+            name={'common/settingLight'}
+            w={'14px'}
+            cursor={'pointer'}
+            ml={3}
+            color={'myGray.600'}
+            _hover={{ color: 'primary.500' }}
+            onClick={() => setEditField(input)}
+          />
 
+          <MyIcon
+            className="delete"
+            name={'delete'}
+            w={'14px'}
+            color={'myGray.500'}
+            cursor={'pointer'}
+            ml={2}
+            _hover={{ color: 'red.600' }}
+            onClick={openConfirm(onDel)}
+          />
+        </Flex>
         <MyIcon
-          className="delete"
-          name={'delete'}
+          name={
+            input.isToolOutput !== false
+              ? 'core/workflow/template/toolkitActive'
+              : 'core/workflow/template/toolkitInactive'
+          }
           w={'14px'}
           color={'myGray.500'}
           cursor={'pointer'}
-          ml={2}
+          mr={2}
           _hover={{ color: 'red.600' }}
-          onClick={openConfirm(onDel)}
+          onClick={() => setEditField(input)}
         />
       </Flex>
       <ReferSelector
@@ -206,9 +219,9 @@ function Reference({
       />
 
       {!!editField && (
-        <FieldEditModal
+        <PluginOutputEditModal
           defaultInput={editField}
-          customInputConfig={customInputConfig}
+          customOutputConfig={customOutputConfig}
           keys={keys}
           onClose={() => setEditField(undefined)}
           onSubmit={onUpdateField}
