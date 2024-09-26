@@ -1,56 +1,86 @@
 import { useLocalStorageState, useMemoizedFn } from 'ahooks';
-import { SaveSnapshotParams, SnapshotsType } from '../WorkflowComponents/context';
-import { SetStateAction, useEffect } from 'react';
-import { compareSnapshot } from '@/web/core/workflow/utils';
+import { SetStateAction, useEffect, useRef } from 'react';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import { Node } from 'reactflow';
+import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { isEqual } from 'lodash';
 
-export type SaveSnapshotFnType = (
-  props: SaveSnapshotParams & {
-    isSaved?: boolean;
+export type SimpleAppSnapshotType = {
+  appForm: AppSimpleEditFormType;
+  title: string;
+  isSaved?: boolean;
+};
+export type onSaveSnapshotFnType = (props: {
+  appForm: AppSimpleEditFormType;
+  title?: string;
+  isSaved?: boolean;
+}) => Promise<boolean>;
+
+export const compareSimpleAppSnapshot = (
+  appForm1?: AppSimpleEditFormType,
+  appForm2?: AppSimpleEditFormType
+) => {
+  if (
+    appForm1?.chatConfig &&
+    appForm2?.chatConfig &&
+    !isEqual(
+      {
+        welcomeText: appForm1.chatConfig?.welcomeText || '',
+        variables: appForm1.chatConfig?.variables || [],
+        questionGuide: appForm1.chatConfig?.questionGuide || false,
+        ttsConfig: appForm1.chatConfig?.ttsConfig || undefined,
+        whisperConfig: appForm1.chatConfig?.whisperConfig || undefined,
+        scheduledTriggerConfig: appForm1.chatConfig?.scheduledTriggerConfig || undefined,
+        chatInputGuide: appForm1.chatConfig?.chatInputGuide || undefined,
+        fileSelectConfig: appForm1.chatConfig?.fileSelectConfig || undefined,
+        instruction: appForm1.chatConfig?.instruction || ''
+      },
+      {
+        welcomeText: appForm2.chatConfig?.welcomeText || '',
+        variables: appForm2.chatConfig?.variables || [],
+        questionGuide: appForm2.chatConfig?.questionGuide || false,
+        ttsConfig: appForm2.chatConfig?.ttsConfig || undefined,
+        whisperConfig: appForm2.chatConfig?.whisperConfig || undefined,
+        scheduledTriggerConfig: appForm2.chatConfig?.scheduledTriggerConfig || undefined,
+        chatInputGuide: appForm2.chatConfig?.chatInputGuide || undefined,
+        fileSelectConfig: appForm2.chatConfig?.fileSelectConfig || undefined,
+        instruction: appForm2.chatConfig?.instruction || ''
+      }
+    )
+  ) {
+    console.log('chatConfig not equal');
+    return false;
   }
-) => Promise<boolean>;
 
-const useSnapshots = (appId: string) => {
-  const [past, setPast] = useLocalStorageState<SnapshotsType[]>(`${appId}-past-simple`, {
-    defaultValue: [],
-    listenStorageChange: true
-  }) as [SnapshotsType[], (value: SetStateAction<SnapshotsType[]>) => void];
+  return isEqual(appForm1, appForm2);
+};
 
-  const saveSnapshot: SaveSnapshotFnType = useMemoizedFn(
-    async ({ pastNodes, chatConfig, customTitle, isSaved }) => {
-      if (!pastNodes) return false;
+export const useSimpleAppSnapshots = (appId: string) => {
+  const forbiddenSaveSnapshot = useRef(false);
+  const [past, setPast] = useLocalStorageState<SimpleAppSnapshotType[]>(`${appId}-past-simple`, {
+    defaultValue: []
+  }) as [SimpleAppSnapshotType[], (value: SetStateAction<SimpleAppSnapshotType[]>) => void];
 
-      const pastState = past[0];
-
-      const isPastEqual = compareSnapshot(
-        {
-          nodes: pastNodes,
-          edges: [],
-          chatConfig: chatConfig
-        },
-        {
-          nodes: pastState?.nodes,
-          edges: pastState?.edges,
-          chatConfig: pastState?.chatConfig
-        }
-      );
-      if (isPastEqual) return false;
-
-      setPast((past) => [
-        {
-          nodes: pastNodes,
-          edges: [],
-          title: customTitle || formatTime2YMDHMS(new Date()),
-          chatConfig,
-          isSaved
-        },
-        ...past.slice(0, 199)
-      ]);
-      return true;
+  const saveSnapshot: onSaveSnapshotFnType = useMemoizedFn(async ({ appForm, title, isSaved }) => {
+    if (forbiddenSaveSnapshot.current) {
+      forbiddenSaveSnapshot.current = false;
+      return false;
     }
-  );
+
+    const pastState = past[0];
+
+    const isPastEqual = compareSimpleAppSnapshot(pastState?.appForm, appForm);
+    if (isPastEqual) return false;
+
+    setPast((past) => [
+      {
+        appForm,
+        title: title || formatTime2YMDHMS(new Date()),
+        isSaved
+      },
+      ...past.slice(0, 199)
+    ]);
+    return true;
+  });
 
   // remove other app's snapshot
   useEffect(() => {
@@ -64,7 +94,7 @@ const useSnapshots = (appId: string) => {
     });
   }, [appId]);
 
-  return { past, setPast, saveSnapshot };
+  return { forbiddenSaveSnapshot, past, setPast, saveSnapshot };
 };
 
-export default useSnapshots;
+export default <></>;

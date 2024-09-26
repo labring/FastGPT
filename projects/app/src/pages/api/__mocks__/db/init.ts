@@ -43,6 +43,4 @@ export const initMockData = async () => {
   root.tmbId = rootTeamMember._id;
   root.teamId = rootTeam._id;
   root.appId = rootApp._id;
-
-  await Promise.all([rootUser.save(), rootTeam.save(), rootTeamMember.save(), rootApp.save()]);
 };

@@ -39,36 +39,25 @@ import { defaultRunningStatus } from './constants';
 import { checkNodeRunStatus } from '@fastgpt/global/core/workflow/runtime/utils';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { AppChatConfigType, AppSchema } from '@fastgpt/global/core/app/type';
+import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { AppContext } from '@/pages/app/detail/components/context';
 import ChatTest from './Flow/ChatTest';
 import { useDisclosure } from '@chakra-ui/react';
 import { uiWorkflow2StoreWorkflow } from './utils';
 import { useTranslation } from 'next-i18next';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { formatTime2YMDHMS, formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { cloneDeep } from 'lodash';
 import { SetState } from 'ahooks/lib/createUseStorageState';
+import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
-export type SnapshotsType = {
+export type WorkflowSnapshotsType = {
   nodes: Node[];
   edges: Edge[];
   title: string;
   chatConfig: AppChatConfigType;
   isSaved?: boolean;
-};
-export type SaveSnapshotParams = {
-  pastNodes?: Node[];
-  pastEdges?: Edge[];
-  customTitle?: string;
-  chatConfig: AppChatConfigType;
-};
-export type InitProps = {
-  nodes: AppSchema['modules'];
-  edges: AppSchema['edges'];
-  chatConfig: AppSchema['chatConfig'];
 };
 
 type WorkflowContextType = {
@@ -103,22 +92,11 @@ type WorkflowContextType = {
   hoverEdgeId?: string;
   setHoverEdgeId: React.Dispatch<React.SetStateAction<string | undefined>>;
 
-  // snapshots
-  saveSnapshot: ({
-    pastNodes,
-    pastEdges,
-    customTitle,
-    chatConfig
-  }: {
-    pastNodes?: Node[];
-    pastEdges?: Edge[];
-    customTitle?: string;
-    chatConfig?: AppChatConfigType;
-  }) => Promise<boolean>;
-  resetSnapshot: (state: SnapshotsType) => void;
-  past: SnapshotsType[];
-  setPast: Dispatch<SetStateAction<SnapshotsType[]>>;
-  future: SnapshotsType[];
+  onSwitchTmpVersion: (data: WorkflowSnapshotsType, customTitle: string) => boolean;
+  onSwitchCloudVersion: (appVersion: AppVersionSchemaType) => boolean;
+  past: WorkflowSnapshotsType[];
+  setPast: Dispatch<SetStateAction<WorkflowSnapshotsType[]>>;
+  future: WorkflowSnapshotsType[];
   redo: () => void;
   undo: () => void;
   canRedo: boolean;
@@ -179,8 +157,8 @@ type WorkflowContextType = {
   onStopNodeDebug: () => void;
 
   // version history
-  historiesDefaultData?: InitProps;
-  setHistoriesDefaultData: React.Dispatch<React.SetStateAction<undefined | InitProps>>;
+  showHistoryModal: boolean;
+  setShowHistoryModal: React.Dispatch<React.SetStateAction<boolean>>;
 
   // chat test
   setWorkflowTestData: React.Dispatch<
@@ -306,17 +284,11 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     | undefined {
     throw new Error('Function not implemented.');
   },
-  historiesDefaultData: undefined,
-  setHistoriesDefaultData: function (value: React.SetStateAction<InitProps | undefined>): void {
+  showHistoryModal: false,
+  setShowHistoryModal: function (value: React.SetStateAction<boolean>): void {
     throw new Error('Function not implemented.');
   },
   getNodeDynamicInputs: function (nodeId: string): FlowNodeInputItemType[] {
-    throw new Error('Function not implemented.');
-  },
-  saveSnapshot: function (): Promise<boolean> {
-    throw new Error('Function not implemented.');
-  },
-  resetSnapshot: function (): void {
     throw new Error('Function not implemented.');
   },
   past: [],
@@ -334,6 +306,12 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   canUndo: false,
   workflowControlMode: 'drag',
   setWorkflowControlMode: function (value?: SetState<'drag' | 'select'> | undefined): void {
+    throw new Error('Function not implemented.');
+  },
+  onSwitchTmpVersion: function (data: WorkflowSnapshotsType, customTitle: string): boolean {
+    throw new Error('Function not implemented.');
+  },
+  onSwitchCloudVersion: function (appVersion: AppVersionSchemaType): boolean {
     throw new Error('Function not implemented.');
   }
 });
@@ -792,16 +770,15 @@ const WorkflowContextProvider = ({
   }, [workflowTestData]);
 
   /* snapshots */
-  const [past, setPast] = useLocalStorageState<SnapshotsType[]>(`${appId}-past`, {
-    defaultValue: [],
-    listenStorageChange: true
-  }) as [SnapshotsType[], (value: SetStateAction<SnapshotsType[]>) => void];
-  const [future, setFuture] = useLocalStorageState<SnapshotsType[]>(`${appId}-future`, {
-    defaultValue: [],
-    listenStorageChange: true
-  }) as [SnapshotsType[], (value: SetStateAction<SnapshotsType[]>) => void];
+  const forbiddenSaveSnapshot = useRef(false);
+  const [past, setPast] = useLocalStorageState<WorkflowSnapshotsType[]>(`${appId}-past`, {
+    defaultValue: []
+  }) as [WorkflowSnapshotsType[], (value: SetStateAction<WorkflowSnapshotsType[]>) => void];
+  const [future, setFuture] = useLocalStorageState<WorkflowSnapshotsType[]>(`${appId}-future`, {
+    defaultValue: []
+  }) as [WorkflowSnapshotsType[], (value: SetStateAction<WorkflowSnapshotsType[]>) => void];
 
-  const resetSnapshot = useMemoizedFn((state: SnapshotsType) => {
+  const resetSnapshot = useMemoizedFn((state: Omit<WorkflowSnapshotsType, 'title' | 'isSaved'>) => {
     setNodes(state.nodes);
     setEdges(state.edges);
     setAppDetail((detail) => ({
@@ -809,30 +786,33 @@ const WorkflowContextProvider = ({
       chatConfig: state.chatConfig
     }));
   });
-
-  const saveSnapshot = useMemoizedFn(
-    async ({
+  const pushPastSnapshot = useMemoizedFn(
+    ({
       pastNodes,
       pastEdges,
       customTitle,
       chatConfig,
       isSaved
     }: {
-      pastNodes?: Node[];
-      pastEdges?: Edge[];
+      pastNodes: Node[];
+      pastEdges: Edge[];
       customTitle?: string;
-      chatConfig?: AppChatConfigType;
+      chatConfig: AppChatConfigType;
       isSaved?: boolean;
     }) => {
+      if (!pastNodes || !pastEdges || !chatConfig) return false;
+
+      if (forbiddenSaveSnapshot.current) {
+        forbiddenSaveSnapshot.current = false;
+        return false;
+      }
+
       const pastState = past[0];
-      const currentNodes = pastNodes || nodes;
-      const currentEdges = pastEdges || edges;
-      const currentChatConfig = chatConfig || appDetail.chatConfig;
       const isPastEqual = compareSnapshot(
         {
-          nodes: currentNodes,
-          edges: currentEdges,
-          chatConfig: currentChatConfig
+          nodes: pastNodes,
+          edges: pastEdges,
+          chatConfig: chatConfig
         },
         {
           nodes: pastState?.nodes,
@@ -843,28 +823,60 @@ const WorkflowContextProvider = ({
 
       if (isPastEqual) return false;
 
+      setFuture([]);
       setPast((past) => [
         {
-          nodes: currentNodes,
-          edges: currentEdges,
+          nodes: pastNodes,
+          edges: pastEdges,
           title: customTitle || formatTime2YMDHMS(new Date()),
-          chatConfig: currentChatConfig,
+          chatConfig,
           isSaved
         },
         ...past.slice(0, 199)
       ]);
 
-      setFuture([]);
-
       return true;
     }
   );
+  const onSwitchTmpVersion = useMemoizedFn((params: WorkflowSnapshotsType, customTitle: string) => {
+    // Remove multiple "copy-"
+    const copyText = t('app:version_copy');
+    const regex = new RegExp(`(${copyText}-)\\1+`, 'g');
+    const title = customTitle.replace(regex, `$1`);
+
+    resetSnapshot(params);
+
+    return pushPastSnapshot({
+      pastNodes: params.nodes,
+      pastEdges: params.edges,
+      chatConfig: params.chatConfig,
+      customTitle: title
+    });
+  });
+  const onSwitchCloudVersion = useMemoizedFn((appVersion: AppVersionSchemaType) => {
+    const nodes = appVersion.nodes.map((item) => storeNode2FlowNode({ item, t }));
+    const edges = appVersion.edges.map((item) => storeEdgesRenderEdge({ edge: item }));
+    const chatConfig = appVersion.chatConfig;
+
+    resetSnapshot({
+      nodes,
+      edges,
+      chatConfig
+    });
+    return pushPastSnapshot({
+      pastNodes: nodes,
+      pastEdges: edges,
+      chatConfig,
+      customTitle: `${t('app:version_copy')}-${appVersion.versionName}`
+    });
+  });
 
   // Auto save snapshot
   useDebounceEffect(
     () => {
-      if (!nodes.length) return;
-      saveSnapshot({
+      if (nodes.length === 0 || !appDetail.chatConfig) return;
+
+      pushPastSnapshot({
         pastNodes: nodes,
         pastEdges: edges,
         customTitle: formatTime2YMDHMS(new Date()),
@@ -904,13 +916,22 @@ const WorkflowContextProvider = ({
     });
   }, [appId]);
 
-  const initData = useMemoizedFn(
+  const initData = useCallback(
     async (e: Parameters<WorkflowContextType['initData']>[0], isInit?: boolean) => {
-      /* 
-        Refresh web page, load init
-      */
+      // Refresh web page, load init
       if (isInit && past.length > 0) {
         return resetSnapshot(past[0]);
+      }
+      // If it is the initial data, save the initial snapshot
+      if (isInit && past.length === 0) {
+        pushPastSnapshot({
+          pastNodes: e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [],
+          pastEdges: e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [],
+          customTitle: t(`app:app.version_initial`),
+          chatConfig: appDetail.chatConfig,
+          isSaved: true
+        });
+        forbiddenSaveSnapshot.current = true;
       }
 
       setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || []);
@@ -923,22 +944,21 @@ const WorkflowContextProvider = ({
           chatConfig
         }));
       }
-
-      // If it is the initial data, save the initial snapshot
-      if (isInit) {
-        saveSnapshot({
-          pastNodes: e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [],
-          pastEdges: e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [],
-          customTitle: t(`app:app.version_initial`),
-          chatConfig: appDetail.chatConfig,
-          isSaved: true
-        });
-      }
-    }
+    },
+    [
+      appDetail.chatConfig,
+      past,
+      resetSnapshot,
+      pushPastSnapshot,
+      setAppDetail,
+      setEdges,
+      setNodes,
+      t
+    ]
   );
 
   /* Version histories */
-  const [historiesDefaultData, setHistoriesDefaultData] = useState<InitProps>();
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   /* event bus */
   useEffect(() => {
@@ -990,10 +1010,10 @@ const WorkflowContextProvider = ({
     future,
     undo,
     redo,
-    saveSnapshot,
-    resetSnapshot,
     canUndo: past.length > 1,
     canRedo: !!future.length,
+    onSwitchTmpVersion,
+    onSwitchCloudVersion,
 
     // function
     splitToolInputs,
@@ -1008,8 +1028,8 @@ const WorkflowContextProvider = ({
     onStopNodeDebug,
 
     // version history
-    historiesDefaultData,
-    setHistoriesDefaultData,
+    showHistoryModal,
+    setShowHistoryModal,
 
     // chat test
     setWorkflowTestData
