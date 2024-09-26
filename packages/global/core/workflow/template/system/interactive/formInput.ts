@@ -18,7 +18,7 @@ export const FormInputNode: FlowNodeTemplateType = {
   templateType: FlowNodeTemplateTypeEnum.interactive,
   flowNodeType: FlowNodeTypeEnum.formInput,
   sourceHandle: getHandleConfig(true, true, true, true),
-  targetHandle: getHandleConfig(true, false, true, true),
+  targetHandle: getHandleConfig(true, true, true, true),
   avatar: 'core/workflow/template/formInput',
   name: i18nT('app:workflow.form_input'),
   intro: i18nT(`app:workflow.form_input_tip`),
