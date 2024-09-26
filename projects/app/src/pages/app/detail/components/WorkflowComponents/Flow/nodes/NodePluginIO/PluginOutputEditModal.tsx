@@ -24,6 +24,7 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { useMount } from 'ahooks';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const PluginOutputEditModal = ({
   customOutputConfig,
@@ -167,8 +168,10 @@ const PluginOutputEditModal = ({
             <FormLabel flex={'0 0 70px'}>{t('workflow:input_description')}</FormLabel>
             <Textarea bg={'myGray.50'} {...register('description', {})} />
           </Flex>
-          <Flex mt={3} alignItems={'center'} justifyContent={'space-between'}>
-            <FormLabel>{t('workflow:is_tool_output')}</FormLabel>
+          <Flex mt={3} alignItems={'center'}>
+            <FormLabel>{t('workflow:is_tool_output_label')}</FormLabel>
+            <QuestionTip label={t('workflow:plugin_output_tool')} ml={1} />
+            <Box flex={1} />
             <Switch {...register('isToolOutput')} />
           </Flex>
         </Stack>

@@ -13,9 +13,7 @@ export const ConnectionSourceHandle = ({
   nodeId: string;
   isFoldNode?: boolean;
 }) => {
-  const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+  const { connectingEdge, nodeList, edges } = useContextSelector(WorkflowContext, (ctx) => ctx);
 
   const { showSourceHandle, RightHandle, LeftHandlee, TopHandlee, BottomHandlee } = useMemo(() => {
     const node = nodeList.find((node) => node.nodeId === nodeId);
@@ -32,6 +30,15 @@ export const ConnectionSourceHandle = ({
       const rightTargetConnected = edges.some(
         (edge) => edge.targetHandle === getHandleId(nodeId, 'target', Position.Right)
       );
+
+      /* 
+        If the node is folded, must show the handle
+        hide handle when:
+          - not folded
+          - not node
+          - not sourceHandle
+          - already connected
+      */
       if (!isFoldNode && (!node || !node?.sourceHandle?.right || rightTargetConnected)) return null;
 
       return (

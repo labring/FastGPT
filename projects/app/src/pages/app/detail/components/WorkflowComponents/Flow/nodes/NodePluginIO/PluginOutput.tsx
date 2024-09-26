@@ -26,6 +26,7 @@ import { useI18n } from '@/web/context/I18n';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { isWorkflowStartOutput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import PluginOutputEditModal, { defaultOutput } from './PluginOutputEditModal';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const customOutputConfig = {
   selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
@@ -197,19 +198,21 @@ function Reference({
             onClick={openConfirm(onDel)}
           />
         </Flex>
-        <MyIcon
-          name={
-            input.isToolOutput !== false
-              ? 'core/workflow/template/toolkitActive'
-              : 'core/workflow/template/toolkitInactive'
-          }
-          w={'14px'}
-          color={'myGray.500'}
-          cursor={'pointer'}
-          mr={2}
-          _hover={{ color: 'red.600' }}
-          onClick={() => setEditField(input)}
-        />
+        <MyTooltip label={t('workflow:plugin_output_tool')}>
+          <MyIcon
+            name={
+              input.isToolOutput !== false
+                ? 'core/workflow/template/toolkitActive'
+                : 'core/workflow/template/toolkitInactive'
+            }
+            w={'14px'}
+            color={'myGray.500'}
+            cursor={'pointer'}
+            mr={2}
+            _hover={{ color: 'red.600' }}
+            onClick={() => setEditField(input)}
+          />
+        </MyTooltip>
       </Flex>
       <ReferSelector
         placeholder={t((input.referencePlaceholder as any) || 'select_reference_variable')}

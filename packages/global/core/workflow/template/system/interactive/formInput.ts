@@ -46,8 +46,8 @@ export const FormInputNode: FlowNodeTemplateType = {
       id: NodeOutputKeyEnum.formInputResult,
       key: NodeOutputKeyEnum.formInputResult,
       required: true,
-      label: i18nT('app:workflow.form_input_result'),
-      description: i18nT('app:workflow.form_input_result_tip'),
+      label: i18nT('workflow:form_input_result'),
+      description: i18nT('workflow:form_input_result_tip'),
       valueType: WorkflowIOValueTypeEnum.object,
       type: FlowNodeOutputTypeEnum.static
     }
