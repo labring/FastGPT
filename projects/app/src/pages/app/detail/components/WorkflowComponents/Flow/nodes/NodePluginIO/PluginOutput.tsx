@@ -25,7 +25,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useI18n } from '@/web/context/I18n';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { isWorkflowStartOutput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
-import PluginOutputEditModal, { defaultInput } from './PluginOutputEditModal';
+import PluginOutputEditModal, { defaultOutput } from './PluginOutputEditModal';
 
 const customOutputConfig = {
   selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
@@ -60,7 +60,7 @@ const NodePluginOutput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             leftIcon={<SmallAddIcon />}
             iconSpacing={1}
             size={'sm'}
-            onClick={() => setEditField(defaultInput)}
+            onClick={() => setEditField(defaultOutput)}
           >
             {t('common:common.Add New')}
           </Button>
@@ -78,7 +78,7 @@ const NodePluginOutput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       {!!editField && (
         <PluginOutputEditModal
           customOutputConfig={customOutputConfig}
-          defaultInput={editField}
+          defaultOutput={editField}
           keys={inputs.map((input) => input.key)}
           onClose={() => setEditField(undefined)}
           onSubmit={({ data }) => {
@@ -220,7 +220,7 @@ function Reference({
 
       {!!editField && (
         <PluginOutputEditModal
-          defaultInput={editField}
+          defaultOutput={editField}
           customOutputConfig={customOutputConfig}
           keys={keys}
           onClose={() => setEditField(undefined)}

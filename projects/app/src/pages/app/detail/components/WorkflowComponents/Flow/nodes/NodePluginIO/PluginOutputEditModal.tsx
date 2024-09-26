@@ -27,23 +27,23 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const PluginOutputEditModal = ({
   customOutputConfig,
-  defaultInput,
+  defaultOutput,
   keys,
   onClose,
   onSubmit
 }: {
   customOutputConfig: CustomFieldConfigType;
-  defaultInput: FlowNodeInputItemType;
+  defaultOutput: FlowNodeInputItemType;
   keys: string[];
   onClose: () => void;
   onSubmit: (e: { data: FlowNodeInputItemType; isChangeKey: boolean }) => void;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const isEdit = !!defaultInput.key;
+  const isEdit = !!defaultOutput.key;
 
   const { register, setValue, handleSubmit, watch } = useForm<FlowNodeInputItemType>({
-    defaultValues: { ...defaultInput, isToolOutput: defaultInput.isToolOutput !== false }
+    defaultValues: { ...defaultOutput, isToolOutput: defaultOutput.isToolOutput !== false }
   });
   const inputType = FlowNodeInputTypeEnum.reference;
 
@@ -85,7 +85,7 @@ const PluginOutputEditModal = ({
 
   const onSubmitSuccess = useCallback(
     (data: FlowNodeInputItemType) => {
-      const isChangeKey = defaultInput.key !== data.key;
+      const isChangeKey = defaultOutput.key !== data.key;
 
       if (keys.includes(data.key)) {
         if (!isEdit || isChangeKey) {
@@ -106,7 +106,7 @@ const PluginOutputEditModal = ({
       });
       onClose();
     },
-    [defaultInput.key, isEdit, keys, onClose, onSubmit, toast, t]
+    [defaultOutput.key, isEdit, keys, onClose, onSubmit, toast, t]
   );
   const onSubmitError = useCallback(
     (e: Object) => {
@@ -187,7 +187,7 @@ const PluginOutputEditModal = ({
 
 export default PluginOutputEditModal;
 
-export const defaultInput: FlowNodeInputItemType = {
+export const defaultOutput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference],
   valueType: WorkflowIOValueTypeEnum.string,
   canEdit: true,
