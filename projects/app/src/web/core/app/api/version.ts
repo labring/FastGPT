@@ -1,4 +1,4 @@
-import { PostPublishAppProps, PostRevertAppProps } from '@/global/core/app/api';
+import { PostPublishAppProps } from '@/global/core/app/api';
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import { PaginationProps } from '@fastgpt/web/common/fetch/type';

@@ -186,7 +186,7 @@ const TeamCloud = ({
   const { loadAndGetTeamMembers } = useUserStore();
   const { feConfigs } = useSystemStore();
 
-  const { scrollDataList, ScrollList, isLoading, fetchData } = useVirtualScrollPagination(
+  const { scrollDataList, ScrollList, isLoading, fetchData, setData } = useVirtualScrollPagination(
     getWorkflowVersionList,
     {
       itemHeight: 40,
@@ -204,7 +204,6 @@ const TeamCloud = ({
   const [editIndex, setEditIndex] = useState<number | undefined>(undefined);
   const [hoveredIndex, setHoveredIndex] = useState<number | undefined>(undefined);
 
-  const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
 
   const { runAsync: onChangeVersion, loading: isLoadingVersion } = useRequest2(
@@ -218,6 +217,22 @@ const TeamCloud = ({
         title: t('workflow:workflow.Switch_success'),
         status: 'success'
       });
+    }
+  );
+
+  const { runAsync: onUpdateVersion, loading: isEditing } = useRequest2(
+    async (item: VersionListItemType, name: string) => {
+      await updateAppVersion({
+        appId: item.appId,
+        versionName: name,
+        versionId: item._id
+      });
+      setData((state) =>
+        state.map((version) =>
+          version._id === item._id ? { ...version, versionName: name } : version
+        )
+      );
+      setEditIndex(undefined);
     }
   );
 
@@ -321,16 +336,12 @@ const TeamCloud = ({
                   h={8}
                   defaultValue={item.versionName || formatTime2YMDHMS(item.time)}
                   onClick={(e) => e.stopPropagation()}
-                  onBlur={async (e) => {
-                    setIsEditing(true);
-                    await updateAppVersion({
-                      appId: item.appId,
-                      versionName: e.target.value,
-                      versionId: item._id
-                    });
-                    await fetchData();
-                    setEditIndex(undefined);
-                    setIsEditing(false);
+                  onBlur={(e) => onUpdateVersion(item, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      // @ts-ignore
+                      onUpdateVersion(item, e.target.value);
+                    }
                   }}
                 />
               </MyBox>
