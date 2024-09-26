@@ -82,8 +82,12 @@ const NodeCard = (props: Props) => {
     [isTool, nodeList]
   );
 
-  const node = nodeList.find((node) => node.nodeId === nodeId);
-  const parentNode = nodeList.find((n) => n.nodeId === node?.parentNodeId);
+  const { node, parentNode } = useMemo(() => {
+    const node = nodeList.find((node) => node.nodeId === nodeId);
+    const parentNode = nodeList.find((n) => n.nodeId === node?.parentNodeId);
+    return { node, parentNode };
+  }, [nodeList, nodeId]);
+
   const { openConfirm: onOpenConfirmSync, ConfirmModal: ConfirmSyncModal } = useConfirm({
     content: t('app:module.Confirm Sync')
   });

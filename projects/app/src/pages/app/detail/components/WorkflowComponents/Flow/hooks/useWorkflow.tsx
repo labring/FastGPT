@@ -547,9 +547,19 @@ export const useWorkflow = () => {
   /* connect */
   const onConnectStart = useCallback(
     (event: any, params: OnConnectStartParams) => {
+      if (!params.nodeId) return;
+      const sourceNode = nodes.find((node) => node.id === params.nodeId);
+      if (sourceNode?.data.isFolded) {
+        return onChangeNode({
+          nodeId: params.nodeId,
+          type: 'attr',
+          key: 'isFolded',
+          value: false
+        });
+      }
       setConnectingEdge(params);
     },
-    [setConnectingEdge]
+    [nodes, setConnectingEdge, onChangeNode]
   );
   const onConnectEnd = useCallback(() => {
     setConnectingEdge(undefined);
@@ -578,25 +588,6 @@ export const useWorkflow = () => {
           status: 'warning',
           title: t('common:core.module.Can not connect self')
         });
-      }
-
-      const sourceNode = nodes.find((node) => node.id === connect.source);
-      if (sourceNode?.data.isFolded) {
-        const getLastKey = (inputKey: string) => {
-          const outputList = sourceNode.data.inputs.find((input) => input.key === inputKey)?.value;
-          return outputList?.[outputList.length - 1]?.key || Position.Right;
-        };
-
-        const sourceHandleMap = {
-          [FlowNodeTypeEnum.classifyQuestion]: () => getLastKey(NodeInputKeyEnum.agents),
-          [FlowNodeTypeEnum.userSelect]: () => getLastKey(NodeInputKeyEnum.userSelectOptions),
-          [FlowNodeTypeEnum.ifElseNode]: () => IfElseResultEnum.ELSE
-        };
-
-        const lastKey = sourceHandleMap[sourceNode.type as keyof typeof sourceHandleMap]?.();
-        if (lastKey) {
-          connect.sourceHandle = getHandleId(connect.source || '', 'source', lastKey);
-        }
       }
 
       onConnect({

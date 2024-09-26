@@ -28,10 +28,12 @@ const ButtonEdge = (props: EdgeProps) => {
     style
   } = props;
 
-  const childNode = nodeList.find(
-    (node) => (node.nodeId === source || node.nodeId === target) && node.parentNodeId
-  );
-  const parentNode = nodeList.find((node) => node.nodeId === childNode?.parentNodeId);
+  const parentNode = useMemo(() => {
+    const childNode = nodeList.find(
+      (node) => (node.nodeId === source || node.nodeId === target) && node.parentNodeId
+    );
+    return nodeList.find((node) => node.nodeId === childNode?.parentNodeId);
+  }, [nodeList, source, target]);
 
   const defaultZIndex = useMemo(
     () => (nodeList.find((node) => node.nodeId === source && node.parentNodeId) ? 1001 : 0),
