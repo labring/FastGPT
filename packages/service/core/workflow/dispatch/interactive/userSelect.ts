@@ -8,7 +8,7 @@ import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import type {
   UserSelectInteractive,
   UserSelectOptionItemType
-} from '@fastgpt/global/core/workflow/template/system/userSelect/type';
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 
 type Props = ModuleDispatchProps<{

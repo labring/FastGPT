@@ -40,7 +40,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
-  const onSubmit = ({ data }: { data: FlowNodeInputItemType; isChangeKey: boolean }) => {
+  const onSubmit = (data: FlowNodeInputItemType) => {
     if (!editField) return;
 
     if (editField?.key) {
