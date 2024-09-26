@@ -96,3 +96,5 @@ export const useSimpleAppSnapshots = (appId: string) => {
 
   return { forbiddenSaveSnapshot, past, setPast, saveSnapshot };
 };
+
+export default <></>;
