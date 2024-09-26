@@ -94,17 +94,15 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       <NodeCard
         selected={selected}
         {...data}
-        w={'420px'}
-        h={'176px'}
         menuForbid={{
           copy: true,
           delete: true,
           debug: true
         }}
       >
-        <Box px={4}>
+        <Box px={4} w={'420px'} h={'116px'}>
           {!loopItemInputType ? (
-            <EmptyTip text={t('workflow:loop_start_tip')} py={0} mt={0} iconSize={'32px'} />
+            <EmptyTip text={t('workflow:loop_start_tip')} py={0} mt={4} iconSize={'32px'} />
           ) : (
             <Box bg={'white'} borderRadius={'md'} overflow={'hidden'} border={'base'}>
               <TableContainer>

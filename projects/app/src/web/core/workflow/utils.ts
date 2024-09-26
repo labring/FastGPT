@@ -532,7 +532,8 @@ export const compareSnapshot = (
           name: node.data.name,
           intro: node.data.intro,
           avatar: node.data.avatar,
-          version: node.data.version
+          version: node.data.version,
+          isFolded: node.data.isFolded
         }
       }));
   };
