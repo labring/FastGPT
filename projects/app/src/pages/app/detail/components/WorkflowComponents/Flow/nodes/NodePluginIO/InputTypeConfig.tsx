@@ -149,7 +149,7 @@ const InputTypeConfig = ({
         </Flex>
 
         {/* value type */}
-        {valueType && (
+        {type === 'plugin' && (
           <Flex alignItems={'center'}>
             <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
               {t('common:core.module.Data Type')}

@@ -145,7 +145,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               )}
             </HStack>
 
-            <TableContainer>
+            <TableContainer borderWidth={'1px'} borderRadius={'md'} borderBottom="none">
               <Table bg={'white'}>
                 <Thead>
                   <Tr>
@@ -187,7 +187,6 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                             w={'16px'}
                             color={'myGray.600'}
                             cursor={'pointer'}
-                            ml={2}
                             _hover={{ color: 'red.500' }}
                             onClick={() => {
                               onDelete(item.key);
