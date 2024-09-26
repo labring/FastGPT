@@ -53,14 +53,12 @@ const ChatHistorySlider = ({
     onChangeChatId,
     chatId: activeChatId,
     isLoading,
-    ScrollList,
-    historyList,
+    ScrollData,
     histories
   } = useContextSelector(ChatContext, (v) => v);
 
   const concatHistory = useMemo(() => {
-    const formatHistories: HistoryItemType[] = historyList.map((data) => {
-      const item = data.data;
+    const formatHistories: HistoryItemType[] = histories.map((item) => {
       return { id: item.chatId, title: item.title, customTitle: item.customTitle, top: item.top };
     });
     const newChat: HistoryItemType = {
@@ -70,7 +68,7 @@ const ChatHistorySlider = ({
     const activeChat = histories.find((item) => item.chatId === activeChatId);
 
     return !activeChat ? [newChat].concat(formatHistories) : formatHistories;
-  }, [activeChatId, histories, historyList, t]);
+  }, [activeChatId, histories, t]);
 
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
@@ -173,7 +171,7 @@ const ChatHistorySlider = ({
         )}
       </Flex>
 
-      <ScrollList flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
+      <ScrollData flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
         {/* chat history */}
         <>
           {concatHistory.map((item, i) => (
@@ -283,7 +281,7 @@ const ChatHistorySlider = ({
             </Flex>
           ))}
         </>
-      </ScrollList>
+      </ScrollData>
 
       {/* exec */}
       {!isPc && isUserChatPage && (
