@@ -299,18 +299,12 @@ const AIResponseBox = ({ value, isLastResponseValue, isChatting }: props) => {
     );
   if (value.type === ChatItemValueTypeEnum.tool && value.tools)
     return <RenderTool showAnimation={isChatting} tools={value.tools} />;
-  if (
-    value.type === ChatItemValueTypeEnum.interactive &&
-    value.interactive &&
-    value.interactive.type === 'userSelect'
-  )
-    return <RenderUserSelectInteractive interactive={value.interactive} />;
-  if (
-    value.type === ChatItemValueTypeEnum.interactive &&
-    value.interactive &&
-    value.interactive?.type === 'userInput'
-  )
-    return <RenderUserFormInteractive interactive={value.interactive} />;
+  if (value.type === ChatItemValueTypeEnum.interactive && value.interactive) {
+    if (value.interactive.type === 'userSelect')
+      return <RenderUserSelectInteractive interactive={value.interactive} />;
+    if (value.interactive?.type === 'userInput')
+      return <RenderUserFormInteractive interactive={value.interactive} />;
+  }
 };
 
 export default React.memo(AIResponseBox);
