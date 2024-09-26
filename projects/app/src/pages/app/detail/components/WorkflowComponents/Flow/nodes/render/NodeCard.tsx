@@ -180,21 +180,12 @@ const NodeCard = (props: Props) => {
                   });
                 }}
               >
-                {!isFolded ? (
-                  <MyIcon
-                    name={'core/chat/chevronDown'}
-                    w={'24px'}
-                    h={'24px'}
-                    color={'myGray.500'}
-                  />
-                ) : (
-                  <MyIcon
-                    name={'core/chat/chevronRight'}
-                    w={'24px'}
-                    h={'24px'}
-                    color={'myGray.500'}
-                  />
-                )}
+                <MyIcon
+                  name={isFolded ? 'core/chat/chevronDown' : 'core/chat/chevronRight'}
+                  w={'24px'}
+                  h={'24px'}
+                  color={'myGray.500'}
+                />
               </Box>
             )}
             <Avatar src={avatar} borderRadius={'sm'} objectFit={'contain'} w={'30px'} h={'30px'} />

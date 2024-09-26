@@ -20,6 +20,9 @@ type FormInputResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.formInputResult]?: Record<string, any>;
 }>;
 
+/* 
+  用户输入都内容，将会以 JSON 字符串格式进入工作流，可以从 query 的 text 中获取。
+*/
 export const dispatchFormInput = async (props: Props): Promise<FormInputResponse> => {
   const {
     histories,
