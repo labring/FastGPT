@@ -17,6 +17,7 @@ import { useTranslation } from 'next-i18next';
 import styles from './index.module.scss';
 import { maxZoom, minZoom } from '../index';
 import { useKeyPress } from 'ahooks';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 const buttonStyle = {
   border: 'none',
@@ -61,11 +62,16 @@ const FlowController = React.memo(function FlowController() {
     zoomOut();
   });
 
+  /* 
+    id: Render node id
+   */
   const MiniMapNode = useCallback(
     ({ x, y, width, height, color, id }: MiniMapNodeProps) => {
+      // If the node parentNode is folded, the child node will not be displayed
       const node = nodeList.find((node) => node.nodeId === id);
-      const parentNode = nodeList.find((n) => n.nodeId === node?.parentNodeId);
-
+      const parentNode = node?.parentNodeId
+        ? nodeList.find((n) => n.nodeId === node?.parentNodeId)
+        : undefined;
       if (parentNode?.isFolded) {
         return null;
       }

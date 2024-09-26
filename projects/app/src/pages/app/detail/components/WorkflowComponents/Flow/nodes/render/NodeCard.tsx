@@ -82,9 +82,13 @@ const NodeCard = (props: Props) => {
     [isTool, nodeList]
   );
 
+  // Current node and parent node
   const { node, parentNode } = useMemo(() => {
     const node = nodeList.find((node) => node.nodeId === nodeId);
-    const parentNode = nodeList.find((n) => n.nodeId === node?.parentNodeId);
+    const parentNode = node?.parentNodeId
+      ? nodeList.find((n) => n.nodeId === node?.parentNodeId)
+      : undefined;
+
     return { node, parentNode };
   }, [nodeList, nodeId]);
 

@@ -277,6 +277,7 @@ export const useWorkflow = () => {
   const {
     setConnectingEdge,
     nodes,
+    nodeList,
     onNodesChange,
     setEdges,
     onChangeNode,
@@ -370,10 +371,12 @@ export const useWorkflow = () => {
   const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
     if (!node) return;
 
-    // 获取所有与当前节点相交的节点，不包含折叠的节点
-    const intersections = getIntersectingNodes(node).filter((node) => !node.data.isFolded);
-    // 获取所有与当前节点相交的节点中，类型为 loop 的节点
-    const parentNode = intersections.find((item) => item.type === FlowNodeTypeEnum.loop);
+    // 获取所有与当前节点相交的节点
+    const intersections = getIntersectingNodes(node);
+    // 获取所有与当前节点相交的节点中，类型为 loop 的节点且它不能是折叠状态
+    const parentNode = intersections.find(
+      (item) => !item.data.isFolded && item.type === FlowNodeTypeEnum.loop
+    );
 
     const unSupportedTypes = [
       FlowNodeTypeEnum.workflowStart,
@@ -548,8 +551,10 @@ export const useWorkflow = () => {
   const onConnectStart = useCallback(
     (event: any, params: OnConnectStartParams) => {
       if (!params.nodeId) return;
-      const sourceNode = nodes.find((node) => node.id === params.nodeId);
-      if (sourceNode?.data.isFolded) {
+
+      // If node is folded, unfold it when connecting
+      const sourceNode = nodeList.find((node) => node.nodeId === params.nodeId);
+      if (sourceNode?.isFolded) {
         return onChangeNode({
           nodeId: params.nodeId,
           type: 'attr',
@@ -559,7 +564,7 @@ export const useWorkflow = () => {
       }
       setConnectingEdge(params);
     },
-    [nodes, setConnectingEdge, onChangeNode]
+    [nodeList, setConnectingEdge, onChangeNode]
   );
   const onConnectEnd = useCallback(() => {
     setConnectingEdge(undefined);

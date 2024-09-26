@@ -430,7 +430,6 @@
   "core.chat.response.Read complete response tips": "Click to View Detailed Process",
   "core.chat.response.Tool call tokens": "Tool Call Tokens Consumption",
   "core.chat.response.context total length": "Total Context Length",
-  "core.chat.response.form_input_result": "Form input result",
   "core.chat.response.loop_input": "Loop Input Array",
   "core.chat.response.loop_input_element": "Loop Input Element",
   "core.chat.response.loop_output": "Loop Output Array",

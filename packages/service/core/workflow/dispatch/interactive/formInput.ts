@@ -9,6 +9,7 @@ import {
   UserInputFormItemType,
   UserInputInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { addLog } from '../../../../common/system/log';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.description]: string;
@@ -48,7 +49,8 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
     try {
       return JSON.parse(text);
     } catch (error) {
-      return text;
+      addLog.warn('formInput error', { error });
+      return {};
     }
   })();
 
