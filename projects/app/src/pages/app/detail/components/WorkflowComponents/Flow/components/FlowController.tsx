@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Background,
   ControlButton,
@@ -61,17 +61,19 @@ const FlowController = React.memo(function FlowController() {
     zoomOut();
   });
 
-  function MiniMapNode({ x, y, width, height, color, id }: MiniMapNodeProps) {
-    const node = nodeList.find((node) => node.nodeId === id);
-    const parentNode = nodeList.find((n) => n.nodeId === node?.parentNodeId);
+  const MiniMapNode = useCallback(
+    ({ x, y, width, height, color, id }: MiniMapNodeProps) => {
+      const node = nodeList.find((node) => node.nodeId === id);
+      const parentNode = nodeList.find((n) => n.nodeId === node?.parentNodeId);
 
-    // 如果父节点被折叠，则不渲染该节点
-    if (parentNode?.isFolded) {
-      return null;
-    }
+      if (parentNode?.isFolded) {
+        return null;
+      }
 
-    return <rect x={x} y={y} width={width} height={height} fill={color} />;
-  }
+      return <rect x={x} y={y} width={width} height={height} fill={color} />;
+    },
+    [nodeList]
+  );
 
   const Render = useMemo(() => {
     return (
@@ -202,9 +204,10 @@ const FlowController = React.memo(function FlowController() {
       </>
     );
   }, [
+    MiniMapNode,
     workflowControlMode,
-    isMac,
     t,
+    isMac,
     undo,
     canUndo,
     redo,

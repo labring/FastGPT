@@ -29,10 +29,12 @@ const ButtonEdge = (props: EdgeProps) => {
   } = props;
 
   const parentNode = useMemo(() => {
-    const childNode = nodeList.find(
-      (node) => (node.nodeId === source || node.nodeId === target) && node.parentNodeId
-    );
-    return nodeList.find((node) => node.nodeId === childNode?.parentNodeId);
+    for (const node of nodeList) {
+      if ((node.nodeId === source || node.nodeId === target) && node.parentNodeId) {
+        return nodeList.find((parent) => parent.nodeId === node.parentNodeId);
+      }
+    }
+    return undefined;
   }, [nodeList, source, target]);
 
   const defaultZIndex = useMemo(
@@ -181,18 +183,19 @@ const ButtonEdge = (props: EdgeProps) => {
       </EdgeLabelRenderer>
     );
   }, [
+    parentNode?.isFolded,
     isHover,
     highlightEdge,
     labelX,
     labelY,
     isToolEdge,
+    defaultZIndex,
     edgeColor,
     targetPosition,
     newTargetX,
     newTargetY,
     onDelConnect,
-    id,
-    parentNode
+    id
   ]);
 
   const memoBezierEdge = useMemo(() => {
