@@ -34,8 +34,6 @@ const NodeTools = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             text={t('common:core.workflow.tool.Select Tool')}
           />
         </Box>
-
-        <ToolSourceHandle />
       </Box>
     </NodeCard>
   );
