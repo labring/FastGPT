@@ -62,6 +62,7 @@
   "llm_not_support_vision": "This model does not support image recognition",
   "llm_use_vision": "Enable Image Recognition",
   "llm_use_vision_tip": "Once image recognition is enabled, this model will automatically receive images uploaded from the 'dialog box' and image links in 'user questions'.",
+  "logs_chat_user": "user",
   "logs_empty": "No logs yet~",
   "logs_message_total": "Total Messages",
   "logs_title": "Title",
