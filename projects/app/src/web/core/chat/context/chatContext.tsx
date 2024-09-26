@@ -13,7 +13,7 @@ import { ClearHistoriesProps, DelHistoryProps, UpdateHistoryProps } from '@/glob
 import { BoxProps, useDisclosure } from '@chakra-ui/react';
 import { useChatStore } from './storeChat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { useVirtualScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
 type ChatContextValueType = {
   params: Record<string, string | number>;
@@ -30,7 +30,7 @@ type ChatContextType = {
   forbidLoadChat: React.MutableRefObject<boolean>;
   onChangeChatId: (chatId?: string, forbid?: boolean) => void;
   loadHistories: () => void;
-  ScrollList: ({
+  ScrollData: ({
     children,
     EmptyChildren,
     isLoading,
@@ -42,10 +42,6 @@ type ChatContextType = {
   } & BoxProps) => ReactNode;
   onChangeAppId: (appId: string) => void;
   isLoading: boolean;
-  historyList: {
-    index: number;
-    data: ChatHistoryItemType;
-  }[];
   histories: ChatHistoryItemType[];
   onUpdateHistoryTitle: ({ chatId, newTitle }: { chatId: string; newTitle: string }) => void;
 };
@@ -53,12 +49,11 @@ type ChatContextType = {
 export const ChatContext = createContext<ChatContextType>({
   chatId: '',
   // forbidLoadChat: undefined,
-  historyList: [],
   histories: [],
   onUpdateHistoryTitle: function (): void {
     throw new Error('Function not implemented.');
   },
-  ScrollList: function (): ReactNode {
+  ScrollData: function (): ReactNode {
     throw new Error('Function not implemented.');
   },
   loadHistories: function (): void {
@@ -105,17 +100,14 @@ const ChatContextProvider = ({
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
 
   const {
-    scrollDataList: historyList,
-    ScrollList,
+    ScrollData,
     isLoading: isPaginationLoading,
     setData: setHistories,
     fetchData: loadHistories,
-    totalData: histories
-  } = useVirtualScrollPagination(getChatHistories, {
-    overscan: 30,
-    pageSize: 30,
-    itemHeight: 52,
-    defaultParams: params,
+    data: histories
+  } = useScrollPagination(getChatHistories, {
+    pageSize: 20,
+    params,
     refreshDeps: [params]
   });
 
@@ -229,9 +221,8 @@ const ChatContextProvider = ({
     onChangeChatId,
     onChangeAppId,
     isLoading,
-    historyList,
     setHistories,
-    ScrollList,
+    ScrollData,
     loadHistories,
     histories,
     onUpdateHistoryTitle
