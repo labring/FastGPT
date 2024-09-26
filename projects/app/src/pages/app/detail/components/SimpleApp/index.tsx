@@ -9,7 +9,8 @@ import dynamic from 'next/dynamic';
 import { Box, Flex } from '@chakra-ui/react';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { useTranslation } from 'next-i18next';
-import useSnapshots from './useSnapshots';
+import { useSimpleAppSnapshots } from './useSnapshots';
+import { useDebounceEffect } from 'ahooks';
 
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
@@ -17,9 +18,21 @@ const PublishChannel = dynamic(() => import('../Publish'));
 const SimpleEdit = () => {
   const { t } = useTranslation();
   const { currentTab, appDetail } = useContextSelector(AppContext, (v) => v);
-  const { past, setPast, saveSnapshot } = useSnapshots(appDetail._id);
+  const { forbiddenSaveSnapshot, past, setPast, saveSnapshot } = useSimpleAppSnapshots(
+    appDetail._id
+  );
 
   const [appForm, setAppForm] = useState(getDefaultAppForm());
+  // Save snapshot to local
+  useDebounceEffect(
+    () => {
+      saveSnapshot({
+        appForm
+      });
+    },
+    [appForm],
+    { wait: 500 }
+  );
 
   useBeforeunload({
     tip: t('common:core.common.tip.leave page')
@@ -29,6 +42,7 @@ const SimpleEdit = () => {
     <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]}>
       <Header
         appForm={appForm}
+        forbiddenSaveSnapshot={forbiddenSaveSnapshot}
         setAppForm={setAppForm}
         past={past}
         setPast={setPast}
