@@ -34,7 +34,6 @@ export type GroupFormType = {
 };
 
 function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGroupId?: string }) {
-  // TODO:
   // 1. Owner can not be deleted, toast
   // 2. Owner/Admin can manage members
   // 3. Owner can add/remove admins
@@ -82,21 +81,31 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
   };
 
   const myRole = useMemo(() => {
-    return userInfo?.team.role === 'owner'
-      ? 'owner'
-      : userInfo?.team.permission.hasManagePer
-        ? 'admin'
-        : members.find((item) => item.tmbId === userInfo?.team.tmbId)?.role ?? 'member';
+    if (userInfo?.team.permission.hasManagePer) {
+      return 'owner';
+    }
+    return members.find((item) => item.tmbId === userInfo?.team.tmbId)?.role ?? 'member';
   }, [members, userInfo]);
 
   const handleToggleSelect = (memberId: string) => {
-    if (myRole === 'owner' && memberId === members.find((item) => item.role === 'owner')?.tmbId) {
+    if (
+      myRole === 'owner' &&
+      memberId === group?.members.find((item) => item.role === 'owner')?.tmbId
+    ) {
       toast({
         title: t('user:team.group.toast.can_not_delete_owner'),
         status: 'error'
       });
       return;
     }
+
+    if (
+      myRole === 'admin' &&
+      group?.members.find((item) => String(item.tmbId) === memberId)?.role !== 'member'
+    ) {
+      return;
+    }
+
     if (isSelected(memberId)) {
       setMembers(members.filter((item) => item.tmbId !== memberId));
     } else {
@@ -218,7 +227,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
                           return (
                             <Tag
                               ml={2}
-                              cursor={'pointer'}
+                              cursor={myRole === 'owner' ? 'pointer' : ''}
                               onClick={() => handleToggleAdmin(member.tmbId)}
                             >
                               {t('user:team.group.role.admin')}

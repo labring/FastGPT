@@ -82,11 +82,9 @@ export const getTmbByGroupId = async (groupId: string) => {
 };
 
 export const getGroupMembersByGroupId = async (groupId: string) => {
-  return (
-    await MongoGroupMemberModel.find({
-      groupId
-    }).lean()
-  ).map((item) => item.tmbId);
+  return await MongoGroupMemberModel.find({
+    groupId
+  }).lean();
 };
 
 export const getGroupMembersWithInfoByGroupId = async (groupId: string) => {

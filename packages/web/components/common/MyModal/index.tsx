@@ -6,7 +6,8 @@ import {
   ModalHeader,
   ModalCloseButton,
   ModalContentProps,
-  Box
+  Box,
+  ImageProps
 } from '@chakra-ui/react';
 import MyBox from '../MyBox';
 import { useSystem } from '../../../hooks/useSystem';
@@ -14,7 +15,7 @@ import Avatar from '../Avatar';
 
 export interface MyModalProps extends ModalContentProps {
   iconSrc?: string;
-  iconColor?: string;
+  iconColor?: ImageProps['color'];
   title?: any;
   isCentered?: boolean;
   isLoading?: boolean;

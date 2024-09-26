@@ -54,14 +54,15 @@ function MemberTable({
     onSuccess: () => Promise.all([refetchGroups(), refetchMembers()])
   });
 
-  const hasManagePer = (group: (typeof groups)[0]) => {
-    return (
-      userInfo?.team.permission.hasManagePer ||
-      ['admin', 'owner'].includes(
-        group.members.find((item) => item.tmbId === userInfo?.team.tmbId)?.role ?? ''
-      )
+  const hasGroupManagePer = (group: (typeof groups)[0]) =>
+    userInfo?.team.permission.hasManagePer ||
+    ['admin', 'owner'].includes(
+      group.members.find((item) => item.tmbId === userInfo?.team.tmbId)?.role ?? ''
     );
-  };
+
+  const isGroupOwner = (group: (typeof groups)[0]) =>
+    userInfo?.team.permission.hasManagePer ||
+    group.members.find((item) => item.role === 'owner')?.tmbId === userInfo?.team.tmbId;
 
   const {
     isOpen: isOpenChangeOwner,
@@ -126,7 +127,7 @@ function MemberTable({
                 <Td>
                   {group.name === DefaultGroupName ? (
                     <AvatarGroup avatars={members.map((v) => v.avatar)} groupId={group._id} />
-                  ) : hasManagePer(group) ? (
+                  ) : hasGroupManagePer(group) ? (
                     <MyTooltip label={t('user:team.group.manage_member')}>
                       <Box cursor="pointer" onClick={() => onManageMember(group._id)}>
                         <AvatarGroup
@@ -147,7 +148,7 @@ function MemberTable({
                   )}
                 </Td>
                 <Td>
-                  {hasManagePer(group) && group.name !== DefaultGroupName && (
+                  {hasGroupManagePer(group) && group.name !== DefaultGroupName && (
                     <MyMenu
                       Button={<MyIcon name={'edit'} cursor={'pointer'} w="1rem" />}
                       menuList={[
@@ -167,21 +168,24 @@ function MemberTable({
                                 onManageMember(group._id);
                               }
                             },
-                            {
-                              label: t('user:team.group.transfer_owner'),
-                              icon: 'modal/changePer',
-                              onClick: () => {
-                                onChangeOwner(group._id);
-                              }
-                            },
-                            {
-                              label: t('common:common.Delete'),
-                              icon: 'delete',
-                              type: 'danger',
-                              onClick: () => {
-                                openDeleteGroupModal(() => delDeleteGroup(group._id))();
-                              }
-                            }
+                            ...(isGroupOwner(group)
+                              ? [
+                                  {
+                                    label: t('user:team.group.transfer_owner'),
+                                    icon: 'modal/changePer',
+                                    onClick: () => {
+                                      onChangeOwner(group._id);
+                                    }
+                                  },
+                                  {
+                                    label: t('common:common.Delete'),
+                                    icon: 'delete',
+                                    onClick: () => {
+                                      openDeleteGroupModal(() => delDeleteGroup(group._id))();
+                                    }
+                                  }
+                                ]
+                              : [])
                           ]
                         }
                       ]}
