@@ -25,9 +25,9 @@ enum TabListEnum {
 const TeamTagModal = dynamic(() => import('../TeamTagModal'));
 const InviteModal = dynamic(() => import('./components/InviteModal'));
 const PermissionManage = dynamic(() => import('./components/PermissionManage/index'));
-const GroupManage = dynamic(() => import('./components/GroupManage'));
-const GroupInfoModal = dynamic(() => import('./components/GroupInfoModal'));
-const ManageGroupMemberModal = dynamic(() => import('./components/GroupManageMember'));
+const GroupManage = dynamic(() => import('./components/GroupManage/index'));
+const GroupInfoModal = dynamic(() => import('./components/GroupManage/GroupInfoModal'));
+const ManageGroupMemberModal = dynamic(() => import('./components/GroupManage/GroupManageMember'));
 
 function TeamCard() {
   const { toast } = useToast();

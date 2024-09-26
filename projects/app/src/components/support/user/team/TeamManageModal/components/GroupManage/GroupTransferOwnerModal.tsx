@@ -16,7 +16,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useState } from 'react';
-import { TeamModalContext } from '../context';
+import { TeamModalContext } from '../../context';
 import { useContextSelector } from 'use-context-selector';
 
 export type ChangeOwnerModalProps = {

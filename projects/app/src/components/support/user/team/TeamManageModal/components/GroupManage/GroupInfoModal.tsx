@@ -12,7 +12,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
-import { TeamModalContext } from '../context';
+import { TeamModalContext } from '../../context';
 import { postCreateGroup, putUpdateGroup } from '@/web/support/user/team/group/api';
 
 export type GroupFormType = {
