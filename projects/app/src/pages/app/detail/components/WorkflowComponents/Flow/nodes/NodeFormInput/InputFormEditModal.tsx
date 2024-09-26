@@ -14,7 +14,10 @@ export const defaultFormInput: UserInputFormItemType = {
   type: FlowNodeInputTypeEnum.input,
   key: '',
   label: '',
+  description: '',
   value: '',
+  maxLength: undefined,
+  defaultValue: '',
   valueType: WorkflowIOValueTypeEnum.string,
   required: false
 };
@@ -76,6 +79,10 @@ const InputFormEditModal = ({
     }
   ];
 
+  const defaultValueType = inputTypeList
+    .flat()
+    .find((item) => item.value === inputType)?.defaultValueType;
+
   const onSubmitSuccess = useCallback(
     (data: UserInputFormItemType, action: 'confirm' | 'continue') => {
       const isChangeKey = defaultValue.key !== data.key;
@@ -90,6 +97,7 @@ const InputFormEditModal = ({
       }
 
       data.key = data.label;
+      data.valueType = defaultValueType;
 
       if (action === 'confirm') {
         onSubmit(data);
@@ -103,7 +111,7 @@ const InputFormEditModal = ({
         reset(defaultFormInput);
       }
     },
-    [toast, t, reset, onSubmit, onClose, defaultFormInput]
+    [toast, t, reset, onSubmit, onClose, defaultFormInput, defaultValueType]
   );
 
   const onSubmitError = useCallback(
@@ -192,6 +200,7 @@ const InputFormEditModal = ({
           onClose={onClose}
           onSubmitSuccess={onSubmitSuccess}
           onSubmitError={onSubmitError}
+          valueType={defaultValueType}
         />
       </Flex>
     </MyModal>
