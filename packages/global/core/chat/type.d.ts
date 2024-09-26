@@ -15,7 +15,7 @@ import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { DispatchNodeResponseType } from '../workflow/runtime/type.d';
 import { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
-import { InteractiveNodeResponseItemType } from '../workflow/template/system/userSelect/type';
+import { InteractiveNodeResponseItemType } from '../workflow/template/system/interactive/type';
 
 export type ChatSchema = {
   _id: string;

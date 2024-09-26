@@ -64,11 +64,12 @@ import { dispatchUserSelect } from './interactive/userSelect';
 import {
   InteractiveNodeResponseItemType,
   UserSelectInteractive
-} from '@fastgpt/global/core/workflow/template/system/userSelect/type';
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { dispatchRunAppNode } from './plugin/runApp';
 import { dispatchLoop } from './loop/runLoop';
 import { dispatchLoopEnd } from './loop/runLoopEnd';
 import { dispatchLoopStart } from './loop/runLoopStart';
+import { dispatchFormInput } from './interactive/formInput';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -97,6 +98,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.loop]: dispatchLoop,
   [FlowNodeTypeEnum.loopStart]: dispatchLoopStart,
   [FlowNodeTypeEnum.loopEnd]: dispatchLoopEnd,
+  [FlowNodeTypeEnum.formInput]: dispatchFormInput,
 
   // none
   [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,
@@ -584,7 +586,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   // reset entry
   runtimeNodes.forEach((item) => {
     // Interactive node is not the entry node, return interactive result
-    if (item.flowNodeType !== FlowNodeTypeEnum.userSelect) {
+    if (
+      item.flowNodeType !== FlowNodeTypeEnum.userSelect &&
+      item.flowNodeType !== FlowNodeTypeEnum.formInput
+    ) {
       item.isEntry = false;
     }
   });

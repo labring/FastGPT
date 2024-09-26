@@ -148,7 +148,10 @@ export enum NodeInputKeyEnum {
   // loop start
   loopStartInput = 'loopStartInput',
   // loop end
-  loopEndInput = 'loopEndInput'
+  loopEndInput = 'loopEndInput',
+
+  // form input
+  userInputForms = 'userInputForms'
 }
 
 export enum NodeOutputKeyEnum {
@@ -197,7 +200,10 @@ export enum NodeOutputKeyEnum {
   loopArray = 'loopArray',
 
   // loop start
-  loopStartInput = 'loopStartInput'
+  loopStartInput = 'loopStartInput',
+
+  // form input
+  formInputResult = 'formInputResult'
 }
 
 export enum VariableInputEnum {

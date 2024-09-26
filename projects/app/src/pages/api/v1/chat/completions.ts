@@ -293,7 +293,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       })();
 
       const isInteractiveRequest = !!getLastInteractiveValue(histories);
-      const { text: userSelectedVal } = chatValue2RuntimePrompt(userQuestion.value);
+      const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
 
       const newTitle = isPlugin
         ? variables.cTime ?? getSystemTime(user.timezone)
@@ -312,7 +312,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           appId: app._id,
           teamId,
           tmbId: tmbId,
-          userSelectedVal,
+          userInteractiveVal,
           aiResponse,
           newVariables,
           newTitle

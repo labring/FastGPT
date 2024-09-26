@@ -128,7 +128,8 @@ export enum FlowNodeTypeEnum {
   userSelect = 'userSelect',
   loop = 'loop',
   loopStart = 'loopStart',
-  loopEnd = 'loopEnd'
+  loopEnd = 'loopEnd',
+  formInput = 'formInput'
 }
 
 // node IO value type
