@@ -22,7 +22,7 @@ import { WorkflowContext } from '../../../context';
 
 const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs } = data;
+  const { nodeId, inputs, outputs, isFolded } = data;
   const { onChangeNode, nodeList } = useContextSelector(WorkflowContext, (v) => v);
 
   const { nodeWidth, nodeHeight } = useMemo(() => {
@@ -53,14 +53,14 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     return (
       <NodeCard
         selected={selected}
-        maxW={'full'}
-        minW={900}
-        minH={900}
-        w={nodeWidth}
-        h={nodeHeight}
-        menuForbid={{
-          copy: true
-        }}
+        maxW="full"
+        {...(!isFolded && {
+          minW: '900px',
+          minH: '900px',
+          w: nodeWidth,
+          h: nodeHeight
+        })}
+        menuForbid={{ copy: true }}
         {...data}
       >
         <Container position={'relative'} flex={1}>

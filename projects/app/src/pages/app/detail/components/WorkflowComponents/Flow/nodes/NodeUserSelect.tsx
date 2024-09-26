@@ -56,11 +56,6 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                             value: options.filter((input) => input.key !== item.key)
                           }
                         });
-                        onChangeNode({
-                          nodeId,
-                          type: 'delOutput',
-                          key: item.key
-                        });
                       }}
                     />
                   </MyTooltip>

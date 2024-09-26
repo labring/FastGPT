@@ -561,9 +561,9 @@ const WorkflowContextProvider = ({
     const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
 
     if (!checkResults) {
-      const storeNodes = uiWorkflow2StoreWorkflow({ nodes, edges });
+      const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges });
 
-      return storeNodes;
+      return storeWorkflow;
     } else if (!hideTip) {
       checkResults.forEach((nodeId) => onUpdateNodeError(nodeId, true));
       toast({

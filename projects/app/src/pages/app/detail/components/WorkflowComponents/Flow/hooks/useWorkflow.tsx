@@ -13,7 +13,8 @@ import {
   getNodesBounds,
   Rect,
   NodeRemoveChange,
-  NodeSelectionChange
+  NodeSelectionChange,
+  Position
 } from 'reactflow';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import 'reactflow/dist/style.css';
@@ -30,6 +31,8 @@ import {
   Input_Template_Node_Width
 } from '@fastgpt/global/core/workflow/template/input';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 
 /* 
   Compute helper lines for snapping nodes to each other
@@ -367,8 +370,8 @@ export const useWorkflow = () => {
   const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
     if (!node) return;
 
-    // 获取所有与当前节点相交的节点
-    const intersections = getIntersectingNodes(node);
+    // 获取所有与当前节点相交的节点，不包含折叠的节点
+    const intersections = getIntersectingNodes(node).filter((node) => !node.data.isFolded);
     // 获取所有与当前节点相交的节点中，类型为 loop 的节点
     const parentNode = intersections.find((item) => item.type === FlowNodeTypeEnum.loop);
 
@@ -544,9 +547,19 @@ export const useWorkflow = () => {
   /* connect */
   const onConnectStart = useCallback(
     (event: any, params: OnConnectStartParams) => {
+      if (!params.nodeId) return;
+      const sourceNode = nodes.find((node) => node.id === params.nodeId);
+      if (sourceNode?.data.isFolded) {
+        return onChangeNode({
+          nodeId: params.nodeId,
+          type: 'attr',
+          key: 'isFolded',
+          value: false
+        });
+      }
       setConnectingEdge(params);
     },
-    [setConnectingEdge]
+    [nodes, setConnectingEdge, onChangeNode]
   );
   const onConnectEnd = useCallback(() => {
     setConnectingEdge(undefined);
@@ -581,7 +594,7 @@ export const useWorkflow = () => {
         connect
       });
     },
-    [onConnect, t, toast]
+    [onConnect, t, toast, nodes]
   );
 
   /* edge */

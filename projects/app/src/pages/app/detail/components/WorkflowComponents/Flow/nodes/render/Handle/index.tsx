@@ -32,8 +32,8 @@ const MySourceHandle = React.memo(function MySourceHandle({
 
   const node = useMemo(() => nodes.find((node) => node.data.nodeId === nodeId), [nodes, nodeId]);
   const connected = edges.some((edge) => edge.sourceHandle === handleId);
+  const nodeFolded = node?.data.isFolded && edges.some((edge) => edge.source === nodeId);
   const nodeIsHover = hoverNodeId === nodeId;
-
   const active = useMemo(
     () => nodeIsHover || node?.selected || connectingEdge?.handleId === handleId,
     [nodeIsHover, node?.selected, connectingEdge, handleId]
@@ -73,7 +73,7 @@ const MySourceHandle = React.memo(function MySourceHandle({
       };
     }
 
-    if (connected) {
+    if (connected || nodeFolded) {
       return {
         styles: {
           ...connectedStyle,
@@ -89,7 +89,7 @@ const MySourceHandle = React.memo(function MySourceHandle({
       styles: undefined,
       showAddIcon: false
     };
-  }, [active, connected, highlightStyle, translateStr, transform, connectedStyle]);
+  }, [active, connected, nodeFolded, highlightStyle, translateStr, transform, connectedStyle]);
 
   const RenderHandle = useMemo(() => {
     return (
