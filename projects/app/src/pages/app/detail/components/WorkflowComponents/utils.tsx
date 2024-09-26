@@ -48,10 +48,12 @@ export const uiWorkflow2StoreWorkflow = ({
     .filter(
       // Filter out edges that do not have both sourceHandle and targetHandle
       (item) => {
-        // Not in react flow page
         if (!reactFlowViewport) return true;
         const currentSourceNode = nodes.find((node) => node.data.nodeId === item.source);
+
         if (currentSourceNode?.data.isFolded) return true;
+
+        // Not in react flow page
         return handleIdList.includes(item.sourceHandle) && handleIdList.includes(item.targetHandle);
       }
     );
