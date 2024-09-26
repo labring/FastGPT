@@ -25,7 +25,8 @@ export const uiWorkflow2StoreWorkflow = ({
     version: item.data.version,
     inputs: item.data.inputs,
     outputs: item.data.outputs,
-    pluginId: item.data.pluginId
+    pluginId: item.data.pluginId,
+    isFolded: item.data.isFolded
   }));
 
   // get all handle
@@ -49,6 +50,8 @@ export const uiWorkflow2StoreWorkflow = ({
       (item) => {
         // Not in react flow page
         if (!reactFlowViewport) return true;
+        const currentSourceNode = nodes.find((node) => node.data.nodeId === item.source);
+        if (currentSourceNode?.data.isFolded) return true;
         return handleIdList.includes(item.sourceHandle) && handleIdList.includes(item.targetHandle);
       }
     );
