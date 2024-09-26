@@ -121,7 +121,7 @@ export const updateInteractiveChat = async ({
   appId,
   teamId,
   tmbId,
-  userSelectedVal,
+  userInteractiveVal,
   aiResponse,
   newVariables,
   newTitle
@@ -130,7 +130,7 @@ export const updateInteractiveChat = async ({
   appId: string;
   teamId: string;
   tmbId: string;
-  userSelectedVal: string;
+  userInteractiveVal: string;
   aiResponse: AIChatItemType & { dataId?: string };
   newVariables?: Record<string, any>;
   newTitle: string;
@@ -153,13 +153,38 @@ export const updateInteractiveChat = async ({
     return;
   }
 
-  interactiveValue.interactive = {
-    ...interactiveValue.interactive,
-    params: {
-      ...interactiveValue.interactive.params,
-      userSelectedVal
+  const parsedUserInteractiveVal = (() => {
+    try {
+      return JSON.parse(userInteractiveVal);
+    } catch (err) {
+      return userInteractiveVal;
     }
-  };
+  })();
+  interactiveValue.interactive =
+    interactiveValue.interactive.type === 'userSelect'
+      ? {
+          ...interactiveValue.interactive,
+          params: {
+            ...interactiveValue.interactive.params,
+            userSelectedVal: userInteractiveVal
+          }
+        }
+      : {
+          ...interactiveValue.interactive,
+          params: {
+            ...interactiveValue.interactive.params,
+            inputForm: interactiveValue.interactive.params.inputForm.map((item) => {
+              const itemValue = parsedUserInteractiveVal[item.label];
+              return itemValue !== undefined
+                ? {
+                    ...item,
+                    value: itemValue
+                  }
+                : item;
+            }),
+            submitted: true
+          }
+        };
 
   if (aiResponse.customFeedbacks) {
     chatItem.customFeedbacks = chatItem.customFeedbacks

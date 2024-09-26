@@ -9,8 +9,7 @@ import type {
   ChatCompletionUserMessageParam as SdkChatCompletionUserMessageParam
 } from 'openai/resources';
 import { ChatMessageTypeEnum } from './constants';
-import { InteractiveNodeResponseItemType } from '../workflow/template/system/userSelect/type';
-
+import { InteractiveNodeResponseItemType } from '../workflow/template/system/interactive/type';
 export * from 'openai/resources';
 
 // Extension of ChatCompletionMessageParam, Add file url type
