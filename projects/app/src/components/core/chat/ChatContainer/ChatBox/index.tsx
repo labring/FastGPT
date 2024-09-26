@@ -199,13 +199,15 @@ const ChatBox = (
 
   // 聊天信息生成中……获取当前滚动条位置，判断是否需要滚动到底部
   const { run: generatingScroll } = useThrottleFn(
-    () => {
+    (force?: boolean) => {
       if (!ChatBoxRef.current) return;
       const isBottom =
         ChatBoxRef.current.scrollTop + ChatBoxRef.current.clientHeight + 150 >=
         ChatBoxRef.current.scrollHeight;
 
-      isBottom && scrollToBottom('auto');
+      if (isBottom || force) {
+        scrollToBottom('auto');
+      }
     },
     {
       wait: 100
@@ -321,7 +323,9 @@ const ChatBox = (
           return item;
         })
       );
-      generatingScroll();
+
+      const forceScroll = event === SseResponseEventEnum.interactive;
+      generatingScroll(forceScroll);
     }
   );
 
@@ -529,7 +533,7 @@ const ChatBox = (
                 });
               }
 
-              generatingScroll();
+              generatingScroll(true);
               isPc && TextareaDom.current?.focus();
             }, 100);
 
