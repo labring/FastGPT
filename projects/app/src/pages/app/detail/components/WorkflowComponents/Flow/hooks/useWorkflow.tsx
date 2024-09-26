@@ -13,7 +13,8 @@ import {
   getNodesBounds,
   Rect,
   NodeRemoveChange,
-  NodeSelectionChange
+  NodeSelectionChange,
+  Position
 } from 'reactflow';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import 'reactflow/dist/style.css';
@@ -30,6 +31,8 @@ import {
   Input_Template_Node_Width
 } from '@fastgpt/global/core/workflow/template/input';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 
 /* 
   Compute helper lines for snapping nodes to each other
@@ -367,8 +370,8 @@ export const useWorkflow = () => {
   const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
     if (!node) return;
 
-    // 获取所有与当前节点相交的节点
-    const intersections = getIntersectingNodes(node);
+    // 获取所有与当前节点相交的节点，不包含折叠的节点
+    const intersections = getIntersectingNodes(node).filter((node) => !node.data.isFolded);
     // 获取所有与当前节点相交的节点中，类型为 loop 的节点
     const parentNode = intersections.find((item) => item.type === FlowNodeTypeEnum.loop);
 
@@ -577,11 +580,30 @@ export const useWorkflow = () => {
         });
       }
 
+      const sourceNode = nodes.find((node) => node.id === connect.source);
+      if (sourceNode?.data.isFolded) {
+        const getLastKey = (inputKey: string) => {
+          const outputList = sourceNode.data.inputs.find((input) => input.key === inputKey)?.value;
+          return outputList?.[outputList.length - 1]?.key || Position.Right;
+        };
+
+        const sourceHandleMap = {
+          [FlowNodeTypeEnum.classifyQuestion]: () => getLastKey(NodeInputKeyEnum.agents),
+          [FlowNodeTypeEnum.userSelect]: () => getLastKey(NodeInputKeyEnum.userSelectOptions),
+          [FlowNodeTypeEnum.ifElseNode]: () => IfElseResultEnum.ELSE
+        };
+
+        const lastKey = sourceHandleMap[sourceNode.type as keyof typeof sourceHandleMap]?.();
+        if (lastKey) {
+          connect.sourceHandle = getHandleId(connect.source || '', 'source', lastKey);
+        }
+      }
+
       onConnect({
         connect
       });
     },
-    [onConnect, t, toast]
+    [onConnect, t, toast, nodes]
   );
 
   /* edge */

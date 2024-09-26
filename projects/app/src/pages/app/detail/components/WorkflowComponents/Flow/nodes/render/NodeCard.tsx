@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Box, Button, Card, Flex, Image } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -61,7 +61,8 @@ const NodeCard = (props: Props) => {
     menuForbid,
     isTool = false,
     isError = false,
-    debugResult
+    debugResult,
+    isFolded
   } = props;
 
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
@@ -82,6 +83,7 @@ const NodeCard = (props: Props) => {
   );
 
   const node = nodeList.find((node) => node.nodeId === nodeId);
+  const parentNode = nodeList.find((n) => n.nodeId === node?.parentNodeId);
   const { openConfirm: onOpenConfirmSync, ConfirmModal: ConfirmSyncModal } = useConfirm({
     content: t('app:module.Confirm Sync')
   });
@@ -155,6 +157,31 @@ const NodeCard = (props: Props) => {
 
           {/* avatar and name */}
           <Flex alignItems={'center'}>
+            <Box
+              mr={2}
+              cursor={'pointer'}
+              rounded={'sm'}
+              _hover={{ bg: 'myGray.200' }}
+              onClick={() => {
+                onChangeNode({
+                  nodeId,
+                  type: 'attr',
+                  key: 'isFolded',
+                  value: !isFolded
+                });
+              }}
+            >
+              {!isFolded ? (
+                <MyIcon name={'core/chat/chevronDown'} w={'24px'} h={'24px'} color={'myGray.500'} />
+              ) : (
+                <MyIcon
+                  name={'core/chat/chevronRight'}
+                  w={'24px'}
+                  h={'24px'}
+                  color={'myGray.500'}
+                />
+              )}
+            </Box>
             <Avatar src={avatar} borderRadius={'sm'} objectFit={'contain'} w={'30px'} h={'30px'} />
             <Box ml={3} fontSize={'md'} fontWeight={'medium'}>
               {t(name as any)}
@@ -250,19 +277,21 @@ const NodeCard = (props: Props) => {
     ConfirmSyncModal,
     onOpenCustomTitleModal,
     onChangeNode,
-    toast
+    toast,
+    isFolded
   ]);
   const RenderHandle = useMemo(() => {
     return (
       <>
-        <ConnectionSourceHandle nodeId={nodeId} />
+        <ConnectionSourceHandle nodeId={nodeId} isFoldNode={isFolded} />
         <ConnectionTargetHandle nodeId={nodeId} />
       </>
     );
-  }, [nodeId]);
+  }, [nodeId, isFolded]);
 
   return (
     <Flex
+      hidden={parentNode?.isFolded}
       flexDirection={'column'}
       minW={minW}
       maxW={maxW}
@@ -298,7 +327,7 @@ const NodeCard = (props: Props) => {
     >
       <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />
       {Header}
-      {children}
+      {!isFolded && children}
       {RenderHandle}
 
       <EditTitleModal maxLength={20} />

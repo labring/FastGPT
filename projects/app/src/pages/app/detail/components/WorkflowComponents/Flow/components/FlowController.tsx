@@ -1,5 +1,13 @@
 import React, { useMemo } from 'react';
-import { Background, ControlButton, MiniMap, Panel, useReactFlow, useViewport } from 'reactflow';
+import {
+  Background,
+  ControlButton,
+  MiniMap,
+  MiniMapNodeProps,
+  Panel,
+  useReactFlow,
+  useViewport
+} from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -26,7 +34,8 @@ const FlowController = React.memo(function FlowController() {
     canUndo,
     workflowControlMode,
     setWorkflowControlMode,
-    mouseInCanvas
+    mouseInCanvas,
+    nodeList
   } = useContextSelector(WorkflowContext, (v) => v);
   const { t } = useTranslation();
 
@@ -52,6 +61,18 @@ const FlowController = React.memo(function FlowController() {
     zoomOut();
   });
 
+  function MiniMapNode({ x, y, width, height, color, id }: MiniMapNodeProps) {
+    const node = nodeList.find((node) => node.nodeId === id);
+    const parentNode = nodeList.find((n) => n.nodeId === node?.parentNodeId);
+
+    // 如果父节点被折叠，则不渲染该节点
+    if (parentNode?.isFolded) {
+      return null;
+    }
+
+    return <rect x={x} y={y} width={width} height={height} fill={color} />;
+  }
+
   const Render = useMemo(() => {
     return (
       <>
@@ -64,6 +85,7 @@ const FlowController = React.memo(function FlowController() {
             boxShadow: '0px 0px 1px rgba(19, 51, 107, 0.10), 0px 4px 10px rgba(19, 51, 107, 0.10)'
           }}
           pannable
+          nodeComponent={MiniMapNode}
         />
         <Panel
           position={'bottom-right'}
