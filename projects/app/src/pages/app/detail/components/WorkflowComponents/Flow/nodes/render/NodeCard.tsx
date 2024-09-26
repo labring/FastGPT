@@ -64,24 +64,6 @@ const NodeCard = (props: Props) => {
     debugResult,
     isFolded
   } = props;
-  console.log('isTool', {
-    children,
-    avatar,
-    name,
-    intro,
-    minW,
-    maxW,
-    minH,
-    w,
-    h,
-    nodeId,
-    selected,
-    menuForbid,
-    isTool,
-    isError,
-    debugResult,
-    isFolded
-  });
 
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const setHoverNodeId = useContextSelector(WorkflowContext, (v) => v.setHoverNodeId);
