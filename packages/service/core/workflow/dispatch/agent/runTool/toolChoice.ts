@@ -72,11 +72,16 @@ export const runToolWithToolChoice = async (
         description: string;
         enum?: string[];
         required?: boolean;
+        items?: {
+          type: string;
+        };
       }
     > = {};
     item.toolParams.forEach((item) => {
+      const isArray = item.valueType?.startsWith('array');
       properties[item.key] = {
-        type: item.valueType || 'string',
+        type: isArray ? 'array' : item.valueType || 'string',
+        ...(isArray && { items: { type: item.valueType?.slice(5).toLowerCase() || 'string' } }),
         description: item.toolDescription || '',
         enum: item.enum?.split('\n').filter(Boolean) || []
       };
@@ -140,7 +145,6 @@ export const runToolWithToolChoice = async (
     toolModel
   );
 
-  // console.log(JSON.stringify(requestBody, null, 2));
   /* Run llm */
   const ai = getAIApi({
     timeout: 480000
