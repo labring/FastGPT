@@ -371,5 +371,5 @@ export const getGroupPer = (groups?: PermissionValueType[]) => {
     return undefined;
   }
 
-  return new Permission().addPer(...groups);
+  return new Permission().addPer(...groups).value;
 };

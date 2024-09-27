@@ -36,28 +36,31 @@ export class Permission {
   // perm.add(PermissionList['read'], PermissionList['write'])
   // perm.add(PermissionList['read']).add(PermissionList['write'])
   addPer(...perList: PermissionValueType[]) {
-    for (let oer of perList) {
-      this.value = this.value | oer;
+    if (this.isOwner) {
+      return this;
+    }
+    for (const per of perList) {
+      this.value = this.value | per;
     }
     this.updatePermissions();
-    return this.value;
+    return this;
   }
 
   removePer(...perList: PermissionValueType[]) {
-    for (let per of perList) {
+    if (this.isOwner) {
+      return this.value;
+    }
+    for (const per of perList) {
       this.value = this.value & ~per;
     }
     this.updatePermissions();
-    return this.value;
+    return this;
   }
 
   checkPer(perm: PermissionValueType): boolean {
     // if the permission is owner permission, only owner has this permission.
     if (perm === OwnerPermissionVal) {
       return this.value === OwnerPermissionVal;
-    } else if (this.hasManagePer) {
-      // The manager has all permissions except the owner permission
-      return true;
     }
     return (this.value & perm) === perm;
   }
