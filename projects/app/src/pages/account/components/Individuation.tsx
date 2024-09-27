@@ -7,18 +7,13 @@ import { UserType } from '@fastgpt/global/support/user/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
-import { langMap } from '@/web/common/utils/i18n';
-import { useRouter } from 'next/router';
-import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
-
-import MySelect from '@fastgpt/web/components/common/MySelect';
 import TimezoneSelect from '@fastgpt/web/components/common/MySelect/TimezoneSelect';
+import I18nLngSelector from '@/components/Select/I18nLngSelector';
 
 const Individuation = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { userInfo, updateUserInfo } = useUserStore();
   const { toast } = useToast();
-  const { onChangeLng } = useI18nLng();
 
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
@@ -49,17 +44,7 @@ const Individuation = () => {
         <Flex alignItems={'center'} w={['85%', '350px']}>
           <Box flex={'0 0 80px'}>{t('common:user.Language')}:&nbsp;</Box>
           <Box flex={'1 0 0'}>
-            <MySelect
-              value={i18n.language}
-              list={Object.entries(langMap).map(([key, lang]) => ({
-                label: lang.label,
-                value: key
-              }))}
-              onchange={(val: any) => {
-                const lang = val;
-                onChangeLng(lang);
-              }}
-            />
+            <I18nLngSelector />
           </Box>
         </Flex>
         <Flex mt={6} alignItems={'center'} w={['85%', '350px']}>
