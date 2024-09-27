@@ -32,7 +32,7 @@ const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm
 const WechatForm = dynamic(() => import('./components/LoginForm/WechatForm'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
-const Login = ({ ChineseIp }: { ChineseIp: string }) => {
+const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { lastRoute = '' } = router.query as { lastRoute: string };
@@ -47,10 +47,6 @@ const Login = ({ ChineseIp }: { ChineseIp: string }) => {
     onOpen: onOpenRedirect,
     onClose: onCloseRedirect
   } = useDisclosure();
-
-  const [showRedirect, setShowRedirect] = useLocalStorageState<boolean>('showRedirect', {
-    defaultValue: true
-  });
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
@@ -92,14 +88,18 @@ const Login = ({ ChineseIp }: { ChineseIp: string }) => {
     router.prefetch('/app/list');
   });
 
+  const [showRedirect, setShowRedirect] = useLocalStorageState<boolean>('showRedirect', {
+    defaultValue: true
+  });
+
   const checkIpInChina = useCallback(() => {
-    const onSuccess = function (res: any) {
+    const onSuccess = (res: any) => {
       if (!res.country.iso_code) {
         return;
       }
 
       const country = res.country.iso_code.toLowerCase();
-      if (country === 'cn' || country === 'hk') {
+      if (country === 'cn') {
         onOpenRedirect();
       }
     };
@@ -115,7 +115,7 @@ const Login = ({ ChineseIp }: { ChineseIp: string }) => {
         ></Script>
       )}
 
-      {ChineseIp && showRedirect && (
+      {ChineseRedirectUrl && showRedirect && (
         <Script
           src="//geoip-js.com/js/apis/geoip2/v2.1/geoip2.js"
           type="text/javascript"
@@ -176,41 +176,63 @@ const Login = ({ ChineseIp }: { ChineseIp: string }) => {
         {isOpen && <CommunityModal onClose={onClose} />}
       </Flex>
       {showRedirect && (
-        <Drawer placement="bottom" size={'xs'} isOpen={isOpenRedirect} onClose={onCloseRedirect}>
-          <DrawerOverlay backgroundColor={'rgba(0,0,0,0.2)'} />
-          <DrawerContent py={'1.75rem'} px={'3rem'}>
-            <DrawerCloseButton size={'sm'} />
-            <Flex align={'center'} justify={'space-between'}>
-              <Box>
-                <Box color={'myGray.900'} fontWeight={'500'} fontSize={'1rem'}>
-                  {t('login:Chinese_ip_tip')}
-                </Box>
-                <Box
-                  color={'primary.700'}
-                  fontWeight={'500'}
-                  fontSize={'1rem'}
-                  textDecorationLine={'underline'}
-                  cursor={'pointer'}
-                  onClick={() => setShowRedirect(false)}
-                >
-                  {t('login:no_remind')}
-                </Box>
-              </Box>
-              <Button ml={'0.75rem'} onClick={() => router.push(ChineseIp)}>
-                {t('login:redirect')}
-              </Button>
-            </Flex>
-          </DrawerContent>
-        </Drawer>
+        <RedirectDrawer
+          isOpen={isOpenRedirect}
+          onClose={onCloseRedirect}
+          onRedirect={() => router.push(ChineseRedirectUrl)}
+          disableDrawer={() => setShowRedirect(false)}
+        />
       )}
     </>
   );
 };
 
+function RedirectDrawer({
+  isOpen,
+  onClose,
+  disableDrawer,
+  onRedirect
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  disableDrawer: () => void;
+  onRedirect: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Drawer placement="bottom" size={'xs'} isOpen={isOpen} onClose={onClose}>
+      <DrawerOverlay backgroundColor={'rgba(0,0,0,0.2)'} />
+      <DrawerContent py={'1.75rem'} px={'3rem'}>
+        <DrawerCloseButton size={'sm'} />
+        <Flex align={'center'} justify={'space-between'}>
+          <Box>
+            <Box color={'myGray.900'} fontWeight={'500'} fontSize={'1rem'}>
+              {t('login:Chinese_ip_tip')}
+            </Box>
+            <Box
+              color={'primary.700'}
+              fontWeight={'500'}
+              fontSize={'1rem'}
+              textDecorationLine={'underline'}
+              cursor={'pointer'}
+              onClick={disableDrawer}
+            >
+              {t('login:no_remind')}
+            </Box>
+          </Box>
+          <Button ml={'0.75rem'} onClick={onRedirect}>
+            {t('login:redirect')}
+          </Button>
+        </Flex>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
 export async function getServerSideProps(context: any) {
   return {
     props: {
-      ChineseIp: process.env.CHINESE_IP_REDIRECT,
+      ChineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL,
       ...(await serviceSideProps(context, ['app', 'user', 'login']))
     }
   };
