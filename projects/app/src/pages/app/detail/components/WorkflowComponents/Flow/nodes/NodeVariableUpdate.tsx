@@ -12,8 +12,7 @@ import {
   NumberInput,
   NumberInputField,
   NumberInputStepper,
-  Switch,
-  Textarea
+  Switch
 } from '@chakra-ui/react';
 import { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -25,7 +24,6 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import Container from '../components/Container';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
@@ -219,7 +217,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                       onChange={handleUpdate}
                       showOpenModal={false}
                       variableLabels={variables}
-                      h={100}
+                      minH={100}
                     />
                   </Box>
                 );
@@ -251,7 +249,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                     onChange={handleUpdate}
                     showOpenModal={false}
                     variableLabels={variables}
-                    h={100}
+                    minH={100}
                   />
                 </Box>
               );

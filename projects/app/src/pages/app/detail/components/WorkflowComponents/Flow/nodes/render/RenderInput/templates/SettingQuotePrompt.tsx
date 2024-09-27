@@ -259,7 +259,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
 
               <PromptEditor
                 variables={quoteTemplateVariables}
-                h={160}
+                minH={160}
                 title={t('common:core.app.Quote templates')}
                 placeholder={t('workflow:quote_content_placeholder')}
                 value={aiChatQuoteTemplate}
@@ -281,7 +281,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
               <PromptEditor
                 variables={quotePromptVariables}
                 title={t('common:core.app.Quote prompt')}
-                h={300}
+                minH={300}
                 placeholder={t('workflow:quote_prompt_tip', {
                   default: quotePromptTemplates[0].value
                 })}

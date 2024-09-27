@@ -318,7 +318,8 @@ const DatasetParamsModal = ({
                   </Flex>
                   <Box mt={1}>
                     <PromptEditor
-                      h={200}
+                      minH={150}
+                      maxH={300}
                       showOpenModal={false}
                       placeholder={t('common:core.module.QueryExtension.placeholder')}
                       value={cfbBgDesc}

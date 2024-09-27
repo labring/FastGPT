@@ -19,7 +19,7 @@ import {
   Input_Template_UserChatInput,
   Input_Template_Text_Quote
 } from '../../input';
-import { chatNodeSystemPromptTip } from '../../tip';
+import { chatNodeSystemPromptTip, systemPromptTip } from '../../tip';
 import { getHandleConfig } from '../../utils';
 import { i18nT } from '../../../../../../web/i18n/utils';
 
@@ -94,7 +94,7 @@ export const AiChatModule: FlowNodeTemplateType = {
     {
       ...Input_Template_System_Prompt,
       label: i18nT('common:core.ai.Prompt'),
-      description: chatNodeSystemPromptTip,
+      description: systemPromptTip,
       placeholder: chatNodeSystemPromptTip
     },
     Input_Template_History,
