@@ -127,7 +127,7 @@ export const loadRequestMessages = async ({
           })();
 
           // If imgUrl is a local path, load image from local, and set url to base64
-          if (imgUrl.startsWith('/') || process.env.VISION_FOCUS_BASE64 === 'true') {
+          if (imgUrl.startsWith('/')) {
             addLog.debug('Load image from local server', {
               baseUrl: serverRequestBaseUrl,
               requestUrl: imgUrl
@@ -234,7 +234,13 @@ export const loadRequestMessages = async ({
           }
         }
         if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-          if (item.content !== undefined && !item.content) return;
+          if (
+            item.content !== undefined &&
+            !item.content &&
+            !item.tool_calls &&
+            !item.function_call
+          )
+            return;
           if (Array.isArray(item.content) && item.content.length === 0) return;
         }
 

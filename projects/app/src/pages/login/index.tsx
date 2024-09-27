@@ -88,10 +88,9 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
     router.prefetch('/app/list');
   });
 
-  const [showRedirect, setShowRedirect] = useLocalStorageState<boolean>('showRedirect', {
+  const [showRedirect, setShowRedirect] = useLocalStorageState<boolean>('chinese_ip_redirect', {
     defaultValue: true
   });
-
   const checkIpInChina = useCallback(() => {
     const onSuccess = (res: any) => {
       if (!res.country.iso_code) {

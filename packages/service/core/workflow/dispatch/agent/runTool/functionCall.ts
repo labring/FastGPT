@@ -244,33 +244,36 @@ export const runToolWithFunctionCall = async (
       role: ChatCompletionRequestMessageRoleEnum.Assistant,
       function_call: functionCall
     };
+
+    /* 
+      ...
+      user
+      assistant: tool data
+    */
     const concatToolMessages = [
       ...requestMessages,
       assistantToolMsgParams
     ] as ChatCompletionMessageParam[];
+    // Only toolCall tokens are counted here, Tool response tokens count towards the next reply
     const tokens = await countGptMessagesTokens(concatToolMessages, undefined, functions);
+    /* 
+      ...
+      user
+      assistant: tool data
+      tool: tool response
+    */
     const completeMessages = [
       ...concatToolMessages,
       ...toolsRunResponse.map((item) => item?.functionCallMsg)
     ];
-    // console.log(tokens, 'tool');
 
-    // tool assistant
-    const toolAssistants = toolsRunResponse
-      .map((item) => {
-        const assistantResponses = item.toolRunResponse.assistantResponses || [];
-        return assistantResponses;
-      })
-      .flat();
     // tool node assistant
-    const adaptChatMessages = GPTMessages2Chats(completeMessages);
-    const toolNodeAssistant = adaptChatMessages.pop() as AIChatItemType;
+    const toolNodeAssistant = GPTMessages2Chats([
+      assistantToolMsgParams,
+      ...toolsRunResponse.map((item) => item?.functionCallMsg)
+    ])[0] as AIChatItemType;
 
-    const toolNodeAssistants = [
-      ...assistantResponses,
-      ...toolAssistants,
-      ...toolNodeAssistant.value
-    ];
+    const toolNodeAssistants = [...assistantResponses, ...toolNodeAssistant.value];
 
     // concat tool responses
     const dispatchFlowResponse = response
@@ -285,7 +288,7 @@ export const runToolWithFunctionCall = async (
       return {
         dispatchFlowResponse,
         totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
-        completeMessages: filterMessages,
+        completeMessages,
         assistantResponses: toolNodeAssistants,
         runTimes:
           (response?.runTimes || 0) +

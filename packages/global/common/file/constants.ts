@@ -16,6 +16,6 @@ export const bucketNameMap = {
   }
 };
 
-export const ReadFileBaseUrl = '/api/common/file/read';
+export const ReadFileBaseUrl = `${process.env.FE_DOMAIN || ''}/api/common/file/read`;
 
 export const documentFileType = '.txt, .docx, .csv, .xlsx, .pdf, .md, .html, .pptx';

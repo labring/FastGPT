@@ -289,7 +289,7 @@ export const GPTMessages2Chats = (
     })
     .filter((item) => item.value.length > 0);
 
-  // Merge data with the same dataId
+  // Merge data with the same dataId（Sequential obj merging）
   const result = chatMessages.reduce((result: ChatItemType[], currentItem) => {
     const lastItem = result[result.length - 1];
 

@@ -34,6 +34,7 @@ import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { InitChatResponse } from '@/global/core/chat/api';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
 const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
@@ -111,8 +112,14 @@ const Chat = ({
         // reset all chat tore
         if (e?.code === 501) {
           router.replace('/app/list');
-        } else if (chatId) {
-          onChangeChatId();
+        } else {
+          router.replace({
+            query: {
+              ...router.query,
+              appId: myApps[0]?._id,
+              chatId: ''
+            }
+          });
         }
       },
       onFinally() {
