@@ -1,0 +1,17 @@
+{
+  "author": "",
+  "version": "486",
+  "name": "BI图表功能",
+  "avatar": "core/workflow/template/BI",
+  "intro": "BI图表功能，可以生成一些常用的图表，如饼图，柱状图，折线图等",
+  "showStatus": false,
+  "weight": 100,
+
+  "isTool": true,
+  "templateType": "tools",
+
+  "workflow": {
+    "nodes": [],
+    "edges": []
+  }
+}
