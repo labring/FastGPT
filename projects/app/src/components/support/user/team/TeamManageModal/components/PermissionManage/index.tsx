@@ -169,13 +169,19 @@ function PermissionManage() {
         <Table overflow={'unset'}>
           <Thead>
             <Tr bg={'white !important'}>
-              <Th bg="myGray.100" borderLeftRadius="6px">
+              <Th bg="myGray.100" borderLeftRadius="6px" maxW={'150px'}>
                 {t('user:team.group.group')} / {t('user:team.group.members')}
                 <QuestionTip ml="1" label={t('user:team.group.permission_tip')} />
               </Th>
-              <Th bg="myGray.100">{t('user:team.group.permission.write')}</Th>
+              <Th bg="myGray.100">
+                <Box mx="auto" w="fit-content">
+                  {t('user:team.group.permission.write')}
+                </Box>
+              </Th>
               <Th bg="myGray.100" borderRightRadius="6px">
-                {t('user:team.group.permission.manage')}
+                <Box mx="auto" w="fit-content">
+                  {t('user:team.group.permission.manage')}
+                </Box>
               </Th>
             </Tr>
           </Thead>
@@ -191,26 +197,30 @@ function PermissionManage() {
                   />
                 </Td>
                 <Td border="none">
-                  <Checkbox
-                    isDisabled={!userManage}
-                    isChecked={group.permission.hasWritePer}
-                    onChange={(e) =>
-                      e.target.checked
-                        ? onAddPermission({ groupId: group._id, per: 'write' })
-                        : onRemovePermission({ groupId: group._id, per: 'write' })
-                    }
-                  />
+                  <Box mx="auto" w="fit-content">
+                    <Checkbox
+                      isDisabled={!userManage}
+                      isChecked={group.permission.hasWritePer}
+                      onChange={(e) =>
+                        e.target.checked
+                          ? onAddPermission({ groupId: group._id, per: 'write' })
+                          : onRemovePermission({ groupId: group._id, per: 'write' })
+                      }
+                    />
+                  </Box>
                 </Td>
                 <Td border="none">
-                  <Checkbox
-                    isDisabled={!userManage}
-                    isChecked={group.permission.hasManagePer}
-                    onChange={(e) =>
-                      e.target.checked
-                        ? onAddPermission({ groupId: group._id, per: 'manage' })
-                        : onRemovePermission({ groupId: group._id, per: 'manage' })
-                    }
-                  />
+                  <Box mx="auto" w="fit-content">
+                    <Checkbox
+                      isDisabled={!userManage}
+                      isChecked={group.permission.hasManagePer}
+                      onChange={(e) =>
+                        e.target.checked
+                          ? onAddPermission({ groupId: group._id, per: 'manage' })
+                          : onRemovePermission({ groupId: group._id, per: 'manage' })
+                      }
+                    />
+                  </Box>
                 </Td>
               </Tr>
             ))}
@@ -226,26 +236,30 @@ function PermissionManage() {
                   </HStack>
                 </Td>
                 <Td border="none">
-                  <Checkbox
-                    isDisabled={member.permission.isOwner || !userManage}
-                    isChecked={member.permission.hasWritePer}
-                    onChange={(e) =>
-                      e.target.checked
-                        ? onAddPermission({ memberId: String(member.tmbId), per: 'write' })
-                        : onRemovePermission({ memberId: String(member.tmbId), per: 'write' })
-                    }
-                  />
+                  <Box mx="auto" w="fit-content">
+                    <Checkbox
+                      isDisabled={member.permission.isOwner || !userManage}
+                      isChecked={member.permission.hasWritePer}
+                      onChange={(e) =>
+                        e.target.checked
+                          ? onAddPermission({ memberId: String(member.tmbId), per: 'write' })
+                          : onRemovePermission({ memberId: String(member.tmbId), per: 'write' })
+                      }
+                    />
+                  </Box>
                 </Td>
                 <Td border="none">
-                  <Checkbox
-                    isDisabled={member.permission.isOwner || !userInfo?.permission.isOwner}
-                    isChecked={member.permission.hasManagePer}
-                    onChange={(e) =>
-                      e.target.checked
-                        ? onAddPermission({ memberId: String(member.tmbId), per: 'manage' })
-                        : onRemovePermission({ memberId: String(member.tmbId), per: 'manage' })
-                    }
-                  />
+                  <Box mx="auto" w="fit-content">
+                    <Checkbox
+                      isDisabled={member.permission.isOwner || !userInfo?.permission.isOwner}
+                      isChecked={member.permission.hasManagePer}
+                      onChange={(e) =>
+                        e.target.checked
+                          ? onAddPermission({ memberId: String(member.tmbId), per: 'manage' })
+                          : onRemovePermission({ memberId: String(member.tmbId), per: 'manage' })
+                      }
+                    />
+                  </Box>
                 </Td>
               </Tr>
             ))}

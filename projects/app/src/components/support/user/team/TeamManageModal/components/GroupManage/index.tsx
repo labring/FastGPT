@@ -16,7 +16,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { TeamModalContext } from '../../context';
-import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import MyMenu, { MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -179,14 +179,16 @@ function MemberTable({
                                     icon: 'modal/changePer',
                                     onClick: () => {
                                       onChangeOwner(group._id);
-                                    }
+                                    },
+                                    type: 'primary' as MenuItemType
                                   },
                                   {
                                     label: t('common:common.Delete'),
                                     icon: 'delete',
                                     onClick: () => {
                                       openDeleteGroupModal(() => delDeleteGroup(group._id))();
-                                    }
+                                    },
+                                    type: 'danger' as MenuItemType
                                   }
                                 ]
                               : [])

@@ -1,7 +1,6 @@
-import { Box, Input, HStack, ModalBody, Button, ModalFooter } from '@chakra-ui/react';
+import { Input, HStack, ModalBody, Button, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 import { useTranslation } from 'next-i18next';
@@ -14,6 +13,7 @@ import { useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
 import { TeamModalContext } from '../../context';
 import { postCreateGroup, putUpdateGroup } from '@/web/support/user/team/group/api';
+import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 
 export type GroupFormType = {
   avatar: string;
@@ -35,7 +35,7 @@ function GroupInfoModal({ onClose, editGroupId }: { onClose: () => void; editGro
   const { register, handleSubmit, getValues, setValue } = useForm<GroupFormType>({
     defaultValues: {
       name: group?.name || '',
-      avatar: group?.avatar || ''
+      avatar: group?.avatar || DEFAULT_TEAM_AVATAR
     }
   });
 
@@ -93,18 +93,14 @@ function GroupInfoModal({ onClose, editGroupId }: { onClose: () => void; editGro
       isCentered
     >
       <ModalBody flex={1} overflow={'auto'} display={'flex'} flexDirection={'column'} gap={4}>
-        <HStack>
-          <FormLabel w="80px">{t('user:team.group.avatar')}</FormLabel>
-          <HStack cursor={'pointer'} onClick={onOpenSelectAvatar} _hover={{ color: 'primary.600' }}>
-            <Avatar src={getValues('avatar')} />
-            <MyIcon name="edit" w={'14px'} ml={2} />
-            <Box fontSize={'sm'}>{t('common:common.Edit')}</Box>
-          </HStack>
-        </HStack>
-        <HStack>
-          <FormLabel w="80px" required minW="fit-content">
-            {t('user:team.group.name')}
-          </FormLabel>
+        <FormLabel w="80px">{t('user:team.avatar_and_name')}</FormLabel>
+        <HStack _hover={{ color: 'primary.600' }}>
+          <Avatar
+            src={getValues('avatar')}
+            onClick={onOpenSelectAvatar}
+            cursor={'pointer'}
+            borderRadius={'md'}
+          />
           <Input
             bgColor="myGray.50"
             {...register('name', { required: true })}

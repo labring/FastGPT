@@ -213,24 +213,38 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
                     _hover={{ bg: 'myGray.50' }}
                     _notLast={{ mb: 2 }}
                   >
-                    <Avatar
-                      src={allMembers.find((item) => item.tmbId === member.tmbId)?.avatar}
-                      w="1.5rem"
-                      borderRadius={'md'}
-                    />
-                    <Box w="full">
-                      {allMembers.find((item) => item.tmbId === member.tmbId)?.memberName}
+                    <HStack>
+                      <Avatar
+                        src={allMembers.find((item) => item.tmbId === member.tmbId)?.avatar}
+                        w="1.5rem"
+                        borderRadius={'md'}
+                      />
+                      <Box>
+                        {allMembers.find((item) => item.tmbId === member.tmbId)?.memberName}
+                      </Box>
+                    </HStack>
+                    <Box mr="auto">
                       {(() => {
                         if (member.role === 'owner') {
-                          return <Tag ml={2}>{t('user:team.group.role.owner')}</Tag>;
+                          return (
+                            <Tag ml={2} colorSchema="gray">
+                              {t('user:team.group.role.owner')}
+                            </Tag>
+                          );
                         } else if (member.role === 'admin') {
                           return (
-                            <Tag
-                              ml={2}
-                              cursor={myRole === 'owner' ? 'pointer' : ''}
-                              onClick={() => handleToggleAdmin(member.tmbId)}
-                            >
+                            <Tag ml={2} mr="auto">
                               {t('user:team.group.role.admin')}
+                              {myRole === 'owner' && (
+                                <MyIcon
+                                  ml={1}
+                                  name={'common/closeLight'}
+                                  w={'1rem'}
+                                  cursor={'pointer'}
+                                  _hover={{ color: 'red.600' }}
+                                  onClick={() => handleToggleAdmin(member.tmbId)}
+                                />
+                              )}
                             </Tag>
                           );
                         } else if (member.role === 'member') {
@@ -239,7 +253,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
                             hoveredMemberId === member.tmbId && (
                               <Tag
                                 ml={2}
-                                color={'red.600'}
+                                colorSchema="yellow"
                                 cursor={'pointer'}
                                 onClick={() => handleToggleAdmin(member.tmbId)}
                               >
