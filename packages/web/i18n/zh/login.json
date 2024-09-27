@@ -9,5 +9,8 @@
   "register": "注册账号",
   "root_password_placeholder": "root 用户密码为环境变量 DEFAULT_ROOT_PSW 的值",
   "terms": "服务协议",
-  "use_root_login": "使用 root 用户登录"
+  "use_root_login": "使用 root 用户登录",
+  "redirect": "跳转",
+  "no_remind": "不再提醒",
+  "Chinese_ip_tip": "检测到您是中国大陆 IP，点击跳转访问中国大陆版。"
 }

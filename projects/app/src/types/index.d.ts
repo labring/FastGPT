@@ -22,7 +22,7 @@ export type RequestPaging = { pageNum: number; pageSize: number; [key]: any };
 declare global {
   var qaQueueLen: number;
   var vectorQueueLen: number;
-
+  var geoip2: any;
   interface Window {
     grecaptcha: any;
     QRCode: any;
