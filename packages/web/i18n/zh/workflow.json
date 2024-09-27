@@ -165,6 +165,7 @@
   "tool_params.params_description_placeholder": "姓名/年龄/SQL 语句...",
   "tool_params.params_name": "参数名",
   "tool_params.params_name_placeholder": "name/age/sql",
+  "tool_params.tool_params_result": "参数配置结果",
   "tool_params_config": "工具参数配置",
   "trigger_after_application_completion": "将在应用完全结束后触发",
   "update_link_error": "更新链接异常",

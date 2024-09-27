@@ -165,6 +165,7 @@
   "tool_params.params_description_placeholder": "Name/Age/SQL statement..",
   "tool_params.params_name": "Name",
   "tool_params.params_name_placeholder": "name/age/sql",
+  "tool_params.tool_params_result": "Tool params result",
   "tool_params_config": "Tool params config",
   "trigger_after_application_completion": "Will be triggered after the application is fully completed",
   "update_link_error": "Error updating link",

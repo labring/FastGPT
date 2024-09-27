@@ -185,6 +185,9 @@ export type DispatchNodeResponseType = {
 
   // form input
   formInputResult?: string;
+
+  // tool params
+  toolParamsResult?: Record<string, any>;
 };
 
 export type DispatchNodeResultType<T = {}> = {

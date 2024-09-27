@@ -8,6 +8,9 @@ export type Response = DispatchNodeResultType<{}>;
 export const dispatchToolParams = (props: Props): Response => {
   const { params } = props;
   return {
-    ...params
+    ...params,
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      toolParamsResult: params
+    }
   };
 };
