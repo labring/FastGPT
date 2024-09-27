@@ -70,6 +70,7 @@ import { dispatchLoop } from './loop/runLoop';
 import { dispatchLoopEnd } from './loop/runLoopEnd';
 import { dispatchLoopStart } from './loop/runLoopStart';
 import { dispatchFormInput } from './interactive/formInput';
+import { dispatchToolParams } from './agent/runTool/toolParams';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -87,6 +88,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension,
   [FlowNodeTypeEnum.tools]: dispatchRunTools,
   [FlowNodeTypeEnum.stopTool]: dispatchStopToolCall,
+  [FlowNodeTypeEnum.toolParams]: dispatchToolParams,
   [FlowNodeTypeEnum.lafModule]: dispatchLafRequest,
   [FlowNodeTypeEnum.ifElseNode]: dispatchIfElse,
   [FlowNodeTypeEnum.variableUpdate]: dispatchUpdateVariable,
