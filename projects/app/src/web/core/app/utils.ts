@@ -140,7 +140,7 @@ export function form2AppWorkflow(
           max: 3000,
           valueType: WorkflowIOValueTypeEnum.string,
           label: 'core.ai.Prompt',
-          description: 'core.app.tip.chatNodeSystemPromptTip',
+          description: 'core.app.tip.systemPromptTip',
           placeholder: 'core.app.tip.chatNodeSystemPromptTip',
           value: formData.aiSettings.systemPrompt
         },
@@ -461,7 +461,7 @@ export function form2AppWorkflow(
               max: 3000,
               valueType: WorkflowIOValueTypeEnum.string,
               label: 'core.ai.Prompt',
-              description: 'core.app.tip.chatNodeSystemPromptTip',
+              description: 'core.app.tip.systemPromptTip',
               placeholder: 'core.app.tip.chatNodeSystemPromptTip',
               value: formData.aiSettings.systemPrompt
             },

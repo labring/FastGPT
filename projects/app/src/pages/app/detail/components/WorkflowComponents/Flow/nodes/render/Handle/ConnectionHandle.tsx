@@ -32,14 +32,18 @@ export const ConnectionSourceHandle = ({
       );
 
       /* 
-        If the node is folded, must show the handle
+        If the node is folded and has outputs, must show the handle
         hide handle when:
           - not folded
           - not node
           - not sourceHandle
           - already connected
       */
-      if (!isFoldNode && (!node || !node?.sourceHandle?.right || rightTargetConnected)) return null;
+      if (
+        !(isFoldNode && node?.outputs.length) &&
+        (!node || !node?.sourceHandle?.right || rightTargetConnected)
+      )
+        return null;
 
       return (
         <SourceHandle

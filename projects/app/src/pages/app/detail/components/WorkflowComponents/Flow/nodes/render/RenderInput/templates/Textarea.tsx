@@ -49,7 +49,8 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
         variables={variables}
         title={t(item.label as any)}
         maxLength={item.maxLength}
-        h={150}
+        minH={100}
+        maxH={300}
         placeholder={t((item.placeholder as any) || '')}
         value={item.value}
         onChange={onChange}
