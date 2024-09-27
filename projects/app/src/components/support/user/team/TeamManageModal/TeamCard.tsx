@@ -143,7 +143,7 @@ function TeamCard() {
         borderBottomColor={'myGray.100'}
         mb={2}
       >
-        <Box fontSize={['sm', 'md']} fontWeight={'bold'} alignItems={'center'}>
+        <Box fontSize={['sm', 'md']} fontWeight={'bold'} alignItems={'center'} color={'myGray.900'}>
           {userInfo?.team.teamName}
         </Box>
         {userInfo?.team.role === TeamMemberRoleEnum.owner && (
@@ -176,10 +176,10 @@ function TeamCard() {
             feConfigs?.show_team_chat && (
               <Button
                 variant={'whitePrimary'}
-                size="sm"
+                size="md"
                 borderRadius={'md'}
                 ml={3}
-                leftIcon={<MyIcon name="core/dataset/tag" w={'20px'} />}
+                leftIcon={<MyIcon name="core/dataset/tag" w={'16px'} />}
                 onClick={() => {
                   onOpenTeamTagsAsync();
                 }}
@@ -190,7 +190,7 @@ function TeamCard() {
           {tab === TabListEnum.member && userInfo?.team.permission.hasManagePer && (
             <Button
               variant={'primary'}
-              size="sm"
+              size="md"
               borderRadius={'md'}
               ml={3}
               leftIcon={<MyIcon name="common/inviteLight" w={'16px'} color={'white'} />}
@@ -216,7 +216,7 @@ function TeamCard() {
           {tab === TabListEnum.member && !userInfo?.team.permission.isOwner && (
             <Button
               variant={'whitePrimary'}
-              size="sm"
+              size="md"
               borderRadius={'md'}
               ml={3}
               leftIcon={<MyIcon name={'support/account/loginoutLight'} w={'14px'} />}
@@ -231,7 +231,7 @@ function TeamCard() {
           {tab === TabListEnum.group && userInfo?.team.permission.hasManagePer && (
             <Button
               variant={'primary'}
-              size="sm"
+              size="md"
               borderRadius={'md'}
               ml={3}
               leftIcon={<MyIcon name="support/permission/collaborator" w={'14px'} />}

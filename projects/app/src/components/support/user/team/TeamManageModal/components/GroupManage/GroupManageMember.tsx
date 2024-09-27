@@ -25,6 +25,7 @@ import { putUpdateGroup } from '@/web/support/user/team/group/api';
 import { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 
 export type GroupFormType = {
   members: {
@@ -133,9 +134,9 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
     <MyModal
       onClose={onClose}
       title={t('user:team.group.manage_member')}
-      iconSrc="support/permission/collaborator"
+      iconSrc={group?.avatar ?? DEFAULT_TEAM_AVATAR}
       iconColor="primary.600"
-      minW={['90vw', '1000px']}
+      minW={['70vw', '800px']}
       h={'600px'}
       isCentered
     >

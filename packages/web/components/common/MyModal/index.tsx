@@ -82,7 +82,7 @@ const MyModal = ({
                   alt=""
                   src={iconSrc}
                   w={'1.5rem'}
-                  borderRadius={'md'}
+                  borderRadius={'sm'}
                 />
               </>
             )}

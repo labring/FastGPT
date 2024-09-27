@@ -53,7 +53,8 @@ const InviteModal = ({
   return (
     <MyModal
       isOpen
-      iconSrc="/imgs/modal/team.svg"
+      iconSrc="common/inviteLight"
+      iconColor="primary.600"
       title={
         <Box>
           <Box>{t('common:user.team.Invite Member')}</Box>

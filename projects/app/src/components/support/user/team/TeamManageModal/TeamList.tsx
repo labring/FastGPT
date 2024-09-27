@@ -28,7 +28,7 @@ function TeamList() {
         h={'40px'}
         borderBottom={'1.5px solid rgba(0, 0, 0, 0.05)'}
       >
-        <Box flex={['0 0 auto', 1]} fontSize={['sm', 'md']}>
+        <Box flex={['0 0 auto', 1]} fontSize={['sm', 'md']} fontWeight={'bold'}>
           {t('common:common.Team')}
         </Box>
         {/* if there is no team */}

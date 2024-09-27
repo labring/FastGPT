@@ -143,7 +143,15 @@ const MyMenu = ({
             bottom={0}
             left={0}
           />
-          <Box position={'relative'} color={isOpen ? 'primary.600' : ''}>
+          <Box
+            position={'relative'}
+            color={isOpen ? 'primary.600' : ''}
+            w="fit-content"
+            p="1"
+            bgColor={isOpen ? 'myGray.50' : ''}
+            h="fit-content"
+            borderRadius="sm"
+          >
             {Button}
           </Box>
         </Box>
