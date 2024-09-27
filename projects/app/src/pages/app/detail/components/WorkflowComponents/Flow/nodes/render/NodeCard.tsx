@@ -384,7 +384,12 @@ const MenuRender = React.memo(function MenuRender({
           pluginId: node.data.pluginId,
           version: node.data.version
         };
-        return state.concat(
+
+        return [
+          ...state.map((item) => ({
+            ...item,
+            selected: false
+          })),
           storeNode2FlowNode({
             item: {
               flowNodeType: template.flowNodeType,
@@ -403,7 +408,7 @@ const MenuRender = React.memo(function MenuRender({
             parentNodeId: undefined,
             t
           })
-        );
+        ];
       });
     },
     [computedNewNodeName, setNodes, t]

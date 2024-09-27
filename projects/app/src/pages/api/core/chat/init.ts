@@ -15,7 +15,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ): Promise<InitChatResponse | void> {
-  let { appId, chatId, loadCustomFeedbacks } = req.query as InitChatProps;
+  let { appId, chatId } = req.query as InitChatProps;
 
   if (!appId) {
     return jsonRes(res, {
