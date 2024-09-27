@@ -7,7 +7,6 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { DragHandleIcon } from '@chakra-ui/icons';
 import MemberTable from './components/MemberTable';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { TeamModalContext } from './context';
@@ -15,6 +14,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
 import dynamic from 'next/dynamic';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 
 enum TabListEnum {
   member = 'member',
@@ -32,8 +32,16 @@ const ManageGroupMemberModal = dynamic(() => import('./components/GroupManage/Gr
 function TeamCard() {
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { myTeams, refetchTeams, members, refetchMembers, setEditTeamData, onSwitchTeam } =
-    useContextSelector(TeamModalContext, (v) => v);
+  const {
+    myTeams,
+    refetchTeams,
+    members,
+    refetchMembers,
+    setEditTeamData,
+    onSwitchTeam,
+    searchKey,
+    setSearchKey
+  } = useContextSelector(TeamModalContext, (v) => v);
 
   const { userInfo, teamPlanStatus } = useUserStore();
   const { feConfigs } = useSystemStore();
@@ -163,13 +171,29 @@ function TeamCard() {
         <LightRowTabs<TabListEnum> overflow={'auto'} list={Tablist} value={tab} onChange={setTab} />
         {/* ctrl buttons */}
         <Flex alignItems={'center'}>
+          {tab === TabListEnum.member &&
+            userInfo?.team.permission.hasManagePer &&
+            feConfigs?.show_team_chat && (
+              <Button
+                variant={'whitePrimary'}
+                size="sm"
+                borderRadius={'md'}
+                ml={3}
+                leftIcon={<MyIcon name="core/dataset/tag" w={'20px'} />}
+                onClick={() => {
+                  onOpenTeamTagsAsync();
+                }}
+              >
+                {t('common:user.team.Team Tags Async')}
+              </Button>
+            )}
           {tab === TabListEnum.member && userInfo?.team.permission.hasManagePer && (
             <Button
-              variant={'whitePrimary'}
+              variant={'primary'}
               size="sm"
               borderRadius={'md'}
               ml={3}
-              leftIcon={<MyIcon name="common/inviteLight" w={'14px'} color={'primary.500'} />}
+              leftIcon={<MyIcon name="common/inviteLight" w={'16px'} color={'white'} />}
               onClick={() => {
                 if (
                   teamPlanStatus?.standardConstants?.maxTeamMember &&
@@ -189,22 +213,6 @@ function TeamCard() {
               {t('common:user.team.Invite Member')}
             </Button>
           )}
-          {tab === TabListEnum.member &&
-            userInfo?.team.permission.hasManagePer &&
-            feConfigs?.show_team_chat && (
-              <Button
-                variant={'whitePrimary'}
-                size="sm"
-                borderRadius={'md'}
-                ml={3}
-                leftIcon={<DragHandleIcon w={'14px'} color={'primary.500'} />}
-                onClick={() => {
-                  onOpenTeamTagsAsync();
-                }}
-              >
-                {t('common:user.team.Team Tags Async')}
-              </Button>
-            )}
           {tab === TabListEnum.member && !userInfo?.team.permission.isOwner && (
             <Button
               variant={'whitePrimary'}
@@ -231,6 +239,16 @@ function TeamCard() {
             >
               {t('user:team.group.create')}
             </Button>
+          )}
+          {tab === TabListEnum.permission && (
+            <Box ml="auto">
+              <SearchInput
+                placeholder={t('user:team.group.search_placeholder')}
+                w="200px"
+                value={searchKey}
+                onChange={(e) => setSearchKey(e.target.value)}
+              />
+            </Box>
           )}
         </Flex>
       </Flex>

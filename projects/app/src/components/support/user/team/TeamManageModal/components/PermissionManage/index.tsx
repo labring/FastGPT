@@ -2,7 +2,6 @@ import React from 'react';
 import {
   Box,
   Checkbox,
-  Flex,
   HStack,
   Table,
   TableContainer,
@@ -21,7 +20,6 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamModalContext } from '../../context';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MemberTag from '../../../Info/MemberTag';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
@@ -34,12 +32,8 @@ import { TeamPermission } from '@fastgpt/global/support/permission/user/controll
 function PermissionManage() {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
-  const { groups, refetchMembers, refetchGroups, members, clbs, refetchClbs } = useContextSelector(
-    TeamModalContext,
-    (v) => v
-  );
-
-  const [searchKey, setSearchKey] = React.useState('');
+  const { groups, refetchMembers, refetchGroups, members, clbs, refetchClbs, searchKey } =
+    useContextSelector(TeamModalContext, (v) => v);
 
   const filteredGroups = groups?.filter((group) =>
     group.name.toLowerCase().includes(searchKey.toLowerCase())
@@ -171,40 +165,24 @@ function PermissionManage() {
 
   return (
     <MyBox h={'100%'} bg={'white'}>
-      <TableContainer overflow={'unset'} fontSize={'sm'}>
-        <Flex>
-          <Box ml="auto" mr="2">
-            <SearchInput
-              placeholder={t('user:team.group.search_placeholder')}
-              w="200px"
-              value={searchKey}
-              onChange={(e) => setSearchKey(e.target.value)}
-            />
-          </Box>
-        </Flex>
-        <Table overflow={'unset'} mt="2">
-          <Thead bg={'myWhite.400'}>
-            <Tr>
-              <Th borderRadius={'none !important'}>
+      <TableContainer overflow={'unset'} fontSize={'sm'} mx="6">
+        <Table overflow={'unset'}>
+          <Thead>
+            <Tr bg={'white !important'}>
+              <Th bg="myGray.100" borderLeftRadius="6px">
                 {t('user:team.group.group')} / {t('user:team.group.members')}
                 <QuestionTip ml="1" label={t('user:team.group.permission_tip')} />
               </Th>
-              <Th>
-                <Box w="fit-content" mx="auto">
-                  {t('user:team.group.permission.write')}
-                </Box>
-              </Th>
-              <Th>
-                <Box w="fit-content" mx="auto">
-                  {t('user:team.group.permission.manage')}
-                </Box>
+              <Th bg="myGray.100">{t('user:team.group.permission.write')}</Th>
+              <Th bg="myGray.100" borderRightRadius="6px">
+                {t('user:team.group.permission.manage')}
               </Th>
             </Tr>
           </Thead>
           <Tbody>
             {filteredGroups?.map((group) => (
-              <Tr key={group._id} overflow={'unset'}>
-                <Td>
+              <Tr key={group._id} overflow={'unset'} border="none">
+                <Td border="none">
                   <MemberTag
                     name={
                       group.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : group.name
@@ -212,70 +190,62 @@ function PermissionManage() {
                     avatar={group.avatar}
                   />
                 </Td>
-                <Td>
-                  <Box w="fit-content" mx="auto">
-                    <Checkbox
-                      isDisabled={!userManage}
-                      isChecked={group.permission.hasWritePer}
-                      onChange={(e) =>
-                        e.target.checked
-                          ? onAddPermission({ groupId: group._id, per: 'write' })
-                          : onRemovePermission({ groupId: group._id, per: 'write' })
-                      }
-                    />
-                  </Box>
+                <Td border="none">
+                  <Checkbox
+                    isDisabled={!userManage}
+                    isChecked={group.permission.hasWritePer}
+                    onChange={(e) =>
+                      e.target.checked
+                        ? onAddPermission({ groupId: group._id, per: 'write' })
+                        : onRemovePermission({ groupId: group._id, per: 'write' })
+                    }
+                  />
                 </Td>
-                <Td>
-                  <Box w="fit-content" mx="auto">
-                    <Checkbox
-                      isDisabled={!userManage}
-                      isChecked={group.permission.hasManagePer}
-                      onChange={(e) =>
-                        e.target.checked
-                          ? onAddPermission({ groupId: group._id, per: 'manage' })
-                          : onRemovePermission({ groupId: group._id, per: 'manage' })
-                      }
-                    />
-                  </Box>
+                <Td border="none">
+                  <Checkbox
+                    isDisabled={!userManage}
+                    isChecked={group.permission.hasManagePer}
+                    onChange={(e) =>
+                      e.target.checked
+                        ? onAddPermission({ groupId: group._id, per: 'manage' })
+                        : onRemovePermission({ groupId: group._id, per: 'manage' })
+                    }
+                  />
                 </Td>
               </Tr>
             ))}
             {filteredGroups?.length > 0 && filteredMembers?.length > 0 && (
-              <Tr borderBottom={'2px solid'} borderColor={'myGray.300'} />
+              <Tr borderBottom={'1px solid'} borderColor={'myGray.300'} />
             )}
             {filteredMembers?.map((member) => (
-              <Tr key={member.tmbId} overflow={'unset'}>
-                <Td>
+              <Tr key={member.tmbId} overflow={'unset'} border="none">
+                <Td border="none">
                   <HStack>
                     <Avatar src={member.avatar} w="1.5rem" borderRadius={'50%'} />
                     <Box>{member.memberName}</Box>
                   </HStack>
                 </Td>
-                <Td>
-                  <Box w="fit-content" mx="auto">
-                    <Checkbox
-                      isDisabled={member.permission.isOwner || !userManage}
-                      isChecked={member.permission.hasWritePer}
-                      onChange={(e) =>
-                        e.target.checked
-                          ? onAddPermission({ memberId: String(member.tmbId), per: 'write' })
-                          : onRemovePermission({ memberId: String(member.tmbId), per: 'write' })
-                      }
-                    />
-                  </Box>
+                <Td border="none">
+                  <Checkbox
+                    isDisabled={member.permission.isOwner || !userManage}
+                    isChecked={member.permission.hasWritePer}
+                    onChange={(e) =>
+                      e.target.checked
+                        ? onAddPermission({ memberId: String(member.tmbId), per: 'write' })
+                        : onRemovePermission({ memberId: String(member.tmbId), per: 'write' })
+                    }
+                  />
                 </Td>
-                <Td>
-                  <Box w="fit-content" mx="auto">
-                    <Checkbox
-                      isDisabled={member.permission.isOwner || !userInfo?.permission.isOwner}
-                      isChecked={member.permission.hasManagePer}
-                      onChange={(e) =>
-                        e.target.checked
-                          ? onAddPermission({ memberId: String(member.tmbId), per: 'manage' })
-                          : onRemovePermission({ memberId: String(member.tmbId), per: 'manage' })
-                      }
-                    />
-                  </Box>
+                <Td border="none">
+                  <Checkbox
+                    isDisabled={member.permission.isOwner || !userInfo?.permission.isOwner}
+                    isChecked={member.permission.hasManagePer}
+                    onChange={(e) =>
+                      e.target.checked
+                        ? onAddPermission({ memberId: String(member.tmbId), per: 'manage' })
+                        : onRemovePermission({ memberId: String(member.tmbId), per: 'manage' })
+                    }
+                  />
                 </Td>
               </Tr>
             ))}

@@ -12,11 +12,16 @@ function GroupTags({ max, names }: Props) {
   const length = names?.length || 0;
 
   return (
-    <Flex onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} flexWrap="wrap">
+    <Flex
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      flexWrap="wrap"
+      rowGap={2}
+    >
       {!hover &&
         names?.slice(0, max).map((name, index) => (
           <Tag key={index} colorSchema={'gray'} ml={2}>
-            {name}
+            {name.length > 10 ? name.slice(0, 10) + '...' : name}
           </Tag>
         ))}
       {!hover && length > max && (

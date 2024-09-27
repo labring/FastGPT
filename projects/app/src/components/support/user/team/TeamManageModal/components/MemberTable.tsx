@@ -27,13 +27,17 @@ function MemberTable() {
 
   return (
     <MyBox>
-      <TableContainer overflow={'unset'} fontSize={'sm'}>
+      <TableContainer overflow={'unset'} fontSize={'sm'} mx="6">
         <Table overflow={'unset'}>
-          <Thead bg={'myWhite.400'}>
-            <Tr>
-              <Th borderRadius={'none !important'}>{t('common:common.Username')}</Th>
-              <Th>{t('user:team.belong_to_group')}</Th>
-              <Th borderRadius={'none !important'}>{t('common:common.Action')}</Th>
+          <Thead>
+            <Tr bgColor={'white !important'}>
+              <Th borderLeftRadius="6px" bgColor="myGray.100">
+                {t('common:common.Username')}
+              </Th>
+              <Th bgColor="myGray.100">{t('user:team.belong_to_group')}</Th>
+              <Th borderRightRadius="6px" bgColor="myGray.100">
+                {t('common:common.Action')}
+              </Th>
             </Tr>
           </Thead>
           <Tbody>
@@ -43,7 +47,9 @@ function MemberTable() {
                   <HStack>
                     <Avatar src={item.avatar} w={['18px', '22px']} borderRadius={'50%'} />
                     <Box maxW={'150px'} className={'textEllipsis'}>
-                      {item.memberName}
+                      {item.memberName.length > 10
+                        ? item.memberName.slice(0, 10) + '...'
+                        : item.memberName}
                       {item.status === 'waiting' && (
                         <Tag ml="2" colorSchema="yellow">
                           {t('user.team.member.waiting')}
@@ -68,6 +74,9 @@ function MemberTable() {
                         name={'common/trash'}
                         cursor={'pointer'}
                         w="1rem"
+                        _hover={{
+                          color: 'primary.600'
+                        }}
                         onClick={() => {
                           openRemoveMember(
                             () =>

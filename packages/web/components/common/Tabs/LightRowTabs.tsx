@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, Grid } from '@chakra-ui/react';
+import { Box, color, Flex, Grid } from '@chakra-ui/react';
 import type { FlexProps, GridProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '../Avatar';
@@ -69,6 +69,9 @@ const LightRowTabs = <ValueType = string,>({
             borderColor={defaultColor}
             px={3}
             whiteSpace={'nowrap'}
+            _hover={{
+              color: activeColor
+            }}
             {...(value === item.value
               ? {
                   color: activeColor,

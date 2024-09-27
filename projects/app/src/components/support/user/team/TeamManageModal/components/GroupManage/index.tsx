@@ -77,14 +77,18 @@ function MemberTable({
 
   return (
     <MyBox isLoading={isLoadingDeleteGroup}>
-      <TableContainer overflow={'unset'} fontSize={'sm'}>
+      <TableContainer overflow={'unset'} fontSize={'sm'} mx="6">
         <Table overflow={'unset'}>
-          <Thead bg={'myWhite.400'}>
-            <Tr>
-              <Th borderRadius={'none !important'}>{t('user:team.group.name')}</Th>
-              <Th>{t('user:owner')}</Th>
-              <Th>{t('user:team.group.members')}</Th>
-              <Th borderRadius={'none !important'}>{t('common:common.Action')}</Th>
+          <Thead>
+            <Tr bg={'white !important'}>
+              <Th bg="myGray.100" borderLeftRadius="6px">
+                {t('user:team.group.name')}
+              </Th>
+              <Th bg="myGray.100">{t('user:owner')}</Th>
+              <Th bg="myGray.100">{t('user:team.group.members')}</Th>
+              <Th bg="myGray.100" borderRightRadius="6px">
+                {t('common:common.Action')}
+              </Th>
             </Tr>
           </Thead>
           <Tbody>
