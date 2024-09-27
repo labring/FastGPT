@@ -53,7 +53,6 @@ export const runToolWithToolChoice = async (
     res,
     requestOrigin,
     runtimeNodes,
-    node,
     stream,
     workflowStreamResponse,
     params: { temperature = 0, maxToken = 4000, aiChatVision }
@@ -85,7 +84,7 @@ export const runToolWithToolChoice = async (
       type: 'function',
       function: {
         name: item.nodeId,
-        description: item.intro,
+        description: item.intro || item.name,
         parameters: {
           type: 'object',
           properties,
