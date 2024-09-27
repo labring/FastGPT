@@ -1,5 +1,5 @@
 export type PaginationProps<T = {}> = T & {
-  current: number;
+  offset: number;
   pageSize: number;
 };
 export type PaginationResponse<T = any> = {

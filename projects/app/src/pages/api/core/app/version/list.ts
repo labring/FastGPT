@@ -1,33 +1,55 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { VersionListItemType } from '@fastgpt/global/core/app/version';
 
-type Props = PaginationProps<{
+export type versionListBody = PaginationProps<{
   appId: string;
 }>;
 
-type Response = PaginationResponse<AppVersionSchemaType>;
+export type versionListResponse = PaginationResponse<VersionListItemType>;
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<Response> {
-  const { current, pageSize, appId } = req.body as Props;
+async function handler(
+  req: ApiRequestProps<versionListBody>,
+  res: NextApiResponse<any>
+): Promise<versionListResponse> {
+  const { offset, pageSize, appId } = req.body;
+
+  await authApp({ appId, req, per: WritePermissionVal, authToken: true });
 
   const [result, total] = await Promise.all([
-    MongoAppVersion.find({
-      appId
-    })
+    MongoAppVersion.find(
+      {
+        appId
+      },
+      '_id appId versionName time isPublish tmbId'
+    )
       .sort({
         time: -1
       })
-      .skip((current - 1) * pageSize)
+      .skip(offset)
       .limit(pageSize),
     MongoAppVersion.countDocuments({ appId })
   ]);
 
+  const versionList = result.map((item) => {
+    return {
+      _id: item._id,
+      appId: item.appId,
+      versionName: item.versionName,
+      time: item.time,
+      isPublish: item.isPublish,
+      tmbId: item.tmbId
+    };
+  });
+
   return {
     total,
-    list: result
+    list: versionList
   };
 }
 

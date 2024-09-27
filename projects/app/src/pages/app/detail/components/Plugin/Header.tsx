@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Box,
   Flex,
@@ -10,30 +10,25 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import dynamic from 'next/dynamic';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext, getWorkflowStore } from '../WorkflowComponents/context';
+import { WorkflowContext, WorkflowSnapshotsType } from '../WorkflowComponents/context';
 import { AppContext, TabEnum } from '../context';
 import RouteTab from '../RouteTab';
 import { useRouter } from 'next/router';
 
 import AppCard from '../WorkflowComponents/AppCard';
-import { uiWorkflow2StoreWorkflow } from '../WorkflowComponents/utils';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { compareSnapshot } from '@/web/core/workflow/utils';
-import SaveAndPublishModal from '../WorkflowComponents/Flow/components/SaveAndPublish';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useDebounceEffect } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-
-const PublishHistories = dynamic(() => import('../WorkflowPublishHistoriesSlider'));
+import SaveButton from '../Workflow/components/SaveButton';
+import PublishHistories from '../PublishHistoriesSlider';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -48,24 +43,20 @@ const Header = () => {
     onOpen: onOpenBackConfirm,
     onClose: onCloseBackConfirm
   } = useDisclosure();
-  const {
-    isOpen: isSaveAndPublishModalOpen,
-    onOpen: onSaveAndPublishModalOpen,
-    onClose: onSaveAndPublishModalClose
-  } = useDisclosure();
-  const [isSave, setIsSave] = useState(false);
 
   const {
     flowData2StoreData,
     flowData2StoreDataAndCheck,
     setWorkflowTestData,
-    setHistoriesDefaultData,
-    historiesDefaultData,
+    setShowHistoryModal,
+    showHistoryModal,
     nodes,
     edges,
     past,
     future,
-    setPast
+    setPast,
+    onSwitchTmpVersion,
+    onSwitchCloudVersion
   } = useContextSelector(WorkflowContext, (v) => v);
   const { lastAppListRouteType } = useSystemStore();
 
@@ -193,21 +184,15 @@ const Header = () => {
 
           {currentTab === TabEnum.appEdit && (
             <HStack flexDirection={['column', 'row']} spacing={[2, 3]}>
-              {!historiesDefaultData && (
+              {!showHistoryModal && (
                 <IconButton
                   icon={<MyIcon name={'history'} w={'18px'} />}
                   aria-label={''}
                   size={'sm'}
                   w={'30px'}
                   variant={'whitePrimary'}
-                  onClick={async () => {
-                    const { nodes, edges } = uiWorkflow2StoreWorkflow(await getWorkflowStore());
-
-                    setHistoriesDefaultData({
-                      nodes,
-                      edges,
-                      chatConfig: appDetail.chatConfig
-                    });
+                  onClick={() => {
+                    setShowHistoryModal(true);
                   }}
                 />
               )}
@@ -224,124 +209,16 @@ const Header = () => {
               >
                 {t('common:core.workflow.Run')}
               </Button>
-              {!historiesDefaultData && (
-                <MyPopover
-                  placement={'bottom-end'}
-                  hasArrow={false}
-                  offset={[2, 4]}
-                  w={'116px'}
-                  onOpenFunc={() => setIsSave(true)}
-                  onCloseFunc={() => setIsSave(false)}
-                  trigger={'hover'}
-                  Trigger={
-                    <Button
-                      size={'sm'}
-                      rightIcon={
-                        <MyIcon
-                          name={isSave ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
-                          w={['14px', '16px']}
-                        />
-                      }
-                    >
-                      <Box>{t('common:common.Save')}</Box>
-                    </Button>
-                  }
-                >
-                  {({ onClose }) => (
-                    <MyBox p={1.5}>
-                      <MyBox
-                        display={'flex'}
-                        size={'md'}
-                        px={1}
-                        py={1.5}
-                        rounded={'4px'}
-                        _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
-                        cursor={'pointer'}
-                        isLoading={loading}
-                        onClick={async () => {
-                          await onClickSave({});
-                          toast({
-                            status: 'success',
-                            title: t('app:saved_success'),
-                            position: 'top-right'
-                          });
-                          onClose();
-                          setIsSave(false);
-                        }}
-                      >
-                        <MyIcon name={'core/workflow/upload'} w={'16px'} mr={2} />
-                        <Box fontSize={'sm'}>{t('common:core.workflow.Save to cloud')}</Box>
-                      </MyBox>
-                      <Flex
-                        px={1}
-                        py={1.5}
-                        rounded={'4px'}
-                        _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
-                        cursor={'pointer'}
-                        onClick={() => {
-                          const data = flowData2StoreDataAndCheck();
-                          if (data) {
-                            onSaveAndPublishModalOpen();
-                          }
-                          onClose();
-                          setIsSave(false);
-                        }}
-                      >
-                        <MyIcon name={'core/workflow/publish'} w={'16px'} mr={2} />
-                        <Box fontSize={'sm'}>{t('common:core.workflow.Save and publish')}</Box>
-                        {isSaveAndPublishModalOpen && (
-                          <SaveAndPublishModal
-                            isLoading={loading}
-                            onClose={onSaveAndPublishModalClose}
-                            onClickSave={onClickSave}
-                          />
-                        )}
-                      </Flex>
-                    </MyBox>
-                  )}
-                </MyPopover>
+              {!showHistoryModal && (
+                <SaveButton
+                  isLoading={loading}
+                  onClickSave={onClickSave}
+                  checkData={flowData2StoreDataAndCheck}
+                />
               )}
             </HStack>
           )}
         </Flex>
-        {historiesDefaultData && isV2Workflow && currentTab === TabEnum.appEdit && (
-          <PublishHistories
-            onClose={() => {
-              setHistoriesDefaultData(undefined);
-            }}
-          />
-        )}
-        <MyModal
-          isOpen={isOpenBackConfirm}
-          onClose={onCloseBackConfirm}
-          iconSrc="common/warn"
-          title={t('common:common.Exit')}
-          w={'400px'}
-        >
-          <ModalBody>
-            <Box>{t('workflow:workflow.exit_tips')}</Box>
-          </ModalBody>
-          <ModalFooter gap={3}>
-            <Button variant={'whiteDanger'} onClick={onBack}>
-              {t('common:common.Exit Directly')}
-            </Button>
-            <Button
-              isLoading={loading}
-              onClick={async () => {
-                await onClickSave({});
-                onCloseBackConfirm();
-                onBack();
-                toast({
-                  status: 'success',
-                  title: t('app:saved_success'),
-                  position: 'top-right'
-                });
-              }}
-            >
-              {t('common:common.Save_and_exit')}
-            </Button>
-          </ModalFooter>
-        </MyModal>
       </>
     );
   }, [
@@ -349,26 +226,63 @@ const Header = () => {
     currentTab,
     isPublished,
     onBack,
-    isOpenBackConfirm,
     onOpenBackConfirm,
-    onCloseBackConfirm,
+    isV2Workflow,
+    showHistoryModal,
     t,
     loading,
-    isV2Workflow,
-    historiesDefaultData,
-    isSave,
     onClickSave,
-    setHistoriesDefaultData,
-    appDetail.chatConfig,
     flowData2StoreDataAndCheck,
-    setWorkflowTestData,
-    isSaveAndPublishModalOpen,
-    onSaveAndPublishModalClose,
-    toast,
-    onSaveAndPublishModalOpen
+    setShowHistoryModal,
+    setWorkflowTestData
   ]);
 
-  return Render;
+  return (
+    <>
+      {Render}
+      {showHistoryModal && isV2Workflow && currentTab === TabEnum.appEdit && (
+        <PublishHistories<WorkflowSnapshotsType>
+          onClose={() => {
+            setShowHistoryModal(false);
+          }}
+          past={past}
+          onSwitchTmpVersion={onSwitchTmpVersion}
+          onSwitchCloudVersion={onSwitchCloudVersion}
+        />
+      )}
+      <MyModal
+        isOpen={isOpenBackConfirm}
+        onClose={onCloseBackConfirm}
+        iconSrc="common/warn"
+        title={t('common:common.Exit')}
+        w={'400px'}
+      >
+        <ModalBody>
+          <Box>{t('workflow:workflow.exit_tips')}</Box>
+        </ModalBody>
+        <ModalFooter gap={3}>
+          <Button variant={'whiteDanger'} onClick={onBack}>
+            {t('common:common.Exit Directly')}
+          </Button>
+          <Button
+            isLoading={loading}
+            onClick={async () => {
+              await onClickSave({});
+              onCloseBackConfirm();
+              onBack();
+              toast({
+                status: 'success',
+                title: t('app:saved_success'),
+                position: 'top-right'
+              });
+            }}
+          >
+            {t('common:common.Save_and_exit')}
+          </Button>
+        </ModalFooter>
+      </MyModal>
+    </>
+  );
 };
 
 export default React.memo(Header);

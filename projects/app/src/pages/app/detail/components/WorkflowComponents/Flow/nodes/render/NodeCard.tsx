@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Box, Button, Card, Flex, Image } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -9,7 +9,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
-import { ToolTargetHandle } from './Handle/ToolHandle';
+import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
@@ -61,7 +61,8 @@ const NodeCard = (props: Props) => {
     menuForbid,
     isTool = false,
     isError = false,
-    debugResult
+    debugResult,
+    isFolded
   } = props;
 
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
@@ -81,7 +82,16 @@ const NodeCard = (props: Props) => {
     [isTool, nodeList]
   );
 
-  const node = nodeList.find((node) => node.nodeId === nodeId);
+  // Current node and parent node
+  const { node, parentNode } = useMemo(() => {
+    const node = nodeList.find((node) => node.nodeId === nodeId);
+    const parentNode = node?.parentNodeId
+      ? nodeList.find((n) => n.nodeId === node?.parentNodeId)
+      : undefined;
+
+    return { node, parentNode };
+  }, [nodeList, nodeId]);
+
   const { openConfirm: onOpenConfirmSync, ConfirmModal: ConfirmSyncModal } = useConfirm({
     content: t('app:module.Confirm Sync')
   });
@@ -155,6 +165,29 @@ const NodeCard = (props: Props) => {
 
           {/* avatar and name */}
           <Flex alignItems={'center'}>
+            {node?.flowNodeType !== FlowNodeTypeEnum.stopTool && (
+              <Box
+                mr={2}
+                cursor={'pointer'}
+                rounded={'sm'}
+                _hover={{ bg: 'myGray.200' }}
+                onClick={() => {
+                  onChangeNode({
+                    nodeId,
+                    type: 'attr',
+                    key: 'isFolded',
+                    value: !isFolded
+                  });
+                }}
+              >
+                <MyIcon
+                  name={isFolded ? 'core/chat/chevronDown' : 'core/chat/chevronRight'}
+                  w={'24px'}
+                  h={'24px'}
+                  color={'myGray.500'}
+                />
+              </Box>
+            )}
             <Avatar src={avatar} borderRadius={'sm'} objectFit={'contain'} w={'30px'} h={'30px'} />
             <Box ml={3} fontSize={'md'} fontWeight={'medium'}>
               {t(name as any)}
@@ -237,6 +270,8 @@ const NodeCard = (props: Props) => {
   }, [
     showToolHandle,
     nodeId,
+    node?.flowNodeType,
+    isFolded,
     avatar,
     t,
     name,
@@ -248,21 +283,26 @@ const NodeCard = (props: Props) => {
     nodeList,
     intro,
     ConfirmSyncModal,
-    onOpenCustomTitleModal,
     onChangeNode,
+    onOpenCustomTitleModal,
     toast
   ]);
   const RenderHandle = useMemo(() => {
     return (
       <>
-        <ConnectionSourceHandle nodeId={nodeId} />
+        <ConnectionSourceHandle nodeId={nodeId} isFoldNode={isFolded} />
         <ConnectionTargetHandle nodeId={nodeId} />
       </>
     );
-  }, [nodeId]);
+  }, [nodeId, isFolded]);
+  const RenderToolHandle = useMemo(
+    () => (node?.flowNodeType === FlowNodeTypeEnum.tools ? <ToolSourceHandle /> : null),
+    [node?.flowNodeType]
+  );
 
   return (
     <Flex
+      hidden={parentNode?.isFolded}
       flexDirection={'column'}
       minW={minW}
       maxW={maxW}
@@ -298,8 +338,9 @@ const NodeCard = (props: Props) => {
     >
       <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />
       {Header}
-      {children}
+      {!isFolded && children}
       {RenderHandle}
+      {RenderToolHandle}
 
       <EditTitleModal maxLength={20} />
     </Flex>

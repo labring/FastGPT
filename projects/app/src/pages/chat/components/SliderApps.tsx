@@ -164,4 +164,4 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
   );
 };
 
-export default SliderApps;
+export default React.memo(SliderApps);

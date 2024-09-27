@@ -6,10 +6,14 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../../context';
 
-export const ConnectionSourceHandle = ({ nodeId }: { nodeId: string }) => {
-  const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+export const ConnectionSourceHandle = ({
+  nodeId,
+  isFoldNode
+}: {
+  nodeId: string;
+  isFoldNode?: boolean;
+}) => {
+  const { connectingEdge, nodeList, edges } = useContextSelector(WorkflowContext, (ctx) => ctx);
 
   const { showSourceHandle, RightHandle, LeftHandlee, TopHandlee, BottomHandlee } = useMemo(() => {
     const node = nodeList.find((node) => node.nodeId === nodeId);
@@ -27,7 +31,15 @@ export const ConnectionSourceHandle = ({ nodeId }: { nodeId: string }) => {
         (edge) => edge.targetHandle === getHandleId(nodeId, 'target', Position.Right)
       );
 
-      if (!node || !node?.sourceHandle?.right || rightTargetConnected) return null;
+      /* 
+        If the node is folded, must show the handle
+        hide handle when:
+          - not folded
+          - not node
+          - not sourceHandle
+          - already connected
+      */
+      if (!isFoldNode && (!node || !node?.sourceHandle?.right || rightTargetConnected)) return null;
 
       return (
         <SourceHandle
@@ -102,7 +114,7 @@ export const ConnectionSourceHandle = ({ nodeId }: { nodeId: string }) => {
       TopHandlee,
       BottomHandlee
     };
-  }, [connectingEdge, edges, nodeId, nodeList]);
+  }, [connectingEdge, edges, nodeId, nodeList, isFoldNode]);
 
   return showSourceHandle ? (
     <>

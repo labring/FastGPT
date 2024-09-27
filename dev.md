@@ -29,6 +29,10 @@ Note: If the Node version is >= 20, you need to pass the `--no-node-snapshot` pa
 NODE_OPTIONS=--no-node-snapshot pnpm i
 ```
 
+### Jest
+
+https://fael3z0zfze.feishu.cn/docx/ZOI1dABpxoGhS7xzhkXcKPxZnDL
+
 ## I18N
 
 ### Install i18n-ally Plugin

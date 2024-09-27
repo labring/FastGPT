@@ -47,6 +47,14 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
   const plugin = await getChildAppRuntimeById(pluginId);
 
+  const outputFilterMap =
+    plugin.nodes
+      .find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginOutput)
+      ?.inputs.reduce<Record<string, boolean>>((acc, cur) => {
+        acc[cur.key] = cur.isToolOutput === false ? false : true;
+        return acc;
+      }, {}) ?? {};
+
   const runtimeNodes = storeNodes2RuntimeNodes(
     plugin.nodes,
     getWorkflowEntryNodeIds(plugin.nodes)
@@ -115,13 +123,12 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       moduleLogo: plugin.avatar,
       totalPoints: usagePoints,
       pluginOutput: output?.pluginOutput,
-      pluginDetail:
-        pluginData && pluginData.permission.hasWritePer // Not system plugin
-          ? flowResponses.filter((item) => {
-              const filterArr = [FlowNodeTypeEnum.pluginOutput];
-              return !filterArr.includes(item.moduleType as any);
-            })
-          : undefined
+      pluginDetail: pluginData?.permission?.hasWritePer // Not system plugin
+        ? flowResponses.filter((item) => {
+            const filterArr = [FlowNodeTypeEnum.pluginOutput];
+            return !filterArr.includes(item.moduleType as any);
+          })
+        : undefined
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
@@ -130,7 +137,14 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         tokens: 0
       }
     ],
-    [DispatchNodeResponseKeyEnum.toolResponses]: output?.pluginOutput ? output.pluginOutput : {},
+    [DispatchNodeResponseKeyEnum.toolResponses]: output?.pluginOutput
+      ? Object.keys(output.pluginOutput)
+          .filter((key) => outputFilterMap[key])
+          .reduce<Record<string, any>>((acc, key) => {
+            acc[key] = output.pluginOutput![key];
+            return acc;
+          }, {})
+      : null,
     ...(output ? output.pluginOutput : {})
   };
 };

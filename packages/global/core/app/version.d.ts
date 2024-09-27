@@ -12,3 +12,12 @@ export type AppVersionSchemaType = {
   versionName: string;
   tmbId: string;
 };
+
+export type VersionListItemType = {
+  _id: string;
+  appId: string;
+  versionName: string;
+  time: Date;
+  isPublish: boolean | undefined;
+  tmbId: string;
+};

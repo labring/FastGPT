@@ -22,21 +22,22 @@ export type GetScrollCollectionsProps = PaginationProps<{
 }>;
 
 async function handler(
-  req: ApiRequestProps<{}, GetScrollCollectionsProps>
+  req: ApiRequestProps<GetScrollCollectionsProps, {}>
 ): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
   let {
     datasetId,
     pageSize = 10,
-    current = 1,
+    offset,
     parentId = null,
     searchText = '',
     selectFolder = false,
     filterTags = [],
     simple = false
-  } = req.query;
+  } = req.body;
   if (!datasetId) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
+
   searchText = searchText?.replace(/'/g, '');
   pageSize = Math.min(pageSize, 30);
 
@@ -84,7 +85,7 @@ async function handler(
       .sort({
         updateTime: -1
       })
-      .skip(pageSize * (current - 1))
+      .skip(offset)
       .limit(pageSize)
       .lean();
 
@@ -110,7 +111,7 @@ async function handler(
         $sort: { updateTime: -1 }
       },
       {
-        $skip: (current - 1) * pageSize
+        $skip: offset
       },
       {
         $limit: pageSize

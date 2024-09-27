@@ -14,6 +14,7 @@ export const cheerioToHtml = ({
 }) => {
   // get origin url
   const originUrl = new URL(fetchUrl).origin;
+  const protocol = new URL(fetchUrl).protocol; // http: or https:
 
   const usedSelector = selector || 'body';
   const selectDom = $(usedSelector);
@@ -32,14 +33,22 @@ export const cheerioToHtml = ({
   // if link,img startWith /, add origin url
   selectDom.find('a').each((i, el) => {
     const href = $(el).attr('href');
-    if (href && href.startsWith('/')) {
-      $(el).attr('href', originUrl + href);
+    if (href) {
+      if (href.startsWith('//')) {
+        $(el).attr('href', protocol + href);
+      } else if (href.startsWith('/')) {
+        $(el).attr('href', originUrl + href);
+      }
     }
   });
   selectDom.find('img').each((i, el) => {
     const src = $(el).attr('src');
-    if (src && src.startsWith('/')) {
-      $(el).attr('src', originUrl + src);
+    if (src) {
+      if (src.startsWith('//')) {
+        $(el).attr('src', protocol + src);
+      } else if (src.startsWith('/')) {
+        $(el).attr('src', originUrl + src);
+      }
     }
   });
 

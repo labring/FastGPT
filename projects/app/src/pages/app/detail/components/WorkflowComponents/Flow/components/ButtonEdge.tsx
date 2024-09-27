@@ -1,10 +1,11 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { BezierEdge, getBezierPath, EdgeLabelRenderer, EdgeProps } from 'reactflow';
-import { Flex } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
+import { useThrottleEffect } from 'ahooks';
 
 const ButtonEdge = (props: EdgeProps) => {
   const { nodes, nodeList, setEdges, workflowDebugData, hoverEdgeId } = useContextSelector(
@@ -27,6 +28,14 @@ const ButtonEdge = (props: EdgeProps) => {
     targetHandleId,
     style
   } = props;
+
+  // If parentNode is folded, the edge will not be displayed
+  const parentNode = useMemo(() => {
+    return nodeList.find(
+      (node) => (node.nodeId === source || node.nodeId === target) && node.parentNodeId
+    );
+  }, [nodeList, source, target]);
+
   const defaultZIndex = useMemo(
     () => (nodeList.find((node) => node.nodeId === source && node.parentNodeId) ? 1001 : 0),
     [nodeList, source]
@@ -42,12 +51,20 @@ const ButtonEdge = (props: EdgeProps) => {
     [setEdges]
   );
 
-  const highlightEdge = useMemo(() => {
-    const connectNode = nodes.find((node) => {
-      return node.selected && (node.id === props.source || node.id === props.target);
-    });
-    return !!(connectNode || selected);
-  }, [nodes, props.source, props.target, selected]);
+  // Selected edge or source/target node selected
+  const [highlightEdge, setHighlightEdge] = useState(false);
+  useThrottleEffect(
+    () => {
+      const connectNode = nodes.find((node) => {
+        return node.selected && (node.id === props.source || node.id === props.target);
+      });
+      setHighlightEdge(!!connectNode || !!selected);
+    },
+    [nodes, selected, props.source, props.target],
+    {
+      wait: 100
+    }
+  );
 
   const [, labelX, labelY] = getBezierPath({
     sourceX,
@@ -127,55 +144,59 @@ const ButtonEdge = (props: EdgeProps) => {
     })();
     return (
       <EdgeLabelRenderer>
-        <Flex
-          display={isHover || highlightEdge ? 'flex' : 'none'}
-          alignItems={'center'}
-          justifyContent={'center'}
-          position={'absolute'}
-          transform={`translate(-55%, -50%) translate(${labelX}px,${labelY}px)`}
-          pointerEvents={'all'}
-          w={'17px'}
-          h={'17px'}
-          bg={'white'}
-          borderRadius={'17px'}
-          cursor={'pointer'}
-          zIndex={9999}
-          onClick={() => onDelConnect(id)}
-        >
-          <MyIcon name={'core/workflow/closeEdge'} w={'100%'}></MyIcon>
-        </Flex>
-        {!isToolEdge && (
+        <Box hidden={parentNode?.isFolded}>
           <Flex
+            display={isHover || highlightEdge ? 'flex' : 'none'}
             alignItems={'center'}
             justifyContent={'center'}
             position={'absolute'}
-            transform={arrowTransform}
+            transform={`translate(-55%, -50%) translate(${labelX}px,${labelY}px)`}
             pointerEvents={'all'}
-            w={highlightEdge ? '14px' : '10px'}
-            h={highlightEdge ? '14px' : '10px'}
-            // bg={'white'}
-            zIndex={highlightEdge ? 1000 : defaultZIndex}
+            w={'17px'}
+            h={'17px'}
+            bg={'white'}
+            borderRadius={'17px'}
+            cursor={'pointer'}
+            zIndex={9999}
+            onClick={() => onDelConnect(id)}
           >
-            <MyIcon
-              name={'core/workflow/edgeArrow'}
-              w={'100%'}
-              color={edgeColor}
-              {...(highlightEdge
-                ? {
-                    fontWeight: 'bold'
-                  }
-                : {})}
-            ></MyIcon>
+            <MyIcon name={'core/workflow/closeEdge'} w={'100%'}></MyIcon>
           </Flex>
-        )}
+          {!isToolEdge && (
+            <Flex
+              alignItems={'center'}
+              justifyContent={'center'}
+              position={'absolute'}
+              transform={arrowTransform}
+              pointerEvents={'all'}
+              w={highlightEdge ? '14px' : '10px'}
+              h={highlightEdge ? '14px' : '10px'}
+              // bg={'white'}
+              zIndex={highlightEdge ? 1000 : defaultZIndex}
+            >
+              <MyIcon
+                name={'core/workflow/edgeArrow'}
+                w={'100%'}
+                color={edgeColor}
+                {...(highlightEdge
+                  ? {
+                      fontWeight: 'bold'
+                    }
+                  : {})}
+              ></MyIcon>
+            </Flex>
+          )}
+        </Box>
       </EdgeLabelRenderer>
     );
   }, [
+    parentNode?.isFolded,
     isHover,
     highlightEdge,
     labelX,
     labelY,
     isToolEdge,
+    defaultZIndex,
     edgeColor,
     targetPosition,
     newTargetX,
@@ -214,7 +235,8 @@ const ButtonEdge = (props: EdgeProps) => {
         targetY={newTargetY}
         style={{
           ...edgeStyle,
-          stroke: edgeColor
+          stroke: edgeColor,
+          display: parentNode?.isFolded ? 'none' : 'block'
         }}
       />
     );
@@ -227,7 +249,8 @@ const ButtonEdge = (props: EdgeProps) => {
     source,
     target,
     style,
-    highlightEdge
+    highlightEdge,
+    parentNode?.isFolded
   ]);
 
   return (

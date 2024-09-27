@@ -31,7 +31,7 @@ const AppCard = ({
 
   const { appDetail, onOpenInfoEdit, onOpenTeamTagModal, onDelApp, currentTab } =
     useContextSelector(AppContext, (v) => v);
-  const { historiesDefaultData } = useContextSelector(WorkflowContext, (v) => v);
+  const { showHistoryModal } = useContextSelector(WorkflowContext, (v) => v);
 
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
 
@@ -56,7 +56,7 @@ const AppCard = ({
                 }
               ]
             },
-            ...(!historiesDefaultData && currentTab === TabEnum.appEdit
+            ...(!showHistoryModal && currentTab === TabEnum.appEdit
               ? [
                   {
                     children: [
@@ -117,7 +117,7 @@ const AppCard = ({
       appDetail.permission.isOwner,
       currentTab,
       feConfigs?.show_team_chat,
-      historiesDefaultData,
+      showHistoryModal,
       onDelApp,
       onOpenImport,
       onOpenInfoEdit,

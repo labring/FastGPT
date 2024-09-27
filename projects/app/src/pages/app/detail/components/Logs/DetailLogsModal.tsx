@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Flex, Box, useTheme } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
@@ -16,6 +16,7 @@ import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useQuery } from '@tanstack/react-query';
 import { PcHeader } from '@/pages/chat/components/ChatHeader';
+import { GetChatTypeEnum } from '@/global/core/chat/constants';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
@@ -31,29 +32,33 @@ const DetailLogsModal = ({
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const theme = useTheme();
+
+  const params = useMemo(() => {
+    return {
+      chatId,
+      appId,
+      loadCustomFeedbacks: true,
+      type: GetChatTypeEnum.normal
+    };
+  }, [appId, chatId]);
   const {
     ChatBoxRef,
-    chatRecords,
-    setChatRecords,
     variablesForm,
     pluginRunTab,
     setPluginRunTab,
-    resetChatRecords
-  } = useChat();
+    resetVariables,
+    chatRecords,
+    ScrollData,
+    setChatRecords,
+    totalRecordsCount
+  } = useChat(params);
 
   const { data: chat, isFetching } = useQuery(
     ['getChatDetail', chatId],
     () => getInitChatInfo({ appId, chatId, loadCustomFeedbacks: true }),
     {
       onSuccess(res) {
-        const history = res.history.map((item) => ({
-          ...item,
-          dataId: item.dataId || getNanoid(),
-          status: 'finish' as any
-        }));
-
-        resetChatRecords({
-          records: history,
+        resetVariables({
           variables: res.variables
         });
       }
@@ -63,11 +68,12 @@ const DetailLogsModal = ({
   const title = chat?.title;
   const chatModels = chat?.app?.chatModels;
   const isPlugin = chat?.app.type === AppTypeEnum.plugin;
+  const loading = isFetching;
 
   return (
     <>
       <MyBox
-        isLoading={isFetching}
+        isLoading={loading}
         display={'flex'}
         flexDirection={'column'}
         zIndex={3}
@@ -124,7 +130,11 @@ const DetailLogsModal = ({
           >
             {isPc ? (
               <>
-                <PcHeader title={title || ''} history={chatRecords} chatModels={chatModels} />
+                <PcHeader
+                  totalRecordsCount={totalRecordsCount}
+                  title={title || ''}
+                  chatModels={chatModels}
+                />
                 <Box flex={1} />
               </>
             ) : (
@@ -157,6 +167,7 @@ const DetailLogsModal = ({
             </Box>
           ) : (
             <ChatBox
+              ScrollData={ScrollData}
               ref={ChatBoxRef}
               chatHistories={chatRecords}
               setChatHistories={setChatRecords}

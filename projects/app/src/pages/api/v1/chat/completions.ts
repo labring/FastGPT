@@ -208,6 +208,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       getChatItems({
         appId: app._id,
         chatId,
+        offset: 0,
         limit,
         field: `dataId obj value nodeOutputs`
       }),
@@ -292,7 +293,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       })();
 
       const isInteractiveRequest = !!getLastInteractiveValue(histories);
-      const { text: userSelectedVal } = chatValue2RuntimePrompt(userQuestion.value);
+      const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
 
       const newTitle = isPlugin
         ? variables.cTime ?? getSystemTime(user.timezone)
@@ -311,7 +312,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           appId: app._id,
           teamId,
           tmbId: tmbId,
-          userSelectedVal,
+          userInteractiveVal,
           aiResponse,
           newVariables,
           newTitle
@@ -555,6 +556,7 @@ const authHeaderRequest = async ({
       };
     } else {
       // token_auth
+
       if (!appId) {
         return Promise.reject('appId is empty');
       }

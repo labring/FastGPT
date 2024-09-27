@@ -28,13 +28,15 @@ const ChatHeader = ({
   history,
   showHistory,
   apps,
-  onRouteToAppDetail
+  onRouteToAppDetail,
+  totalRecordsCount
 }: {
   history: ChatItemType[];
   showHistory?: boolean;
   chatData: InitChatResponse;
   apps?: AppListItemType[];
   onRouteToAppDetail?: () => void;
+  totalRecordsCount: number;
 }) => {
   const { t } = useTranslation();
   const isPlugin = chatData.app.type === AppTypeEnum.plugin;
@@ -52,9 +54,9 @@ const ChatHeader = ({
       {isPc ? (
         <>
           <PcHeader
+            totalRecordsCount={totalRecordsCount}
             title={chatData.title || t('common:core.chat.New Chat')}
             chatModels={chatData.app.chatModels}
-            history={history}
           />
           <Box flex={1} />
         </>
@@ -91,6 +93,7 @@ const MobileDrawer = ({
   const router = useRouter();
   const isTeamChat = router.pathname === '/chat/team';
   const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.recently);
+
   const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
     return getMyApps({ parentId }).then((res) =>
       res.map<GetResourceListItemResponse>((item) => ({
@@ -102,6 +105,7 @@ const MobileDrawer = ({
     );
   }, []);
   const { onChangeAppId } = useContextSelector(ChatContext, (v) => v);
+
   const onclickApp = (id: string) => {
     onChangeAppId(id);
     onCloseDrawer();
@@ -251,13 +255,14 @@ const MobileHeader = ({
 export const PcHeader = ({
   title,
   chatModels,
-  history
+  totalRecordsCount
 }: {
   title: string;
   chatModels?: string[];
-  history: ChatItemType[];
+  totalRecordsCount: number;
 }) => {
   const { t } = useTranslation();
+
   return (
     <>
       <Box mr={3} maxW={'200px'} className="textEllipsis" color={'myGray.1000'}>
@@ -266,9 +271,9 @@ export const PcHeader = ({
       <MyTag>
         <MyIcon name={'history'} w={'14px'} />
         <Box ml={1}>
-          {history.length === 0
+          {totalRecordsCount === 0
             ? t('common:core.chat.New Chat')
-            : t('common:core.chat.History Amount', { amount: history.length })}
+            : t('common:core.chat.History Amount', { amount: totalRecordsCount })}
         </Box>
       </MyTag>
       {!!chatModels && chatModels.length > 0 && (

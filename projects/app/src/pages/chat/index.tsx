@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
-import { delChatRecordById, getChatHistories, getInitChatInfo } from '@/web/core/chat/api';
+import { delChatRecordById, getInitChatInfo } from '@/web/core/chat/api';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useChatStore } from '@/web/core/chat/context/storeChat';
@@ -16,17 +16,15 @@ import SliderApps from './components/SliderApps';
 import ChatHeader from './components/ChatHeader';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
-import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getMyApps } from '@/web/core/app/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
-import { useMount } from 'ahooks';
+import { useCreation, useMount } from 'ahooks';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { InitChatResponse } from '@/global/core/chat/api';
-import { defaultChatData } from '@/global/core/chat/constants';
+
+import { defaultChatData, GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
@@ -35,6 +33,7 @@ import dynamic from 'next/dynamic';
 import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { InitChatResponse } from '@/global/core/chat/api';
 
 const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
@@ -50,12 +49,11 @@ const Chat = ({
   const router = useRouter();
   const theme = useTheme();
   const { t } = useTranslation();
-
+  const { userInfo } = useUserStore();
+  const { isPc } = useSystem();
   const { setLastChatAppId } = useChatStore();
+
   const {
-    setHistories: setRecordHistories,
-    loadHistories: loadRecordHistories,
-    histories: recordHistories,
     onUpdateHistory,
     onClearHistories,
     onDelHistory,
@@ -65,39 +63,40 @@ const Chat = ({
     onChangeChatId,
     onUpdateHistoryTitle
   } = useContextSelector(ChatContext, (v) => v);
+
+  const params = useCreation(() => {
+    return {
+      chatId,
+      appId,
+      type: GetChatTypeEnum.normal
+    };
+  }, [appId, chatId]);
   const {
     ChatBoxRef,
-    chatRecords,
-    setChatRecords,
     variablesForm,
     pluginRunTab,
     setPluginRunTab,
-    resetChatRecords
-  } = useChat();
-
-  const { userInfo } = useUserStore();
-  const { isPc } = useSystem();
+    resetVariables,
+    chatRecords,
+    ScrollData,
+    setChatRecords,
+    totalRecordsCount
+  } = useChat(params);
 
   // get chat app info
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
   const isPlugin = chatData.app.type === AppTypeEnum.plugin;
 
-  const { loading } = useRequest2(
+  // Load chat init data
+  const { loading: isLoading } = useRequest2(
     async () => {
       if (!appId || forbidLoadChat.current) return;
 
       const res = await getInitChatInfo({ appId, chatId });
+
       setChatData(res);
-
-      const history = res.history.map((item) => ({
-        ...item,
-        dataId: item.dataId || getNanoid(),
-        status: ChatStatusEnum.finish
-      }));
-
-      // reset chat records
-      resetChatRecords({
-        records: history,
+      // reset chat variables
+      resetVariables({
         variables: res.variables
       });
 
@@ -162,6 +161,58 @@ const Chat = ({
     },
     [chatId, appId, onUpdateHistoryTitle, forbidLoadChat, onChangeChatId]
   );
+  const loading = isLoading;
+
+  const RenderHistorySlider = useMemo(() => {
+    const Children = (
+      <ChatHistorySlider
+        confirmClearText={t('common:core.chat.Confirm to clear history')}
+        appId={appId}
+        appName={chatData.app.name}
+        appAvatar={chatData.app.avatar}
+        onDelHistory={(e) => onDelHistory({ ...e, appId })}
+        onClearHistory={() => {
+          onClearHistories({ appId });
+        }}
+        onSetHistoryTop={(e) => {
+          onUpdateHistory({ ...e, appId });
+        }}
+        onSetCustomTitle={async (e) => {
+          onUpdateHistory({
+            appId,
+            chatId: e.chatId,
+            customTitle: e.title
+          });
+        }}
+      />
+    );
+
+    return isPc || !appId ? (
+      <SideBar>{Children}</SideBar>
+    ) : (
+      <Drawer
+        isOpen={isOpenSlider}
+        placement="left"
+        autoFocus={false}
+        size={'xs'}
+        onClose={onCloseSlider}
+      >
+        <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
+        <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
+      </Drawer>
+    );
+  }, [
+    appId,
+    chatData.app.avatar,
+    chatData.app.name,
+    isOpenSlider,
+    isPc,
+    onClearHistories,
+    onCloseSlider,
+    onDelHistory,
+    onUpdateHistory,
+    t
+  ]);
 
   return (
     <Flex h={'100%'}>
@@ -176,43 +227,7 @@ const Chat = ({
       <PageContainer isLoading={loading} flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
         <Flex h={'100%'} flexDirection={['column', 'row']}>
           {/* pc always show history. */}
-          {((children: React.ReactNode) => {
-            return isPc || !appId ? (
-              <SideBar>{children}</SideBar>
-            ) : (
-              <Drawer
-                isOpen={isOpenSlider}
-                placement="left"
-                autoFocus={false}
-                size={'xs'}
-                onClose={onCloseSlider}
-              >
-                <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
-                <DrawerContent maxWidth={'75vw'}>{children}</DrawerContent>
-              </Drawer>
-            );
-          })(
-            <ChatHistorySlider
-              confirmClearText={t('common:core.chat.Confirm to clear history')}
-              appId={appId}
-              appName={chatData.app.name}
-              appAvatar={chatData.app.avatar}
-              onDelHistory={(e) => onDelHistory({ ...e, appId })}
-              onClearHistory={() => {
-                onClearHistories({ appId });
-              }}
-              onSetHistoryTop={(e) => {
-                onUpdateHistory({ ...e, appId });
-              }}
-              onSetCustomTitle={async (e) => {
-                onUpdateHistory({
-                  appId,
-                  chatId: e.chatId,
-                  customTitle: e.title
-                });
-              }}
-            />
-          )}
+          {RenderHistorySlider}
           {/* chat container */}
           <Flex
             position={'relative'}
@@ -223,6 +238,7 @@ const Chat = ({
           >
             {/* header */}
             <ChatHeader
+              totalRecordsCount={totalRecordsCount}
               apps={myApps}
               chatData={chatData}
               history={chatRecords}
@@ -247,6 +263,7 @@ const Chat = ({
                 />
               ) : (
                 <ChatBox
+                  ScrollData={ScrollData}
                   ref={ChatBoxRef}
                   chatHistories={chatRecords}
                   setChatHistories={setChatRecords}

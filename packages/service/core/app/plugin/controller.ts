@@ -89,7 +89,7 @@ export async function getChildAppPreviewNode({
     intro: app.intro,
     inputExplanationUrl: app.inputExplanationUrl,
     showStatus: app.showStatus,
-    isTool: isPlugin,
+    isTool: true,
     version: app.version,
     sourceHandle: getHandleConfig(true, true, true, true),
     targetHandle: getHandleConfig(true, true, true, true),

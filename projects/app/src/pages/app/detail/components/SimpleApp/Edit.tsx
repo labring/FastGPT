@@ -15,27 +15,50 @@ import { cardStyles } from '../constants';
 
 import styles from './styles.module.scss';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useTranslation } from 'next-i18next';
+import { onSaveSnapshotFnType, SimpleAppSnapshotType } from './useSnapshots';
 
 const Edit = ({
   appForm,
-  setAppForm
+  setAppForm,
+  past,
+  saveSnapshot
 }: {
   appForm: AppSimpleEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppSimpleEditFormType>>;
+  past: SimpleAppSnapshotType[];
+  saveSnapshot: onSaveSnapshotFnType;
 }) => {
   const { isPc } = useSystem();
   const { loadAllDatasets } = useDatasetStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const { t } = useTranslation();
 
-  // show selected dataset
+  // Init app form
   useMount(() => {
+    // show selected dataset
     loadAllDatasets();
-    setAppForm(
-      appWorkflow2Form({
-        nodes: appDetail.modules,
-        chatConfig: appDetail.chatConfig
-      })
-    );
+
+    // Get the latest snapshot
+    if (past?.[0]?.appForm) {
+      return setAppForm(past[0].appForm);
+    }
+
+    const appForm = appWorkflow2Form({
+      nodes: appDetail.modules,
+      chatConfig: appDetail.chatConfig
+    });
+
+    // Set the first snapshot
+    if (past.length === 0) {
+      saveSnapshot({
+        appForm,
+        title: t('app:initial_form'),
+        isSaved: true
+      });
+    }
+
+    setAppForm(appForm);
 
     if (appDetail.version !== 'v2') {
       setAppForm(
@@ -52,7 +75,7 @@ const Edit = ({
       display={['block', 'flex']}
       flex={'1 0 0'}
       h={0}
-      pt={[2, 1.5]}
+      mt={[4, 0]}
       gap={1}
       borderRadius={'lg'}
       overflowY={['auto', 'unset']}
@@ -73,7 +96,7 @@ const Edit = ({
         </Box>
       </Box>
       {isPc && (
-        <Box {...cardStyles} boxShadow={'3'} flex={'2 0 0'} w={0}>
+        <Box {...cardStyles} boxShadow={'3'} flex={'2 0 0'} w={0} mb={3}>
           <ChatTest appForm={appForm} />
         </Box>
       )}

@@ -1,22 +1,33 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
+import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 
 type Props = {
   versionId: string;
   appId: string;
 };
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<any>
+): Promise<AppVersionSchemaType> {
   const { versionId, appId } = req.query as Props;
 
-  await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
-  const result = await MongoAppVersion.findById(versionId);
+  await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+  const result = await MongoAppVersion.findById(versionId).lean();
 
-  return result;
+  if (!result) {
+    return Promise.reject('version not found');
+  }
+
+  return {
+    ...result,
+    versionName: result?.versionName || formatTime2YMDHM(result?.time)
+  };
 }
 
 export default NextAPI(handler);

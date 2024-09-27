@@ -352,6 +352,9 @@ export const WholeResponseContent = ({
         label={t('common:core.chat.response.loop_output_element')}
         value={activeModule?.loopOutputValue}
       />
+
+      {/* form input */}
+      <Row label={t('workflow:form_input_result')} value={activeModule?.formInputResult} />
     </Box>
   ) : null;
 };

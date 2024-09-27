@@ -275,17 +275,6 @@ export const runToolWithPromptCall = async (
     };
   })();
 
-  // Run tool status
-  if (node.showStatus) {
-    workflowStreamResponse?.({
-      event: SseResponseEventEnum.flowNodeStatus,
-      data: {
-        status: 'running',
-        name: node.name
-      }
-    });
-  }
-
   // 合并工具调用的结果，使用 functionCall 格式存储。
   const assistantToolMsgParams: ChatCompletionAssistantMessageParam = {
     role: ChatCompletionRequestMessageRoleEnum.Assistant,
