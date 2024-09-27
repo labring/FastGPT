@@ -234,7 +234,13 @@ export const loadRequestMessages = async ({
           }
         }
         if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-          if (item.content !== undefined && !item.content) return;
+          if (
+            item.content !== undefined &&
+            !item.content &&
+            !item.tool_calls &&
+            !item.function_call
+          )
+            return;
           if (Array.isArray(item.content) && item.content.length === 0) return;
         }
 

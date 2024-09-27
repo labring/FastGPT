@@ -280,27 +280,37 @@ export const runToolWithPromptCall = async (
     role: ChatCompletionRequestMessageRoleEnum.Assistant,
     function_call: toolJson
   };
+
+  /* 
+    ...
+    user
+    assistant: tool data
+  */
   const concatToolMessages = [
     ...requestMessages,
     assistantToolMsgParams
   ] as ChatCompletionMessageParam[];
+  // Only toolCall tokens are counted here, Tool response tokens count towards the next reply
   const tokens = await countGptMessagesTokens(concatToolMessages, undefined);
-  const completeMessages: ChatCompletionMessageParam[] = [
-    ...concatToolMessages,
-    {
-      role: ChatCompletionRequestMessageRoleEnum.Function,
-      name: toolJson.name,
-      content: toolsRunResponse.toolResponsePrompt
-    }
-  ];
 
-  // tool assistant
-  const toolAssistants = toolsRunResponse.moduleRunResponse.assistantResponses || [];
+  /* 
+    ...
+    user
+    assistant: tool data
+    function: tool response
+  */
+  const functionResponseMessage: ChatCompletionMessageParam = {
+    role: ChatCompletionRequestMessageRoleEnum.Function,
+    name: toolJson.name,
+    content: toolsRunResponse.toolResponsePrompt
+  };
+
   // tool node assistant
-  const adaptChatMessages = GPTMessages2Chats(completeMessages);
-  const toolNodeAssistant = adaptChatMessages.pop() as AIChatItemType;
-
-  const toolNodeAssistants = [...assistantResponses, ...toolAssistants, ...toolNodeAssistant.value];
+  const toolNodeAssistant = GPTMessages2Chats([
+    assistantToolMsgParams,
+    functionResponseMessage
+  ])[0] as AIChatItemType;
+  const toolNodeAssistants = [...assistantResponses, ...toolNodeAssistant.value];
 
   const dispatchFlowResponse = response
     ? response.dispatchFlowResponse.concat(toolsRunResponse.moduleRunResponse)
