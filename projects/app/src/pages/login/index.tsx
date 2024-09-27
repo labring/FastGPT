@@ -1,5 +1,15 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Box, Center, Flex, useDisclosure } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Center,
+  Drawer,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerOverlay,
+  Flex,
+  useDisclosure
+} from '@chakra-ui/react';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { ResLogin } from '@/global/support/api/userRes.d';
@@ -12,22 +22,31 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { clearToken, setToken } from '@/web/support/user/auth';
 import Script from 'next/script';
 import Loading from '@fastgpt/web/components/common/MyLoading';
-import { useMount } from 'ahooks';
-import { t } from 'i18next';
+import { useLocalStorageState, useMount } from 'ahooks';
+import { useTranslation } from 'next-i18next';
+import I18nLngSelector from '@/components/Select/I18nLngSelector';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 const WechatForm = dynamic(() => import('./components/LoginForm/WechatForm'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
-const Login = () => {
+const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
   const router = useRouter();
+  const { t } = useTranslation();
   const { lastRoute = '' } = router.query as { lastRoute: string };
   const { feConfigs } = useSystemStore();
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}`>();
   const { setUserInfo } = useUserStore();
   const { setLastChatId, setLastChatAppId } = useChatStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isPc } = useSystem();
+  const {
+    isOpen: isOpenRedirect,
+    onOpen: onOpenRedirect,
+    onClose: onCloseRedirect
+  } = useDisclosure();
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
@@ -69,6 +88,25 @@ const Login = () => {
     router.prefetch('/app/list');
   });
 
+  const [showRedirect, setShowRedirect] = useLocalStorageState<boolean>('showRedirect', {
+    defaultValue: true
+  });
+
+  const checkIpInChina = useCallback(() => {
+    const onSuccess = (res: any) => {
+      if (!res.country.iso_code) {
+        return;
+      }
+
+      const country = res.country.iso_code.toLowerCase();
+      if (country === 'cn') {
+        onOpenRedirect();
+      }
+    };
+    const onError = (e: any) => console.log(e);
+    geoip2 && geoip2.country(onSuccess, onError);
+  }, [onOpenRedirect]);
+
   return (
     <>
       {feConfigs.googleClientVerKey && (
@@ -76,6 +114,15 @@ const Login = () => {
           src={`https://www.recaptcha.net/recaptcha/api.js?render=${feConfigs.googleClientVerKey}`}
         ></Script>
       )}
+
+      {ChineseRedirectUrl && showRedirect && (
+        <Script
+          src="//geoip-js.com/js/apis/geoip2/v2.1/geoip2.js"
+          type="text/javascript"
+          onLoad={checkIpInChina}
+        ></Script>
+      )}
+
       <Flex
         alignItems={'center'}
         justifyContent={'center'}
@@ -85,6 +132,11 @@ const Login = () => {
         h={'100%'}
         px={[0, '10vw']}
       >
+        {isPc && (
+          <Box position={'absolute'} top={'24px'} right={'50px'}>
+            <I18nLngSelector />
+          </Box>
+        )}
         <Flex
           flexDirection={'column'}
           w={['100%', 'auto']}
@@ -123,13 +175,66 @@ const Login = () => {
 
         {isOpen && <CommunityModal onClose={onClose} />}
       </Flex>
+      {showRedirect && (
+        <RedirectDrawer
+          isOpen={isOpenRedirect}
+          onClose={onCloseRedirect}
+          onRedirect={() => router.push(ChineseRedirectUrl)}
+          disableDrawer={() => setShowRedirect(false)}
+        />
+      )}
     </>
   );
 };
 
+function RedirectDrawer({
+  isOpen,
+  onClose,
+  disableDrawer,
+  onRedirect
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  disableDrawer: () => void;
+  onRedirect: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Drawer placement="bottom" size={'xs'} isOpen={isOpen} onClose={onClose}>
+      <DrawerOverlay backgroundColor={'rgba(0,0,0,0.2)'} />
+      <DrawerContent py={'1.75rem'} px={'3rem'}>
+        <DrawerCloseButton size={'sm'} />
+        <Flex align={'center'} justify={'space-between'}>
+          <Box>
+            <Box color={'myGray.900'} fontWeight={'500'} fontSize={'1rem'}>
+              {t('login:Chinese_ip_tip')}
+            </Box>
+            <Box
+              color={'primary.700'}
+              fontWeight={'500'}
+              fontSize={'1rem'}
+              textDecorationLine={'underline'}
+              cursor={'pointer'}
+              onClick={disableDrawer}
+            >
+              {t('login:no_remind')}
+            </Box>
+          </Box>
+          <Button ml={'0.75rem'} onClick={onRedirect}>
+            {t('login:redirect')}
+          </Button>
+        </Flex>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
 export async function getServerSideProps(context: any) {
   return {
-    props: { ...(await serviceSideProps(context, ['app', 'user', 'login'])) }
+    props: {
+      ChineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL,
+      ...(await serviceSideProps(context, ['app', 'user', 'login']))
+    }
   };
 }
 
