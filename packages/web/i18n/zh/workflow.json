@@ -158,6 +158,7 @@
   "these_variables_will_be_input_parameters_for_code_execution": "这些变量会作为代码的运行的输入参数",
   "tool_call_termination": "工具调用终止",
   "tool_input": "工具参数",
+  "tool_params.enum_placeholder": "apple \npeach \nwatermelon",
   "tool_params.enum_values": "枚举值（可选）",
   "tool_params.enum_values_tip": "列举出该字段可能的值，每行一个",
   "tool_params.params_description": "参数描述",

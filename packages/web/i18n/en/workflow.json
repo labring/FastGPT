@@ -158,6 +158,7 @@
   "these_variables_will_be_input_parameters_for_code_execution": "These variables will be input parameters for code execution",
   "tool_call_termination": "Tool Call Termination",
   "tool_input": "Tool Input",
+  "tool_params.enum_placeholder": "apple \npeach \nwatermelon",
   "tool_params.enum_values": "Enum values",
   "tool_params.enum_values_tip": "List the possible values for this field, one per line",
   "tool_params.params_description": "Description",

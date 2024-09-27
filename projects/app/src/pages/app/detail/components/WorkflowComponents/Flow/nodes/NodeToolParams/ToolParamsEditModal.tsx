@@ -13,6 +13,7 @@ import { WorkflowContext } from '../../../context';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const ToolParamsEditModal = ({
   defaultValue = defaultEditFormData,
@@ -144,17 +145,17 @@ const ToolParamsEditModal = ({
             placeholder={t('workflow:tool_params.params_description_placeholder')}
           />
         </Flex>
-        {/* <Box mb={5}>
-          <Flex alignItems={'center'}>
+        <Box>
+          <Flex alignItems={'center'} mb={2}>
             <FormLabel>{t('workflow:tool_params.enum_values')}</FormLabel>
             <QuestionTip label={t('workflow:tool_params.enum_values_tip')} />
           </Flex>
           <Textarea
             bg={'myGray.50'}
-            {...register('enumValues')}
-            placeholder={t('workflow:tool_params.enum_values_placeholder')}
+            {...register('enum')}
+            placeholder={t('workflow:tool_params.enum_placeholder')}
           />
-        </Box> */}
+        </Box>
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={2} onClick={onClose}>
