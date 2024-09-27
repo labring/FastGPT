@@ -1,7 +1,7 @@
 import { NodeInputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum } from '../node/constant';
 import { WorkflowIOValueTypeEnum } from '../constants';
-import { chatNodeSystemPromptTip } from './tip';
+import { chatNodeSystemPromptTip, systemPromptTip } from './tip';
 import { FlowNodeInputItemType } from '../type/io';
 import { i18nT } from '../../../../web/i18n/utils';
 
@@ -55,7 +55,7 @@ export const Input_Template_System_Prompt: FlowNodeInputItemType = {
   max: 3000,
   valueType: WorkflowIOValueTypeEnum.string,
   label: i18nT('common:core.ai.Prompt'),
-  description: chatNodeSystemPromptTip,
+  description: systemPromptTip,
   placeholder: chatNodeSystemPromptTip
 };
 

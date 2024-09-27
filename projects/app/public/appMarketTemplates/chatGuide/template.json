@@ -187,7 +187,7 @@
             "max": 3000,
             "valueType": "WorkflowIOValueTypeEnum.string",
             "label": "core.ai.Prompt",
-            "description": "core.app.tip.chatNodeSystemPromptTip",
+            "description": "core.app.tip.systemPromptTip",
             "placeholder": "core.app.tip.chatNodeSystemPromptTip",
             "value": "请直接将我的问题翻译成{{language}}，不需要回答问题。"
           },

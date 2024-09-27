@@ -181,7 +181,7 @@ const NodeCard = (props: Props) => {
                 }}
               >
                 <MyIcon
-                  name={isFolded ? 'core/chat/chevronDown' : 'core/chat/chevronRight'}
+                  name={!isFolded ? 'core/chat/chevronDown' : 'core/chat/chevronRight'}
                   w={'24px'}
                   h={'24px'}
                   color={'myGray.500'}
