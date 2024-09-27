@@ -168,13 +168,14 @@ const EditForm = ({
           <Box mt={4}>
             <HStack {...LabelStyles} w={'100%'}>
               <Box>{t('common:core.ai.Prompt')}</Box>
-              <QuestionTip label={t('common:core.app.tip.chatNodeSystemPromptTip')} />
+              <QuestionTip label={t('common:core.app.tip.systemPromptTip')} />
 
               <Box flex={1} />
               <VariableTip color={'myGray.500'} />
             </HStack>
             <Box mt={1}>
               <PromptEditor
+                minH={150}
                 value={appForm.aiSettings.systemPrompt}
                 bg={'myGray.50'}
                 onChange={(text) => {
@@ -190,7 +191,7 @@ const EditForm = ({
                 }}
                 variableLabels={formatVariables}
                 variables={formatVariables}
-                placeholder={t('common:core.app.tip.chatNodeSystemPromptTip')}
+                placeholder={t('common:core.app.tip.systemPromptTip')}
                 title={t('common:core.ai.Prompt')}
               />
             </Box>

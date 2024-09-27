@@ -32,9 +32,9 @@ import { useDeepCompareEffect } from 'ahooks';
 import VariablePickerPlugin from './plugins/VariablePickerPlugin';
 
 export default function Editor({
-  h = 200,
+  minH = 200,
+  maxH = 400,
   maxLength,
-  showResize = true,
   showOpenModal = true,
   onOpenModal,
   variables,
@@ -46,9 +46,9 @@ export default function Editor({
   isFlow,
   bg = 'white'
 }: {
-  h?: number;
+  minH?: number;
+  maxH?: number;
   maxLength?: number;
-  showResize?: boolean;
   showOpenModal?: boolean;
   onOpenModal?: () => void;
   variables: EditorVariablePickerType[];
@@ -62,7 +62,6 @@ export default function Editor({
 }) {
   const [key, setKey] = useState(getNanoid(6));
   const [_, startSts] = useTransition();
-  const [height, setHeight] = useState(h);
   const [focus, setFocus] = useState(false);
 
   const initialConfig = {
@@ -74,25 +73,6 @@ export default function Editor({
     }
   };
 
-  const initialY = useRef(0);
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    initialY.current = e.clientY;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const deltaY = e.clientY - initialY.current;
-      setHeight((prevHeight) => (prevHeight + deltaY < h * 0.5 ? h * 0.5 : prevHeight + deltaY));
-      initialY.current = e.clientY;
-    };
-
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  }, []);
-
   useDeepCompareEffect(() => {
     if (focus) return;
     setKey(getNanoid(6));
@@ -103,7 +83,6 @@ export default function Editor({
       className="nowheel"
       position={'relative'}
       width={'full'}
-      h={`${height}px`}
       cursor={'text'}
       color={'myGray.700'}
       bg={focus ? 'white' : bg}
@@ -114,6 +93,10 @@ export default function Editor({
           contentEditable={
             <ContentEditable
               className={isFlow ? styles.contentEditable_isFlow : styles.contentEditable}
+              style={{
+                minHeight: `${minH}px`,
+                maxHeight: `${maxH}px`
+              }}
             />
           }
           placeholder={
@@ -158,19 +141,6 @@ export default function Editor({
         <VariablePickerPlugin variables={variableLabels.length > 0 ? [] : variables} />
         <OnBlurPlugin onBlur={onBlur} />
       </LexicalComposer>
-      {showResize && (
-        <Box
-          position={'absolute'}
-          right={'0'}
-          bottom={'-1'}
-          zIndex={9}
-          cursor={'ns-resize'}
-          px={'2px'}
-          onMouseDown={handleMouseDown}
-        >
-          <MyIcon name={'common/editor/resizer'} width={'14px'} height={'14px'} />
-        </Box>
-      )}
       {showOpenModal && (
         <Box
           zIndex={10}
