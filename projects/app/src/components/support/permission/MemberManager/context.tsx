@@ -1,8 +1,7 @@
 import { useDisclosure } from '@chakra-ui/react';
 import {
   CollaboratorItemType,
-  UpdateClbPermissionProps,
-  UpdatePermissionBody
+  UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
 import { PermissionList } from '@fastgpt/global/support/permission/constant';
 import { Permission } from '@fastgpt/global/support/permission/controller';
@@ -23,7 +22,7 @@ export type MemberManagerInputPropsType = {
   permission: Permission;
   onGetCollaboratorList: () => Promise<CollaboratorItemType[]>;
   permissionList: PermissionListType;
-  onUpdateCollaborators: (props: UpdatePermissionBody) => any; // TODO: type
+  onUpdateCollaborators: (props: any) => any; // TODO: type. should be UpdatePermissionBody after app and dataset permission refactored
   onDelOneCollaborator: (tmbId: string) => any;
   refreshDeps?: any[];
 };
