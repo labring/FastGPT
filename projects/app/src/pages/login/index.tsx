@@ -26,11 +26,14 @@ import { useLocalStorageState, useMount } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { GET } from '@/web/common/api/request';
 
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 const WechatForm = dynamic(() => import('./components/LoginForm/WechatForm'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
+
+const ipDetectURL = 'https://qifu-api.baidubce.com/ip/local/geo/v1/district';
 
 const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
   const router = useRouter();
@@ -47,6 +50,21 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
     onOpen: onOpenRedirect,
     onClose: onCloseRedirect
   } = useDisclosure();
+
+  const [showRedirect, setShowRedirect] = useLocalStorageState<boolean>('showRedirect', {
+    defaultValue: true
+  });
+
+  const checkIpInChina = useCallback(
+    () =>
+      GET(ipDetectURL).then((res: any) => {
+        const country = res?.country;
+        if (country && country === '中国' && res.city !== '中国香港') {
+          onOpenRedirect();
+        }
+      }),
+    [onOpenRedirect]
+  );
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
@@ -85,40 +103,15 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
 
   useMount(() => {
     clearToken();
+    ChineseRedirectUrl && showRedirect && checkIpInChina();
     router.prefetch('/app/list');
   });
-
-  const [showRedirect, setShowRedirect] = useLocalStorageState<boolean>('chinese_ip_redirect', {
-    defaultValue: true
-  });
-  const checkIpInChina = useCallback(() => {
-    const onSuccess = (res: any) => {
-      if (!res.country.iso_code) {
-        return;
-      }
-
-      const country = res.country.iso_code.toLowerCase();
-      if (country === 'cn') {
-        onOpenRedirect();
-      }
-    };
-    const onError = (e: any) => console.log(e);
-    geoip2 && geoip2.country(onSuccess, onError);
-  }, [onOpenRedirect]);
 
   return (
     <>
       {feConfigs.googleClientVerKey && (
         <Script
           src={`https://www.recaptcha.net/recaptcha/api.js?render=${feConfigs.googleClientVerKey}`}
-        ></Script>
-      )}
-
-      {ChineseRedirectUrl && showRedirect && (
-        <Script
-          src="//geoip-js.com/js/apis/geoip2/v2.1/geoip2.js"
-          type="text/javascript"
-          onLoad={checkIpInChina}
         ></Script>
       )}
 
@@ -174,6 +167,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
 
         {isOpen && <CommunityModal onClose={onClose} />}
       </Flex>
+
       {showRedirect && (
         <RedirectDrawer
           isOpen={isOpenRedirect}
