@@ -6,7 +6,6 @@ import {
   ChatCompletionMessageToolCall,
   StreamChatType,
   ChatCompletionToolMessageParam,
-  ChatCompletionAssistantToolParam,
   ChatCompletionMessageParam,
   ChatCompletionTool,
   ChatCompletionAssistantMessageParam

@@ -91,8 +91,9 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       : {}),
     runningAppInfo: {
       id: String(plugin.id),
-      teamId: plugin.teamId || '',
-      tmbId: pluginData?.tmbId || ''
+      // 如果是系统插件，则使用当前团队的 teamId 和 tmbId
+      teamId: plugin.teamId || runningAppInfo.teamId,
+      tmbId: pluginData?.tmbId || runningAppInfo.tmbId
     },
     variables: runtimeVariables,
     query: getPluginRunUserQuery({
