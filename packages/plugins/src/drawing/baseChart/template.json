@@ -26,9 +26,7 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -46,9 +44,7 @@
             "toolDescription": "BI图表的标题"
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -57,7 +53,7 @@
             "description": "x轴数据",
             "defaultValue": "",
             "required": true,
-            "toolDescription": "x轴数据",
+            "toolDescription": "x轴数据，例如：['A', 'B', 'C']",
             "list": [
               {
                 "label": "",
@@ -66,9 +62,7 @@
             ]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -83,18 +77,16 @@
               }
             ],
             "required": true,
-            "toolDescription": "y轴数据"
+            "toolDescription": "y轴数据，例如：['A', 'B', 'C']"
           },
           {
-            "renderTypeList": [
-              "select"
-            ],
+            "renderTypeList": ["select"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
             "key": "chartType",
             "label": "chartType",
-            "description": "图表类型，如柱状图，折线图，饼图",
+            "description": "图表类型：柱状图，折线图，饼图",
             "defaultValue": "",
             "required": true,
             "list": [
@@ -111,7 +103,7 @@
                 "value": "饼图"
               }
             ],
-            "toolDescription": "图表类型，如柱状图，折线图，饼图"
+            "toolDescription": "图表类型，目前支持三种: 柱状图，折线图，饼图"
           }
         ],
         "outputs": [
@@ -159,18 +151,13 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
-            "key": "图片base64数据",
-            "label": "图片base64数据",
-            "description": "可用使用markdown格式展示图片，如：![图片](base64)",
-            "value": [
-              "ws0DFKJnCPhk",
-              "bzaYjKyQFOw2"
-            ]
+            "key": "相对路径URL",
+            "label": "相对路径URL",
+            "description": "可用使用markdown格式展示图片，如：![图片](url)",
+            "value": ["ws0DFKJnCPhk", "bzaYjKyQFOw2"]
           }
         ],
         "outputs": []
@@ -190,9 +177,7 @@
         "inputs": [
           {
             "key": "system_addInputParam",
-            "renderTypeList": [
-              "addInputParam"
-            ],
+            "renderTypeList": ["addInputParam"],
             "valueType": "dynamic",
             "label": "",
             "required": false,
@@ -223,9 +208,7 @@
           },
           {
             "key": "system_httpMethod",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "string",
             "label": "",
             "value": "POST",
@@ -237,9 +220,7 @@
           },
           {
             "key": "system_httpTimeout",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "number",
             "label": "",
             "value": 30,
@@ -253,9 +234,7 @@
           },
           {
             "key": "system_httpReqUrl",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "string",
             "label": "",
             "description": "新的 HTTP 请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。",
@@ -268,9 +247,7 @@
           },
           {
             "key": "system_httpHeader",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -283,9 +260,7 @@
           },
           {
             "key": "system_httpParams",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -297,9 +272,7 @@
           },
           {
             "key": "system_httpJsonBody",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": "{\r\n  \"title\": \"{{title-plugin}}\",\r\n  \"xAxis\": \"{{xAxis-plugin}}\",\r\n  \"yAxis\": \"{{yAxis-plugin}}\",\r\n  \"chartType\": \"{{chartType-plugin}}\"\r\n}",
             "label": "",
@@ -311,9 +284,7 @@
           },
           {
             "key": "system_httpFormBody",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -325,9 +296,7 @@
           },
           {
             "key": "system_httpContentType",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "string",
             "value": "json",
             "label": "",
@@ -338,9 +307,7 @@
             "toolDescription": ""
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "title-plugin",
@@ -366,15 +333,10 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "title"
-            ]
+            "value": ["pluginInput", "title"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "xAxis-plugin",
@@ -400,15 +362,10 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "xAxis"
-            ]
+            "value": ["pluginInput", "xAxis"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "yAxis-plugin",
@@ -434,15 +391,10 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "yAxis"
-            ]
+            "value": ["pluginInput", "yAxis"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "chartType-plugin",
@@ -468,10 +420,7 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "chartType"
-            ]
+            "value": ["pluginInput", "chartType"]
           }
         ],
         "outputs": [
