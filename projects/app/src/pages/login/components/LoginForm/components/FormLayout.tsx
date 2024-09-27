@@ -9,6 +9,8 @@ import { useRouter } from 'next/router';
 import { Dispatch, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
 import Divider from '@/pages/app/detail/components/WorkflowComponents/Flow/components/Divider';
+import I18nLngSelector from '@/components/Select/I18nLngSelector';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 8);
 
 interface Props {
@@ -24,6 +26,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   const { lastRoute = '/app/list' } = router.query as { lastRoute: string };
   const state = useRef(nanoid());
   const redirectUri = `${location.origin}/login/provider`;
+  const { isPc } = useSystem();
 
   const oAuthList = [
     ...(feConfigs?.oauth?.wechat && pageType !== LoginPageTypeEnum.wechat
@@ -72,22 +75,25 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <Flex alignItems={'center'}>
-        <Flex
-          w={['48px', '56px']}
-          h={['48px', '56px']}
-          bg={'myGray.25'}
-          borderRadius={'xl'}
-          borderWidth={'1.5px'}
-          borderColor={'borderColor.base'}
-          alignItems={'center'}
-          justifyContent={'center'}
-        >
-          <Image src={LOGO_ICON} w={['24px', '28px']} alt={'icon'} />
+      <Flex alignItems={'center'} justify={'space-between'}>
+        <Flex>
+          <Flex
+            w={['48px', '56px']}
+            h={['48px', '56px']}
+            bg={'myGray.25'}
+            borderRadius={'xl'}
+            borderWidth={'1.5px'}
+            borderColor={'borderColor.base'}
+            alignItems={'center'}
+            justifyContent={'center'}
+          >
+            <Image src={LOGO_ICON} w={['24px', '28px']} alt={'icon'} />
+          </Flex>
+          <Box ml={3} fontSize={['2xl', '3xl']} fontWeight={'bold'}>
+            {feConfigs?.systemTitle}
+          </Box>
         </Flex>
-        <Box ml={3} fontSize={['2xl', '3xl']} fontWeight={'bold'}>
-          {feConfigs?.systemTitle}
-        </Box>
+        {!isPc && <I18nLngSelector />}
       </Flex>
       {children}
       {show_oauth && (
