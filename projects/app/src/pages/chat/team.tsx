@@ -11,14 +11,10 @@ import ChatHistorySlider from './components/ChatHistorySlider';
 import ChatHeader from './components/ChatHeader';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
-import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
-import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import SliderApps from './components/SliderApps';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -164,12 +160,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       manual: false,
       refreshDeps: [teamId, teamToken, appId, chatId],
       onError(e: any) {
-        toast({
-          title: getErrText(e, t('common:core.chat.Failed to initialize chat')),
-          status: 'error'
-        });
+        console.log(e);
         if (chatId) {
-          onChangeChatId();
+          onChangeChatId('');
         }
       },
       onFinally() {

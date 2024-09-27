@@ -210,9 +210,8 @@ const OutLink = ({
         }
       },
       onError(e: any) {
-        console.log(e);
         if (chatId) {
-          onChangeChatId();
+          onChangeChatId('');
         }
       },
       onFinally() {
