@@ -555,6 +555,14 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       dispatchRes[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
     });
 
+    // Update new variables
+    if (dispatchRes[DispatchNodeResponseKeyEnum.newVariables]) {
+      variables = {
+        ...variables,
+        ...dispatchRes[DispatchNodeResponseKeyEnum.newVariables]
+      };
+    }
+
     return {
       node,
       runStatus: 'run',
