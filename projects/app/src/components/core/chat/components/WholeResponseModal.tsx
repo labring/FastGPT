@@ -355,6 +355,12 @@ export const WholeResponseContent = ({
 
       {/* form input */}
       <Row label={t('workflow:form_input_result')} value={activeModule?.formInputResult} />
+
+      {/* tool params */}
+      <Row
+        label={t('workflow:tool_params.tool_params_result')}
+        value={activeModule?.toolParamsResult}
+      />
     </Box>
   ) : null;
 };
