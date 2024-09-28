@@ -157,6 +157,7 @@
   "text_to_extract": "Text to Extract",
   "these_variables_will_be_input_parameters_for_code_execution": "These variables will be input parameters for code execution",
   "tool_call_termination": "Tool Call Termination",
+  "tool_field": " Tool Field Parameter Configuration",
   "tool_input": "Tool Input",
   "tool_params.enum_placeholder": "apple \npeach \nwatermelon",
   "tool_params.enum_values": "Enum values",

@@ -107,7 +107,7 @@ const ToolParamsEditModal = ({
   );
 
   return (
-    <MyModal isOpen iconSrc="modal/edit" title={t('common:tool_field')} onClose={onClose}>
+    <MyModal isOpen iconSrc="modal/edit" title={t('workflow:tool_field')} onClose={onClose}>
       <ModalBody>
         <Flex alignItems={'center'} mb={5}>
           <FormLabel flex={'0 0 80px'}>{t('common:core.module.Data Type')}</FormLabel>

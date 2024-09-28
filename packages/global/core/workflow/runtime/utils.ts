@@ -233,7 +233,8 @@ export const getReferenceVariableValue = ({
   nodes: RuntimeNodeItemType[];
   variables: Record<string, any>;
 }) => {
-  if (!isReferenceValue(value)) {
+  const nodeIds = nodes.map((node) => node.nodeId);
+  if (!isReferenceValue(value, nodeIds)) {
     return value;
   }
   const sourceNodeId = value[0];

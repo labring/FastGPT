@@ -157,6 +157,7 @@
   "text_to_extract": "需要提取的文本",
   "these_variables_will_be_input_parameters_for_code_execution": "这些变量会作为代码的运行的输入参数",
   "tool_call_termination": "工具调用终止",
+  "tool_field": "工具参数配置",
   "tool_input": "工具参数",
   "tool_params.enum_placeholder": "apple \npeach \nwatermelon",
   "tool_params.enum_values": "枚举值（可选）",

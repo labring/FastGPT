@@ -446,10 +446,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   }
   /* Inject data into module input */
   function getNodeRunParams(node: RuntimeNodeItemType) {
-    if (
-      node.flowNodeType === FlowNodeTypeEnum.pluginInput ||
-      node.flowNodeType === FlowNodeTypeEnum.toolParams
-    ) {
+    if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
       // Format plugin input to object
       return node.inputs.reduce<Record<string, any>>((acc, item) => {
         acc[item.key] = valueTypeFormat(item.value, item.valueType);

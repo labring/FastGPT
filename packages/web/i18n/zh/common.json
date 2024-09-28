@@ -1110,7 +1110,6 @@
   "tag_list": "标签列表",
   "team_tag": "团队标签",
   "textarea_variable_picker_tip": "输入\"/\"可选择变量",
-  "tool_field": "工具字段参数配置",
   "undefined_var": "引用了未定义的变量，是否自动添加？",
   "unit.character": "字符",
   "unit.minute": "分钟",
