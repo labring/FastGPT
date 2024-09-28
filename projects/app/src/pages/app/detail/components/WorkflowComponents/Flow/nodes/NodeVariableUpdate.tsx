@@ -103,8 +103,9 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         (item) => item.renderType === updateItem.renderType
       );
 
+      const nodeIds = nodeList.map((node) => node.nodeId);
       const handleUpdate = (newValue: ReferenceValueProps | string) => {
-        if (isReferenceValue(newValue)) {
+        if (isReferenceValue(newValue, nodeIds)) {
           onUpdateList(
             updateList.map((update, i) =>
               i === index ? { ...update, value: newValue as ReferenceValueProps } : update

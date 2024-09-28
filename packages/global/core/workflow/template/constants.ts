@@ -33,17 +33,19 @@ import { LoopNode } from './system/loop/loop';
 import { LoopStartNode } from './system/loop/loopStart';
 import { LoopEndNode } from './system/loop/loopEnd';
 import { FormInputNode } from './system/interactive/formInput';
+import { ToolParamsNode } from './system/toolParams';
 
 const systemNodes: FlowNodeTemplateType[] = [
   AiChatModule,
   TextEditorNode,
   AssignedAnswerModule,
   DatasetSearchModule,
-  DatasetConcatModule,
-  ToolModule,
-  StopToolNode,
   ClassifyQuestionModule,
   ContextExtractModule,
+  DatasetConcatModule,
+  ToolModule,
+  ToolParamsNode,
+  StopToolNode,
   ReadFilesNode,
   HttpNode468,
   AiQueryExtension,

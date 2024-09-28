@@ -68,12 +68,16 @@ export const runToolWithPromptCall = async (
           type: string;
           description: string;
           required?: boolean;
+          enum?: string[];
         }
       > = {};
       item.toolParams.forEach((item) => {
+        const isArray = item.valueType?.startsWith('array');
         properties[item.key] = {
-          type: 'string',
-          description: item.toolDescription || ''
+          type: isArray ? 'array' : item.valueType || 'string',
+          ...(isArray && { items: { type: item.valueType?.slice(5).toLowerCase() || 'string' } }),
+          description: item.toolDescription || '',
+          enum: item.enum?.split('\n').filter(Boolean) || []
         };
       });
 

@@ -85,7 +85,7 @@ const EditFieldModal = ({
   );
 
   return (
-    <MyModal isOpen iconSrc="modal/edit" title={t('common:tool_field')} onClose={onClose}>
+    <MyModal isOpen iconSrc="modal/edit" title={t('workflow:tool_field')} onClose={onClose}>
       <ModalBody>
         <Flex alignItems={'center'} mb={5}>
           <Box flex={'0 0 80px'}>{t('common:common.Require Input')}</Box>
