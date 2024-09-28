@@ -3,7 +3,7 @@ import { Box, Button, Flex, Input, ModalBody, ModalFooter, Textarea } from '@cha
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { defaultEditFormData } from '../render/RenderToolInput/EditFieldModal';
@@ -14,6 +14,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 const ToolParamsEditModal = ({
   defaultValue = defaultEditFormData,
@@ -106,6 +107,13 @@ const ToolParamsEditModal = ({
     [toast]
   );
 
+  const showEnumInput = useMemo(() => {
+    return !(
+      valueType === WorkflowIOValueTypeEnum.boolean ||
+      valueType === WorkflowIOValueTypeEnum.arrayBoolean
+    );
+  }, [valueType]);
+
   return (
     <MyModal isOpen iconSrc="modal/edit" title={t('workflow:tool_field')} onClose={onClose}>
       <ModalBody>
@@ -135,7 +143,7 @@ const ToolParamsEditModal = ({
             placeholder={t('workflow:tool_params.params_name_placeholder')}
           />
         </Flex>
-        <Flex alignItems={'center'} mb={5}>
+        <Flex alignItems={'center'} mb={showEnumInput ? 5 : 0}>
           <FormLabel flex={'0 0 80px'}>{t('workflow:tool_params.params_description')}</FormLabel>
           <Input
             bg={'myGray.50'}
@@ -145,17 +153,19 @@ const ToolParamsEditModal = ({
             placeholder={t('workflow:tool_params.params_description_placeholder')}
           />
         </Flex>
-        <Box>
-          <Flex alignItems={'center'} mb={2}>
-            <FormLabel>{t('workflow:tool_params.enum_values')}</FormLabel>
-            <QuestionTip label={t('workflow:tool_params.enum_values_tip')} />
-          </Flex>
-          <Textarea
-            bg={'myGray.50'}
-            {...register('enum')}
-            placeholder={t('workflow:tool_params.enum_placeholder')}
-          />
-        </Box>
+        {showEnumInput && (
+          <Box>
+            <Flex alignItems={'center'} mb={2}>
+              <FormLabel>{t('workflow:tool_params.enum_values')}</FormLabel>
+              <QuestionTip label={t('workflow:tool_params.enum_values_tip')} />
+            </Flex>
+            <Textarea
+              bg={'myGray.50'}
+              {...register('enum')}
+              placeholder={t('workflow:tool_params.enum_placeholder')}
+            />
+          </Box>
+        )}
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={2} onClick={onClose}>
