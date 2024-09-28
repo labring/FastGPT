@@ -1,18 +1,23 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import NodeCard from './render/NodeCard';
 import { NodeProps } from 'reactflow';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { Box, Textarea } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'react-i18next';
 
 const NodeComment = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs } = data;
-  const commentText = inputs.find((item) => item.key === NodeInputKeyEnum.commentText);
-  const commentSize = inputs.find((item) => item.key === NodeInputKeyEnum.commentSize);
+  const { commentText, commentSize } = useMemo(
+    () => ({
+      commentText: inputs.find((item) => item.key === NodeInputKeyEnum.commentText),
+      commentSize: inputs.find((item) => item.key === NodeInputKeyEnum.commentSize)
+    }),
+    [inputs]
+  );
 
   const onChangeNode = useContextSelector(WorkflowContext, (ctx) => ctx.onChangeNode);
 
