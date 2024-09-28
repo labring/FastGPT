@@ -9,7 +9,7 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
+import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
 

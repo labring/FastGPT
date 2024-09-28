@@ -2,7 +2,6 @@ import { AppSchema } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getLLMModel } from '../ai/model';
-import { MongoAppVersion } from './version/schema';
 import { MongoApp } from './schema';
 
 export const beforeUpdateAppFormat = <T extends AppSchema['modules'] | undefined>({
@@ -43,30 +42,6 @@ export const beforeUpdateAppFormat = <T extends AppSchema['modules'] | undefined
 
   return {
     nodes
-  };
-};
-
-export const getAppLatestVersion = async (appId: string, app?: AppSchema) => {
-  const version = await MongoAppVersion.findOne({
-    appId,
-    isPublish: true
-  })
-    .sort({
-      time: -1
-    })
-    .lean();
-
-  if (version) {
-    return {
-      nodes: version.nodes,
-      edges: version.edges,
-      chatConfig: version.chatConfig || app?.chatConfig || {}
-    };
-  }
-  return {
-    nodes: app?.modules || [],
-    edges: app?.edges || [],
-    chatConfig: app?.chatConfig || {}
   };
 };
 

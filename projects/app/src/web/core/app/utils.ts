@@ -7,6 +7,7 @@ import {
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import {
   chatHistoryValueDesc,
+  defaultNodeVersion,
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -195,7 +196,7 @@ export function form2AppWorkflow(
         x: 918.5901682164496,
         y: -227.11542247619582
       },
-      version: '481',
+      version: DatasetSearchModule.version,
       inputs: [
         {
           key: 'datasets',
@@ -377,7 +378,8 @@ export function form2AppWorkflow(
               x: 500 + 500 * (i + 1),
               y: 545
             },
-            version: tool.version,
+            // 这里不需要固定版本，给一个不存在的版本，每次都会用最新版
+            version: defaultNodeVersion,
             inputs: tool.inputs.map((input) => {
               // Special key value
               if (input.key === NodeInputKeyEnum.forbidStream) {
