@@ -107,6 +107,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.pluginConfig]: () => Promise.resolve(),
   [FlowNodeTypeEnum.emptyNode]: () => Promise.resolve(),
   [FlowNodeTypeEnum.globalVariable]: () => Promise.resolve(),
+  [FlowNodeTypeEnum.comment]: () => Promise.resolve(),
 
   [FlowNodeTypeEnum.runApp]: dispatchAppRequest // abandoned
 };

@@ -174,6 +174,11 @@ type WorkflowContextType = {
   //
   workflowControlMode?: 'drag' | 'select';
   setWorkflowControlMode: (value?: SetState<'drag' | 'select'> | undefined) => void;
+  menu: {
+    top: number;
+    left: number;
+  } | null;
+  setMenu: (value: React.SetStateAction<{ top: number; left: number } | null>) => void;
 };
 
 type DebugDataType = {
@@ -312,6 +317,10 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     throw new Error('Function not implemented.');
   },
   onSwitchCloudVersion: function (appVersion: AppVersionSchemaType): boolean {
+    throw new Error('Function not implemented.');
+  },
+  menu: null,
+  setMenu: function (value: React.SetStateAction<{ top: number; left: number } | null>): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -973,6 +982,8 @@ const WorkflowContextProvider = ({
     };
   }, [edges, nodes]);
 
+  const [menu, setMenu] = useState<{ top: number; left: number } | null>(null);
+
   const value = {
     appId,
     reactFlowWrapper,
@@ -1032,7 +1043,10 @@ const WorkflowContextProvider = ({
     setShowHistoryModal,
 
     // chat test
-    setWorkflowTestData
+    setWorkflowTestData,
+
+    menu,
+    setMenu
   };
 
   return (

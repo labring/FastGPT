@@ -151,7 +151,11 @@ export enum NodeInputKeyEnum {
   loopEndInput = 'loopEndInput',
 
   // form input
-  userInputForms = 'userInputForms'
+  userInputForms = 'userInputForms',
+
+  // comment
+  commentText = 'commentText',
+  commentSize = 'commentSize'
 }
 
 export enum NodeOutputKeyEnum {
