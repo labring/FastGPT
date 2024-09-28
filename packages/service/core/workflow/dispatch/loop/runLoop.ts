@@ -38,6 +38,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   const loopDetail: ChatHistoryItemResType[] = [];
   let assistantResponses: AIChatItemValueItemType[] = [];
   let totalPoints = 0;
+  let newVariables: Record<string, any> = {};
 
   for await (const item of loopInputArray) {
     const response = await dispatchWorkFlow({
@@ -72,6 +73,10 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     assistantResponses.push(...response.assistantResponses);
 
     totalPoints = response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
+    newVariables = {
+      ...newVariables,
+      ...response.newVariables
+    };
   }
 
   return {
@@ -88,6 +93,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
         moduleName: name
       }
     ],
-    [NodeOutputKeyEnum.loopArray]: outputValueArr
+    [NodeOutputKeyEnum.loopArray]: outputValueArr,
+    [DispatchNodeResponseKeyEnum.newVariables]: newVariables
   };
 };
