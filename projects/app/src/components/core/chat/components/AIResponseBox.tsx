@@ -209,7 +209,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
       );
       reset(defaultValues);
     }
-  }, []);
+  }, [interactive.params.inputForm, interactive.type, reset]);
 
   return (
     <Flex flexDirection={'column'} gap={2} w={'250px'}>
