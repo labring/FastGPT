@@ -42,7 +42,7 @@ FastGPT 采用了 RAG 中的 Embedding 方案构建知识库，要使用好 Fast
 
 FastGPT 采用了`PostgresSQL`的`PG Vector`插件作为向量检索器，索引为`HNSW`。且`PostgresSQL`仅用于向量检索（该引擎可以替换成其它数据库），`MongoDB`用于其他数据的存取。
 
-在`MongoDB`的`dataset.datas`表中，会存储向量原数据的信息，同时有一个`indexes`字段，会记录其对应的向量ID，这是一个数组，也就是说，一组向量可以对应多组数据。
+在`MongoDB`的`dataset.datas`表中，会存储向量原数据的信息，同时有一个`indexes`字段，会记录其对应的向量ID，这是一个数组，也就是说，一组数据可以对应多个向量。
 
 在`PostgresSQL`的表中，设置一个`vector`字段用于存储向量。在检索时，会先召回向量，再根据向量的ID，去`MongoDB`中寻找原数据内容，如果对应了同一组原数据，则进行合并，向量得分取最高得分。
 
