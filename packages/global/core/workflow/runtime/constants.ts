@@ -25,7 +25,8 @@ export enum DispatchNodeResponseKeyEnum {
   rewriteHistories = 'rewriteHistories', // If have the response, workflow histories will be rewrite
 
   interactive = 'INTERACTIVE', // is interactive
-  runTimes = 'runTimes' // run times
+  runTimes = 'runTimes', // run times
+  newVariables = 'newVariables' // new variables
 }
 
 export const needReplaceReferenceInputTypeList = [

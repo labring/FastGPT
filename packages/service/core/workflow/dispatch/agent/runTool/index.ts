@@ -184,6 +184,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
   // flat child tool response
   const childToolResponse = dispatchFlowResponse.map((item) => item.flowResponses).flat();
+  const newVariables = dispatchFlowResponse[dispatchFlowResponse.length - 1]?.newVariables;
 
   // concat tool usage
   const totalPointsUsage =
@@ -219,6 +220,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         tokens: totalTokens
       },
       ...flatUsages
-    ]
+    ],
+    [DispatchNodeResponseKeyEnum.newVariables]: newVariables
   };
 };
