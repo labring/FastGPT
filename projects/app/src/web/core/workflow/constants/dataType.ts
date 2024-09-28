@@ -14,15 +14,15 @@ export const fnValueTypeSelect = [
     value: WorkflowIOValueTypeEnum.boolean
   },
   {
-    label: WorkflowIOValueTypeEnum.arrayString,
+    label: 'array<string>',
     value: WorkflowIOValueTypeEnum.arrayString
   },
   {
-    label: WorkflowIOValueTypeEnum.arrayNumber,
+    label: 'array<number>',
     value: WorkflowIOValueTypeEnum.arrayNumber
   },
   {
-    label: WorkflowIOValueTypeEnum.arrayBoolean,
+    label: 'array<boolean>',
     value: WorkflowIOValueTypeEnum.arrayBoolean
   }
 ];
