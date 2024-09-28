@@ -63,7 +63,7 @@ export const getMongoModel = <T>(name: string, schema: mongoose.Schema) => {
 
   const model = connectionMongo.model<T>(name, schema);
 
-  if (process.env.SYNC_INDEX !== '0') {
+  if (process.env.SYNC_INDEX !== '0' && process.env.NODE_ENV !== 'test') {
     try {
       model.syncIndexes({ background: true });
     } catch (error) {
