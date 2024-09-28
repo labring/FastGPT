@@ -181,6 +181,7 @@ function PermissionManage() {
               <Th bg="myGray.100" borderRightRadius="6px">
                 <Box mx="auto" w="fit-content">
                   {t('user:team.group.permission.manage')}
+                  <QuestionTip ml="1" label={t('user:team.group.manage_tip')} />
                 </Box>
               </Th>
             </Tr>
@@ -212,7 +213,7 @@ function PermissionManage() {
                 <Td border="none">
                   <Box mx="auto" w="fit-content">
                     <Checkbox
-                      isDisabled={!userManage}
+                      isDisabled={!userInfo?.permission.isOwner}
                       isChecked={group.permission.hasManagePer}
                       onChange={(e) =>
                         e.target.checked

@@ -36,8 +36,7 @@ export const getTeamDefaultGroup = async ({
       [
         {
           teamId,
-          name: DefaultGroupName,
-          avatar: ''
+          name: DefaultGroupName
         }
       ],
       { session }
@@ -48,12 +47,15 @@ export const getTeamDefaultGroup = async ({
   return group;
 };
 
-export const getGroupsByTmbId = async ({ tmbId, teamId }: { tmbId: string; teamId: string }) => {
-  return (
+export const getGroupsByTmbId = async ({ tmbId, teamId }: { tmbId: string; teamId: string }) =>
+  (
     await Promise.all([
       (
         await MongoGroupMemberModel.find({
-          tmbId
+          tmbId,
+          groupId: {
+            $exists: true
+          }
         })
           .populate('groupId')
           .lean()
@@ -62,10 +64,10 @@ export const getGroupsByTmbId = async ({ tmbId, teamId }: { tmbId: string; teamI
           ...(item.groupId as any as MemberGroupSchemaType)
         };
       }),
-      await getTeamDefaultGroup({ teamId })
+
+      getTeamDefaultGroup({ teamId })
     ])
   ).flat();
-};
 
 export const getTmbByGroupId = async (groupId: string) => {
   return (

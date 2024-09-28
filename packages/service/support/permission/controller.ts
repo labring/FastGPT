@@ -62,10 +62,9 @@ export const getResourcePermission = async ({
   }
 
   // If there is no personal permission, get the group permission
-  const groupIdList = (await getGroupsByTmbId({ tmbId, teamId }))
-    .map((item) => item._id)
-    .filter(Boolean);
-  if (!groupIdList || !groupIdList.length) {
+  const groupIdList = (await getGroupsByTmbId({ tmbId, teamId })).map((item) => item._id);
+
+  if (groupIdList.length === 0) {
     return undefined;
   }
 
@@ -81,7 +80,7 @@ export const getResourcePermission = async ({
         resourceId
       },
       'permission'
-    )
+    ).lean()
   ).map((item) => item.permission);
 
   const groupPer = getGroupPer(pers);
@@ -366,8 +365,8 @@ export const authFileToken = (token?: string) =>
     });
   });
 
-export const getGroupPer = (groups?: PermissionValueType[]) => {
-  if (!groups || !groups.length) {
+export const getGroupPer = (groups: PermissionValueType[] = []) => {
+  if (groups.length === 0) {
     return undefined;
   }
 

@@ -82,7 +82,7 @@ function MemberTable() {
                           openRemoveMember(
                             () =>
                               delRemoveMember(item.tmbId).then(() =>
-                                Promise.all([refetchGroups, refetchMembers])
+                                Promise.all([refetchGroups(), refetchMembers()])
                               ),
                             undefined,
                             t('user.team.Remove Member Confirm Tip', {
