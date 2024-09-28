@@ -196,6 +196,7 @@ export type DispatchNodeResultType<T = {}> = {
   [DispatchNodeResponseKeyEnum.assistantResponses]?: AIChatItemValueItemType[]; // Assistant response(Store to db)
   [DispatchNodeResponseKeyEnum.rewriteHistories]?: ChatItemType[];
   [DispatchNodeResponseKeyEnum.runTimes]?: number;
+  [DispatchNodeResponseKeyEnum.newVariables]?: Record<string, any>;
 } & T;
 
 /* Single node props */
