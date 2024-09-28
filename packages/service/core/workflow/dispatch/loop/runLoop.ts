@@ -38,7 +38,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   const loopDetail: ChatHistoryItemResType[] = [];
   let assistantResponses: AIChatItemValueItemType[] = [];
   let totalPoints = 0;
-  let newVariables: Record<string, any> = {};
+  let newVariables: Record<string, any> = props.variables;
 
   for await (const item of loopInputArray) {
     const response = await dispatchWorkFlow({

@@ -9,7 +9,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
+import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
 

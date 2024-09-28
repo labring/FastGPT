@@ -26,7 +26,7 @@ type RunPluginResponse = DispatchNodeResultType<{}>;
 
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
   const {
-    node: { pluginId },
+    node: { pluginId, version },
     runningAppInfo,
     query,
     params: { system_forbid_stream = false, ...data } // Plugin input
@@ -45,7 +45,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     per: ReadPermissionVal
   });
 
-  const plugin = await getChildAppRuntimeById(pluginId);
+  const plugin = await getChildAppRuntimeById(pluginId, version);
 
   const outputFilterMap =
     plugin.nodes

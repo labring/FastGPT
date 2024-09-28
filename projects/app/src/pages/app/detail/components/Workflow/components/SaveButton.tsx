@@ -72,7 +72,8 @@ const SaveButton = ({
               toast({
                 status: 'success',
                 title: t('app:saved_success'),
-                position: 'top-right'
+                position: 'top-right',
+                isClosable: true
               });
               onClose();
               setIsSave(false);

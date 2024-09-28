@@ -46,7 +46,7 @@ import { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import { NextAPI } from '@/service/middleware/entry';
-import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
+import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {

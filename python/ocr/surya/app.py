@@ -19,7 +19,8 @@ from surya.model.recognition.model import load_model as load_rec_model
 from surya.model.recognition.processor import load_processor as load_rec_processor
 from surya.ocr import run_ocr
 from surya.schema import OCRResult
-
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
 app = FastAPI()
 security = HTTPBearer()
 env_bearer_token = None
@@ -100,40 +101,53 @@ class Chat(object):
         return string_result
 
     def query_ocr(self, image_base64: str,
-                  sorted: bool) -> List[OCRResult] | str:
+                  sorted: bool) -> str:
         if image_base64 is None or len(image_base64) == 0:
-            return []
-        image = Chat.base64_to_image(image_base64)
+            return ""
+        try:
+            image = Chat.base64_to_image(image_base64)
+            ocr_result = self.surya.run(image)
+            result = []
 
-        ocr_result = self.surya.run(image)
-        result = []
+            for text_line in ocr_result[0].text_lines:
+                result.append(text_line.text)
 
-        for text_line in ocr_result[0].text_lines:
-            result.append({"text": text_line.text, "bbox": text_line.bbox})
-        if sorted:
-            result = Chat.sort_text_by_bbox(result)
+            if sorted:
+                result = self.sort_text_lines(result)
 
-        torch_gc()
-        return result
+            # 将所有文本行合并成一个字符串，用换行符分隔
+            final_result = "\n".join(result)
 
+            torch_gc()
+            return final_result
+        except Exception as e:
+            logging.error(f"OCR 处理失败: {e}")
+            raise HTTPException(status_code=400, detail=f"OCR 处理失败: {str(e)}")
 
-@app.post('/v1/surya_ocr')
+    @staticmethod
+    def sort_text_lines(text_lines: List[str]) -> List[str]:
+        # 这里可以实现自定义的排序逻辑
+        # 目前只是简单地返回原始列表，因为我们没有位置信息来进行排序
+        return text_lines
+
+@app.post('/v1/ocr/text')
 async def handle_post_request(
     image_req: ImageReq,
     credentials: HTTPAuthorizationCredentials = Security(security)):
     token = credentials.credentials
     if env_bearer_token is not None and token != env_bearer_token:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=401, detail="无效的令牌")
     chat = Chat()
     try:
         results = []
         for image_base64 in image_req.images:
             results.append(chat.query_ocr(image_base64, image_req.sorted))
-        return {"error": "success", "results": results}
+        return {"error": None, "results": results}
+    except HTTPException as he:
+        raise he
     except Exception as e:
         logging.error(f"识别报错：{e}")
-        return {"error": "识别出错"}
-
+        raise HTTPException(status_code=500, detail=f"识别出错: {str(e)}")
 
 if __name__ == "__main__":
     env_bearer_token = os.getenv("ACCESS_TOKEN")

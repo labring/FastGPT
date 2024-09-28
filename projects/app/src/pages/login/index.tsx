@@ -55,17 +55,6 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
     defaultValue: true
   });
 
-  const checkIpInChina = useCallback(
-    () =>
-      GET(ipDetectURL).then((res: any) => {
-        const country = res?.country;
-        if (country && country === '中国' && res.city !== '中国香港') {
-          onOpenRedirect();
-        }
-      }),
-    [onOpenRedirect]
-  );
-
   const loginSuccess = useCallback(
     (res: ResLogin) => {
       // init store
@@ -101,10 +90,27 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
     );
   }, [feConfigs.oauth]);
 
+  const checkIpInChina = useCallback(async () => {
+    try {
+      const res = await GET<any>(ipDetectURL);
+      const country = res?.country;
+      if (
+        country &&
+        country === '中国' &&
+        res.prov !== '中国香港' &&
+        res.prov !== '中国澳门' &&
+        res.prov !== '中国台湾'
+      ) {
+        onOpenRedirect();
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }, [onOpenRedirect]);
   useMount(() => {
     clearToken();
-    ChineseRedirectUrl && showRedirect && checkIpInChina();
     router.prefetch('/app/list');
+    ChineseRedirectUrl && showRedirect && checkIpInChina();
   });
 
   return (

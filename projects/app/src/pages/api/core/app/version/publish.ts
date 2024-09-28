@@ -21,7 +21,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
     versionName
   } = req.body as PostPublishAppProps;
 
-  const { app, tmbId } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
+  const { tmbId } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
 
   const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
 

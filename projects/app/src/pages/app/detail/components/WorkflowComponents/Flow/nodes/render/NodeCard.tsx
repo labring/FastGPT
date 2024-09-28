@@ -92,10 +92,6 @@ const NodeCard = (props: Props) => {
     return { node, parentNode };
   }, [nodeList, nodeId]);
 
-  const { openConfirm: onOpenConfirmSync, ConfirmModal: ConfirmSyncModal } = useConfirm({
-    content: t('app:module.Confirm Sync')
-  });
-
   const { data: nodeTemplate, runAsync: getNodeLatestTemplate } = useRequest2(
     async () => {
       if (
@@ -125,6 +121,10 @@ const NodeCard = (props: Props) => {
       manual: false
     }
   );
+
+  const { openConfirm: onOpenConfirmSync, ConfirmModal: ConfirmSyncModal } = useConfirm({
+    content: t('workflow:Confirm_sync_node')
+  });
   const hasNewVersion = nodeTemplate && nodeTemplate.version !== node?.version;
 
   const { runAsync: onClickSyncVersion } = useRequest2(
@@ -264,7 +264,6 @@ const NodeCard = (props: Props) => {
           <MenuRender nodeId={nodeId} menuForbid={menuForbid} nodeList={nodeList} />
           <NodeIntro nodeId={nodeId} intro={intro} />
         </Box>
-        <ConfirmSyncModal />
       </Box>
     );
   }, [
@@ -282,11 +281,11 @@ const NodeCard = (props: Props) => {
     menuForbid,
     nodeList,
     intro,
-    ConfirmSyncModal,
     onChangeNode,
     onOpenCustomTitleModal,
     toast
   ]);
+
   const RenderHandle = useMemo(() => {
     return (
       <>
@@ -342,6 +341,7 @@ const NodeCard = (props: Props) => {
       {RenderHandle}
       {RenderToolHandle}
 
+      <ConfirmSyncModal />
       <EditTitleModal maxLength={20} />
     </Flex>
   );
@@ -384,7 +384,12 @@ const MenuRender = React.memo(function MenuRender({
           pluginId: node.data.pluginId,
           version: node.data.version
         };
-        return state.concat(
+
+        return [
+          ...state.map((item) => ({
+            ...item,
+            selected: false
+          })),
           storeNode2FlowNode({
             item: {
               flowNodeType: template.flowNodeType,
@@ -403,7 +408,7 @@ const MenuRender = React.memo(function MenuRender({
             parentNodeId: undefined,
             t
           })
-        );
+        ];
       });
     },
     [computedNewNodeName, setNodes, t]
