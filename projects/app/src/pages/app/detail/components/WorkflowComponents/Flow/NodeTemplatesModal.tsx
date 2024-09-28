@@ -106,8 +106,12 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
             if (item.flowNodeType === FlowNodeTypeEnum.lafModule && !feConfigs.lafEnv) {
               return false;
             }
-            // tool stop
-            if (!hasToolNode && item.flowNodeType === FlowNodeTypeEnum.stopTool) {
+            // tool stop or tool params
+            if (
+              !hasToolNode &&
+              (item.flowNodeType === FlowNodeTypeEnum.stopTool ||
+                item.flowNodeType === FlowNodeTypeEnum.toolParams)
+            ) {
               return false;
             }
             return true;
