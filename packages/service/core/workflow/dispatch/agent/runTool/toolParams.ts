@@ -6,16 +6,12 @@ export type Props = ModuleDispatchProps<{}>;
 export type Response = DispatchNodeResultType<{}>;
 
 export const dispatchToolParams = (props: Props): Response => {
-  const { node } = props;
-  const { inputs } = node;
-  const toolParamsResult = inputs.reduce<Record<string, any>>((acc, cur) => {
-    acc[cur.key] = cur.value;
-    return acc;
-  }, {});
+  const { params } = props;
+
   return {
-    ...toolParamsResult,
+    ...params,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      toolParamsResult
+      toolParamsResult: params
     }
   };
 };
