@@ -1,5 +1,6 @@
 import { AppSchema } from '@fastgpt/global/core/app/type';
 import { MongoAppVersion } from './schema';
+import { Types } from '../../../common/mongo';
 
 export const getAppLatestVersion = async (appId: string, app?: AppSchema) => {
   const version = await MongoAppVersion.findOne({
@@ -36,23 +37,23 @@ export const getAppVersionById = async ({
   versionId?: string;
   app?: AppSchema;
 }) => {
-  const version = await MongoAppVersion.findOne({
-    _id: versionId,
-    appId
-  }).lean();
+  // 检查 versionId 是否符合 ObjectId 格式
+  if (versionId && Types.ObjectId.isValid(versionId)) {
+    const version = await MongoAppVersion.findOne({
+      _id: versionId,
+      appId
+    }).lean();
 
-  if (version && versionId) {
-    return {
-      versionId: version._id,
-      nodes: version.nodes,
-      edges: version.edges,
-      chatConfig: version.chatConfig || app?.chatConfig || {}
-    };
+    if (version) {
+      return {
+        versionId: version._id,
+        nodes: version.nodes,
+        edges: version.edges,
+        chatConfig: version.chatConfig || app?.chatConfig || {}
+      };
+    }
   }
-  return {
-    versionId: app?.pluginData?.nodeVersion,
-    nodes: app?.modules || [],
-    edges: app?.edges || [],
-    chatConfig: app?.chatConfig || {}
-  };
+
+  // If the version does not exist, the latest version is returned
+  return getAppLatestVersion(appId, app);
 };
