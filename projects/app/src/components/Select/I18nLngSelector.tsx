@@ -24,9 +24,6 @@ const I18nLngSelector = () => {
 
   return (
     <MySelect
-      _hover={{
-        bg: 'myGray.200'
-      }}
       value={i18n.language}
       list={list}
       onchange={(val: any) => {

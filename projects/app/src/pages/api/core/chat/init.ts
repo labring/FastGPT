@@ -6,7 +6,7 @@ import { getChatModelNameListByModules } from '@/service/core/app/workflow';
 import type { InitChatProps, InitChatResponse } from '@/global/core/chat/api.d';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
+import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -15,7 +15,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ): Promise<InitChatResponse | void> {
-  let { appId, chatId, loadCustomFeedbacks } = req.query as InitChatProps;
+  let { appId, chatId } = req.query as InitChatProps;
 
   if (!appId) {
     return jsonRes(res, {

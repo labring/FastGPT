@@ -2,7 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
+import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';

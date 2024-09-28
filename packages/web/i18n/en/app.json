@@ -67,7 +67,6 @@
   "logs_message_total": "Total Messages",
   "logs_title": "Title",
   "mark_count": "Number of Marked Answers",
-  "module.Confirm Sync": "Will update to the latest template configuration. Fields not in the template will be deleted (including all custom fields). It is recommended to copy a node first, then update the original node version.",
   "module.Custom Title Tip": "This title will be displayed during the conversation.",
   "module.No Modules": "No Plugins Found",
   "module.type": "\"{{type}}\" type\n{{description}}",
