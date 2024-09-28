@@ -124,7 +124,8 @@ export const storeNodes2RuntimeNodes = (
         isEntry: entryNodeIds.includes(node.nodeId),
         inputs: node.inputs,
         outputs: node.outputs,
-        pluginId: node.pluginId
+        pluginId: node.pluginId,
+        version: node.version
       };
     }) || []
   );

@@ -16,7 +16,7 @@ import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/glob
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { getAppLatestVersion } from '../../../app/controller';
+import { getAppVersionById } from '../../../app/version/controller';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -34,8 +34,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     runningAppInfo,
     histories,
     query,
-    mode,
-    node: { pluginId },
+    node: { pluginId: appId, version },
     workflowStreamResponse,
     params,
     variables
@@ -45,19 +44,23 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
-  if (!pluginId) {
+  if (!appId) {
     return Promise.reject('pluginId is empty');
   }
 
   // Auth the app by tmbId(Not the user, but the workflow user)
   const { app: appData } = await authAppByTmbId({
-    appId: pluginId,
+    appId: appId,
     tmbId: runningAppInfo.tmbId,
     per: ReadPermissionVal
   });
-  const { nodes, edges, chatConfig } = await getAppLatestVersion(pluginId);
-  const childStreamResponse = system_forbid_stream ? false : props.stream;
+  const { nodes, edges, chatConfig } = await getAppVersionById({
+    appId,
+    versionId: version,
+    app: appData
+  });
 
+  const childStreamResponse = system_forbid_stream ? false : props.stream;
   // Auto line
   if (childStreamResponse) {
     workflowStreamResponse?.({

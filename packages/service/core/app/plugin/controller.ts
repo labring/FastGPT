@@ -10,6 +10,7 @@ import { cloneDeep } from 'lodash';
 import { MongoApp } from '../schema';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { getSystemPluginTemplates } from '../../../../plugins/register';
+import { getAppLatestVersion, getAppVersionById } from '../version/controller';
 
 /* 
   plugin id rule:
@@ -34,38 +35,14 @@ export async function splitCombinePluginId(id: string) {
   return { source, pluginId: id };
 }
 
-const getChildAppTemplateById = async (
-  id: string
-): Promise<SystemPluginTemplateItemType & { teamId?: string }> => {
-  const { source, pluginId } = await splitCombinePluginId(id);
+type ChildAppType = SystemPluginTemplateItemType & { teamId?: string };
+const getSystemPluginTemplateById = async (
+  pluginId: string
+): Promise<SystemPluginTemplateItemType> => {
+  const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
+  if (!item) return Promise.reject('plugin not found');
 
-  if (source === PluginSourceEnum.personal) {
-    const item = await MongoApp.findById(id).lean();
-    if (!item) return Promise.reject('plugin not found');
-
-    return {
-      id: String(item._id),
-      teamId: String(item.teamId),
-      name: item.name,
-      avatar: item.avatar,
-      intro: item.intro,
-      showStatus: true,
-      workflow: {
-        nodes: item.modules,
-        edges: item.edges,
-        chatConfig: item.chatConfig
-      },
-      templateType: FlowNodeTemplateTypeEnum.teamApp,
-      version: item?.pluginData?.nodeVersion || defaultNodeVersion,
-      originCost: 0,
-      currentCost: 0
-    };
-  } else {
-    const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
-    if (!item) return Promise.reject('plugin not found');
-
-    return cloneDeep(item);
-  }
+  return cloneDeep(item);
 };
 
 /* format plugin modules to plugin preview module */
@@ -74,7 +51,39 @@ export async function getChildAppPreviewNode({
 }: {
   id: string;
 }): Promise<FlowNodeTemplateType> {
-  const app = await getChildAppTemplateById(id);
+  const app: ChildAppType = await (async () => {
+    const { source, pluginId } = await splitCombinePluginId(id);
+
+    if (source === PluginSourceEnum.personal) {
+      const item = await MongoApp.findById(id).lean();
+      if (!item) return Promise.reject('plugin not found');
+
+      const version = await getAppLatestVersion(id, item);
+
+      if (!version.versionId) return Promise.reject('App version not found');
+
+      return {
+        id: String(item._id),
+        teamId: String(item.teamId),
+        name: item.name,
+        avatar: item.avatar,
+        intro: item.intro,
+        showStatus: true,
+        workflow: {
+          nodes: version.nodes,
+          edges: version.edges,
+          chatConfig: version.chatConfig
+        },
+        templateType: FlowNodeTemplateTypeEnum.teamApp,
+        version: version.versionId,
+        originCost: 0,
+        currentCost: 0
+      };
+    } else {
+      return getSystemPluginTemplateById(pluginId);
+    }
+  })();
+
   const isPlugin = !!app.workflow.nodes.find(
     (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
   );
@@ -99,9 +108,51 @@ export async function getChildAppPreviewNode({
   };
 }
 
-/* run plugin time */
-export async function getChildAppRuntimeById(id: string): Promise<PluginRuntimeType> {
-  const app = await getChildAppTemplateById(id);
+/* 
+  Get runtime plugin data
+  System plugin: plugin id
+  Personal plugin: Version id
+*/
+export async function getChildAppRuntimeById(
+  id: string,
+  versionId?: string
+): Promise<PluginRuntimeType> {
+  const app: ChildAppType = await (async () => {
+    const { source, pluginId } = await splitCombinePluginId(id);
+
+    if (source === PluginSourceEnum.personal) {
+      const item = await MongoApp.findById(id).lean();
+      if (!item) return Promise.reject('plugin not found');
+
+      const version = await getAppVersionById({
+        appId: id,
+        versionId,
+        app: item
+      });
+
+      return {
+        id: String(item._id),
+        teamId: String(item.teamId),
+        name: item.name,
+        avatar: item.avatar,
+        intro: item.intro,
+        showStatus: true,
+        workflow: {
+          nodes: version.nodes,
+          edges: version.edges,
+          chatConfig: version.chatConfig
+        },
+        templateType: FlowNodeTemplateTypeEnum.teamApp,
+
+        // 用不到
+        version: item?.pluginData?.nodeVersion || defaultNodeVersion,
+        originCost: 0,
+        currentCost: 0
+      };
+    } else {
+      return getSystemPluginTemplateById(pluginId);
+    }
+  })();
 
   return {
     id: app.id,
