@@ -282,7 +282,8 @@ export const useWorkflow = () => {
     setEdges,
     onChangeNode,
     onEdgesChange,
-    setHoverEdgeId
+    setHoverEdgeId,
+    setMenu
   } = useContextSelector(WorkflowContext, (v) => v);
 
   const { getIntersectingNodes } = useReactFlow();
@@ -599,7 +600,7 @@ export const useWorkflow = () => {
         connect
       });
     },
-    [onConnect, t, toast, nodes]
+    [onConnect, t, toast]
   );
 
   /* edge */
@@ -613,6 +614,24 @@ export const useWorkflow = () => {
     setHoverEdgeId(undefined);
   }, [setHoverEdgeId]);
 
+  // context menu
+  const onPaneContextMenu = useCallback(
+    (e: any) => {
+      // Prevent native context menu from showing
+      e.preventDefault();
+
+      setMenu({
+        top: e.clientY - 64,
+        left: e.clientX - 12
+      });
+    },
+    [setMenu]
+  );
+
+  const onPaneClick = useCallback(() => {
+    setMenu(null);
+  }, [setMenu]);
+
   return {
     handleNodesChange,
     handleEdgeChange,
@@ -624,7 +643,9 @@ export const useWorkflow = () => {
     onEdgeMouseLeave,
     helperLineHorizontal,
     helperLineVertical,
-    onNodeDragStop
+    onNodeDragStop,
+    onPaneContextMenu,
+    onPaneClick
   };
 };
 
