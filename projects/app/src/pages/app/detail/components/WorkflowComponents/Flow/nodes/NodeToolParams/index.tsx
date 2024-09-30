@@ -36,7 +36,7 @@ const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       <NodeCard selected={selected} {...data}>
         <Container>
           <Flex alignItems={'center'} justifyContent={'space-between'} mb={1.5}>
-            <FormLabel>{t('workflow:custom_tool_input')}</FormLabel>
+            <FormLabel>{t('workflow:tool_custom_field')}</FormLabel>
             <Button
               variant={'whiteBase'}
               leftIcon={<SmallAddIcon />}

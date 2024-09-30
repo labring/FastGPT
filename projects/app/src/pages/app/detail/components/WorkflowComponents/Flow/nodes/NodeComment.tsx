@@ -9,7 +9,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'react-i18next';
 
-const NodeComment = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeComment = ({ data }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs } = data;
   const { commentText, commentSize } = useMemo(
     () => ({
@@ -39,8 +39,8 @@ const NodeComment = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         const deltaY = e.clientY - initialY.current;
         const deltaX = e.clientX - initialX.current;
         setSize((prevSize) => ({
-          width: prevSize.width + deltaX < 240 ? 240 : prevSize.width + deltaX,
-          height: prevSize.height + deltaY < 140 ? 140 : prevSize.height + deltaY
+          width: prevSize.width + deltaX < 120 ? 120 : prevSize.width + deltaX,
+          height: prevSize.height + deltaY < 60 ? 60 : prevSize.height + deltaY
         }));
         initialY.current = e.clientY;
         initialX.current = e.clientX;
@@ -70,59 +70,63 @@ const NodeComment = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [commentSize, nodeId, onChangeNode, size.height, size.width]
   );
 
-  return (
-    <NodeCard
-      selected={false}
-      {...data}
-      minW={`${size.width}px`}
-      minH={`${size.height}px`}
-      menuForbid={{
-        debug: true
-      }}
-      border={'none'}
-      rounded={'none'}
-      bg={'#D8E9FF'}
-      boxShadow={
-        '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
-      }
-    >
-      <Box w={'full'} h={'full'} position={'relative'}>
-        <Box
-          position={'absolute'}
-          right={'0'}
-          bottom={'-2'}
-          zIndex={9}
-          cursor={'nwse-resize'}
-          px={'2px'}
-          className="nodrag"
-          onMouseDown={handleMouseDown}
-        >
-          <MyIcon name={'common/editor/resizer'} width={'14px'} height={'14px'} />
+  const Render = useMemo(() => {
+    return (
+      <NodeCard
+        selected={false}
+        {...data}
+        minW={`${size.width}px`}
+        minH={`${size.height}px`}
+        menuForbid={{
+          debug: true
+        }}
+        border={'none'}
+        rounded={'none'}
+        bg={'#D8E9FF'}
+        boxShadow={
+          '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
+        }
+      >
+        <Box w={'full'} h={'full'} position={'relative'}>
+          <Box
+            position={'absolute'}
+            right={'0'}
+            bottom={'-2'}
+            zIndex={9}
+            cursor={'nwse-resize'}
+            px={'2px'}
+            className="nodrag"
+            onMouseDown={handleMouseDown}
+          >
+            <MyIcon name={'common/editor/resizer'} width={'14px'} height={'14px'} />
+          </Box>
+          <Textarea
+            value={commentText?.value}
+            border={'none'}
+            rounded={'none'}
+            minH={`${size.height}px`}
+            minW={`${size.width}px`}
+            resize={'none'}
+            placeholder={t('workflow:enter_comment')}
+            onChange={(e) => {
+              commentText &&
+                onChangeNode({
+                  nodeId: nodeId,
+                  type: 'updateInput',
+                  key: NodeInputKeyEnum.commentText,
+                  value: {
+                    ...commentText,
+                    value: e.target.value
+                  }
+                });
+            }}
+          />
         </Box>
-        <Textarea
-          value={commentText?.value}
-          border={'none'}
-          rounded={'none'}
-          minH={`${size.height}px`}
-          minW={`${size.width}px`}
-          resize={'none'}
-          placeholder={t('workflow:enter_comment')}
-          onChange={(e) => {
-            commentText &&
-              onChangeNode({
-                nodeId: nodeId,
-                type: 'updateInput',
-                key: NodeInputKeyEnum.commentText,
-                value: {
-                  ...commentText,
-                  value: e.target.value
-                }
-              });
-          }}
-        />
-      </Box>
-    </NodeCard>
-  );
+      </NodeCard>
+    );
+  }, [commentText, data, handleMouseDown, nodeId, onChangeNode, size.height, size.width, t]);
+
+  return Render;
 };
 
 export default React.memo(NodeComment);

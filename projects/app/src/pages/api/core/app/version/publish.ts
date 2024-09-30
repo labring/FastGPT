@@ -8,7 +8,6 @@ import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { PostPublishAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<{}> {
   const { appId } = req.query as { appId: string };

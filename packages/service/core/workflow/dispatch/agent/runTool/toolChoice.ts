@@ -26,6 +26,7 @@ import { updateToolInputValue } from './utils';
 import { computedMaxToken, llmCompletionsBodyFormat } from '../../../../ai/utils';
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../../../../common/system/log';
+import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 
 type ToolRunResponseType = {
   toolRunResponse: DispatchFlowResponse;
@@ -78,10 +79,11 @@ export const runToolWithToolChoice = async (
       }
     > = {};
     item.toolParams.forEach((item) => {
-      const isArray = item.valueType?.startsWith('array');
+      const jsonSchema = (
+        toolValueTypeList.find((type) => type.value === item.valueType) || toolValueTypeList[0]
+      )?.jsonSchema;
       properties[item.key] = {
-        type: isArray ? 'array' : item.valueType || 'string',
-        ...(isArray && { items: { type: item.valueType?.slice(5).toLowerCase() || 'string' } }),
+        ...jsonSchema,
         description: item.toolDescription || '',
         enum: item.enum?.split('\n').filter(Boolean) || []
       };

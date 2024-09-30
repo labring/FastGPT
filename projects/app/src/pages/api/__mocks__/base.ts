@@ -57,11 +57,25 @@ jest.mock('@/service/middleware/entry', () => {
 });
 
 beforeAll(async () => {
+  // 新建一个内存数据库，然后让 mongoose 连接这个数据库
   if (!global.mongod || !global.mongodb) {
     const mongod = await MongoMemoryServer.create();
     global.mongod = mongod;
     global.mongodb = mongoose;
-    await global.mongodb.connect(mongod.getUri());
+
+    await global.mongodb.connect(mongod.getUri(), {
+      bufferCommands: true,
+      maxConnecting: 50,
+      maxPoolSize: 50,
+      minPoolSize: 20,
+      connectTimeoutMS: 60000,
+      waitQueueTimeoutMS: 60000,
+      socketTimeoutMS: 60000,
+      maxIdleTimeMS: 300000,
+      retryWrites: true,
+      retryReads: true
+    });
+
     await initMockData();
   }
 });

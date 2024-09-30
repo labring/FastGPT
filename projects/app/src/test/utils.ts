@@ -31,8 +31,8 @@ export function getTestRequest<Q = any, B = any>({
   // authApiKey = false,
   user
 }: {
-  body?: Partial<B>;
   query?: Partial<Q>;
+  body?: Partial<B>;
   authToken?: boolean;
   authRoot?: boolean;
   authApiKey?: boolean;

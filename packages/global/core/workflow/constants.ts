@@ -37,6 +37,60 @@ export enum WorkflowIOValueTypeEnum {
   selectDataset = 'selectDataset'
 }
 
+export const toolValueTypeList = [
+  {
+    label: WorkflowIOValueTypeEnum.string,
+    value: WorkflowIOValueTypeEnum.string,
+    jsonSchema: {
+      type: 'string'
+    }
+  },
+  {
+    label: WorkflowIOValueTypeEnum.number,
+    value: WorkflowIOValueTypeEnum.number,
+    jsonSchema: {
+      type: 'number'
+    }
+  },
+  {
+    label: WorkflowIOValueTypeEnum.boolean,
+    value: WorkflowIOValueTypeEnum.boolean,
+    jsonSchema: {
+      type: 'boolean'
+    }
+  },
+  {
+    label: 'array<string>',
+    value: WorkflowIOValueTypeEnum.arrayString,
+    jsonSchema: {
+      type: 'array',
+      items: {
+        type: 'string'
+      }
+    }
+  },
+  {
+    label: 'array<number>',
+    value: WorkflowIOValueTypeEnum.arrayNumber,
+    jsonSchema: {
+      type: 'array',
+      items: {
+        type: 'number'
+      }
+    }
+  },
+  {
+    label: 'array<boolean>',
+    value: WorkflowIOValueTypeEnum.arrayBoolean,
+    jsonSchema: {
+      type: 'array',
+      items: {
+        type: 'boolean'
+      }
+    }
+  }
+];
+
 /* reg: modulename key */
 export enum NodeInputKeyEnum {
   // old
