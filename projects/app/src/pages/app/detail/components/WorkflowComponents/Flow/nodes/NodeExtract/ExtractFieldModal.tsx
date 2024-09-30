@@ -14,7 +14,7 @@ import { useForm } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { fnValueTypeSelect } from '@/web/core/workflow/constants/dataType';
+import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -82,7 +82,7 @@ const ExtractFieldModal = ({
           </FormLabel>
           <Box flex={'1 0 0'}>
             <MySelect<string>
-              list={fnValueTypeSelect}
+              list={toolValueTypeList}
               value={valueType}
               onchange={(e) => {
                 setValue('valueType', e as any);
