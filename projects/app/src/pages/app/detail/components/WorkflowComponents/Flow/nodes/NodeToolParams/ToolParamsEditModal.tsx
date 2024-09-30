@@ -1,4 +1,4 @@
-import { fnValueTypeSelect } from '@/web/core/workflow/constants/dataType';
+import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { Box, Button, Flex, Input, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -121,7 +121,7 @@ const ToolParamsEditModal = ({
           <FormLabel flex={'0 0 80px'}>{t('common:core.module.Data Type')}</FormLabel>
           <Box flex={'1 0 0'}>
             <MySelect
-              list={fnValueTypeSelect}
+              list={toolValueTypeList}
               value={valueType}
               onchange={(e: any) => {
                 setValue('valueType', e);

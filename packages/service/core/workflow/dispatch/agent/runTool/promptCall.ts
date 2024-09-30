@@ -27,7 +27,7 @@ import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { updateToolInputValue } from './utils';
 import { computedMaxToken, llmCompletionsBodyFormat } from '../../../../ai/utils';
 import { WorkflowResponseType } from '../../type';
-import { fnValueTypeSelect } from '../../../../../../../projects/app/src/web/core/workflow/constants/dataType';
+import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 
 type FunctionCallCompletion = {
   id: string;
@@ -74,7 +74,7 @@ export const runToolWithPromptCall = async (
       > = {};
       item.toolParams.forEach((item) => {
         const jsonSchema = (
-          fnValueTypeSelect.find((type) => type.value === item.valueType) || fnValueTypeSelect[0]
+          toolValueTypeList.find((type) => type.value === item.valueType) || toolValueTypeList[0]
         ).jsonSchema;
 
         properties[item.key] = {
