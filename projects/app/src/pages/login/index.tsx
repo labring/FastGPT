@@ -231,7 +231,7 @@ function RedirectDrawer({
 export async function getServerSideProps(context: any) {
   return {
     props: {
-      ChineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL,
+      ChineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL ?? '',
       ...(await serviceSideProps(context, ['app', 'user', 'login']))
     }
   };
