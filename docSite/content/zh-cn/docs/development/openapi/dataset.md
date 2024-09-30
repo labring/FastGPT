@@ -22,7 +22,7 @@ weight: 853
 **新例子**
 
 ```bash
-curl --location --request POST 'https://api.tryfastgpt.ai/api/support/wallet/usage/createTrainingUsage' \
+curl --location --request POST 'https://api.fastgpt.in/api/support/wallet/usage/createTrainingUsage' \
 --header 'Authorization: Bearer {{apikey}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -34,7 +34,7 @@ curl --location --request POST 'https://api.tryfastgpt.ai/api/support/wallet/usa
 **x例子**
 
 ```bash
-curl --location --request POST 'https://api.tryfastgpt.ai/api/support/wallet/bill/createTrainingBill' \
+curl --location --request POST 'https://api.fastgpt.in/api/support/wallet/bill/createTrainingBill' \
 --header 'Authorization: Bearer {{apikey}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -991,7 +991,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/collect
 {{< markdownify >}}
 
 ```bash
-curl --location --request POST 'https://api.tryfastgpt.ai/api/core/dataset/data/pushData' \
+curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/data/pushData' \
 --header 'Authorization: Bearer apikey' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -1328,7 +1328,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/data/de
 {{< markdownify >}}
 
 ```bash
-curl --location --request POST 'https://api.tryfastgpt.ai/api/core/dataset/searchTest' \
+curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/searchTest' \
 --header 'Authorization: Bearer fastgpt-xxxxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{
