@@ -281,7 +281,8 @@ export const checkWorkflowNodeAndConnection = ({
       data.flowNodeType === FlowNodeTypeEnum.systemConfig ||
       data.flowNodeType === FlowNodeTypeEnum.pluginConfig ||
       data.flowNodeType === FlowNodeTypeEnum.pluginInput ||
-      data.flowNodeType === FlowNodeTypeEnum.workflowStart
+      data.flowNodeType === FlowNodeTypeEnum.workflowStart ||
+      data.flowNodeType === FlowNodeTypeEnum.comment
     ) {
       continue;
     }
