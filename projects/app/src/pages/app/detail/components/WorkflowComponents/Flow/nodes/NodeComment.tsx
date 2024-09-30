@@ -39,8 +39,8 @@ const NodeComment = ({ data }: NodeProps<FlowNodeItemType>) => {
         const deltaY = e.clientY - initialY.current;
         const deltaX = e.clientX - initialX.current;
         setSize((prevSize) => ({
-          width: prevSize.width + deltaX < 240 ? 240 : prevSize.width + deltaX,
-          height: prevSize.height + deltaY < 140 ? 140 : prevSize.height + deltaY
+          width: prevSize.width + deltaX < 120 ? 120 : prevSize.width + deltaX,
+          height: prevSize.height + deltaY < 60 ? 60 : prevSize.height + deltaY
         }));
         initialY.current = e.clientY;
         initialX.current = e.clientX;
