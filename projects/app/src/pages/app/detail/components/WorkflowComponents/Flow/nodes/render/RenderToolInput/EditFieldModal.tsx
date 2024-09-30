@@ -19,7 +19,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
-import { fnValueTypeSelect } from '@/web/core/workflow/constants/dataType';
+import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
@@ -95,7 +95,7 @@ const EditFieldModal = ({
           <Box flex={'0 0 80px'}>{t('common:core.module.Data Type')}</Box>
           <Box flex={'1 0 0'}>
             <MySelect
-              list={fnValueTypeSelect}
+              list={toolValueTypeList}
               value={valueType}
               onchange={(e: any) => {
                 setValue('valueType', e);
@@ -150,7 +150,7 @@ export const defaultEditFormData: FlowNodeInputItemType = {
   required: true,
   canEdit: true,
   customInputConfig: {
-    selectValueTypeList: Object.values(fnValueTypeSelect).map((item) => item.value),
+    selectValueTypeList: Object.values(toolValueTypeList).map((item) => item.value),
     showDescription: true
   }
 };

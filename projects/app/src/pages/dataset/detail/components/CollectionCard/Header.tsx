@@ -15,7 +15,6 @@ import {
   putDatasetCollectionById
 } from '@/web/core/dataset/api';
 import { useQuery } from '@tanstack/react-query';
-import { debounce } from 'lodash';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';

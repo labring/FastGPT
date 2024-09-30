@@ -50,12 +50,12 @@ export function usePagination<ResT = any>({
 
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
 
+  const [pageNum, setPageNum] = useState(1);
   const [total, setTotal] = useState(0);
   const [data, setData] = useState<ResT[]>([]);
   const totalDataLength = useMemo(() => Math.max(total, data.length), [total, data.length]);
 
   const isEmpty = total === 0 && !isLoading;
-  const pageNum = useMemo(() => Math.ceil(data.length / pageSize), [data.length, pageSize]);
   const noMore = data.length >= totalDataLength;
 
   const fetchData = useLockFn(
@@ -71,6 +71,7 @@ export function usePagination<ResT = any>({
         });
 
         // Check total and set
+        setPageNum(num);
         res.total !== undefined && setTotal(res.total);
 
         if (type === 'scroll') {
