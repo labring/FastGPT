@@ -25,6 +25,7 @@ import { ParentIdType } from 'common/parentFolder/type';
 import { AppTypeEnum } from 'core/app/constants';
 
 export type FlowNodeCommonType = {
+  parentNodeId?: string;
   flowNodeType: FlowNodeTypeEnum; // render node card
   abandon?: boolean; // abandon node
 
