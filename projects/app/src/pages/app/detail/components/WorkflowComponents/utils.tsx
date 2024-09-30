@@ -16,6 +16,7 @@ export const uiWorkflow2StoreWorkflow = ({
 }) => {
   const formatNodes: StoreNodeItemType[] = nodes.map((item) => ({
     nodeId: item.data.nodeId,
+    parentNodeId: item.data.parentNodeId,
     name: item.data.name,
     intro: item.data.intro,
     avatar: item.data.avatar,
