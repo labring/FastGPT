@@ -25,6 +25,7 @@ import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { updateToolInputValue } from './utils';
 import { computedMaxToken, llmCompletionsBodyFormat } from '../../../../ai/utils';
+import { fnValueTypeSelect } from '../../../../../../../projects/app/src/web/core/workflow/constants/dataType';
 
 type FunctionRunResponseType = {
   toolRunResponse: DispatchFlowResponse;
@@ -64,10 +65,12 @@ export const runToolWithFunctionCall = async (
       }
     > = {};
     item.toolParams.forEach((item) => {
-      const isArray = item.valueType?.startsWith('array');
+      const jsonSchema = (
+        fnValueTypeSelect.find((type) => type.value === item.valueType) || fnValueTypeSelect[0]
+      ).jsonSchema;
+
       properties[item.key] = {
-        type: isArray ? 'array' : item.valueType || 'string',
-        ...(isArray && { items: { type: item.valueType?.slice(5).toLowerCase() || 'string' } }),
+        ...jsonSchema,
         description: item.toolDescription || '',
         enum: item.enum?.split('\n').filter(Boolean) || []
       };
