@@ -423,8 +423,8 @@ export const useWorkflow = () => {
     }
 
     // If the node has child nodes, remove the child nodes
-    if (nodes.some((n) => n.data.parentNodeId === node.id)) {
-      const childNodes = nodes.filter((n) => n.data.parentNodeId === node.id);
+    const childNodes = nodes.filter((n) => n.data.parentNodeId === node.id);
+    if (childNodes.length > 0) {
       const childNodeIds = childNodes.map((n) => n.id);
       const childNodesChange = childNodes.map((node) => ({
         ...change,
@@ -440,14 +440,14 @@ export const useWorkflow = () => {
             !childNodeIds.includes(edge.target)
         )
       );
-      return;
     }
 
     setEdges((state) =>
       state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
     );
+    onNodesChange([change]);
 
-    return true;
+    return;
   });
   const handleSelectNode = useMemoizedFn((change: NodeSelectionChange) => {
     // If the node is not selected and the Ctrl key is pressed, select the node
@@ -517,9 +517,8 @@ export const useWorkflow = () => {
       if (change.type === 'remove') {
         const node = nodes.find((n) => n.id === change.id);
         // 如果删除失败，则不继续执行
-        if (node && !handleRemoveNode(change, node)) {
-          return;
-        }
+        node && handleRemoveNode(change, node);
+        return;
       } else if (change.type === 'select') {
         handleSelectNode(change);
       } else if (change.type === 'position') {
