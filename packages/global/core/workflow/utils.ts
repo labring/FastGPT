@@ -298,7 +298,8 @@ export const formatEditorVariablePickerIcon = (
 };
 
 export const isReferenceValue = (value: any, nodeIds: string[]): boolean => {
-  return Array.isArray(value) && value.length === 2 && nodeIds.includes(value[0]);
+  const validIdList = [VARIABLE_NODE_ID, ...nodeIds];
+  return Array.isArray(value) && value.length === 2 && validIdList.includes(value[0]);
 };
 
 export const getElseIFLabel = (i: number) => {
