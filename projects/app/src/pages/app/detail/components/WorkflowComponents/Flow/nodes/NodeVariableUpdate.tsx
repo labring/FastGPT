@@ -65,7 +65,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
       appDetail,
       t
     });
-  }, [nodeList, edges, inputs, t]);
+  }, [nodeId, nodeList, edges, appDetail, t]);
 
   const updateList = useMemo(
     () =>

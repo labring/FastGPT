@@ -518,7 +518,7 @@ export const useWorkflow = () => {
         const node = nodes.find((n) => n.id === change.id);
         // 如果删除失败，则不继续执行
         node && handleRemoveNode(change, node);
-        return;
+        continue;
       } else if (change.type === 'select') {
         handleSelectNode(change);
       } else if (change.type === 'position') {
