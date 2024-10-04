@@ -14,7 +14,7 @@ import {
   Rect,
   NodeRemoveChange,
   NodeSelectionChange,
-  Position
+  EdgeRemoveChange
 } from 'reactflow';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import 'reactflow/dist/style.css';
@@ -276,6 +276,7 @@ export const useWorkflow = () => {
   const { isDowningCtrl } = useKeyboard();
   const {
     setConnectingEdge,
+    edges,
     nodes,
     nodeList,
     onNodesChange,
@@ -413,38 +414,29 @@ export const useWorkflow = () => {
   });
 
   /* node */
-  const handleRemoveNode = useMemoizedFn((change: NodeRemoveChange, node: Node) => {
-    if (node.data.forbidDelete) {
-      toast({
-        status: 'warning',
-        title: t('common:core.workflow.Can not delete node')
-      });
-      return false;
-    }
-
+  const handleRemoveNode = useMemoizedFn((change: NodeRemoveChange, nodeId: string) => {
     // If the node has child nodes, remove the child nodes
-    const childNodes = nodes.filter((n) => n.data.parentNodeId === node.id);
+    const childNodes = nodes.filter((n) => n.data.parentNodeId === nodeId);
     if (childNodes.length > 0) {
-      const childNodeIds = childNodes.map((n) => n.id);
-      const childNodesChange = childNodes.map((node) => ({
-        ...change,
-        id: node.id
-      }));
-      onNodesChange(childNodesChange);
-      setEdges((state) =>
-        state.filter(
-          (edge) =>
-            edge.source !== change.id &&
-            edge.target !== change.id &&
-            !childNodeIds.includes(edge.source) &&
-            !childNodeIds.includes(edge.target)
-        )
+      const childNodeIds = childNodes.map((node) => node.id);
+      const childEdges = edges.filter(
+        (edge) => childNodeIds.includes(edge.source) || childNodeIds.includes(edge.target)
+      );
+
+      onNodesChange(
+        childNodes.map<NodeRemoveChange>((node) => ({
+          type: 'remove',
+          id: node.id
+        }))
+      );
+      onEdgesChange(
+        childEdges.map<EdgeRemoveChange>((edge) => ({
+          type: 'remove',
+          id: edge.id
+        }))
       );
     }
 
-    setEdges((state) =>
-      state.filter((edge) => edge.source !== change.id && edge.target !== change.id)
-    );
     onNodesChange([change]);
 
     return;
@@ -516,9 +508,20 @@ export const useWorkflow = () => {
     for (const change of changes) {
       if (change.type === 'remove') {
         const node = nodes.find((n) => n.id === change.id);
-        // 如果删除失败，则不继续执行
-        node && handleRemoveNode(change, node);
-        return;
+        if (!node) continue;
+
+        const parentNodeDeleted = changes.find(
+          (c) => c.type === 'remove' && c.id === node?.data.parentNodeId
+        );
+        // Forbidden delete && Parents are not deleted together
+        if (node.data.forbidDelete && !parentNodeDeleted) {
+          toast({
+            status: 'warning',
+            title: t('common:core.workflow.Can not delete node')
+          });
+          continue;
+        }
+        handleRemoveNode(change, node.id);
       } else if (change.type === 'select') {
         handleSelectNode(change);
       } else if (change.type === 'position') {
@@ -529,8 +532,8 @@ export const useWorkflow = () => {
       }
     }
 
-    // default changes
-    onNodesChange(changes);
+    // Remove separately
+    onNodesChange(changes.filter((c) => c.type !== 'remove'));
   });
 
   const handleEdgeChange = useCallback(
