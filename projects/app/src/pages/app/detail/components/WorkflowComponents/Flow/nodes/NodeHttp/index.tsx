@@ -257,7 +257,7 @@ export function RenderHttpProps({
       appDetail,
       t
     });
-  }, [nodeList, edges, inputs, t]);
+  }, [nodeId, nodeList, edges, appDetail, t]);
 
   const variableText = useMemo(() => {
     return variables
