@@ -25,7 +25,7 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
       appDetail,
       t
     });
-  }, [nodeList, edges, inputs, t]);
+  }, [nodeId, nodeList, edges, appDetail, t]);
 
   const onChange = useCallback(
     (e: string) => {

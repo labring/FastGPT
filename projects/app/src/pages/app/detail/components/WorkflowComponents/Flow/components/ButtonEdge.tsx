@@ -8,7 +8,7 @@ import { WorkflowContext } from '../../context';
 import { useThrottleEffect } from 'ahooks';
 
 const ButtonEdge = (props: EdgeProps) => {
-  const { nodes, nodeList, setEdges, workflowDebugData, hoverEdgeId } = useContextSelector(
+  const { nodes, nodeList, onEdgesChange, workflowDebugData, hoverEdgeId } = useContextSelector(
     WorkflowContext,
     (v) => v
   );
@@ -43,12 +43,14 @@ const ButtonEdge = (props: EdgeProps) => {
 
   const onDelConnect = useCallback(
     (id: string) => {
-      setEdges((state) => {
-        const newState = state.filter((item) => item.id !== id);
-        return newState;
-      });
+      onEdgesChange([
+        {
+          type: 'remove',
+          id
+        }
+      ]);
     },
-    [setEdges]
+    [onEdgesChange]
   );
 
   // Selected edge or source/target node selected
