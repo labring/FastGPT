@@ -31,8 +31,8 @@ const ImageSchema = new Schema({
 });
 
 try {
-  // tts expired
-  ImageSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 60 });
+  // tts expired（60 Minutes）
+  ImageSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 60 * 60 });
   ImageSchema.index({ type: 1 });
   ImageSchema.index({ createTime: 1 });
   // delete related img
