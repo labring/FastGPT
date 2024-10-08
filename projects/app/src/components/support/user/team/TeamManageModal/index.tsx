@@ -25,7 +25,7 @@ const TeamManageModal = ({ onClose }: Props) => {
         w={'100%'}
         h={'550px'}
         isCentered
-        bg={'myWhite.600'}
+        bg={'myGray.50'}
         overflow={'hidden'}
       >
         <Box display={['block', 'flex']} flex={1} position={'relative'} overflow={'auto'}>

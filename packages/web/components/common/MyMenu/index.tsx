@@ -143,10 +143,21 @@ const MyMenu = ({
             bottom={0}
             left={0}
           />
-          <Box position={'relative'}>{Button}</Box>
+          <Box
+            position={'relative'}
+            color={isOpen ? 'primary.600' : ''}
+            w="fit-content"
+            p="1"
+            bgColor={isOpen ? 'myGray.50' : ''}
+            h="fit-content"
+            borderRadius="sm"
+          >
+            {Button}
+          </Box>
         </Box>
         <MenuList
           minW={isOpen ? `${width}px !important` : '80px'}
+          zIndex={100}
           maxW={'300px'}
           p={'6px'}
           border={'1px solid #fff'}

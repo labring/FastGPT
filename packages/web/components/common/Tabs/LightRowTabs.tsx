@@ -67,8 +67,11 @@ const LightRowTabs = <ValueType = string,>({
             justifyContent={'center'}
             borderBottom={'2px solid'}
             borderColor={defaultColor}
-            px={3}
+            px={1}
             whiteSpace={'nowrap'}
+            _hover={{
+              color: activeColor
+            }}
             {...(value === item.value
               ? {
                   color: activeColor,

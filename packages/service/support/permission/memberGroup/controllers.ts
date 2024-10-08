@@ -3,10 +3,15 @@ import { MongoGroupMemberModel } from './groupMemberSchema';
 import { TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '../schema';
-import { getMaxGroupPer } from '../controller';
+import { getGroupPer, parseHeaderCert } from '../controller';
 import { MongoMemberGroupModel } from './memberGroupSchema';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { ClientSession } from 'mongoose';
+import { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
+import { AuthModeType, AuthResponseType } from '../type';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
+import { getTmbInfoByTmbId } from '../../user/team/controller';
 
 /**
  * Get the default group of a team
@@ -14,7 +19,6 @@ import { ClientSession } from 'mongoose';
  * @param{string} obj.teamId
  * @param{ClientSession} obj.session
  */
-
 export const getTeamDefaultGroup = async ({
   teamId,
   session
@@ -32,8 +36,7 @@ export const getTeamDefaultGroup = async ({
       [
         {
           teamId,
-          name: DefaultGroupName,
-          avatar: ''
+          name: DefaultGroupName
         }
       ],
       { session }
@@ -44,12 +47,15 @@ export const getTeamDefaultGroup = async ({
   return group;
 };
 
-export const getGroupsByTmbId = async ({ tmbId, teamId }: { tmbId: string; teamId: string }) => {
-  return (
+export const getGroupsByTmbId = async ({ tmbId, teamId }: { tmbId: string; teamId: string }) =>
+  (
     await Promise.all([
       (
         await MongoGroupMemberModel.find({
-          tmbId
+          tmbId,
+          groupId: {
+            $exists: true
+          }
         })
           .populate('groupId')
           .lean()
@@ -58,10 +64,10 @@ export const getGroupsByTmbId = async ({ tmbId, teamId }: { tmbId: string; teamI
           ...(item.groupId as any as MemberGroupSchemaType)
         };
       }),
-      await getTeamDefaultGroup({ teamId })
+
+      getTeamDefaultGroup({ teamId })
     ])
   ).flat();
-};
 
 export const getTmbByGroupId = async (groupId: string) => {
   return (
@@ -78,11 +84,9 @@ export const getTmbByGroupId = async (groupId: string) => {
 };
 
 export const getGroupMembersByGroupId = async (groupId: string) => {
-  return (
-    await MongoGroupMemberModel.find({
-      groupId
-    }).lean()
-  ).map((item) => item.tmbId);
+  return await MongoGroupMemberModel.find({
+    groupId
+  }).lean();
 };
 
 export const getGroupMembersWithInfoByGroupId = async (groupId: string) => {
@@ -132,5 +136,39 @@ export const getGroupPermission = async ({
     })
   ).map((item) => item.permission);
 
-  return getMaxGroupPer(groupPermissions);
+  return getGroupPer(groupPermissions);
+};
+
+// auth group member role
+export const authGroupMemberRole = async ({
+  groupId,
+  role,
+  ...props
+}: {
+  groupId: string;
+  role: `${GroupMemberRole}`[];
+} & AuthModeType): Promise<AuthResponseType> => {
+  const result = await parseHeaderCert(props);
+  const { teamId, tmbId, isRoot } = result;
+  if (isRoot) {
+    return {
+      ...result,
+      permission: new TeamPermission({
+        isOwner: true
+      }),
+      teamId,
+      tmbId
+    };
+  }
+  const groupMember = await MongoGroupMemberModel.findOne({ groupId, tmbId });
+  const tmb = await getTmbInfoByTmbId({ tmbId });
+  if (tmb.permission.hasManagePer || (groupMember && role.includes(groupMember.role))) {
+    return {
+      ...result,
+      permission: tmb.permission,
+      teamId,
+      tmbId
+    };
+  }
+  return Promise.reject(TeamErrEnum.unAuthTeam);
 };

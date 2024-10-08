@@ -7,7 +7,6 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { DragHandleIcon } from '@chakra-ui/icons';
 import MemberTable from './components/MemberTable';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { TeamModalContext } from './context';
@@ -15,6 +14,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
 import dynamic from 'next/dynamic';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 
 enum TabListEnum {
   member = 'member',
@@ -25,14 +25,23 @@ enum TabListEnum {
 const TeamTagModal = dynamic(() => import('../TeamTagModal'));
 const InviteModal = dynamic(() => import('./components/InviteModal'));
 const PermissionManage = dynamic(() => import('./components/PermissionManage/index'));
-const GroupManage = dynamic(() => import('./components/GroupManage'));
-const GroupCreateModal = dynamic(() => import('./components/GroupEditModal'));
+const GroupManage = dynamic(() => import('./components/GroupManage/index'));
+const GroupInfoModal = dynamic(() => import('./components/GroupManage/GroupInfoModal'));
+const ManageGroupMemberModal = dynamic(() => import('./components/GroupManage/GroupManageMember'));
 
 function TeamCard() {
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { myTeams, refetchTeams, members, refetchMembers, setEditTeamData, onSwitchTeam } =
-    useContextSelector(TeamModalContext, (v) => v);
+  const {
+    myTeams,
+    refetchTeams,
+    members,
+    refetchMembers,
+    setEditTeamData,
+    onSwitchTeam,
+    searchKey,
+    setSearchKey
+  } = useContextSelector(TeamModalContext, (v) => v);
 
   const { userInfo, teamPlanStatus } = useUserStore();
   const { feConfigs } = useSystemStore();
@@ -65,9 +74,15 @@ function TeamCard() {
   } = useDisclosure();
 
   const {
-    isOpen: isOpenCreateGroup,
-    onOpen: onOpenCreateGroup,
-    onClose: onCloseCreateGroup
+    isOpen: isOpenGroupInfo,
+    onOpen: onOpenGroupInfo,
+    onClose: onCloseGroupInfo
+  } = useDisclosure();
+
+  const {
+    isOpen: isOpenManageGroupMember,
+    onOpen: onOpenManageGroupMember,
+    onClose: onCloseManageGroupMember
   } = useDisclosure();
 
   const { isOpen: isOpenInvite, onOpen: onOpenInvite, onClose: onCloseInvite } = useDisclosure();
@@ -75,7 +90,12 @@ function TeamCard() {
   const [editGroupId, setEditGroupId] = useState<string>();
   const onEditGroup = (groupId: string) => {
     setEditGroupId(groupId);
-    onOpenCreateGroup();
+    onOpenGroupInfo();
+  };
+
+  const onManageMember = (groupId: string) => {
+    setEditGroupId(groupId);
+    onOpenManageGroupMember();
   };
 
   const Tablist = useMemo(
@@ -123,7 +143,7 @@ function TeamCard() {
         borderBottomColor={'myGray.100'}
         mb={2}
       >
-        <Box fontSize={['sm', 'md']} fontWeight={'bold'} alignItems={'center'}>
+        <Box fontSize={['sm', 'md']} fontWeight={'bold'} alignItems={'center'} color={'myGray.900'}>
           {userInfo?.team.teamName}
         </Box>
         {userInfo?.team.role === TeamMemberRoleEnum.owner && (
@@ -151,13 +171,29 @@ function TeamCard() {
         <LightRowTabs<TabListEnum> overflow={'auto'} list={Tablist} value={tab} onChange={setTab} />
         {/* ctrl buttons */}
         <Flex alignItems={'center'}>
+          {tab === TabListEnum.member &&
+            userInfo?.team.permission.hasManagePer &&
+            feConfigs?.show_team_chat && (
+              <Button
+                variant={'whitePrimary'}
+                size="md"
+                borderRadius={'md'}
+                ml={3}
+                leftIcon={<MyIcon name="core/dataset/tag" w={'16px'} />}
+                onClick={() => {
+                  onOpenTeamTagsAsync();
+                }}
+              >
+                {t('common:user.team.Team Tags Async')}
+              </Button>
+            )}
           {tab === TabListEnum.member && userInfo?.team.permission.hasManagePer && (
             <Button
-              variant={'whitePrimary'}
-              size="sm"
+              variant={'primary'}
+              size="md"
               borderRadius={'md'}
               ml={3}
-              leftIcon={<MyIcon name="common/inviteLight" w={'14px'} color={'primary.500'} />}
+              leftIcon={<MyIcon name="common/inviteLight" w={'16px'} color={'white'} />}
               onClick={() => {
                 if (
                   teamPlanStatus?.standardConstants?.maxTeamMember &&
@@ -177,26 +213,10 @@ function TeamCard() {
               {t('common:user.team.Invite Member')}
             </Button>
           )}
-          {tab === TabListEnum.member &&
-            userInfo?.team.permission.hasManagePer &&
-            feConfigs?.show_team_chat && (
-              <Button
-                variant={'whitePrimary'}
-                size="sm"
-                borderRadius={'md'}
-                ml={3}
-                leftIcon={<DragHandleIcon w={'14px'} color={'primary.500'} />}
-                onClick={() => {
-                  onOpenTeamTagsAsync();
-                }}
-              >
-                {t('common:user.team.Team Tags Async')}
-              </Button>
-            )}
           {tab === TabListEnum.member && !userInfo?.team.permission.isOwner && (
             <Button
               variant={'whitePrimary'}
-              size="sm"
+              size="md"
               borderRadius={'md'}
               ml={3}
               leftIcon={<MyIcon name={'support/account/loginoutLight'} w={'14px'} />}
@@ -211,22 +231,34 @@ function TeamCard() {
           {tab === TabListEnum.group && userInfo?.team.permission.hasManagePer && (
             <Button
               variant={'primary'}
-              size="sm"
+              size="md"
               borderRadius={'md'}
               ml={3}
               leftIcon={<MyIcon name="support/permission/collaborator" w={'14px'} />}
-              onClick={onOpenCreateGroup}
+              onClick={onOpenGroupInfo}
             >
               {t('user:team.group.create')}
             </Button>
+          )}
+          {tab === TabListEnum.permission && (
+            <Box ml="auto">
+              <SearchInput
+                placeholder={t('user:team.group.search_placeholder')}
+                w="200px"
+                value={searchKey}
+                onChange={(e) => setSearchKey(e.target.value)}
+              />
+            </Box>
           )}
         </Flex>
       </Flex>
 
       <Box mt={3} flex={'1 0 0'} overflow={'auto'}>
         {tab === TabListEnum.member && <MemberTable />}
+        {tab === TabListEnum.group && (
+          <GroupManage onEditGroup={onEditGroup} onManageMember={onManageMember} />
+        )}
         {tab === TabListEnum.permission && <PermissionManage />}
-        {tab === TabListEnum.group && <GroupManage onEditGroup={onEditGroup} />}
       </Box>
 
       {isOpenInvite && userInfo?.team?.teamId && (
@@ -237,10 +269,19 @@ function TeamCard() {
         />
       )}
       {isOpenTeamTagsAsync && <TeamTagModal onClose={onCloseTeamTagsAsync} />}
-      {isOpenCreateGroup && (
-        <GroupCreateModal
+      {isOpenGroupInfo && (
+        <GroupInfoModal
           onClose={() => {
-            onCloseCreateGroup();
+            onCloseGroupInfo();
+            setEditGroupId(undefined);
+          }}
+          editGroupId={editGroupId}
+        />
+      )}
+      {isOpenManageGroupMember && (
+        <ManageGroupMemberModal
+          onClose={() => {
+            onCloseManageGroupMember();
             setEditGroupId(undefined);
           }}
           editGroupId={editGroupId}

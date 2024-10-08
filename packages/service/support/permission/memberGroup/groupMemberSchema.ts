@@ -2,6 +2,7 @@ import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/cons
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import { MemberGroupCollectionName } from './memberGroupSchema';
 import { GroupMemberSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
 const { Schema } = connectionMongo;
 
 export const GroupMemberCollectionName = 'group_members';
@@ -16,6 +17,12 @@ export const GroupMemberSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
     required: true
+  },
+  role: {
+    type: String,
+    enum: Object.values(GroupMemberRole),
+    required: true,
+    default: GroupMemberRole.member
   }
 });
 
