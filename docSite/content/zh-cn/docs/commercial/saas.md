@@ -4,7 +4,7 @@ description: 'FastGPT 线上版定价'
 icon: 'currency_yen'
 draft: false
 toc: true
-weight: 1200
+weight: 1002
 type: redirect
 target: https://cloud.tryfastgpt.ai/price
 ---
