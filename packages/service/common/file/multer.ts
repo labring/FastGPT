@@ -30,9 +30,13 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
         // destination: (_req, _file, cb) => {
         //   cb(null, tmpFileDirPath);
         // },
-        filename: async (req, file, cb) => {
-          const { ext } = path.parse(decodeURIComponent(file.originalname));
-          cb(null, `${getNanoid()}${ext}`);
+        filename: (req, file, cb) => {
+          if (!file?.originalname) {
+            cb(new Error('File not found'), '');
+          } else {
+            const { ext } = path.parse(decodeURIComponent(file.originalname));
+            cb(null, `${getNanoid()}${ext}`);
+          }
         }
       })
     }).single('file');
