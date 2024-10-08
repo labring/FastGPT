@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, color, Flex, Grid } from '@chakra-ui/react';
+import { Box, Flex, Grid } from '@chakra-ui/react';
 import type { FlexProps, GridProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '../Avatar';

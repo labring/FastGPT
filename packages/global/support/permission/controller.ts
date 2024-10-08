@@ -1,9 +1,10 @@
-import { PermissionValueType } from './type';
+import { PermissionListType, PermissionValueType } from './type';
 import { PermissionList, NullPermission, OwnerPermissionVal } from './constant';
 
 export type PerConstructPros = {
   per?: PermissionValueType;
   isOwner?: boolean;
+  permissionList?: PermissionListType;
 };
 
 // the Permission helper class
@@ -13,9 +14,10 @@ export class Permission {
   hasManagePer: boolean;
   hasWritePer: boolean;
   hasReadPer: boolean;
+  _permissionList: PermissionListType;
 
   constructor(props?: PerConstructPros) {
-    const { per = NullPermission, isOwner = false } = props || {};
+    const { per = NullPermission, isOwner = false, permissionList = PermissionList } = props || {};
     if (isOwner) {
       this.value = OwnerPermissionVal;
     } else {
@@ -23,9 +25,10 @@ export class Permission {
     }
 
     this.isOwner = isOwner;
-    this.hasManagePer = this.checkPer(PermissionList['manage'].value);
-    this.hasWritePer = this.checkPer(PermissionList['write'].value);
-    this.hasReadPer = this.checkPer(PermissionList['read'].value);
+    this._permissionList = permissionList;
+    this.hasManagePer = this.checkPer(this._permissionList['manage'].value);
+    this.hasWritePer = this.checkPer(this._permissionList['write'].value);
+    this.hasReadPer = this.checkPer(this._permissionList['read'].value);
   }
 
   // add permission(s)
@@ -67,8 +70,8 @@ export class Permission {
 
   private updatePermissions() {
     this.isOwner = this.value === OwnerPermissionVal;
-    this.hasManagePer = this.checkPer(PermissionList['manage'].value);
-    this.hasWritePer = this.checkPer(PermissionList['write'].value);
-    this.hasReadPer = this.checkPer(PermissionList['read'].value);
+    this.hasManagePer = this.checkPer(this._permissionList['manage'].value);
+    this.hasWritePer = this.checkPer(this._permissionList['write'].value);
+    this.hasReadPer = this.checkPer(this._permissionList['read'].value);
   }
 }

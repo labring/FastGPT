@@ -20,7 +20,7 @@ export const GroupMemberSchema = new Schema({
   },
   role: {
     type: String,
-    enum: GroupMemberRole,
+    enum: Object.values(GroupMemberRole),
     required: true,
     default: GroupMemberRole.member
   }

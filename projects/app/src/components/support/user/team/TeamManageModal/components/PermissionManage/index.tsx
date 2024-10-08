@@ -24,9 +24,9 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MemberTag from '../../../Info/MemberTag';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import {
-  ManagePermissionVal,
-  WritePermissionVal
-} from '@fastgpt/global/support/permission/constant';
+  TeamManagePermissionVal,
+  TeamWritePermissionVal
+} from '@fastgpt/global/support/permission/user/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 
 function PermissionManage() {
@@ -73,13 +73,13 @@ function PermissionManage() {
         group.permission = new TeamPermission({ per: group.permission.value });
         switch (per) {
           case 'write':
-            group.permission.addPer(WritePermissionVal);
+            group.permission.addPer(TeamWritePermissionVal);
             return onUpdateMemberPermission({
               groupId: group._id,
               permission: group.permission.value
             });
           case 'manage':
-            group.permission.addPer(ManagePermissionVal);
+            group.permission.addPer(TeamManagePermissionVal);
             return onUpdateMemberPermission({
               groupId: group._id,
               permission: group.permission.value
@@ -89,18 +89,17 @@ function PermissionManage() {
     }
     if (memberId) {
       const member = filteredMembers?.find((member) => String(member.tmbId) === memberId);
-      console.log(member);
       if (member) {
         const permission = new TeamPermission({ per: member.permission.value });
         switch (per) {
           case 'write':
-            permission.addPer(WritePermissionVal);
+            permission.addPer(TeamWritePermissionVal);
             return onUpdateMemberPermission({
               memberId: String(member.tmbId),
               permission: permission.value
             });
           case 'manage':
-            permission.addPer(ManagePermissionVal);
+            permission.addPer(TeamManagePermissionVal);
             return onUpdateMemberPermission({
               memberId: String(member.tmbId),
               permission: permission.value
@@ -125,13 +124,13 @@ function PermissionManage() {
         group.permission = new TeamPermission({ per: group.permission.value });
         switch (per) {
           case 'write':
-            group.permission.removePer(WritePermissionVal);
+            group.permission.removePer(TeamWritePermissionVal);
             return onUpdateMemberPermission({
               groupId: group._id,
               permission: group.permission.value
             });
           case 'manage':
-            group.permission.removePer(ManagePermissionVal);
+            group.permission.removePer(TeamManagePermissionVal);
             return onUpdateMemberPermission({
               groupId: group._id,
               permission: group.permission.value
@@ -145,13 +144,13 @@ function PermissionManage() {
         const permission = new TeamPermission({ per: member.permission.value }); // Hint: member.permission is read-only
         switch (per) {
           case 'write':
-            permission.removePer(WritePermissionVal);
+            permission.removePer(TeamWritePermissionVal);
             return onUpdateMemberPermission({
               memberId: String(member.tmbId),
               permission: permission.value
             });
           case 'manage':
-            permission.removePer(ManagePermissionVal);
+            permission.removePer(TeamManagePermissionVal);
             return onUpdateMemberPermission({
               memberId: String(member.tmbId),
               permission: permission.value

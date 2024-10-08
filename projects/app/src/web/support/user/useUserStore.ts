@@ -27,7 +27,7 @@ type State = {
   teamMembers: TeamMemberItemType[];
   loadAndGetTeamMembers: (init?: boolean) => Promise<TeamMemberItemType[]>;
 
-  groups: MemberGroupListType;
+  teamMemberGroups: MemberGroupListType;
   loadAndGetGroups: (init?: boolean) => Promise<MemberGroupListType>;
 };
 
@@ -105,16 +105,17 @@ export const useUserStore = create<State>()(
 
           return res;
         },
-        groups: [],
+        teamMemberGroups: [],
         loadAndGetGroups: async (init = false) => {
           if (!useSystemStore.getState()?.feConfigs?.isPlus) return [];
 
           const randomRefresh = Math.random() > 0.7;
-          if (!randomRefresh && !init && get().groups.length) return Promise.resolve(get().groups);
+          if (!randomRefresh && !init && get().teamMemberGroups.length)
+            return Promise.resolve(get().teamMemberGroups);
 
           const res = await getGroupList();
           set((state) => {
-            state.groups = res;
+            state.teamMemberGroups = res;
           });
 
           return res;
