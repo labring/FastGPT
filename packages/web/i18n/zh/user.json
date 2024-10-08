@@ -97,6 +97,7 @@
     "Add manager": "添加管理员",
     "add_collaborator": "添加协作者",
     "add_writer": "添加可写成员",
+    "avatar_and_name": "头像 & 名称",
     "group": {
       "avatar": "群头像",
       "create": "创建群组",
@@ -104,12 +105,33 @@
       "default_group": "默认群组",
       "delete_confirm": "确认删除群组？",
       "edit": "编辑群组",
+      "edit_info": "编辑信息",
+      "manage_member": "管理成员",
+      "transfer_owner": "转让所有者",
       "group": "群组",
       "members": "成员",
-      "name": "群组名称"
+      "name": "群组名称",
+      "role": {
+        "admin": "管理员",
+        "member": "成员",
+        "owner": "所有者"
+      },
+      "toast": {
+        "can_not_delete_owner": "不能删除所有者, 请先转让"
+      },
+      "set_as_admin": "设为管理员",
+      "keep_admin": "保留管理员权限",
+      "permission_tip": "单独配置权限的成员，将遵循个人权限配置，不再受群组权限影响。\n若成员在多个权限组，则该成员的权限取并集。",
+      "permission": {
+        "write": "工作台/知识库创建",
+        "manage": "管理员"
+      },
+      "manage_tip": "可以邀请成员、删除成员、创建群组、管理所有群组、为群组和成员分配权限",
+      "search_placeholder": "搜索成员/群组名称"
     },
     "manage_collaborators": "管理协作者",
-    "no_collaborators": "暂无协作者"
+    "no_collaborators": "暂无协作者",
+    "belong_to_group": "所属成员组"
   },
   "team.write_role_member": "可写权限",
   "usage": {
@@ -118,5 +140,6 @@
     "share": "分享链接",
     "wecom": "企业微信"
   },
-  "usage_record": "使用记录"
+  "usage_record": "使用记录",
+  "owner": "所有者"
 }

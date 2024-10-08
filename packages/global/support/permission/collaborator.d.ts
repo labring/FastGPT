@@ -20,3 +20,10 @@ export type DeleteClbPermissionProps = RequireOnlyOne<{
   tmbId: string;
   groupId: string;
 }>;
+
+export type UpdatePermissionBody = {
+  permission: PermissionValueType;
+} & RequireOnlyOne<{
+  memberId: string;
+  groupId: string;
+}>;

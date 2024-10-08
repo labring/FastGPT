@@ -18,7 +18,7 @@ import CollaboratorContextProvider from '@/components/support/permission/MemberM
 import { TeamPermissionList } from '@fastgpt/global/support/permission/user/constant';
 import {
   CollaboratorItemType,
-  UpdateClbPermissionProps
+  UpdatePermissionBody
 } from '@fastgpt/global/support/permission/collaborator';
 import { getGroupList } from '@/web/support/user/team/group/api';
 import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
@@ -39,6 +39,8 @@ type TeamModalContextType = {
   refetchTeams: () => void;
   refetchGroups: () => void;
   refetchClbs: () => void;
+  searchKey: string;
+  setSearchKey: React.Dispatch<React.SetStateAction<string>>;
 };
 
 export const TeamModalContext = createContext<TeamModalContextType>({
@@ -64,6 +66,10 @@ export const TeamModalContext = createContext<TeamModalContextType>({
   clbs: [],
   refetchClbs: function (): void {
     throw new Error('Function not implemented.');
+  },
+  searchKey: '',
+  setSearchKey: function (_value: React.SetStateAction<string>): void {
+    throw new Error('Function not implemented.');
   }
 });
 
@@ -71,6 +77,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
   const { t } = useTranslation();
   const [editTeamData, setEditTeamData] = useState<EditTeamFormDataType>();
   const { userInfo, initUserInfo, loadAndGetTeamMembers } = useUserStore();
+  const [searchKey, setSearchKey] = useState('');
 
   const {
     runAsync: refetchClbs,
@@ -121,7 +128,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
   );
 
   const { runAsync: onUpdatePer, loading: isUpdatingPer } = useRequest2(
-    (props: UpdateClbPermissionProps) => updateMemberPermission(props)
+    (props: UpdatePermissionBody) => updateMemberPermission(props)
   );
 
   const { runAsync: onSwitchTeam, loading: isSwitchingTeam } = useRequest2(
@@ -156,6 +163,8 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     refetchTeams,
     isLoading,
     onSwitchTeam,
+    searchKey,
+    setSearchKey,
 
     // create | update team
     setEditTeamData,
