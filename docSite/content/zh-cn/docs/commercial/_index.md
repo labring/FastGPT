@@ -1,7 +1,7 @@
 ---
 weight: 1100
-title: '商业版介绍'
-description: 'FastGPT 商业版介绍'
+title: '收费说明'
+description: 'FastGPT 收费说明'
 icon: 'shopping_cart'
 draft: false
 images: []
