@@ -1,5 +1,4 @@
-import { i18nT } from '../../../../web/i18n/utils';
-import { PermissionKeyEnum } from '../constant';
+import { PermissionKeyEnum, PermissionList } from '../constant';
 import { PermissionListType } from '../type';
 
 export enum GroupMemberRole {
@@ -8,23 +7,17 @@ export enum GroupMemberRole {
   member = 'member'
 }
 
-export const PermissionList: PermissionListType = {
+export const memberGroupPermissionList: PermissionListType = {
   [PermissionKeyEnum.read]: {
-    name: i18nT('common:permission.read'),
-    description: '',
-    value: 0b100,
-    checkBoxType: 'single'
+    ...PermissionList[PermissionKeyEnum.read],
+    value: 0b100
   },
   [PermissionKeyEnum.write]: {
-    name: i18nT('common:permission.write'),
-    description: '',
-    value: 0b010,
-    checkBoxType: 'single'
+    ...PermissionList[PermissionKeyEnum.write],
+    value: 0b010
   },
   [PermissionKeyEnum.manage]: {
-    name: i18nT('common:permission.manager'),
-    description: '',
-    value: 0b001,
-    checkBoxType: 'single'
+    ...PermissionList[PermissionKeyEnum.manage],
+    value: 0b001
   }
 };

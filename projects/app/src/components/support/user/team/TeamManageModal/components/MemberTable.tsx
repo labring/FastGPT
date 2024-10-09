@@ -46,11 +46,11 @@ function MemberTable() {
                 <Td>
                   <HStack>
                     <Avatar src={item.avatar} w={['18px', '22px']} borderRadius={'50%'} />
-                    <Box maxW={'150px'} className={'textEllipsis'}>
+                    <Box className={'textEllipsis'}>
                       {item.memberName}
                       {item.status === 'waiting' && (
                         <Tag ml="2" colorSchema="yellow">
-                          {t('user.team.member.waiting')}
+                          {t('common:user.team.member.waiting')}
                         </Tag>
                       )}
                     </Box>
@@ -85,7 +85,7 @@ function MemberTable() {
                                 Promise.all([refetchGroups(), refetchMembers()])
                               ),
                             undefined,
-                            t('user.team.Remove Member Confirm Tip', {
+                            t('common:user.team.Remove Member Confirm Tip', {
                               username: item.memberName
                             })
                           )();

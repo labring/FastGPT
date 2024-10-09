@@ -78,27 +78,10 @@
   "team.add_collaborator": "Add Collaborator",
   "team.manage_collaborators": "Manage Collaborators",
   "team.no_collaborators": "No Collaborators",
+  "team.write_role_member": "",
   "usage.feishu": "Feishu",
   "usage.official_account": "Official Account",
   "usage.share": "Share Link",
   "usage.wecom": "WeCom",
-  "synchronization": {
-    "button": "Sync Now",
-    "placeholder": "Enter Sync Tag",
-    "title": "Enter the sync tag link and click the sync button to synchronize"
-  },
-  "team": {
-    "Add manager": "Add Admin",
-    "add_collaborator": "Add Collaborator",
-    "manage_collaborators": "Manage Collaborators",
-    "no_collaborators": "No Collaborators"
-  },
-  "team.write_role_member": "",
-  "usage": {
-    "feishu": "Feishu",
-    "official_account": "Official Account",
-    "share": "Share Link",
-    "wecom": "WeCom"
-  },
   "usage_record": "Usages"
 }
