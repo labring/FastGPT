@@ -282,7 +282,8 @@ export const useWorkflow = () => {
     onChangeNode,
     onEdgesChange,
     setHoverEdgeId,
-    setMenu
+    setMenu,
+    mouseInCanvas
   } = useContextSelector(WorkflowContext, (v) => v);
 
   const { getIntersectingNodes } = useReactFlow();
@@ -616,6 +617,7 @@ export const useWorkflow = () => {
   }, [setMenu]);
 
   useKeyPress(['Delete', 'Backspace'], (e) => {
+    if (!mouseInCanvas) return;
     const selectedNodes = nodes.filter((node) => node.selected);
     const selectedEdges = edges.filter((edge) => edge.selected);
 
