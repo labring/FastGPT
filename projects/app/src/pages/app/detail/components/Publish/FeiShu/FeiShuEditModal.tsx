@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flex, Box, Button, ModalFooter, ModalBody, Input, Link, Grid } from '@chakra-ui/react';
+import { Flex, Box, Button, ModalBody, Input, Link } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { FeishuAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
@@ -11,7 +11,6 @@ import BasicInfo from '../components/BasicInfo';
 import { getDocPath } from '@/web/common/system/doc';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const FeiShuEditModal = ({
@@ -39,11 +38,16 @@ const FeiShuEditModal = ({
   });
 
   const { runAsync: onclickCreate, loading: creating } = useRequest2(
-    (e) =>
+    (e: Omit<OutLinkEditType<FeishuAppType>, 'appId' | 'type'>) =>
       createShareChat({
         ...e,
         appId,
-        type: PublishChannelEnum.feishu
+        type: PublishChannelEnum.feishu,
+        app: {
+          appId: e?.app?.appId?.trim(),
+          appSecret: e.app?.appSecret?.trim(),
+          encryptKey: e.app?.encryptKey?.trim()
+        }
       }),
     {
       errorToast: t('common:common.Create Failed'),
@@ -52,14 +56,24 @@ const FeiShuEditModal = ({
     }
   );
 
-  const { runAsync: onclickUpdate, loading: updating } = useRequest2((e) => updateShareChat(e), {
-    errorToast: t('common:common.Update Failed'),
-    successToast: t('common:common.Update Success'),
-    onSuccess: onEdit
-  });
+  const { runAsync: onclickUpdate, loading: updating } = useRequest2(
+    (e) =>
+      updateShareChat({
+        ...e,
+        app: {
+          appId: e?.app?.appId?.trim(),
+          appSecret: e.app?.appSecret?.trim(),
+          encryptKey: e.app?.encryptKey?.trim()
+        }
+      }),
+    {
+      errorToast: t('common:common.Update Failed'),
+      successToast: t('common:common.Update Success'),
+      onSuccess: onEdit
+    }
+  );
 
   const { feConfigs } = useSystemStore();
-  const { isPc } = useSystem();
 
   return (
     <MyModal

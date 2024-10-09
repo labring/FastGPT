@@ -38,12 +38,19 @@ const OffiAccountEditModal = ({
   });
 
   const { runAsync: onclickCreate, loading: creating } = useRequest2(
-    (e) =>
-      createShareChat({
+    (e: OutLinkEditType<OffiAccountAppType>) => {
+      if (e?.app) {
+        e.app.appId = e.app.appId?.trim();
+        e.app.secret = e.app.secret?.trim();
+        e.app.CallbackToken = e.app.CallbackToken?.trim();
+        e.app.CallbackEncodingAesKey = e.app.CallbackEncodingAesKey?.trim();
+      }
+      return createShareChat({
         ...e,
         appId,
         type: PublishChannelEnum.officialAccount
-      }),
+      });
+    },
     {
       errorToast: t('common:common.Create Failed'),
       successToast: t('common:common.Create Success'),
@@ -51,11 +58,22 @@ const OffiAccountEditModal = ({
     }
   );
 
-  const { runAsync: onclickUpdate, loading: updating } = useRequest2((e) => updateShareChat(e), {
-    errorToast: t('common:common.Update Failed'),
-    successToast: t('common:common.Update Success'),
-    onSuccess: onEdit
-  });
+  const { runAsync: onclickUpdate, loading: updating } = useRequest2(
+    (e) => {
+      if (e?.app) {
+        e.app.appId = e.app.appId?.trim();
+        e.app.secret = e.app.secret?.trim();
+        e.app.CallbackToken = e.app.CallbackToken?.trim();
+        e.app.CallbackEncodingAesKey = e.app.CallbackEncodingAesKey?.trim();
+      }
+      return updateShareChat(e);
+    },
+    {
+      errorToast: t('common:common.Update Failed'),
+      successToast: t('common:common.Update Success'),
+      onSuccess: onEdit
+    }
+  );
 
   const { feConfigs } = useSystemStore();
 
