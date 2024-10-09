@@ -22,7 +22,7 @@ export type MemberManagerInputPropsType = {
   permission: Permission;
   onGetCollaboratorList: () => Promise<CollaboratorItemType[]>;
   permissionList: PermissionListType;
-  onUpdateCollaborators: (props: UpdateClbPermissionProps) => any;
+  onUpdateCollaborators: (props: any) => any; // TODO: type. should be UpdatePermissionBody after app and dataset permission refactored
   onDelOneCollaborator: (tmbId: string) => any;
   refreshDeps?: any[];
 };

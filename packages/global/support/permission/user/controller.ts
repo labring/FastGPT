@@ -1,5 +1,5 @@
 import { PerConstructPros, Permission } from '../controller';
-import { TeamDefaultPermissionVal } from './constant';
+import { TeamDefaultPermissionVal, TeamPermissionList } from './constant';
 
 export class TeamPermission extends Permission {
   constructor(props?: PerConstructPros) {
@@ -10,6 +10,7 @@ export class TeamPermission extends Permission {
     } else if (!props?.per) {
       props.per = TeamDefaultPermissionVal;
     }
+    props.permissionList = TeamPermissionList;
     super(props);
   }
 }

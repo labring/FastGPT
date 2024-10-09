@@ -342,6 +342,7 @@ export const iconPaths = {
   'support/permission/collaborator': () => import('./icons/support/permission/collaborator.svg'),
   'support/permission/privateLight': () => import('./icons/support/permission/privateLight.svg'),
   'support/permission/publicLight': () => import('./icons/support/permission/publicLight.svg'),
+  'support/team/group': () => import('./icons/support/team/group.svg'),
   'support/team/key': () => import('./icons/support/team/key.svg'),
   'support/team/memberLight': () => import('./icons/support/team/memberLight.svg'),
   'support/usage/usageRecordLight': () => import('./icons/support/usage/usageRecordLight.svg'),

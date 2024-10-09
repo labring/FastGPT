@@ -86,7 +86,7 @@ export const authAppByTmbId = async ({
           resourceId: appId,
           resourceType: PerResourceTypeEnum.app
         });
-        const Per = new AppPermission({ per: rp?.permission ?? app.defaultPermission, isOwner });
+        const Per = new AppPermission({ per: rp ?? app.defaultPermission, isOwner });
         return {
           Per,
           defaultPermission: app.defaultPermission
