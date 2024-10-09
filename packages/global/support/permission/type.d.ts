@@ -1,11 +1,6 @@
 import { RequireOnlyOne } from '../../common/type/utils';
 import { TeamMemberWithUserSchema } from '../user/team/type';
-import {
-  AuthUserTypeEnum,
-  PermissionKeyEnum,
-  PerResourceTypeEnum,
-  SubjectTypeEnum
-} from './constant';
+import { AuthUserTypeEnum, PermissionKeyEnum, PerResourceTypeEnum } from './constant';
 
 // PermissionValueType, the type of permission's value is a number, which is a bit field actually.
 // It is spired by the permission system in Linux.
@@ -13,7 +8,6 @@ import {
 // The higher bits are advanced permissions or extended permissions, which could be customized.
 export type PermissionValueType = number;
 export type ResourceType = `${PerResourceTypeEnum}`;
-export type SubjectType = `${SubjectTypeEnum}`;
 
 export type PermissionListType<T = {}> = Record<
   T | PermissionKeyEnum,

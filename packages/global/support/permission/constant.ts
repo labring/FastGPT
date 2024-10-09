@@ -45,11 +45,6 @@ export enum PerResourceTypeEnum {
   dataset = 'dataset'
 }
 
-export enum SubjectTypeEnum {
-  tmb = 'tmb',
-  group = 'group'
-}
-
 /* new permission */
 export enum PermissionKeyEnum {
   read = 'read',
