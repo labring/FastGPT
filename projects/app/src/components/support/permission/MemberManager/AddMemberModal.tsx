@@ -1,15 +1,13 @@
 import {
   Flex,
   Box,
-  Grid,
   ModalBody,
   InputGroup,
   InputLeftElement,
   Input,
   Checkbox,
   ModalFooter,
-  Button,
-  useToast
+  Button
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -67,7 +65,7 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
   const { mutate: onConfirm, isLoading: isUpdating } = useRequest({
     mutationFn: () => {
       return onUpdateCollaborators({
-        tmbIds: selectedMemberIdList,
+        members: selectedMemberIdList,
         permission: selectedPermission
       });
     },
@@ -184,7 +182,9 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
                     _notLast={{ mb: 2 }}
                   >
                     <Avatar src={member.avatar} w="24px" />
-                    <Box w="full">{member.memberName}</Box>
+                    <Box w="full" ml={2}>
+                      {member.memberName}
+                    </Box>
                     <MyIcon
                       name="common/closeLight"
                       w="16px"

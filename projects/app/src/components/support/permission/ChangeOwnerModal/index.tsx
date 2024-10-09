@@ -66,6 +66,7 @@ export function ChangeOwnerModal({
     <MyModal
       isOpen
       iconSrc="modal/changePer"
+      iconColor="primary.600"
       onClose={onClose}
       title={t('common:permission.change_owner')}
       isLoading={loading}
@@ -76,7 +77,7 @@ export function ChangeOwnerModal({
           <Box>{name}</Box>
         </HStack>
         <Flex mt={4} justify="start" flexDirection="column">
-          <Box fontSize="14px" fontWeight="500" color="myGray.900">
+          <Box fontSize="14px" fontWeight="500">
             {t('common:permission.change_owner_to')}
           </Box>
           <Flex mt="4" alignItems="center" position={'relative'}>
@@ -162,3 +163,5 @@ export function ChangeOwnerModal({
     </MyModal>
   );
 }
+
+export default ChangeOwnerModal;

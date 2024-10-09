@@ -8,51 +8,113 @@ import { authOpenApiKey } from '../openapi/auth';
 import { FileTokenQuery } from '@fastgpt/global/common/file/type';
 import { MongoResourcePermission } from './schema';
 import { ClientSession } from 'mongoose';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
+import {
+  PermissionValueType,
+  ResourcePermissionType
+} from '@fastgpt/global/support/permission/type';
 import { bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { addMinutes } from 'date-fns';
+import { getGroupsByTmbId } from './memberGroup/controllers';
+import { Permission } from '@fastgpt/global/support/permission/controller';
 
+/** get resource permission for a team member
+ * If there is no permission for the team member, it will return undefined
+ * @param resourceType: PerResourceTypeEnum
+ * @param teamId
+ * @param tmbId
+ * @param resourceId
+ * @returns PermissionValueType | undefined
+ */
 export const getResourcePermission = async ({
   resourceType,
   teamId,
   tmbId,
   resourceId
 }: {
-  resourceType: PerResourceTypeEnum;
   teamId: string;
   tmbId: string;
-  resourceId?: string;
-}) => {
-  const per = await MongoResourcePermission.findOne({
-    tmbId,
-    teamId,
-    resourceType,
-    resourceId
-  });
+} & (
+  | {
+      resourceType: 'team';
+      resourceId?: undefined;
+    }
+  | {
+      resourceType: Omit<PerResourceTypeEnum, 'team'>;
+      resourceId: string;
+    }
+)): Promise<PermissionValueType | undefined> => {
+  // Personal permission has the highest priority
+  const tmbPer = (
+    await MongoResourcePermission.findOne(
+      {
+        tmbId,
+        teamId,
+        resourceType,
+        resourceId
+      },
+      'permission'
+    ).lean()
+  )?.permission;
 
-  if (!per) {
-    return null;
+  // could be 0
+  if (tmbPer !== undefined) {
+    return tmbPer;
   }
-  return per;
+
+  // If there is no personal permission, get the group permission
+  const groupIdList = (await getGroupsByTmbId({ tmbId, teamId })).map((item) => item._id);
+
+  if (groupIdList.length === 0) {
+    return undefined;
+  }
+
+  // get the maximum permission of the group
+  const pers = (
+    await MongoResourcePermission.find(
+      {
+        teamId,
+        resourceType,
+        groupId: {
+          $in: groupIdList
+        },
+        resourceId
+      },
+      'permission'
+    ).lean()
+  ).map((item) => item.permission);
+
+  const groupPer = getGroupPer(pers);
+
+  return groupPer;
 };
+
+/* 仅取 members 不取 groups */
 export async function getResourceAllClbs({
   resourceId,
   teamId,
   resourceType,
   session
 }: {
-  resourceId: ParentIdType;
   teamId: string;
-  resourceType: PerResourceTypeEnum;
   session?: ClientSession;
-}): Promise<ResourcePermissionType[]> {
-  if (!resourceId) return [];
+} & (
+  | {
+      resourceType: 'team';
+      resourceId?: undefined;
+    }
+  | {
+      resourceType: Omit<PerResourceTypeEnum, 'team'>;
+      resourceId?: string | null;
+    }
+)): Promise<ResourcePermissionType[]> {
   return MongoResourcePermission.find(
     {
       resourceId,
       resourceType: resourceType,
-      teamId: teamId
+      teamId: teamId,
+      groupId: {
+        $exists: false
+      }
     },
     null,
     {
@@ -60,6 +122,7 @@ export async function getResourceAllClbs({
     }
   ).lean();
 }
+
 export const delResourcePermissionById = (id: string) => {
   return MongoResourcePermission.findByIdAndRemove(id);
 };
@@ -301,3 +364,11 @@ export const authFileToken = (token?: string) =>
       });
     });
   });
+
+export const getGroupPer = (groups: PermissionValueType[] = []) => {
+  if (groups.length === 0) {
+    return undefined;
+  }
+
+  return new Permission().addPer(...groups).value;
+};

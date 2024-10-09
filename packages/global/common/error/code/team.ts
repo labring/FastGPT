@@ -10,7 +10,12 @@ export enum TeamErrEnum {
   appAmountNotEnough = 'appAmountNotEnough',
   pluginAmountNotEnough = 'pluginAmountNotEnough',
   websiteSyncNotEnough = 'websiteSyncNotEnough',
-  reRankNotEnough = 'reRankNotEnough'
+  reRankNotEnough = 'reRankNotEnough',
+  groupNameEmpty = 'groupNameEmpty',
+  groupNameDuplicate = 'groupNameDuplicate',
+  groupNotExist = 'groupNotExist',
+  cannotDeleteDefaultGroup = 'cannotDeleteDefaultGroup',
+  userNotActive = 'userNotActive'
 }
 
 const teamErr = [
@@ -46,6 +51,26 @@ const teamErr = [
   {
     statusText: TeamErrEnum.reRankNotEnough,
     message: i18nT('common:code_error.team_error.re_rank_not_enough')
+  },
+  {
+    statusText: TeamErrEnum.groupNameEmpty,
+    message: i18nT('common:code_error.team_error.group_name_empty')
+  },
+  {
+    statusText: TeamErrEnum.groupNotExist,
+    message: i18nT('common:code_error.team_error.group_not_exist')
+  },
+  {
+    statusText: TeamErrEnum.cannotDeleteDefaultGroup,
+    message: i18nT('common:code_error.team_error.cannot_delete_default_group')
+  },
+  {
+    statusText: TeamErrEnum.groupNameDuplicate,
+    message: i18nT('common:code_error.team_error.group_name_duplicate')
+  },
+  {
+    statusText: TeamErrEnum.userNotActive,
+    message: i18nT('common:code_error.team_error.user_not_active')
   }
 ];
 

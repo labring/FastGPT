@@ -178,6 +178,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       isOpen
       onClose={onClose}
       iconSrc="core/dataset/tag"
+      iconColor={'primary.600'}
       title={t('dataset:tag.manage')}
       w={'580px'}
       h={'600px'}
