@@ -25,14 +25,12 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { THelperLine } from '@fastgpt/global/core/workflow/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useMemoizedFn } from 'ahooks';
+import { useKeyPress, useMemoizedFn } from 'ahooks';
 import {
   Input_Template_Node_Height,
   Input_Template_Node_Width
 } from '@fastgpt/global/core/workflow/template/input';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 
 /* 
   Compute helper lines for snapping nodes to each other
@@ -284,7 +282,8 @@ export const useWorkflow = () => {
     onChangeNode,
     onEdgesChange,
     setHoverEdgeId,
-    setMenu
+    setMenu,
+    mouseInCanvas
   } = useContextSelector(WorkflowContext, (v) => v);
 
   const { getIntersectingNodes } = useReactFlow();
@@ -414,7 +413,7 @@ export const useWorkflow = () => {
   });
 
   /* node */
-  const handleRemoveNode = useMemoizedFn((change: NodeRemoveChange, nodeId: string) => {
+  const handleRemoveNode = useMemoizedFn((nodeId: string) => {
     // If the node has child nodes, remove the child nodes
     const childNodes = nodes.filter((n) => n.data.parentNodeId === nodeId);
     if (childNodes.length > 0) {
@@ -436,8 +435,7 @@ export const useWorkflow = () => {
         }))
       );
     }
-
-    onNodesChange([change]);
+    onNodesChange([{ type: 'remove', id: nodeId }]);
 
     return;
   });
@@ -504,25 +502,10 @@ export const useWorkflow = () => {
       }
     }
   );
+
   const handleNodesChange = useMemoizedFn((changes: NodeChange[]) => {
     for (const change of changes) {
-      if (change.type === 'remove') {
-        const node = nodes.find((n) => n.id === change.id);
-        if (!node) continue;
-
-        const parentNodeDeleted = changes.find(
-          (c) => c.type === 'remove' && c.id === node?.data.parentNodeId
-        );
-        // Forbidden delete && Parents are not deleted together
-        if (node.data.forbidDelete && !parentNodeDeleted) {
-          toast({
-            status: 'warning',
-            title: t('common:core.workflow.Can not delete node')
-          });
-          continue;
-        }
-        handleRemoveNode(change, node.id);
-      } else if (change.type === 'select') {
+      if (change.type === 'select') {
         handleSelectNode(change);
       } else if (change.type === 'position') {
         const node = nodes.find((n) => n.id === change.id);
@@ -532,8 +515,7 @@ export const useWorkflow = () => {
       }
     }
 
-    // Remove separately
-    onNodesChange(changes.filter((c) => c.type !== 'remove'));
+    onNodesChange(changes);
   });
 
   const handleEdgeChange = useCallback(
@@ -633,6 +615,45 @@ export const useWorkflow = () => {
   const onPaneClick = useCallback(() => {
     setMenu(null);
   }, [setMenu]);
+
+  useKeyPress(['Delete', 'Backspace'], (e) => {
+    if (!mouseInCanvas) return;
+    const selectedNodes = nodes.filter((node) => node.selected);
+    const selectedEdges = edges.filter((edge) => edge.selected);
+
+    if (selectedNodes.length > 0) {
+      for (const node of selectedNodes) {
+        if (node.data.forbidDelete) {
+          toast({
+            status: 'warning',
+            title: t('common:core.workflow.Can not delete node')
+          });
+          continue;
+        }
+
+        const removedNodeId = node.id;
+        handleRemoveNode(removedNodeId);
+        const edgesToRemove = edges.filter(
+          (edge) => edge.source === removedNodeId || edge.target === removedNodeId
+        );
+        onEdgesChange(
+          edgesToRemove.map((edge) => ({
+            type: 'remove',
+            id: edge.id
+          }))
+        );
+      }
+    }
+
+    if (selectedEdges.length > 0) {
+      onEdgesChange(
+        selectedEdges.map((edge) => ({
+          type: 'remove',
+          id: edge.id
+        }))
+      );
+    }
+  });
 
   return {
     handleNodesChange,
