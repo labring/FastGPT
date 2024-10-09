@@ -3,7 +3,7 @@ import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import { MemberGroupSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
 const { Schema } = connectionMongo;
 
-export const MemberGroupCollectionName = 'member_groups';
+export const MemberGroupCollectionName = 'team_member_groups';
 
 export const MemberGroupSchema = new Schema({
   teamId: {

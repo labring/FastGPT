@@ -138,7 +138,6 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
       iconColor="primary.600"
       minW={['70vw', '800px']}
       h={'600px'}
-      isCentered
     >
       <ModalBody flex={1} overflow={'auto'} display={'flex'} flexDirection={'column'} gap={4}>
         <Grid
