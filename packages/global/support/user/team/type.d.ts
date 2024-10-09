@@ -17,7 +17,6 @@ export type TeamSchema = {
     lastWebsiteSyncTime: Date;
   };
   lafAccount: LafAccountType;
-  defaultPermission: PermissionValueType;
   notificationAccount?: string;
 };
 
@@ -25,6 +24,7 @@ export type tagsType = {
   label: string;
   key: string;
 };
+
 export type TeamTagSchema = TeamTagItemType & {
   _id: string;
   teamId: string;
@@ -45,9 +45,11 @@ export type TeamMemberSchema = {
 export type TeamMemberWithUserSchema = Omit<TeamMemberSchema, 'userId'> & {
   userId: UserModelSchema;
 };
+
 export type TeamMemberWithTeamSchema = Omit<TeamMemberSchema, 'teamId'> & {
   teamId: TeamSchema;
 };
+
 export type TeamMemberWithTeamAndUserSchema = Omit<TeamMemberWithTeamSchema, 'userId'> & {
   userId: UserModelSchema;
 };

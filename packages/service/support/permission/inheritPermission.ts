@@ -3,8 +3,9 @@ import { MongoResourcePermission } from './schema';
 import { ClientSession, Model } from 'mongoose';
 import { NullPermission, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { getResourceAllClbs } from './controller';
+import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 export type SyncChildrenPermissionResourceType = {
   _id: string;
@@ -14,8 +15,10 @@ export type SyncChildrenPermissionResourceType = {
 };
 export type UpdateCollaboratorItem = {
   permission: PermissionValueType;
+} & RequireOnlyOne<{
   tmbId: string;
-};
+  groupId: string;
+}>;
 
 // sync the permission to all children folders.
 export async function syncChildrenPermission({

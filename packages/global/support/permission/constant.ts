@@ -61,7 +61,7 @@ export const PermissionList: PermissionListType = {
   [PermissionKeyEnum.write]: {
     name: i18nT('common:permission.write'),
     description: '',
-    value: 0b110, // 如果某个资源有特殊要求，再重写这个值
+    value: 0b110,
     checkBoxType: 'single'
   },
   [PermissionKeyEnum.manage]: {
