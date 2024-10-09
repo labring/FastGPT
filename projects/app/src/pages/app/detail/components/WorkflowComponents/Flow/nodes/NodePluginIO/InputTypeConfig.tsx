@@ -10,7 +10,10 @@ import {
   Switch,
   Textarea
 } from '@chakra-ui/react';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowValueTypeMap
@@ -25,6 +28,7 @@ import React, { useMemo } from 'react';
 import { useFieldArray, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 
 const InputTypeConfig = ({
   form,
@@ -48,8 +52,8 @@ const InputTypeConfig = ({
   form: UseFormReturn<any>;
   isEdit: boolean;
   onClose: () => void;
-  type: 'plugin' | 'formInput';
-  inputType: FlowNodeInputTypeEnum;
+  type: 'plugin' | 'formInput' | 'variable';
+  inputType: FlowNodeInputTypeEnum | VariableInputEnum;
 
   maxLength?: number;
   max?: number;
@@ -70,7 +74,8 @@ const InputTypeConfig = ({
 }) => {
   const { t } = useTranslation();
 
-  const { register, setValue, handleSubmit, control } = form;
+  const { register, setValue, handleSubmit, control, watch } = form;
+  const listValue = watch(type === 'variable' ? 'enums' : 'list');
 
   const {
     fields: selectEnums,
@@ -78,8 +83,10 @@ const InputTypeConfig = ({
     remove: removeEnums
   } = useFieldArray({
     control,
-    name: 'list'
+    name: type === 'variable' ? 'enums' : 'list'
   });
+
+  const selectEnumsTyped = selectEnums as { id: string; value: WorkflowIOValueTypeEnum }[];
 
   const valueTypeSelectList = Object.values(FlowValueTypeMap).map((item) => ({
     label: t(item.label as any),
@@ -88,21 +95,26 @@ const InputTypeConfig = ({
 
   const showValueTypeSelect =
     inputType === FlowNodeInputTypeEnum.reference ||
-    inputType === FlowNodeInputTypeEnum.customVariable;
+    inputType === FlowNodeInputTypeEnum.customVariable ||
+    inputType === VariableInputEnum.custom;
 
   const showRequired = useMemo(() => {
-    const list = [FlowNodeInputTypeEnum.addInputParam, FlowNodeInputTypeEnum.customVariable];
+    const list = [
+      FlowNodeInputTypeEnum.addInputParam,
+      FlowNodeInputTypeEnum.customVariable,
+      VariableInputEnum.custom
+    ];
     return !list.includes(inputType);
   }, [inputType]);
 
   const showMaxLenInput = useMemo(() => {
     const list = [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.textarea];
-    return list.includes(inputType);
-  }, [inputType]);
+    return list.includes(inputType as FlowNodeInputTypeEnum) && type !== 'variable';
+  }, [inputType, type]);
 
   const showMinMaxInput = useMemo(() => {
     const list = [FlowNodeInputTypeEnum.numberInput];
-    return list.includes(inputType);
+    return list.includes(inputType as FlowNodeInputTypeEnum);
   }, [inputType]);
 
   const showDefaultValue = useMemo(() => {
@@ -111,10 +123,11 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.textarea,
       FlowNodeInputTypeEnum.JSONEditor,
       FlowNodeInputTypeEnum.numberInput,
-      FlowNodeInputTypeEnum.switch
+      FlowNodeInputTypeEnum.switch,
+      FlowNodeInputTypeEnum.select
     ];
 
-    return list.includes(inputType);
+    return list.includes(inputType as FlowNodeInputTypeEnum);
   }, [inputType]);
 
   return (
@@ -122,23 +135,34 @@ const InputTypeConfig = ({
       <Flex flexDirection={'column'} p={8} gap={4} flex={'1 0 0'} overflow={'auto'}>
         <Flex alignItems={'center'}>
           <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
-            {type === 'formInput'
-              ? t('common:core.module.input_name')
-              : t('common:core.module.Field Name')}
+            {{
+              formInput: t('common:core.module.input_name'),
+              plugin: t('common:core.module.Field Name'),
+              variable: t('workflow:Variable_name')
+            }[type] || t('common:core.module.input_name')}
           </FormLabel>
           <Input
             bg={'myGray.50'}
             placeholder="appointment/sql"
-            {...register(type === 'formInput' ? 'label' : 'key', {
-              required: true
-            })}
+            {...register(
+              {
+                formInput: 'label',
+                plugin: 'key',
+                variable: 'key'
+              }[type] || 'label',
+              {
+                required: true
+              }
+            )}
           />
         </Flex>
         <Flex alignItems={'flex-start'}>
           <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
-            {type === 'formInput'
-              ? t('common:core.module.input_description')
-              : t('workflow:field_description')}
+            {{
+              formInput: t('common:core.module.input_description'),
+              plugin: t('workflow:field_description'),
+              variable: t('workflow:variable_description')
+            }[type] || t('workflow:field_description')}
           </FormLabel>
           <Textarea
             bg={'myGray.50'}
@@ -149,7 +173,7 @@ const InputTypeConfig = ({
         </Flex>
 
         {/* value type */}
-        {type === 'plugin' && (
+        {type !== 'formInput' && (
           <Flex alignItems={'center'}>
             <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
               {t('common:core.module.Data Type')}
@@ -167,7 +191,9 @@ const InputTypeConfig = ({
                 />
               </Box>
             ) : (
-              <Box fontSize={'14px'}>{defaultValueType}</Box>
+              <Box fontSize={'14px'} mb={2}>
+                {defaultValueType}
+              </Box>
             )}
           </Flex>
         )}
@@ -191,7 +217,6 @@ const InputTypeConfig = ({
                 isChecked={isToolInput}
                 onChange={(e) => {
                   setIsToolInput && setIsToolInput();
-                  console.log(isToolInput);
                 }}
               />
             </Flex>
@@ -272,18 +297,32 @@ const InputTypeConfig = ({
             {inputType === FlowNodeInputTypeEnum.textarea && (
               <Textarea bg={'myGray.50'} maxLength={maxLength} {...register('defaultValue')} />
             )}
-            {inputType === FlowNodeInputTypeEnum.JSONEditor && (
-              <JsonEditor
-                bg={'myGray.50'}
-                resize
-                w={'full'}
-                onChange={(e) => {
+            {inputType === FlowNodeInputTypeEnum.JSONEditor ||
+              (inputType === VariableInputEnum.custom && (
+                <JsonEditor
+                  bg={'myGray.50'}
+                  resize
+                  w={'full'}
+                  onChange={(e) => {
+                    setValue('defaultValue', e);
+                  }}
+                  defaultValue={String(defaultJsonValue)}
+                />
+              ))}
+            {inputType === FlowNodeInputTypeEnum.switch && <Switch {...register('defaultValue')} />}
+            {inputType === FlowNodeInputTypeEnum.select && (
+              <MySelect<WorkflowIOValueTypeEnum>
+                list={listValue.map((item: { value: WorkflowIOValueTypeEnum }) => ({
+                  label: item.value,
+                  value: item.value
+                }))}
+                value={form.watch('defaultValue')}
+                onchange={(e) => {
                   setValue('defaultValue', e);
                 }}
-                defaultValue={String(defaultJsonValue)}
+                w={'200px'}
               />
             )}
-            {inputType === FlowNodeInputTypeEnum.switch && <Switch {...register('defaultValue')} />}
           </Flex>
         )}
 
@@ -314,40 +353,124 @@ const InputTypeConfig = ({
 
         {inputType === FlowNodeInputTypeEnum.select && (
           <>
-            <Flex flexDirection={'column'} gap={4}>
-              {selectEnums.map((item, i) => (
-                <Flex key={item.id} alignItems={'center'}>
-                  <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
-                    {`${t('common:core.module.variable.variable options')} ${i + 1}`}
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      fontSize={'12px'}
-                      bg={'myGray.50'}
-                      placeholder={`${t('common:core.module.variable.variable options')} ${i + 1}`}
-                      {...register(`list.${i}.label`, {
-                        required: true,
-                        onChange: (e: any) => {
-                          setValue(`list.${i}.value`, e.target.value);
-                        }
-                      })}
-                    />
-                  </FormControl>
-                  {selectEnums.length > 1 && (
-                    <MyIcon
-                      ml={3}
-                      name={'delete'}
-                      w={'16px'}
-                      cursor={'pointer'}
-                      p={2}
-                      borderRadius={'md'}
-                      _hover={{ bg: 'red.100' }}
-                      onClick={() => removeEnums(i)}
-                    />
-                  )}
-                </Flex>
-              ))}
-            </Flex>
+            <DndDrag<{ id: string; value: string }>
+              onDragEndCb={(list) => {
+                const newOrder = list.map((item) => item.id);
+                const newSelectEnums = newOrder
+                  .map((id) => selectEnums.find((item) => item.id === id))
+                  .filter(Boolean) as { id: string; value: string }[];
+                removeEnums();
+                newSelectEnums.forEach((item) => appendEnums(item));
+
+                // 防止最后一个元素被focus
+                setTimeout(() => {
+                  if (document.activeElement instanceof HTMLElement) {
+                    document.activeElement.blur();
+                  }
+                }, 0);
+              }}
+              dataList={selectEnumsTyped}
+              renderClone={(provided, snapshot, rubric) => {
+                return (
+                  <Box
+                    bg={'myGray.50'}
+                    border={'1px solid'}
+                    borderColor={'myGray.200'}
+                    p={2}
+                    borderRadius="md"
+                    boxShadow="md"
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                  >
+                    {selectEnumsTyped[rubric.source.index].value}
+                  </Box>
+                );
+              }}
+            >
+              {(provided) => (
+                <Box
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  display={'flex'}
+                  flexDirection={'column'}
+                  gap={4}
+                >
+                  {selectEnums.map((item, i) => (
+                    <Draggable key={i} draggableId={i.toString()} index={i}>
+                      {(provided, snapshot) => (
+                        <Box
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          style={{
+                            ...provided.draggableProps.style,
+                            opacity: snapshot.isDragging ? 0.8 : 1
+                          }}
+                        >
+                          <Flex
+                            alignItems={'center'}
+                            position={'relative'}
+                            transform={snapshot.isDragging ? `scale(0.5)` : ''}
+                            transformOrigin={'top left'}
+                          >
+                            <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
+                              {`${t('common:core.module.variable.variable options')} ${i + 1}`}
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                fontSize={'12px'}
+                                bg={'myGray.50'}
+                                placeholder={`${t('common:core.module.variable.variable options')} ${i + 1}`}
+                                {...register(
+                                  type === 'variable' ? `enums.${i}.value` : `list.${i}.label`,
+                                  {
+                                    required: true,
+                                    onChange: (e: any) => {
+                                      setValue(
+                                        type === 'variable'
+                                          ? `enums.${i}.value`
+                                          : `list.${i}.value`,
+                                        e.target.value
+                                      );
+                                    }
+                                  }
+                                )}
+                              />
+                            </FormControl>
+                            {selectEnums.length > 1 && (
+                              <Flex>
+                                <MyIcon
+                                  ml={3}
+                                  name={'delete'}
+                                  w={'16px'}
+                                  cursor={'pointer'}
+                                  p={2}
+                                  borderRadius={'md'}
+                                  _hover={{ bg: 'red.100' }}
+                                  onClick={() => removeEnums(i)}
+                                />
+                                <Box {...provided.dragHandleProps}>
+                                  <MyIcon
+                                    name={'drag'}
+                                    cursor={'pointer'}
+                                    p={2}
+                                    borderRadius={'md'}
+                                    _hover={{ color: 'primary.600' }}
+                                    w={'16px'}
+                                  />
+                                </Box>
+                              </Flex>
+                            )}
+                          </Flex>
+                        </Box>
+                      )}
+                    </Draggable>
+                  ))}
+                  <Box h="0" w="0">
+                    {provided.placeholder}
+                  </Box>
+                </Box>
+              )}
+            </DndDrag>
             <Button
               variant={'whiteBase'}
               leftIcon={<MyIcon name={'common/addLight'} w={'16px'} />}

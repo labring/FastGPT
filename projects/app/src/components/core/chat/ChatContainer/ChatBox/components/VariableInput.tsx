@@ -1,7 +1,19 @@
 import React from 'react';
 import { Controller, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Card, FormControl, Input, Textarea } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Card,
+  Input,
+  NumberDecrementStepper,
+  NumberIncrementStepper,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  Switch,
+  Textarea
+} from '@chakra-ui/react';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
@@ -10,6 +22,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatBoxInputFormType } from '../type.d';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const VariableInput = ({
   chatForm,
@@ -21,7 +34,22 @@ const VariableInput = ({
   const { t } = useTranslation();
 
   const { appAvatar, variableList, variablesForm } = useContextSelector(ChatBoxContext, (v) => v);
-  const { register, setValue, handleSubmit: handleSubmitChat, control } = variablesForm;
+  const { register, reset, handleSubmit: handleSubmitChat, control, setValue } = variablesForm;
+
+  React.useEffect(() => {
+    const defaultValues: Record<string, any> = {};
+    variableList.forEach((item) => {
+      if (item.defaultValue !== undefined && !variablesForm.getValues(item.key)) {
+        defaultValues[item.key] = item.defaultValue;
+      }
+    });
+    if (Object.keys(defaultValues).length > 0) {
+      reset((formValues) => ({
+        ...formValues,
+        ...defaultValues
+      }));
+    }
+  }, [variableList, reset, variablesForm]);
 
   return (
     <Box py={3}>
@@ -38,20 +66,28 @@ const VariableInput = ({
           boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
         >
           {variableList.map((item) => (
-            <Box key={item.id} mb={4}>
-              <Box as={'label'} display={'inline-block'} position={'relative'} mb={1}>
+            <Box key={item.id} mb={4} pl={1}>
+              <Box
+                as={'label'}
+                display={'flex'}
+                position={'relative'}
+                mb={1}
+                alignItems={'center'}
+                w={'full'}
+              >
                 {item.label}
                 {item.required && (
                   <Box
                     position={'absolute'}
                     top={'-2px'}
-                    right={'-10px'}
+                    left={'-8px'}
                     color={'red.500'}
                     fontWeight={'bold'}
                   >
                     *
                   </Box>
                 )}
+                {item.description && <QuestionTip ml={1} label={item.description} />}
               </Box>
               {item.type === VariableInputEnum.input && (
                 <Input
@@ -93,19 +129,49 @@ const VariableInput = ({
                   }}
                 />
               )}
+              {item.type === VariableInputEnum.numberInput && (
+                <NumberInput
+                  step={1}
+                  min={item.min}
+                  max={item.max}
+                  bg={'white'}
+                  rounded={'md'}
+                  clampValueOnBlur={false}
+                  defaultValue={item.defaultValue}
+                >
+                  <NumberInputField
+                    bg={'white'}
+                    {...register(item.key, {
+                      required: item.required,
+                      min: item.min,
+                      max: item.max,
+                      valueAsNumber: true
+                    })}
+                  />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+              {item.type === VariableInputEnum.switch && (
+                <Switch {...register(item.key)} defaultChecked={!!item.defaultValue} />
+              )}
             </Box>
           ))}
           {!chatStarted && (
-            <Button
-              leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
-              size={'sm'}
-              maxW={'100px'}
-              onClick={handleSubmitChat(() => {
-                chatForm.setValue('chatStarted', true);
-              })}
-            >
-              {t('common:core.chat.Start Chat')}
-            </Button>
+            <Box>
+              <Button
+                leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
+                size={'sm'}
+                maxW={'100px'}
+                onClick={handleSubmitChat(() => {
+                  chatForm.setValue('chatStarted', true);
+                })}
+              >
+                {t('common:core.chat.Start Chat')}
+              </Button>
+            </Box>
           )}
         </Card>
       </Box>
