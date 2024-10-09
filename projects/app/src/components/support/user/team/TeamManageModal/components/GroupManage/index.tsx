@@ -50,8 +50,11 @@ function MemberTable({
     (v) => v
   );
 
-  const { runAsync: delDeleteGroup, loading: isLoadingDeleteGroup } = useRequest2(deleteGroup, {
-    onSuccess: () => Promise.all([refetchGroups(), refetchMembers()])
+  const { runAsync: delDeleteGroup } = useRequest2(deleteGroup, {
+    onSuccess: () => {
+      refetchGroups();
+      refetchMembers();
+    }
   });
 
   const hasGroupManagePer = (group: (typeof groups)[0]) =>
@@ -76,7 +79,7 @@ function MemberTable({
   };
 
   return (
-    <MyBox isLoading={isLoadingDeleteGroup}>
+    <MyBox>
       <TableContainer overflow={'unset'} fontSize={'sm'} mx="6">
         <Table overflow={'unset'}>
           <Thead>

@@ -1,8 +1,5 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
-import {
-  DeleteClbPermissionProps,
-  UpdatePermissionBody
-} from '@fastgpt/global/support/permission/collaborator';
+import { UpdatePermissionBody } from '@fastgpt/global/support/permission/collaborator';
 import {
   CreateTeamProps,
   InviteMemberProps,
@@ -47,12 +44,6 @@ export const getTeamClbs = () =>
   GET<ResourcePermissionType[]>(`/proApi/support/user/team/collaborator/list`);
 
 /* -------------- team collaborator -------------------- */
-// !deprecated, this api is to change the permission of a sort of member or group, which is not supported by the current permission system
-// export const updateMemberPermission = (data: UpdateClbPermissionProps) =>
-//   PUT('/proApi/support/user/team/collaborator/update', data);
-export const delMemberPermission = (data: DeleteClbPermissionProps) =>
-  DELETE('/proApi/support/user/team/collaborator/delete', data);
-
 export const updateMemberPermission = (data: UpdatePermissionBody) =>
   PUT('/proApi/support/user/team/collaborator/updatePermission', data);
 

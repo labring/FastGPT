@@ -1,35 +1,21 @@
-import React, { ReactNode, useCallback, useState } from 'react';
+import React, { ReactNode, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import type { EditTeamFormDataType } from './components/EditInfoModal';
 import dynamic from 'next/dynamic';
-import {
-  delMemberPermission,
-  getTeamClbs,
-  getTeamList,
-  putSwitchTeam,
-  updateMemberPermission
-} from '@/web/support/user/team/api';
+import { getTeamList, putSwitchTeam } from '@/web/support/user/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
-import { TeamPermissionList } from '@fastgpt/global/support/permission/user/constant';
-import {
-  CollaboratorItemType,
-  UpdatePermissionBody
-} from '@fastgpt/global/support/permission/collaborator';
 import { getGroupList } from '@/web/support/user/team/group/api';
 import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
-import { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 
 const EditInfoModal = dynamic(() => import('./components/EditInfoModal'));
 
 type TeamModalContextType = {
   myTeams: TeamTmbItemType[];
   members: TeamMemberItemType[];
-  clbs: ResourcePermissionType[];
   groups: MemberGroupListType;
   isLoading: boolean;
   onSwitchTeam: (teamId: string) => void;
@@ -38,7 +24,6 @@ type TeamModalContextType = {
   refetchMembers: () => void;
   refetchTeams: () => void;
   refetchGroups: () => void;
-  refetchClbs: () => void;
   searchKey: string;
   setSearchKey: React.Dispatch<React.SetStateAction<string>>;
 };
@@ -63,10 +48,7 @@ export const TeamModalContext = createContext<TeamModalContextType>({
   refetchGroups: function (): void {
     throw new Error('Function not implemented.');
   },
-  clbs: [],
-  refetchClbs: function (): void {
-    throw new Error('Function not implemented.');
-  },
+
   searchKey: '',
   setSearchKey: function (_value: React.SetStateAction<string>): void {
     throw new Error('Function not implemented.');
@@ -78,15 +60,6 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
   const [editTeamData, setEditTeamData] = useState<EditTeamFormDataType>();
   const { userInfo, initUserInfo, loadAndGetTeamMembers } = useUserStore();
   const [searchKey, setSearchKey] = useState('');
-
-  const {
-    runAsync: refetchClbs,
-    loading: isLoadingClbs,
-    data: clbs = []
-  } = useRequest2(getTeamClbs, {
-    manual: false,
-    refreshDeps: [userInfo?.team?.teamId]
-  });
 
   const {
     data: myTeams = [],
@@ -113,24 +86,6 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     }
   );
 
-  const onGetClbList = useCallback(
-    () =>
-      refetchMembers().then((res) =>
-        res.map<CollaboratorItemType>((member) => ({
-          teamId: member.teamId,
-          tmbId: member.tmbId,
-          permission: member.permission,
-          name: member.memberName,
-          avatar: member.avatar
-        }))
-      ),
-    [refetchMembers]
-  );
-
-  const { runAsync: onUpdatePer, loading: isUpdatingPer } = useRequest2(
-    (props: UpdatePermissionBody) => updateMemberPermission(props)
-  );
-
   const { runAsync: onSwitchTeam, loading: isSwitchingTeam } = useRequest2(
     async (teamId: string) => {
       await putSwitchTeam(teamId);
@@ -145,18 +100,12 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     data: groups = [],
     loading: isLoadingGroups,
     refresh: refetchGroups
-  } = useRequest2(() => getGroupList(), {
+  } = useRequest2(getGroupList, {
     manual: false,
     refreshDeps: [userInfo?.team?.teamId]
   });
 
-  const isLoading =
-    isLoadingTeams ||
-    isSwitchingTeam ||
-    loadingMembers ||
-    isUpdatingPer ||
-    isLoadingGroups ||
-    isLoadingClbs;
+  const isLoading = isLoadingTeams || isSwitchingTeam || loadingMembers || isLoadingGroups;
 
   const contextValue = {
     myTeams,
@@ -171,37 +120,25 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     members,
     refetchMembers,
     groups,
-    refetchGroups,
-    clbs,
-    refetchClbs
+    refetchGroups
   };
 
   return (
     <TeamModalContext.Provider value={contextValue}>
       {userInfo?.team?.permission && (
-        <CollaboratorContextProvider
-          permission={userInfo?.team?.permission}
-          permissionList={TeamPermissionList}
-          onGetCollaboratorList={onGetClbList}
-          onUpdateCollaborators={onUpdatePer}
-          onDelOneCollaborator={(tmbId) => delMemberPermission({ tmbId })}
-        >
-          {() => (
-            <>
-              {children}
-              {!!editTeamData && (
-                <EditInfoModal
-                  defaultData={editTeamData}
-                  onClose={() => setEditTeamData(undefined)}
-                  onSuccess={() => {
-                    refetchTeams();
-                    initUserInfo();
-                  }}
-                />
-              )}
-            </>
+        <>
+          {children}
+          {!!editTeamData && (
+            <EditInfoModal
+              defaultData={editTeamData}
+              onClose={() => setEditTeamData(undefined)}
+              onSuccess={() => {
+                refetchTeams();
+                initUserInfo();
+              }}
+            />
           )}
-        </CollaboratorContextProvider>
+        </>
       )}
     </TeamModalContext.Provider>
   );
