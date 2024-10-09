@@ -17,7 +17,6 @@ import { useTranslation } from 'next-i18next';
 import styles from './index.module.scss';
 import { maxZoom, minZoom } from '../index';
 import { useKeyPress } from 'ahooks';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 const buttonStyle = {
   border: 'none',
