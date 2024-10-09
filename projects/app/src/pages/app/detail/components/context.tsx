@@ -160,7 +160,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
-    content: t('app:confirm_del_app_tip'),
+    content: t('app:confirm_del_app_tip', { name: appDetail.name }),
     type: 'delete'
   });
   const { runAsync: deleteApp } = useRequest2(
