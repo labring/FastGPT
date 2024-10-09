@@ -75,6 +75,7 @@
   "code_error.team_error.re_rank_not_enough": "无权使用检索重排~",
   "code_error.team_error.un_auth": "无权操作该团队",
   "code_error.team_error.website_sync_not_enough": "无权使用Web站点同步~",
+  "code_error.team_error.group_name_duplicate": "群组名称重复",
   "code_error.token_error_code.403": "登录状态无效，请重新登录",
   "code_error.user_error.balance_not_enough": "账号余额不足~",
   "code_error.user_error.bin_visitor": "您的身份校验未通过",
