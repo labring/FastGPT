@@ -92,7 +92,7 @@ function GroupInfoModal({ onClose, editGroupId }: { onClose: () => void; editGro
     >
       <ModalBody flex={1} overflow={'auto'} display={'flex'} flexDirection={'column'} gap={4}>
         <FormLabel w="80px">{t('user:team.avatar_and_name')}</FormLabel>
-        <HStack _hover={{ color: 'primary.600' }}>
+        <HStack>
           <Avatar
             src={getValues('avatar')}
             onClick={onOpenSelectAvatar}
