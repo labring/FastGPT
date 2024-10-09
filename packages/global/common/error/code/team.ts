@@ -14,7 +14,8 @@ export enum TeamErrEnum {
   groupNameEmpty = 'groupNameEmpty',
   groupNameDuplicate = 'groupNameDuplicate',
   groupNotExist = 'groupNotExist',
-  cannotDeleteDefaultGroup = 'cannotDeleteDefaultGroup'
+  cannotDeleteDefaultGroup = 'cannotDeleteDefaultGroup',
+  userNotActive = 'userNotActive'
 }
 
 const teamErr = [
@@ -66,6 +67,10 @@ const teamErr = [
   {
     statusText: TeamErrEnum.groupNameDuplicate,
     message: i18nT('common:code_error.team_error.group_name_duplicate')
+  },
+  {
+    statusText: TeamErrEnum.userNotActive,
+    message: i18nT('common:code_error.team_error.user_not_active')
   }
 ];
 
