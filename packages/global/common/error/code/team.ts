@@ -12,6 +12,7 @@ export enum TeamErrEnum {
   websiteSyncNotEnough = 'websiteSyncNotEnough',
   reRankNotEnough = 'reRankNotEnough',
   groupNameEmpty = 'groupNameEmpty',
+  groupNameDuplicate = 'groupNameDuplicate',
   groupNotExist = 'groupNotExist',
   cannotDeleteDefaultGroup = 'cannotDeleteDefaultGroup'
 }
@@ -61,6 +62,10 @@ const teamErr = [
   {
     statusText: TeamErrEnum.cannotDeleteDefaultGroup,
     message: i18nT('common:code_error.team_error.cannot_delete_default_group')
+  },
+  {
+    statusText: TeamErrEnum.groupNameDuplicate,
+    message: i18nT('common:code_error.team_error.group_name_duplicate')
   }
 ];
 
