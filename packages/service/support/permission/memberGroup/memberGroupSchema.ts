@@ -5,20 +5,31 @@ const { Schema } = connectionMongo;
 
 export const MemberGroupCollectionName = 'team_member_groups';
 
-export const MemberGroupSchema = new Schema({
-  teamId: {
-    type: Schema.Types.ObjectId,
-    ref: TeamCollectionName,
-    required: true
+export const MemberGroupSchema = new Schema(
+  {
+    teamId: {
+      type: Schema.Types.ObjectId,
+      ref: TeamCollectionName,
+      required: true
+    },
+    name: {
+      type: String,
+      required: true
+    },
+    avatar: {
+      type: String
+    },
+    updateTime: {
+      type: Date,
+      default: () => new Date()
+    }
   },
-  name: {
-    type: String,
-    required: true
-  },
-  avatar: {
-    type: String
+  {
+    timestamps: {
+      updatedAt: 'updateTime'
+    }
   }
-});
+);
 
 try {
   MemberGroupSchema.index(

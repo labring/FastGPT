@@ -7,6 +7,7 @@ type MemberGroupSchemaType = {
   teamId: string;
   name: string;
   avatar: string;
+  updateTime: Date;
 };
 
 type GroupMemberSchemaType = {

@@ -47,7 +47,15 @@ export const getTeamDefaultGroup = async ({
   return group;
 };
 
-export const getGroupsByTmbId = async ({ tmbId, teamId }: { tmbId: string; teamId: string }) =>
+export const getGroupsByTmbId = async ({
+  tmbId,
+  teamId,
+  role
+}: {
+  tmbId: string;
+  teamId: string;
+  role?: `${GroupMemberRole}`[];
+}) =>
   (
     await Promise.all([
       (
@@ -55,7 +63,8 @@ export const getGroupsByTmbId = async ({ tmbId, teamId }: { tmbId: string; teamI
           tmbId,
           groupId: {
             $exists: true
-          }
+          },
+          role: role ? { $in: role } : undefined
         })
           .populate('groupId')
           .lean()
@@ -65,7 +74,7 @@ export const getGroupsByTmbId = async ({ tmbId, teamId }: { tmbId: string; teamI
         };
       }),
 
-      getTeamDefaultGroup({ teamId })
+      role ? [] : getTeamDefaultGroup({ teamId })
     ])
   ).flat();
 

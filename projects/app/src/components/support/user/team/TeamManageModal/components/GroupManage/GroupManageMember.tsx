@@ -6,10 +6,7 @@ import {
   ModalFooter,
   Checkbox,
   Grid,
-  HStack,
-  Input,
-  InputGroup,
-  InputLeftElement
+  HStack
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -26,6 +23,7 @@ import { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 
 export type GroupFormType = {
   members: {
@@ -137,32 +135,24 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
       iconSrc={group?.avatar ?? DEFAULT_TEAM_AVATAR}
       iconColor="primary.600"
       minW={['70vw', '800px']}
-      h={'600px'}
     >
-      <ModalBody flex={1} overflow={'auto'} display={'flex'} flexDirection={'column'} gap={4}>
+      <ModalBody flex={1} display={'flex'} flexDirection={'column'} gap={4}>
         <Grid
           templateColumns="1fr 1fr"
           borderRadius="8px"
           border="1px solid"
           borderColor="myGray.200"
-          h={'100%'}
         >
-          <Flex flexDirection="column" p="4" h={'100%'} overflow={'auto'}>
-            <InputGroup alignItems="center" size={'sm'}>
-              <InputLeftElement>
-                <MyIcon name="common/searchLight" w="16px" color={'myGray.500'} />
-              </InputLeftElement>
-              <Input
-                placeholder={t('user:search_user')}
-                fontSize="sm"
-                bg={'myGray.50'}
-                onChange={(e) => {
-                  setSearchKey(e.target.value);
-                }}
-              />
-            </InputGroup>
-
-            <Flex flexDirection="column" mt={3}>
+          <Flex flexDirection="column" p="4">
+            <SearchInput
+              placeholder={t('user:search_user')}
+              fontSize="sm"
+              bg={'myGray.50'}
+              onChange={(e) => {
+                setSearchKey(e.target.value);
+              }}
+            />
+            <Flex flexDirection="column" mt={3} flexGrow="1" overflow={'auto'} maxH={'400px'}>
               {filtered.map((member) => {
                 return (
                   <HStack
@@ -190,16 +180,9 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
               })}
             </Flex>
           </Flex>
-          <Flex
-            borderLeft="1px"
-            borderColor="myGray.200"
-            flexDirection="column"
-            p="4"
-            h={'100%'}
-            overflow={'auto'}
-          >
-            <Box mt={3}>{t('common:chosen') + ': ' + members.length}</Box>
-            <Box mt={5}>
+          <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4" h={'100%'}>
+            <Box mt={2}>{t('common:chosen') + ': ' + members.length}</Box>
+            <Flex mt={3} flexDirection="column" flexGrow="1" overflow={'auto'} maxH={'400px'}>
               {members.map((member) => {
                 return (
                   <HStack
@@ -276,7 +259,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
                   </HStack>
                 );
               })}
-            </Box>
+            </Flex>
           </Flex>
         </Grid>
       </ModalBody>
