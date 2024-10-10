@@ -1,4 +1,4 @@
-name: Deploy image to vercel
+name: Deploy doc image to vercel
 
 on:
   workflow_dispatch:
