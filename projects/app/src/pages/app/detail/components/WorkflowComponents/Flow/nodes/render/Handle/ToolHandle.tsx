@@ -23,8 +23,9 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
   const connected = edges.some((edge) => edge.target === nodeId && edge.targetHandle === handleId);
 
   // if top handle is connected, return null
-  const showHandle =
-    connected || (show && connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools);
+  const showHandle = connectingEdge
+    ? show && connectingEdge.handleId === NodeOutputKeyEnum.selectedTools
+    : connected;
 
   const Render = useMemo(() => {
     return (
