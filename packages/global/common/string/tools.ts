@@ -102,3 +102,21 @@ export const sliceStrStartEnd = (str: string, start: number, end: number) => {
 
   return `${startContent}${overSize ? `\n\n...[hide ${str.length - start - end} chars]...\n\n` : ''}${endContent}`;
 };
+
+/* 
+  Parse file extension from url
+  Test：
+  1. https://xxx.com/file.pdf?token=123
+    => pdf
+  2. https://xxx.com/file.pdf
+    => pdf
+*/
+export const parseFileExtensionFromUrl = (url = '') => {
+  // Remove query params
+  const urlWithoutQuery = url.split('?')[0];
+  // Get file name
+  const fileName = urlWithoutQuery.split('/').pop() || '';
+  // Get file extension
+  const extension = fileName.split('.').pop();
+  return (extension || '').toLowerCase();
+};
