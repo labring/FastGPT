@@ -82,7 +82,7 @@ const Dataset = () => {
 
   const RenderSearchInput = useMemo(
     () => (
-      <InputGroup maxW={['auto', '250px']} pr={[0, 4]}>
+      <InputGroup maxW={['auto', '250px']}>
         <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
           <MyIcon color={'myGray.600'} name={'common/searchLight'} w={'1rem'} />
         </InputLeftElement>
@@ -100,6 +100,7 @@ const Dataset = () => {
     ),
     [searchKey, setSearchKey, t]
   );
+
   return (
     <MyBox
       isLoading={myDatasets.length === 0 && isFetchingDatasets}
@@ -110,7 +111,7 @@ const Dataset = () => {
     >
       <Flex pt={[4, 6]} pl={3} pr={[3, 10]}>
         <Flex flexGrow={1} flexDirection="column">
-          <Flex alignItems={'flex-start'} justifyContent={'space-between'}>
+          <Flex alignItems={'center'} justifyContent={'space-between'}>
             <ParentPaths
               paths={paths}
               FirstPathDom={
@@ -138,54 +139,56 @@ const Dataset = () => {
             {isPc && RenderSearchInput}
 
             {userInfo?.team?.permission.hasWritePer && (
-              <MyMenu
-                offset={[0, 10]}
-                width={120}
-                iconSize="2rem"
-                iconRadius="6px"
-                placement="bottom-end"
-                Button={
-                  <Button variant={'primary'} px="0">
-                    <Flex alignItems={'center'} px={5}>
-                      <AddIcon mr={2} />
-                      <Box>{t('common:common.Create New')}</Box>
-                    </Flex>
-                  </Button>
-                }
-                menuList={[
-                  {
-                    children: [
-                      {
-                        icon: 'core/dataset/commonDatasetColor',
-                        label: t('dataset:common_dataset'),
-                        description: t('dataset:common_dataset_desc'),
-                        onClick: () => setCreateDatasetType(DatasetTypeEnum.dataset)
-                      },
-                      {
-                        icon: 'core/dataset/websiteDatasetColor',
-                        label: t('dataset:website_dataset'),
-                        description: t('dataset:website_dataset_desc'),
-                        onClick: () => setCreateDatasetType(DatasetTypeEnum.websiteDataset)
-                      },
-                      {
-                        icon: 'core/dataset/externalDatasetColor',
-                        label: t('dataset:external_file'),
-                        description: t('dataset:external_file_dataset_desc'),
-                        onClick: () => setCreateDatasetType(DatasetTypeEnum.externalFile)
-                      }
-                    ]
-                  },
-                  {
-                    children: [
-                      {
-                        icon: FolderIcon,
-                        label: t('common:Folder'),
-                        onClick: () => setEditFolderData({})
-                      }
-                    ]
+              <Box pl={[0, 4]}>
+                <MyMenu
+                  offset={[0, 10]}
+                  width={120}
+                  iconSize="2rem"
+                  iconRadius="6px"
+                  placement="bottom-end"
+                  Button={
+                    <Button variant={'primary'} px="0">
+                      <Flex alignItems={'center'} px={5}>
+                        <AddIcon mr={2} />
+                        <Box>{t('common:common.Create New')}</Box>
+                      </Flex>
+                    </Button>
                   }
-                ]}
-              />
+                  menuList={[
+                    {
+                      children: [
+                        {
+                          icon: 'core/dataset/commonDatasetColor',
+                          label: t('dataset:common_dataset'),
+                          description: t('dataset:common_dataset_desc'),
+                          onClick: () => setCreateDatasetType(DatasetTypeEnum.dataset)
+                        },
+                        {
+                          icon: 'core/dataset/websiteDatasetColor',
+                          label: t('dataset:website_dataset'),
+                          description: t('dataset:website_dataset_desc'),
+                          onClick: () => setCreateDatasetType(DatasetTypeEnum.websiteDataset)
+                        },
+                        {
+                          icon: 'core/dataset/externalDatasetColor',
+                          label: t('dataset:external_file'),
+                          description: t('dataset:external_file_dataset_desc'),
+                          onClick: () => setCreateDatasetType(DatasetTypeEnum.externalFile)
+                        }
+                      ]
+                    },
+                    {
+                      children: [
+                        {
+                          icon: FolderIcon,
+                          label: t('common:Folder'),
+                          onClick: () => setEditFolderData({})
+                        }
+                      ]
+                    }
+                  ]}
+                />
+              </Box>
             )}
           </Flex>
 

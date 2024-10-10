@@ -413,32 +413,7 @@ export const useWorkflow = () => {
   });
 
   /* node */
-  const handleRemoveNode = useMemoizedFn((nodeId: string) => {
-    // If the node has child nodes, remove the child nodes
-    const childNodes = nodes.filter((n) => n.data.parentNodeId === nodeId);
-    if (childNodes.length > 0) {
-      const childNodeIds = childNodes.map((node) => node.id);
-      const childEdges = edges.filter(
-        (edge) => childNodeIds.includes(edge.source) || childNodeIds.includes(edge.target)
-      );
 
-      onNodesChange(
-        childNodes.map<NodeRemoveChange>((node) => ({
-          type: 'remove',
-          id: node.id
-        }))
-      );
-      onEdgesChange(
-        childEdges.map<EdgeRemoveChange>((edge) => ({
-          type: 'remove',
-          id: edge.id
-        }))
-      );
-    }
-    onNodesChange([{ type: 'remove', id: nodeId }]);
-
-    return;
-  });
   const handleSelectNode = useMemoizedFn((change: NodeSelectionChange) => {
     // If the node is not selected and the Ctrl key is pressed, select the node
     if (change.selected === false && isDowningCtrl) {
@@ -618,9 +593,8 @@ export const useWorkflow = () => {
 
   useKeyPress(['Delete', 'Backspace'], (e) => {
     if (!mouseInCanvas) return;
-    const selectedNodes = nodes.filter((node) => node.selected);
-    const selectedEdges = edges.filter((edge) => edge.selected);
 
+    const selectedNodes = nodes.filter((node) => node.selected);
     if (selectedNodes.length > 0) {
       for (const node of selectedNodes) {
         if (node.data.forbidDelete) {
@@ -631,13 +605,27 @@ export const useWorkflow = () => {
           continue;
         }
 
+        // Computed deleted node and its edges
         const removedNodeId = node.id;
-        handleRemoveNode(removedNodeId);
-        const edgesToRemove = edges.filter(
+        const removedNodeEdges = edges.filter(
           (edge) => edge.source === removedNodeId || edge.target === removedNodeId
         );
+
+        const childNodes = nodes.filter((n) => n.data.parentNodeId === removedNodeId);
+        const childNodeIds = childNodes.map((node) => node.id);
+        const childEdges = edges.filter(
+          (edge) => childNodeIds.includes(edge.source) || childNodeIds.includes(edge.target)
+        );
+
+        // Delete
+        onNodesChange(
+          [removedNodeId, ...childNodeIds].map((nodeId) => ({
+            type: 'remove',
+            id: nodeId
+          }))
+        );
         onEdgesChange(
-          edgesToRemove.map((edge) => ({
+          [...removedNodeEdges, ...childEdges].map((edge) => ({
             type: 'remove',
             id: edge.id
           }))
@@ -645,6 +633,8 @@ export const useWorkflow = () => {
       }
     }
 
+    // Delete selected edges
+    const selectedEdges = edges.filter((edge) => edge.selected);
     if (selectedEdges.length > 0) {
       onEdgesChange(
         selectedEdges.map((edge) => ({

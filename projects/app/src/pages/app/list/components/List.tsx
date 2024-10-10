@@ -365,7 +365,7 @@ const ListItem = () => {
                                             undefined,
                                             app.type === AppTypeEnum.folder
                                               ? t('app:confirm_delete_folder_tip')
-                                              : t('app:confirm_del_app_tip')
+                                              : t('app:confirm_del_app_tip', { name: app.name })
                                           )()
                                       }
                                     ]
