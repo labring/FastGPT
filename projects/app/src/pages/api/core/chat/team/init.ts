@@ -37,7 +37,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   // auth chat permission
   if (chat && chat.outLinkUid !== uid) {
-    throw new Error(ChatErrEnum.unAuthChat);
+    return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
   // get app and history
