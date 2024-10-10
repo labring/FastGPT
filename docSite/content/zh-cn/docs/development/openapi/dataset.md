@@ -1093,7 +1093,7 @@ A2:
 {{< tab tabName="请求示例" >}}
 {{< markdownify >}}
 
-**新版**
+**4.8.11+**
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/data/v2/list' \
@@ -1107,7 +1107,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/v2/l
 }'
 ```
 
-**旧版**
+**4.6.7+**
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/data/list' \
