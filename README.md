@@ -96,7 +96,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 👨‍💻 开发
 
-项目技术栈：NextJs + TS + ChakraUI + Mongo + Postgres (Vector 插件)
+项目技术栈：NextJs + TS + ChakraUI + MongoDB + PostgreSQL (PG Vector 插件)/Milvus
 
 - **⚡ 快速部署**
 
