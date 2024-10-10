@@ -12,6 +12,7 @@ import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { readRawContentByFileBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -144,7 +145,8 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
             return url;
           })();
           // Extension
-          const extension = filename.split('.').pop()?.toLowerCase() || '';
+          const extension = parseFileExtensionFromUrl(filename);
+
           // Get encoding
           const encoding = (() => {
             const contentType = response.headers['content-type'];

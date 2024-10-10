@@ -11,6 +11,7 @@ import { readRawContentByFileBuffer } from '../read/utils';
 import { gridFsStream2Buffer, stream2Encoding } from './utils';
 import { addLog } from '../../system/log';
 import { readFromSecondary } from '../../mongo/utils';
+import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoDatasetFileSchema;
@@ -163,7 +164,7 @@ export const readFileContentFromMongo = async ({
     return Promise.reject(CommonErrEnum.fileNotFound);
   }
 
-  const extension = file?.filename?.split('.')?.pop()?.toLowerCase() || '';
+  const extension = parseFileExtensionFromUrl(file?.filename);
 
   const start = Date.now();
   const fileBuffers = await gridFsStream2Buffer(fileStream);

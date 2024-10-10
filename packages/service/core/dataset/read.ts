@@ -6,6 +6,7 @@ import { parseCsvTable2Chunks } from './training/utils';
 import { TextSplitProps, splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import axios from 'axios';
 import { readRawContentByFileBuffer } from '../../common/file/read/utils';
+import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -21,7 +22,7 @@ export const readFileRawTextByUrl = async ({
     url: url,
     responseType: 'arraybuffer'
   });
-  const extension = url.split('.')?.pop()?.toLowerCase() || '';
+  const extension = parseFileExtensionFromUrl(url);
 
   const buffer = Buffer.from(response.data, 'binary');
 
