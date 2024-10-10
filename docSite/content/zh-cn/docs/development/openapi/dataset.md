@@ -1093,6 +1093,22 @@ A2:
 {{< tab tabName="请求示例" >}}
 {{< markdownify >}}
 
+**4.8.11+**
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/data/v2/list' \
+--header 'Authorization: Bearer {{authorization}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "offset": 0,
+    "pageSize": 10,
+    "collectionId":"65abd4ac9d1448617cba6171",
+    "searchText":""
+}'
+```
+
+**4.6.7+**
+
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/data/list' \
 --header 'Authorization: Bearer {{authorization}}' \
@@ -1112,10 +1128,13 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/list
 {{< markdownify >}}
 
 {{% alert icon=" " context="success" %}}
+
+- pageNum: 偏移量（选填）
 - pageNum: 页码（选填）
 - pageSize: 每页数量，最大30（选填）
 - collectionId: 集合的ID（必填）
 - searchText: 模糊搜索词（选填）
+  
 {{% /alert %}}
 
 {{< /markdownify >}}
