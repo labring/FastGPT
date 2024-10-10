@@ -180,7 +180,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       return httpJsonBody.replaceAll(UNDEFINED_SIGN, 'null');
     } catch (error) {
       console.log(error);
-      return Promise.reject(`无效的请求体: ${httpJsonBody}`);
+      return Promise.reject(`Invalid JSON body: ${httpJsonBody}`);
     }
   })();
 
