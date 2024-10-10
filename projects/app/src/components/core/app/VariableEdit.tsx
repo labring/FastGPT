@@ -40,7 +40,7 @@ export const defaultVariable: VariableItemType = {
   description: '',
   required: true,
   valueType: WorkflowIOValueTypeEnum.string,
-  enums: [{ value: '' }]
+  enums: [{ value: '', label: '' }]
 };
 export const addVariable = () => {
   const newVariable = { ...defaultVariable, key: '', id: '' };
@@ -97,7 +97,6 @@ const VariableEdit = ({
     (data: VariableItemType, action: 'confirm' | 'continue') => {
       data.key = data?.key?.trim();
 
-      // 检查重复的key
       const existingVariable = variables.find(
         (item) => item.key === data.key && item.id !== data.id
       );
@@ -111,7 +110,6 @@ const VariableEdit = ({
 
       data.label = data.key;
 
-      // 自定义变量不要求必填
       if (data.type === VariableInputEnum.custom) {
         data.required = false;
       }
@@ -124,7 +122,6 @@ const VariableEdit = ({
       }
 
       const onChangeVariable = [...variables];
-      // 更新或添加变量
       if (data.id) {
         const index = variables.findIndex((item) => item.id === data.id);
         onChangeVariable[index] = data;

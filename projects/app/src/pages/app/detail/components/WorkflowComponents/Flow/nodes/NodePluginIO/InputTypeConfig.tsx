@@ -30,6 +30,8 @@ import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 
+type ListValueType = { id: string; value: string; label: string }[];
+
 const InputTypeConfig = ({
   form,
   isEdit,
@@ -75,7 +77,7 @@ const InputTypeConfig = ({
   const { t } = useTranslation();
 
   const { register, setValue, handleSubmit, control, watch } = form;
-  const listValue = watch(type === 'variable' ? 'enums' : 'list');
+  const listValue: ListValueType = watch(type === 'variable' ? 'enums' : 'list');
 
   const {
     fields: selectEnums,
@@ -86,7 +88,13 @@ const InputTypeConfig = ({
     name: type === 'variable' ? 'enums' : 'list'
   });
 
-  const selectEnumsTyped = selectEnums as { id: string; value: WorkflowIOValueTypeEnum }[];
+  const mergedSelectEnums = useMemo(() => {
+    return selectEnums.map((field, index) => ({
+      ...field,
+      ...listValue[index]
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(listValue), JSON.stringify(selectEnums)]);
 
   const valueTypeSelectList = Object.values(FlowValueTypeMap).map((item) => ({
     label: t(item.label as any),
@@ -311,9 +319,9 @@ const InputTypeConfig = ({
               ))}
             {inputType === FlowNodeInputTypeEnum.switch && <Switch {...register('defaultValue')} />}
             {inputType === FlowNodeInputTypeEnum.select && (
-              <MySelect<WorkflowIOValueTypeEnum>
-                list={listValue.map((item: { value: WorkflowIOValueTypeEnum }) => ({
-                  label: item.value,
+              <MySelect<string>
+                list={listValue.map((item) => ({
+                  label: item.label,
                   value: item.value
                 }))}
                 value={form.watch('defaultValue')}
@@ -357,7 +365,7 @@ const InputTypeConfig = ({
               onDragEndCb={(list) => {
                 const newOrder = list.map((item) => item.id);
                 const newSelectEnums = newOrder
-                  .map((id) => selectEnums.find((item) => item.id === id))
+                  .map((id) => mergedSelectEnums.find((item) => item.id === id))
                   .filter(Boolean) as { id: string; value: string }[];
                 removeEnums();
                 newSelectEnums.forEach((item) => appendEnums(item));
@@ -369,7 +377,7 @@ const InputTypeConfig = ({
                   }
                 }, 0);
               }}
-              dataList={selectEnumsTyped}
+              dataList={mergedSelectEnums}
               renderClone={(provided, snapshot, rubric) => {
                 return (
                   <Box
@@ -382,7 +390,7 @@ const InputTypeConfig = ({
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
                   >
-                    {selectEnumsTyped[rubric.source.index].value}
+                    {mergedSelectEnums[rubric.source.index].value}
                   </Box>
                 );
               }}
@@ -395,7 +403,7 @@ const InputTypeConfig = ({
                   flexDirection={'column'}
                   gap={4}
                 >
-                  {selectEnums.map((item, i) => (
+                  {mergedSelectEnums.map((item, i) => (
                     <Draggable key={i} draggableId={i.toString()} index={i}>
                       {(provided, snapshot) => (
                         <Box
@@ -421,7 +429,7 @@ const InputTypeConfig = ({
                                 bg={'myGray.50'}
                                 placeholder={`${t('common:core.module.variable.variable options')} ${i + 1}`}
                                 {...register(
-                                  type === 'variable' ? `enums.${i}.value` : `list.${i}.label`,
+                                  type === 'variable' ? `enums.${i}.label` : `list.${i}.label`,
                                   {
                                     required: true,
                                     onChange: (e: any) => {

@@ -125,7 +125,7 @@ export type VariableItemType = {
   max?: number;
   min?: number;
   // select
-  enums?: { value: string }[];
+  enums?: { value: string; label: string }[];
 };
 // tts
 export type AppTTSConfigType = {
