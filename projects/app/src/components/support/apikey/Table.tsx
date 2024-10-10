@@ -24,7 +24,6 @@ import {
   putOpenApiKey
 } from '@/web/support/openapi/api';
 import type { EditApiKeyProps } from '@/global/support/openapi/api.d';
-import { useQuery, useMutation } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { AddIcon } from '@chakra-ui/icons';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
@@ -33,7 +32,7 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -61,13 +60,10 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
 
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
-    content: t('workflow:delete_api')
+    content: t('common:delete_api')
   });
 
-  const { mutate: onclickRemove, isLoading: isDeleting } = useMutation({
-    mutationFn: async (id: string) => {
-      return delOpenApiById(id);
-    },
+  const { runAsync: onclickRemove } = useRequest2(delOpenApiById, {
     onSuccess() {
       refetch();
     }
@@ -75,9 +71,12 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
 
   const {
     data: apiKeys = [],
-    isLoading: isGetting,
-    refetch
-  } = useQuery(['getOpenApiKeys', appId], () => getOpenApiKeys({ appId }));
+    loading: isGetting,
+    run: refetch
+  } = useRequest2(() => getOpenApiKeys({ appId }), {
+    manual: false,
+    refreshDeps: [appId]
+  });
 
   useEffect(() => {
     setBaseUrl(feConfigs?.customApiDomain || `${location.origin}/api`);
@@ -85,7 +84,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
 
   return (
     <MyBox
-      isLoading={isGetting || isDeleting}
+      isLoading={isGetting}
       display={'flex'}
       flexDirection={'column'}
       h={'100%'}

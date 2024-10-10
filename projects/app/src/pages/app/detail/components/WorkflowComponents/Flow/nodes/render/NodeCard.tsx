@@ -606,10 +606,10 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
 }) {
   const { t } = useTranslation();
 
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const onStopNodeDebug = useContextSelector(WorkflowContext, (v) => v.onStopNodeDebug);
-  const onNextNodeDebug = useContextSelector(WorkflowContext, (v) => v.onNextNodeDebug);
-  const workflowDebugData = useContextSelector(WorkflowContext, (v) => v.workflowDebugData);
+  const { onChangeNode, onStopNodeDebug, onNextNodeDebug, workflowDebugData } = useContextSelector(
+    WorkflowContext,
+    (v) => v
+  );
 
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('common:core.workflow.Confirm stop debug')
@@ -741,11 +741,9 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
             )}
           </Card>
         )}
-        <ConfirmModal />
       </>
     ) : null;
   }, [
-    ConfirmModal,
     debugResult,
     nodeId,
     onChangeNode,
@@ -753,8 +751,13 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
     onStopNodeDebug,
     openConfirm,
     t,
-    workflowDebugData?.nextRunNodes
+    workflowDebugData
   ]);
 
-  return <>{RenderStatus}</>;
+  return (
+    <>
+      {RenderStatus}
+      <ConfirmModal />
+    </>
+  );
 });
