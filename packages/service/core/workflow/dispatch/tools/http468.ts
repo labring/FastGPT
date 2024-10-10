@@ -184,6 +184,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     }
   })();
 
+  // Just show
   const formattedRequestBody: Record<string, any> = (() => {
     if (requestBody instanceof FormData || requestBody instanceof URLSearchParams) {
       return Object.fromEntries(requestBody);
