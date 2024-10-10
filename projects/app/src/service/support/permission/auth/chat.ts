@@ -3,7 +3,6 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { AuthModeType } from '@fastgpt/service/support/permission/type';
 import { authOutLink, authOutLinkInit } from './outLink';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { authTeamSpaceToken } from './team';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -11,12 +10,12 @@ import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/au
 import {
   AuthUserTypeEnum,
   OwnerPermissionVal,
-  ReadPermissionVal,
-  WritePermissionVal
+  ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 /* 
   outLink: Must be the owner
   token: team owner and chat owner have all permissions
@@ -71,18 +70,18 @@ export async function authChatCrud({
     if (!chat) return { id: outLinkUid };
 
     // auth req
-    const { teamId, tmbId, permission } = await authUserPer({
-      ...props,
+    const { teamId, tmbId, permission } = await authApp({
+      req: props.req,
+      authToken: true,
+      authApiKey: true,
+      appId,
       per: ReadPermissionVal
     });
 
     if (String(teamId) !== String(chat.teamId)) return Promise.reject(ChatErrEnum.unAuthChat);
 
-    if (permission.isOwner) return { uid: outLinkUid };
+    if (permission.hasManagePer) return { uid: outLinkUid };
     if (String(tmbId) === String(chat.tmbId)) return { uid: outLinkUid };
-
-    // Admin can manage all chat
-    if (per === WritePermissionVal && permission.hasManagePer) return { uid: outLinkUid };
 
     return Promise.reject(ChatErrEnum.unAuthChat);
   })();

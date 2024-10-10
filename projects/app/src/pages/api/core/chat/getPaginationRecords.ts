@@ -44,6 +44,7 @@ async function handler(
       per: ReadPermissionVal
     })
   ]);
+
   if (!app) {
     return Promise.reject(AppErrEnum.unExist);
   }
