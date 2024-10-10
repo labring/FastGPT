@@ -34,7 +34,6 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useI18n } from '@/web/context/I18n';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideTag from './SideTag';
 
@@ -441,23 +440,34 @@ function List() {
             onGetCollaboratorList: () => getCollaboratorList(editPerDataset._id),
             permissionList: DatasetPermissionList,
             onUpdateCollaborators: ({
-              members = [], // TODO: remove default value after group is ready
+              members,
+              groups,
               permission
             }: {
               members?: string[];
+              groups?: string[];
               permission: number;
             }) => {
               return postUpdateDatasetCollaborators({
                 members,
+                groups,
                 permission,
                 datasetId: editPerDataset._id
               });
             },
-            onDelOneCollaborator: (tmbId: string) =>
-              deleteDatasetCollaborators({
-                datasetId: editPerDataset._id,
-                tmbId
-              }),
+            onDelOneCollaborator: async ({ tmbId, groupId }) => {
+              if (tmbId) {
+                return deleteDatasetCollaborators({
+                  datasetId: editPerDataset._id,
+                  tmbId
+                });
+              } else if (groupId) {
+                return deleteDatasetCollaborators({
+                  datasetId: editPerDataset._id,
+                  groupId
+                });
+              }
+            },
             refreshDeps: [editPerDataset._id, editPerDataset.inheritPermission]
           }}
           onClose={() => setEditPerDatasetIndex(undefined)}

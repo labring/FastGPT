@@ -52,7 +52,6 @@ const Dataset = () => {
     loadMyDatasets,
     refetchFolderDetail,
     folderDetail,
-    setEditedDataset,
     setMoveDatasetId,
     onDelDataset,
     onUpdateDataset,
@@ -243,23 +242,33 @@ const Dataset = () => {
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 permissionList: DatasetPermissionList,
                 onUpdateCollaborators: ({
-                  members = [], // TODO: remove the default value after group is ready
+                  members,
+                  groups,
                   permission
                 }: {
                   members?: string[];
+                  groups?: string[];
                   permission: number;
-                }) => {
-                  return postUpdateDatasetCollaborators({
+                }) =>
+                  postUpdateDatasetCollaborators({
                     members,
+                    groups,
                     permission,
                     datasetId: folderDetail._id
-                  });
-                },
-                onDelOneCollaborator: (tmbId: string) =>
-                  deleteDatasetCollaborators({
-                    datasetId: folderDetail._id,
-                    tmbId
                   }),
+                onDelOneCollaborator: async ({ tmbId, groupId }) => {
+                  if (tmbId) {
+                    return deleteDatasetCollaborators({
+                      datasetId: folderDetail._id,
+                      tmbId
+                    });
+                  } else if (groupId) {
+                    return deleteDatasetCollaborators({
+                      datasetId: folderDetail._id,
+                      groupId
+                    });
+                  }
+                },
                 refreshDeps: [folderDetail._id, folderDetail.inheritPermission]
               }}
             />

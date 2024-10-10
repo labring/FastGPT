@@ -8,7 +8,7 @@ import { TeamPermission } from '@fastgpt/global/support/permission/user/controll
 
 /* auth user role  */
 export async function authUserPer(props: AuthModeType): Promise<
-  AuthResponseType & {
+  AuthResponseType<TeamPermission> & {
     tmb: TeamTmbItemType;
   }
 > {

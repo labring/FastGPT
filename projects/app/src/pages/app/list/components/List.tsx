@@ -17,10 +17,7 @@ import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import {
-  AppDefaultPermissionVal,
-  AppPermissionList
-} from '@fastgpt/global/support/permission/app/constant';
+import { AppPermissionList } from '@fastgpt/global/support/permission/app/constant';
 import {
   deleteAppCollaborators,
   getCollaboratorList,
@@ -233,7 +230,7 @@ const ListItem = () => {
                     )}
 
                     <PermissionIconText
-                      defaultPermission={app.defaultPermission}
+                      permission={app.private ? 'private' : 'public'}
                       color={'myGray.500'}
                       iconColor={'myGray.400'}
                       w={'0.875rem'}
@@ -412,35 +409,46 @@ const ListItem = () => {
           isInheritPermission={editPerApp.inheritPermission}
           avatar={editPerApp.avatar}
           name={editPerApp.name}
-          defaultPer={{
-            value: editPerApp.defaultPermission,
-            defaultValue: AppDefaultPermissionVal,
-            onChange: (e) => {
-              return onUpdateApp(editPerApp._id, { defaultPermission: e });
-            }
-          }}
           managePer={{
+            mode: 'all',
             permission: editPerApp.permission,
             onGetCollaboratorList: () => getCollaboratorList(editPerApp._id),
             permissionList: AppPermissionList,
             onUpdateCollaborators: ({
-              members = [], // TODO: remove the default value after group is ready
+              members,
+              groups,
               permission
             }: {
               members?: string[];
+              groups?: string[];
               permission: number;
             }) => {
               return postUpdateAppCollaborators({
                 members,
+                groups,
                 permission,
                 appId: editPerApp._id
               });
             },
-            onDelOneCollaborator: (tmbId: string) =>
-              deleteAppCollaborators({
-                appId: editPerApp._id,
-                tmbId
-              }),
+            onDelOneCollaborator: async ({
+              tmbId,
+              groupId
+            }: {
+              tmbId?: string;
+              groupId?: string;
+            }) => {
+              if (tmbId) {
+                return deleteAppCollaborators({
+                  appId: editPerApp._id,
+                  tmbId
+                });
+              } else if (groupId) {
+                return deleteAppCollaborators({
+                  appId: editPerApp._id,
+                  groupId
+                });
+              }
+            },
             refreshDeps: [editPerApp.inheritPermission]
           }}
           onClose={() => setEditPerAppIndex(undefined)}

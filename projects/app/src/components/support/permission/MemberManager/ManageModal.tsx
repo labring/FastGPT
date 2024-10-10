@@ -8,11 +8,11 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { CollaboratorContext } from './context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useTranslation } from 'next-i18next';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 export type ManageModalProps = {
   onClose: () => void;
 };
@@ -23,21 +23,12 @@ function ManageModal({ onClose }: ManageModalProps) {
   const { permission, collaboratorList, onUpdateCollaborators, onDelOneCollaborator } =
     useContextSelector(CollaboratorContext, (v) => v);
 
-  const { runAsync: onDelete, loading: isDeleting } = useRequest2((tmbId: string) =>
-    onDelOneCollaborator(tmbId)
-  );
+  const { runAsync: onDelete, loading: isDeleting } = useRequest2(onDelOneCollaborator);
 
-  const { runAsync: onUpdate, loading: isUpdating } = useRequest2(
-    ({ tmbId, per }: { tmbId: string; per: PermissionValueType }) =>
-      onUpdateCollaborators({
-        members: [tmbId],
-        permission: per
-      }),
-    {
-      successToast: t('common.Update Success'),
-      errorToast: 'Error'
-    }
-  );
+  const { runAsync: onUpdate, loading: isUpdating } = useRequest2(onUpdateCollaborators, {
+    successToast: t('common.Update Success'),
+    errorToast: 'Error'
+  });
 
   const loading = isDeleting || isUpdating;
 
@@ -74,7 +65,7 @@ function ManageModal({ onClose }: ManageModalProps) {
                     <Td border="none">
                       <Flex alignItems="center">
                         <Avatar src={item.avatar} w="24px" mr={2} />
-                        {item.name}
+                        {item.name === DefaultGroupName ? userInfo?.team.teamName : item.name}
                       </Flex>
                     </Td>
                     <Td border="none">
@@ -89,14 +80,19 @@ function ManageModal({ onClose }: ManageModalProps) {
                               <MyIcon name={'edit'} w={'16px'} _hover={{ color: 'primary.600' }} />
                             }
                             value={item.permission.value}
-                            onChange={(per) => {
+                            onChange={(permission) => {
                               onUpdate({
-                                tmbId: item.tmbId,
-                                per
+                                members: item.tmbId ? [item.tmbId] : undefined,
+                                groups: item.groupId ? [item.groupId] : undefined,
+                                permission
                               });
                             }}
                             onDelete={() => {
-                              onDelete(item.tmbId);
+                              console.log('onDelete', item);
+                              onDelete({
+                                tmbId: item.tmbId,
+                                groupId: item.groupId
+                              });
                             }}
                           />
                         )}

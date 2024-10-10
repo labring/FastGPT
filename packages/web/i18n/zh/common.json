@@ -915,7 +915,7 @@
   "permission.Permission config": "权限配置",
   "permission.Private": "私有",
   "permission.Private Tip": "仅自己可用",
-  "permission.Public": "团队",
+  "permission.Public": "协作",
   "permission.Public Tip": "团队所有成员可使用",
   "permission.Remove InheritPermission Confirm": "此操作会导致权限继承失效，是否进行？",
   "permission.Resume InheritPermission Confirm": "是否恢复为继承父级文件夹的权限？",

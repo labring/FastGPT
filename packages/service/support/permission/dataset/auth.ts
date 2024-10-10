@@ -186,7 +186,8 @@ export async function authDatasetCollection({
     teamId,
     tmbId,
     collection,
-    permission: dataset.permission
+    permission: dataset.permission,
+    isRoot: isRootFromHeader || isRoot
   };
 }
 
@@ -231,7 +232,8 @@ export async function authDatasetFile({
       teamId,
       tmbId,
       file,
-      permission
+      permission,
+      isRoot
     };
   } catch (error) {
     return Promise.reject(DatasetErrEnum.unAuthDatasetFile);

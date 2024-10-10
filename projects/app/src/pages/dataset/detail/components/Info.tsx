@@ -59,7 +59,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const defaultPermission = watch('defaultPermission');
 
   const { datasetModelList, vectorModelList } = useSystemStore();
-  const { openConfirm: onOpenConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
+  const { ConfirmModal: ConfirmDelModal } = useConfirm({
     content: t('common:core.dataset.Delete Confirm'),
     type: 'delete'
   });
@@ -348,11 +348,19 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                       ...body,
                       datasetId
                     }),
-                  onDelOneCollaborator: (tmbId) =>
-                    deleteDatasetCollaborators({
-                      datasetId,
-                      tmbId
-                    })
+                  onDelOneCollaborator: async ({ groupId, tmbId }) => {
+                    if (tmbId) {
+                      return deleteDatasetCollaborators({
+                        datasetId,
+                        tmbId
+                      });
+                    } else if (groupId) {
+                      return deleteDatasetCollaborators({
+                        datasetId,
+                        groupId
+                      });
+                    }
+                  }
                 }}
               />
             </Box>

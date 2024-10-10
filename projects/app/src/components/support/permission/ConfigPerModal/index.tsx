@@ -14,7 +14,7 @@ export type ConfigPerModalProps = {
   avatar?: string;
   name: string;
 
-  defaultPer: {
+  defaultPer?: {
     value: PermissionValueType;
     defaultValue: PermissionValueType;
     onChange: (v: PermissionValueType) => Promise<any>;
@@ -66,17 +66,22 @@ const ConfigPerModal = ({
               <ResumeInherit onResume={resumeInheritPermission} />
             </Box>
           )}
-          <Box mt={5}>
-            <Box fontSize={'sm'}>{t('common:permission.Default permission')}</Box>
-            <DefaultPermissionList
-              mt="1"
-              per={defaultPer.value}
-              defaultPer={defaultPer.defaultValue}
-              isInheritPermission={isInheritPermission}
-              onChange={(v) => defaultPer.onChange(v)}
-              hasParent={hasParent}
-            />
-          </Box>
+          {
+            // deprecated
+            !!defaultPer && (
+              <Box mt={5}>
+                <Box fontSize={'sm'}>{t('common:permission.Default permission')}</Box>
+                <DefaultPermissionList
+                  mt="1"
+                  per={defaultPer.value}
+                  defaultPer={defaultPer.defaultValue}
+                  isInheritPermission={isInheritPermission}
+                  onChange={(v) => defaultPer.onChange(v)}
+                  hasParent={hasParent}
+                />
+              </Box>
+            )
+          }
           <Box mt={4}>
             <CollaboratorContextProvider
               {...managePer}

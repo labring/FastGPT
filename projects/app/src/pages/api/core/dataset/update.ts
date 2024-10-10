@@ -122,7 +122,6 @@ async function handler(
           resourceModel: MongoDataset,
           folderTypeList: [DatasetTypeEnum.folder],
           collaborators: parentClbs,
-          defaultPermission: parentDefaultPermission,
           session
         });
         return onUpdate(session, parentDefaultPermission);
@@ -133,7 +132,6 @@ async function handler(
     await mongoSessionRun(async (session) => {
       if (isFolder) {
         await syncChildrenPermission({
-          defaultPermission,
           resource: {
             _id: dataset._id,
             type: dataset.type,

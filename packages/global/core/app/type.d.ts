@@ -10,7 +10,6 @@ import { SelectedDatasetType } from '../workflow/api';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/user/team/type.d';
 import { StoreEdgeItemType } from '../workflow/type/edge';
-import { PermissionSchemaType, PermissionValueType } from '../../support/permission/type';
 import { AppPermission } from '../../support/permission/app/controller';
 import { ParentIdType } from '../../common/parentFolder/type';
 import { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
@@ -45,7 +44,8 @@ export type AppSchema = {
 
   inited?: boolean;
   teamTags: string[];
-} & PermissionSchemaType;
+  inheritPermission?: boolean;
+};
 
 export type AppListItemType = {
   _id: string;
@@ -57,7 +57,9 @@ export type AppListItemType = {
   updateTime: Date;
   pluginData?: AppSchema['pluginData'];
   permission: AppPermission;
-} & PermissionSchemaType;
+  inheritPermission?: boolean;
+  private?: boolean;
+};
 
 export type AppDetailType = AppSchema & {
   permission: AppPermission;

@@ -10,12 +10,16 @@ import { MongoResourcePermission } from './schema';
 import { ClientSession } from 'mongoose';
 import {
   PermissionValueType,
-  ResourcePermissionType
+  ResourcePermissionType,
+  ResourcePerWithGroup,
+  ResourcePerWithTmbWithUser
 } from '@fastgpt/global/support/permission/type';
 import { bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { addMinutes } from 'date-fns';
 import { getGroupsByTmbId } from './memberGroup/controllers';
 import { Permission } from '@fastgpt/global/support/permission/controller';
+import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -123,6 +127,66 @@ export async function getResourceAllClbs({
   ).lean();
 }
 
+export async function getResourceClbsAndGroups({
+  resourceId,
+  resourceType,
+  teamId,
+  session
+}: {
+  resourceId: ParentIdType;
+  resourceType: Omit<`${PerResourceTypeEnum}`, 'team'>;
+  teamId: string;
+  session: ClientSession;
+}) {
+  return MongoResourcePermission.find(
+    {
+      resourceId,
+      resourceType,
+      teamId
+    },
+    undefined,
+    { session }
+  ).lean();
+}
+
+export const getClbsAndGroupsWithInfo = async ({
+  resourceId,
+  resourceType,
+  teamId
+}: {
+  resourceId: ParentIdType;
+  resourceType: Omit<`${PerResourceTypeEnum}`, 'team'>;
+  teamId: string;
+}) =>
+  Promise.all([
+    (await MongoResourcePermission.find({
+      teamId,
+      resourceId,
+      resourceType,
+      tmbId: {
+        $exists: true
+      }
+    }).populate({
+      path: 'tmbId',
+      select: 'name userId',
+      populate: {
+        path: 'userId',
+        select: 'avatar'
+      }
+    })) as ResourcePerWithTmbWithUser[],
+    (await MongoResourcePermission.find({
+      teamId,
+      resourceId,
+      resourceType,
+      groupId: {
+        $exists: true
+      }
+    }).populate({
+      path: 'groupId',
+      select: 'name avatar'
+    })) as ResourcePerWithGroup[]
+  ]);
+
 export const delResourcePermissionById = (id: string) => {
   return MongoResourcePermission.findByIdAndRemove(id);
 };
@@ -135,7 +199,10 @@ export const delResourcePermission = ({
   resourceId: string;
   tmbId: string;
   session?: ClientSession;
-}) => {
+} & RequireOnlyOne<{
+  tmbId: string;
+  groupId: string;
+}>) => {
   return MongoResourcePermission.deleteOne(props, { session });
 };
 
