@@ -52,8 +52,7 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
           }
         ]
       : []),
-    // ...(feConfigs?.show_pay && userInfo?.team?.permission.hasWritePer
-    ...(feConfigs?.show_pay || userInfo?.team?.permission.hasWritePer
+    ...(feConfigs?.show_pay && userInfo?.team?.permission.hasManagePer
       ? [
           {
             icon: 'support/bill/payRecordLight',
@@ -62,7 +61,6 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
           }
         ]
       : []),
-
     ...(feConfigs?.show_promotion
       ? [
           {
@@ -72,7 +70,7 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
           }
         ]
       : []),
-    ...(userInfo?.team?.permission.hasWritePer
+    ...(userInfo?.team?.permission.hasManagePer
       ? [
           {
             icon: 'support/outlink/apikeyLight',
