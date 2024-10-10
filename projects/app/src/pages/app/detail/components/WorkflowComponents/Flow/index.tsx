@@ -160,7 +160,7 @@ const Workflow = () => {
               }
             : {})}
           onNodeDragStop={onNodeDragStop}
-          deleteKeyCode={[]}
+          // deleteKeyCode={[]}
         >
           <FlowController />
           <HelperLines horizontal={helperLineHorizontal} vertical={helperLineVertical} />
