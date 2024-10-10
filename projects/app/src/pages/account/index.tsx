@@ -61,7 +61,7 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
           }
         ]
       : []),
-    ...(feConfigs?.show_promotion
+    ...(feConfigs?.show_promotion && userInfo?.team?.permission.isOwner
       ? [
           {
             icon: 'support/account/promotionLight',
