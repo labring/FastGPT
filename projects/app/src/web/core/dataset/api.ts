@@ -51,7 +51,7 @@ import type { UpdateDatasetCollectionParams } from '@/pages/api/core/dataset/col
 import type {
   GetDatasetDataListProps,
   GetDatasetDataListRes
-} from '@/pages/api/core/dataset/data/list';
+} from '@/pages/api/core/dataset/data/v2/list';
 import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
 import type { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
@@ -159,7 +159,7 @@ export const getScrollCollectionList = (data: GetScrollCollectionsProps) =>
 /* =============================== data ==================================== */
 /* get dataset list */
 export const getDatasetDataList = (data: GetDatasetDataListProps) =>
-  POST<GetDatasetDataListRes>(`/core/dataset/data/list`, data);
+  POST<GetDatasetDataListRes>(`/core/dataset/data/v2/list`, data);
 
 export const getDatasetDataItemById = (id: string) =>
   GET<DatasetDataItemType>(`/core/dataset/data/detail`, { id });

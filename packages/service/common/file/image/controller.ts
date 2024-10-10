@@ -5,10 +5,6 @@ import { ClientSession } from '../../../common/mongo';
 import { guessBase64ImageType } from '../utils';
 import { readFromSecondary } from '../../mongo/utils';
 
-export function getMongoImgUrl(id: string, extension: string) {
-  return `${imageBaseUrl}${id}.${extension}`;
-}
-
 export const maxImgSize = 1024 * 1024 * 12;
 const base64MimeRegex = /data:image\/([^\)]+);base64/;
 export async function uploadMongoImg({
@@ -39,7 +35,7 @@ export async function uploadMongoImg({
     shareId
   });
 
-  return getMongoImgUrl(String(_id), extension);
+  return `${process.env.FE_DOMAIN || ''}${imageBaseUrl}${String(_id)}.${extension}`;
 }
 
 export async function readMongoImg({ id }: { id: string }) {
