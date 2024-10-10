@@ -37,7 +37,7 @@ async function handler(
 
   // auth chat permission
   if (chat && !app.permission.hasManagePer && String(tmbId) !== String(chat?.tmbId)) {
-    throw new Error(ChatErrEnum.unAuthChat);
+    return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
   // get app and history
