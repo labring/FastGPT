@@ -33,7 +33,6 @@
   "dataset_quote_role_system_option_desc": "历史记录连贯优先（推荐）",
   "dataset_quote_role_tip": "设置为 System 时，将会把知识库引用内容放置到 system 消息中，可以确保历史记录的连贯性，但约束效果可能不佳，需要多调试。\n设置为 User 时，将会把知识库引用内容放置到 user 消息中，并且需要指定 {{question}} 变量位置。会对历史记录连贯性有一定影响，但通常约束效果更优。",
   "dataset_quote_role_user_option_desc": "强约束优先",
-  "delete_api": "确认删除该API密钥？删除后该密钥立即失效，对应的对话日志不会删除，请确认！",
   "dynamic_input_description": "接收前方节点的输出值作为变量，这些变量可以被 Laf 请求参数使用。",
   "dynamic_input_description_concat": "可以引用其他节点的输出，作为文本拼接的变量，输入 / 唤起变量列表",
   "edit_input": "编辑输入",
