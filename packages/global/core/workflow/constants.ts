@@ -267,29 +267,58 @@ export enum NodeOutputKeyEnum {
 export enum VariableInputEnum {
   input = 'input',
   textarea = 'textarea',
+  numberInput = 'numberInput',
   select = 'select',
+  switch = 'switch',
   custom = 'custom'
 }
-export const variableMap = {
+export const variableMap: Record<
+  VariableInputEnum,
+  {
+    icon: string;
+    label: string;
+    value: VariableInputEnum;
+    defaultValueType: WorkflowIOValueTypeEnum;
+    description?: string;
+  }
+> = {
   [VariableInputEnum.input]: {
-    icon: 'core/app/variable/input',
-    title: i18nT('common:core.module.variable.input type'),
-    desc: ''
+    icon: 'core/workflow/inputType/input',
+    label: i18nT('common:core.workflow.inputType.input'),
+    value: VariableInputEnum.input,
+    defaultValueType: WorkflowIOValueTypeEnum.string
   },
   [VariableInputEnum.textarea]: {
-    icon: 'core/app/variable/textarea',
-    title: i18nT('common:core.module.variable.textarea type'),
-    desc: i18nT('app:variable.textarea_type_desc')
+    icon: 'core/workflow/inputType/textarea',
+    label: i18nT('common:core.workflow.inputType.textarea'),
+    value: VariableInputEnum.textarea,
+    defaultValueType: WorkflowIOValueTypeEnum.string,
+    description: i18nT('app:variable.textarea_type_desc')
+  },
+  [VariableInputEnum.numberInput]: {
+    icon: 'core/workflow/inputType/numberInput',
+    label: i18nT('common:core.workflow.inputType.number input'),
+    value: VariableInputEnum.numberInput,
+    defaultValueType: WorkflowIOValueTypeEnum.number
+  },
+  [VariableInputEnum.switch]: {
+    icon: 'core/workflow/inputType/switch',
+    label: i18nT('common:core.workflow.inputType.switch'),
+    value: VariableInputEnum.switch,
+    defaultValueType: WorkflowIOValueTypeEnum.boolean
   },
   [VariableInputEnum.select]: {
-    icon: 'core/app/variable/select',
-    title: i18nT('common:core.module.variable.select type'),
-    desc: ''
+    icon: 'core/workflow/inputType/option',
+    label: i18nT('common:core.workflow.inputType.select'),
+    value: VariableInputEnum.select,
+    defaultValueType: WorkflowIOValueTypeEnum.string
   },
   [VariableInputEnum.custom]: {
-    icon: 'core/app/variable/external',
-    title: i18nT('common:core.module.variable.Custom type'),
-    desc: i18nT('app:variable.select type_desc')
+    icon: 'core/workflow/inputType/customVariable',
+    label: i18nT('common:core.workflow.inputType.custom'),
+    value: VariableInputEnum.custom,
+    defaultValueType: WorkflowIOValueTypeEnum.string,
+    description: i18nT('app:variable.select type_desc')
   }
 };
 

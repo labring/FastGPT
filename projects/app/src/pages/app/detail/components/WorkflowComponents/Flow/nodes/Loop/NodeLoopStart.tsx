@@ -110,7 +110,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   <Thead>
                     <Tr>
                       <Th borderBottomLeftRadius={'none !important'}>
-                        {t('common:core.module.variable.variable name')}
+                        {t('workflow:Variable_name')}
                       </Th>
                       <Th>{t('common:core.workflow.Value type')}</Th>
                     </Tr>

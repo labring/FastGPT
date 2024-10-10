@@ -750,7 +750,6 @@
   "core.module.variable.select type": "Dropdown Single Select",
   "core.module.variable.text max length": "Max Length",
   "core.module.variable.textarea type": "Paragraph",
-  "core.module.variable.variable name": "Variable Name",
   "core.module.variable.variable name is required": "Variable Name Cannot Be Empty",
   "core.module.variable.variable option is required": "Options Cannot Be All Empty",
   "core.module.variable.variable option is value is required": "Option Content Cannot Be Empty",

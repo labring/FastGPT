@@ -21,9 +21,7 @@ const VariableTable = ({
         <Table bg={'white'}>
           <Thead>
             <Tr>
-              <Th borderBottomLeftRadius={'none !important'}>
-                {t('common:core.module.variable.variable name')}
-              </Th>
+              <Th borderBottomLeftRadius={'none !important'}>{t('workflow:Variable_name')}</Th>
               <Th>{t('common:core.workflow.Value type')}</Th>
               {showToolColumn && <Th>{t('workflow:tool_input')}</Th>}
               <Th borderBottomRightRadius={'none !important'}></Th>

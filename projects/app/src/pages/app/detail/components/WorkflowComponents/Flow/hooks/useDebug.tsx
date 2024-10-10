@@ -1,7 +1,7 @@
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { checkWorkflowNodeAndConnection } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -22,12 +22,17 @@ import {
   Switch
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { checkInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext, getWorkflowStore } from '../../context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AppContext } from '../../../context';
+import { VariableInputItem } from '@/components/core/chat/ChatContainer/ChatBox/components/VariableInput';
 
 const MyRightDrawer = dynamic(
   () => import('@fastgpt/web/components/common/MyDrawer/MyRightDrawer')
@@ -42,6 +47,13 @@ export const useDebug = () => {
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
   const edges = useContextSelector(WorkflowContext, (v) => v.edges);
   const onStartNodeDebug = useContextSelector(WorkflowContext, (v) => v.onStartNodeDebug);
+
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+
+  const filteredVar = useMemo(() => {
+    const variables = appDetail.chatConfig.variables;
+    return variables?.filter((item) => item.type !== VariableInputEnum.custom) || [];
+  }, [appDetail.chatConfig.variables]);
 
   const [runtimeNodeId, setRuntimeNodeId] = useState<string>();
   const [runtimeNodes, setRuntimeNodes] = useState<RuntimeNodeItemType[]>();
@@ -117,7 +129,7 @@ export const useDebug = () => {
       if (input.required && !input.value) return true;
     });
 
-    const { register, getValues, setValue, handleSubmit } = useForm<Record<string, any>>({
+    const variablesForm = useForm<Record<string, any>>({
       defaultValues: renderInputs.reduce((acc: Record<string, any>, input) => {
         const isReference = checkInputIsReference(input);
         if (isReference) {
@@ -131,6 +143,7 @@ export const useDebug = () => {
         return acc;
       }, {})
     });
+    const { register, getValues, setValue, handleSubmit } = variablesForm;
 
     const onClose = () => {
       setRuntimeNodeId(undefined);
@@ -139,6 +152,7 @@ export const useDebug = () => {
     };
 
     const onClickRun = (data: Record<string, any>) => {
+      console.log(data);
       onStartNodeDebug({
         entryNodeId: runtimeNode.nodeId,
         runtimeNodes: runtimeNodes.map((node) =>
@@ -169,7 +183,10 @@ export const useDebug = () => {
               }
             : node
         ),
-        runtimeEdges: runtimeEdges
+        runtimeEdges: runtimeEdges,
+        variables: Object.fromEntries(
+          Object.entries(data).filter(([key]) => filteredVar.some((item) => item.key === key))
+        )
       });
       onClose();
     };
@@ -183,6 +200,9 @@ export const useDebug = () => {
         px={0}
       >
         <Box flex={'1 0 0'} overflow={'auto'} px={6}>
+          {filteredVar.map((item) => (
+            <VariableInputItem key={item.id} item={item} variablesForm={variablesForm} />
+          ))}
           {renderInputs.map((input) => {
             const required = input.required || false;
 
@@ -265,7 +285,7 @@ export const useDebug = () => {
         </Flex>
       </MyRightDrawer>
     );
-  }, [onStartNodeDebug, runtimeEdges, runtimeNodeId, runtimeNodes, t]);
+  }, [filteredVar, onStartNodeDebug, runtimeEdges, runtimeNodeId, runtimeNodes, t]);
 
   return {
     DebugInputModal,

@@ -13,6 +13,7 @@ import { StoreEdgeItemType } from '../workflow/type/edge';
 import { PermissionSchemaType, PermissionValueType } from '../../support/permission/type';
 import { AppPermission } from '../../support/permission/app/controller';
 import { ParentIdType } from '../../common/parentFolder/type';
+import { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
 
 export type AppSchema = {
   _id: string;
@@ -114,11 +115,17 @@ export type VariableItemType = {
   id: string;
   key: string;
   label: string;
-  type: `${VariableInputEnum}`;
+  type: VariableInputEnum;
   required: boolean;
-  maxLen: number;
-  enums: { value: string }[];
-  valueType: WorkflowIOValueTypeEnum;
+  description: string;
+  valueType?: WorkflowIOValueTypeEnum;
+  defaultValue?: any;
+
+  // numberInput
+  max?: number;
+  min?: number;
+  // select
+  enums?: { value: string; label: string }[];
 };
 // tts
 export type AppTTSConfigType = {
