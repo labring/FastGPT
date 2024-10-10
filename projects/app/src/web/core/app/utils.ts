@@ -171,7 +171,7 @@ export function form2AppWorkflow(
           debugLabel: i18nT('common:core.module.Dataset quote.label'),
           description: '',
           valueType: WorkflowIOValueTypeEnum.datasetQuote,
-          value: selectedDatasets ? [datasetNodeId, 'quoteQA'] : undefined
+          value: selectedDatasets?.length > 0 ? [datasetNodeId, 'quoteQA'] : undefined
         },
         {
           key: NodeInputKeyEnum.aiChatVision,
