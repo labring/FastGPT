@@ -286,7 +286,7 @@ const ChatInput = ({
         />
         <Flex alignItems={'center'} position={'absolute'} right={[2, 4]} bottom={['10px', '12px']}>
           {/* voice-input */}
-          {whisperConfig.open && !havInput && !isChatting && !!whisperModel && (
+          {whisperConfig.open && !inputValue && !isChatting && !!whisperModel && (
             <>
               <canvas
                 ref={canvasRef}
