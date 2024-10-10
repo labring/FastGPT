@@ -19,7 +19,7 @@
   "chat_logs_tips": "日志会记录该应用的在线、分享和 API（需填写 chatId）对话记录",
   "config_file_upload": "点击配置文件上传规则",
   "confirm_copy_app_tip": "系统将为您创建一个相同配置应用，但权限不会进行复制，请确认！",
-  "confirm_del_app_tip": "确认删除该应用及其所有聊天记录？",
+  "confirm_del_app_tip": "确认删除 【{{name}}】 及其所有聊天记录？",
   "confirm_delete_folder_tip": "确认删除该文件夹？将会删除它下面所有应用及对应的聊天记录，请确认！",
   "copy_one_app": "创建副本",
   "create_copy_success": "创建副本成功",
