@@ -85,10 +85,13 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
         if (!cancelWhisperSignal.current) {
           const formData = new FormData();
           let options = {};
-          if (MediaRecorder.isTypeSupported('audio/webm')) {
-            options = { type: 'audio/webm' };
-          } else if (MediaRecorder.isTypeSupported('video/mp3')) {
-            options = { type: 'video/mp3' };
+
+          if (MediaRecorder.isTypeSupported('video/webm; codecs=vp9')) {
+            options = { mimeType: 'video/webm; codecs=vp9' };
+          } else if (MediaRecorder.isTypeSupported('video/webm')) {
+            options = { type: 'video/webm' };
+          } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+            options = { mimeType: 'video/mp4', videoBitsPerSecond: 100000 };
           } else {
             console.error('no suitable mimetype found for this device');
           }
