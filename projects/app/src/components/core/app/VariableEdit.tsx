@@ -123,9 +123,6 @@ const VariableEdit = ({
       if (data.type === VariableInputEnum.numberInput) {
         data.valueType = WorkflowIOValueTypeEnum.number;
       }
-      if (data.type === VariableInputEnum.switch) {
-        data.valueType = WorkflowIOValueTypeEnum.boolean;
-      }
 
       const onChangeVariable = [...variables];
       if (data.id) {
@@ -261,7 +258,7 @@ const VariableEdit = ({
           <Flex h={'560px'}>
             <Stack gap={4} p={8}>
               <FormLabel color={'myGray.600'} fontWeight={'medium'}>
-                {t('common:core.module.Input Type')}
+                {t('workflow:Variable.Variable type')}
               </FormLabel>
               <Flex flexDirection={'column'} gap={4}></Flex>
               <Box display={'grid'} gridTemplateColumns={'repeat(2, 1fr)'} gap={4}>
@@ -318,7 +315,7 @@ const VariableEdit = ({
             <InputTypeConfig
               form={form}
               type={'variable'}
-              isEdit={!!value.label}
+              isEdit={!!value.key}
               inputType={type}
               valueType={valueType}
               defaultValue={defaultValue}

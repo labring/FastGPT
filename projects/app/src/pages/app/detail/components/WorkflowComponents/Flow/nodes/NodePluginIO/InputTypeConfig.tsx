@@ -6,6 +6,11 @@ import {
   FormLabel,
   HStack,
   Input,
+  NumberDecrementStepper,
+  NumberIncrementStepper,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
   Stack,
   Switch,
   Textarea
@@ -75,6 +80,7 @@ const InputTypeConfig = ({
   onSubmitError: (e: Object) => void;
 }) => {
   const { t } = useTranslation();
+  const defaultListValue = { label: t('common:None'), value: '' };
 
   const { register, setValue, handleSubmit, control, watch } = form;
   const listValue: ListValueType = watch('list');
@@ -202,7 +208,7 @@ const InputTypeConfig = ({
         )}
         {showRequired && (
           <Flex alignItems={'center'} minH={'40px'}>
-            <FormLabel flex={'1'} fontWeight={'medium'}>
+            <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
               {t('workflow:field_required')}
             </FormLabel>
             <Switch {...register('required')} />
@@ -286,13 +292,20 @@ const InputTypeConfig = ({
               {t('common:core.module.Default Value')}
             </FormLabel>
             {inputType === FlowNodeInputTypeEnum.numberInput && (
-              <Input
-                bg={'myGray.50'}
-                max={max}
-                min={min}
-                type={'number'}
-                {...register('defaultValue')}
-              />
+              <NumberInput flex={1} step={1} min={min} max={max} position={'relative'}>
+                <NumberInputField
+                  {...register('defaultValue', {
+                    required: true,
+                    min: min,
+                    max: max,
+                    valueAsNumber: true
+                  })}
+                />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
             )}
             {inputType === FlowNodeInputTypeEnum.input && (
               <Input bg={'myGray.50'} maxLength={maxLength} {...register('defaultValue')} />
@@ -314,11 +327,15 @@ const InputTypeConfig = ({
             {inputType === FlowNodeInputTypeEnum.switch && <Switch {...register('defaultValue')} />}
             {inputType === FlowNodeInputTypeEnum.select && (
               <MySelect<string>
-                list={listValue.map((item) => ({
+                list={[defaultListValue, ...listValue].map((item) => ({
                   label: item.label,
                   value: item.value
                 }))}
-                value={defaultValue}
+                value={
+                  defaultValue && listValue.map((item) => item.value).includes(defaultValue)
+                    ? defaultValue
+                    : ''
+                }
                 onchange={(e) => {
                   setValue('defaultValue', e);
                 }}

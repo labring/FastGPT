@@ -19,7 +19,8 @@ export const defaultFormInput: UserInputFormItemType = {
   maxLength: undefined,
   defaultValue: '',
   valueType: WorkflowIOValueTypeEnum.string,
-  required: false
+  required: false,
+  list: [{ label: '', value: '' }]
 };
 
 // Modal for add or edit user input form items
@@ -39,10 +40,7 @@ const InputFormEditModal = ({
   const { toast } = useToast();
 
   const form = useForm({
-    defaultValues: {
-      ...defaultValue,
-      list: defaultValue.list?.length ? defaultValue.list : [{ label: '', value: '' }]
-    }
+    defaultValues: defaultValue
   });
   const { setValue, watch, reset } = form;
 
