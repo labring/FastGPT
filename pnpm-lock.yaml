@@ -22,7 +22,7 @@ importers:
         version: 13.3.0
       next-i18next:
         specifier: 15.3.0
-        version: 15.3.0(i18next@23.11.5)(next@14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8))(react-i18next@14.1.2(i18next@23.11.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.3.0(i18next@23.11.5)(next@14.2.5(@babel/core@7.24.9)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8))(react-i18next@14.1.2(i18next@23.11.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       prettier:
         specifier: 3.2.4
         version: 3.2.4
@@ -61,7 +61,7 @@ importers:
         version: 4.0.2
       next:
         specifier: 14.2.5
-        version: 14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8)
+        version: 14.2.5(@babel/core@7.24.9)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8)
       openai:
         specifier: 4.61.0
         version: 4.61.0(encoding@0.1.13)
@@ -87,12 +87,18 @@ importers:
       duck-duck-scrape:
         specifier: ^2.2.5
         version: 2.2.5
+      echarts:
+        specifier: 5.4.1
+        version: 5.4.1
       expr-eval:
         specifier: ^2.0.2
         version: 2.0.2
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
+      wikijs:
+        specifier: ^6.4.1
+        version: 6.4.1(encoding@0.1.13)
     devDependencies:
       '@fastgpt/global':
         specifier: workspace:*
@@ -180,7 +186,7 @@ importers:
         version: 1.4.5-lts.1
       next:
         specifier: 14.2.5
-        version: 14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8)
+        version: 14.2.5(@babel/core@7.24.9)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8)
       nextjs-cors:
         specifier: ^2.2.0
         version: 2.2.0(next@14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8))
@@ -250,7 +256,7 @@ importers:
         version: 2.1.1(@chakra-ui/system@2.6.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@chakra-ui/next-js':
         specifier: 2.1.5
-        version: 2.1.5(@chakra-ui/react@2.8.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8))(react@18.3.1)
+        version: 2.1.5(@chakra-ui/react@2.8.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@14.2.5(@babel/core@7.24.9)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8))(react@18.3.1)
       '@chakra-ui/react':
         specifier: 2.8.1
         version: 2.8.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -313,7 +319,7 @@ importers:
         version: 4.17.21
       next-i18next:
         specifier: 15.3.0
-        version: 15.3.0(i18next@23.11.5)(next@14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8))(react-i18next@14.1.2(i18next@23.11.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.3.0(i18next@23.11.5)(next@14.2.5(@babel/core@7.24.9)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8))(react-i18next@14.1.2(i18next@23.11.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       papaparse:
         specifier: ^5.4.1
         version: 5.4.1
@@ -540,7 +546,7 @@ importers:
     devDependencies:
       '@shelf/jest-mongodb':
         specifier: ^4.3.2
-        version: 4.3.2(jest-environment-node@29.7.0)(mongodb@5.9.2)
+        version: 4.3.2(jest-environment-node@29.7.0)(mongodb@6.9.0(socks@2.8.3))
       '@svgr/webpack':
         specifier: ^6.5.1
         version: 6.5.1
@@ -580,6 +586,9 @@ importers:
       mockingoose:
         specifier: ^2.16.2
         version: 2.16.2(mongoose@7.7.0)
+      mongodb-memory-server:
+        specifier: ^10.0.0
+        version: 10.1.0(socks@2.8.3)
       typescript:
         specifier: ^5.1.3
         version: 5.5.3
@@ -2701,24 +2710,28 @@ packages:
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@next/swc-linux-arm64-musl@14.2.5':
     resolution: {integrity: sha512-NpDB9NUR2t0hXzJJwQSGu1IAOYybsfeB+LxpGsXrRIb7QOrYmidJz3shzY8cM6+rO4Aojuef0N/PEaX18pi9OA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@next/swc-linux-x64-gnu@14.2.5':
     resolution: {integrity: sha512-8XFikMSxWleYNryWIjiCX+gU201YS+erTUidKdyOVYi5qUQo/gRxv/3N1oZFCgqpesN6FPeqGM72Zve+nReVXQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@next/swc-linux-x64-musl@14.2.5':
     resolution: {integrity: sha512-6QLwi7RaYiQDcRDSU/os40r5o06b5ue7Jsk5JgdRBGGp8l37RZEh9JsLSM8QF0YDsgcosSeHjglgqi25+m04IQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@next/swc-win32-arm64-msvc@14.2.5':
     resolution: {integrity: sha512-1GpG2VhbspO+aYoMOQPQiqc/tG3LzmsdBH0LhnDS3JrtDx2QmzXe0B6mSZZiN3Bq7IOMXxv1nlsjzoS1+9mzZw==}
@@ -2779,24 +2792,28 @@ packages:
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@node-rs/jieba-linux-arm64-musl@1.10.0':
     resolution: {integrity: sha512-gxqoAVOQsn9sgYK6mFO9dsMZ/yOMvVecLZW5rGvLErjiugVvYUlESXIvCqxp2GSws8RtTqJj6p9u/lBmCCuvaw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@node-rs/jieba-linux-x64-gnu@1.10.0':
     resolution: {integrity: sha512-rS5Shs8JITxJjFIjoIZ5a9O+GO21TJgKu03g2qwFE3QaN5ZOvXtz+/AqqyfT4GmmMhCujD83AGqfOGXDmItF9w==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@node-rs/jieba-linux-x64-musl@1.10.0':
     resolution: {integrity: sha512-BvSiF2rR8Birh2oEVHcYwq0WGC1cegkEdddWsPrrSmpKmukJE2zyjcxaOOggq2apb8fIRsjyeeUh6X3R5AgjvA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@node-rs/jieba-wasm32-wasi@1.10.0':
     resolution: {integrity: sha512-EzeAAbRrFTdYw61rd8Mfwdp/fA21d58z9vLY06CDbI+dqANfMFn1IUdwzKWi8S5J/MRhvbzonbbh3yHlz6F43Q==}
@@ -2950,46 +2967,55 @@ packages:
     resolution: {integrity: sha512-P9bSiAUnSSM7EmyRK+e5wgpqai86QOSv8BwvkGjLwYuOpaeomiZWifEos517CwbG+aZl1T4clSE1YqqH2JRs+g==}
     cpu: [arm]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-arm-musleabihf@4.18.1':
     resolution: {integrity: sha512-5RnjpACoxtS+aWOI1dURKno11d7krfpGDEn19jI8BuWmSBbUC4ytIADfROM1FZrFhQPSoP+KEa3NlEScznBTyQ==}
     cpu: [arm]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-arm64-gnu@4.18.1':
     resolution: {integrity: sha512-8mwmGD668m8WaGbthrEYZ9CBmPug2QPGWxhJxh/vCgBjro5o96gL04WLlg5BA233OCWLqERy4YUzX3bJGXaJgQ==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-arm64-musl@4.18.1':
     resolution: {integrity: sha512-dJX9u4r4bqInMGOAQoGYdwDP8lQiisWb9et+T84l2WXk41yEej8v2iGKodmdKimT8cTAYt0jFb+UEBxnPkbXEQ==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-powerpc64le-gnu@4.18.1':
     resolution: {integrity: sha512-V72cXdTl4EI0x6FNmho4D502sy7ed+LuVW6Ym8aI6DRQ9hQZdp5sj0a2usYOlqvFBNKQnLQGwmYnujo2HvjCxQ==}
     cpu: [ppc64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-riscv64-gnu@4.18.1':
     resolution: {integrity: sha512-f+pJih7sxoKmbjghrM2RkWo2WHUW8UbfxIQiWo5yeCaCM0TveMEuAzKJte4QskBp1TIinpnRcxkquY+4WuY/tg==}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-s390x-gnu@4.18.1':
     resolution: {integrity: sha512-qb1hMMT3Fr/Qz1OKovCuUM11MUNLUuHeBC2DPPAWUYYUAOFWaxInaTwTQmc7Fl5La7DShTEpmYwgdt2hG+4TEg==}
     cpu: [s390x]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-x64-gnu@4.18.1':
     resolution: {integrity: sha512-7O5u/p6oKUFYjRbZkL2FLbwsyoJAjyeXHCU3O4ndvzg2OFO2GinFPSJFGbiwFDaCFc+k7gs9CF243PwdPQFh5g==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-x64-musl@4.18.1':
     resolution: {integrity: sha512-pDLkYITdYrH/9Cv/Vlj8HppDuLMDUBmgsM0+N+xLtFd18aXgM9Nyqupb/Uw+HeidhfYg2lD6CXvz6CjoVOaKjQ==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-win32-arm64-msvc@4.18.1':
     resolution: {integrity: sha512-W2ZNI323O/8pJdBGil1oCauuCzmVd9lDmWBBqxYZcOqWD6aWqJtVBQ1dFrF4dYpZPks6F+xCZHfzG5hYlSHZ6g==}
@@ -3452,6 +3478,9 @@ packages:
   '@types/webidl-conversions@7.0.3':
     resolution: {integrity: sha512-CiJJvcRtIgzadHCYXw7dqEnMNRjhGZlYK05Mj9OyktqV8uVT8fD2BFOB7S1uwBE3Kj2Z+4UyPmFw/Ixgw/LAlA==}
 
+  '@types/whatwg-url@11.0.5':
+    resolution: {integrity: sha512-coYR071JRaHa+xoEvvYqvnIHaVqaYrLPbsufM9BF63HkwI5Lgmy2QR8Q5K/lYDYo5AK82wOvSOS0UsLTpTG7uQ==}
+
   '@types/whatwg-url@8.2.2':
     resolution: {integrity: sha512-FtQu10RWgn3D9U4aazdwIE2yzphmTJREDqNdODHrbrZmmMqI0vMheC/6NE/J1Yveaj8H+ela+YwWTjq5PGmuhA==}
 
@@ -3854,6 +3883,9 @@ packages:
   async-mutex@0.4.1:
     resolution: {integrity: sha512-WfoBo4E/TbCX1G95XTjbWTE3X2XLG0m1Xbv2cwOtuPdyH9CZvnaA5nCt1ucjaKEgW2A5IF71hxrRhr83Je5xjA==}
 
+  async-mutex@0.5.0:
+    resolution: {integrity: sha512-1A94B18jkJ3DYq284ohPxoXbfTA5HsQ7/Mf4DEhcyLx3Bz27Rh59iScbB6EPiP+B+joue6YCxcMXSbFC1tZKwA==}
+
   async@3.2.5:
     resolution: {integrity: sha512-baNZyqaaLhyLVKm/DlvdW051MSgO6b8eVfIezl9E5PqWxFgzLm/wQntEW4zOytVburDEr0JlALEpdOFwvErLsg==}
 
@@ -3992,6 +4024,10 @@ packages:
     resolution: {integrity: sha512-ix0EwukN2EpC0SRWIj/7B5+A6uQMQy6KMREI9qQqvgpkV2frH63T0UDVd1SYedL6dNCmDBYB3QtXi4ISk9YT+g==}
     engines: {node: '>=14.20.1'}
 
+  bson@6.8.0:
+    resolution: {integrity: sha512-iOJg8pr7wq2tg/zSlCCHMi3hMm5JTOxLTagf3zxhcenHsFp+c6uOs6K7W5UE7A4QIJGtqh/ZovFNMP4mOPJynQ==}
+    engines: {node: '>=16.20.1'}
+
   buffer-alloc-unsafe@1.1.0:
     resolution: {integrity: sha512-TEM2iMIEQdJ2yjPJoSIsldnleVaAk1oW3DBVUykyOLsEsFmEc9kn+SFFPz+gl54KQNxlDnAwCXosOS9Okx2xAg==}
 
@@ -4042,6 +4078,10 @@ packages:
   callsites@3.1.0:
     resolution: {integrity: sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ==}
     engines: {node: '>=6'}
+
+  camelcase@4.1.0:
+    resolution: {integrity: sha512-FxAv7HpHrXbh3aPo4o2qxHay2lkLY3x5Mw3KeE4KQE8ysVfziWeRZDwcjauvwBSGEC/nXUPzZy8zeh4HokqOnw==}
+    engines: {node: '>=4'}
 
   camelcase@5.3.1:
     resolution: {integrity: sha512-L28STB170nwWS63UjtlEOE3dldQApaJXZkOI1uMFfzf3rRuPegHaHesyee+YxQ+W6SvRDQV6UrdOdRiR153wJg==}
@@ -4381,6 +4421,9 @@ packages:
     resolution: {integrity: sha512-p0SaNjrHOnQeR8/VnfGbmg9te2kfyYSQ7Sc/j/6DtPL3JQvKxmjO9TSjNFpujqV3vEYYBvNNvXSxzyksBWAx1Q==}
     engines: {node: '>=12.0.0'}
 
+  cross-fetch@3.1.8:
+    resolution: {integrity: sha512-cvA+JwZoU0Xq+h6WkMvAUqPEYy92Obet6UdKLfW60qn99ftItKjB5T+BkyWOFWe2pUyfQ+IJHmpOTznqk1M6Kg==}
+
   cross-spawn@7.0.3:
     resolution: {integrity: sha512-iRDPJKUPVEND7dHPO8rkbOnPpyDygcDFtWjpeWNCgy8WP2rXcxXL8TskReQl6OrB2G7+UJrags1q15Fudc7G6w==}
     engines: {node: '>= 8'}
@@ -4609,6 +4652,15 @@ packages:
 
   debug@4.3.5:
     resolution: {integrity: sha512-pt0bNEmneDIvdL1Xsd9oDQ/wrQRkXDT4AUWlNZNPKvW5x/jyO9VFXkJUP07vQ2upmw5PlaITaPKc31jK13V+jg==}
+    engines: {node: '>=6.0'}
+    peerDependencies:
+      supports-color: '*'
+    peerDependenciesMeta:
+      supports-color:
+        optional: true
+
+  debug@4.3.7:
+    resolution: {integrity: sha512-Er2nc/H7RrMXZBFCEim6TCmMk02Z8vLC2Rbi1KEBggpo0fS6l0S1nnapwmIi3yW/+GOJap1Krg4w0Hg80oCqgQ==}
     engines: {node: '>=6.0'}
     peerDependencies:
       supports-color: '*'
@@ -5253,6 +5305,15 @@ packages:
       debug:
         optional: true
 
+  follow-redirects@1.15.9:
+    resolution: {integrity: sha512-gew4GsXizNgdoRyqmyfMHyAmXsZDk6mHkSxZFCzW9gwlbtOW44CDtYavM+y+72qD/Vq2l550kMF52DT8fOLJqQ==}
+    engines: {node: '>=4.0'}
+    peerDependencies:
+      debug: '*'
+    peerDependenciesMeta:
+      debug:
+        optional: true
+
   for-each@0.3.3:
     resolution: {integrity: sha512-jqYfLp7mo9vIyQf8ykW2v7A+2N4QjeCeI5+Dz9XraiO1ign81wjiH7Fb9vSOWvQfNtmSa4H2RoQTrrXivdUZmw==}
 
@@ -5583,6 +5644,10 @@ packages:
     engines: {node: '>=14'}
     hasBin: true
 
+  hyntax@1.1.9:
+    resolution: {integrity: sha512-xjxyDLbVDdLgjPnl4NM+Iu6il3UPmk6PNCBXruQKeuKDc/HtaZx1hk1AtMgw3vsn9YnLZRfoBpPxYMXcoT5KAA==}
+    engines: {node: '>=6.11.1', npm: '>=5.3.0'}
+
   hyperdown@2.4.29:
     resolution: {integrity: sha512-vwpa65JOmo6zBdvmNV3tM5IxNMbTRCXmCz4rajM9NHuiI9aAMw9tGzp8FBO8NT7ZnyWND0HEY6vKCVYl//U8kA==}
 
@@ -5636,6 +5701,9 @@ packages:
   inflight@1.0.6:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
     deprecated: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+
+  infobox-parser@3.6.2:
+    resolution: {integrity: sha512-lasdwvbtjCtDDO6mArAs/ueFEnBJRyo2UbZPAkd5rEG5NVJ3XFCOvbMwNTT/rJlFv1+ORw8D3UvZV4brpgATCg==}
 
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
@@ -6771,9 +6839,20 @@ packages:
   mongodb-connection-string-url@2.6.0:
     resolution: {integrity: sha512-WvTZlI9ab0QYtTYnuMLgobULWhokRjtC7db9LtcVfJ+Hsnyr5eo6ZtNAt3Ly24XZScGMelOcGtm7lSn0332tPQ==}
 
+  mongodb-connection-string-url@3.0.1:
+    resolution: {integrity: sha512-XqMGwRX0Lgn05TDB4PyG2h2kKO/FfWJyCzYQbIhXUxz7ETt0I/FqHjUeqj37irJ+Dl1ZtU82uYyj14u2XsZKfg==}
+
+  mongodb-memory-server-core@10.1.0:
+    resolution: {integrity: sha512-eib56lLOWiJneikoLJE0R0mfnVcKD6wYiEuUNc5bxdhKQZRyPGy6SDp8tVCoJNJdxAgCjlUIurhaq1NtUIHe1A==}
+    engines: {node: '>=16.20.1'}
+
   mongodb-memory-server-core@9.2.0:
     resolution: {integrity: sha512-9SWZEy+dGj5Fvm5RY/mtqHZKS64o4heDwReD4SsfR7+uNgtYo+JN41kPCcJeIH3aJf04j25i5Dia2s52KmsMPA==}
     engines: {node: '>=14.20.1'}
+
+  mongodb-memory-server@10.1.0:
+    resolution: {integrity: sha512-muyyvITwY3MIfzOedskcO5LJeZs+JBt/T5q5beeXWuXEsMED8o1AGMXzbv2Y2mrmXQscbYnJ1aNXIOfV54HPPQ==}
+    engines: {node: '>=16.20.1'}
 
   mongodb-memory-server@9.2.0:
     resolution: {integrity: sha512-w/usKdYtby5EALERxmA0+et+D0brP0InH3a26shNDgGefXA61hgl6U0P3IfwqZlEGRZdkbZig3n57AHZgDiwvg==}
@@ -6798,6 +6877,33 @@ packages:
       mongodb-client-encryption:
         optional: true
       snappy:
+        optional: true
+
+  mongodb@6.9.0:
+    resolution: {integrity: sha512-UMopBVx1LmEUbW/QE0Hw18u583PEDVQmUmVzzBRH0o/xtE9DBRA5ZYLOjpLIa03i8FXjzvQECJcqoMvCXftTUA==}
+    engines: {node: '>=16.20.1'}
+    peerDependencies:
+      '@aws-sdk/credential-providers': ^3.188.0
+      '@mongodb-js/zstd': ^1.1.0
+      gcp-metadata: ^5.2.0
+      kerberos: ^2.0.1
+      mongodb-client-encryption: '>=6.0.0 <7'
+      snappy: ^7.2.2
+      socks: ^2.7.1
+    peerDependenciesMeta:
+      '@aws-sdk/credential-providers':
+        optional: true
+      '@mongodb-js/zstd':
+        optional: true
+      gcp-metadata:
+        optional: true
+      kerberos:
+        optional: true
+      mongodb-client-encryption:
+        optional: true
+      snappy:
+        optional: true
+      socks:
         optional: true
 
   mongoose@7.7.0:
@@ -8297,6 +8403,10 @@ packages:
     resolution: {integrity: sha512-l7FvfAHlcmulp8kr+flpQZmVwtu7nfRV7NZujtN0OqES8EL4O4e0qqzL0DC5gAvx/ZC/9lk6rhcUwYvkBnBnYA==}
     engines: {node: '>=12'}
 
+  tr46@4.1.1:
+    resolution: {integrity: sha512-2lv/66T7e5yNyhAAC4NaKe5nVavzuGJQVVtRYLyQ2OI8tsJ61PMLlelehb0wi2Hx6+hT/OJUWZcw8MjlSRnxvw==}
+    engines: {node: '>=14'}
+
   tree-kill@1.2.2:
     resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
     hasBin: true
@@ -8395,6 +8505,9 @@ packages:
 
   tslib@2.6.3:
     resolution: {integrity: sha512-xNvxJEOUiWPGhUuUdQgAJPKOOJfGnIyKySOc09XkKsgdUV/3E2zvwZYdejjmRgPCgcym1juLH3226yA7sEFJKQ==}
+
+  tslib@2.7.0:
+    resolution: {integrity: sha512-gLXCKdN1/j47AiHiOkJN69hJmcbGTHI0ImLmbYLHykhgeN0jVGola9yVjFgzCUklsZQMW55o+dW7IXv3RCXDzA==}
 
   tunnel-agent@0.6.0:
     resolution: {integrity: sha512-McnNiV1l8RYeY8tBgEpuodCC1mLUdbSN+CYBL7kJsJNInOP8UjDDEwdk6Mw60vdLLrr5NHKZhMAOSrR2NZuQ+w==}
@@ -8787,6 +8900,10 @@ packages:
     resolution: {integrity: sha512-RKT8HExMpoYx4igMiVMY83lN6UeITKJlBQ+vR/8ZJ8OCdSiN3RwCq+9gH0+Xzj0+5IrM6i4j/6LuvzbZIQgEcQ==}
     engines: {node: '>=12'}
 
+  whatwg-url@13.0.0:
+    resolution: {integrity: sha512-9WWbymnqj57+XEuqADHrCJ2eSXzn8WXIW/YSGaZtb2WKAInQ6CHfaUUcTyyver0p8BDg5StLQq8h1vtZuwmOig==}
+    engines: {node: '>=16'}
+
   whatwg-url@5.0.0:
     resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
 
@@ -8822,6 +8939,10 @@ packages:
 
   wide-align@1.1.5:
     resolution: {integrity: sha512-eDMORYaPNZ4sQIuuYPDHdQvf4gyCF9rEEV/yPxGfwPkRodwEgiMUUXTx/dex+Me0wxx53S+NgUHaP7y3MGlDmg==}
+
+  wikijs@6.4.1:
+    resolution: {integrity: sha512-fnYyT9ISD9hFgAxFJu7Kzsomz48w7FpvvAfTuArvkMQY1bG9JPXoyURqUzYGcQA8FCq6MuZfjqT/6hP8Mh4hQA==}
+    engines: {node: '>=0.10.4'}
 
   winston-transport@4.7.1:
     resolution: {integrity: sha512-wQCXXVgfv/wUPOfb2x0ruxzwkcZfxcktz6JIMUaPLmcNhO4bZTwA/WtDWK74xV3F2dKu8YadrFv0qhwYjVEwhA==}
@@ -10170,14 +10291,6 @@ snapshots:
       next: 14.2.5(@babel/core@7.24.9)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8)
       react: 18.3.1
 
-  '@chakra-ui/next-js@2.1.5(@chakra-ui/react@2.8.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8))(react@18.3.1)':
-    dependencies:
-      '@chakra-ui/react': 2.8.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@emotion/cache': 11.11.0
-      '@emotion/react': 11.11.1(@types/react@18.3.1)(react@18.3.1)
-      next: 14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8)
-      react: 18.3.1
-
   '@chakra-ui/number-input@2.1.1(@chakra-ui/system@2.6.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@chakra-ui/counter': 2.1.0(react@18.3.1)
@@ -11388,7 +11501,6 @@ snapshots:
   '@mongodb-js/saslprep@1.1.7':
     dependencies:
       sparse-bitfield: 3.0.3
-    optional: true
 
   '@napi-rs/wasm-runtime@0.1.2':
     dependencies:
@@ -11792,11 +11904,11 @@ snapshots:
 
   '@rushstack/eslint-patch@1.10.3': {}
 
-  '@shelf/jest-mongodb@4.3.2(jest-environment-node@29.7.0)(mongodb@5.9.2)':
+  '@shelf/jest-mongodb@4.3.2(jest-environment-node@29.7.0)(mongodb@6.9.0(socks@2.8.3))':
     dependencies:
       debug: 4.3.4
       jest-environment-node: 29.7.0
-      mongodb: 5.9.2
+      mongodb: 6.9.0(socks@2.8.3)
       mongodb-memory-server: 9.2.0
     transitivePeerDependencies:
       - '@aws-sdk/credential-providers'
@@ -12313,6 +12425,10 @@ snapshots:
 
   '@types/webidl-conversions@7.0.3': {}
 
+  '@types/whatwg-url@11.0.5':
+    dependencies:
+      '@types/webidl-conversions': 7.0.3
+
   '@types/whatwg-url@8.2.2':
     dependencies:
       '@types/node': 20.14.11
@@ -12635,7 +12751,7 @@ snapshots:
 
   agent-base@7.1.1:
     dependencies:
-      debug: 4.3.5
+      debug: 4.3.7
     transitivePeerDependencies:
       - supports-color
 
@@ -12848,6 +12964,10 @@ snapshots:
     dependencies:
       tslib: 2.6.3
 
+  async-mutex@0.5.0:
+    dependencies:
+      tslib: 2.7.0
+
   async@3.2.5: {}
 
   asynckit@0.4.0: {}
@@ -13038,6 +13158,8 @@ snapshots:
 
   bson@5.5.1: {}
 
+  bson@6.8.0: {}
+
   buffer-alloc-unsafe@1.1.0: {}
 
   buffer-alloc@1.2.0:
@@ -13097,6 +13219,8 @@ snapshots:
   call-me-maybe@1.0.2: {}
 
   callsites@3.1.0: {}
+
+  camelcase@4.1.0: {}
 
   camelcase@5.3.1: {}
 
@@ -13436,6 +13560,12 @@ snapshots:
     dependencies:
       luxon: 3.4.4
 
+  cross-fetch@3.1.8(encoding@0.1.13):
+    dependencies:
+      node-fetch: 2.7.0(encoding@0.1.13)
+    transitivePeerDependencies:
+      - encoding
+
   cross-spawn@7.0.3:
     dependencies:
       path-key: 3.1.1
@@ -13695,6 +13825,10 @@ snapshots:
   debug@4.3.5:
     dependencies:
       ms: 2.1.2
+
+  debug@4.3.7:
+    dependencies:
+      ms: 2.1.3
 
   decode-named-character-reference@1.0.2:
     dependencies:
@@ -14627,6 +14761,10 @@ snapshots:
     optionalDependencies:
       debug: 4.3.5
 
+  follow-redirects@1.15.9(debug@4.3.7):
+    optionalDependencies:
+      debug: 4.3.7
+
   for-each@0.3.3:
     dependencies:
       is-callable: 1.2.7
@@ -15022,7 +15160,7 @@ snapshots:
   https-proxy-agent@7.0.5:
     dependencies:
       agent-base: 7.1.1
-      debug: 4.3.5
+      debug: 4.3.7
     transitivePeerDependencies:
       - supports-color
 
@@ -15037,6 +15175,8 @@ snapshots:
       ms: 2.1.3
 
   husky@8.0.3: {}
+
+  hyntax@1.1.9: {}
 
   hyperdown@2.4.29: {}
 
@@ -15082,6 +15222,10 @@ snapshots:
     dependencies:
       once: 1.4.0
       wrappy: 1.0.2
+
+  infobox-parser@3.6.2:
+    dependencies:
+      camelcase: 4.1.0
 
   inherits@2.0.4: {}
 
@@ -16250,8 +16394,7 @@ snapshots:
 
   memoize-one@5.2.1: {}
 
-  memory-pager@1.5.0:
-    optional: true
+  memory-pager@1.5.0: {}
 
   merge-descriptors@1.0.1: {}
 
@@ -16736,6 +16879,35 @@ snapshots:
       '@types/whatwg-url': 8.2.2
       whatwg-url: 11.0.0
 
+  mongodb-connection-string-url@3.0.1:
+    dependencies:
+      '@types/whatwg-url': 11.0.5
+      whatwg-url: 13.0.0
+
+  mongodb-memory-server-core@10.1.0(socks@2.8.3):
+    dependencies:
+      async-mutex: 0.5.0
+      camelcase: 6.3.0
+      debug: 4.3.7
+      find-cache-dir: 3.3.2
+      follow-redirects: 1.15.9(debug@4.3.7)
+      https-proxy-agent: 7.0.5
+      mongodb: 6.9.0(socks@2.8.3)
+      new-find-package-json: 2.0.0
+      semver: 7.6.3
+      tar-stream: 3.1.7
+      tslib: 2.7.0
+      yauzl: 3.1.3
+    transitivePeerDependencies:
+      - '@aws-sdk/credential-providers'
+      - '@mongodb-js/zstd'
+      - gcp-metadata
+      - kerberos
+      - mongodb-client-encryption
+      - snappy
+      - socks
+      - supports-color
+
   mongodb-memory-server-core@9.2.0:
     dependencies:
       async-mutex: 0.4.1
@@ -16758,6 +16930,20 @@ snapshots:
       - snappy
       - supports-color
 
+  mongodb-memory-server@10.1.0(socks@2.8.3):
+    dependencies:
+      mongodb-memory-server-core: 10.1.0(socks@2.8.3)
+      tslib: 2.7.0
+    transitivePeerDependencies:
+      - '@aws-sdk/credential-providers'
+      - '@mongodb-js/zstd'
+      - gcp-metadata
+      - kerberos
+      - mongodb-client-encryption
+      - snappy
+      - socks
+      - supports-color
+
   mongodb-memory-server@9.2.0:
     dependencies:
       mongodb-memory-server-core: 9.2.0
@@ -16777,6 +16963,14 @@ snapshots:
       socks: 2.8.3
     optionalDependencies:
       '@mongodb-js/saslprep': 1.1.7
+
+  mongodb@6.9.0(socks@2.8.3):
+    dependencies:
+      '@mongodb-js/saslprep': 1.1.7
+      bson: 6.8.0
+      mongodb-connection-string-url: 3.0.1
+    optionalDependencies:
+      socks: 2.8.3
 
   mongoose@7.7.0:
     dependencies:
@@ -16845,6 +17039,12 @@ snapshots:
 
   neo-async@2.6.2: {}
 
+  new-find-package-json@2.0.0:
+    dependencies:
+      debug: 4.3.7
+    transitivePeerDependencies:
+      - supports-color
+
   next-i18next@15.3.0(i18next@23.11.5)(next@14.2.5(@babel/core@7.24.9)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8))(react-i18next@14.1.2(i18next@23.11.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
     dependencies:
       '@babel/runtime': 7.24.8
@@ -16854,18 +17054,6 @@ snapshots:
       i18next: 23.11.5
       i18next-fs-backend: 2.3.1
       next: 14.2.5(@babel/core@7.24.9)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8)
-      react: 18.3.1
-      react-i18next: 14.1.2(i18next@23.11.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-
-  next-i18next@15.3.0(i18next@23.11.5)(next@14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8))(react-i18next@14.1.2(i18next@23.11.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
-    dependencies:
-      '@babel/runtime': 7.24.8
-      '@types/hoist-non-react-statics': 3.3.5
-      core-js: 3.37.1
-      hoist-non-react-statics: 3.3.2
-      i18next: 23.11.5
-      i18next-fs-backend: 2.3.1
-      next: 14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8)
       react: 18.3.1
       react-i18next: 14.1.2(i18next@23.11.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
@@ -16895,36 +17083,10 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  next@14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8):
-    dependencies:
-      '@next/env': 14.2.5
-      '@swc/helpers': 0.5.5
-      busboy: 1.6.0
-      caniuse-lite: 1.0.30001642
-      graceful-fs: 4.2.11
-      postcss: 8.4.31
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      styled-jsx: 5.1.1(react@18.3.1)
-    optionalDependencies:
-      '@next/swc-darwin-arm64': 14.2.5
-      '@next/swc-darwin-x64': 14.2.5
-      '@next/swc-linux-arm64-gnu': 14.2.5
-      '@next/swc-linux-arm64-musl': 14.2.5
-      '@next/swc-linux-x64-gnu': 14.2.5
-      '@next/swc-linux-x64-musl': 14.2.5
-      '@next/swc-win32-arm64-msvc': 14.2.5
-      '@next/swc-win32-ia32-msvc': 14.2.5
-      '@next/swc-win32-x64-msvc': 14.2.5
-      sass: 1.77.8
-    transitivePeerDependencies:
-      - '@babel/core'
-      - babel-plugin-macros
-
   nextjs-cors@2.2.0(next@14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8)):
     dependencies:
       cors: 2.8.5
-      next: 14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8)
+      next: 14.2.5(@babel/core@7.24.9)(babel-plugin-macros@3.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.77.8)
 
   nextjs-node-loader@1.1.5(webpack@5.92.1):
     dependencies:
@@ -18144,7 +18306,6 @@ snapshots:
   sparse-bitfield@3.0.3:
     dependencies:
       memory-pager: 1.5.0
-    optional: true
 
   split2@4.2.0: {}
 
@@ -18308,11 +18469,6 @@ snapshots:
     optionalDependencies:
       '@babel/core': 7.24.9
       babel-plugin-macros: 3.1.0
-
-  styled-jsx@5.1.1(react@18.3.1):
-    dependencies:
-      client-only: 0.0.1
-      react: 18.3.1
 
   stylis@4.2.0: {}
 
@@ -18491,6 +18647,10 @@ snapshots:
     dependencies:
       punycode: 2.3.1
 
+  tr46@4.1.1:
+    dependencies:
+      punycode: 2.3.1
+
   tree-kill@1.2.2: {}
 
   trim-lines@3.0.1: {}
@@ -18582,6 +18742,8 @@ snapshots:
   tslib@2.4.0: {}
 
   tslib@2.6.3: {}
+
+  tslib@2.7.0: {}
 
   tunnel-agent@0.6.0:
     dependencies:
@@ -19009,6 +19171,11 @@ snapshots:
       tr46: 3.0.0
       webidl-conversions: 7.0.0
 
+  whatwg-url@13.0.0:
+    dependencies:
+      tr46: 4.1.1
+      webidl-conversions: 7.0.0
+
   whatwg-url@5.0.0:
     dependencies:
       tr46: 0.0.3
@@ -19069,6 +19236,14 @@ snapshots:
     dependencies:
       string-width: 4.2.3
     optional: true
+
+  wikijs@6.4.1(encoding@0.1.13):
+    dependencies:
+      cross-fetch: 3.1.8(encoding@0.1.13)
+      hyntax: 1.1.9
+      infobox-parser: 3.6.2
+    transitivePeerDependencies:
+      - encoding
 
   winston-transport@4.7.1:
     dependencies:
