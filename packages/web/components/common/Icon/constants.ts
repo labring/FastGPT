@@ -331,7 +331,6 @@ export const iconPaths = {
   save: () => import('./icons/save.svg'),
   stop: () => import('./icons/stop.svg'),
   'support/account/loginoutLight': () => import('./icons/support/account/loginoutLight.svg'),
-  'support/account/passwordLogin': () => import('./icons/support/account/passwordLogin.svg'),
   'support/account/plans': () => import('./icons/support/account/plans.svg'),
   'support/account/promotionLight': () => import('./icons/support/account/promotionLight.svg'),
   'support/bill/extraDatasetsize': () => import('./icons/support/bill/extraDatasetsize.svg'),

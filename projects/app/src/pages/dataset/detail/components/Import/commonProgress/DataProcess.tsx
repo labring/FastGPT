@@ -1,12 +1,7 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import {
   Box,
   Flex,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  NumberIncrementStepper,
-  NumberDecrementStepper,
   Input,
   Button,
   ModalBody,
@@ -29,6 +24,7 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 
 function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean }) {
   const { t } = useTranslation();
@@ -150,30 +146,18 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
                               max: maxChunkSize
                             })}
                           >
-                            <NumberInput
-                              size={'sm'}
-                              step={100}
+                            <MyNumberInput
+                              name={chunkSizeField}
                               min={minChunkSize}
                               max={maxChunkSize}
+                              size={'sm'}
+                              step={100}
                               value={chunkSize}
                               onChange={(e) => {
+                                if (e === undefined) return;
                                 setValue(chunkSizeField, +e);
                               }}
-                            >
-                              <NumberInputField
-                                min={minChunkSize}
-                                max={maxChunkSize}
-                                {...register(chunkSizeField, {
-                                  min: minChunkSize,
-                                  max: maxChunkSize,
-                                  valueAsNumber: true
-                                })}
-                              />
-                              <NumberInputStepper>
-                                <NumberIncrementStepper />
-                                <NumberDecrementStepper />
-                              </NumberInputStepper>
-                            </NumberInput>
+                            />
                           </MyTooltip>
                         </Box>
                       </Box>

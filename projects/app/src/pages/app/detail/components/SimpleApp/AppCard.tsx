@@ -84,7 +84,7 @@ const AppCard = () => {
         >
           {appDetail.intro || t('common:core.app.tip.Add a intro to app')}
         </Box>
-        <HStack alignItems={'flex-end'}>
+        <HStack alignItems={'center'}>
           <Button
             size={['sm', 'md']}
             variant={'whitePrimary'}
@@ -107,7 +107,7 @@ const AppCard = () => {
             <MyMenu
               Button={
                 <IconButton
-                  variant={'whiteBase'}
+                  variant={'whitePrimary'}
                   size={['smSquare', 'mdSquare']}
                   icon={<MyIcon name={'more'} w={'1rem'} />}
                   aria-label={''}

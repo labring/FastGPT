@@ -18,7 +18,7 @@ const LightRowTabs = <ValueType = string,>({
   list,
   size = 'md',
   value,
-  activeColor = 'primary.600',
+  activeColor = 'primary.700',
   defaultColor = 'transparent',
   onChange,
   inlineStyles,
@@ -72,11 +72,11 @@ const LightRowTabs = <ValueType = string,>({
             _hover={{
               color: activeColor
             }}
+            fontWeight={'medium'}
             {...(value === item.value
               ? {
                   color: activeColor,
                   cursor: 'default',
-                  fontWeight: 'bold',
                   borderBottomColor: activeColor
                 }
               : {

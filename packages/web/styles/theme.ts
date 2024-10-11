@@ -81,7 +81,7 @@ const Button = defineStyleConfig({
       py: 0,
       h: '34px',
       fontWeight: 'normal',
-      borderRadius: 'md'
+      borderRadius: 'sm'
     },
     mdSquare: {
       fontSize: 'sm',
@@ -90,7 +90,7 @@ const Button = defineStyleConfig({
       h: '34px',
       w: '34px',
       fontWeight: 'normal',
-      borderRadius: 'md'
+      borderRadius: 'sm'
     },
     lg: {
       fontSize: 'md',
@@ -98,7 +98,7 @@ const Button = defineStyleConfig({
       py: 0,
       h: '40px',
       fontWeight: 'normal',
-      borderRadius: 'lg'
+      borderRadius: 'sm'
     },
     lgSquare: {
       fontSize: 'md',
@@ -107,7 +107,7 @@ const Button = defineStyleConfig({
       h: '40px',
       w: '40px',
       fontWeight: 'normal',
-      borderRadius: 'lg'
+      borderRadius: 'sm'
     }
   },
   variants: {
@@ -175,6 +175,16 @@ const Button = defineStyleConfig({
         color: 'myGray.600 !important'
       }
     },
+    whitePrimaryOutline: {
+      border: '1px solid',
+      borderColor: 'myGray.250',
+      bg: 'white',
+      transition: 'background 0.1s',
+      _hover: {
+        color: 'primary.700',
+        borderColor: 'primary.300'
+      }
+    },
     whitePrimary: {
       color: 'myGray.600',
       border: '1px solid',
@@ -183,7 +193,7 @@ const Button = defineStyleConfig({
       transition: 'background 0.1s',
       boxShadow: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)',
       _hover: {
-        color: 'primary.600',
+        color: 'primary.700',
         background: 'primary.1',
         borderColor: 'primary.300'
       },
@@ -288,12 +298,18 @@ const Input: ComponentStyleConfig = {
     sm: defineStyle({
       field: {
         h: '32px',
-        borderRadius: 'md'
+        borderRadius: 'sm'
       }
     }),
     md: defineStyle({
       field: {
-        h: '34px',
+        h: '36px',
+        borderRadius: 'sm'
+      }
+    }),
+    lg: defineStyle({
+      field: {
+        h: '40px',
         borderRadius: 'md'
       }
     })
@@ -347,7 +363,7 @@ const NumberInput = numInputMultiStyle({
         _focus: {
           borderColor: 'primary.500 !important',
           boxShadow: `${shadowLight} !important`,
-          bg: 'transparent'
+          bg: 'white'
         },
         _disabled: {
           color: 'myGray.400 !important',
@@ -356,10 +372,12 @@ const NumberInput = numInputMultiStyle({
       },
       stepper: {
         bg: 'transparent',
-        border: 'none',
         color: 'myGray.600',
         _active: {
           color: 'primary.500'
+        },
+        _hover: {
+          bg: 'myGray.100'
         }
       }
     })
