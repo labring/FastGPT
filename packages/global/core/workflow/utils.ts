@@ -230,7 +230,9 @@ export const appData2FlowNodeIO = ({
             FlowNodeInputTypeEnum.textarea,
             FlowNodeInputTypeEnum.reference
           ],
+          [VariableInputEnum.numberInput]: [FlowNodeInputTypeEnum.numberInput],
           [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
+          [VariableInputEnum.switch]: [FlowNodeInputTypeEnum.switch],
           [VariableInputEnum.custom]: [
             FlowNodeInputTypeEnum.input,
             FlowNodeInputTypeEnum.reference
@@ -246,7 +248,7 @@ export const appData2FlowNodeIO = ({
           description: '',
           valueType: WorkflowIOValueTypeEnum.any,
           required: item.required,
-          list: item.enums.map((enumItem) => ({
+          list: item.enums?.map((enumItem) => ({
             label: enumItem.value,
             value: enumItem.value
           }))
