@@ -149,7 +149,7 @@ const FieldEditModal = ({
   const max = watch('max');
   const min = watch('min');
   const selectValueTypeList = watch('customInputConfig.selectValueTypeList');
-  const defaultJsonValue = watch('defaultValue');
+  const defaultInputValue = watch('defaultValue');
 
   const defaultValueType =
     inputTypeList.flat().find((item) => item.value === inputType)?.defaultValueType ||
@@ -157,9 +157,9 @@ const FieldEditModal = ({
 
   const onSubmitSuccess = useCallback(
     (data: FlowNodeInputItemType, action: 'confirm' | 'continue') => {
-      data.key = data?.key?.trim();
+      data.label = data?.label?.trim();
 
-      if (!data.key) {
+      if (!data.label) {
         return toast({
           status: 'warning',
           title: t('common:core.module.edit.Field Name Cannot Be Empty')
@@ -199,7 +199,7 @@ const FieldEditModal = ({
         data.toolDescription = undefined;
       }
 
-      data.label = data.key;
+      data.key = data.label;
 
       if (action === 'confirm') {
         onSubmit(data);
@@ -327,7 +327,7 @@ const FieldEditModal = ({
           max={max}
           min={min}
           selectValueTypeList={selectValueTypeList}
-          defaultJsonValue={defaultJsonValue}
+          defaultValue={defaultInputValue}
           isToolInput={isToolInput}
           setIsToolInput={setIsToolInput}
           valueType={valueType}
