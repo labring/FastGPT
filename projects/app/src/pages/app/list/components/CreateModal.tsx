@@ -24,6 +24,7 @@ import {
   getTemplateMarketItemDetail,
   getTemplateMarketItemList
 } from '@/web/core/app/api/template';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type FormType = {
   avatar: string;
@@ -46,6 +47,7 @@ const CreateModal = ({
   const router = useRouter();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const { isPc } = useSystem();
+  const { feConfigs } = useSystemStore();
 
   const typeMap = useRef({
     [AppTypeEnum.simple]: {
@@ -257,7 +259,7 @@ const CreateModal = ({
                 {t(item.intro as any)}
               </Box>
               <Box w={'full'} fontSize={'mini'}>
-                <Box color={'myGray.500'}>By {item.author}</Box>
+                <Box color={'myGray.500'}>{`By ${item.author || feConfigs.systemTitle}`}</Box>
                 <Box
                   className="buttons"
                   display={'none'}

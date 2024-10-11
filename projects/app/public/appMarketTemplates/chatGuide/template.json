@@ -1,7 +1,7 @@
 {
   "name": "对话引导 + 变量",
   "intro": "可以在对话开始发送一段提示，或者让用户填写一些内容，作为本次对话的变量",
-  "author": "FastGPT",
+  "author": "",
   "avatar": "core/workflow/template/systemConfig",
   "tags": ["office-services"],
   "type": "simple",
