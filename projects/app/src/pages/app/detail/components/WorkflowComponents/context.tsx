@@ -148,11 +148,13 @@ type WorkflowContextType = {
   onStartNodeDebug: ({
     entryNodeId,
     runtimeNodes,
-    runtimeEdges
+    runtimeEdges,
+    variables
   }: {
     entryNodeId: string;
     runtimeNodes: RuntimeNodeItemType[];
     runtimeEdges: RuntimeEdgeItemType[];
+    variables: Record<string, any>;
   }) => Promise<void>;
   onStopNodeDebug: () => void;
 
@@ -749,17 +751,19 @@ const WorkflowContextProvider = ({
     async ({
       entryNodeId,
       runtimeNodes,
-      runtimeEdges
+      runtimeEdges,
+      variables
     }: {
       entryNodeId: string;
       runtimeNodes: RuntimeNodeItemType[];
       runtimeEdges: RuntimeEdgeItemType[];
+      variables: Record<string, any>;
     }) => {
       const data = {
         runtimeNodes,
         runtimeEdges,
         nextRunNodes: runtimeNodes.filter((node) => node.nodeId === entryNodeId),
-        variables: {}
+        variables
       };
       onStopNodeDebug();
       setWorkflowDebugData(data);
