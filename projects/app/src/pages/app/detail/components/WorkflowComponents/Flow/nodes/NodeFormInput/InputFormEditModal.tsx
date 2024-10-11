@@ -51,6 +51,7 @@ const InputFormEditModal = ({
   const maxLength = watch('maxLength');
   const max = watch('max');
   const min = watch('min');
+  const defaultInputValue = watch('defaultValue');
 
   const inputTypeList = [
     {
@@ -111,7 +112,7 @@ const InputFormEditModal = ({
         reset(defaultFormInput);
       }
     },
-    [toast, t, reset, onSubmit, onClose, defaultFormInput, defaultValueType]
+    [defaultValue.key, keys, defaultValueType, isEdit, toast, t, onSubmit, onClose, reset]
   );
 
   const onSubmitError = useCallback(
@@ -197,6 +198,7 @@ const InputFormEditModal = ({
           maxLength={maxLength}
           max={max}
           min={min}
+          defaultValue={defaultInputValue}
           onClose={onClose}
           onSubmitSuccess={onSubmitSuccess}
           onSubmitError={onSubmitError}
