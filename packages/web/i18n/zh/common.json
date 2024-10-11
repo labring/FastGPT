@@ -755,7 +755,6 @@
   "core.module.variable.select type": "下拉单选",
   "core.module.variable.text max length": "最大长度",
   "core.module.variable.textarea type": "段落",
-  "core.module.variable.variable name": "变量名",
   "core.module.variable.variable name is required": "变量名不能为空",
   "core.module.variable.variable option is required": "选项不能全空",
   "core.module.variable.variable option is value is required": "选项内容不能为空",
