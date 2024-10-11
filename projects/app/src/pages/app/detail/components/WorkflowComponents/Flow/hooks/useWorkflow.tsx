@@ -31,8 +31,6 @@ import {
   Input_Template_Node_Width
 } from '@fastgpt/global/core/workflow/template/input';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 
 /* 
   Compute helper lines for snapping nodes to each other
@@ -439,6 +437,15 @@ export const useWorkflow = () => {
 
     onNodesChange([change]);
 
+    // Remove the edges connected to the node
+    const nodeEdges = edges.filter((edge) => edge.source === nodeId || edge.target === nodeId);
+    onEdgesChange(
+      nodeEdges.map<EdgeRemoveChange>((edge) => ({
+        type: 'remove',
+        id: edge.id
+      }))
+    );
+
     return;
   });
   const handleSelectNode = useMemoizedFn((change: NodeSelectionChange) => {
@@ -538,9 +545,14 @@ export const useWorkflow = () => {
 
   const handleEdgeChange = useCallback(
     (changes: EdgeChange[]) => {
-      onEdgesChange(changes);
+      // If any node is selected, don't remove edges
+      const changesFiltered = changes.filter(
+        (change) => !(change.type === 'remove' && nodes.some((node) => node.selected))
+      );
+
+      onEdgesChange(changesFiltered);
     },
-    [onEdgesChange]
+    [nodes, onEdgesChange]
   );
 
   const onNodeDragStop = useCallback(
