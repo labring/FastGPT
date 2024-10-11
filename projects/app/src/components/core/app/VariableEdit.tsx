@@ -39,11 +39,15 @@ export const defaultVariable: VariableItemType = {
   type: VariableInputEnum.input,
   description: '',
   required: true,
-  valueType: WorkflowIOValueTypeEnum.string,
-  enums: [{ value: '', label: '' }]
+  valueType: WorkflowIOValueTypeEnum.string
 };
+
+type InputItemType = VariableItemType & {
+  list: { label: string; value: string }[];
+};
+
 export const addVariable = () => {
-  const newVariable = { ...defaultVariable, key: '', id: '' };
+  const newVariable = { ...defaultVariable, key: '', id: '', list: [{ value: '', label: '' }] };
   return newVariable;
 };
 
@@ -64,6 +68,7 @@ const VariableEdit = ({
   const valueType = watch('valueType');
   const max = watch('max');
   const min = watch('min');
+  const defaultValue = watch('defaultValue');
 
   const inputTypeList = useMemo(
     () =>
@@ -94,11 +99,11 @@ const VariableEdit = ({
   }, [variables]);
 
   const onSubmitSuccess = useCallback(
-    (data: VariableItemType, action: 'confirm' | 'continue') => {
-      data.key = data?.key?.trim();
+    (data: InputItemType, action: 'confirm' | 'continue') => {
+      data.label = data?.label?.trim();
 
       const existingVariable = variables.find(
-        (item) => item.key === data.key && item.id !== data.id
+        (item) => item.label === data.label && item.id !== data.id
       );
       if (existingVariable) {
         toast({
@@ -108,7 +113,8 @@ const VariableEdit = ({
         return;
       }
 
-      data.label = data.key;
+      data.key = data.label;
+      data.enums = data.list;
 
       if (data.type === VariableInputEnum.custom) {
         data.required = false;
@@ -218,7 +224,11 @@ const VariableEdit = ({
                         w={'16px'}
                         cursor={'pointer'}
                         onClick={() => {
-                          reset(item);
+                          const formattedItem = {
+                            ...item,
+                            list: item.enums || []
+                          };
+                          reset(formattedItem);
                         }}
                       />
                       <MyIcon
@@ -311,6 +321,7 @@ const VariableEdit = ({
               isEdit={!!value.label}
               inputType={type}
               valueType={valueType}
+              defaultValue={defaultValue}
               defaultValueType={defaultValueType}
               max={max}
               min={min}

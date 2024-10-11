@@ -42,7 +42,7 @@ const InputTypeConfig = ({
   max,
   min,
   selectValueTypeList,
-  defaultJsonValue,
+  defaultValue,
   isToolInput,
   setIsToolInput,
   valueType,
@@ -62,7 +62,7 @@ const InputTypeConfig = ({
   min?: number;
 
   selectValueTypeList?: WorkflowIOValueTypeEnum[];
-  defaultJsonValue?: string;
+  defaultValue?: string;
 
   // Plugin-specific fields
   isToolInput?: boolean;
@@ -77,7 +77,20 @@ const InputTypeConfig = ({
   const { t } = useTranslation();
 
   const { register, setValue, handleSubmit, control, watch } = form;
-  const listValue: ListValueType = watch(type === 'variable' ? 'enums' : 'list');
+  const listValue: ListValueType = watch('list');
+
+  const typeLabels = {
+    name: {
+      formInput: t('common:core.module.input_name'),
+      plugin: t('common:core.module.Field Name'),
+      variable: t('workflow:Variable_name')
+    },
+    description: {
+      formInput: t('common:core.module.input_description'),
+      plugin: t('workflow:field_description'),
+      variable: t('workflow:variable_description')
+    }
+  };
 
   const {
     fields: selectEnums,
@@ -85,16 +98,13 @@ const InputTypeConfig = ({
     remove: removeEnums
   } = useFieldArray({
     control,
-    name: type === 'variable' ? 'enums' : 'list'
+    name: 'list'
   });
 
-  const mergedSelectEnums = useMemo(() => {
-    return selectEnums.map((field, index) => ({
-      ...field,
-      ...listValue[index]
-    }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(listValue), JSON.stringify(selectEnums)]);
+  const mergedSelectEnums = selectEnums.map((field, index) => ({
+    ...field,
+    ...listValue[index]
+  }));
 
   const valueTypeSelectList = Object.values(FlowValueTypeMap).map((item) => ({
     label: t(item.label as any),
@@ -143,34 +153,19 @@ const InputTypeConfig = ({
       <Flex flexDirection={'column'} p={8} gap={4} flex={'1 0 0'} overflow={'auto'}>
         <Flex alignItems={'center'}>
           <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
-            {{
-              formInput: t('common:core.module.input_name'),
-              plugin: t('common:core.module.Field Name'),
-              variable: t('workflow:Variable_name')
-            }[type] || t('common:core.module.input_name')}
+            {typeLabels.name[type] || typeLabels.name.formInput}
           </FormLabel>
           <Input
             bg={'myGray.50'}
             placeholder="appointment/sql"
-            {...register(
-              {
-                formInput: 'label',
-                plugin: 'key',
-                variable: 'key'
-              }[type] || 'label',
-              {
-                required: true
-              }
-            )}
+            {...register('label', {
+              required: true
+            })}
           />
         </Flex>
         <Flex alignItems={'flex-start'}>
           <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
-            {{
-              formInput: t('common:core.module.input_description'),
-              plugin: t('workflow:field_description'),
-              variable: t('workflow:variable_description')
-            }[type] || t('workflow:field_description')}
+            {typeLabels.description[type] || typeLabels.description.plugin}
           </FormLabel>
           <Textarea
             bg={'myGray.50'}
@@ -305,18 +300,17 @@ const InputTypeConfig = ({
             {inputType === FlowNodeInputTypeEnum.textarea && (
               <Textarea bg={'myGray.50'} maxLength={maxLength} {...register('defaultValue')} />
             )}
-            {inputType === FlowNodeInputTypeEnum.JSONEditor ||
-              (inputType === VariableInputEnum.custom && (
-                <JsonEditor
-                  bg={'myGray.50'}
-                  resize
-                  w={'full'}
-                  onChange={(e) => {
-                    setValue('defaultValue', e);
-                  }}
-                  defaultValue={String(defaultJsonValue)}
-                />
-              ))}
+            {inputType === FlowNodeInputTypeEnum.JSONEditor && (
+              <JsonEditor
+                bg={'myGray.50'}
+                resize
+                w={'full'}
+                onChange={(e) => {
+                  setValue('defaultValue', e);
+                }}
+                defaultValue={defaultValue}
+              />
+            )}
             {inputType === FlowNodeInputTypeEnum.switch && <Switch {...register('defaultValue')} />}
             {inputType === FlowNodeInputTypeEnum.select && (
               <MySelect<string>
@@ -324,7 +318,7 @@ const InputTypeConfig = ({
                   label: item.label,
                   value: item.value
                 }))}
-                value={form.watch('defaultValue')}
+                value={defaultValue}
                 onchange={(e) => {
                   setValue('defaultValue', e);
                 }}
@@ -428,20 +422,12 @@ const InputTypeConfig = ({
                                 fontSize={'12px'}
                                 bg={'myGray.50'}
                                 placeholder={`${t('common:core.module.variable.variable options')} ${i + 1}`}
-                                {...register(
-                                  type === 'variable' ? `enums.${i}.label` : `list.${i}.label`,
-                                  {
-                                    required: true,
-                                    onChange: (e: any) => {
-                                      setValue(
-                                        type === 'variable'
-                                          ? `enums.${i}.value`
-                                          : `list.${i}.value`,
-                                        e.target.value
-                                      );
-                                    }
+                                {...register(`list.${i}.label`, {
+                                  required: true,
+                                  onChange: (e: any) => {
+                                    setValue(`list.${i}.value`, e.target.value);
                                   }
-                                )}
+                                })}
                               />
                             </FormControl>
                             {selectEnums.length > 1 && (
