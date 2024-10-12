@@ -44,12 +44,33 @@ try {
     {
       resourceType: 1,
       teamId: 1,
-      tmbId: 1,
       resourceId: 1,
       groupId: 1
     },
     {
-      unique: true
+      unique: true,
+      partialFilterExpression: {
+        groupId: {
+          $exists: true
+        }
+      }
+    }
+  );
+
+  ResourcePermissionSchema.index(
+    {
+      resourceType: 1,
+      teamId: 1,
+      resourceId: 1,
+      tmbId: 1
+    },
+    {
+      unique: true,
+      partialFilterExpression: {
+        tmbId: {
+          $exists: true
+        }
+      }
     }
   );
 
