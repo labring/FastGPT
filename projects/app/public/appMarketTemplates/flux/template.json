@@ -1,7 +1,7 @@
 {
   "name": "Flux 绘图",
   "intro": "通过请求 Flux 接口绘图，需要有 api key",
-  "author": "FastGPT",
+  "author": "",
   "avatar": "/appMarketTemplates/flux/avatar.svg",
   "type": "plugin",
   "tags": ["image-generation"],

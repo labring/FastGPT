@@ -309,7 +309,7 @@ const RenderList = React.memo(function RenderList({
               </Box>
               {item.author !== undefined && (
                 <Box fontSize={'xs'} mr={3}>
-                  {`by ${item.author || feConfigs.systemTitle}`}
+                  {`By ${item.author || feConfigs.systemTitle}`}
                 </Box>
               )}
               {selected ? (
