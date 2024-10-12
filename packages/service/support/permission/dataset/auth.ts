@@ -20,6 +20,7 @@ import { MongoDatasetData } from '../../../core/dataset/data/schema';
 import { AuthModeType, AuthResponseType } from '../type';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
 
 export const authDatasetByTmbId = async ({
   tmbId,
@@ -62,7 +63,7 @@ export const authDatasetByTmbId = async ({
     const isOwner = tmbPer.isOwner || String(dataset.tmbId) === String(tmbId);
 
     // get dataset permission or inherit permission from parent folder.
-    const { Per, defaultPermission } = await (async () => {
+    const { Per } = await (async () => {
       if (
         dataset.type === DatasetTypeEnum.folder ||
         dataset.inheritPermission === false ||
@@ -78,12 +79,11 @@ export const authDatasetByTmbId = async ({
           resourceType: PerResourceTypeEnum.dataset
         });
         const Per = new DatasetPermission({
-          per: rp ?? dataset.defaultPermission,
+          per: rp ?? DatasetDefaultPermissionVal,
           isOwner
         });
         return {
-          Per,
-          defaultPermission: dataset.defaultPermission
+          Per
         };
       } else {
         // is not folder and inheritPermission is true and is not root folder.
@@ -100,8 +100,7 @@ export const authDatasetByTmbId = async ({
         });
 
         return {
-          Per,
-          defaultPermission: parent.defaultPermission
+          Per
         };
       }
     })();
@@ -112,7 +111,6 @@ export const authDatasetByTmbId = async ({
 
     return {
       ...dataset,
-      defaultPermission,
       permission: Per
     };
   })();

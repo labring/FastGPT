@@ -197,7 +197,6 @@ export const delResourcePermission = ({
   resourceType: PerResourceTypeEnum;
   teamId: string;
   resourceId: string;
-  tmbId: string;
   session?: ClientSession;
 } & RequireOnlyOne<{
   tmbId: string;

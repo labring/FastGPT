@@ -18,10 +18,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetsContext } from '../context';
-import {
-  DatasetDefaultPermissionVal,
-  DatasetPermissionList
-} from '@fastgpt/global/support/permission/dataset/constant';
+import { DatasetPermissionList } from '@fastgpt/global/support/permission/dataset/constant';
 import ConfigPerModal from '@/components/support/permission/ConfigPerModal';
 import {
   deleteDatasetCollaborators,
@@ -278,7 +275,7 @@ function List() {
                       )}
                       <PermissionIconText
                         iconColor="myGray.400"
-                        defaultPermission={dataset.defaultPermission}
+                        permission={dataset.private ? 'private' : 'public'}
                         color={'myGray.500'}
                       />
                     </HStack>
@@ -426,16 +423,8 @@ function List() {
           }
           avatar={editPerDataset.avatar}
           name={editPerDataset.name}
-          defaultPer={{
-            value: editPerDataset.defaultPermission,
-            defaultValue: DatasetDefaultPermissionVal,
-            onChange: (e) =>
-              onUpdateDataset({
-                id: editPerDataset._id,
-                defaultPermission: e
-              })
-          }}
           managePer={{
+            mode: 'all',
             permission: editPerDataset.permission,
             onGetCollaboratorList: () => getCollaboratorList(editPerDataset._id),
             permissionList: DatasetPermissionList,

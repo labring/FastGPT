@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
 import { Box, Flex, Input } from '@chakra-ui/react';
-import { delDatasetById } from '@/web/core/dataset/api';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useForm } from 'react-hook-form';
@@ -10,7 +8,7 @@ import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { postRebuildEmbedding } from '@/web/core/dataset/api';
@@ -21,12 +19,8 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider/index';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  DatasetDefaultPermissionVal,
-  DatasetPermissionList
-} from '@fastgpt/global/support/permission/dataset/constant';
+import { DatasetPermissionList } from '@fastgpt/global/support/permission/dataset/constant';
 import MemberManager from '../../component/MemberManager';
 import {
   getCollaboratorList,
@@ -39,7 +33,6 @@ import { EditResourceInfoFormType } from '@/components/common/Modal/EditResource
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
 const Info = ({ datasetId }: { datasetId: string }) => {
-  const router = useRouter();
   const [openBaseConfig, setOpenBaseConfig] = useState(true);
   const [openPermissionConfig, setOpenPermissionConfig] = useState(true);
   const { t } = useTranslation();
@@ -56,7 +49,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
-  const defaultPermission = watch('defaultPermission');
 
   const { datasetModelList, vectorModelList } = useSystemStore();
   const { ConfirmModal: ConfirmDelModal } = useConfirm({
@@ -69,30 +61,17 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     type: 'delete'
   });
 
-  const { File, onOpen: onOpenSelectFile } = useSelectFile({
+  const { File } = useSelectFile({
     fileType: '.jpg,.png',
     multiple: false
   });
 
-  /* 点击删除 */
-  const { mutate: onclickDelete, isLoading: isDeleting } = useRequest({
-    mutationFn: () => {
-      return delDatasetById(datasetId);
-    },
-    onSuccess() {
-      router.replace(`/dataset/list`);
-    },
-    successToast: t('common:common.Delete Success'),
-    errorToast: t('common:common.Delete Failed')
-  });
-
-  const { runAsync: onSave, loading: isSaving } = useRequest2(
+  const { runAsync: onSave } = useRequest2(
     (data: DatasetItemType) => {
       return updateDataset({
         id: datasetId,
         agentModel: data.agentModel,
-        externalReadUrl: data.externalReadUrl,
-        defaultPermission: data.defaultPermission
+        externalReadUrl: data.externalReadUrl
       });
     },
     {
@@ -101,7 +80,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     }
   );
 
-  const { runAsync: onSelectFile, loading: isSelecting } = useRequest2(
+  const { runAsync: onSelectFile } = useRequest2(
     (e: File[]) => {
       const file = e[0];
       if (!file) return Promise.resolve(null);
@@ -122,7 +101,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     }
   );
 
-  const { runAsync: onRebuilding, loading: isRebuilding } = useRequest2(
+  const { runAsync: onRebuilding } = useRequest2(
     (vectorModel: VectorModelItemType) => {
       return postRebuildEmbedding({
         datasetId,
@@ -242,10 +221,9 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               onchange={(e) => {
                 const vectorModel = vectorModelList.find((item) => item.model === e);
                 if (!vectorModel) return;
-                return onOpenConfirmRebuild(() => {
-                  return onRebuilding(vectorModel).then(() => {
-                    setValue('vectorModel', vectorModel);
-                  });
+                return onOpenConfirmRebuild(async () => {
+                  await onRebuilding(vectorModel);
+                  setValue('vectorModel', vectorModel);
                 })();
               }}
             />
@@ -326,20 +304,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               <FormLabel fontWeight={'500'} fontSize={'mini'} pb={3} userSelect={'none'}>
                 {t('common:permission.Default permission')}
               </FormLabel>
-              <DefaultPermissionList
-                fontSize={'mini'}
-                per={defaultPermission}
-                defaultPer={DatasetDefaultPermissionVal}
-                onChange={(v) => {
-                  setValue('defaultPermission', v);
-                  return handleSubmit((data) => onSave({ ...data, defaultPermission: v }))();
-                }}
-              />
             </Box>
 
             <Box py={4}>
               <MemberManager
                 managePer={{
+                  mode: 'all',
                   permission: datasetDetail.permission,
                   onGetCollaboratorList: () => getCollaboratorList(datasetId),
                   permissionList: DatasetPermissionList,

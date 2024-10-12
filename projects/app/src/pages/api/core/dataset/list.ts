@@ -16,6 +16,8 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
+import { getGroupPer } from '@fastgpt/service/support/permission/controller';
 
 export type GetDatasetListBody = {
   parentId: ParentIdType;
@@ -30,7 +32,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     dataset: parentDataset,
     teamId,
     tmbId,
-    permission: tmbPer
+    permission: myPer
   } = await (async () => {
     if (parentId) {
       return await authDataset({
@@ -76,44 +78,81 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     };
   })();
 
-  const [myDatasets, rpList] = await Promise.all([
+  const myGroupIds = (
+    await getGroupsByTmbId({
+      tmbId,
+      teamId
+    })
+  ).map((item) => String(item._id));
+
+  const [myDatasets, perList] = await Promise.all([
     MongoDataset.find(findDatasetQuery)
       .sort({
         updateTime: -1
       })
       .lean(),
     MongoResourcePermission.find({
-      resourceType: PerResourceTypeEnum.dataset,
-      teamId,
-      tmbId
+      $and: [
+        {
+          resourceType: PerResourceTypeEnum.dataset,
+          teamId
+        },
+        { $or: [{ tmbId }, { groupId: { $in: myGroupIds } }] }
+      ]
     }).lean()
   ]);
 
   const filterDatasets = myDatasets
     .map((dataset) => {
-      const Per = (() => {
+      const { Per, privateDataset } = (() => {
+        // inherit
         if (dataset.inheritPermission && parentDataset && dataset.type !== DatasetTypeEnum.folder) {
-          dataset.defaultPermission = parentDataset.defaultPermission;
-          const perVal = rpList.find(
-            (item) => String(item.resourceId) === String(parentDataset._id)
+          const tmbPer = perList.find(
+            (item) => String(item.resourceId) === String(parentDataset._id) && !!item.tmbId
           )?.permission;
-          return new DatasetPermission({
-            per: perVal ?? parentDataset.defaultPermission,
-            isOwner: String(parentDataset.tmbId) === tmbId || tmbPer.isOwner
-          });
+          const groupPer = getGroupPer(
+            perList
+              .filter(
+                (item) =>
+                  String(item.resourceId) === String(parentDataset._id) &&
+                  myGroupIds.includes(String(item.groupId))
+              )
+              .map((item) => item.permission)
+          );
+          return {
+            Per: new DatasetPermission({
+              per: tmbPer ?? groupPer ?? DatasetDefaultPermissionVal,
+              isOwner: String(parentDataset.tmbId) === tmbId || myPer.isOwner
+            }),
+            privateDataset: !tmbPer && !groupPer
+          };
         } else {
-          const perVal = rpList.find(
-            (item) => String(item.resourceId) === String(dataset._id)
+          const tmbPer = perList.find(
+            (item) =>
+              String(item.resourceId) === String(dataset._id) && !!item.tmbId && !!item.permission
           )?.permission;
-          return new DatasetPermission({
-            per: perVal ?? dataset.defaultPermission,
-            isOwner: String(dataset.tmbId) === tmbId || tmbPer.isOwner
-          });
+          const groupPer = getGroupPer(
+            perList
+              .filter(
+                (item) =>
+                  String(item.resourceId) === String(dataset._id) &&
+                  myGroupIds.includes(String(item.groupId))
+              )
+              .map((item) => item.permission)
+          );
+          return {
+            Per: new DatasetPermission({
+              per: tmbPer ?? groupPer ?? DatasetDefaultPermissionVal,
+              isOwner: String(dataset.tmbId) === tmbId || myPer.isOwner
+            }),
+            privateDataset: !tmbPer && !groupPer
+          };
         }
       })();
       return {
         ...dataset,
-        permission: Per
+        permission: Per,
+        privateDataset
       };
     })
     .filter((app) => app.permission.hasReadPer);
@@ -127,10 +166,10 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
       type: item.type,
       permission: item.permission,
       vectorModel: getVectorModel(item.vectorModel),
-      defaultPermission: item.defaultPermission ?? DatasetDefaultPermissionVal,
       inheritPermission: item.inheritPermission,
       tmbId: item.tmbId,
-      updateTime: item.updateTime
+      updateTime: item.updateTime,
+      private: item.privateDataset
     }))
   );
 
