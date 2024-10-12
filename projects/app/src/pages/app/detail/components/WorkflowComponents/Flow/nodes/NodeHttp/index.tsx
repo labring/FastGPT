@@ -224,9 +224,8 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
           rounded={'md'}
           bg={'white'}
           ml={2}
-          pl={2}
         >
-          <HttpInput
+          <PromptEditor
             placeholder={
               t('common:core.module.input.label.Http Request Url') +
               ', ' +
@@ -237,6 +236,8 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
             variables={variables}
             onBlur={onBlurUrl}
             onChange={onChangeUrl}
+            minH={40}
+            showOpenModal={false}
           />
         </Box>
       </Flex>
