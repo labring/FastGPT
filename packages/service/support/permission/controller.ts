@@ -47,10 +47,10 @@ export const getResourcePermission = async ({
   const tmbPer = (
     await MongoResourcePermission.findOne(
       {
-        tmbId,
-        teamId,
         resourceType,
-        resourceId
+        teamId,
+        resourceId,
+        tmbId
       },
       'permission'
     ).lean()
@@ -109,9 +109,9 @@ export async function getResourceAllClbs({
 )): Promise<ResourcePermissionType[]> {
   return MongoResourcePermission.find(
     {
-      resourceId,
       resourceType: resourceType,
       teamId: teamId,
+      resourceId,
       groupId: {
         $exists: false
       }
@@ -131,8 +131,8 @@ export const delResourcePermission = ({
   ...props
 }: {
   resourceType: PerResourceTypeEnum;
-  resourceId: string;
   teamId: string;
+  resourceId: string;
   tmbId: string;
   session?: ClientSession;
 }) => {
