@@ -1,7 +1,7 @@
 {
   "name": "Dalle3 绘图",
   "intro": "通过请求 Dalle3 接口绘图，需要有 api key",
-  "author": "FastGPT",
+  "author": "",
   "avatar": "/appMarketTemplates/plugin-dalle/avatar.svg",
   "type": "plugin",
   "tags": ["recommendation", "image-generation"],

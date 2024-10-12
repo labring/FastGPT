@@ -189,7 +189,7 @@ const TemplateMarketModal = ({
           </Box>
 
           <Box w={'full'} fontSize={'mini'}>
-            <Box color={'myGray.500'}>By {item.author}</Box>
+            <Box color={'myGray.500'}>{`by ${item.author || feConfigs.systemTitle}`}</Box>
             <Box
               className="buttons"
               display={'none'}

@@ -1,7 +1,7 @@
 {
   "name": "飞书 webhook 插件",
   "intro": "通过 webhook 给飞书机器人发送一条消息",
-  "author": "FastGPT",
+  "author": "",
   "avatar": "/appMarketTemplates/plugin-feishu/avatar.svg",
   "type": "plugin",
   "tags": ["recommendation", "office-services"],
