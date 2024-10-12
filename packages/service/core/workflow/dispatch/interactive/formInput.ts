@@ -61,6 +61,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
     [DispatchNodeResponseKeyEnum.rewriteHistories]: histories.slice(0, -2), // Removes the current session record as the history of subsequent nodes
     ...userInputVal,
     [NodeOutputKeyEnum.formInputResult]: userInputVal,
+    [DispatchNodeResponseKeyEnum.toolResponses]: userInputVal,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       formInputResult: userInputVal
     }
