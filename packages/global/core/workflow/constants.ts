@@ -269,7 +269,6 @@ export enum VariableInputEnum {
   textarea = 'textarea',
   numberInput = 'numberInput',
   select = 'select',
-  switch = 'switch',
   custom = 'custom'
 }
 export const variableMap: Record<
@@ -300,12 +299,6 @@ export const variableMap: Record<
     label: i18nT('common:core.workflow.inputType.number input'),
     value: VariableInputEnum.numberInput,
     defaultValueType: WorkflowIOValueTypeEnum.number
-  },
-  [VariableInputEnum.switch]: {
-    icon: 'core/workflow/inputType/switch',
-    label: i18nT('common:core.workflow.inputType.switch'),
-    value: VariableInputEnum.switch,
-    defaultValueType: WorkflowIOValueTypeEnum.boolean
   },
   [VariableInputEnum.select]: {
     icon: 'core/workflow/inputType/option',

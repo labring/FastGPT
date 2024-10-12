@@ -232,7 +232,6 @@ export const appData2FlowNodeIO = ({
           ],
           [VariableInputEnum.numberInput]: [FlowNodeInputTypeEnum.numberInput],
           [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
-          [VariableInputEnum.switch]: [FlowNodeInputTypeEnum.switch],
           [VariableInputEnum.custom]: [
             FlowNodeInputTypeEnum.input,
             FlowNodeInputTypeEnum.reference
