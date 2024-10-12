@@ -133,8 +133,8 @@ const InputTypeConfig = ({
 
   const showMaxLenInput = useMemo(() => {
     const list = [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.textarea];
-    return list.includes(inputType as FlowNodeInputTypeEnum) && type !== 'variable';
-  }, [inputType, type]);
+    return list.includes(inputType as FlowNodeInputTypeEnum);
+  }, [inputType]);
 
   const showMinMaxInput = useMemo(() => {
     const list = [FlowNodeInputTypeEnum.numberInput];
@@ -156,7 +156,7 @@ const InputTypeConfig = ({
 
   return (
     <Stack flex={1} borderLeft={'1px solid #F0F1F6'} justifyContent={'space-between'}>
-      <Flex flexDirection={'column'} p={8} gap={4} flex={'1 0 0'} overflow={'auto'}>
+      <Flex flexDirection={'column'} p={8} pb={2} gap={4} flex={'1 0 0'} overflow={'auto'}>
         <Flex alignItems={'center'}>
           <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
             {typeLabels.name[type] || typeLabels.name.formInput}
@@ -242,6 +242,7 @@ const InputTypeConfig = ({
               bg={'myGray.50'}
               placeholder={t('common:core.module.Max Length placeholder')}
               value={maxLength}
+              max={50000}
               onChange={(e) => {
                 // @ts-ignore
                 setValue('maxLength', e || '');
