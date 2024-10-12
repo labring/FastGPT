@@ -25,11 +25,7 @@ const packagePluginList = [
   'duckduckgo/searchVideo',
   'drawing',
   'drawing/baseChart',
-  'search',
-  'search/wiki',
-  'search/baidu',
-  'search/google',
-  'search/bing'
+  'wiki'
 ];
 
 export const list = [...staticPluginList, ...packagePluginList];
