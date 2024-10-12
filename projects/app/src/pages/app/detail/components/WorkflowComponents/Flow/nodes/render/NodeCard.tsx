@@ -25,6 +25,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { WholeResponseContent } from '@/components/core/chat/components/WholeResponseModal';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -65,6 +66,7 @@ const NodeCard = (props: Props) => {
     isFolded,
     ...customStyle
   } = props;
+  const { feConfigs } = useSystemStore();
 
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const setHoverNodeId = useContextSelector(WorkflowContext, (v) => v.setHoverNodeId);
@@ -92,6 +94,13 @@ const NodeCard = (props: Props) => {
 
     return { node, parentNode };
   }, [nodeList, nodeId]);
+
+  const nodeCourseUrls = feConfigs.nodeCourseUrls;
+
+  const nodeCourseUrl = useMemo(() => {
+    if (!nodeCourseUrls || !node) return undefined;
+    return nodeCourseUrls[node.flowNodeType];
+  }, [nodeCourseUrls, node]);
 
   const { data: nodeTemplate, runAsync: getNodeLatestTemplate } = useRequest2(
     async () => {
@@ -275,6 +284,24 @@ const NodeCard = (props: Props) => {
                   </Box>
                 </MyTooltip>
               )}
+              {!!nodeTemplate?.diagram && nodeCourseUrl && (
+                <Box bg={'myGray.300'} w={'1px'} h={'12px'} mx={1} />
+              )}
+              {nodeCourseUrl && !hasNewVersion && (
+                <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
+                  <MyIcon
+                    cursor={'pointer'}
+                    name="book"
+                    color={'primary.600'}
+                    w={'18px'}
+                    ml={1}
+                    _hover={{
+                      color: 'primary.800'
+                    }}
+                    onClick={() => window.open(nodeCourseUrl, '_blank')}
+                  />
+                </MyTooltip>
+              )}
             </Flex>
             <NodeIntro nodeId={nodeId} intro={intro} />
           </Box>
@@ -295,6 +322,7 @@ const NodeCard = (props: Props) => {
     onOpenConfirmSync,
     onClickSyncVersion,
     nodeTemplate?.diagram,
+    nodeCourseUrl,
     intro,
     menuForbid,
     nodeList,

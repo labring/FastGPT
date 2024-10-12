@@ -9,6 +9,7 @@ import { FastGPTProUrl, isProduction } from '@fastgpt/service/common/system/cons
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 import json5 from 'json5';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const readConfigData = (name: string) => {
   const splitName = name.split('.');
@@ -62,6 +63,42 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   systemPluginCourseUrl: 'https://fael3z0zfze.feishu.cn/wiki/ERZnw9R26iRRG0kXZRec6WL9nwh',
   appTemplateCourse:
     'https://fael3z0zfze.feishu.cn/wiki/CX9wwMGyEi5TL6koiLYcg7U0nWb?fromScene=spaceOverview',
+  nodeCourseUrls: {
+    [FlowNodeTypeEnum.systemConfig]: '',
+    [FlowNodeTypeEnum.pluginConfig]: '',
+    [FlowNodeTypeEnum.workflowStart]: '',
+    [FlowNodeTypeEnum.chatNode]: 'https://fael3z0zfze.feishu.cn/wiki/M7N9wN9emiVEdPkbWnFcFtP9n1c',
+    [FlowNodeTypeEnum.datasetSearchNode]:
+      'https://fael3z0zfze.feishu.cn/wiki/FDPpwA4OiiTab7kwrrecOtnTnEf',
+    [FlowNodeTypeEnum.datasetConcatNode]:
+      'https://fael3z0zfze.feishu.cn/wiki/LyzQw0n7siLq4xkeAHdcQi4unSh',
+    [FlowNodeTypeEnum.answerNode]: 'https://fael3z0zfze.feishu.cn/wiki/DPPKwwYFTilOgbktgwVc0JuEn6d',
+    [FlowNodeTypeEnum.classifyQuestion]:
+      'https://fael3z0zfze.feishu.cn/wiki/OaJxwyk83iphOikBu8icDAIKnHg',
+    [FlowNodeTypeEnum.contentExtract]:
+      'https://fael3z0zfze.feishu.cn/wiki/OhxXwkV8XilNMUkNFMWcVKrtnOg',
+    [FlowNodeTypeEnum.httpRequest468]:
+      'https://fael3z0zfze.feishu.cn/wiki/IMYawQKHeitAdSko9qjcs3oxn4f',
+    [FlowNodeTypeEnum.pluginInput]: '',
+    [FlowNodeTypeEnum.pluginOutput]: '',
+    [FlowNodeTypeEnum.queryExtension]: '',
+    [FlowNodeTypeEnum.tools]: 'https://fael3z0zfze.feishu.cn/wiki/RCnjwhdKnicTV1kBYNlcNhtgnlc',
+    [FlowNodeTypeEnum.stopTool]: '',
+    [FlowNodeTypeEnum.toolParams]: '',
+    [FlowNodeTypeEnum.lafModule]: 'https://fael3z0zfze.feishu.cn/wiki/T6hswF359i93lsk2SI1c5gfSn7c',
+    [FlowNodeTypeEnum.ifElseNode]: 'https://fael3z0zfze.feishu.cn/wiki/WOJqwddNxiPyU6kJDJxcBx8Insb',
+    [FlowNodeTypeEnum.variableUpdate]: '',
+    [FlowNodeTypeEnum.code]: 'https://fael3z0zfze.feishu.cn/wiki/BzobwKh3hiFNFikAOoscVVBXnpg',
+    [FlowNodeTypeEnum.textEditor]: 'https://fael3z0zfze.feishu.cn/wiki/LufYwV7F0iYtT6kp1NjcYrTunfh',
+    [FlowNodeTypeEnum.customFeedback]:
+      'https://fael3z0zfze.feishu.cn/wiki/OSz1wbPz5iRUFJkjwVic6hOvnje',
+    [FlowNodeTypeEnum.readFiles]: '',
+    [FlowNodeTypeEnum.userSelect]: 'https://fael3z0zfze.feishu.cn/wiki/NhFPw9Z9jiv7zZkvBaXccGKknwh',
+    [FlowNodeTypeEnum.loop]: '',
+    [FlowNodeTypeEnum.loopStart]: '',
+    [FlowNodeTypeEnum.loopEnd]: '',
+    [FlowNodeTypeEnum.formInput]: ''
+  },
   systemTitle: 'FastGPT',
   concatMd:
     '项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n交流群: ![](https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg)',
