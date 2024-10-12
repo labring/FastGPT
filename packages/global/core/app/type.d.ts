@@ -121,6 +121,8 @@ export type VariableItemType = {
   valueType?: WorkflowIOValueTypeEnum;
   defaultValue?: any;
 
+  // input
+  maxLength?: number;
   // numberInput
   max?: number;
   min?: number;
