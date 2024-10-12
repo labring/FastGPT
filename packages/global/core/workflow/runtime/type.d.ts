@@ -73,7 +73,7 @@ export type RuntimeNodeItemType = {
   intro?: StoreNodeItemType['intro'];
   flowNodeType: StoreNodeItemType['flowNodeType'];
   showStatus?: StoreNodeItemType['showStatus'];
-  isEntry?: StoreNodeItemType['isEntry'];
+  isEntry?: boolean;
 
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
@@ -114,6 +114,7 @@ export type DispatchNodeResponseType = {
   model?: string;
   contextTotalLen?: number;
   totalPoints?: number;
+  childTotalPoints?: number;
 
   // chat
   temperature?: number;
@@ -158,6 +159,7 @@ export type DispatchNodeResponseType = {
   toolCallTokens?: number;
   toolDetail?: ChatHistoryItemResType[];
   toolStop?: boolean;
+  toolMergeSignId?: string;
 
   // code
   codeLog?: string;

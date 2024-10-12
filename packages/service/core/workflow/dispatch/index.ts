@@ -62,8 +62,8 @@ import { dispatchCustomFeedback } from './tools/customFeedback';
 import { dispatchReadFiles } from './tools/readFiles';
 import { dispatchUserSelect } from './interactive/userSelect';
 import {
-  InteractiveNodeResponseItemType,
-  UserSelectInteractive
+  WorkflowInteractiveResponseType,
+  InteractiveNodeResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { dispatchRunAppNode } from './plugin/runApp';
 import { dispatchLoop } from './loop/runLoop';
@@ -174,10 +174,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   let toolRunResponse: ToolRunResponseItemType; // Run with tool mode. Result will response to tool node.
   let debugNextStepRunNodes: RuntimeNodeItemType[] = [];
   // 记录交互节点，交互节点需要在工作流完全结束后再进行计算
-  let workflowInteractiveResponse:
+  let nodeInteractiveResponse:
     | {
         entryNodeIds: string[];
-        interactiveResponse: UserSelectInteractive;
+        interactiveResponse: InteractiveNodeResponseType;
       }
     | undefined;
 
@@ -307,7 +307,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     interactiveResponse
   }: {
     entryNodeIds: string[];
-    interactiveResponse: UserSelectInteractive;
+    interactiveResponse: InteractiveNodeResponseType;
   }): AIChatItemValueItemType {
     // Get node outputs
     const nodeOutputs: NodeOutputItemType[] = [];
@@ -323,24 +323,23 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       });
     });
 
-    const interactiveResult: InteractiveNodeResponseItemType = {
+    const interactiveResult: WorkflowInteractiveResponseType = {
       ...interactiveResponse,
       entryNodeIds,
       memoryEdges: runtimeEdges.map((edge) => ({
         ...edge,
-        status: entryNodeIds.includes(edge.target)
-          ? 'active'
-          : entryNodeIds.includes(edge.source)
-            ? 'waiting'
-            : edge.status
+        status: entryNodeIds.includes(edge.target) ? 'active' : edge.status
       })),
       nodeOutputs
     };
 
-    props.workflowStreamResponse?.({
-      event: SseResponseEventEnum.interactive,
-      data: { interactive: interactiveResult }
-    });
+    // Tool call, not need interactive response
+    if (!props.isToolCall) {
+      props.workflowStreamResponse?.({
+        event: SseResponseEventEnum.interactive,
+        data: { interactive: interactiveResult }
+      });
+    }
 
     return {
       type: ChatItemValueTypeEnum.interactive,
@@ -404,7 +403,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     // In the current version, only one interactive node is allowed at the same time
     const interactiveResponse = nodeRunResult.result?.[DispatchNodeResponseKeyEnum.interactive];
     if (interactiveResponse) {
-      workflowInteractiveResponse = {
+      pushStore(nodeRunResult.node, nodeRunResult.result);
+      nodeInteractiveResponse = {
         entryNodeIds: [nodeRunResult.node.nodeId],
         interactiveResponse
       };
@@ -599,7 +599,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     // Interactive node is not the entry node, return interactive result
     if (
       item.flowNodeType !== FlowNodeTypeEnum.userSelect &&
-      item.flowNodeType !== FlowNodeTypeEnum.formInput
+      item.flowNodeType !== FlowNodeTypeEnum.formInput &&
+      item.flowNodeType !== FlowNodeTypeEnum.tools
     ) {
       item.isEntry = false;
     }
@@ -615,13 +616,16 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   }
 
   // Interactive node
-  if (workflowInteractiveResponse) {
-    const interactiveResult = handleInteractiveResult({
-      entryNodeIds: workflowInteractiveResponse.entryNodeIds,
-      interactiveResponse: workflowInteractiveResponse.interactiveResponse
-    });
-    chatAssistantResponse.push(interactiveResult);
-  }
+  const interactiveResult = (() => {
+    if (nodeInteractiveResponse) {
+      const interactiveAssistant = handleInteractiveResult({
+        entryNodeIds: nodeInteractiveResponse.entryNodeIds,
+        interactiveResponse: nodeInteractiveResponse.interactiveResponse
+      });
+      chatAssistantResponse.push(interactiveAssistant);
+      return interactiveAssistant.interactive;
+    }
+  })();
 
   return {
     flowResponses: chatResponses,
@@ -631,6 +635,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       finishedEdges: runtimeEdges,
       nextStepRunNodes: debugNextStepRunNodes
     },
+    workflowInteractiveResponse: interactiveResult,
     [DispatchNodeResponseKeyEnum.runTimes]: workflowRunTimes,
     [DispatchNodeResponseKeyEnum.assistantResponses]:
       mergeAssistantResponseAnswerText(chatAssistantResponse),

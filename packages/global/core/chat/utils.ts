@@ -143,3 +143,33 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
       return ChatSourceEnum.online;
   }
 };
+
+/* 
+  Merge chat responseData
+  1. Same tool mergeSignId (Interactive tool node)
+*/
+export const mergeChatResponseData = (responseDataList: ChatHistoryItemResType[]) => {
+  let lastResponse: ChatHistoryItemResType | undefined = undefined;
+
+  return responseDataList.reduce<ChatHistoryItemResType[]>((acc, curr) => {
+    if (
+      lastResponse &&
+      lastResponse.toolMergeSignId &&
+      curr.toolMergeSignId === lastResponse.toolMergeSignId
+    ) {
+      // 替换 lastResponse
+      const concatResponse: ChatHistoryItemResType = {
+        ...curr,
+        runningTime: +((lastResponse.runningTime || 0) + (curr.runningTime || 0)).toFixed(2),
+        totalPoints: (lastResponse.totalPoints || 0) + (curr.totalPoints || 0),
+        childTotalPoints: (lastResponse.childTotalPoints || 0) + (curr.childTotalPoints || 0),
+        toolCallTokens: (lastResponse.toolCallTokens || 0) + (curr.toolCallTokens || 0),
+        toolDetail: [...(lastResponse.toolDetail || []), ...(curr.toolDetail || [])]
+      };
+      return [...acc.slice(0, -1), concatResponse];
+    } else {
+      lastResponse = curr;
+      return [...acc, curr];
+    }
+  }, []);
+};

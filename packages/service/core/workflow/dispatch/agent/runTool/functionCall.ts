@@ -22,10 +22,12 @@ import { DispatchFlowResponse, WorkflowResponseType } from '../../type';
 import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
-import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { updateToolInputValue } from './utils';
+import { chats2GPTMessages, GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
 import { computedMaxToken, llmCompletionsBodyFormat } from '../../../../ai/utils';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
+import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
 type FunctionRunResponseType = {
   toolRunResponse: DispatchFlowResponse;
@@ -33,25 +35,107 @@ type FunctionRunResponseType = {
 }[];
 
 export const runToolWithFunctionCall = async (
-  props: DispatchToolModuleProps & {
-    messages: ChatCompletionMessageParam[];
-    toolNodes: ToolNodeItemType[];
-    toolModel: LLMModelItemType;
-  },
+  props: DispatchToolModuleProps,
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
+  const { messages, toolNodes, toolModel, interactiveEntryToolParams, ...workflowProps } = props;
   const {
-    toolModel,
-    toolNodes,
-    messages,
     res,
     requestOrigin,
     runtimeNodes,
+    runtimeEdges,
     node,
     stream,
     workflowStreamResponse,
     params: { temperature = 0, maxToken = 4000, aiChatVision }
-  } = props;
+  } = workflowProps;
+
+  // Interactive
+  if (interactiveEntryToolParams) {
+    initToolNodes(runtimeNodes, interactiveEntryToolParams.entryNodeIds);
+    initToolCallEdges(runtimeEdges, interactiveEntryToolParams.entryNodeIds);
+
+    // Run entry tool
+    const toolRunResponse = await dispatchWorkFlow({
+      ...workflowProps,
+      isToolCall: true
+    });
+    const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
+
+    workflowStreamResponse?.({
+      event: SseResponseEventEnum.toolResponse,
+      data: {
+        tool: {
+          id: interactiveEntryToolParams.toolCallId,
+          toolName: '',
+          toolAvatar: '',
+          params: '',
+          response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
+        }
+      }
+    });
+
+    // Check stop signal
+    const hasStopSignal = toolRunResponse.flowResponses?.some((item) => item.toolStop);
+    // Check interactive response(Only 1 interaction is reserved)
+    const workflowInteractiveResponse = toolRunResponse.workflowInteractiveResponse;
+
+    const requestMessages = [
+      ...messages,
+      ...interactiveEntryToolParams.memoryMessages.map((item) =>
+        !workflowInteractiveResponse &&
+        item.role === 'function' &&
+        item.name === interactiveEntryToolParams.toolCallId
+          ? {
+              ...item,
+              content: stringToolResponse
+            }
+          : item
+      )
+    ];
+
+    if (hasStopSignal || workflowInteractiveResponse) {
+      // Get interactive tool data
+      const toolWorkflowInteractiveResponse: WorkflowInteractiveResponseType | undefined =
+        workflowInteractiveResponse
+          ? {
+              ...workflowInteractiveResponse,
+              toolParams: {
+                entryNodeIds: workflowInteractiveResponse.entryNodeIds,
+                toolCallId: interactiveEntryToolParams.toolCallId,
+                memoryMessages: [...interactiveEntryToolParams.memoryMessages]
+              }
+            }
+          : undefined;
+
+      return {
+        dispatchFlowResponse: [toolRunResponse],
+        toolNodeTokens: 0,
+        completeMessages: requestMessages,
+        assistantResponses: toolRunResponse.assistantResponses,
+        runTimes: toolRunResponse.runTimes,
+        toolWorkflowInteractiveResponse
+      };
+    }
+
+    return runToolWithFunctionCall(
+      {
+        ...props,
+        interactiveEntryToolParams: undefined,
+        // Rewrite toolCall messages
+        messages: requestMessages
+      },
+      {
+        dispatchFlowResponse: [toolRunResponse],
+        toolNodeTokens: 0,
+        assistantResponses: toolRunResponse.assistantResponses,
+        runTimes: toolRunResponse.runTimes
+      }
+    );
+  }
+
+  // ------------------------------------------------------------
+
   const assistantResponses = response?.assistantResponses || [];
 
   const functions: ChatCompletionCreateParams.Function[] = toolNodes.map((item) => {
@@ -130,7 +214,7 @@ export const runToolWithFunctionCall = async (
     toolModel
   );
 
-  // console.log(JSON.stringify(requestBody, null, 2));
+  // console.log(JSON.stringify(requestMessages, null, 2));
   /* Run llm */
   const ai = getAIApi({
     timeout: 480000
@@ -190,30 +274,13 @@ export const runToolWithFunctionCall = async (
           }
         })();
 
+        initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
         const toolRunResponse = await dispatchWorkFlow({
-          ...props,
-          isToolCall: true,
-          runtimeNodes: runtimeNodes.map((item) =>
-            item.nodeId === toolNode.nodeId
-              ? {
-                  ...item,
-                  isEntry: true,
-                  inputs: updateToolInputValue({ params: startParams, inputs: item.inputs })
-                }
-              : {
-                  ...item,
-                  isEntry: false
-                }
-          )
+          ...workflowProps,
+          isToolCall: true
         });
 
-        const stringToolResponse = (() => {
-          if (typeof toolRunResponse.toolResponses === 'object') {
-            return JSON.stringify(toolRunResponse.toolResponses, null, 2);
-          }
-
-          return toolRunResponse.toolResponses ? String(toolRunResponse.toolResponses) : 'none';
-        })();
+        const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
 
         const functionCallMsg: ChatCompletionFunctionMessageParam = {
           role: ChatCompletionRequestMessageRoleEnum.Function,
@@ -279,27 +346,71 @@ export const runToolWithFunctionCall = async (
       assistantToolMsgParams,
       ...toolsRunResponse.map((item) => item?.functionCallMsg)
     ])[0] as AIChatItemType;
-
-    const toolNodeAssistants = [...assistantResponses, ...toolNodeAssistant.value];
+    const toolChildAssistants = flatToolsResponseData
+      .map((item) => item.assistantResponses)
+      .flat()
+      .filter((item) => item.type !== ChatItemValueTypeEnum.interactive);
+    const toolNodeAssistants = [
+      ...assistantResponses,
+      ...toolNodeAssistant.value,
+      ...toolChildAssistants
+    ];
 
     // concat tool responses
     const dispatchFlowResponse = response
       ? response.dispatchFlowResponse.concat(flatToolsResponseData)
       : flatToolsResponseData;
 
-    /* check stop signal */
+    const runTimes =
+      (response?.runTimes || 0) +
+      flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0);
+    const toolNodeTokens = response?.toolNodeTokens ? response.toolNodeTokens + tokens : tokens;
+
+    // Check stop signal
     const hasStopSignal = flatToolsResponseData.some(
       (item) => !!item.flowResponses?.find((item) => item.toolStop)
     );
-    if (hasStopSignal) {
+    // Check interactive response(Only 1 interaction is reserved)
+    const workflowInteractiveResponseItem = toolsRunResponse.find(
+      (item) => item.toolRunResponse.workflowInteractiveResponse
+    );
+    if (hasStopSignal || workflowInteractiveResponseItem) {
+      // Get interactive tool data
+      const workflowInteractiveResponse =
+        workflowInteractiveResponseItem?.toolRunResponse.workflowInteractiveResponse;
+
+      const toolWorkflowInteractiveResponse: WorkflowInteractiveResponseType | undefined =
+        workflowInteractiveResponse
+          ? {
+              ...workflowInteractiveResponse,
+              toolParams: {
+                entryNodeIds: workflowInteractiveResponse.entryNodeIds,
+                toolCallId: workflowInteractiveResponseItem?.functionCallMsg.name,
+                memoryMessages: [
+                  ...chats2GPTMessages({
+                    messages: [
+                      {
+                        obj: ChatRoleEnum.AI,
+                        value: assistantResponses
+                      }
+                    ],
+                    reserveId: false,
+                    reserveTool: true
+                  }),
+                  assistantToolMsgParams,
+                  ...toolsRunResponse.map((item) => item?.functionCallMsg)
+                ]
+              }
+            }
+          : undefined;
+
       return {
         dispatchFlowResponse,
-        totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
+        toolNodeTokens,
         completeMessages,
         assistantResponses: toolNodeAssistants,
-        runTimes:
-          (response?.runTimes || 0) +
-          flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0)
+        runTimes,
+        toolWorkflowInteractiveResponse
       };
     }
 
@@ -310,11 +421,9 @@ export const runToolWithFunctionCall = async (
       },
       {
         dispatchFlowResponse,
-        totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
+        toolNodeTokens,
         assistantResponses: toolNodeAssistants,
-        runTimes:
-          (response?.runTimes || 0) +
-          flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0)
+        runTimes
       }
     );
   } else {
@@ -332,7 +441,7 @@ export const runToolWithFunctionCall = async (
 
     return {
       dispatchFlowResponse: response?.dispatchFlowResponse || [],
-      totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
+      toolNodeTokens: response?.toolNodeTokens ? response.toolNodeTokens + tokens : tokens,
       completeMessages,
       assistantResponses: [...assistantResponses, ...toolNodeAssistant.value],
       runTimes: (response?.runTimes || 0) + 1

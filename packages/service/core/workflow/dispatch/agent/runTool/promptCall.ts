@@ -1,4 +1,3 @@
-import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getAIApi } from '../../../../ai/config';
 import { filterGPTMessageByMaxTokens, loadRequestMessages } from '../../../../chat/utils';
 import {
@@ -24,10 +23,12 @@ import {
 } from '@fastgpt/global/common/string/tools';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { updateToolInputValue } from './utils';
+import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
 import { computedMaxToken, llmCompletionsBodyFormat } from '../../../../ai/utils';
 import { WorkflowResponseType } from '../../type';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
+import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 type FunctionCallCompletion = {
   id: string;
@@ -38,27 +39,105 @@ type FunctionCallCompletion = {
 };
 
 const ERROR_TEXT = 'Tool run error';
+const INTERACTIVE_STOP_SIGNAL = 'INTERACTIVE_STOP_SIGNAL';
 
 export const runToolWithPromptCall = async (
-  props: DispatchToolModuleProps & {
-    messages: ChatCompletionMessageParam[];
-    toolNodes: ToolNodeItemType[];
-    toolModel: LLMModelItemType;
-  },
+  props: DispatchToolModuleProps,
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
+  const { messages, toolNodes, toolModel, interactiveEntryToolParams, ...workflowProps } = props;
   const {
-    toolModel,
-    toolNodes,
-    messages,
     res,
     requestOrigin,
     runtimeNodes,
+    runtimeEdges,
     node,
     stream,
     workflowStreamResponse,
     params: { temperature = 0, maxToken = 4000, aiChatVision }
-  } = props;
+  } = workflowProps;
+
+  if (interactiveEntryToolParams) {
+    initToolNodes(runtimeNodes, interactiveEntryToolParams.entryNodeIds);
+    initToolCallEdges(runtimeEdges, interactiveEntryToolParams.entryNodeIds);
+
+    // Run entry tool
+    const toolRunResponse = await dispatchWorkFlow({
+      ...workflowProps,
+      isToolCall: true
+    });
+    const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
+
+    workflowStreamResponse?.({
+      event: SseResponseEventEnum.toolResponse,
+      data: {
+        tool: {
+          id: interactiveEntryToolParams.toolCallId,
+          toolName: '',
+          toolAvatar: '',
+          params: '',
+          response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
+        }
+      }
+    });
+
+    // Check interactive response(Only 1 interaction is reserved)
+    const workflowInteractiveResponseItem = toolRunResponse?.workflowInteractiveResponse
+      ? toolRunResponse
+      : undefined;
+
+    // Rewrite toolCall messages
+    const concatMessages = [...messages.slice(0, -1), ...interactiveEntryToolParams.memoryMessages];
+    const lastMessage = concatMessages[concatMessages.length - 1];
+    lastMessage.content = workflowInteractiveResponseItem
+      ? lastMessage.content
+      : replaceVariable(lastMessage.content, {
+          [INTERACTIVE_STOP_SIGNAL]: stringToolResponse
+        });
+
+    // Check stop signal
+    const hasStopSignal = toolRunResponse.flowResponses.some((item) => !!item.toolStop);
+    if (hasStopSignal || workflowInteractiveResponseItem) {
+      // Get interactive tool data
+      const workflowInteractiveResponse =
+        workflowInteractiveResponseItem?.workflowInteractiveResponse;
+      const toolWorkflowInteractiveResponse: WorkflowInteractiveResponseType | undefined =
+        workflowInteractiveResponse
+          ? {
+              ...workflowInteractiveResponse,
+              toolParams: {
+                entryNodeIds: workflowInteractiveResponse.entryNodeIds,
+                toolCallId: '',
+                memoryMessages: [lastMessage]
+              }
+            }
+          : undefined;
+
+      return {
+        dispatchFlowResponse: [toolRunResponse],
+        toolNodeTokens: 0,
+        completeMessages: concatMessages,
+        assistantResponses: toolRunResponse.assistantResponses,
+        runTimes: toolRunResponse.runTimes,
+        toolWorkflowInteractiveResponse
+      };
+    }
+
+    return runToolWithPromptCall(
+      {
+        ...props,
+        interactiveEntryToolParams: undefined,
+        messages: concatMessages
+      },
+      {
+        dispatchFlowResponse: [toolRunResponse],
+        toolNodeTokens: 0,
+        assistantResponses: toolRunResponse.assistantResponses,
+        runTimes: toolRunResponse.runTimes
+      }
+    );
+  }
+
   const assistantResponses = response?.assistantResponses || [];
 
   const toolsPrompt = JSON.stringify(
@@ -131,7 +210,7 @@ export const runToolWithPromptCall = async (
     toolModel
   );
 
-  // console.log(JSON.stringify(requestBody, null, 2));
+  // console.log(JSON.stringify(requestMessages, null, 2));
   /* Run llm */
   const ai = getAIApi({
     timeout: 480000
@@ -199,7 +278,7 @@ export const runToolWithPromptCall = async (
 
     return {
       dispatchFlowResponse: response?.dispatchFlowResponse || [],
-      totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
+      toolNodeTokens: response?.toolNodeTokens ? response.toolNodeTokens + tokens : tokens,
       completeMessages,
       assistantResponses: [...assistantResponses, ...toolNodeAssistant.value],
       runTimes: (response?.runTimes || 0) + 1
@@ -238,30 +317,13 @@ export const runToolWithPromptCall = async (
       }
     });
 
-    const moduleRunResponse = await dispatchWorkFlow({
-      ...props,
-      isToolCall: true,
-      runtimeNodes: runtimeNodes.map((item) =>
-        item.nodeId === toolNode.nodeId
-          ? {
-              ...item,
-              isEntry: true,
-              inputs: updateToolInputValue({ params: startParams, inputs: item.inputs })
-            }
-          : {
-              ...item,
-              isEntry: false
-            }
-      )
+    initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
+    const toolResponse = await dispatchWorkFlow({
+      ...workflowProps,
+      isToolCall: true
     });
 
-    const stringToolResponse = (() => {
-      if (typeof moduleRunResponse.toolResponses === 'object') {
-        return JSON.stringify(moduleRunResponse.toolResponses, null, 2);
-      }
-
-      return moduleRunResponse.toolResponses ? String(moduleRunResponse.toolResponses) : 'none';
-    })();
+    const stringToolResponse = formatToolResponse(toolResponse.toolResponses);
 
     workflowStreamResponse?.({
       event: SseResponseEventEnum.toolResponse,
@@ -277,7 +339,7 @@ export const runToolWithPromptCall = async (
     });
 
     return {
-      moduleRunResponse,
+      toolResponse,
       toolResponsePrompt: stringToolResponse
     };
   })();
@@ -317,30 +379,60 @@ export const runToolWithPromptCall = async (
     assistantToolMsgParams,
     functionResponseMessage
   ])[0] as AIChatItemType;
-  const toolNodeAssistants = [...assistantResponses, ...toolNodeAssistant.value];
+  const toolChildAssistants = toolsRunResponse.toolResponse.assistantResponses.filter(
+    (item) => item.type !== ChatItemValueTypeEnum.interactive
+  );
+  const toolNodeAssistants = [
+    ...assistantResponses,
+    ...toolNodeAssistant.value,
+    ...toolChildAssistants
+  ];
 
   const dispatchFlowResponse = response
-    ? response.dispatchFlowResponse.concat(toolsRunResponse.moduleRunResponse)
-    : [toolsRunResponse.moduleRunResponse];
+    ? [...response.dispatchFlowResponse, toolsRunResponse.toolResponse]
+    : [toolsRunResponse.toolResponse];
+
+  // Check interactive response(Only 1 interaction is reserved)
+  const workflowInteractiveResponseItem = toolsRunResponse.toolResponse?.workflowInteractiveResponse
+    ? toolsRunResponse.toolResponse
+    : undefined;
 
   // get the next user prompt
   lastMessage.content += `${replaceAnswer}
 TOOL_RESPONSE: """
-${toolsRunResponse.toolResponsePrompt}
+${workflowInteractiveResponseItem ? `{{${INTERACTIVE_STOP_SIGNAL}}}` : toolsRunResponse.toolResponsePrompt}
 """
 ANSWER: `;
 
-  /* check stop signal */
-  const hasStopSignal = toolsRunResponse.moduleRunResponse.flowResponses.some(
-    (item) => !!item.toolStop
-  );
-  if (hasStopSignal) {
+  const runTimes = (response?.runTimes || 0) + toolsRunResponse.toolResponse.runTimes;
+  const toolNodeTokens = response?.toolNodeTokens ? response.toolNodeTokens + tokens : tokens;
+
+  // Check stop signal
+  const hasStopSignal = toolsRunResponse.toolResponse.flowResponses.some((item) => !!item.toolStop);
+
+  if (hasStopSignal || workflowInteractiveResponseItem) {
+    // Get interactive tool data
+    const workflowInteractiveResponse =
+      workflowInteractiveResponseItem?.workflowInteractiveResponse;
+    const toolWorkflowInteractiveResponse: WorkflowInteractiveResponseType | undefined =
+      workflowInteractiveResponse
+        ? {
+            ...workflowInteractiveResponse,
+            toolParams: {
+              entryNodeIds: workflowInteractiveResponse.entryNodeIds,
+              toolCallId: '',
+              memoryMessages: [lastMessage]
+            }
+          }
+        : undefined;
+
     return {
       dispatchFlowResponse,
-      totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
+      toolNodeTokens,
       completeMessages: filterMessages,
       assistantResponses: toolNodeAssistants,
-      runTimes: (response?.runTimes || 0) + toolsRunResponse.moduleRunResponse.runTimes
+      runTimes,
+      toolWorkflowInteractiveResponse
     };
   }
 
@@ -351,9 +443,9 @@ ANSWER: `;
     },
     {
       dispatchFlowResponse,
-      totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
+      toolNodeTokens,
       assistantResponses: toolNodeAssistants,
-      runTimes: (response?.runTimes || 0) + toolsRunResponse.moduleRunResponse.runTimes
+      runTimes
     }
   );
 };

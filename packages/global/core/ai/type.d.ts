@@ -4,12 +4,14 @@ import type {
   ChatCompletionChunk,
   ChatCompletionMessageParam as SdkChatCompletionMessageParam,
   ChatCompletionToolMessageParam,
-  ChatCompletionAssistantMessageParam,
   ChatCompletionContentPart as SdkChatCompletionContentPart,
-  ChatCompletionUserMessageParam as SdkChatCompletionUserMessageParam
+  ChatCompletionUserMessageParam as SdkChatCompletionUserMessageParam,
+  ChatCompletionToolMessageParam as SdkChatCompletionToolMessageParam,
+  ChatCompletionAssistantMessageParam as SdkChatCompletionAssistantMessageParam,
+  ChatCompletionContentPartText
 } from 'openai/resources';
 import { ChatMessageTypeEnum } from './constants';
-import { InteractiveNodeResponseItemType } from '../workflow/template/system/interactive/type';
+import { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
 export * from 'openai/resources';
 
 // Extension of ChatCompletionMessageParam, Add file url type
@@ -22,18 +24,31 @@ export type ChatCompletionContentPartFile = {
 export type ChatCompletionContentPart =
   | SdkChatCompletionContentPart
   | ChatCompletionContentPartFile;
-type CustomChatCompletionUserMessageParam = {
-  content: string | Array<ChatCompletionContentPart>;
+type CustomChatCompletionUserMessageParam = Omit<ChatCompletionUserMessageParam, 'content'> & {
   role: 'user';
+  content: string | Array<ChatCompletionContentPart>;
+};
+type CustomChatCompletionToolMessageParam = SdkChatCompletionToolMessageParam & {
+  role: 'tool';
   name?: string;
+};
+type CustomChatCompletionAssistantMessageParam = SdkChatCompletionAssistantMessageParam & {
+  role: 'assistant';
+  interactive?: WorkflowInteractiveResponseType;
 };
 
 export type ChatCompletionMessageParam = (
-  | Exclude<SdkChatCompletionMessageParam, SdkChatCompletionUserMessageParam>
+  | Exclude<
+      SdkChatCompletionMessageParam,
+      | SdkChatCompletionUserMessageParam
+      | SdkChatCompletionToolMessageParam
+      | SdkChatCompletionAssistantMessageParam
+    >
   | CustomChatCompletionUserMessageParam
+  | CustomChatCompletionToolMessageParam
+  | CustomChatCompletionAssistantMessageParam
 ) & {
   dataId?: string;
-  interactive?: InteractiveNodeResponseItemType;
 };
 export type SdkChatCompletionMessageParam = SdkChatCompletionMessageParam;
 
@@ -47,11 +62,12 @@ export type ChatCompletionMessageToolCall = ChatCompletionMessageToolCall & {
   toolName?: string;
   toolAvatar?: string;
 };
-export type ChatCompletionMessageFunctionCall = ChatCompletionAssistantMessageParam.FunctionCall & {
-  id?: string;
-  toolName?: string;
-  toolAvatar?: string;
-};
+export type ChatCompletionMessageFunctionCall =
+  SdkChatCompletionAssistantMessageParam.FunctionCall & {
+    id?: string;
+    toolName?: string;
+    toolAvatar?: string;
+  };
 
 // Stream response
 export type StreamChatType = Stream<ChatCompletionChunk>;

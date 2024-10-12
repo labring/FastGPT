@@ -9,7 +9,7 @@ import { filterToolNodeIdByEdges, getHistories } from '../../utils';
 import { runToolWithToolChoice } from './toolChoice';
 import { DispatchToolModuleProps, ToolNodeItemType } from './type.d';
 import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   GPTMessages2Chats,
   chatValue2RuntimePrompt,
@@ -24,9 +24,11 @@ import { runToolWithPromptCall } from './promptCall';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getMultiplePrompt, Prompt_Tool_Call } from './constants';
 import { filterToolResponseToPreview } from './utils';
+import { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
+  [DispatchNodeResponseKeyEnum.interactive]?: InteractiveNodeResponseType;
 }>;
 
 /* 
@@ -64,18 +66,17 @@ export const toolCallMessagesAdapt = ({
 
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
-    node: { nodeId, name },
+    node: { nodeId, name, isEntry },
     runtimeNodes,
     runtimeEdges,
     histories,
     query,
+
     params: { model, systemPrompt, userChatInput, history = 6 }
   } = props;
 
   const toolModel = getLLMModel(model);
   const chatHistories = getHistories(history, histories);
-
-  /* get tool params */
 
   const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
 
@@ -94,37 +95,57 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       };
     });
 
-  const messages: ChatItemType[] = [
-    ...getSystemPrompt_ChatItemType(toolModel.defaultSystemChatPrompt),
-    ...getSystemPrompt_ChatItemType(systemPrompt),
-    // Add file input prompt to histories
-    ...chatHistories.map((item) => {
-      if (item.obj === ChatRoleEnum.Human) {
-        return {
-          ...item,
-          value: toolCallMessagesAdapt({
-            userInput: item.value
-          })
-        };
+  // Check interactive entry
+  const interactiveResponse = (() => {
+    const lastHistory = chatHistories[chatHistories.length - 1];
+    if (isEntry && lastHistory?.obj === ChatRoleEnum.AI) {
+      const lastValue = lastHistory.value[lastHistory.value.length - 1];
+      if (
+        lastValue?.type === ChatItemValueTypeEnum.interactive &&
+        lastValue.interactive?.toolParams
+      ) {
+        return lastValue.interactive;
       }
-      return item;
-    }),
-    {
-      obj: ChatRoleEnum.Human,
-      value: toolCallMessagesAdapt({
-        userInput: runtimePrompt2ChatsValue({
-          text: userChatInput,
-          files: chatValue2RuntimePrompt(query).files
-        })
-      })
     }
-  ];
+  })();
+  props.node.isEntry = false;
 
-  // console.log(JSON.stringify(messages, null, 2));
+  const messages: ChatItemType[] = (() => {
+    const value: ChatItemType[] = [
+      ...getSystemPrompt_ChatItemType(toolModel.defaultSystemChatPrompt),
+      ...getSystemPrompt_ChatItemType(systemPrompt),
+      // Add file input prompt to histories
+      ...chatHistories.map((item) => {
+        if (item.obj === ChatRoleEnum.Human) {
+          return {
+            ...item,
+            value: toolCallMessagesAdapt({
+              userInput: item.value
+            })
+          };
+        }
+        return item;
+      }),
+      {
+        obj: ChatRoleEnum.Human,
+        value: toolCallMessagesAdapt({
+          userInput: runtimePrompt2ChatsValue({
+            text: userChatInput,
+            files: chatValue2RuntimePrompt(query).files
+          })
+        })
+      }
+    ];
+    if (interactiveResponse) {
+      return value.slice(0, -2);
+    }
+    return value;
+  })();
 
   const {
+    toolWorkflowInteractiveResponse,
     dispatchFlowResponse, // tool flow response
-    totalTokens,
+    toolNodeTokens,
     completeMessages = [], // The actual message sent to AI(just save text)
     assistantResponses = [], // FastGPT system store assistant.value response
     runTimes
@@ -137,7 +158,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         toolNodes,
         toolModel,
         maxRunToolTimes: 30,
-        messages: adaptMessages
+        messages: adaptMessages,
+        interactiveEntryToolParams: interactiveResponse?.toolParams
       });
     }
     if (toolModel.functionCall) {
@@ -145,7 +167,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         ...props,
         toolNodes,
         toolModel,
-        messages: adaptMessages
+        messages: adaptMessages,
+        interactiveEntryToolParams: interactiveResponse?.toolParams
       });
     }
 
@@ -172,13 +195,14 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       ...props,
       toolNodes,
       toolModel,
-      messages: adaptMessages
+      messages: adaptMessages,
+      interactiveEntryToolParams: interactiveResponse?.toolParams
     });
   })();
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model,
-    tokens: totalTokens,
+    tokens: toolNodeTokens,
     modelType: ModelTypeEnum.llm
   });
 
@@ -216,21 +240,26 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: totalPointsUsage,
-      toolCallTokens: totalTokens,
+      toolCallTokens: toolNodeTokens,
+      childTotalPoints: flatUsages.reduce((sum, item) => sum + item.totalPoints, 0),
       model: modelName,
       query: userChatInput,
       historyPreview: getHistoryPreview(GPTMessages2Chats(completeMessages, false), 10000),
-      toolDetail: childToolResponse
+      toolDetail: childToolResponse,
+      toolMergeSignId:
+        interactiveResponse?.toolParams?.toolCallId ||
+        toolWorkflowInteractiveResponse?.toolParams?.toolCallId
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: name,
         totalPoints,
         model: modelName,
-        tokens: totalTokens
+        tokens: toolNodeTokens
       },
       ...flatUsages
     ],
-    [DispatchNodeResponseKeyEnum.newVariables]: newVariables
+    [DispatchNodeResponseKeyEnum.newVariables]: newVariables,
+    [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
   };
 };

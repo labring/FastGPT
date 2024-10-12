@@ -85,7 +85,7 @@ const RenderTool = React.memo(
           })();
 
           return (
-            <Accordion key={tool.id} allowToggle>
+            <Accordion key={tool.id} allowToggle _notLast={{ mb: 2 }}>
               <AccordionItem borderTop={'none'} borderBottom={'none'}>
                 <AccordionButton
                   w={'auto'}

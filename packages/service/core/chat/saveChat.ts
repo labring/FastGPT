@@ -12,6 +12,7 @@ import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 
 type Props = {
   chatId: string;
@@ -143,6 +144,7 @@ export const updateInteractiveChat = async ({
 
   if (!chatItem || chatItem.obj !== ChatRoleEnum.AI) return;
 
+  // Update interactive value
   const interactiveValue = chatItem.value[chatItem.value.length - 1];
 
   if (
@@ -194,7 +196,7 @@ export const updateInteractiveChat = async ({
 
   if (aiResponse.responseData) {
     chatItem.responseData = chatItem.responseData
-      ? [...chatItem.responseData, ...aiResponse.responseData]
+      ? mergeChatResponseData([...chatItem.responseData, ...aiResponse.responseData])
       : aiResponse.responseData;
   }
 
