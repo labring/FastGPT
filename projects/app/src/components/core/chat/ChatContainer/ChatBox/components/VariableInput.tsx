@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Controller, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import {
@@ -11,7 +11,6 @@ import {
   NumberInput,
   NumberInputField,
   NumberInputStepper,
-  Switch,
   Textarea
 } from '@chakra-ui/react';
 import ChatAvatar from './ChatAvatar';
@@ -23,6 +22,7 @@ import { ChatBoxInputFormType } from '../type.d';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { useDeepCompareEffect } from 'ahooks';
 
 export const VariableInputItem = ({
   item,
@@ -98,32 +98,30 @@ export const VariableInputItem = ({
         />
       )}
       {item.type === VariableInputEnum.numberInput && (
-        <NumberInput
-          step={1}
-          min={item.min}
-          max={item.max}
-          bg={'white'}
-          rounded={'md'}
-          clampValueOnBlur={false}
-          defaultValue={item.defaultValue}
-        >
-          <NumberInputField
-            bg={'white'}
-            {...register(item.key, {
-              required: item.required,
-              min: item.min,
-              max: item.max,
-              valueAsNumber: true
-            })}
-          />
-          <NumberInputStepper>
-            <NumberIncrementStepper />
-            <NumberDecrementStepper />
-          </NumberInputStepper>
-        </NumberInput>
-      )}
-      {item.type === VariableInputEnum.switch && (
-        <Switch {...register(item.key)} defaultChecked={!!item.defaultValue} />
+        <Controller
+          key={item.key}
+          control={control}
+          name={item.key}
+          rules={{ required: item.required, min: item.min, max: item.max }}
+          render={({ field: { ref, value, onChange } }) => (
+            <NumberInput
+              step={1}
+              min={item.min}
+              max={item.max}
+              bg={'white'}
+              rounded={'md'}
+              clampValueOnBlur={false}
+              value={value}
+              onChange={(valueString) => onChange(Number(valueString))}
+            >
+              <NumberInputField ref={ref} bg={'white'} />
+              <NumberInputStepper>
+                <NumberIncrementStepper />
+                <NumberDecrementStepper />
+              </NumberInputStepper>
+            </NumberInput>
+          )}
+        />
       )}
     </Box>
   );
@@ -141,20 +139,17 @@ const VariableInput = ({
   const { appAvatar, variableList, variablesForm } = useContextSelector(ChatBoxContext, (v) => v);
   const { reset, handleSubmit: handleSubmitChat } = variablesForm;
 
-  React.useEffect(() => {
-    const defaultValues: Record<string, any> = {};
-    variableList.forEach((item) => {
-      if (item.defaultValue !== undefined && !variablesForm.getValues(item.key)) {
-        defaultValues[item.key] = item.defaultValue;
-      }
-    });
-    if (Object.keys(defaultValues).length > 0) {
-      reset((formValues) => ({
-        ...formValues,
-        ...defaultValues
-      }));
-    }
-  }, [variableList, reset, variablesForm]);
+  const defaultValues = useMemo(() => {
+    return variableList.reduce((acc: Record<string, any>, item) => {
+      acc[item.key] = item.defaultValue;
+      return acc;
+    }, {});
+  }, [variableList]);
+
+  useDeepCompareEffect(() => {
+    console.log('defaultValues', defaultValues);
+    reset(defaultValues);
+  }, [defaultValues]);
 
   return (
     <Box py={3}>
