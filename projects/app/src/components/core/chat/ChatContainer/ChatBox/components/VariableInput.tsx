@@ -23,12 +23,13 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useDeepCompareEffect } from 'ahooks';
+import { VariableItemType } from '@fastgpt/global/core/app/type';
 
 export const VariableInputItem = ({
   item,
   variablesForm
 }: {
-  item: any;
+  item: VariableItemType;
   variablesForm: UseFormReturn<any>;
 }) => {
   const { register, control, setValue } = variablesForm;
@@ -60,6 +61,7 @@ export const VariableInputItem = ({
       {item.type === VariableInputEnum.input && (
         <Input
           bg={'myWhite.400'}
+          maxLength={item.maxLength || 4000}
           {...register(item.key, {
             required: item.required
           })}
@@ -72,7 +74,7 @@ export const VariableInputItem = ({
             required: item.required
           })}
           rows={5}
-          maxLength={4000}
+          maxLength={item.maxLength || 4000}
         />
       )}
       {item.type === VariableInputEnum.select && (

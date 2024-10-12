@@ -254,6 +254,7 @@ const VariableEdit = ({
           onClose={() => reset({})}
           maxW={['90vw', '928px']}
           w={'100%'}
+          isCentered
         >
           <Flex h={'560px'}>
             <Stack gap={4} p={8}>
