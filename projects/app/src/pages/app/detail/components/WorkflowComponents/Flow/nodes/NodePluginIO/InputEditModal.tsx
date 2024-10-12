@@ -22,7 +22,8 @@ export const defaultInput: FlowNodeInputItemType = {
   key: '',
   label: '',
   description: '',
-  defaultValue: ''
+  defaultValue: '',
+  list: [{ label: '', value: '' }]
 };
 
 const FieldEditModal = ({
@@ -133,10 +134,7 @@ const FieldEditModal = ({
 
   const isEdit = !!defaultValue.key;
   const form = useForm({
-    defaultValues: {
-      ...defaultValue,
-      list: defaultValue.list?.length ? defaultValue.list : [{ label: '', value: '' }]
-    }
+    defaultValues: defaultValue
   });
   const { getValues, setValue, watch, reset } = form;
 
