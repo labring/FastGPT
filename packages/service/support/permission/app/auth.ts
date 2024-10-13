@@ -1,8 +1,8 @@
 /* Auth app permission */
 import { MongoApp } from '../../../core/app/schema';
-import { AppDetailType, AppSchema } from '@fastgpt/global/core/app/type.d';
+import { AppDetailType } from '@fastgpt/global/core/app/type.d';
 import { parseHeaderCert } from '../controller';
-import { AuthUserTypeEnum, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { getResourcePermission } from '../controller';
@@ -13,8 +13,6 @@ import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { splitCombinePluginId } from '../../../core/app/plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { AuthModeType, AuthResponseType } from '../type';
-import { NextApiRequest } from 'next';
-import { authCert } from '../auth/common';
 
 export const authPluginByTmbId = async ({
   tmbId,

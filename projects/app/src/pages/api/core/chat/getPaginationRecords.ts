@@ -35,6 +35,13 @@ async function handler(
     type = GetChatTypeEnum.normal
   } = req.body;
 
+  if (!appId || !chatId) {
+    return {
+      list: [],
+      total: 0
+    };
+  }
+
   const [app] = await Promise.all([
     MongoApp.findById(appId, 'type').lean(),
     authChatCrud({

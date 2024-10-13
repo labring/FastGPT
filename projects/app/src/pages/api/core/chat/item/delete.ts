@@ -8,9 +8,8 @@ import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 async function handler(req: ApiRequestProps<{}, DeleteChatItemProps>, res: NextApiResponse) {
-  const { chatId, contentId } = req.query;
+  const { appId, chatId, contentId } = req.query;
 
-  let appId = req.query.appId;
   if (!contentId || !chatId) {
     return jsonRes(res);
   }
