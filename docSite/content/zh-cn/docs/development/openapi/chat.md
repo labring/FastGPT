@@ -8,6 +8,7 @@ weight: 852
 ---
 
 # 发起对话
+
 {{% alert icon="🤖 " context="success" %}}
 * 该接口的 API Key 需使用`应用特定的 key`，否则会报错。  
 
@@ -15,6 +16,7 @@ weight: 852
 {{% /alert %}}
 
 ## 请求简易应用和工作流
+
 对话接口兼容`GPT`的接口！如果你的项目使用的是标准的`GPT`官方接口，可以直接通过修改`BaseUrl`和 `Authorization`来访问 FastGpt 应用，不过需要注意下面几个规则：
 
 {{% alert icon="🤖 " context="success" %}}
@@ -24,8 +26,8 @@ weight: 852
 
 ### 请求
 
-{{< tabs tabTotal="2" >}}
-{{< tab tabName="请求示例" >}}
+{{< tabs tabTotal="3" >}}
+{{< tab tabName="基础请求示例" >}}
 {{< markdownify >}}
 
 ```bash
@@ -42,8 +44,49 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
     },
     "messages": [
         {
+            "role": "user",
             "content": "导演是谁",
-            "role": "user"
+        }
+    ]
+}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="图片/文件请求示例" >}}
+{{< markdownify >}}
+
+* 仅`messages`有部分区别，其他参数一致。
+* 目前不支持上次文件，需上传到自己的对象存储中，获取对应的文件链接。
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
+--header 'Authorization: Bearer fastgpt-xxxxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "chatId": "abcd",
+    "stream": false,
+    "messages": [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "导演是谁"
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "图片链接"
+                    }
+                },
+                {
+                    "type": "file_url",
+                    "name": "文件名",
+                    "url": "文档链接，支持 txt md html word pdf ppt csv excel"
+                }
+            ]
         }
     ]
 }'
@@ -269,11 +312,6 @@ event取值：
 {{< /tabs >}}
 
 
-### 使用案例
-
-- [接入 NextWeb/ChatGPT web 等应用](/docs/course/openapi)
-- [接入 onwechat](/docs/use-cases/onwechat)
-- [接入 飞书](/docs/course/feishu)
 ## 请求插件
 
 插件的接口与对话接口一致，仅请求参数略有区别，有以下规定：
@@ -460,27 +498,30 @@ event取值：
 {{< /tabs >}}
 
 
-## 猜你想问
+
+# 对话 CRUD
+
+{{% alert icon="🤖 " context="success" %}}
+* 以下接口可使用任意`API Key`调用。  
+* 4.8.12 以上版本才能使用
+{{% /alert %}}
+
+## 历史记录
+
+### 获取某个应用对话记录
 
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="请求示例" >}}
 {{< markdownify >}}
 
 ```bash
-curl --location --request POST 'http://localhost:3000/api/core/ai/agent/createQuestionGuide' \
+curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories' \
 --header 'Authorization: Bearer {{apikey}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "messages":[
-        {
-            "role": "user",
-            "content": "你好"
-        },
-        {
-            "role": "assistant",
-            "content": "你好！有什么我可以帮助你的吗？"
-        }
-    ]
+    "appId": "appId",
+    "offset": 0,
+    "pageSize": 20
 }'
 ```
 
@@ -491,7 +532,9 @@ curl --location --request POST 'http://localhost:3000/api/core/ai/agent/createQu
 {{< markdownify >}}
 
 {{% alert icon=" " context="success" %}}
-- messages - 对话消息，提供给 AI 的消息记录
+- appId - 应用 Id
+- offset - 偏移量，即从第几条数据开始取
+- pageSize - 记录数量
 {{% /alert %}}
 
 {{< /markdownify >}}
@@ -505,27 +548,216 @@ curl --location --request POST 'http://localhost:3000/api/core/ai/agent/createQu
     "code": 200,
     "statusText": "",
     "message": "",
-    "data": [
-        "你对AI有什么看法？",
-        "想了解AI的应用吗？",
-        "你希望AI能做什么？"
-    ]
+    "data": {
+        "list": [
+            {
+                "chatId": "usdAP1GbzSGu",
+                "updateTime": "2024-10-13T03:29:05.779Z",
+                "appId": "66e29b870b24ce35330c0f08",
+                "customTitle": "",
+                "title": "你好",
+                "top": false
+            },
+            {
+                "chatId": "lC0uTAsyNBlZ",
+                "updateTime": "2024-10-13T03:22:19.950Z",
+                "appId": "66e29b870b24ce35330c0f08",
+                "customTitle": "",
+                "title": "测试",
+                "top": false
+            }
+        ],
+        "total": 2
+    }
 }
 ```
+
 {{< /markdownify >}}
 {{< /tab >}}
 {{< /tabs >}}
 
+### 修改某个对话的标题
 
-# 对话 CRUD
+{{< tabs tabTotal="3" >}}
+{{< tab tabName="请求示例" >}}
+{{< markdownify >}}
 
-{{% alert icon="🤖 " context="success" %}}
-* 以下接口的 API Key 需使用`全局通用的 api key`。  
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistory' \
+--header 'Authorization: Bearer {{apikey}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "appId": "appId",
+    "chatId": "chatId",
+    "customTitle": "自定义标题"
+}'
+```
 
-* 4.8.12 以上版本才能使用
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="参数说明" >}}
+{{< markdownify >}}
+
+{{% alert icon=" " context="success" %}}
+- appId - 应用 Id
+- chatId - 历史记录 Id
+- customTitle - 自定义对话名
 {{% /alert %}}
 
-## 初始化对话
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="响应示例" >}}
+{{< markdownify >}}
+
+```json
+{
+    "code": 200,
+    "statusText": "",
+    "message": "",
+    "data": null
+}
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
+### 置顶 / 取消置顶
+{{< tabs tabTotal="3" >}}
+{{< tab tabName="请求示例" >}}
+{{< markdownify >}}
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistory' \
+--header 'Authorization: Bearer {{apikey}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "appId": "appId",
+    "chatId": "chatId",
+    "top": true
+}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="参数说明" >}}
+{{< markdownify >}}
+
+{{% alert icon=" " context="success" %}}
+- appId - 应用Id
+- chatId - 历史记录 Id
+- top - 是否置顶，ture 置顶，false 取消置顶
+{{% /alert %}}
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="响应示例" >}}
+{{< markdownify >}}
+
+```json
+{
+    "code": 200,
+    "statusText": "",
+    "message": "",
+    "data": null
+}
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
+### 删除某个历史记录
+
+{{< tabs tabTotal="3" >}}
+{{< tab tabName="请求示例" >}}
+{{< markdownify >}}
+
+```bash
+curl --location --request DELETE 'http://localhost:3000/api/core/chat/delHistory?chatId={{chatId}}&appId={{appId}}' \
+--header 'Authorization: Bearer {{apikey}}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="参数说明" >}}
+{{< markdownify >}}
+
+{{% alert icon=" " context="success" %}}
+- appId - 应用 Id
+- chatId - 历史记录 Id
+{{% /alert %}}
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="响应示例" >}}
+{{< markdownify >}}
+
+```json
+{
+    "code": 200,
+    "statusText": "",
+    "message": "",
+    "data": null
+}
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
+### 清空所有历史记录
+
+{{< tabs tabTotal="3" >}}
+{{< tab tabName="请求示例" >}}
+{{< markdownify >}}
+
+```bash
+curl --location --request DELETE 'http://localhost:3000/api/core/chat/clearHistories?appId={{appId}}' \
+--header 'Authorization: Bearer {{apikey}}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="参数说明" >}}
+{{< markdownify >}}
+
+{{% alert icon=" " context="success" %}}
+- appId - 应用 Id
+{{% /alert %}}
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="响应示例" >}}
+{{< markdownify >}}
+
+```json
+{
+    "code": 200,
+    "statusText": "",
+    "message": "",
+    "data": null
+}
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
+## 对话记录
+
+指的是某个 chatId 下的对话记录操作。
+
+### 获取单个对话初始化信息
+
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="请求示例" >}}
 {{< markdownify >}}
@@ -542,7 +774,7 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/init?appId={{
 
 {{% alert icon=" " context="success" %}}
 - appId - 应用 Id
-- chatId - 对话 Id
+- chatId - 历史记录 Id
 {{% /alert %}}
 
 {{< /markdownify >}}
@@ -610,253 +842,8 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/init?appId={{
 {{< /tab >}}
 {{< /tabs >}}
 
-## 对话记录
-### 获取对话列表
-{{< tabs tabTotal="3" >}}
-{{< tab tabName="请求示例" >}}
-{{< markdownify >}}
+### 获取对话记录列表
 
-```bash
-curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories' \
---header 'Authorization: Bearer {{apikey}}' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "appId": {{appId}},
-    "offset": 0,
-    "pageSize": 20
-}'
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-{{< tab tabName="参数说明" >}}
-{{< markdownify >}}
-
-{{% alert icon=" " context="success" %}}
-- appId - 应用 Id
-- offset - 偏移量，即从第几条数据开始取
-- pageSize - 记录数量
-{{% /alert %}}
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-{{< tab tabName="响应示例" >}}
-{{< markdownify >}}
-
-```json
-{
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": {
-        "list": [
-            {
-                "chatId": "usdAP1GbzSGu",
-                "updateTime": "2024-10-13T03:29:05.779Z",
-                "appId": "66e29b870b24ce35330c0f08",
-                "customTitle": "",
-                "title": "你好",
-                "top": false
-            },
-            {
-                "chatId": "lC0uTAsyNBlZ",
-                "updateTime": "2024-10-13T03:22:19.950Z",
-                "appId": "66e29b870b24ce35330c0f08",
-                "customTitle": "",
-                "title": "测试",
-                "top": false
-            }
-        ],
-        "total": 2
-    }
-}
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-{{< /tabs >}}
-
-### 自定义对话名
-{{< tabs tabTotal="3" >}}
-{{< tab tabName="请求示例" >}}
-{{< markdownify >}}
-
-```bash
-curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistory' \
---header 'Authorization: Bearer {{apikey}}' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "appId": {{appId}},
-    "chatId": {{chatId}},
-    "customTitle": {{customTitle}}
-}'
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-{{< tab tabName="参数说明" >}}
-{{< markdownify >}}
-
-{{% alert icon=" " context="success" %}}
-- appId - 应用 Id
-- chatId - 对话 Id
-- customTitle - 自定义对话名
-{{% /alert %}}
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-{{< tab tabName="响应示例" >}}
-{{< markdownify >}}
-
-```json
-{
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": null
-}
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-{{< /tabs >}}
-
-### 置顶 / 取消置顶
-{{< tabs tabTotal="3" >}}
-{{< tab tabName="请求示例" >}}
-{{< markdownify >}}
-
-```bash
-curl --location --request POST 'http://localhost:3000/api/core/chat/updateHistory' \
---header 'Authorization: Bearer {{apikey}}' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "appId": {{appId}},
-    "chatId": {{chatId}},
-    "top": true
-}'
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-{{< tab tabName="参数说明" >}}
-{{< markdownify >}}
-
-{{% alert icon=" " context="success" %}}
-- appId - 应用Id
-- chatId - 对话 Id
-- top - 是否置顶，ture 置顶，false 取消置顶
-{{% /alert %}}
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-{{< tab tabName="响应示例" >}}
-{{< markdownify >}}
-
-```json
-{
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": null
-}
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-{{< /tabs >}}
-
-### 删除对话
-
-{{< tabs tabTotal="3" >}}
-{{< tab tabName="请求示例" >}}
-{{< markdownify >}}
-
-```bash
-curl --location --request DELETE 'http://localhost:3000/api/core/chat/delHistory?chatId={{chatId}}&appId={{appId}}' \
---header 'Authorization: Bearer {{apikey}}'
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-{{< tab tabName="参数说明" >}}
-{{< markdownify >}}
-
-{{% alert icon=" " context="success" %}}
-- appId - 应用 Id
-- chatId - 对话 Id
-{{% /alert %}}
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-{{< tab tabName="响应示例" >}}
-{{< markdownify >}}
-
-```json
-{
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": null
-}
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-{{< /tabs >}}
-
-### 清空对话
-
-{{< tabs tabTotal="3" >}}
-{{< tab tabName="请求示例" >}}
-{{< markdownify >}}
-
-```bash
-curl --location --request DELETE 'http://localhost:3000/api/core/chat/clearHistories?appId={{appId}}' \
---header 'Authorization: Bearer {{apikey}}'
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-{{< tab tabName="参数说明" >}}
-{{< markdownify >}}
-
-{{% alert icon=" " context="success" %}}
-- appId - 应用 Id
-- chatId - 对话 Id
-{{% /alert %}}
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-{{< tab tabName="响应示例" >}}
-{{< markdownify >}}
-
-```json
-{
-    "code": 200,
-    "statusText": "",
-    "message": "",
-    "data": null
-}
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-{{< /tabs >}}
-
-## 对话消息
-
-### 获取对话消息
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="请求示例" >}}
 {{< markdownify >}}
@@ -866,8 +853,8 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginatio
 --header 'Authorization: Bearer {{apikey}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "appId": {{appId}},
-    "chatId": {{chatId}},
+    "appId": "appId",
+    "chatId": "chatId",
     "offset": 0,
     "pageSize": 10,
     "loadCustomFeedbacks": true
@@ -882,7 +869,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginatio
 
 {{% alert icon=" " context="success" %}}
 - appId - 应用 Id
-- chatId - 对话 Id
+- chatId - 历史记录 Id
 - offset - 偏移量
 - pageSize - 记录数量
 - loadCustomFeedbacks - 是否读取自定义反馈（可选）
@@ -949,7 +936,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginatio
 {{< /tab >}}
 {{< /tabs >}}
 
-### 删除对话消息
+### 删除对话记录
 
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="请求示例" >}}
@@ -968,8 +955,8 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/item/delet
 
 {{% alert icon=" " context="success" %}}
 - appId - 应用 Id
-- chatId - 对话 Id
-- contentId - 对话消息 dataId，string，删除多条需重复调用
+- chatId - 历史记录 Id
+- contentId - 对话记录 Id
 {{% /alert %}}
 
 {{< /markdownify >}}
@@ -1002,9 +989,9 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 --header 'Authorization: Bearer {{apikey}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "appId": {{appId}},
-    "chatId": {{chatId}},
-    "chatItemId": {{chatItemId}},
+    "appId": "appId",
+    "chatId": "chatId",
+    "chatItemId": "chatItemId",
     "userGoodFeedback": "yes"
 }'
 ```
@@ -1017,8 +1004,8 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
 {{% alert icon=" " context="success" %}}
 - appId - 应用 Id
-- chatId - 对话 Id
-- chatItemId - 对话消息 dataId
+- chatId - 历史记录 Id
+- chatItemId - 对话记录 dataId
 - userGoodFeedback - 用户点赞时的信息（可选），取消点赞时不填此参数即可
 {{% /alert %}}
 
@@ -1052,9 +1039,9 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 --header 'Authorization: Bearer {{apikey}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "appId": {{appId}},
-    "chatId": {{chatId}},
-    "chatItemId": {{chatItemId}},
+    "appId": "appId",
+    "chatId": "chatId",
+    "chatItemId": "chatItemId",
     "userBadFeedback": "yes"
 }'
 ```
@@ -1067,8 +1054,8 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
 {{% alert icon=" " context="success" %}}
 - appId - 应用 Id
-- chatId - 对话 Id
-- chatItemId - 对话消息 dataId
+- chatId - 历史记录 Id
+- chatItemId - 对话记录 Id
 - userBadFeedback - 用户点踩时的信息（可选），取消点踩时不填此参数即可
 {{% /alert %}}
 
@@ -1084,6 +1071,62 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
     "statusText": "",
     "message": "",
     "data": null
+}
+```
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
+## 猜你想问
+
+{{< tabs tabTotal="3" >}}
+{{< tab tabName="请求示例" >}}
+{{< markdownify >}}
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/ai/agent/createQuestionGuide' \
+--header 'Authorization: Bearer {{apikey}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "messages":[
+        {
+            "role": "user",
+            "content": "你好"
+        },
+        {
+            "role": "assistant",
+            "content": "你好！有什么我可以帮助你的吗？"
+        }
+    ]
+}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="参数说明" >}}
+{{< markdownify >}}
+
+{{% alert icon=" " context="success" %}}
+- messages - 对话消息，提供给 AI 的消息记录
+{{% /alert %}}
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="响应示例" >}}
+{{< markdownify >}}
+
+```json
+{
+    "code": 200,
+    "statusText": "",
+    "message": "",
+    "data": [
+        "你对AI有什么看法？",
+        "想了解AI的应用吗？",
+        "你希望AI能做什么？"
+    ]
 }
 ```
 {{< /markdownify >}}
