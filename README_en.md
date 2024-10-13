@@ -33,7 +33,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 🛸 Online Use
 
-International version: [tryfastgpt.ai](https://tryfastgpt.ai/)
+Website: [tryfastgpt.ai](https://tryfastgpt.ai/)
 
 | | |
 | ---------------------------------- | ---------------------------------- |
@@ -50,13 +50,11 @@ International version: [tryfastgpt.ai](https://tryfastgpt.ai/)
 
 | **Features**                               | **Details**                                       |
 |--------------------------------------------|---------------------------------------------------|
-|                                            | ✅ Offers a straightforward mode, eliminating the need for complex orchestration <br> ✅ Provides clear next-step instructions in dialogues <br> ✅ Facilitates workflow orchestration <br> ✅ Tracks references in source files |
-| **Application Orchestration Features**     | ✅ Encapsulates modules for enhanced reuse at multiple levels <br> ✅ Combines search and reordering functions <br> 🔜 Includes a tool module <br> 🔜 Integrates [Laf](https://github.com/labring/laf) for online HTTP module creation <br> 🔜 Plugin encapsulation capabilities |
-|                                            | ✅ Allows for the mixed use of multiple databases <br> ✅ Keeps track of modifications and deletions in data chunks <br> ✅ Enables specific vector models for each knowledge base <br> ✅ Stores original source files |
-| **Knowledge Base Features**                 | ✅ Supports direct input and segment-based QA import <br> ✅ Compatible with a variety of file formats: pdf, docx, txt, html, md, csv <br> ✅ Facilitates URL reading and bulk CSV importing <br> 🔜 Supports PPT and Excel file import <br> 🔜 Features a file reader <br> 🔜 Offers diverse data preprocessing options |
-|                                            | ✅ Enables targeted search testing within the knowledge base <br> ✅ Allows feedback, editing, and deletion during conversations <br> **Application Debugging Features** <br> ✅ Presents the full context of interactions <br> ✅ Displays all intermediate values within modules <br> 🔜 Advanced Debug mode for orchestration |
-| **OpenAPI Interface**                       | ✅ The completions interface (aligned with GPT's chat mode interface) <br> ✅ CRUD operations for the knowledge base <br> 🔜 CRUD operations for conversation |
-| **Operational Features**                    | ✅ Share without requiring login <br> ✅ Easy embedding with Iframe <br> ✅ Customizable chat window embedding with features like default open, drag-and-drop <br> ✅ Centralizes conversation records for review and annotation |
+| **Application Orchestration Features**   | ✅ Offers a straightforward mode, eliminating the need for complex orchestration <br> ✅ Provides clear next-step instructions in dialogues <br> ✅ Facilitates workflow orchestration <br> ✅ Tracks references in source files <br> ✅ Encapsulates modules for enhanced reuse at multiple levels <br> ✅ Combines search and reordering functions <br> 🔜 Includes a tool module <br> 🔜 Integrates [Laf](https://github.com/labring/laf) for online HTTP module creation <br> 🔜 Plugin encapsulation capabilities |
+| **Knowledge Base Features**              | ✅ Allows for the mixed use of multiple databases <br> ✅ Keeps track of modifications and deletions in data chunks <br> ✅ Enables specific vector models for each knowledge base <br> ✅ Stores original source files <br> ✅ Supports direct input and segment-based QA import <br> ✅ Compatible with a variety of file formats: pdf, docx, txt, html, md, csv <br> ✅ Facilitates URL reading and bulk CSV importing <br> 🔜 Supports PPT and Excel file import <br> 🔜 Features a file reader <br> 🔜 Offers diverse data preprocessing options |
+| **Application Debugging Features**        | ✅ Enables targeted search testing within the knowledge base <br> ✅ Allows feedback, editing, and deletion during conversations <br> ✅ Presents the full context of interactions <br> ✅ Displays all intermediate values within modules <br> 🔜 Advanced Debug mode for orchestration |
+| **OpenAPI Interface**                    | ✅ The completions interface (aligned with GPT's chat mode interface) <br> ✅ CRUD operations for the knowledge base <br> 🔜 CRUD operations for conversation |
+| **Operational Features**                   | ✅ Share without requiring login <br> ✅ Easy embedding with Iframe <br> ✅ Customizable chat window embedding with features like default open, drag-and-drop <br> ✅ Centralizes conversation records for review and annotation |
 
 
 <a href="#FastGPT">
@@ -70,8 +68,9 @@ Project tech stack: NextJs + TS + ChakraUI + MongoDB + PostgreSQL (PG Vector plu
 - **⚡ Fast Deployment**
 
   > When using [Sealos](https://sealos.io) services, there is no need to purchase servers or domain names. It supports high concurrency and dynamic scaling, and the database application uses the kubeblocks database, which far exceeds the simple Docker container deployment in terms of IO performance.
-
+  <div align="center">
   [![](https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
+  </div>
 
   Give it a 2-4 minute wait after deployment as it sets up the database. Initially, it might be a too slow since we're using the basic settings.
 
@@ -128,7 +127,7 @@ Project tech stack: NextJs + TS + ChakraUI + MongoDB + PostgreSQL (PG Vector plu
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
 </a>
 
-## Contributors
+## 🌱 Contributors
 
 We welcome all forms of contributions. If you are interested in contributing code, you can check out our GitHub [Issues](https://github.com/labring/FastGPT/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc) to show us your ideas.
 
