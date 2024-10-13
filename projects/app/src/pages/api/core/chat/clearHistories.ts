@@ -10,7 +10,6 @@ import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { NextAPI } from '@/service/middleware/entry';
 import { deleteChatFiles } from '@fastgpt/service/core/chat/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { authAppApikey } from '@fastgpt/service/support/permission/app/auth';
 
 /* clear chat history */
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -37,7 +36,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       };
     }
     if (appId) {
-      const { tmbId } = await authCert({ req, authToken: true });
+      const { tmbId } = await authCert({ req, authToken: true, authApiKey: true });
 
       return {
         tmbId,
@@ -45,13 +44,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         source: ChatSourceEnum.online
       };
     }
-    const { tmbId, appId: apiKeyAppId } = await authAppApikey({ req });
-    chatAppId = apiKeyAppId!;
-    return {
-      tmbId,
-      appId: apiKeyAppId,
-      source: ChatSourceEnum.online
-    };
+
+    return Promise.reject('Param are error');
   })();
 
   // find chatIds

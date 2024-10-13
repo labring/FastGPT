@@ -5,23 +5,17 @@ import type { CreateQuestionGuideParams } from '@/global/core/ai/api.d';
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
 import { authChatCert } from '@/service/support/permission/auth/chat';
-import { authAppApikey } from '@fastgpt/service/support/permission/app/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
     const { messages } = req.body as CreateQuestionGuideParams;
 
-    const { tmbId, teamId } = await (async () => {
-      try {
-        return await authAppApikey({ req });
-      } catch (error) {
-        return await authChatCert({
-          req,
-          authToken: true
-        });
-      }
-    })();
+    const { tmbId, teamId } = await authChatCert({
+      req,
+      authToken: true,
+      authApiKey: true
+    });
 
     const qgModel = global.llmModels[0];
 

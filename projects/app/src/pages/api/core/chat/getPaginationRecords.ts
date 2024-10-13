@@ -15,7 +15,6 @@ import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
-import { authAppApikey } from '@fastgpt/service/support/permission/app/auth';
 
 export type getPaginationRecordsQuery = {};
 
@@ -28,30 +27,20 @@ async function handler(
   res: ApiResponseType<any>
 ): Promise<getPaginationRecordsResponse> {
   const {
+    appId,
     chatId,
     offset,
     pageSize = 10,
     loadCustomFeedbacks,
     type = GetChatTypeEnum.normal
   } = req.body;
-  let appId = req.body.appId;
-
-  if (!appId || !chatId) {
-    const { appId: apiKeyAppId } = await authAppApikey({ req });
-    appId = apiKeyAppId!;
-    if (!apiKeyAppId) {
-      return {
-        list: [],
-        total: 0
-      };
-    }
-  }
 
   const [app] = await Promise.all([
     MongoApp.findById(appId, 'type').lean(),
     authChatCrud({
       req,
       authToken: true,
+      authApiKey: true,
       ...req.body,
       per: ReadPermissionVal
     })

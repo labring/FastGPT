@@ -9,24 +9,18 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { deleteChatFiles } from '@fastgpt/service/core/chat/controller';
-import { authAppApikey } from '@fastgpt/service/support/permission/app/auth';
 
 /* clear chat history */
 async function handler(req: ApiRequestProps<{}, DelHistoryProps>, res: NextApiResponse) {
-  const { chatId } = req.query;
+  const { appId, chatId } = req.query;
 
-  let appId = req.query.appId;
-  if (appId) {
-    await authChatCrud({
-      req,
-      authToken: true,
-      ...req.query,
-      per: WritePermissionVal
-    });
-  } else {
-    const { appId: apiKeyAppId } = await authAppApikey({ req });
-    appId = apiKeyAppId!;
-  }
+  await authChatCrud({
+    req,
+    authToken: true,
+    authApiKey: true,
+    ...req.query,
+    per: WritePermissionVal
+  });
 
   await deleteChatFiles({ chatIdList: [chatId] });
   await mongoSessionRun(async (session) => {

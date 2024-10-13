@@ -6,7 +6,6 @@ import type { DeleteChatItemProps } from '@/global/core/chat/api.d';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authAppApikey } from '@fastgpt/service/support/permission/app/auth';
 
 async function handler(req: ApiRequestProps<{}, DeleteChatItemProps>, res: NextApiResponse) {
   const { chatId, contentId } = req.query;
@@ -15,17 +14,14 @@ async function handler(req: ApiRequestProps<{}, DeleteChatItemProps>, res: NextA
   if (!contentId || !chatId) {
     return jsonRes(res);
   }
-  if (appId) {
-    await authChatCrud({
-      req,
-      authToken: true,
-      ...req.query,
-      per: WritePermissionVal
-    });
-  } else {
-    const { appId: apiKeyAppId } = await authAppApikey({ req });
-    appId = apiKeyAppId!;
-  }
+
+  await authChatCrud({
+    req,
+    authToken: true,
+    authApiKey: true,
+    ...req.query,
+    per: WritePermissionVal
+  });
 
   await MongoChatItem.deleteOne({
     appId,

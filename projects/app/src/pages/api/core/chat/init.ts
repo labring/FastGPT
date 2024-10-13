@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { authApp, authAppApikey } from '@fastgpt/service/support/permission/app/auth';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
 import type { InitChatProps, InitChatResponse } from '@/global/core/chat/api.d';
@@ -16,42 +16,29 @@ async function handler(
   res: NextApiResponse
 ): Promise<InitChatResponse | void> {
   let { appId, chatId } = req.query as InitChatProps;
-  let app, chat;
 
   if (!appId) {
-    const { app: apiKeyApp, tmbId, canWrite, appId: apiKeyAppId } = await authAppApikey({ req });
-    app = apiKeyApp;
-    chat = chatId ? await MongoChat.findOne({ appId: apiKeyAppId, chatId }) : undefined;
+    return jsonRes(res, {
+      code: 501,
+      message: "You don't have an app yet"
+    });
+  }
 
-    if (!apiKeyAppId) {
-      return jsonRes(res, {
-        code: 501,
-        message: "You don't have an app yet"
-      });
-    }
+  // auth app permission
+  const [{ app, tmbId }, chat] = await Promise.all([
+    authApp({
+      req,
+      authToken: true,
+      authApiKey: true,
+      appId,
+      per: ReadPermissionVal
+    }),
+    chatId ? MongoChat.findOne({ appId, chatId }) : undefined
+  ]);
 
-    // auth chat permission
-    if (chat && !canWrite && String(tmbId) !== String(chat?.tmbId)) {
-      return Promise.reject(ChatErrEnum.unAuthChat);
-    }
-  } else {
-    // auth app permission
-    const [{ app: authedApp, tmbId }, authChat] = await Promise.all([
-      authApp({
-        req,
-        authToken: true,
-        appId,
-        per: ReadPermissionVal
-      }),
-      chatId ? MongoChat.findOne({ appId, chatId }) : undefined
-    ]);
-    app = authedApp;
-    chat = authChat;
-
-    // auth chat permission
-    if (chat && !app?.permission.hasManagePer && String(tmbId) !== String(chat?.tmbId)) {
-      return Promise.reject(ChatErrEnum.unAuthChat);
-    }
+  // auth chat permission
+  if (chat && !app.permission.hasManagePer && String(tmbId) !== String(chat?.tmbId)) {
+    return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
   // get app and history
@@ -62,7 +49,7 @@ async function handler(
 
   return {
     chatId,
-    appId: appId || app._id,
+    appId,
     title: chat?.title,
     userAvatar: undefined,
     variables: chat?.variables || {},
