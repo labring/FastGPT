@@ -37,6 +37,7 @@ async function handler(
     await authChatCrud({
       req,
       authToken: true,
+      authApiKey: true,
       ...req.query,
       per: ReadPermissionVal
     });
@@ -44,6 +45,7 @@ async function handler(
     await authApp({
       req,
       authToken: true,
+      authApiKey: true,
       appId,
       per: ManagePermissionVal
     });

@@ -508,7 +508,7 @@ event取值：
 
 ## 历史记录
 
-### 获取某个应用对话记录
+### 获取某个应用历史记录
 
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="请求示例" >}}
@@ -935,6 +935,88 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginatio
 {{< /markdownify >}}
 {{< /tab >}}
 {{< /tabs >}}
+
+### 获取单个对话记录运行详情
+
+{{< tabs tabTotal="3" >}}
+{{< tab tabName="请求示例" >}}
+{{< markdownify >}}
+
+```bash
+curl --location --request GET 'http://localhost:3000/api/core/chat/getResData?appId={{appId}}&chatId={{chatId}}&dataId={{dataId}}' \
+--header 'Authorization: Bearer {{apikey}}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="参数说明" >}}
+{{< markdownify >}}
+
+{{% alert icon=" " context="success" %}}
+- appId - 应用 Id
+- chatId - 对话 Id
+- dataId - 对话记录 Id
+{{% /alert %}}
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="响应示例" >}}
+{{< markdownify >}}
+
+```json
+{
+    "code": 200,
+    "statusText": "",
+    "message": "",
+    "data": [
+        {
+            "id": "mVlxkz8NfyfU",
+            "nodeId": "448745",
+            "moduleName": "common:core.module.template.work_start",
+            "moduleType": "workflowStart",
+            "runningTime": 0
+        },
+        {
+            "id": "b3FndAdHSobY",
+            "nodeId": "z04w8JXSYjl3",
+            "moduleName": "AI 对话",
+            "moduleType": "chatNode",
+            "runningTime": 1.22,
+            "totalPoints": 0.02475,
+            "model": "GPT-4o-mini",
+            "tokens": 75,
+            "query": "测试",
+            "maxToken": 2000,
+            "historyPreview": [
+                {
+                    "obj": "Human",
+                    "value": "你好"
+                },
+                {
+                    "obj": "AI",
+                    "value": "你好！有什么我可以帮助你的吗？"
+                },
+                {
+                    "obj": "Human",
+                    "value": "测试"
+                },
+                {
+                    "obj": "AI",
+                    "value": "测试成功！请问你有什么具体的问题或者需要讨论的话题吗？"
+                }
+            ],
+            "contextTotalLen": 4
+        }
+    ]
+}
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
 
 ### 删除对话记录
 
