@@ -18,80 +18,70 @@ async function handler(
   let { appId, chatId } = req.query as InitChatProps;
   let app, chat;
 
-  try {
-    if (!appId) {
-      const { app: apiKeyApp, tmbId, canWrite, appId: apiKeyAppId } = await authAppApikey({ req });
-      app = apiKeyApp;
-      chat = chatId ? await MongoChat.findOne({ appId: apiKeyAppId, chatId }) : undefined;
+  if (!appId) {
+    const { app: apiKeyApp, tmbId, canWrite, appId: apiKeyAppId } = await authAppApikey({ req });
+    app = apiKeyApp;
+    chat = chatId ? await MongoChat.findOne({ appId: apiKeyAppId, chatId }) : undefined;
 
-      if (!apiKeyAppId) {
-        return jsonRes(res, {
-          code: 501,
-          message: "You don't have an app yet"
-        });
-      }
-
-      // auth chat permission
-      if (chat && !canWrite && String(tmbId) !== String(chat?.tmbId)) {
-        return Promise.reject(ChatErrEnum.unAuthChat);
-      }
-    } else {
-      // auth app permission
-      const [{ app: authedApp, tmbId }, authChat] = await Promise.all([
-        authApp({
-          req,
-          authToken: true,
-          appId,
-          per: ReadPermissionVal
-        }),
-        chatId ? MongoChat.findOne({ appId, chatId }) : undefined
-      ]);
-      app = authedApp;
-      chat = authChat;
-
-      // auth chat permission
-      if (chat && !app?.permission.hasManagePer && String(tmbId) !== String(chat?.tmbId)) {
-        return Promise.reject(ChatErrEnum.unAuthChat);
-      }
+    if (!apiKeyAppId) {
+      return jsonRes(res, {
+        code: 501,
+        message: "You don't have an app yet"
+      });
     }
 
-    // get app and history
-    const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
+    // auth chat permission
+    if (chat && !canWrite && String(tmbId) !== String(chat?.tmbId)) {
+      return Promise.reject(ChatErrEnum.unAuthChat);
+    }
+  } else {
+    // auth app permission
+    const [{ app: authedApp, tmbId }, authChat] = await Promise.all([
+      authApp({
+        req,
+        authToken: true,
+        appId,
+        per: ReadPermissionVal
+      }),
+      chatId ? MongoChat.findOne({ appId, chatId }) : undefined
+    ]);
+    app = authedApp;
+    chat = authChat;
 
-    const pluginInputs =
-      app?.modules?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??
-      [];
-
-    return {
-      chatId,
-      appId: appId || app._id,
-      title: chat?.title,
-      userAvatar: undefined,
-      variables: chat?.variables || {},
-      app: {
-        chatConfig: getAppChatConfig({
-          chatConfig,
-          systemConfigNode: getGuideModule(nodes),
-          storeVariables: chat?.variableList,
-          storeWelcomeText: chat?.welcomeText,
-          isPublicFetch: false
-        }),
-        chatModels: getChatModelNameListByModules(nodes),
-        name: app.name,
-        avatar: app.avatar,
-        intro: app.intro,
-        type: app.type,
-        pluginInputs
-      }
-    };
-  } catch (error) {
-    // 处理错误
-    console.error(error);
-    return jsonRes(res, {
-      code: 500,
-      message: 'Internal Server Error'
-    });
+    // auth chat permission
+    if (chat && !app?.permission.hasManagePer && String(tmbId) !== String(chat?.tmbId)) {
+      return Promise.reject(ChatErrEnum.unAuthChat);
+    }
   }
+
+  // get app and history
+  const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
+
+  const pluginInputs =
+    app?.modules?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ?? [];
+
+  return {
+    chatId,
+    appId: appId || app._id,
+    title: chat?.title,
+    userAvatar: undefined,
+    variables: chat?.variables || {},
+    app: {
+      chatConfig: getAppChatConfig({
+        chatConfig,
+        systemConfigNode: getGuideModule(nodes),
+        storeVariables: chat?.variableList,
+        storeWelcomeText: chat?.welcomeText,
+        isPublicFetch: false
+      }),
+      chatModels: getChatModelNameListByModules(nodes),
+      name: app.name,
+      avatar: app.avatar,
+      intro: app.intro,
+      type: app.type,
+      pluginInputs
+    }
+  };
 }
 
 export default NextAPI(handler);
