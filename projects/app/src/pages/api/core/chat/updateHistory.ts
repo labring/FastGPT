@@ -6,16 +6,23 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authAppApikey } from '@fastgpt/service/support/permission/app/auth';
 
 /* update chat top, custom title */
 async function handler(req: ApiRequestProps<UpdateHistoryProps>, res: NextApiResponse) {
-  const { appId, chatId, title, customTitle, top } = req.body;
-  await authChatCrud({
-    req,
-    authToken: true,
-    ...req.body,
-    per: WritePermissionVal
-  });
+  const { chatId, title, customTitle, top } = req.body;
+  let appId = req.body.appId;
+  if (appId) {
+    await authChatCrud({
+      req,
+      authToken: true,
+      ...req.body,
+      per: WritePermissionVal
+    });
+  } else {
+    const { appId: apiKeyAppId } = await authAppApikey({ req });
+    appId = apiKeyAppId!;
+  }
 
   await MongoChat.findOneAndUpdate(
     { appId, chatId },

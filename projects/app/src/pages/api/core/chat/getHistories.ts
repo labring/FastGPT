@@ -7,6 +7,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { GetHistoriesProps } from '@/global/core/chat/api';
+import { authAppApikey } from '@fastgpt/service/support/permission/app/auth';
 export type getHistoriesQuery = {};
 
 export type getHistoriesBody = PaginationProps<GetHistoriesProps>;
@@ -50,6 +51,12 @@ async function handler(
         source: ChatSourceEnum.online
       };
     }
+    const { tmbId, appId: apiKeyAppId } = await authAppApikey({ req });
+    return {
+      tmbId,
+      appId: apiKeyAppId,
+      source: ChatSourceEnum.online
+    };
   })();
 
   if (!match) {

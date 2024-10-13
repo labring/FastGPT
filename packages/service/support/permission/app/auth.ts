@@ -1,8 +1,8 @@
 /* Auth app permission */
 import { MongoApp } from '../../../core/app/schema';
-import { AppDetailType } from '@fastgpt/global/core/app/type.d';
+import { AppDetailType, AppSchema } from '@fastgpt/global/core/app/type.d';
 import { parseHeaderCert } from '../controller';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { AuthUserTypeEnum, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { getResourcePermission } from '../controller';
@@ -13,6 +13,8 @@ import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { splitCombinePluginId } from '../../../core/app/plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { AuthModeType, AuthResponseType } from '../type';
+import { NextApiRequest } from 'next';
+import { authCert } from '../auth/common';
 
 export const authPluginByTmbId = async ({
   tmbId,
@@ -154,5 +156,63 @@ export const authApp = async ({
     ...result,
     permission: app.permission,
     app
+  };
+};
+
+export const authAppApikey = async ({
+  req
+}: {
+  req: NextApiRequest;
+}): Promise<{
+  teamId: string;
+  tmbId: string;
+  app: AppSchema;
+  responseDetail?: boolean;
+  authType: `${AuthUserTypeEnum}`;
+  apikey?: string;
+  canWrite: boolean;
+  outLinkUserId?: string;
+  appId?: string;
+}> => {
+  const {
+    appId: apiKeyAppId,
+    teamId,
+    tmbId,
+    authType,
+    apikey,
+    canWrite: apiKeyCanWrite
+  } = await authCert({
+    req,
+    authToken: true,
+    authApiKey: true
+  });
+
+  const { app, canWrite } = await (async () => {
+    if (!apiKeyAppId) {
+      return Promise.reject(
+        'Key is error. You need to use the app key rather than the account key.'
+      );
+    }
+    const app = await MongoApp.findById(apiKeyAppId);
+
+    if (!app) {
+      return Promise.reject('app is empty');
+    }
+
+    return {
+      app,
+      canWrite: apiKeyCanWrite
+    };
+  })();
+
+  return {
+    teamId,
+    tmbId,
+    app,
+    responseDetail: true,
+    apikey,
+    authType,
+    canWrite,
+    appId: String(app._id)
   };
 };
