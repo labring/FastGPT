@@ -24,6 +24,8 @@ FastGPT is a knowledge-based platform built on the LLMs, offers a comprehensive 
 
 [![discord](https://theme.zdassets.com/theme_assets/678183/cc59daa07820943e943c2fc283b9079d7003ff76.svg)](https://discord.gg/mp68xkZn2Q)&nbsp;&nbsp;&nbsp;&nbsp; 
 [![Wechat](https://upload.wikimedia.org/wikipedia/en/thumb/a/af/WeChat_logo.svg/100px-WeChat_logo.svg.png?20231125073656)](https://oss.laf.run/otnvvf-imgs/feishu3.png)
+
+</div>
   
 ## 🎥 Comprehensive Feature Demonstration
 
@@ -31,13 +33,13 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 🛸 Online Use
 
-International Version: [tryfastgpt.ai](https://tryfastgpt.ai/)
+International version: [tryfastgpt.ai](https://tryfastgpt.ai/)
 
 | | |
 | ---------------------------------- | ---------------------------------- |
-|       conversational AI setup      |        Workflow Automation         |                             
+|       Conversational AI Setup      |        Workflow Automation         |                             
 | ![Demo](./.github/imgs/intro1.png) | ![Demo](./.github/imgs/intro2.png) |
-|       Knowledge Base Setup         |        Integration process         |                             
+|       Knowledge Base Setup         |        Integration Process         |                             
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
 <a href="#FastGPT">
@@ -46,45 +48,16 @@ International Version: [tryfastgpt.ai](https://tryfastgpt.ai/)
 
 ## 💡 Features
 
-|                Features                       |                                                                                          |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------- |
-|                                               | ✅ Offers a straightforward mode, eliminating the need for complex orchestration      |
-|                                               | ✅ Provides clear next-step instructions in dialogues                                 |
-|                                               | ✅ Facilitates workflow orchestration                                                 |
-|                                               | ✅ Tracks references in source files                                                  |
-|       Application Orchestration Features      | ✅ Encapsulates modules for enhanced reuse at multiple levels                         |
-|                                               | ✅ Combines search and reordering functions                                           |
-|                                               | 🔜 Includes a tool module                                                             |    
-|                                               | 🔜 Integrates [Laf](https://github.com/labring/laf) for online HTTP module creation   |
-|                                               | 🔜 Plugin encapsulation capabilities                                                  |
-------------------------------------------------|------------------------------------------------------------------------------------------|                       
-|                                               | ✅ Allows for the mixed use of multiple databases                                     |
-|                                               | ✅ Keeps track of modifications and deletions in data chunks                          |
-|                                               | ✅ Enables specific vector models for each knowledge base                             |
-|                                               | ✅ Stores original source files                                                       |
-|        Knowledge Base Features                | ✅ Supports direct input and segment-based QA import                                  |
-|                                               | ✅ Compatible with a variety of file formats: pdf, docx, txt, html, md, csv           |
-|                                               | ✅ Facilitates URL reading and bulk CSV importing                                     |
-|                                               | 🔜 Supports PPT and Excel file import                                                 |
-|                                               | 🔜 Features a file reader                                                             |
-|                                               | 🔜 Offers diverse data preprocessing options                                          |
-| ----------------------------------------------|------------------------------------------------------------------------------------------|
-|                                               | ✅ Enables targeted search testing within the knowledge base                          |
-|                                               | ✅ Allows feedback, editing, and deletion during conversations                        |
-|        Application Debugging Features         | ✅ Presents the full context of interactions                                          |
-|                                               | ✅ Displays all intermediate values within modules                                    |
-|                                               | 🔜 Advanced DeBug mode for orchestration                                              |
-| ----------------------------------------------|------------------------------------------------------------------------------------------|
-|                                               | ✅ The completions interface (aligned with GPT's chat mode interface)                 |
-|                                               | ✅ CRUD operations for the knowledge base                                             |
-|           OpenAPI Interface                   | ✅ CRUD operations for the knowledge base                                             |     
-|                                               | 🔜 CRUD operations for conversation                                                   |
-| ----------------------------------------------|------------------------------------------------------------------------------------------|
-|                                               | ✅ Share without requiring login                                                      |
-|                                               | ✅ Easy embedding with Iframe                                                         | 
-|          Operational Features                 | ✅ Customizable chat window embedding with features like default open, drag-and-drop  |
-|                                               | ✅ Centralizes conversation records for review and annotation                         |
-| ----------------------------------------------|------------------------------------------------------------------------------------------|
+| **Features**                               | **Details**                                       |
+|--------------------------------------------|---------------------------------------------------|
+|                                            | ✅ Offers a straightforward mode, eliminating the need for complex orchestration <br> ✅ Provides clear next-step instructions in dialogues <br> ✅ Facilitates workflow orchestration <br> ✅ Tracks references in source files |
+| **Application Orchestration Features**     | ✅ Encapsulates modules for enhanced reuse at multiple levels <br> ✅ Combines search and reordering functions <br> 🔜 Includes a tool module <br> 🔜 Integrates [Laf](https://github.com/labring/laf) for online HTTP module creation <br> 🔜 Plugin encapsulation capabilities |
+|                                            | ✅ Allows for the mixed use of multiple databases <br> ✅ Keeps track of modifications and deletions in data chunks <br> ✅ Enables specific vector models for each knowledge base <br> ✅ Stores original source files |
+| **Knowledge Base Features**                 | ✅ Supports direct input and segment-based QA import <br> ✅ Compatible with a variety of file formats: pdf, docx, txt, html, md, csv <br> ✅ Facilitates URL reading and bulk CSV importing <br> 🔜 Supports PPT and Excel file import <br> 🔜 Features a file reader <br> 🔜 Offers diverse data preprocessing options |
+|                                            | ✅ Enables targeted search testing within the knowledge base <br> ✅ Allows feedback, editing, and deletion during conversations <br> **Application Debugging Features** <br> ✅ Presents the full context of interactions <br> ✅ Displays all intermediate values within modules <br> 🔜 Advanced Debug mode for orchestration |
+| **OpenAPI Interface**                       | ✅ The completions interface (aligned with GPT's chat mode interface) <br> ✅ CRUD operations for the knowledge base <br> 🔜 CRUD operations for conversation |
+| **Operational Features**                    | ✅ Share without requiring login <br> ✅ Easy embedding with Iframe <br> ✅ Customizable chat window embedding with features like default open, drag-and-drop <br> ✅ Centralizes conversation records for review and annotation |
+
 
 <a href="#FastGPT">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
@@ -98,11 +71,11 @@ Project tech stack: NextJs + TS + ChakraUI + MongoDB + PostgreSQL (PG Vector plu
 
   > When using [Sealos](https://sealos.io) services, there is no need to purchase servers or domain names. It supports high concurrency and dynamic scaling, and the database application uses the kubeblocks database, which far exceeds the simple Docker container deployment in terms of IO performance.
 
-  [sealos one click deployment tutorial](https://doc.tryfastgpt.ai/docs/development/sealos/)
-
   [![](https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
 
   Give it a 2-4 minute wait after deployment as it sets up the database. Initially, it might be a too slow since we're using the basic settings.
+
+  [sealos one click deployment tutorial](https://doc.tryfastgpt.ai/docs/development/sealos/)
 
 - [Getting Started with Local Development](https://doc.tryfastgpt.ai/docs/development)
 - [Deploying FastGPT](https://doc.tryfastgpt.ai/docs/installation)
@@ -190,6 +163,7 @@ We welcome all forms of contributions. If you are interested in contributing cod
     </tr>
   </table>
 </a>
+
 
 ## 🌟 Star History
 
