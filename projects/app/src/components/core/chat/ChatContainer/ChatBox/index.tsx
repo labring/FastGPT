@@ -384,7 +384,7 @@ const ChatBox = (
   /**
    * user confirm send prompt
    */
-  const sendPrompt: SendPromptFnType = useCallback(
+  const sendPrompt: SendPromptFnType = useMemoizedFn(
     ({
       text = '',
       files = [],
@@ -575,28 +575,7 @@ const ChatBox = (
           console.log(err);
         }
       )();
-    },
-    [
-      abortRequest,
-      allVariableList,
-      chatHistories,
-      createQuestionGuide,
-      finishSegmentedAudio,
-      generatingMessage,
-      generatingScroll,
-      isChatting,
-      isPc,
-      onStartChat,
-      resetInputVal,
-      scrollToBottom,
-      setAudioPlayingChatId,
-      setChatHistories,
-      splitText2Audio,
-      startSegmentedAudio,
-      t,
-      toast,
-      variablesForm
-    ]
+    }
   );
 
   // retry input

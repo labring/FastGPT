@@ -108,6 +108,7 @@ export type DispatchNodeResponseType = {
   customOutputs?: Record<string, any>;
   nodeInputs?: Record<string, any>;
   nodeOutputs?: Record<string, any>;
+  mergeSignId?: string;
 
   // bill
   tokens?: number;
@@ -159,7 +160,6 @@ export type DispatchNodeResponseType = {
   toolCallTokens?: number;
   toolDetail?: ChatHistoryItemResType[];
   toolStop?: boolean;
-  toolMergeSignId?: string;
 
   // code
   codeLog?: string;

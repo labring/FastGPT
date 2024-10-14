@@ -162,31 +162,36 @@ export const updateInteractiveChat = async ({
       return userInteractiveVal;
     }
   })();
-  interactiveValue.interactive =
-    interactiveValue.interactive.type === 'userSelect'
-      ? {
-          ...interactiveValue.interactive,
-          params: {
-            ...interactiveValue.interactive.params,
-            userSelectedVal: userInteractiveVal
-          }
-        }
-      : {
-          ...interactiveValue.interactive,
-          params: {
-            ...interactiveValue.interactive.params,
-            inputForm: interactiveValue.interactive.params.inputForm.map((item) => {
-              const itemValue = parsedUserInteractiveVal[item.label];
-              return itemValue !== undefined
-                ? {
-                    ...item,
-                    value: itemValue
-                  }
-                : item;
-            }),
-            submitted: true
-          }
-        };
+
+  if (interactiveValue.interactive.type === 'userSelect') {
+    interactiveValue.interactive = {
+      ...interactiveValue.interactive,
+      params: {
+        ...interactiveValue.interactive.params,
+        userSelectedVal: userInteractiveVal
+      }
+    };
+  } else if (
+    interactiveValue.interactive.type === 'userInput' &&
+    typeof parsedUserInteractiveVal === 'object'
+  ) {
+    interactiveValue.interactive = {
+      ...interactiveValue.interactive,
+      params: {
+        ...interactiveValue.interactive.params,
+        inputForm: interactiveValue.interactive.params.inputForm.map((item) => {
+          const itemValue = parsedUserInteractiveVal[item.label];
+          return itemValue !== undefined
+            ? {
+                ...item,
+                value: itemValue
+              }
+            : item;
+        }),
+        submitted: true
+      }
+    };
+  }
 
   if (aiResponse.customFeedbacks) {
     chatItem.customFeedbacks = chatItem.customFeedbacks

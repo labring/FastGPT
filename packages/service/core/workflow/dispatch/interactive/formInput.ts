@@ -10,6 +10,7 @@ import {
   UserInputInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { addLog } from '../../../../common/system/log';
+import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.description]: string;
@@ -32,8 +33,10 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
   } = props;
   const { isEntry } = node;
 
+  const interactive = getLastInteractiveValue(histories);
+
   // Interactive node is not the entry node, return interactive result
-  if (!isEntry) {
+  if (!isEntry || interactive?.type !== 'userInput') {
     return {
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userInput',

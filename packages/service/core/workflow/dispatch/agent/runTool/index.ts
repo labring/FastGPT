@@ -246,9 +246,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       query: userChatInput,
       historyPreview: getHistoryPreview(GPTMessages2Chats(completeMessages, false), 10000),
       toolDetail: childToolResponse,
-      toolMergeSignId:
-        interactiveResponse?.toolParams?.toolCallId ||
-        toolWorkflowInteractiveResponse?.toolParams?.toolCallId
+      mergeSignId: nodeId
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {

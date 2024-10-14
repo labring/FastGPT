@@ -152,11 +152,7 @@ export const mergeChatResponseData = (responseDataList: ChatHistoryItemResType[]
   let lastResponse: ChatHistoryItemResType | undefined = undefined;
 
   return responseDataList.reduce<ChatHistoryItemResType[]>((acc, curr) => {
-    if (
-      lastResponse &&
-      lastResponse.toolMergeSignId &&
-      curr.toolMergeSignId === lastResponse.toolMergeSignId
-    ) {
+    if (lastResponse && lastResponse.mergeSignId && curr.mergeSignId === lastResponse.mergeSignId) {
       // 替换 lastResponse
       const concatResponse: ChatHistoryItemResType = {
         ...curr,

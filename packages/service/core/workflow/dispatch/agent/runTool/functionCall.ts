@@ -310,6 +310,10 @@ export const runToolWithFunctionCall = async (
   ).filter(Boolean) as FunctionRunResponseType;
 
   const flatToolsResponseData = toolsRunResponse.map((item) => item.toolRunResponse).flat();
+  // concat tool responses
+  const dispatchFlowResponse = response
+    ? response.dispatchFlowResponse.concat(flatToolsResponseData)
+    : flatToolsResponseData;
 
   const functionCall = functionCalls[0];
   if (functionCall && !res?.closed) {
@@ -341,7 +345,12 @@ export const runToolWithFunctionCall = async (
       ...toolsRunResponse.map((item) => item?.functionCallMsg)
     ];
 
-    // tool node assistant
+    /* 
+      Get tool node assistant response
+      history assistant
+      current tool assistant
+      tool child assistant
+    */
     const toolNodeAssistant = GPTMessages2Chats([
       assistantToolMsgParams,
       ...toolsRunResponse.map((item) => item?.functionCallMsg)
@@ -355,11 +364,6 @@ export const runToolWithFunctionCall = async (
       ...toolNodeAssistant.value,
       ...toolChildAssistants
     ];
-
-    // concat tool responses
-    const dispatchFlowResponse = response
-      ? response.dispatchFlowResponse.concat(flatToolsResponseData)
-      : flatToolsResponseData;
 
     const runTimes =
       (response?.runTimes || 0) +
@@ -379,6 +383,10 @@ export const runToolWithFunctionCall = async (
       const workflowInteractiveResponse =
         workflowInteractiveResponseItem?.toolRunResponse.workflowInteractiveResponse;
 
+      // Flashback traverses completeMessages, intercepting messages that know the first user
+      const firstUserIndex = completeMessages.findLastIndex((item) => item.role === 'user');
+      const newMessages = completeMessages.slice(firstUserIndex + 1);
+
       const toolWorkflowInteractiveResponse: WorkflowInteractiveResponseType | undefined =
         workflowInteractiveResponse
           ? {
@@ -386,20 +394,7 @@ export const runToolWithFunctionCall = async (
               toolParams: {
                 entryNodeIds: workflowInteractiveResponse.entryNodeIds,
                 toolCallId: workflowInteractiveResponseItem?.functionCallMsg.name,
-                memoryMessages: [
-                  ...chats2GPTMessages({
-                    messages: [
-                      {
-                        obj: ChatRoleEnum.AI,
-                        value: assistantResponses
-                      }
-                    ],
-                    reserveId: false,
-                    reserveTool: true
-                  }),
-                  assistantToolMsgParams,
-                  ...toolsRunResponse.map((item) => item?.functionCallMsg)
-                ]
+                memoryMessages: newMessages
               }
             }
           : undefined;
