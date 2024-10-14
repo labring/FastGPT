@@ -289,6 +289,7 @@ const VariableEdit = ({
                       }}
                       onClick={() => {
                         setValue('type', item.value);
+                        setValue('defaultValue', undefined);
                       }}
                     >
                       <MyIcon

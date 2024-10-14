@@ -392,7 +392,13 @@ export function replaceEditorVariable({
         }
       ];
     }
-    return [];
+    return [
+      {
+        id: item.key,
+        value: item.value,
+        nodeId: runningNode.nodeId
+      }
+    ];
   });
 
   const allVariables = [...globalVariables, ...nodeVariables, ...customInputs];
