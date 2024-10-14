@@ -31,6 +31,7 @@
   "no_workflow_response": "没有运行数据",
   "plugins_output": "插件输出",
   "question_tip": "从上到下，为各个模块的响应顺序",
+  "response.child total points": "子工作流积分消耗",
   "response.node_inputs": "节点输入",
   "select": "选择",
   "select_file": "上传文件",

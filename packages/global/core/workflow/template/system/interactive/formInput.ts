@@ -22,7 +22,7 @@ export const FormInputNode: FlowNodeTemplateType = {
   avatar: 'core/workflow/template/formInput',
   name: i18nT('app:workflow.form_input'),
   intro: i18nT(`app:workflow.form_input_tip`),
-  showStatus: true,
+  isTool: true,
   version: '4811',
   inputs: [
     {

@@ -29,7 +29,6 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 

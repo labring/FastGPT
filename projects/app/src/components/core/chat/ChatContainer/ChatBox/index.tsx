@@ -66,6 +66,7 @@ import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useCreation, useMemoizedFn, useThrottleFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -383,7 +384,7 @@ const ChatBox = (
   /**
    * user confirm send prompt
    */
-  const sendPrompt: SendPromptFnType = useCallback(
+  const sendPrompt: SendPromptFnType = useMemoizedFn(
     ({
       text = '',
       files = [],
@@ -458,7 +459,6 @@ const ChatBox = (
               ] as UserChatItemValueItemType[],
               status: ChatStatusEnum.finish
             },
-            // 普通 chat 模式，需要增加一个 AI 来接收响应消息
             {
               dataId: responseChatId,
               obj: ChatRoleEnum.AI,
@@ -492,9 +492,11 @@ const ChatBox = (
             const abortSignal = new AbortController();
             chatController.current = abortSignal;
 
-            // 最后一条 AI 消息是空的，会被过滤掉，这里得到的 messages，不会包含最后一条 AI 消息，所以不需要 slice 了。
             // 这里，无论是否为交互模式，最后都是 Human 的消息。
-            const messages = chats2GPTMessages({ messages: newChatList, reserveId: true });
+            const messages = chats2GPTMessages({
+              messages: newChatList.slice(0, -1),
+              reserveId: true
+            });
 
             const {
               responseData,
@@ -519,7 +521,7 @@ const ChatBox = (
                   ...item,
                   status: ChatStatusEnum.finish,
                   responseData: item.responseData
-                    ? [...item.responseData, ...responseData]
+                    ? mergeChatResponseData([...item.responseData, ...responseData])
                     : responseData
                 };
               });
@@ -571,28 +573,7 @@ const ChatBox = (
           console.log(err);
         }
       )();
-    },
-    [
-      abortRequest,
-      allVariableList,
-      chatHistories,
-      createQuestionGuide,
-      finishSegmentedAudio,
-      generatingMessage,
-      generatingScroll,
-      isChatting,
-      isPc,
-      onStartChat,
-      resetInputVal,
-      scrollToBottom,
-      setAudioPlayingChatId,
-      setChatHistories,
-      splitText2Audio,
-      startSegmentedAudio,
-      t,
-      toast,
-      variablesForm
-    ]
+    }
   );
 
   // retry input
