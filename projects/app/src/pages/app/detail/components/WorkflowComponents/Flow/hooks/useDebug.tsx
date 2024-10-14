@@ -1,7 +1,7 @@
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { useCallback, useState, useMemo } from 'react';
+import { useCallback, useState, useMemo, useEffect } from 'react';
 import { checkWorkflowNodeAndConnection } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -60,6 +60,16 @@ export const useDebug = () => {
     const variables = appDetail.chatConfig.variables;
     return variables?.filter((item) => item.type !== VariableInputEnum.custom) || [];
   }, [appDetail.chatConfig.variables]);
+
+  const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(
+    filteredVar.reduce(
+      (acc, item) => {
+        acc[item.key] = item.defaultValue;
+        return acc;
+      },
+      {} as Record<string, any>
+    )
+  );
 
   const [runtimeNodeId, setRuntimeNodeId] = useState<string>();
   const [runtimeNodes, setRuntimeNodes] = useState<RuntimeNodeItemType[]>();
@@ -126,6 +136,19 @@ export const useDebug = () => {
   const DebugInputModal = useCallback(() => {
     if (!runtimeNodes || !runtimeEdges) return <></>;
 
+    const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.node);
+
+    // Check if the required global variables exist, if missing, switch to the global variable tab
+    useEffect(() => {
+      if (
+        filteredVar.some(
+          (item) => item.required && defaultGlobalVariables && !defaultGlobalVariables[item.key]
+        )
+      ) {
+        setCurrentTab(TabEnum.global);
+      }
+    }, []);
+
     const runtimeNode = runtimeNodes.find((node) => node.nodeId === runtimeNodeId);
 
     if (!runtimeNode) return <></>;
@@ -136,18 +159,21 @@ export const useDebug = () => {
     });
 
     const variablesForm = useForm<Record<string, any>>({
-      defaultValues: renderInputs.reduce((acc: Record<string, any>, input) => {
-        const isReference = checkInputIsReference(input);
-        if (isReference) {
-          acc[input.key] = undefined;
-        } else if (typeof input.value === 'object') {
-          acc[input.key] = JSON.stringify(input.value, null, 2);
-        } else {
-          acc[input.key] = input.value;
-        }
+      defaultValues: {
+        ...renderInputs.reduce((acc: Record<string, any>, input) => {
+          const isReference = checkInputIsReference(input);
+          if (isReference) {
+            acc[input.key] = undefined;
+          } else if (typeof input.value === 'object') {
+            acc[input.key] = JSON.stringify(input.value, null, 2);
+          } else {
+            acc[input.key] = input.value;
+          }
 
-        return acc;
-      }, {})
+          return acc;
+        }, {}),
+        ...defaultGlobalVariables
+      }
     });
     const { register, getValues, setValue, handleSubmit } = variablesForm;
 
@@ -158,7 +184,6 @@ export const useDebug = () => {
     };
 
     const onClickRun = (data: Record<string, any>) => {
-      console.log('data', data);
       onStartNodeDebug({
         entryNodeId: runtimeNode.nodeId,
         runtimeNodes: runtimeNodes.map((node) =>
@@ -196,10 +221,16 @@ export const useDebug = () => {
           Object.entries(data).filter(([key]) => filteredVar.some((item) => item.key === key))
         )
       });
+
+      // Filter global variables and set them as default global variable values
+      setDefaultGlobalVariables(
+        Object.fromEntries(
+          Object.entries(data).filter(([key]) => filteredVar.some((item) => item.key === key))
+        )
+      );
+
       onClose();
     };
-
-    const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.node);
 
     return (
       <MyRightDrawer
@@ -313,7 +344,15 @@ export const useDebug = () => {
         </Flex>
       </MyRightDrawer>
     );
-  }, [filteredVar, onStartNodeDebug, runtimeEdges, runtimeNodeId, runtimeNodes, t]);
+  }, [
+    defaultGlobalVariables,
+    filteredVar,
+    onStartNodeDebug,
+    runtimeEdges,
+    runtimeNodeId,
+    runtimeNodes,
+    t
+  ]);
 
   return {
     DebugInputModal,

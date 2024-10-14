@@ -149,7 +149,6 @@ const VariableInput = ({
   }, [variableList]);
 
   useDeepCompareEffect(() => {
-    console.log('defaultValues', defaultValues);
     reset(defaultValues);
   }, [defaultValues]);
 

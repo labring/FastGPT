@@ -296,7 +296,6 @@ const InputTypeConfig = ({
               <NumberInput flex={1} step={1} min={min} max={max} position={'relative'}>
                 <NumberInputField
                   {...register('defaultValue', {
-                    required: true,
                     min: min,
                     max: max,
                     valueAsNumber: true
@@ -328,10 +327,12 @@ const InputTypeConfig = ({
             {inputType === FlowNodeInputTypeEnum.switch && <Switch {...register('defaultValue')} />}
             {inputType === FlowNodeInputTypeEnum.select && (
               <MySelect<string>
-                list={[defaultListValue, ...listValue].map((item) => ({
-                  label: item.label,
-                  value: item.value
-                }))}
+                list={[defaultListValue, ...listValue]
+                  .filter((item) => item.label !== '')
+                  .map((item) => ({
+                    label: item.label,
+                    value: item.value
+                  }))}
                 value={
                   defaultValue && listValue.map((item) => item.value).includes(defaultValue)
                     ? defaultValue
