@@ -120,7 +120,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 扫码加入飞书话题群 (新开，逐渐弃用微信群)：
 
-![](https://oss.laf.run/otnvvf-imgs/feishu3.png)
+![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
