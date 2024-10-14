@@ -52,7 +52,12 @@
                     {{ $path := printf "images/social/%s.%s" . "svg" }}
                     <li class="list-inline-item mb-0">
                         <!-- change -->
-                        <a href="{{ if eq . `rss` }} {{ `index.xml` | absURL }} {{ else if eq . `wechat` }} {{ index site.Params.social . | absURL }}  {{ else }} https://{{ . }}.com/{{ index site.Params.social . }} {{ end }}" alt="{{ . }}" rel="noopener noreferrer" target="_blank">
+                        <a href="{{ if eq . `rss` }} {{ `index.xml` | absURL }} 
+                             {{ else if eq . `wechat` }} {{ index site.Params.social . | absURL }}  
+                             {{ else if eq . `lark` }} {{ index site.Params.social .  | absURL }}
+                             {{ else }} https://{{ . }}.com/{{ index site.Params.social . }} 
+                             {{ end }}" 
+                           alt="{{ . }}" rel="noopener noreferrer" target="_blank">
                             <div class="btn btn-icon btn-default border-0">
                                 {{ with resources.Get $path }}
                                     {{ .Content | safeHTML }}
