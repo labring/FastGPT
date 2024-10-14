@@ -20,7 +20,7 @@ export const cheerioToHtml = ({
   const selectDom = $(usedSelector);
 
   // remove i element
-  selectDom.find('i,script').remove();
+  selectDom.find('i,script,style').remove();
 
   // remove empty a element
   selectDom
