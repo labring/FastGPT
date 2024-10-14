@@ -57,9 +57,9 @@ export const checkIsInteractiveByHistories = (chatHistories: ChatSiteItemType[])
   ) {
     const params = lastMessageValue.interactive.params;
     // 如果用户选择了，则不认为是交互模式（可能是上一轮以交互结尾，发起的新的一轮对话）
-    if ('userSelectOptions' in params && 'userSelectedVal' in params) {
+    if ('userSelectOptions' in params) {
       return !params.userSelectedVal;
-    } else if ('inputForm' in params && 'submitted' in params) {
+    } else if ('inputForm' in params) {
       return !params.submitted;
     }
   }
