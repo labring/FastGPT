@@ -39,7 +39,8 @@ type Props = FlowNodeItemType & {
     copy?: boolean;
     delete?: boolean;
   };
-} & Omit<FlexProps, 'children'>;
+  customStyle?: FlexProps;
+};
 
 const NodeCard = (props: Props) => {
   const { t } = useTranslation();
@@ -63,7 +64,7 @@ const NodeCard = (props: Props) => {
     isError = false,
     debugResult,
     isFolded,
-    ...customStyle
+    customStyle
   } = props;
 
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
