@@ -84,12 +84,12 @@ export type DeleteChatItemProps = OutLinkChatAuthProps & {
 export type AdminUpdateFeedbackParams = AdminFbkType & {
   appId: string;
   chatId: string;
-  chatItemId: string;
+  dataId: string;
 };
 
 export type CloseCustomFeedbackParams = {
   appId: string;
   chatId: string;
-  chatItemId: string;
+  dataId: string;
   index: number;
 };

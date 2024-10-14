@@ -506,6 +506,11 @@ event取值：
 * 4.8.12 以上版本才能使用
 {{% /alert %}}
 
+**重要字段**
+
+* chatId - 指一个应用下，某一个对话窗口的 ID
+* dataId - 指一个对话窗口下，某一个对话记录的 ID
+
 ## 历史记录
 
 ### 获取某个应用历史记录
@@ -1073,7 +1078,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 --data-raw '{
     "appId": "appId",
     "chatId": "chatId",
-    "chatItemId": "chatItemId",
+    "dataId": "dataId",
     "userGoodFeedback": "yes"
 }'
 ```
@@ -1087,7 +1092,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 {{% alert icon=" " context="success" %}}
 - appId - 应用 Id
 - chatId - 历史记录 Id
-- chatItemId - 对话记录 dataId
+- dataId - 对话记录 Id
 - userGoodFeedback - 用户点赞时的信息（可选），取消点赞时不填此参数即可
 {{% /alert %}}
 
@@ -1123,7 +1128,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 --data-raw '{
     "appId": "appId",
     "chatId": "chatId",
-    "chatItemId": "chatItemId",
+    "dataId": "dataId",
     "userBadFeedback": "yes"
 }'
 ```
@@ -1137,7 +1142,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 {{% alert icon=" " context="success" %}}
 - appId - 应用 Id
 - chatId - 历史记录 Id
-- chatItemId - 对话记录 Id
+- dataId - 对话记录 Id
 - userBadFeedback - 用户点踩时的信息（可选），取消点踩时不填此参数即可
 {{% /alert %}}
 
@@ -1214,4 +1219,6 @@ curl --location --request POST 'http://localhost:3000/api/core/ai/agent/createQu
 {{< /markdownify >}}
 {{< /tab >}}
 {{< /tabs >}}
+
+
 

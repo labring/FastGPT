@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const {
     appId,
     chatId,
-    chatItemId,
+    dataId,
     shareId,
     teamId,
     teamToken,
@@ -36,15 +36,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       per: ReadPermissionVal
     });
 
-    if (!chatItemId) {
-      throw new Error('chatItemId is required');
+    if (!dataId) {
+      throw new Error('dataId is required');
     }
 
     await MongoChatItem.findOneAndUpdate(
       {
         appId,
         chatId,
-        dataId: chatItemId
+        dataId
       },
       {
         $unset: {

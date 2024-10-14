@@ -100,7 +100,7 @@ export type ChatItemSchema = (UserChatItemType | SystemChatItemType | AIChatItem
 };
 
 export type AdminFbkType = {
-  dataId: string;
+  feedbackDataId: string;
   datasetId: string;
   collectionId: string;
   q: string;

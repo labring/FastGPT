@@ -55,22 +55,22 @@ export const adaptStringValue = (value: any): ChatItemValueItemType[] => {
 export const addCustomFeedbacks = async ({
   appId,
   chatId,
-  chatItemId,
+  dataId,
   feedbacks
 }: {
   appId: string;
   chatId?: string;
-  chatItemId?: string;
+  dataId?: string;
   feedbacks: string[];
 }) => {
-  if (!chatId || !chatItemId) return;
+  if (!chatId || !dataId) return;
 
   try {
     await MongoChatItem.findOneAndUpdate(
       {
         appId,
         chatId,
-        dataId: chatItemId
+        dataId
       },
       {
         $push: { customFeedbacks: { $each: feedbacks } }

@@ -8,7 +8,7 @@ import { updateChatUserFeedback } from '@/web/core/chat/api';
 const FeedbackModal = ({
   appId,
   chatId,
-  chatItemId,
+  dataId,
   teamId,
   teamToken,
   shareId,
@@ -18,7 +18,7 @@ const FeedbackModal = ({
 }: {
   appId: string;
   chatId: string;
-  chatItemId: string;
+  dataId: string;
   shareId?: string;
   teamId?: string;
   teamToken?: string;
@@ -35,7 +35,7 @@ const FeedbackModal = ({
       return updateChatUserFeedback({
         appId,
         chatId,
-        chatItemId,
+        dataId,
         shareId,
         teamId,
         teamToken,
