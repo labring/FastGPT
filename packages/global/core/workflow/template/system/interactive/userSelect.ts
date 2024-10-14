@@ -23,7 +23,7 @@ export const UserSelectNode: FlowNodeTemplateType = {
   diagram: '/imgs/app/userSelect.svg',
   name: i18nT('app:workflow.user_select'),
   intro: i18nT(`app:workflow.user_select_tip`),
-  showStatus: true,
+  isTool: true,
   version: '489',
   inputs: [
     {

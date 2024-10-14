@@ -140,6 +140,12 @@ export const WholeResponseContent = ({
             value={formatNumber(activeModule.totalPoints)}
           />
         )}
+        {activeModule?.childTotalPoints !== undefined && (
+          <Row
+            label={t('chat:response.child total points')}
+            value={formatNumber(activeModule.childTotalPoints)}
+          />
+        )}
         <Row
           label={t('common:core.chat.response.module time')}
           value={`${activeModule?.runningTime || 0}s`}
