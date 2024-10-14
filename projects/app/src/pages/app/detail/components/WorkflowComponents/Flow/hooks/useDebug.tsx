@@ -138,6 +138,7 @@ export const useDebug = () => {
 
     const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.node);
 
+    // Check if the required global variables exist, if missing, switch to the global variable tab
     useEffect(() => {
       if (
         filteredVar.some(
@@ -220,10 +221,14 @@ export const useDebug = () => {
           Object.entries(data).filter(([key]) => filteredVar.some((item) => item.key === key))
         )
       });
-      const filteredData = Object.fromEntries(
-        Object.entries(data).filter(([key]) => filteredVar.some((item) => item.key === key))
+
+      // Filter global variables and set them as default global variable values
+      setDefaultGlobalVariables(
+        Object.fromEntries(
+          Object.entries(data).filter(([key]) => filteredVar.some((item) => item.key === key))
+        )
       );
-      setDefaultGlobalVariables(filteredData);
+
       onClose();
     };
 
