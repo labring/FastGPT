@@ -25,6 +25,8 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { WholeResponseContent } from '@/components/core/chat/components/WholeResponseModal';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getDocPath } from '@/web/common/system/doc';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -65,7 +67,6 @@ const NodeCard = (props: Props) => {
     isFolded,
     ...customStyle
   } = props;
-
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const setHoverNodeId = useContextSelector(WorkflowContext, (v) => v.setHoverNodeId);
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
@@ -101,14 +102,6 @@ const NodeCard = (props: Props) => {
       ) {
         if (!node?.pluginId) return;
         const template = await getPreviewPluginNode({ appId: node.pluginId });
-
-        // Focus update plugin latest inputExplanationUrl
-        onChangeNode({
-          nodeId,
-          type: 'attr',
-          key: 'inputExplanationUrl',
-          value: template.inputExplanationUrl
-        });
 
         return template;
       } else {
@@ -275,6 +268,24 @@ const NodeCard = (props: Props) => {
                   </Box>
                 </MyTooltip>
               )}
+              {!!nodeTemplate?.diagram && node?.courseUrl && (
+                <Box bg={'myGray.300'} w={'1px'} h={'12px'} mx={1} />
+              )}
+              {node?.courseUrl && !hasNewVersion && (
+                <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
+                  <MyIcon
+                    cursor={'pointer'}
+                    name="book"
+                    color={'primary.600'}
+                    w={'18px'}
+                    ml={1}
+                    _hover={{
+                      color: 'primary.800'
+                    }}
+                    onClick={() => window.open(getDocPath(node.courseUrl || ''), '_blank')}
+                  />
+                </MyTooltip>
+              )}
             </Flex>
             <NodeIntro nodeId={nodeId} intro={intro} />
           </Box>
@@ -295,6 +306,7 @@ const NodeCard = (props: Props) => {
     onOpenConfirmSync,
     onClickSyncVersion,
     nodeTemplate?.diagram,
+    node?.courseUrl,
     intro,
     menuForbid,
     nodeList,

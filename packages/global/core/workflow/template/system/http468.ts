@@ -27,6 +27,7 @@ export const HttpNode468: FlowNodeTemplateType = {
   intro: i18nT('workflow:intro_http_request'),
   showStatus: true,
   isTool: true,
+  courseUrl: '/docs/workflow/modules/http/',
   version: '481',
   inputs: [
     {
