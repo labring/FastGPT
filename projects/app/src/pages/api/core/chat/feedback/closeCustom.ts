@@ -6,14 +6,15 @@ import type { CloseCustomFeedbackParams } from '@/global/core/chat/api.d';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 /* remove custom feedback */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { appId, chatId, chatItemId, index } = req.body as CloseCustomFeedbackParams;
+    const { appId, chatId, dataId, index } = req.body as CloseCustomFeedbackParams;
 
-    if (!chatItemId || !appId || !chatId || !chatItemId) {
+    if (!dataId || !appId || !chatId) {
       throw new Error('missing parameter');
     }
 
@@ -26,10 +27,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     await authCert({ req, authToken: true });
 
-    await MongoChatItem.findOneAndUpdate(
-      { appId, chatId, dataId: chatItemId },
-      { $unset: { [`customFeedbacks.${index}`]: 1 } }
-    );
+    await mongoSessionRun(async (session) => {
+      await MongoChatItem.findOneAndUpdate(
+        { appId, chatId, dataId },
+        { $unset: { [`customFeedbacks.${index}`]: 1 } },
+        {
+          session
+        }
+      );
+      await MongoChatItem.findOneAndUpdate(
+        { appId, chatId, dataId },
+        { $pull: { customFeedbacks: null } },
+        {
+          session
+        }
+      );
+    });
 
     jsonRes(res);
   } catch (err) {

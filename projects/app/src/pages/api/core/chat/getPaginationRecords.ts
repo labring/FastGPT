@@ -26,7 +26,14 @@ async function handler(
   req: ApiRequestProps<getPaginationRecordsBody, getPaginationRecordsQuery>,
   res: ApiResponseType<any>
 ): Promise<getPaginationRecordsResponse> {
-  const { chatId, appId, offset, pageSize = 10, loadCustomFeedbacks, type } = req.body;
+  const {
+    appId,
+    chatId,
+    offset,
+    pageSize = 10,
+    loadCustomFeedbacks,
+    type = GetChatTypeEnum.normal
+  } = req.body;
 
   if (!appId || !chatId) {
     return {
@@ -40,6 +47,7 @@ async function handler(
     authChatCrud({
       req,
       authToken: true,
+      authApiKey: true,
       ...req.body,
       per: ReadPermissionVal
     })

@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { UpdateHistoryProps } from '@/global/core/chat/api.d';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -13,6 +13,7 @@ async function handler(req: ApiRequestProps<UpdateHistoryProps>, res: NextApiRes
   await authChatCrud({
     req,
     authToken: true,
+    authApiKey: true,
     ...req.body,
     per: WritePermissionVal
   });
