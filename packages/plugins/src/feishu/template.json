@@ -4,7 +4,7 @@
   "name": "飞书机器人 webhook",
   "avatar": "/appMarketTemplates/plugin-feishu/avatar.svg",
   "intro": "向飞书机器人发起 webhook 请求。",
-  "inputExplanationUrl": "https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot#f62e72d5",
+  "courseUrl": "https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot#f62e72d5",
   "showStatus": false,
   "weight": 10,
 

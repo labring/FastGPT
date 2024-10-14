@@ -29,6 +29,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
   intro: Dataset_SEARCH_DESC,
   showStatus: true,
   isTool: true,
+  courseUrl: '/docs/workflow/modules/dataset_search/',
   version: '481',
   inputs: [
     {
