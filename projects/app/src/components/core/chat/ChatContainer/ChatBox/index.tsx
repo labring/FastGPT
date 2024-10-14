@@ -459,7 +459,6 @@ const ChatBox = (
               ] as UserChatItemValueItemType[],
               status: ChatStatusEnum.finish
             },
-            // 普通 chat 模式，需要增加一个 AI 来接收响应消息
             {
               dataId: responseChatId,
               obj: ChatRoleEnum.AI,
@@ -493,10 +492,9 @@ const ChatBox = (
             const abortSignal = new AbortController();
             chatController.current = abortSignal;
 
-            // 最后一条 AI 消息是空的，会被过滤掉，这里得到的 messages，不会包含最后一条 AI 消息，所以不需要 slice 了。
             // 这里，无论是否为交互模式，最后都是 Human 的消息。
             const messages = chats2GPTMessages({
-              messages: newChatList,
+              messages: newChatList.slice(0, -1),
               reserveId: true
             });
 

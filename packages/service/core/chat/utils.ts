@@ -11,17 +11,6 @@ import { serverRequestBaseUrl } from '../../common/api/serverRequest';
 import { i18nT } from '../../../web/i18n/utils';
 import { addLog } from '../../common/system/log';
 
-/* slice chat context by tokens */
-const filterEmptyMessages = (messages: ChatCompletionMessageParam[]) => {
-  return messages.filter((item) => {
-    if (item.role === ChatCompletionRequestMessageRoleEnum.System) return !!item.content;
-    if (item.role === ChatCompletionRequestMessageRoleEnum.User) return !!item.content;
-    if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant)
-      return !!item.content || !!item.function_call || !!item.tool_calls;
-    return true;
-  });
-};
-
 export const filterGPTMessageByMaxTokens = async ({
   messages = [],
   maxTokens
@@ -52,7 +41,7 @@ export const filterGPTMessageByMaxTokens = async ({
 
   // If the text length is less than half of the maximum token, no calculation is required
   if (rawTextLen < maxTokens * 0.5) {
-    return filterEmptyMessages(messages);
+    return messages;
   }
 
   // filter startWith system prompt
@@ -95,7 +84,7 @@ export const filterGPTMessageByMaxTokens = async ({
     }
   }
 
-  return filterEmptyMessages([...systemPrompts, ...chats]);
+  return [...systemPrompts, ...chats];
 };
 
 /* 
@@ -215,7 +204,7 @@ export const loadRequestMessages = async ({
           return;
         }
         if (item.role === ChatCompletionRequestMessageRoleEnum.User) {
-          if (!item.content) return;
+          if (item.content === undefined) return;
 
           if (typeof item.content === 'string') {
             return {
@@ -233,16 +222,10 @@ export const loadRequestMessages = async ({
             };
           }
         }
-        if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-          if (
-            item.content !== undefined &&
-            !item.content &&
-            !item.tool_calls &&
-            !item.function_call
-          )
-            return;
-          if (Array.isArray(item.content) && item.content.length === 0) return;
-        }
+        // if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+        //   if (item.content === undefined && !item.tool_calls && !item.function_call) return;
+        //   if (Array.isArray(item.content) && item.content.length === 0) return;
+        // }
 
         return item;
       })
