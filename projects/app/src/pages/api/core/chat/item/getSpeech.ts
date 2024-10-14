@@ -24,7 +24,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('model or voice not found');
     }
 
-    const { teamId, tmbId, authType } = await authChatCert({ req, authToken: true });
+    const { teamId, tmbId, authType } = await authChatCert({
+      req,
+      authToken: true,
+      authApiKey: true
+    });
 
     const ttsModel = getAudioSpeechModel(ttsConfig.model);
     const voiceData = ttsModel.voices?.find((item) => item.value === ttsConfig.voice);

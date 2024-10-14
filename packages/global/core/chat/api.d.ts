@@ -1,7 +1,7 @@
 export type UpdateChatFeedbackProps = {
   appId: string;
   chatId: string;
-  chatItemId: string;
+  dataId: string;
   shareId?: string;
   teamId?: string;
   teamToken?: string;

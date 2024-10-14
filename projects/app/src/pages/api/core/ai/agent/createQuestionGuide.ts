@@ -13,7 +13,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { tmbId, teamId } = await authChatCert({
       req,
-      authToken: true
+      authToken: true,
+      authApiKey: true
     });
 
     const qgModel = global.llmModels[0];

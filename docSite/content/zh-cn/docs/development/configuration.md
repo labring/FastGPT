@@ -227,6 +227,27 @@ weight: 708
 }
 ```
 
+### ReRank 接入（硅基流动）
+
+有免费的 `bge-reranker-v2-m3` 模型可以使用。
+
+1. 注册硅基流动账号: https://siliconflow.cn/
+2. 进入控制台，获取 API key: https://cloud.siliconflow.cn/account/ak
+3. 修改 FastGPT 配置文件
+
+```json
+{
+    "reRankModels": [
+        {
+            "model": "BAAI/bge-reranker-v2-m3", // 这里的model需要对应 siliconflow 的模型名
+            "name": "BAAI/bge-reranker-v2-m3",
+            "requestUrl": "https://api.siliconflow.cn/v1/rerank",
+            "requestAuth": "siliconflow 上申请的 key"
+        }
+    ]
+}
+```
+
 ### ReRank 接入（Cohere）
 
 这个重排模型对中文不是很好，不如 bge 的好用。
@@ -239,7 +260,7 @@ weight: 708
     "reRankModels": [
         {
             "model": "rerank-multilingual-v2.0", // 这里的model需要对应 cohere 的模型名
-            "name": "检索重排", // 随意
+            "name": "rerank-multilingual-v2.0",
             "requestUrl": "https://api.cohere.ai/v1/rerank",
             "requestAuth": "Coherer上申请的key"
         }

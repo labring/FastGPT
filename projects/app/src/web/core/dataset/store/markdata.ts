@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
 export type MarkDataStore = {
-  chatItemId: string;
+  dataId: string;
   datasetId?: string;
   collectionId?: string;
   q: string;
