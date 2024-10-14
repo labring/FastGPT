@@ -9,7 +9,6 @@ import { FastGPTProUrl, isProduction } from '@fastgpt/service/common/system/cons
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 import json5 from 'json5';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const readConfigData = (name: string) => {
   const splitName = name.split('.');
