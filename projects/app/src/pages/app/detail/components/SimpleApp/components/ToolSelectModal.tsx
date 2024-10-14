@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -219,6 +219,16 @@ const RenderList = React.memo(function RenderList({
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
 
+  const pluginCourseUrls = feConfigs.pluginCourseUrls;
+  const pluginCourseUrl = useMemo(() => {
+    if (!configTool) return undefined;
+    if (configTool.pluginId && pluginCourseUrls) {
+      const pluginId = configTool.pluginId.split('-')[1];
+      return pluginCourseUrls[pluginId];
+    }
+    return undefined;
+  }, [configTool, pluginCourseUrls]);
+
   const {
     handleSubmit,
     reset,
@@ -354,11 +364,11 @@ const RenderList = React.memo(function RenderList({
             <HStack mb={4} spacing={1} fontSize={'sm'}>
               <MyIcon name={'common/info'} w={'1.25rem'} />
               <Box flex={1}>{t('app:tool_input_param_tip')}</Box>
-              {configTool.inputExplanationUrl && (
+              {pluginCourseUrl && (
                 <Box
                   cursor={'pointer'}
                   color={'primary.500'}
-                  onClick={() => window.open(configTool.inputExplanationUrl, '_blank')}
+                  onClick={() => window.open(pluginCourseUrl, '_blank')}
                 >
                   {t('app:workflow.Input guide')}
                 </Box>

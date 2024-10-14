@@ -96,11 +96,19 @@ const NodeCard = (props: Props) => {
   }, [nodeList, nodeId]);
 
   const nodeCourseUrls = feConfigs.nodeCourseUrls;
+  const pluginCourseUrls = feConfigs.pluginCourseUrls;
 
   const nodeCourseUrl = useMemo(() => {
-    if (!nodeCourseUrls || !node) return undefined;
-    return nodeCourseUrls[node.flowNodeType];
-  }, [nodeCourseUrls, node]);
+    if (!node) return undefined;
+    if (node.pluginId && pluginCourseUrls) {
+      const pluginId = node.pluginId.split('-')[1];
+      return pluginCourseUrls[pluginId];
+    }
+    if (nodeCourseUrls) {
+      return nodeCourseUrls[node.flowNodeType];
+    }
+    return undefined;
+  }, [node, pluginCourseUrls, nodeCourseUrls]);
 
   const { data: nodeTemplate, runAsync: getNodeLatestTemplate } = useRequest2(
     async () => {
@@ -109,17 +117,7 @@ const NodeCard = (props: Props) => {
         node?.flowNodeType === FlowNodeTypeEnum.appModule
       ) {
         if (!node?.pluginId) return;
-        const template = await getPreviewPluginNode({ appId: node.pluginId });
-
-        // Focus update plugin latest inputExplanationUrl
-        onChangeNode({
-          nodeId,
-          type: 'attr',
-          key: 'inputExplanationUrl',
-          value: template.inputExplanationUrl
-        });
-
-        return template;
+        return await getPreviewPluginNode({ appId: node.pluginId });
       } else {
         const template = moduleTemplatesFlat.find(
           (item) => item.flowNodeType === node?.flowNodeType

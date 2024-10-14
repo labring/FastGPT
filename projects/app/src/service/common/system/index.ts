@@ -99,6 +99,17 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
     [FlowNodeTypeEnum.loopEnd]: '',
     [FlowNodeTypeEnum.formInput]: ''
   },
+  pluginCourseUrls: {
+    feishu: 'https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot#f62e72d5',
+    'Doc2X/URLPDF2text':
+      'https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview',
+    'Doc2X/URLImg2text':
+      'https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview',
+    'Doc2X/FilePDF2text':
+      'https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview',
+    'Doc2X/FileImg2text':
+      'https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview'
+  },
   systemTitle: 'FastGPT',
   concatMd:
     '项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n交流群: ![](https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg)',

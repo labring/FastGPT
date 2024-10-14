@@ -45,6 +45,9 @@ export type FastGPTFeConfigsType = {
   nodeCourseUrls?: {
     [key in FlowNodeTypeEnum]: string;
   };
+  pluginCourseUrls?: {
+    [key in FlowNodeTypeEnum]: string;
+  };
 
   systemTitle?: string;
   systemDescription?: string;
