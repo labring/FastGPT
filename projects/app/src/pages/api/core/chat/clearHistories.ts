@@ -36,7 +36,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       };
     }
     if (appId) {
-      const { tmbId } = await authCert({ req, authToken: true });
+      const { tmbId } = await authCert({ req, authToken: true, authApiKey: true });
 
       return {
         tmbId,
