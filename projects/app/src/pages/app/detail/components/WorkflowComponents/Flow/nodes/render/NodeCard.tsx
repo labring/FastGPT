@@ -26,6 +26,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { WholeResponseContent } from '@/components/core/chat/components/WholeResponseModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getDocPath } from '@/web/common/system/doc';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -66,8 +67,6 @@ const NodeCard = (props: Props) => {
     isFolded,
     ...customStyle
   } = props;
-  const { feConfigs } = useSystemStore();
-
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const setHoverNodeId = useContextSelector(WorkflowContext, (v) => v.setHoverNodeId);
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
@@ -95,21 +94,6 @@ const NodeCard = (props: Props) => {
     return { node, parentNode };
   }, [nodeList, nodeId]);
 
-  const nodeCourseUrls = feConfigs.nodeCourseUrls;
-  const pluginCourseUrls = feConfigs.pluginCourseUrls;
-
-  const nodeCourseUrl = useMemo(() => {
-    if (!node) return undefined;
-    if (node.pluginId && pluginCourseUrls) {
-      const pluginId = node.pluginId.split('-')[1];
-      return pluginCourseUrls[pluginId];
-    }
-    if (nodeCourseUrls) {
-      return nodeCourseUrls[node.flowNodeType];
-    }
-    return undefined;
-  }, [node, pluginCourseUrls, nodeCourseUrls]);
-
   const { data: nodeTemplate, runAsync: getNodeLatestTemplate } = useRequest2(
     async () => {
       if (
@@ -117,7 +101,9 @@ const NodeCard = (props: Props) => {
         node?.flowNodeType === FlowNodeTypeEnum.appModule
       ) {
         if (!node?.pluginId) return;
-        return await getPreviewPluginNode({ appId: node.pluginId });
+        const template = await getPreviewPluginNode({ appId: node.pluginId });
+
+        return template;
       } else {
         const template = moduleTemplatesFlat.find(
           (item) => item.flowNodeType === node?.flowNodeType
@@ -282,10 +268,10 @@ const NodeCard = (props: Props) => {
                   </Box>
                 </MyTooltip>
               )}
-              {!!nodeTemplate?.diagram && nodeCourseUrl && (
+              {!!nodeTemplate?.diagram && node?.courseUrl && (
                 <Box bg={'myGray.300'} w={'1px'} h={'12px'} mx={1} />
               )}
-              {nodeCourseUrl && !hasNewVersion && (
+              {node?.courseUrl && !hasNewVersion && (
                 <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
                   <MyIcon
                     cursor={'pointer'}
@@ -296,7 +282,7 @@ const NodeCard = (props: Props) => {
                     _hover={{
                       color: 'primary.800'
                     }}
-                    onClick={() => window.open(nodeCourseUrl, '_blank')}
+                    onClick={() => window.open(getDocPath(node.courseUrl || ''), '_blank')}
                   />
                 </MyTooltip>
               )}
@@ -320,7 +306,7 @@ const NodeCard = (props: Props) => {
     onOpenConfirmSync,
     onClickSyncVersion,
     nodeTemplate?.diagram,
-    nodeCourseUrl,
+    node?.courseUrl,
     intro,
     menuForbid,
     nodeList,

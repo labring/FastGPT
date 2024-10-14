@@ -96,6 +96,7 @@ export async function getChildAppPreviewNode({
     avatar: app.avatar,
     name: app.name,
     intro: app.intro,
+    courseUrl: app.courseUrl,
     showStatus: app.showStatus,
     isTool: true,
     version: app.version,

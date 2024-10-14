@@ -17,7 +17,7 @@ export const AssignedAnswerModule: FlowNodeTemplateType = {
   avatar: 'core/workflow/template/reply',
   name: i18nT('workflow:assigned_reply'),
   intro: i18nT('workflow:intro_assigned_reply'),
-
+  courseUrl: '/docs/workflow/modules/reply/',
   version: '481',
   isTool: true,
   inputs: [

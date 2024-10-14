@@ -42,12 +42,6 @@ export type FastGPTFeConfigsType = {
   openAPIDocUrl?: string;
   systemPluginCourseUrl?: string;
   appTemplateCourse?: string;
-  nodeCourseUrls?: {
-    [key in FlowNodeTypeEnum]: string;
-  };
-  pluginCourseUrls?: {
-    [key in FlowNodeTypeEnum]: string;
-  };
 
   systemTitle?: string;
   systemDescription?: string;

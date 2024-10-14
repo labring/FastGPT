@@ -63,51 +63,6 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   systemPluginCourseUrl: 'https://fael3z0zfze.feishu.cn/wiki/ERZnw9R26iRRG0kXZRec6WL9nwh',
   appTemplateCourse:
     'https://fael3z0zfze.feishu.cn/wiki/CX9wwMGyEi5TL6koiLYcg7U0nWb?fromScene=spaceOverview',
-  nodeCourseUrls: {
-    [FlowNodeTypeEnum.systemConfig]: '',
-    [FlowNodeTypeEnum.pluginConfig]: '',
-    [FlowNodeTypeEnum.workflowStart]: 'https://doc.tryfastgpt.ai/docs/workflow/modules/input/',
-    [FlowNodeTypeEnum.chatNode]: 'https://doc.tryfastgpt.ai/docs/workflow/modules/ai_chat/',
-    [FlowNodeTypeEnum.datasetSearchNode]:
-      'https://doc.tryfastgpt.ai/docs/workflow/modules/dataset_search/',
-    [FlowNodeTypeEnum.datasetConcatNode]: '',
-    [FlowNodeTypeEnum.answerNode]: 'https://doc.tryfastgpt.ai/docs/workflow/modules/reply/',
-    [FlowNodeTypeEnum.classifyQuestion]:
-      'https://doc.tryfastgpt.ai/docs/workflow/modules/question_classify/',
-    [FlowNodeTypeEnum.contentExtract]:
-      'https://doc.tryfastgpt.ai/docs/workflow/modules/content_extract/',
-    [FlowNodeTypeEnum.httpRequest468]: 'https://doc.tryfastgpt.ai/docs/workflow/modules/http/',
-    [FlowNodeTypeEnum.pluginInput]: '',
-    [FlowNodeTypeEnum.pluginOutput]: '',
-    [FlowNodeTypeEnum.queryExtension]: '',
-    [FlowNodeTypeEnum.tools]: 'https://doc.tryfastgpt.ai/docs/workflow/modules/tool/',
-    [FlowNodeTypeEnum.stopTool]: '',
-    [FlowNodeTypeEnum.toolParams]: '',
-    [FlowNodeTypeEnum.lafModule]: 'https://doc.tryfastgpt.ai/docs/workflow/modules/laf/',
-    [FlowNodeTypeEnum.ifElseNode]: 'https://doc.tryfastgpt.ai/docs/workflow/modules/tfswitch/',
-    [FlowNodeTypeEnum.variableUpdate]: '',
-    [FlowNodeTypeEnum.code]: 'https://doc.tryfastgpt.ai/docs/workflow/modules/sandbox/',
-    [FlowNodeTypeEnum.textEditor]: 'https://doc.tryfastgpt.ai/docs/workflow/modules/text_editor/',
-    [FlowNodeTypeEnum.customFeedback]:
-      'https://doc.tryfastgpt.ai/docs/workflow/modules/custom_feedback/',
-    [FlowNodeTypeEnum.readFiles]: '',
-    [FlowNodeTypeEnum.userSelect]: '',
-    [FlowNodeTypeEnum.loop]: '',
-    [FlowNodeTypeEnum.loopStart]: '',
-    [FlowNodeTypeEnum.loopEnd]: '',
-    [FlowNodeTypeEnum.formInput]: ''
-  },
-  pluginCourseUrls: {
-    feishu: 'https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot#f62e72d5',
-    'Doc2X/URLPDF2text':
-      'https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview',
-    'Doc2X/URLImg2text':
-      'https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview',
-    'Doc2X/FilePDF2text':
-      'https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview',
-    'Doc2X/FileImg2text':
-      'https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview'
-  },
   systemTitle: 'FastGPT',
   concatMd:
     '项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n交流群: ![](https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg)',
