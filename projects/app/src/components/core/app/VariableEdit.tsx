@@ -64,7 +64,6 @@ const VariableEdit = ({
   const form = useForm<VariableItemType>();
   const { setValue, reset, watch, getValues } = form;
   const value = getValues();
-  const [defaultVariable, setDefaultVariable] = useState(value);
   const type = watch('type');
   const valueType = watch('valueType');
   const max = watch('max');
@@ -90,8 +89,8 @@ const VariableEdit = ({
 
   const formatVariables = useMemo(() => {
     const results = formatEditorVariablePickerIcon(variables);
-    return results.map((item) => {
-      const variable = variables.find((variable) => variable.key === item.key);
+    return results.map<VariableItemType & { icon?: string }>((item) => {
+      const variable = variables.find((variable) => variable.key === item.key)!;
       return {
         ...variable,
         icon: item.icon
@@ -145,7 +144,10 @@ const VariableEdit = ({
           status: 'success',
           title: t('common:common.Add Success')
         });
-        reset(addVariable());
+        reset({
+          ...addVariable(),
+          defaultValue: ''
+        });
       }
     },
     [variables, toast, t, onChange, reset]
@@ -223,10 +225,9 @@ const VariableEdit = ({
                         cursor={'pointer'}
                         onClick={() => {
                           const formattedItem = {
-                            ...addVariable(),
-                            ...item
+                            ...item,
+                            list: item.enums || []
                           };
-                          setDefaultVariable(formattedItem);
                           reset(formattedItem);
                         }}
                       />
@@ -290,11 +291,14 @@ const VariableEdit = ({
                         boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
                       }}
                       onClick={() => {
-                        const newDefaultValue =
-                          item.value === 'numberInput' && typeof value.defaultValue !== 'number'
-                            ? Number(defaultVariable.defaultValue) || ''
-                            : defaultVariable.defaultValue;
-                        setValue('defaultValue', newDefaultValue);
+                        const defaultValIsNumber = !isNaN(Number(value.defaultValue));
+                        // 如果切换到 numberInput，不是数字，则清空
+                        if (
+                          item.value === VariableInputEnum.select ||
+                          (item.value === VariableInputEnum.numberInput && !defaultValIsNumber)
+                        ) {
+                          setValue('defaultValue', '');
+                        }
                         setValue('type', item.value);
                       }}
                     >

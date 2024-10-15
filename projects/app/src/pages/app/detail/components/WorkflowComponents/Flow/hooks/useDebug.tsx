@@ -214,19 +214,22 @@ export const useDebug = () => {
       onClose();
     };
 
-    const onTabChange = (e: FieldErrors<Record<string, any>>) => {
+    const onCheckRunError = useCallback((e: FieldErrors<Record<string, any>>) => {
       const hasRequiredNodeVar =
         e.nodeVariables && Object.values(e.nodeVariables).some((item) => item.type === 'required');
+
+      if (hasRequiredNodeVar) {
+        return setCurrentTab(TabEnum.node);
+      }
+
       const hasRequiredGlobalVar =
         e.globalVariables &&
         Object.values(e.globalVariables).some((item) => item.type === 'required');
 
-      if (hasRequiredNodeVar) {
-        setCurrentTab(TabEnum.node);
-      } else if (hasRequiredGlobalVar) {
+      if (hasRequiredGlobalVar) {
         setCurrentTab(TabEnum.global);
       }
-    };
+    }, []);
 
     return (
       <MyRightDrawer
@@ -340,7 +343,9 @@ export const useDebug = () => {
           </Box>
         </Box>
         <Flex py={2} justifyContent={'flex-end'} px={6}>
-          <Button onClick={handleSubmit(onClickRun, onTabChange)}>{t('common:common.Run')}</Button>
+          <Button onClick={handleSubmit(onClickRun, onCheckRunError)}>
+            {t('common:common.Run')}
+          </Button>
         </Flex>
       </MyRightDrawer>
     );
