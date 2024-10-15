@@ -33,9 +33,9 @@ export function replaceVariable(text: any, obj: Record<string, string | number>)
 
   for (const key in obj) {
     const val = obj[key];
-    if (!['string', 'number'].includes(typeof val)) continue;
+    const formatVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
 
-    text = text.replace(new RegExp(`{{(${key})}}`, 'g'), String(val));
+    text = text.replace(new RegExp(`{{(${key})}}`, 'g'), formatVal);
   }
   return text || '';
 }
@@ -63,6 +63,7 @@ export const getNanoid = (size = 12) => {
 
   return `${firstChar}${randomsStr}`;
 };
+export const customNanoid = (str: string, size: number) => customAlphabet(str, size)();
 
 /* Custom text to reg, need to replace special chats */
 export const replaceRegChars = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
