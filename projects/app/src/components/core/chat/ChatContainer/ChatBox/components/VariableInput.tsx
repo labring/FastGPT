@@ -60,7 +60,6 @@ export const VariableInputItem = ({
       </Box>
       {item.type === VariableInputEnum.input && (
         <Input
-          bg={'myWhite.400'}
           maxLength={item.maxLength || 4000}
           {...register(item.key, {
             required: item.required
@@ -69,7 +68,6 @@ export const VariableInputItem = ({
       )}
       {item.type === VariableInputEnum.textarea && (
         <Textarea
-          bg={'myWhite.400'}
           {...register(item.key, {
             required: item.required
           })}
