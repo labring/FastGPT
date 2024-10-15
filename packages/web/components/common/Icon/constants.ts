@@ -275,6 +275,7 @@ export const iconPaths = {
   'core/workflow/versionHistories': () => import('./icons/core/workflow/versionHistories.svg'),
   date: () => import('./icons/date.svg'),
   delete: () => import('./icons/delete.svg'),
+  drag: () => import('./icons/drag.svg'),
   edit: () => import('./icons/edit.svg'),
   empty: () => import('./icons/empty.svg'),
   export: () => import('./icons/export.svg'),

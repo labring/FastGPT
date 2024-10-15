@@ -354,11 +354,11 @@ const RenderList = React.memo(function RenderList({
             <HStack mb={4} spacing={1} fontSize={'sm'}>
               <MyIcon name={'common/info'} w={'1.25rem'} />
               <Box flex={1}>{t('app:tool_input_param_tip')}</Box>
-              {configTool.inputExplanationUrl && (
+              {configTool.courseUrl && (
                 <Box
                   cursor={'pointer'}
                   color={'primary.500'}
-                  onClick={() => window.open(configTool.inputExplanationUrl, '_blank')}
+                  onClick={() => window.open(configTool.courseUrl, '_blank')}
                 >
                   {t('app:workflow.Input guide')}
                 </Box>

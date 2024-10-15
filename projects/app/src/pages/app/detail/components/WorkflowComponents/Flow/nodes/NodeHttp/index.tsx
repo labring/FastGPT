@@ -81,6 +81,9 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   const { t } = useTranslation();
   const { toast } = useToast();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const { isOpen: isOpenCurl, onOpen: onOpenCurl, onClose: onCloseCurl } = useDisclosure();
 
@@ -91,19 +94,18 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
     (item) => item.key === NodeInputKeyEnum.httpReqUrl
   ) as FlowNodeInputItemType;
 
-  const onChangeUrl = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onChangeUrl = (value: string) => {
     onChangeNode({
       nodeId,
       type: 'updateInput',
       key: NodeInputKeyEnum.httpReqUrl,
       value: {
         ...requestUrl,
-        value: e.target.value
+        value
       }
     });
   };
-  const onBlurUrl = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
+  const onBlurUrl = (val: string) => {
     // 拆分params和url
     const url = val.split('?')[0];
     const params = val.split('?')[1];
@@ -154,6 +156,16 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
     }
   };
 
+  const variables = useCreation(() => {
+    return getEditorVariables({
+      nodeId,
+      nodeList,
+      edges,
+      appDetail,
+      t
+    });
+  }, [nodeId, nodeList, edges, appDetail, t]);
+
   return (
     <Box>
       <Box mb={2} display={'flex'} justifyContent={'space-between'}>
@@ -166,7 +178,7 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
       </Box>
       <Flex alignItems={'center'} className="nodrag">
         <MySelect
-          h={'34px'}
+          h={'40px'}
           w={'88px'}
           bg={'white'}
           width={'100%'}
@@ -205,17 +217,29 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
             });
           }}
         />
-        <Input
-          flex={'1 0 0'}
-          ml={2}
-          h={'34px'}
+        <Box
+          w={'full'}
+          border={'1px solid'}
+          borderColor={'myGray.200'}
+          rounded={'md'}
           bg={'white'}
-          value={requestUrl?.value || ''}
-          placeholder={t('common:core.module.input.label.Http Request Url')}
-          fontSize={'xs'}
-          onChange={onChangeUrl}
-          onBlur={onBlurUrl}
-        />
+          ml={2}
+        >
+          <PromptEditor
+            placeholder={
+              t('common:core.module.input.label.Http Request Url') +
+              ', ' +
+              t('common:textarea_variable_picker_tip')
+            }
+            value={requestUrl?.value || ''}
+            variableLabels={variables}
+            variables={variables}
+            onBlur={onBlurUrl}
+            onChange={onChangeUrl}
+            minH={40}
+            showOpenModal={false}
+          />
+        </Box>
       </Flex>
 
       {isOpenCurl && <CurlImportModal nodeId={nodeId} inputs={inputs} onClose={onCloseCurl} />}
