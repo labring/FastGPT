@@ -21,7 +21,7 @@ import {
   NumberInputStepper,
   Switch
 } from '@chakra-ui/react';
-import { useForm } from 'react-hook-form';
+import { FieldErrors, useForm } from 'react-hook-form';
 import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
@@ -149,7 +149,7 @@ export const useDebug = () => {
 
     const variablesForm = useForm<Record<string, any>>({
       defaultValues: {
-        ...renderInputs.reduce((acc: Record<string, any>, input) => {
+        nodeVariables: renderInputs.reduce((acc: Record<string, any>, input) => {
           const isReference = checkInputIsReference(input);
           if (isReference) {
             acc[input.key] = undefined;
@@ -161,7 +161,7 @@ export const useDebug = () => {
 
           return acc;
         }, {}),
-        ...defaultGlobalVariables
+        globalVariables: defaultGlobalVariables
       }
     });
     const { register, getValues, setValue, handleSubmit } = variablesForm;
@@ -187,13 +187,12 @@ export const useDebug = () => {
                         input.valueType === WorkflowIOValueTypeEnum.number ||
                         input.valueType === WorkflowIOValueTypeEnum.boolean
                       ) {
-                        console.log('data[input.key]', data[input.key], input.key, runtimeNode);
-                        return data[input.key];
+                        return data.nodeVariables[input.key];
                       }
 
-                      return JSON.parse(data[input.key]);
+                      return JSON.parse(data.nodeVariables[input.key]);
                     } catch (e) {
-                      return data[input.key];
+                      return data.nodeVariables[input.key];
                     }
                   })();
 
@@ -206,19 +205,27 @@ export const useDebug = () => {
             : node
         ),
         runtimeEdges: runtimeEdges,
-        variables: Object.fromEntries(
-          Object.entries(data).filter(([key]) => filteredVar.some((item) => item.key === key))
-        )
+        variables: data.globalVariables
       });
 
       // Filter global variables and set them as default global variable values
-      setDefaultGlobalVariables(
-        Object.fromEntries(
-          Object.entries(data).filter(([key]) => filteredVar.some((item) => item.key === key))
-        )
-      );
+      setDefaultGlobalVariables(data.globalVariables);
 
       onClose();
+    };
+
+    const onTabChange = (e: FieldErrors<Record<string, any>>) => {
+      const hasRequiredNodeVar =
+        e.nodeVariables && Object.values(e.nodeVariables).some((item) => item.type === 'required');
+      const hasRequiredGlobalVar =
+        e.globalVariables &&
+        Object.values(e.globalVariables).some((item) => item.type === 'required');
+
+      if (hasRequiredNodeVar) {
+        setCurrentTab(TabEnum.node);
+      } else if (hasRequiredGlobalVar) {
+        setCurrentTab(TabEnum.global);
+      }
     };
 
     return (
@@ -246,7 +253,11 @@ export const useDebug = () => {
           )}
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
             {filteredVar.map((item) => (
-              <VariableInputItem key={item.id} item={item} variablesForm={variablesForm} />
+              <VariableInputItem
+                key={item.id}
+                item={{ ...item, key: `globalVariables.${item.key}` }}
+                variablesForm={variablesForm}
+              />
             ))}
           </Box>
           <Box display={currentTab === TabEnum.node ? 'block' : 'none'}>
@@ -257,7 +268,7 @@ export const useDebug = () => {
                 if (input.valueType === WorkflowIOValueTypeEnum.string) {
                   return (
                     <Textarea
-                      {...register(input.key, {
+                      {...register(`nodeVariables.${input.key}`, {
                         required
                       })}
                       placeholder={t(input.placeholder || ('' as any))}
@@ -269,7 +280,7 @@ export const useDebug = () => {
                   return (
                     <NumberInput step={input.step} min={input.min} max={input.max} bg={'myGray.50'}>
                       <NumberInputField
-                        {...register(input.key, {
+                        {...register(`nodeVariables.${input.key}`, {
                           required: input.required,
                           min: input.min,
                           max: input.max,
@@ -286,7 +297,7 @@ export const useDebug = () => {
                 if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
                   return (
                     <Box>
-                      <Switch {...register(input.key)} />
+                      <Switch {...register(`nodeVariables.${input.key}`)} />
                     </Box>
                   );
                 }
@@ -303,7 +314,7 @@ export const useDebug = () => {
                     resize
                     value={value}
                     onChange={(e) => {
-                      setValue(input.key, e);
+                      setValue(`nodeVariables.${input.key}`, e);
                     }}
                   />
                 );
@@ -329,22 +340,7 @@ export const useDebug = () => {
           </Box>
         </Box>
         <Flex py={2} justifyContent={'flex-end'} px={6}>
-          <Button
-            onClick={() => {
-              // Check if the required global variables exist, if missing, switch to the global variable tab
-              const currentValues = getValues();
-              if (
-                filteredVar.some(
-                  (item) => item.required && currentValues && !currentValues[item.key]
-                )
-              ) {
-                setCurrentTab(TabEnum.global);
-              }
-              handleSubmit(onClickRun)();
-            }}
-          >
-            {t('common:common.Run')}
-          </Button>
+          <Button onClick={handleSubmit(onClickRun, onTabChange)}>{t('common:common.Run')}</Button>
         </Flex>
       </MyRightDrawer>
     );
