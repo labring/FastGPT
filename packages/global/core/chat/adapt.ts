@@ -122,6 +122,9 @@ export const chats2GPTMessages = ({
           value.type === ChatItemValueTypeEnum.text &&
           typeof value.text?.content === 'string'
         ) {
+          if (!value.text.content && item.value.length > 1) {
+            return;
+          }
           // Concat text
           const lastValue = item.value[i - 1];
           const lastResult = aiResults[aiResults.length - 1];
