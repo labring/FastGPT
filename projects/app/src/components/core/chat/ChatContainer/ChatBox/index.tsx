@@ -495,7 +495,8 @@ const ChatBox = (
             // 这里，无论是否为交互模式，最后都是 Human 的消息。
             const messages = chats2GPTMessages({
               messages: newChatList.slice(0, -1),
-              reserveId: true
+              reserveId: true,
+              reserveTool: true
             });
 
             const {

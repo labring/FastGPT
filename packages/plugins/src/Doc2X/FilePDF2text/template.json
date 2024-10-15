@@ -4,7 +4,7 @@
   "name": "Doc2X PDF文件(文件)识别",
   "avatar": "plugins/doc2x",
   "intro": "将上传的PDF文件发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
-  "inputExplanationUrl": "https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview",
+  "courseUrl": "https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview",
   "showStatus": true,
   "weight": 10,
 

@@ -111,7 +111,7 @@ services:
       - PG_URL=postgresql://username:password@pg:5432/postgres
       # sandbox 地址
       - SANDBOX_URL=http://sandbox:3000
-      # 前端地址
+      # 前端地址: http://localhost:3000
       - FE_DOMAIN=
       # 日志等级: debug, info, warn, error
       - LOG_LEVEL=info

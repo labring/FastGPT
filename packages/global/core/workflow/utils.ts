@@ -230,6 +230,7 @@ export const appData2FlowNodeIO = ({
             FlowNodeInputTypeEnum.textarea,
             FlowNodeInputTypeEnum.reference
           ],
+          [VariableInputEnum.numberInput]: [FlowNodeInputTypeEnum.numberInput],
           [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
           [VariableInputEnum.custom]: [
             FlowNodeInputTypeEnum.input,
@@ -246,7 +247,7 @@ export const appData2FlowNodeIO = ({
           description: '',
           valueType: WorkflowIOValueTypeEnum.any,
           required: item.required,
-          list: item.enums.map((enumItem) => ({
+          list: item.enums?.map((enumItem) => ({
             label: enumItem.value,
             value: enumItem.value
           }))
@@ -391,7 +392,13 @@ export function replaceEditorVariable({
         }
       ];
     }
-    return [];
+    return [
+      {
+        id: item.key,
+        value: item.value,
+        nodeId: runningNode.nodeId
+      }
+    ];
   });
 
   const allVariables = [...globalVariables, ...nodeVariables, ...customInputs];
