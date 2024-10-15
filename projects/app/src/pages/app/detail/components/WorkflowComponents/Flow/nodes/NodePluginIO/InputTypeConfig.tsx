@@ -297,8 +297,7 @@ const InputTypeConfig = ({
                 <NumberInputField
                   {...register('defaultValue', {
                     min: min,
-                    max: max,
-                    valueAsNumber: true
+                    max: max
                   })}
                 />
                 <NumberInputStepper>

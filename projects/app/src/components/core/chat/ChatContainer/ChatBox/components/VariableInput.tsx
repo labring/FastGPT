@@ -61,6 +61,7 @@ export const VariableInputItem = ({
       {item.type === VariableInputEnum.input && (
         <Input
           maxLength={item.maxLength || 4000}
+          bg={'myGray.50'}
           {...register(item.key, {
             required: item.required
           })}
@@ -72,6 +73,7 @@ export const VariableInputItem = ({
             required: item.required
           })}
           rows={5}
+          bg={'myGray.50'}
           maxLength={item.maxLength || 4000}
         />
       )}

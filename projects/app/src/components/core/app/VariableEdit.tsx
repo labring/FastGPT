@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -64,6 +64,7 @@ const VariableEdit = ({
   const form = useForm<VariableItemType>();
   const { setValue, reset, watch, getValues } = form;
   const value = getValues();
+  const [defaultVariable, setDefaultVariable] = useState(value);
   const type = watch('type');
   const valueType = watch('valueType');
   const max = watch('max');
@@ -222,9 +223,10 @@ const VariableEdit = ({
                         cursor={'pointer'}
                         onClick={() => {
                           const formattedItem = {
-                            ...item,
-                            list: item.enums || []
+                            ...addVariable(),
+                            ...item
                           };
+                          setDefaultVariable(formattedItem);
                           reset(formattedItem);
                         }}
                       />
@@ -288,17 +290,12 @@ const VariableEdit = ({
                         boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
                       }}
                       onClick={() => {
-                        reset({
-                          // reset defaultValue
-                          ...Object.keys(value).reduce((acc: Record<string, any>, key: string) => {
-                            if (key !== 'defaultValue' && key in value) {
-                              (acc as any)[key] = value[key as keyof typeof value];
-                            }
-                            return acc;
-                          }, {}),
-                          // change type
-                          type: item.value
-                        });
+                        const newDefaultValue =
+                          item.value === 'numberInput' && typeof value.defaultValue !== 'number'
+                            ? Number(defaultVariable.defaultValue) || ''
+                            : defaultVariable.defaultValue;
+                        setValue('defaultValue', newDefaultValue);
+                        setValue('type', item.value);
                       }}
                     >
                       <MyIcon
