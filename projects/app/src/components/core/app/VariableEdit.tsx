@@ -288,8 +288,17 @@ const VariableEdit = ({
                         boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
                       }}
                       onClick={() => {
-                        setValue('type', item.value);
-                        setValue('defaultValue', undefined);
+                        reset({
+                          // reset defaultValue
+                          ...Object.keys(value).reduce((acc: Record<string, any>, key: string) => {
+                            if (key !== 'defaultValue' && key in value) {
+                              (acc as any)[key] = value[key as keyof typeof value];
+                            }
+                            return acc;
+                          }, {}),
+                          // change type
+                          type: item.value
+                        });
                       }}
                     >
                       <MyIcon

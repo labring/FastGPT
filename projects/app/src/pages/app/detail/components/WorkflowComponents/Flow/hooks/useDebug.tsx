@@ -138,17 +138,6 @@ export const useDebug = () => {
 
     const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.node);
 
-    // Check if the required global variables exist, if missing, switch to the global variable tab
-    useEffect(() => {
-      if (
-        filteredVar.some(
-          (item) => item.required && defaultGlobalVariables && !defaultGlobalVariables[item.key]
-        )
-      ) {
-        setCurrentTab(TabEnum.global);
-      }
-    }, []);
-
     const runtimeNode = runtimeNodes.find((node) => node.nodeId === runtimeNodeId);
 
     if (!runtimeNode) return <></>;
@@ -340,7 +329,22 @@ export const useDebug = () => {
           </Box>
         </Box>
         <Flex py={2} justifyContent={'flex-end'} px={6}>
-          <Button onClick={handleSubmit(onClickRun)}>{t('common:common.Run')}</Button>
+          <Button
+            onClick={() => {
+              // Check if the required global variables exist, if missing, switch to the global variable tab
+              const currentValues = getValues();
+              if (
+                filteredVar.some(
+                  (item) => item.required && currentValues && !currentValues[item.key]
+                )
+              ) {
+                setCurrentTab(TabEnum.global);
+              }
+              handleSubmit(onClickRun)();
+            }}
+          >
+            {t('common:common.Run')}
+          </Button>
         </Flex>
       </MyRightDrawer>
     );
