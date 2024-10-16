@@ -37,7 +37,7 @@ const ButtonEdge = (props: EdgeProps) => {
   }, [nodeList, source, target]);
 
   const defaultZIndex = useMemo(
-    () => (nodeList.find((node) => node.nodeId === source && node.parentNodeId) ? 1001 : 0),
+    () => (nodeList.find((node) => node.nodeId === source && node.parentNodeId) ? 2002 : 0),
     [nodeList, source]
   );
 
@@ -159,7 +159,7 @@ const ButtonEdge = (props: EdgeProps) => {
             bg={'white'}
             borderRadius={'17px'}
             cursor={'pointer'}
-            zIndex={9999}
+            zIndex={defaultZIndex + 1000}
             onClick={() => onDelConnect(id)}
           >
             <MyIcon name={'core/workflow/closeEdge'} w={'100%'}></MyIcon>
@@ -173,8 +173,7 @@ const ButtonEdge = (props: EdgeProps) => {
               pointerEvents={'all'}
               w={highlightEdge ? '14px' : '10px'}
               h={highlightEdge ? '14px' : '10px'}
-              // bg={'white'}
-              zIndex={highlightEdge ? 1000 : defaultZIndex}
+              zIndex={highlightEdge ? defaultZIndex + 1000 : defaultZIndex}
             >
               <MyIcon
                 name={'core/workflow/edgeArrow'}

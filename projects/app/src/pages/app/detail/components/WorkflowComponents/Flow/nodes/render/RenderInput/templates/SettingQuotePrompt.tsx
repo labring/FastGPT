@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box, BoxProps, Button, Flex, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -50,16 +50,23 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
-  const { watch, setValue, handleSubmit } = useForm({
-    defaultValues: {
+  const defaultValues = useMemo(() => {
+    return {
       quoteTemplate:
         inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuoteTemplate)?.value || '',
       quotePrompt:
         inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuotePrompt)?.value || '',
       quoteRole: (inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuoteRole)?.value ||
         'system') as AiChatQuoteRoleType
-    }
-  });
+    };
+  }, [inputs]);
+
+  const { watch, setValue, handleSubmit, reset } = useForm({ defaultValues });
+
+  useEffect(() => {
+    reset(defaultValues);
+  }, [defaultValues, reset]);
+
   const aiChatQuoteTemplate = watch('quoteTemplate');
   const aiChatQuotePrompt = watch('quotePrompt');
   const aiChatQuoteRole = watch('quoteRole');
