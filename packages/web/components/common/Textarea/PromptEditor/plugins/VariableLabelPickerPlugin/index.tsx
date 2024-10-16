@@ -129,7 +129,7 @@ export default function VariableLabelPickerPlugin({
                             color={'myGray.600'}
                             fontWeight={'semibold'}
                           >
-                            {item.label}
+                            {t(item.label as any)}
                           </Box>
                         </Flex>
                         {item.children?.map((child) => (
