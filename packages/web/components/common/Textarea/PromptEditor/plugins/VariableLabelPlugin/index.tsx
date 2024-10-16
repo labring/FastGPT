@@ -6,6 +6,7 @@ import { TextNode } from 'lexical';
 import { getHashtagRegexString } from './utils';
 import { mergeRegister } from '@lexical/utils';
 import { registerLexicalTextEntity } from '../../utils';
+import { useTranslation } from 'react-i18next';
 
 const REGEX = new RegExp(getHashtagRegexString(), 'i');
 
@@ -14,6 +15,7 @@ export default function VariableLabelPlugin({
 }: {
   variables: EditorVariableLabelPickerType[];
 }) {
+  const { t } = useTranslation();
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
     if (!editor.hasNodes([VariableLabelNode]))
@@ -25,7 +27,7 @@ export default function VariableLabelPlugin({
     const currentVariable = variables.find(
       (item) => item.parent.id === parentKey && item.key === childrenKey
     );
-    const variableLabel = `${currentVariable && currentVariable.parent?.label}.${currentVariable?.label}`;
+    const variableLabel = `${currentVariable && t(currentVariable.parent?.label as any)}.${currentVariable?.label}`;
     const nodeAvatar = currentVariable?.parent?.avatar || '';
     return $createVariableLabelNode(textNode.getTextContent(), variableLabel, nodeAvatar);
   }, []);
