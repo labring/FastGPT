@@ -123,7 +123,6 @@ export const getEditorVariables = ({
   const sourceNodeVariables = !sourceNodes
     ? []
     : sourceNodes
-        .reverse()
         .map((node) => {
           return node.outputs
             .filter((output) => !!output.label)

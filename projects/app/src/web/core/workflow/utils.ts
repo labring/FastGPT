@@ -211,7 +211,7 @@ export const computedNodeInputReference = ({
   };
   findSourceNode(nodeId);
 
-  sourceNodes.unshift(
+  sourceNodes.push(
     getGlobalVariableNode({
       nodes,
       t,

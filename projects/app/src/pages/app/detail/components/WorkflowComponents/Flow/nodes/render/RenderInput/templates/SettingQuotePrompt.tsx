@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box, BoxProps, Button, Flex, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -43,30 +43,22 @@ const selectTemplateBtn: BoxProps = {
   cursor: 'pointer'
 };
 
-const SettingQuotePrompt = (props: RenderInputProps) => {
+const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => void }) => {
   const { inputs = [], nodeId } = props;
   const { t } = useTranslation();
-  const { isOpen, onOpen, onClose } = useDisclosure();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
-  const defaultValues = useMemo(() => {
-    return {
+  const { watch, setValue, handleSubmit } = useForm({
+    defaultValues: {
       quoteTemplate:
         inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuoteTemplate)?.value || '',
       quotePrompt:
         inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuotePrompt)?.value || '',
       quoteRole: (inputs.find((input) => input.key === NodeInputKeyEnum.aiChatQuoteRole)?.value ||
         'system') as AiChatQuoteRoleType
-    };
-  }, [inputs]);
-
-  const { watch, setValue, handleSubmit, reset } = useForm({ defaultValues });
-
-  useEffect(() => {
-    reset(defaultValues);
-  }, [defaultValues, reset]);
-
+    }
+  });
   const aiChatQuoteTemplate = watch('quoteTemplate');
   const aiChatQuotePrompt = watch('quotePrompt');
   const aiChatQuoteRole = watch('quoteRole');
@@ -175,6 +167,137 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
   const quotePromptTemplates =
     aiChatQuoteRole === 'user' ? Prompt_userQuotePromptList : Prompt_systemQuotePromptList;
 
+  return (
+    <>
+      <MyModal
+        isOpen
+        iconSrc={'modal/edit'}
+        title={t('workflow:Quote_prompt_setting')}
+        w={'100%'}
+        h={['90vh', '85vh']}
+        maxW={['90vw', '700px']}
+        isCentered
+      >
+        <ModalBody flex={'1 0 0'} overflow={'auto'}>
+          <Flex {...LabelStyles} alignItems={'center'}>
+            <FormLabel>{t('workflow:dataset_quote_role')}</FormLabel>
+            <QuestionTip label={t('workflow:dataset_quote_role_tip')} ml={1} mr={5} />
+            <MySelect<AiChatQuoteRoleType>
+              value={aiChatQuoteRole}
+              list={[
+                {
+                  label: 'System',
+                  value: 'system',
+                  description: t('workflow:dataset_quote_role_system_option_desc')
+                },
+                {
+                  label: 'User',
+                  value: 'user',
+                  description: t('workflow:dataset_quote_role_user_option_desc')
+                }
+              ]}
+              onchange={(e) => {
+                setValue('quoteRole', e);
+              }}
+            />
+            <Box ml={5}>
+              {aiChatQuoteRole === 'user' ? (
+                <LightTip text={t('workflow:quote_role_user_tip')} />
+              ) : (
+                <LightTip text={t('workflow:quote_role_system_tip')} />
+              )}
+            </Box>
+          </Flex>
+          <Box mt={4}>
+            <Flex {...LabelStyles} mb={1}>
+              <FormLabel>{t('common:core.app.Quote templates')}</FormLabel>
+              <QuestionTip
+                ml={1}
+                label={t('workflow:quote_content_tip', {
+                  default: Prompt_QuoteTemplateList[0].value
+                })}
+              ></QuestionTip>
+              <Box flex={1} />
+              <Box
+                {...selectTemplateBtn}
+                fontSize={'sm'}
+                onClick={() =>
+                  setSelectTemplateData({
+                    title: t('common:core.app.Select quote template'),
+                    templates: Prompt_QuoteTemplateList
+                  })
+                }
+              >
+                {t('common:common.Select template')}
+              </Box>
+            </Flex>
+
+            <PromptEditor
+              variables={quoteTemplateVariables}
+              minH={160}
+              title={t('common:core.app.Quote templates')}
+              placeholder={t('workflow:quote_content_placeholder')}
+              value={aiChatQuoteTemplate}
+              onChange={(e) => {
+                setValue('quoteTemplate', e);
+              }}
+            />
+          </Box>
+          <Box mt={4}>
+            <Flex {...LabelStyles} mb={1}>
+              <FormLabel>{t('common:core.app.Quote prompt')}</FormLabel>
+              <QuestionTip
+                ml={1}
+                label={t('workflow:quote_prompt_tip', {
+                  default: quotePromptTemplates[0].value
+                })}
+              ></QuestionTip>
+            </Flex>
+            <PromptEditor
+              variables={quotePromptVariables}
+              title={t('common:core.app.Quote prompt')}
+              minH={300}
+              placeholder={t('workflow:quote_prompt_tip', {
+                default: quotePromptTemplates[0].value
+              })}
+              value={aiChatQuotePrompt}
+              onChange={(e) => {
+                setValue('quotePrompt', e);
+              }}
+            />
+          </Box>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant={'whiteBase'} mr={2} onClick={onClose}>
+            {t('common:common.Close')}
+          </Button>
+          <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>
+        </ModalFooter>
+      </MyModal>
+      {/* Prompt template */}
+      {!!selectTemplateData && (
+        <PromptTemplate
+          title={selectTemplateData.title}
+          templates={selectTemplateData.templates}
+          onClose={() => setSelectTemplateData(undefined)}
+          onSuccess={(e) => {
+            const quoteVal = e.value;
+
+            const promptVal = quotePromptTemplates.find((item) => item.title === e.title)?.value;
+
+            setValue('quoteTemplate', quoteVal);
+            setValue('quotePrompt', promptVal);
+          }}
+        />
+      )}
+    </>
+  );
+};
+
+const SettingQuotePrompt = (props: RenderInputProps) => {
+  const { t } = useTranslation();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
   const Render = useMemo(() => {
     return (
       <>
@@ -201,146 +324,10 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
           <Reference {...props} />
         </Box>
 
-        <MyModal
-          isOpen={isOpen}
-          iconSrc={'modal/edit'}
-          title={t('workflow:Quote_prompt_setting')}
-          w={'100%'}
-          h={['90vh', '85vh']}
-          maxW={['90vw', '700px']}
-          isCentered
-        >
-          <ModalBody flex={'1 0 0'} overflow={'auto'}>
-            <Flex {...LabelStyles} alignItems={'center'}>
-              <FormLabel>{t('workflow:dataset_quote_role')}</FormLabel>
-              <QuestionTip label={t('workflow:dataset_quote_role_tip')} ml={1} mr={5} />
-              <MySelect<AiChatQuoteRoleType>
-                value={aiChatQuoteRole}
-                list={[
-                  {
-                    label: 'System',
-                    value: 'system',
-                    description: t('workflow:dataset_quote_role_system_option_desc')
-                  },
-                  {
-                    label: 'User',
-                    value: 'user',
-                    description: t('workflow:dataset_quote_role_user_option_desc')
-                  }
-                ]}
-                onchange={(e) => {
-                  setValue('quoteRole', e);
-                }}
-              />
-              <Box ml={5}>
-                {aiChatQuoteRole === 'user' ? (
-                  <LightTip text={t('workflow:quote_role_user_tip')} />
-                ) : (
-                  <LightTip text={t('workflow:quote_role_system_tip')} />
-                )}
-              </Box>
-            </Flex>
-            <Box mt={4}>
-              <Flex {...LabelStyles} mb={1}>
-                <FormLabel>{t('common:core.app.Quote templates')}</FormLabel>
-                <QuestionTip
-                  ml={1}
-                  label={t('workflow:quote_content_tip', {
-                    default: Prompt_QuoteTemplateList[0].value
-                  })}
-                ></QuestionTip>
-                <Box flex={1} />
-                <Box
-                  {...selectTemplateBtn}
-                  fontSize={'sm'}
-                  onClick={() =>
-                    setSelectTemplateData({
-                      title: t('common:core.app.Select quote template'),
-                      templates: Prompt_QuoteTemplateList
-                    })
-                  }
-                >
-                  {t('common:common.Select template')}
-                </Box>
-              </Flex>
-
-              <PromptEditor
-                variables={quoteTemplateVariables}
-                minH={160}
-                title={t('common:core.app.Quote templates')}
-                placeholder={t('workflow:quote_content_placeholder')}
-                value={aiChatQuoteTemplate}
-                onChange={(e) => {
-                  setValue('quoteTemplate', e);
-                }}
-              />
-            </Box>
-            <Box mt={4}>
-              <Flex {...LabelStyles} mb={1}>
-                <FormLabel>{t('common:core.app.Quote prompt')}</FormLabel>
-                <QuestionTip
-                  ml={1}
-                  label={t('workflow:quote_prompt_tip', {
-                    default: quotePromptTemplates[0].value
-                  })}
-                ></QuestionTip>
-              </Flex>
-              <PromptEditor
-                variables={quotePromptVariables}
-                title={t('common:core.app.Quote prompt')}
-                minH={300}
-                placeholder={t('workflow:quote_prompt_tip', {
-                  default: quotePromptTemplates[0].value
-                })}
-                value={aiChatQuotePrompt}
-                onChange={(e) => {
-                  setValue('quotePrompt', e);
-                }}
-              />
-            </Box>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant={'whiteBase'} mr={2} onClick={onClose}>
-              {t('common:common.Close')}
-            </Button>
-            <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>
-          </ModalFooter>
-        </MyModal>
-        {/* Prompt template */}
-        {!!selectTemplateData && (
-          <PromptTemplate
-            title={selectTemplateData.title}
-            templates={selectTemplateData.templates}
-            onClose={() => setSelectTemplateData(undefined)}
-            onSuccess={(e) => {
-              const quoteVal = e.value;
-
-              const promptVal = quotePromptTemplates.find((item) => item.title === e.title)?.value;
-
-              setValue('quoteTemplate', quoteVal);
-              setValue('quotePrompt', promptVal);
-            }}
-          />
-        )}
+        {isOpen && <EditModal {...props} onClose={onClose} />}
       </>
     );
-  }, [
-    aiChatQuotePrompt,
-    aiChatQuoteRole,
-    aiChatQuoteTemplate,
-    handleSubmit,
-    isOpen,
-    onClose,
-    onOpen,
-    onSubmit,
-    props,
-    quotePromptTemplates,
-    quotePromptVariables,
-    quoteTemplateVariables,
-    selectTemplateData,
-    setValue,
-    t
-  ]);
+  }, [isOpen, onClose, onOpen, t]);
 
   return Render;
 };
