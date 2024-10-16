@@ -177,7 +177,7 @@ export async function authDatasetCollection({
     tmbId,
     datasetId: collection.datasetId._id,
     per,
-    isRoot: isRootFromHeader || isRoot
+    isRoot: isRootFromHeader
   });
 
   return {
@@ -185,7 +185,7 @@ export async function authDatasetCollection({
     tmbId,
     collection,
     permission: dataset.permission,
-    isRoot: isRootFromHeader || isRoot
+    isRoot: isRootFromHeader
   };
 }
 
