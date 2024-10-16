@@ -76,9 +76,8 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
         collaborators: parentClbsAndGroups,
         session
       });
-    }
-
-    if (!parentId) {
+    } else {
+      // Create default permission
       await MongoResourcePermission.create(
         [
           {

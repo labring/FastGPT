@@ -204,6 +204,7 @@ export const delResourcePermission = ({
   tmbId?: string;
   groupId?: string;
 }) => {
+  // tmbId or groupId only one and not both
   if (!!tmbId === !!groupId) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
