@@ -188,19 +188,22 @@ weight: 708
 
 ## 关于模型 logo
 
-统一放置在项目的`public/imgs/model/xxx`目录中，目前内置了以下几种，如果有需要，可以PR增加。默认头像为 Hugging face 的 logo~
+统一放置在项目的`public/imgs/model/xxx`目录中，目前内置了以下几种，如果有需要，可以PR增加。默认logo为 Hugging face 的 logo~
 
-- /imgs/model/baichuan.svg - 百川
-- /imgs/model/chatglm.svg - 智谱
+- /imgs/model/baichuan.svg - 百川智能
+- /imgs/model/chatglm.svg - 智谱清言
 - /imgs/model/claude.svg - claude
+- /imgs/model/deepseek.svg - deepseek
+- /imgs/model/doubao.svg - 火山豆包
 - /imgs/model/ernie.svg - 文心一言
+- /imgs/model/gemini.svg - gemini
+- /imgs/model/huggingface.svg - Hugging face【默认logo】
+- /imgs/model/minimax.svg - minimax
 - /imgs/model/moonshot.svg - 月之暗面
 - /imgs/model/openai.svg - OpenAI GPT
 - /imgs/model/qwen.svg - 通义千问
+- /imgs/model/sparkDesk.svg - 讯飞星火
 - /imgs/model/yi.svg - 零一万物
-- /imgs/model/gemini.svg - gemini
-- /imgs/model/deepseek.svg - deepseek
-- /imgs/model/minimax.svg - minimax
 - 
 
 ## 特殊模型
