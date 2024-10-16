@@ -12,5 +12,8 @@
   "use_root_login": "使用 root 用户登录",
   "redirect": "跳转",
   "no_remind": "不再提醒",
-  "Chinese_ip_tip": "检测到您是中国大陆 IP，点击跳转访问中国大陆版。"
+  "Chinese_ip_tip": "检测到您是中国大陆 IP，点击跳转访问中国大陆版。",
+  "agree": "同意",
+  "cookies_tip": "本网站使用 cookies 提供更好的服务体验。继续使用即表示您同意我们的 Cookie 政策。",
+  "privacy_policy": "隐私政策"
 }
