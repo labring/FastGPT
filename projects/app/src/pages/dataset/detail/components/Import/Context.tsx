@@ -205,8 +205,10 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
     [TrainingModeEnum.qa]: {
       chunkSizeField: 'qaChunkSize' as ChunkSizeFieldType,
       chunkOverlapRatio: 0,
-      maxChunkSize: Math.min(agentModel.maxResponse * 4, agentModel.maxContext * 0.7),
-      minChunkSize: 4000,
+      maxChunkSize:
+        agentModel?.maxQAChunkSize ??
+        Math.min(agentModel.maxResponse * 4, agentModel.maxContext * 0.7),
+      minChunkSize: agentModel?.minQAChunkSize ?? 4000,
       autoChunkSize: Math.min(agentModel.maxResponse * 1, agentModel.maxContext * 0.7),
       chunkSize: qaChunkSize,
       showChunkInput: true,
