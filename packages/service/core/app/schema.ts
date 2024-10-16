@@ -5,8 +5,6 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
-import { getPermissionSchema } from '@fastgpt/global/support/permission/utils';
 
 export const AppCollectionName = 'apps';
 
@@ -111,8 +109,10 @@ const AppSchema = new Schema({
   inited: {
     type: Boolean
   },
-
-  ...getPermissionSchema(AppDefaultPermissionVal)
+  inheritPermission: {
+    type: Boolean,
+    default: true
+  }
 });
 
 AppSchema.index({ teamId: 1, updateTime: -1 });

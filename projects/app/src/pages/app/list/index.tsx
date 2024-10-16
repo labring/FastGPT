@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Flex,
@@ -14,8 +14,6 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useI18n } from '@/web/context/I18n';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
-
-import List from './components/List';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -27,10 +25,7 @@ import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
 import { delAppById, resumeInheritPer } from '@/web/core/app/api';
-import {
-  AppDefaultPermissionVal,
-  AppPermissionList
-} from '@fastgpt/global/support/permission/app/constant';
+import { AppPermissionList } from '@fastgpt/global/support/permission/app/constant';
 import {
   deleteAppCollaborators,
   getCollaboratorList,
@@ -49,6 +44,7 @@ const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
 );
 const HttpEditModal = dynamic(() => import('./components/HttpPluginEditModal'));
+const List = dynamic(() => import('./components/List'));
 
 const MyApps = () => {
   const { t } = useTranslation();
@@ -273,36 +269,47 @@ const MyApps = () => {
               onMove={() => setMoveAppId(folderDetail._id)}
               deleteTip={appT('confirm_delete_folder_tip')}
               onDelete={() => onDeleFolder(folderDetail._id)}
-              defaultPer={{
-                value: folderDetail.defaultPermission,
-                defaultValue: AppDefaultPermissionVal,
-                onChange: (e) => {
-                  return onUpdateApp(folderDetail._id, { defaultPermission: e });
-                }
-              }}
               managePer={{
+                mode: 'all',
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 permissionList: AppPermissionList,
                 onUpdateCollaborators: ({
-                  members = [], // TODO: remove the default value after group is ready
+                  members,
+                  groups,
                   permission
                 }: {
                   members?: string[];
+                  groups?: string[];
                   permission: number;
                 }) => {
                   return postUpdateAppCollaborators({
                     members,
+                    groups,
                     permission,
                     appId: folderDetail._id
                   });
                 },
                 refreshDeps: [folderDetail._id, folderDetail.inheritPermission],
-                onDelOneCollaborator: (tmbId: string) =>
-                  deleteAppCollaborators({
-                    appId: folderDetail._id,
-                    tmbId
-                  })
+                onDelOneCollaborator: async ({
+                  tmbId,
+                  groupId
+                }: {
+                  tmbId?: string;
+                  groupId?: string;
+                }) => {
+                  if (tmbId) {
+                    return deleteAppCollaborators({
+                      appId: folderDetail._id,
+                      tmbId
+                    });
+                  } else if (groupId) {
+                    return deleteAppCollaborators({
+                      appId: folderDetail._id,
+                      groupId
+                    });
+                  }
+                }
               }}
             />
           </Box>

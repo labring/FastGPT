@@ -17,10 +17,7 @@ import { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditF
 import dynamic from 'next/dynamic';
 import { postCreateDatasetFolder, resumeInheritPer } from '@/web/core/dataset/api';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
-import {
-  DatasetDefaultPermissionVal,
-  DatasetPermissionList
-} from '@fastgpt/global/support/permission/dataset/constant';
+import { DatasetPermissionList } from '@fastgpt/global/support/permission/dataset/constant';
 import {
   postUpdateDatasetCollaborators,
   deleteDatasetCollaborators,
@@ -52,7 +49,6 @@ const Dataset = () => {
     loadMyDatasets,
     refetchFolderDetail,
     folderDetail,
-    setEditedDataset,
     setMoveDatasetId,
     onDelDataset,
     onUpdateDataset,
@@ -228,38 +224,39 @@ const Dataset = () => {
                   });
                 })
               }
-              defaultPer={{
-                value: folderDetail.defaultPermission,
-                defaultValue: DatasetDefaultPermissionVal,
-                onChange: (e) => {
-                  return onUpdateDataset({
-                    id: folderDetail._id,
-                    defaultPermission: e
-                  });
-                }
-              }}
               managePer={{
+                mode: 'all',
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 permissionList: DatasetPermissionList,
                 onUpdateCollaborators: ({
-                  members = [], // TODO: remove the default value after group is ready
+                  members,
+                  groups,
                   permission
                 }: {
                   members?: string[];
+                  groups?: string[];
                   permission: number;
-                }) => {
-                  return postUpdateDatasetCollaborators({
+                }) =>
+                  postUpdateDatasetCollaborators({
                     members,
+                    groups,
                     permission,
                     datasetId: folderDetail._id
-                  });
-                },
-                onDelOneCollaborator: (tmbId: string) =>
-                  deleteDatasetCollaborators({
-                    datasetId: folderDetail._id,
-                    tmbId
                   }),
+                onDelOneCollaborator: async ({ tmbId, groupId }) => {
+                  if (tmbId) {
+                    return deleteDatasetCollaborators({
+                      datasetId: folderDetail._id,
+                      tmbId
+                    });
+                  } else if (groupId) {
+                    return deleteDatasetCollaborators({
+                      datasetId: folderDetail._id,
+                      groupId
+                    });
+                  }
+                },
                 refreshDeps: [folderDetail._id, folderDetail.inheritPermission]
               }}
             />

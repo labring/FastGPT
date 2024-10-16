@@ -2,12 +2,11 @@ import {
   Flex,
   Box,
   ModalBody,
-  InputGroup,
-  InputLeftElement,
-  Input,
   Checkbox,
   ModalFooter,
-  Button
+  Button,
+  Grid,
+  HStack
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -18,63 +17,76 @@ import PermissionSelect from './PermissionSelect';
 import PermissionTags from './PermissionTags';
 import { CollaboratorContext } from './context';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import { ChevronDownIcon } from '@chakra-ui/icons';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 
 export type AddModalPropsType = {
   onClose: () => void;
+  mode?: 'member' | 'all';
 };
 
-function AddMemberModal({ onClose }: AddModalPropsType) {
+function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
   const { t } = useTranslation();
-  const { userInfo, loadAndGetTeamMembers } = useUserStore();
+  const { userInfo, loadAndGetTeamMembers, loadAndGetGroups, myGroups } = useUserStore();
 
-  const { permissionList, collaboratorList, onUpdateCollaborators, getPerLabelList } =
+  const { permissionList, collaboratorList, onUpdateCollaborators, getPerLabelList, permission } =
     useContextSelector(CollaboratorContext, (v) => v);
   const [searchText, setSearchText] = useState<string>('');
 
-  const { data: members = [], loading: loadingMembers } = useRequest2(
+  const { data: [members = [], groups = []] = [], loading: loadingMembersAndGroups } = useRequest2(
     async () => {
-      if (!userInfo?.team?.teamId) return [];
-      const members = await loadAndGetTeamMembers(true);
-      return members;
+      if (!userInfo?.team?.teamId) return [[], []];
+      return await Promise.all([loadAndGetTeamMembers(true), loadAndGetGroups(true)]);
     },
     {
       manual: false,
       refreshDeps: [userInfo?.team?.teamId]
     }
   );
+
   const filterMembers = useMemo(() => {
     return members.filter((item) => {
-      // if (item.permission.isOwner) return false;
       if (item.tmbId === userInfo?.team?.tmbId) return false;
       if (!searchText) return true;
       return item.memberName.includes(searchText);
     });
   }, [members, searchText, userInfo?.team?.tmbId]);
 
+  const filterGroups = useMemo(() => {
+    if (mode !== 'all') return [];
+    return groups.filter((item) => {
+      if (permission.isOwner) return true; // owner can see all groups
+      if (myGroups.find((i) => String(i._id) === String(item._id))) return false;
+      if (!searchText) return true;
+      return item.name.includes(searchText);
+    });
+  }, [groups, searchText, myGroups, mode, permission]);
+
   const [selectedMemberIdList, setSelectedMembers] = useState<string[]>([]);
+  const [selectedGroupIdList, setSelectedGroupIdList] = useState<string[]>([]);
   const [selectedPermission, setSelectedPermission] = useState(permissionList['read'].value);
   const perLabel = useMemo(() => {
     return getPerLabelList(selectedPermission).join('、');
   }, [getPerLabelList, selectedPermission]);
 
-  const { mutate: onConfirm, isLoading: isUpdating } = useRequest({
-    mutationFn: () => {
-      return onUpdateCollaborators({
+  const { runAsync: onConfirm, loading: isUpdating } = useRequest2(
+    () =>
+      onUpdateCollaborators({
         members: selectedMemberIdList,
+        groups: selectedGroupIdList,
         permission: selectedPermission
-      });
-    },
-    successToast: t('common:common.Add Success'),
-    errorToast: 'Error',
-    onSuccess() {
-      onClose();
+      }),
+    {
+      successToast: t('common:common.Add Success'),
+      errorToast: 'Error',
+      onSuccess() {
+        onClose();
+      }
     }
-  });
+  );
 
   return (
     <MyModal
@@ -83,17 +95,14 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
       iconSrc="modal/AddClb"
       title={t('user:team.add_collaborator')}
       minW="800px"
+      isLoading={loadingMembersAndGroups}
     >
       <ModalBody>
-        <MyBox
-          isLoading={loadingMembers}
-          display={'grid'}
-          minH="400px"
+        <Grid
           border="1px solid"
           borderColor="myGray.200"
           borderRadius="0.5rem"
-          gridTemplateColumns="55% 45%"
-          fontSize={'sm'}
+          gridTemplateColumns="1fr 1fr"
         >
           <Flex
             flexDirection="column"
@@ -102,17 +111,53 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
             p="4"
             minH="200px"
           >
-            <InputGroup alignItems="center" size="sm">
-              <InputLeftElement>
-                <MyIcon name="common/searchLight" w="16px" color={'myGray.500'} />
-              </InputLeftElement>
-              <Input
-                placeholder={t('user:search_user')}
-                bgColor="myGray.50"
-                onChange={(e) => setSearchText(e.target.value)}
-              />
-            </InputGroup>
-            <Flex flexDirection="column" mt="2">
+            <SearchInput
+              placeholder={t('user:search_user')}
+              bgColor="myGray.50"
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+
+            <Flex flexDirection="column" mt="2" overflow={'auto'} maxH="400px">
+              {filterGroups.map((group) => {
+                const onChange = () => {
+                  if (selectedGroupIdList.includes(group._id)) {
+                    setSelectedGroupIdList(selectedGroupIdList.filter((v) => v !== group._id));
+                  } else {
+                    setSelectedGroupIdList([...selectedGroupIdList, group._id]);
+                  }
+                };
+                const collaborator = collaboratorList.find((v) => v.groupId === group._id);
+                return (
+                  <HStack
+                    justifyContent="space-between"
+                    key={group._id}
+                    py="2"
+                    px="3"
+                    borderRadius="sm"
+                    alignItems="center"
+                    _hover={{
+                      bgColor: 'myGray.50',
+                      cursor: 'pointer',
+                      ...(!selectedGroupIdList.includes(group._id)
+                        ? { svg: { color: 'myGray.50' } }
+                        : {})
+                    }}
+                    onClick={onChange}
+                  >
+                    <Checkbox
+                      isChecked={selectedGroupIdList.includes(group._id)}
+                      icon={<MyIcon name={'common/check'} w={'12px'} />}
+                    />
+                    <MyAvatar src={group.avatar} w="1.5rem" borderRadius={'50%'} />
+                    <Box ml="2" w="full">
+                      {group.name === DefaultGroupName ? userInfo?.team.teamName : group.name}
+                    </Box>
+                    {!!collaborator && (
+                      <PermissionTags permission={collaborator.permission.value} />
+                    )}
+                  </HStack>
+                );
+              })}
               {filterMembers.map((member) => {
                 const onChange = () => {
                   if (selectedMemberIdList.includes(member.tmbId)) {
@@ -123,10 +168,10 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
                 };
                 const collaborator = collaboratorList.find((v) => v.tmbId === member.tmbId);
                 return (
-                  <Flex
+                  <HStack
+                    justifyContent="space-between"
                     key={member.tmbId}
-                    mt="1"
-                    py="1"
+                    py="2"
                     px="3"
                     borderRadius="sm"
                     alignItems="center"
@@ -137,51 +182,87 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
                         ? { svg: { color: 'myGray.50' } }
                         : {})
                     }}
+                    onClick={onChange}
                   >
                     <Checkbox
-                      mr="3"
                       isChecked={selectedMemberIdList.includes(member.tmbId)}
                       icon={<MyIcon name={'common/check'} w={'12px'} />}
-                      onChange={onChange}
                     />
-                    <Flex
-                      flexDirection="row"
-                      onClick={onChange}
-                      w="full"
-                      justifyContent="space-between"
-                    >
-                      <Flex flexDirection="row" alignItems="center">
-                        <MyAvatar src={member.avatar} w="32px" />
-                        <Box ml="2">{member.memberName}</Box>
-                      </Flex>
-                      {!!collaborator && (
-                        <PermissionTags permission={collaborator.permission.value} />
-                      )}
-                    </Flex>
-                  </Flex>
+                    <MyAvatar src={member.avatar} w="1.5rem" borderRadius={'50%'} />
+                    <Box w="full" ml="2">
+                      {member.memberName}
+                    </Box>
+                    {!!collaborator && (
+                      <PermissionTags permission={collaborator.permission.value} />
+                    )}
+                  </HStack>
                 );
               })}
             </Flex>
           </Flex>
           <Flex p="4" flexDirection="column">
             <Box>
-              {t('user:has_chosen') + ': '}+ {selectedMemberIdList.length}
+              {t('user:has_chosen') + ': '}{' '}
+              {selectedMemberIdList.length + selectedGroupIdList.length}
             </Box>
-            <Flex flexDirection="column" mt="2">
+            <Flex flexDirection="column" mt="2" overflow={'auto'} maxH="400px">
+              {selectedGroupIdList.map((groupId) => {
+                const onChange = () => {
+                  if (selectedGroupIdList.includes(groupId)) {
+                    setSelectedGroupIdList(selectedGroupIdList.filter((v) => v !== groupId));
+                  } else {
+                    setSelectedGroupIdList([...selectedGroupIdList, groupId]);
+                  }
+                };
+                const group = groups.find((v) => String(v._id) === groupId);
+                return (
+                  <HStack
+                    justifyContent="space-between"
+                    key={groupId}
+                    py="2"
+                    px="3"
+                    borderRadius="sm"
+                    alignItems="center"
+                    _hover={{
+                      bgColor: 'myGray.50',
+                      cursor: 'pointer',
+                      ...(!selectedGroupIdList.includes(groupId)
+                        ? { svg: { color: 'myGray.50' } }
+                        : {})
+                    }}
+                    onClick={onChange}
+                  >
+                    <MyAvatar src={group?.avatar} w="1.5rem" borderRadius={'50%'} />
+                    <Box w="full" ml="2">
+                      {group?.name === DefaultGroupName ? userInfo?.team.teamName : group?.name}
+                    </Box>
+                    <MyIcon
+                      name="common/closeLight"
+                      w="16px"
+                      cursor={'pointer'}
+                      _hover={{
+                        color: 'red.600'
+                      }}
+                    />
+                  </HStack>
+                );
+              })}
               {selectedMemberIdList.map((tmbId) => {
                 const member = filterMembers.find((v) => v.tmbId === tmbId);
                 return member ? (
-                  <Flex
+                  <HStack
+                    justifyContent="space-between"
                     key={tmbId}
                     alignItems="center"
-                    justifyContent="space-between"
                     py="2"
                     px={3}
                     borderRadius={'md'}
                     _hover={{ bg: 'myGray.50' }}
-                    _notLast={{ mb: 2 }}
+                    onClick={() =>
+                      setSelectedMembers(selectedMemberIdList.filter((v) => v !== tmbId))
+                    }
                   >
-                    <Avatar src={member.avatar} w="24px" />
+                    <MyAvatar src={member.avatar} w="1.5rem" borderRadius="50%" />
                     <Box w="full" ml={2}>
                       {member.memberName}
                     </Box>
@@ -192,16 +273,13 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
                       _hover={{
                         color: 'red.600'
                       }}
-                      onClick={() =>
-                        setSelectedMembers(selectedMemberIdList.filter((v) => v !== tmbId))
-                      }
                     />
-                  </Flex>
+                  </HStack>
                 ) : null;
               })}
             </Flex>
           </Flex>
-        </MyBox>
+        </Grid>
       </ModalBody>
       <ModalFooter>
         <PermissionSelect
