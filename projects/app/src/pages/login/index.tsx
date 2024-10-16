@@ -27,6 +27,7 @@ import { useTranslation } from 'next-i18next';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { GET } from '@/web/common/api/request';
+import { getDocPath } from '@/web/common/system/doc';
 
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
@@ -50,10 +51,18 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
     onOpen: onOpenRedirect,
     onClose: onCloseRedirect
   } = useDisclosure();
+  const {
+    isOpen: isOpenCookiesDrawer,
+    onOpen: onOpenCookiesDrawer,
+    onClose: onCloseCookiesDrawer
+  } = useDisclosure();
 
   const [showRedirect, setShowRedirect] = useLocalStorageState<boolean>('showRedirect', {
     defaultValue: true
   });
+  const cookieVersion = 1;
+  const [localCookieVersion, setLocalCookieVersion] =
+    useLocalStorageState<number>('localCookieVersion');
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
@@ -111,6 +120,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
     clearToken();
     router.prefetch('/app/list');
     ChineseRedirectUrl && showRedirect && checkIpInChina();
+    localCookieVersion !== cookieVersion && onOpenCookiesDrawer();
   });
 
   return (
@@ -182,6 +192,15 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
           disableDrawer={() => setShowRedirect(false)}
         />
       )}
+      {isOpenCookiesDrawer && (
+        <CookiesDrawer
+          onAgree={() => {
+            setLocalCookieVersion(cookieVersion);
+            onCloseCookiesDrawer();
+          }}
+          onClose={onCloseCookiesDrawer}
+        />
+      )}
     </>
   );
 };
@@ -221,6 +240,41 @@ function RedirectDrawer({
           </Box>
           <Button ml={'0.75rem'} onClick={onRedirect}>
             {t('login:redirect')}
+          </Button>
+        </Flex>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
+function CookiesDrawer({ onClose, onAgree }: { onClose: () => void; onAgree: () => void }) {
+  const { t } = useTranslation();
+  const router = useRouter();
+
+  return (
+    <Drawer placement="bottom" size={'xs'} isOpen={true} onClose={onClose}>
+      <DrawerOverlay backgroundColor={'rgba(0,0,0,0.2)'} />
+      <DrawerContent py={'1.75rem'} px={'3rem'}>
+        <DrawerCloseButton size={'sm'} />
+        <Flex align={'center'} justify={'space-between'}>
+          <Box>
+            <Box color={'myGray.900'} fontWeight={'500'} fontSize={'1rem'}>
+              {t('login:cookies_tip')}
+            </Box>
+            <Box
+              color={'primary.700'}
+              fontWeight={'500'}
+              fontSize={'1rem'}
+              textDecorationLine={'underline'}
+              cursor={'pointer'}
+              w={'fit-content'}
+              onClick={() => router.push(getDocPath('/docs/agreement/privacy/'))}
+            >
+              {t('login:privacy_policy')}
+            </Box>
+          </Box>
+          <Button ml={'0.75rem'} onClick={onAgree}>
+            {t('login:agree')}
           </Button>
         </Flex>
       </DrawerContent>
