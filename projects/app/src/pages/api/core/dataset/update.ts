@@ -11,12 +11,10 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ClientSession } from 'mongoose';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
 import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
-import { getResourceAllClbs } from '@fastgpt/service/support/permission/controller';
+import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
 import {
   syncChildrenPermission,
   syncCollaborators
@@ -54,14 +52,9 @@ async function handler(
     }
   })()) as { dataset: DatasetSchemaType };
 
-  const isDefaultPermissionChanged =
-    defaultPermission !== undefined && dataset.defaultPermission !== defaultPermission;
   const isFolder = dataset.type === DatasetTypeEnum.folder;
 
-  const onUpdate = async (
-    session?: ClientSession,
-    updatedDefaultPermission?: PermissionValueType
-  ) => {
+  const onUpdate = async (session?: ClientSession) => {
     await MongoDataset.findByIdAndUpdate(
       id,
       {
@@ -72,13 +65,7 @@ async function handler(
         ...(websiteConfig && { websiteConfig }),
         ...(status && { status }),
         ...(intro !== undefined && { intro }),
-        ...(externalReadUrl !== undefined && { externalReadUrl }),
-        // move
-        ...(updatedDefaultPermission !== undefined && {
-          defaultPermission: updatedDefaultPermission
-        }),
-        // update the defaultPermission
-        ...(dataset.parentId && isDefaultPermissionChanged && { inheritPermission: false })
+        ...(externalReadUrl !== undefined && { externalReadUrl })
       },
       { session }
     );
@@ -87,21 +74,8 @@ async function handler(
   // move
   if (parentId !== undefined) {
     await mongoSessionRun(async (session) => {
-      const parentDefaultPermission = await (async () => {
-        if (parentId) {
-          const { dataset: parentDataset } = await authDataset({
-            req,
-            authToken: true,
-            datasetId: parentId,
-            per: WritePermissionVal
-          });
-          return parentDataset.defaultPermission;
-        }
-        return DatasetDefaultPermissionVal;
-      })();
-
       if (isFolder && dataset.inheritPermission) {
-        const parentClbs = await getResourceAllClbs({
+        const parentClbsAndGroups = await getResourceClbsAndGroups({
           teamId: dataset.teamId,
           resourceId: parentId,
           resourceType: PerResourceTypeEnum.dataset,
@@ -112,7 +86,7 @@ async function handler(
           teamId: dataset.teamId,
           resourceId: id,
           resourceType: PerResourceTypeEnum.dataset,
-          collaborators: parentClbs,
+          collaborators: parentClbsAndGroups,
           session
         });
 
@@ -121,47 +95,12 @@ async function handler(
           resourceType: PerResourceTypeEnum.dataset,
           resourceModel: MongoDataset,
           folderTypeList: [DatasetTypeEnum.folder],
-          collaborators: parentClbs,
-          defaultPermission: parentDefaultPermission,
+          collaborators: parentClbsAndGroups,
           session
         });
-        return onUpdate(session, parentDefaultPermission);
+        return onUpdate(session);
       }
       return onUpdate(session);
-    });
-  } else if (isDefaultPermissionChanged) {
-    await mongoSessionRun(async (session) => {
-      if (isFolder) {
-        await syncChildrenPermission({
-          defaultPermission,
-          resource: {
-            _id: dataset._id,
-            type: dataset.type,
-            teamId: dataset.teamId,
-            parentId: dataset.parentId
-          },
-          resourceType: PerResourceTypeEnum.dataset,
-          resourceModel: MongoDataset,
-          folderTypeList: [DatasetTypeEnum.folder],
-          session
-        });
-      } else if (dataset.inheritPermission && dataset.parentId) {
-        const parentClbs = await getResourceAllClbs({
-          teamId: dataset.teamId,
-          resourceId: parentId,
-          resourceType: PerResourceTypeEnum.dataset,
-          session
-        });
-
-        await syncCollaborators({
-          teamId: dataset.teamId,
-          resourceId: id,
-          resourceType: PerResourceTypeEnum.dataset,
-          collaborators: parentClbs,
-          session
-        });
-      }
-      return onUpdate(session, defaultPermission);
     });
   } else {
     return onUpdate();

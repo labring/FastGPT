@@ -1,7 +1,8 @@
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
-import { MockParseHeaderCert } from '@/test/utils';
-import { initMockData } from './db/init';
+import { parseHeaderCertMock } from '@/test/utils';
+import { initMockData, root } from './db/init';
+import { faker } from '@faker-js/faker/locale/zh_CN';
 
 jest.mock('nanoid', () => {
   return {
@@ -13,24 +14,40 @@ jest.mock('@fastgpt/global/common/string/tools', () => {
   return {
     hashStr(str: string) {
       return str;
+    },
+    getNanoid() {
+      return faker.string.alphanumeric(12);
     }
   };
 });
 
-jest.mock('@fastgpt/service/common/system/log', jest.fn());
+jest.mock('@fastgpt/service/common/system/log', () => ({
+  addLog: {
+    log: jest.fn(),
+    warn: jest.fn((...prop) => {
+      console.warn(prop);
+    }),
+    error: jest.fn((...prop) => {
+      console.error(prop);
+    }),
+    info: jest.fn(),
+    debug: jest.fn()
+  }
+}));
 
-jest.mock('@fastgpt/service/support/permission/controller', () => {
-  return {
-    parseHeaderCert: MockParseHeaderCert,
-    getResourcePermission: jest.requireActual('@fastgpt/service/support/permission/controller')
-      .getResourcePermission,
-    getResourceAllClbs: jest.requireActual('@fastgpt/service/support/permission/controller')
-      .getResourceAllClbs
-  };
-});
+jest.setMock(
+  '@fastgpt/service/support/permission/controller',
+  (() => {
+    const origin = jest.requireActual<
+      typeof import('@fastgpt/service/support/permission/controller')
+    >('@fastgpt/service/support/permission/controller');
 
-const parse = jest.createMockFromModule('@fastgpt/service/support/permission/controller') as any;
-parse.parseHeaderCert = MockParseHeaderCert;
+    return {
+      ...origin,
+      parseHeaderCert: parseHeaderCertMock
+    };
+  })()
+);
 
 jest.mock('@/service/middleware/entry', () => {
   return {
@@ -59,11 +76,30 @@ jest.mock('@/service/middleware/entry', () => {
 beforeAll(async () => {
   // 新建一个内存数据库，然后让 mongoose 连接这个数据库
   if (!global.mongod || !global.mongodb) {
-    const mongod = await MongoMemoryServer.create();
-    global.mongod = mongod;
+    const replSet = new MongoMemoryReplSet({
+      instanceOpts: [
+        {
+          storageEngine: 'wiredTiger'
+        },
+        {
+          storageEngine: 'wiredTiger'
+        }
+      ]
+    });
+    replSet.start();
+    await replSet.waitUntilRunning();
+    const uri = replSet.getUri();
+    // const mongod = await MongoMemoryServer.create({
+    //   instance: {
+    //     replSet: 'testset'
+    //   }
+    // });
+    // global.mongod = mongod;
+    global.replSet = replSet;
     global.mongodb = mongoose;
 
-    await global.mongodb.connect(mongod.getUri(), {
+    await global.mongodb.connect(uri, {
+      dbName: 'fastgpt_test',
       bufferCommands: true,
       maxConnecting: 50,
       maxPoolSize: 50,
@@ -77,12 +113,16 @@ beforeAll(async () => {
     });
 
     await initMockData();
+    console.log(root);
   }
 });
 
 afterAll(async () => {
   if (global.mongodb) {
     await global.mongodb.disconnect();
+  }
+  if (global.replSet) {
+    await global.replSet.stop();
   }
   if (global.mongod) {
     await global.mongod.stop();

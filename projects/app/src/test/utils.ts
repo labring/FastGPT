@@ -64,7 +64,7 @@ export function getTestRequest<Q = any, B = any>({
   ];
 }
 
-export const MockParseHeaderCert = async ({
+export const parseHeaderCertMock = async ({
   req,
   authToken = true,
   authRoot = false,

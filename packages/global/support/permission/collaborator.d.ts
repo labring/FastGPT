@@ -4,11 +4,13 @@ import { PermissionValueType } from './type';
 
 export type CollaboratorItemType = {
   teamId: string;
-  tmbId: string;
   permission: Permission;
   name: string;
   avatar: string;
-};
+} & RequireOnlyOne<{
+  tmbId: string;
+  groupId: string;
+}>;
 
 export type UpdateClbPermissionProps = {
   members?: string[];

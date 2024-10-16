@@ -1,5 +1,6 @@
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoMemberGroupModel } from '@fastgpt/service/support/permission/memberGroup/memberGroupSchema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
@@ -13,37 +14,43 @@ export const root = {
 };
 
 export const initMockData = async () => {
-  const initRootUser = async () => {
-    // init root user
-    const rootUser = await MongoUser.create({
+  const [rootUser] = await MongoUser.create([
+    {
       username: 'root',
       password: '123456'
-    });
-
-    const rootTeam = await MongoTeam.create({
-      name: 'root-default-team',
-      ownerId: rootUser._id
-    });
-
-    const rootTeamMember = await MongoTeamMember.create({
+    }
+  ]);
+  root.uid = String(rootUser._id);
+  const [rootTeam] = await MongoTeam.create([
+    {
+      name: 'root Team'
+    }
+  ]);
+  root.teamId = String(rootTeam._id);
+  const [rootTmb] = await MongoTeamMember.create([
+    {
       teamId: rootTeam._id,
+      name: 'owner',
+      role: 'owner',
       userId: rootUser._id,
-      name: 'root-default-team-member',
-      status: 'active',
-      role: TeamMemberRoleEnum.owner
-    });
-    const rootApp = await MongoApp.create({
-      name: 'root-default-app',
+      status: 'active'
+    }
+  ]);
+  root.tmbId = String(rootTmb._id);
+  await MongoMemberGroupModel.create([
+    {
+      name: DefaultGroupName,
+      teamId: rootTeam._id
+    }
+  ]);
+
+  const [rootApp] = await MongoApp.create([
+    {
+      name: 'root Test App',
       teamId: rootTeam._id,
-      tmbId: rootTeam._id,
-      type: 'advanced'
-    });
+      tmbId: rootTmb._id
+    }
+  ]);
 
-    root.uid = rootUser._id;
-    root.tmbId = rootTeamMember._id;
-    root.teamId = rootTeam._id;
-    root.appId = rootApp._id;
-  };
-
-  await initRootUser();
+  root.appId = String(rootApp._id);
 };
