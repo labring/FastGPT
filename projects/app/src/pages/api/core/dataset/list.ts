@@ -95,7 +95,10 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
       $and: [
         {
           resourceType: PerResourceTypeEnum.dataset,
-          teamId
+          teamId,
+          resourceId: {
+            $exists: true
+          }
         },
         { $or: [{ tmbId }, { groupId: { $in: myGroupIds } }] }
       ]

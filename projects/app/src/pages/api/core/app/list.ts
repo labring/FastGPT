@@ -110,7 +110,10 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       $and: [
         {
           resourceType: PerResourceTypeEnum.app,
-          teamId
+          teamId,
+          resourceId: {
+            $exists: true
+          }
         },
         { $or: [{ tmbId }, { groupId: { $in: myGroupIds } }] }
       ]

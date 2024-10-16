@@ -15,6 +15,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useI18n } from '@/web/context/I18n';
+import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 const AddMemberModal = dynamic(() => import('./AddMemberModal'));
 const ManageModal = dynamic(() => import('./ManageModal'));
 
@@ -23,7 +24,7 @@ export type MemberManagerInputPropsType = {
   onGetCollaboratorList: () => Promise<CollaboratorItemType[]>;
   permissionList: PermissionListType;
   onUpdateCollaborators: (props: UpdateClbPermissionProps) => Promise<any>;
-  onDelOneCollaborator: (props: { tmbId?: string; groupId?: string }) => Promise<any>;
+  onDelOneCollaborator: (props: RequireOnlyOne<{ tmbId: string; groupId: string }>) => Promise<any>;
   refreshDeps?: any[];
   mode?: 'member' | 'all';
 };
@@ -86,7 +87,9 @@ const CollaboratorContextProvider = ({
     await onUpdateCollaborators(props);
     refetchCollaboratorList();
   };
-  const onDelOneCollaboratorThen = async (props: { tmbId?: string; groupId?: string }) => {
+  const onDelOneCollaboratorThen = async (
+    props: RequireOnlyOne<{ tmbId: string; groupId: string }>
+  ) => {
     await onDelOneCollaborator(props);
     refetchCollaboratorList();
   };

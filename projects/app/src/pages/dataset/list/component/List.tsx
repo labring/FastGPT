@@ -274,8 +274,8 @@ function List() {
                         </HStack>
                       )}
                       <PermissionIconText
+                        private={dataset.private}
                         iconColor="myGray.400"
-                        permission={dataset.private ? 'private' : 'public'}
                         color={'myGray.500'}
                       />
                     </HStack>
@@ -428,35 +428,16 @@ function List() {
             permission: editPerDataset.permission,
             onGetCollaboratorList: () => getCollaboratorList(editPerDataset._id),
             permissionList: DatasetPermissionList,
-            onUpdateCollaborators: ({
-              members,
-              groups,
-              permission
-            }: {
-              members?: string[];
-              groups?: string[];
-              permission: number;
-            }) => {
-              return postUpdateDatasetCollaborators({
-                members,
-                groups,
-                permission,
+            onUpdateCollaborators: (props) =>
+              postUpdateDatasetCollaborators({
+                ...props,
                 datasetId: editPerDataset._id
-              });
-            },
-            onDelOneCollaborator: async ({ tmbId, groupId }) => {
-              if (tmbId) {
-                return deleteDatasetCollaborators({
-                  datasetId: editPerDataset._id,
-                  tmbId
-                });
-              } else if (groupId) {
-                return deleteDatasetCollaborators({
-                  datasetId: editPerDataset._id,
-                  groupId
-                });
-              }
-            },
+              }),
+            onDelOneCollaborator: async (props) =>
+              deleteDatasetCollaborators({
+                ...props,
+                datasetId: editPerDataset._id
+              }),
             refreshDeps: [editPerDataset._id, editPerDataset.inheritPermission]
           }}
           onClose={() => setEditPerDatasetIndex(undefined)}

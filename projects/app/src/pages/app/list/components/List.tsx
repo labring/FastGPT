@@ -35,6 +35,7 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useChatStore } from '@/web/core/chat/context/storeChat';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
@@ -230,7 +231,7 @@ const ListItem = () => {
                     )}
 
                     <PermissionIconText
-                      permission={app.private ? 'private' : 'public'}
+                      private={app.private}
                       color={'myGray.500'}
                       iconColor={'myGray.400'}
                       w={'0.875rem'}
@@ -414,41 +415,25 @@ const ListItem = () => {
             permission: editPerApp.permission,
             onGetCollaboratorList: () => getCollaboratorList(editPerApp._id),
             permissionList: AppPermissionList,
-            onUpdateCollaborators: ({
-              members,
-              groups,
-              permission
-            }: {
+            onUpdateCollaborators: (props: {
               members?: string[];
               groups?: string[];
               permission: number;
-            }) => {
-              return postUpdateAppCollaborators({
-                members,
-                groups,
-                permission,
+            }) =>
+              postUpdateAppCollaborators({
+                ...props,
                 appId: editPerApp._id
-              });
-            },
-            onDelOneCollaborator: async ({
-              tmbId,
-              groupId
-            }: {
-              tmbId?: string;
-              groupId?: string;
-            }) => {
-              if (tmbId) {
-                return deleteAppCollaborators({
-                  appId: editPerApp._id,
-                  tmbId
-                });
-              } else if (groupId) {
-                return deleteAppCollaborators({
-                  appId: editPerApp._id,
-                  groupId
-                });
-              }
-            },
+              }),
+            onDelOneCollaborator: async (
+              props: RequireOnlyOne<{
+                tmbId?: string;
+                groupId?: string;
+              }>
+            ) =>
+              deleteAppCollaborators({
+                ...props,
+                appId: editPerApp._id
+              }),
             refreshDeps: [editPerApp.inheritPermission]
           }}
           onClose={() => setEditPerAppIndex(undefined)}

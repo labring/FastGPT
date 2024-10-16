@@ -34,6 +34,7 @@ import { resumeInheritPer } from '@/web/core/app/api';
 import { useI18n } from '@/web/context/I18n';
 import ResumeInherit from '@/components/support/permission/ResumeInheritText';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -138,19 +139,11 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
       appId: appDetail._id
     });
 
-  const onDelCollaborator = async ({ tmbId, groupId }: { tmbId?: string; groupId?: string }) => {
-    if (groupId) {
-      return deleteAppCollaborators({
-        appId: appDetail._id,
-        groupId
-      });
-    } else if (tmbId) {
-      return deleteAppCollaborators({
-        appId: appDetail._id,
-        tmbId
-      });
-    }
-  };
+  const onDelCollaborator = async (props: RequireOnlyOne<{ tmbId: string; groupId: string }>) =>
+    deleteAppCollaborators({
+      appId: appDetail._id,
+      ...props
+    });
 
   const { runAsync: resumeInheritPermission } = useRequest2(() => resumeInheritPer(appDetail._id), {
     errorToast: t('common:resume_failed'),
@@ -214,19 +207,13 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                 permission={appDetail.permission}
                 onGetCollaboratorList={() => getCollaboratorList(appDetail._id)}
                 permissionList={AppPermissionList}
-                onUpdateCollaborators={async (props) => {
-                  if (props.members) {
-                    return onUpdateCollaborators({
-                      permission: props.permission,
-                      members: props.members
-                    });
-                  } else {
-                    return onUpdateCollaborators({
-                      permission: props.permission,
-                      groups: props.groups
-                    });
-                  }
-                }}
+                onUpdateCollaborators={async (props) =>
+                  onUpdateCollaborators({
+                    permission: props.permission,
+                    members: props.members,
+                    groups: props.groups
+                  })
+                }
                 onDelOneCollaborator={onDelCollaborator}
                 refreshDeps={[appDetail.inheritPermission]}
                 isInheritPermission={appDetail.inheritPermission}

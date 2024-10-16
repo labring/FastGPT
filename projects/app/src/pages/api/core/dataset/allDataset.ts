@@ -46,7 +46,10 @@ async function handler(req: NextApiRequest): Promise<DatasetSimpleItemType[]> {
       $and: [
         {
           resourceType: PerResourceTypeEnum.dataset,
-          teamId
+          teamId,
+          resourceId: {
+            $exists: true
+          }
         },
         { $or: [{ tmbId }, { groupId: { $in: myGroupIds } }] }
       ]

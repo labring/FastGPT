@@ -13,6 +13,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useTranslation } from 'next-i18next';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
+import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 export type ManageModalProps = {
   onClose: () => void;
 };
@@ -88,11 +89,10 @@ function ManageModal({ onClose }: ManageModalProps) {
                               });
                             }}
                             onDelete={() => {
-                              console.log('onDelete', item);
                               onDelete({
                                 tmbId: item.tmbId,
                                 groupId: item.groupId
-                              });
+                              } as RequireOnlyOne<{ tmbId: string; groupId: string }>);
                             }}
                           />
                         )}
