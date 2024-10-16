@@ -4,6 +4,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import {
+  OwnerPermissionVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -14,6 +15,7 @@ import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
 import { syncCollaborators } from '@fastgpt/service/support/permission/inheritPermission';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 export type DatasetFolderCreateQuery = {};
 export type DatasetFolderCreateBody = {
   parentId?: string;
@@ -47,7 +49,7 @@ async function handler(
   }
 
   await mongoSessionRun(async (session) => {
-    const app = await MongoDataset.create({
+    const dataset = await MongoDataset.create({
       ...parseParentIdInMongo(parentId),
       avatar: FolderImgUrl,
       name,
@@ -68,10 +70,25 @@ async function handler(
       await syncCollaborators({
         resourceType: PerResourceTypeEnum.dataset,
         teamId,
-        resourceId: app._id,
+        resourceId: dataset._id,
         collaborators: parentClbsAndGroups,
         session
       });
+    }
+
+    if (!parentId) {
+      await MongoResourcePermission.create(
+        [
+          {
+            resourceType: PerResourceTypeEnum.dataset,
+            teamId,
+            resourceId: dataset._id,
+            tmbId,
+            permission: OwnerPermissionVal
+          }
+        ],
+        { session }
+      );
     }
   });
 

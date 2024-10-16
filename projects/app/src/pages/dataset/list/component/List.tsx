@@ -289,7 +289,9 @@ function List() {
                           </Box>
                         </HStack>
                       )}
-                      {dataset.permission.hasWritePer && (
+                      {(dataset.type === DatasetTypeEnum.folder
+                        ? dataset.permission.hasManagePer
+                        : dataset.permission.hasWritePer) && (
                         <Box
                           className="more"
                           display={['', 'none']}

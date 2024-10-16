@@ -143,7 +143,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
               per: tmbPer ?? groupPer ?? AppDefaultPermissionVal,
               isOwner: String(app.tmbId) === String(tmbId) || myPer.isOwner
             }),
-            privateApp: perList.length <= 1
+            privateApp: !tmbPer && !groupPer
           };
         } else {
           const tmbPer = perList.find(
@@ -160,14 +160,14 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
               per: tmbPer ?? groupPer ?? AppDefaultPermissionVal,
               isOwner: String(app.tmbId) === String(tmbId) || myPer.isOwner
             }),
-            privateApp: perList.length <= 1
+            privateApp: !tmbPer && !groupPer
           };
         }
       })();
       return {
         ...app,
         permission: Per,
-        privateApp
+        privateApp: privateApp
       };
     })
     .filter((app) => app.permission.hasReadPer);

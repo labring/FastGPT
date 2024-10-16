@@ -245,7 +245,9 @@ const ListItem = () => {
                         <Box color={'myGray.500'}>{formatTimeToChatTime(app.updateTime)}</Box>
                       </HStack>
                     )}
-                    {app.permission.hasWritePer && !AppFolderTypeList.includes(app.type) && (
+                    {(AppFolderTypeList.includes(app.type)
+                      ? app.permission.hasManagePer
+                      : app.permission.hasWritePer) && (
                       <Box className="more" display={['', 'none']}>
                         <MyMenu
                           Button={
