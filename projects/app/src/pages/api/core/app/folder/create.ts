@@ -2,6 +2,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import {
+  OwnerPermissionVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -16,6 +17,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { syncCollaborators } from '@fastgpt/service/support/permission/inheritPermission';
 import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
 import { TeamWritePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 
 export type CreateAppFolderBody = {
   parentId?: ParentIdType;
@@ -74,6 +76,23 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
         collaborators: parentClbsAndGroups,
         session
       });
+    }
+
+    if (!parentId) {
+      await MongoResourcePermission.create(
+        [
+          {
+            resourceType: PerResourceTypeEnum.app,
+            teamId,
+            resourceId: app._id,
+            tmbId,
+            permission: OwnerPermissionVal
+          }
+        ],
+        {
+          session
+        }
+      );
     }
   });
 }

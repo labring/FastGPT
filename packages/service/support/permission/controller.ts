@@ -20,6 +20,7 @@ import { getGroupsByTmbId } from './memberGroup/controllers';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -192,17 +193,28 @@ export const delResourcePermissionById = (id: string) => {
 };
 export const delResourcePermission = ({
   session,
+  tmbId,
+  groupId,
   ...props
 }: {
   resourceType: PerResourceTypeEnum;
   teamId: string;
   resourceId: string;
   session?: ClientSession;
-} & RequireOnlyOne<{
-  tmbId: string;
-  groupId: string;
-}>) => {
-  return MongoResourcePermission.deleteOne(props, { session });
+  tmbId?: string;
+  groupId?: string;
+}) => {
+  if (!!tmbId === !!groupId) {
+    return Promise.reject(CommonErrEnum.missingParams);
+  }
+  return MongoResourcePermission.deleteOne(
+    {
+      ...(tmbId ? { tmbId } : {}),
+      ...(groupId ? { groupId } : {}),
+      ...props
+    },
+    { session }
+  );
 };
 
 /* 下面代码等迁移 */
