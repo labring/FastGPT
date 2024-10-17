@@ -1,14 +1,17 @@
 import { useToast as uToast, UseToastOptions } from '@chakra-ui/react';
-import { useCallback, useMemo } from 'react';
+import { CSSProperties, useCallback } from 'react';
 
-export const useToast = (props?: UseToastOptions) => {
+export const useToast = (props?: UseToastOptions & { containerStyle?: CSSProperties }) => {
+  const { containerStyle, ...toastProps } = props || {};
+
   const toast = uToast({
     position: 'top',
     duration: 2000,
     containerStyle: {
-      fontSize: 'sm'
+      fontSize: 'sm',
+      ...containerStyle
     },
-    ...props
+    ...toastProps
   });
 
   const myToast = useCallback(
