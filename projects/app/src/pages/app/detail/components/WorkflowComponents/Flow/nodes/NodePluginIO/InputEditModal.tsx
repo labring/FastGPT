@@ -138,10 +138,23 @@ const FieldEditModal = ({
   });
   const { getValues, setValue, watch, reset } = form;
 
-  const inputType = watch('renderTypeList.0') || FlowNodeInputTypeEnum.reference;
+  const renderTypeList = watch('renderTypeList');
+  const inputType = renderTypeList[0] || FlowNodeInputTypeEnum.reference;
   const valueType = watch('valueType');
 
   const [isToolInput, { toggle: setIsToolInput }] = useBoolean(!!getValues('toolDescription'));
+
+  const isRefrence = renderTypeList.includes(FlowNodeInputTypeEnum.reference);
+  const setIsRefrence = () => {
+    if (isRefrence) {
+      setValue(
+        'renderTypeList',
+        renderTypeList.filter((item) => item !== FlowNodeInputTypeEnum.reference)
+      );
+    } else {
+      setValue('renderTypeList', [...getValues('renderTypeList'), FlowNodeInputTypeEnum.reference]);
+    }
+  };
 
   const maxLength = watch('maxLength');
   const max = watch('max');
@@ -328,6 +341,8 @@ const FieldEditModal = ({
           defaultValue={defaultInputValue}
           isToolInput={isToolInput}
           setIsToolInput={setIsToolInput}
+          isRefrence={isRefrence}
+          setIsRefrence={setIsRefrence}
           valueType={valueType}
           defaultValueType={defaultValueType}
           onSubmitSuccess={onSubmitSuccess}

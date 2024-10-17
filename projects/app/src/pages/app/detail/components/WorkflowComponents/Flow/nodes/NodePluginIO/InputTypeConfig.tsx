@@ -50,6 +50,8 @@ const InputTypeConfig = ({
   defaultValue,
   isToolInput,
   setIsToolInput,
+  isRefrence,
+  setIsRefrence,
   valueType,
   defaultValueType,
   onSubmitSuccess,
@@ -72,6 +74,8 @@ const InputTypeConfig = ({
   // Plugin-specific fields
   isToolInput?: boolean;
   setIsToolInput?: () => void;
+  isRefrence?: boolean;
+  setIsRefrence?: () => void;
   valueType?: WorkflowIOValueTypeEnum;
   defaultValueType?: WorkflowIOValueTypeEnum;
 
@@ -158,7 +162,7 @@ const InputTypeConfig = ({
     <Stack flex={1} borderLeft={'1px solid #F0F1F6'} justifyContent={'space-between'}>
       <Flex flexDirection={'column'} p={8} pb={2} gap={4} flex={'1 0 0'} overflow={'auto'}>
         <Flex alignItems={'center'}>
-          <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
+          <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
             {typeLabels.name[type] || typeLabels.name.formInput}
           </FormLabel>
           <Input
@@ -170,7 +174,7 @@ const InputTypeConfig = ({
           />
         </Flex>
         <Flex alignItems={'flex-start'}>
-          <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
+          <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
             {typeLabels.description[type] || typeLabels.description.plugin}
           </FormLabel>
           <Textarea
@@ -184,7 +188,7 @@ const InputTypeConfig = ({
         {/* value type */}
         {type !== 'formInput' && (
           <Flex alignItems={'center'}>
-            <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
+            <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
               {t('common:core.module.Data Type')}
             </FormLabel>
             {showValueTypeSelect ? (
@@ -208,18 +212,33 @@ const InputTypeConfig = ({
         )}
         {showRequired && (
           <Flex alignItems={'center'} minH={'40px'}>
-            <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
+            <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
               {t('workflow:field_required')}
             </FormLabel>
             <Switch {...register('required')} />
           </Flex>
         )}
 
-        {/* reference */}
-        {inputType === FlowNodeInputTypeEnum.reference && (
+        {inputType !== FlowNodeInputTypeEnum.reference && setIsRefrence && (
           <>
             <Flex alignItems={'center'} minH={'40px'}>
-              <FormLabel flex={'1'} fontWeight={'medium'}>
+              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+                {t('workflow:field_used_as_reference')}
+              </FormLabel>
+              <Switch
+                isChecked={isRefrence}
+                onChange={(e) => {
+                  setIsRefrence();
+                }}
+              />
+            </Flex>
+          </>
+        )}
+        {/* reference */}
+        {(inputType === FlowNodeInputTypeEnum.reference || isRefrence) && (
+          <>
+            <Flex alignItems={'center'} minH={'40px'}>
+              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
                 {t('workflow:field_used_as_tool_input')}
               </FormLabel>
               <Switch
@@ -234,7 +253,7 @@ const InputTypeConfig = ({
 
         {showMaxLenInput && (
           <Flex alignItems={'center'}>
-            <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
+            <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
               {t('common:core.module.Max Length')}
             </FormLabel>
             <MyNumberInput
@@ -254,7 +273,7 @@ const InputTypeConfig = ({
         {showMinMaxInput && (
           <>
             <Flex alignItems={'center'}>
-              <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
+              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
                 {t('common:core.module.Max Value')}
               </FormLabel>
               <MyNumberInput
@@ -268,7 +287,7 @@ const InputTypeConfig = ({
               />
             </Flex>
             <Flex alignItems={'center'}>
-              <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
+              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
                 {t('common:core.module.Min Value')}
               </FormLabel>
               <MyNumberInput
@@ -287,7 +306,7 @@ const InputTypeConfig = ({
         {showDefaultValue && (
           <Flex alignItems={'center'} minH={'40px'}>
             <FormLabel
-              flex={inputType === FlowNodeInputTypeEnum.switch ? 1 : '0 0 100px'}
+              flex={inputType === FlowNodeInputTypeEnum.switch ? 1 : '0 0 132px'}
               fontWeight={'medium'}
             >
               {t('common:core.module.Default Value')}
@@ -349,7 +368,7 @@ const InputTypeConfig = ({
         {inputType === FlowNodeInputTypeEnum.addInputParam && (
           <>
             <Flex alignItems={'center'}>
-              <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
+              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
                 {t('common:core.module.Input Type')}
               </FormLabel>
               <Box fontSize={'14px'}>{t('workflow:only_the_reference_type_is_supported')}</Box>
@@ -432,7 +451,7 @@ const InputTypeConfig = ({
                             transform={snapshot.isDragging ? `scale(0.5)` : ''}
                             transformOrigin={'top left'}
                           >
-                            <FormLabel flex={'0 0 100px'} fontWeight={'medium'}>
+                            <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
                               {`${t('common:core.module.variable.variable options')} ${i + 1}`}
                             </FormLabel>
                             <FormControl>
