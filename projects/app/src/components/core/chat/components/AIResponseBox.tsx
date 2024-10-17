@@ -38,6 +38,7 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import { useTranslation } from 'react-i18next';
 import { Controller, useForm } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 
 type props = {
   value: UserChatItemValueItemType | AIChatItemValueItemType;
@@ -238,6 +239,15 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
               })}
               rows={5}
               maxLength={input.maxLength || 4000}
+            />
+          )}
+          {input.type === FlowNodeInputTypeEnum.textInput && (
+            <PromptEditor
+              value={input.value}
+              onChange={(e) => setValue(input.label, e)}
+              minH={40}
+              maxH={100}
+              showOpenModal={false}
             />
           )}
           {input.type === FlowNodeInputTypeEnum.numberInput && (

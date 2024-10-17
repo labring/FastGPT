@@ -11,7 +11,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import InputTypeConfig from '../NodePluginIO/InputTypeConfig';
 
 export const defaultFormInput: UserInputFormItemType = {
-  type: FlowNodeInputTypeEnum.input,
+  type: FlowNodeInputTypeEnum.textInput,
   key: '',
   label: '',
   description: '',
@@ -54,14 +54,8 @@ const InputFormEditModal = ({
   const inputTypeList = [
     {
       icon: 'core/workflow/inputType/input',
-      label: t('common:core.workflow.inputType.input'),
-      value: FlowNodeInputTypeEnum.input,
-      defaultValueType: WorkflowIOValueTypeEnum.string
-    },
-    {
-      icon: 'core/workflow/inputType/textarea',
-      label: t('common:core.workflow.inputType.textarea'),
-      value: FlowNodeInputTypeEnum.textarea,
+      label: t('common:core.workflow.inputType.textInput'),
+      value: FlowNodeInputTypeEnum.textInput,
       defaultValueType: WorkflowIOValueTypeEnum.string
     },
     {
