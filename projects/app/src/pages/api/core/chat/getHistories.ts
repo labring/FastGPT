@@ -43,7 +43,7 @@ async function handler(
       };
     }
     if (appId) {
-      const { tmbId } = await authCert({ req, authToken: true });
+      const { tmbId } = await authCert({ req, authToken: true, authApiKey: true });
       return {
         tmbId,
         appId,

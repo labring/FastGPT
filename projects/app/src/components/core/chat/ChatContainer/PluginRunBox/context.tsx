@@ -228,7 +228,8 @@ const PluginRunContextProvider = ({
             value: []
           }
         ],
-        reserveId: true
+        reserveId: true,
+        reserveTool: true
       });
 
       try {

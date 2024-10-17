@@ -1,7 +1,7 @@
 import { StreamResponseType } from '@/web/common/api/fetch';
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { ChatSiteItemType, ToolModuleResponseItemType } from '@fastgpt/global/core/chat/type';
-import { InteractiveNodeResponseItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 export type generatingMessageProps = {
   event: SseResponseEventEnum;
@@ -9,7 +9,7 @@ export type generatingMessageProps = {
   name?: string;
   status?: 'running' | 'finish';
   tool?: ToolModuleResponseItemType;
-  interactive?: InteractiveNodeResponseItemType;
+  interactive?: WorkflowInteractiveResponseType;
   variables?: Record<string, any>;
 };
 

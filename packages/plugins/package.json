@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "duck-duck-scrape": "^2.2.5",
-    "lodash": "^4.17.21",
     "axios": "^1.5.1",
+    "duck-duck-scrape": "^2.2.5",
+    "echarts": "5.4.1",
     "expr-eval": "^2.0.2",
-    "echarts": "5.4.1"
+    "lodash": "^4.17.21",
+    "wikijs": "^6.4.1"
   },
   "devDependencies": {
     "@fastgpt/global": "workspace:*",

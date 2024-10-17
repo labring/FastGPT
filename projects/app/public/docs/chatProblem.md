@@ -11,4 +11,4 @@
 **其他问题**
 | 扫码进入交流群 |
 | ----------------------- |
-| ![](https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg) |
+| ![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png) |

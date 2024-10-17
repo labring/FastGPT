@@ -17,6 +17,7 @@ async function handler(req: ApiRequestProps<{}, DelHistoryProps>, res: NextApiRe
   await authChatCrud({
     req,
     authToken: true,
+    authApiKey: true,
     ...req.query,
     per: WritePermissionVal
   });

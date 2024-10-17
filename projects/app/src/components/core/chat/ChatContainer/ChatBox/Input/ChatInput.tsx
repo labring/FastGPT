@@ -81,16 +81,11 @@ const ChatInput = ({
   const canSendMessage = havInput && !hasFileUploading;
 
   // Upload files
-  useRequest2(
-    async () => {
-      uploadFiles();
-    },
-    {
-      manual: false,
-      errorToast: t('common:upload_file_error'),
-      refreshDeps: [fileList, outLinkAuthData, chatId]
-    }
-  );
+  useRequest2(uploadFiles, {
+    manual: false,
+    errorToast: t('common:upload_file_error'),
+    refreshDeps: [fileList, outLinkAuthData, chatId]
+  });
 
   /* on send */
   const handleSend = useCallback(

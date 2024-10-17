@@ -22,7 +22,7 @@ weight: 853
 **新例子**
 
 ```bash
-curl --location --request POST 'https://api.fastgpt.in/api/support/wallet/usage/createTrainingUsage' \
+curl --location --request POST 'http://localhost:3000/api/support/wallet/usage/createTrainingUsage' \
 --header 'Authorization: Bearer {{apikey}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -34,7 +34,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/support/wallet/usage/
 **x例子**
 
 ```bash
-curl --location --request POST 'https://api.fastgpt.in/api/support/wallet/bill/createTrainingBill' \
+curl --location --request POST 'http://localhost:3000/api/support/wallet/bill/createTrainingBill' \
 --header 'Authorization: Bearer {{apikey}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{

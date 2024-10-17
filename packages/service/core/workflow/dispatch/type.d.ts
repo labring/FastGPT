@@ -9,6 +9,7 @@ import {
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
@@ -20,6 +21,7 @@ export type DispatchFlowResponse = {
     finishedEdges: RuntimeEdgeItemType[];
     nextStepRunNodes: RuntimeNodeItemType[];
   };
+  workflowInteractiveResponse?: WorkflowInteractiveResponseType;
   [DispatchNodeResponseKeyEnum.toolResponses]: ToolRunResponseItemType;
   [DispatchNodeResponseKeyEnum.assistantResponses]: AIChatItemValueItemType[];
   [DispatchNodeResponseKeyEnum.runTimes]: number;

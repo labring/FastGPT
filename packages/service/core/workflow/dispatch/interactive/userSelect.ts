@@ -10,6 +10,7 @@ import type {
   UserSelectOptionItemType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.description]: string;
@@ -30,8 +31,10 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
   } = props;
   const { nodeId, isEntry } = node;
 
+  const interactive = getLastInteractiveValue(histories);
+
   // Interactive node is not the entry node, return interactive result
-  if (!isEntry) {
+  if (!isEntry || interactive?.type !== 'userSelect') {
     return {
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userSelect',
@@ -64,6 +67,7 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       userSelectResult: userSelectedVal
     },
+    [DispatchNodeResponseKeyEnum.toolResponses]: userSelectedVal,
     [NodeOutputKeyEnum.selectResult]: userSelectedVal
   };
 };

@@ -73,7 +73,7 @@ export type RuntimeNodeItemType = {
   intro?: StoreNodeItemType['intro'];
   flowNodeType: StoreNodeItemType['flowNodeType'];
   showStatus?: StoreNodeItemType['showStatus'];
-  isEntry?: StoreNodeItemType['isEntry'];
+  isEntry?: boolean;
 
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
@@ -108,12 +108,14 @@ export type DispatchNodeResponseType = {
   customOutputs?: Record<string, any>;
   nodeInputs?: Record<string, any>;
   nodeOutputs?: Record<string, any>;
+  mergeSignId?: string;
 
   // bill
   tokens?: number;
   model?: string;
   contextTotalLen?: number;
   totalPoints?: number;
+  childTotalPoints?: number;
 
   // chat
   temperature?: number;

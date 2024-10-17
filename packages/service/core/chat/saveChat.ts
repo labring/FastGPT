@@ -12,6 +12,7 @@ import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 
 type Props = {
   chatId: string;
@@ -143,6 +144,7 @@ export const updateInteractiveChat = async ({
 
   if (!chatItem || chatItem.obj !== ChatRoleEnum.AI) return;
 
+  // Update interactive value
   const interactiveValue = chatItem.value[chatItem.value.length - 1];
 
   if (
@@ -160,31 +162,36 @@ export const updateInteractiveChat = async ({
       return userInteractiveVal;
     }
   })();
-  interactiveValue.interactive =
-    interactiveValue.interactive.type === 'userSelect'
-      ? {
-          ...interactiveValue.interactive,
-          params: {
-            ...interactiveValue.interactive.params,
-            userSelectedVal: userInteractiveVal
-          }
-        }
-      : {
-          ...interactiveValue.interactive,
-          params: {
-            ...interactiveValue.interactive.params,
-            inputForm: interactiveValue.interactive.params.inputForm.map((item) => {
-              const itemValue = parsedUserInteractiveVal[item.label];
-              return itemValue !== undefined
-                ? {
-                    ...item,
-                    value: itemValue
-                  }
-                : item;
-            }),
-            submitted: true
-          }
-        };
+
+  if (interactiveValue.interactive.type === 'userSelect') {
+    interactiveValue.interactive = {
+      ...interactiveValue.interactive,
+      params: {
+        ...interactiveValue.interactive.params,
+        userSelectedVal: userInteractiveVal
+      }
+    };
+  } else if (
+    interactiveValue.interactive.type === 'userInput' &&
+    typeof parsedUserInteractiveVal === 'object'
+  ) {
+    interactiveValue.interactive = {
+      ...interactiveValue.interactive,
+      params: {
+        ...interactiveValue.interactive.params,
+        inputForm: interactiveValue.interactive.params.inputForm.map((item) => {
+          const itemValue = parsedUserInteractiveVal[item.label];
+          return itemValue !== undefined
+            ? {
+                ...item,
+                value: itemValue
+              }
+            : item;
+        }),
+        submitted: true
+      }
+    };
+  }
 
   if (aiResponse.customFeedbacks) {
     chatItem.customFeedbacks = chatItem.customFeedbacks
@@ -194,7 +201,7 @@ export const updateInteractiveChat = async ({
 
   if (aiResponse.responseData) {
     chatItem.responseData = chatItem.responseData
-      ? [...chatItem.responseData, ...aiResponse.responseData]
+      ? mergeChatResponseData([...chatItem.responseData, ...aiResponse.responseData])
       : aiResponse.responseData;
   }
 

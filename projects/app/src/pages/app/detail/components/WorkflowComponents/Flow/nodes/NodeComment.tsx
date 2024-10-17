@@ -80,12 +80,13 @@ const NodeComment = ({ data }: NodeProps<FlowNodeItemType>) => {
         menuForbid={{
           debug: true
         }}
-        border={'none'}
-        rounded={'none'}
-        bg={'#D8E9FF'}
-        boxShadow={
-          '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
-        }
+        customStyle={{
+          border: 'none',
+          rounded: 'none',
+          bg: '#D8E9FF',
+          boxShadow:
+            '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
+        }}
       >
         <Box w={'full'} h={'full'} position={'relative'}>
           <Box

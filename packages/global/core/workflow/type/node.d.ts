@@ -32,7 +32,6 @@ export type FlowNodeCommonType = {
   avatar?: string;
   name: string;
   intro?: string; // template list intro
-  inputExplanationUrl?: string;
   showStatus?: boolean; // chatting response step status
   version: string;
 
@@ -69,6 +68,7 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
   unique?: boolean;
 
   diagram?: string; // diagram url
+  courseUrl?: string; // course url
 };
 
 export type NodeTemplateListItemType = {

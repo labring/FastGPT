@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       customFeedback,
       appId,
       chatId,
-      responseChatItemId: chatItemId,
+      responseChatItemId: dataId,
       customInputs
     } = req.body as Props;
 
@@ -37,12 +37,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       addCustomFeedbacks({
         appId,
         chatId,
-        chatItemId,
+        dataId,
         feedbacks: [feedbackText]
       });
     }, 60000);
 
-    if (!chatId || !chatItemId) {
+    if (!chatId || !dataId) {
       return res.json({
         [NodeOutputKeyEnum.answerText]: `\\n\\n**自动反馈调试**: "${feedbackText}"\\n\\n`,
         text: feedbackText

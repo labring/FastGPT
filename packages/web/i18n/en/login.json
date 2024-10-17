@@ -12,5 +12,8 @@
   "register": "Register",
   "root_password_placeholder": "The root user password is the value of the environment variable DEFAULT_ROOT_PSW",
   "terms": "Terms",
-  "use_root_login": "Log in as root user"
+  "use_root_login": "Log in as root user",
+  "agree": "agree",
+  "cookies_tip": " This website uses cookies to provide a better service experience. By continuing to use the site, you agree to our Cookie Policy.",
+  "privacy_policy": "Privacy Policy"
 }

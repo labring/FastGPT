@@ -181,7 +181,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           });
 
           // Update file url
-          copyFile.url = `${location.origin}${previewUrl}`;
+          copyFile.url = previewUrl;
           updateFiles(fileIndex, copyFile);
         } catch (error) {
           errorFileIndex.push(fileList.findIndex((item) => item.id === file.id)!);

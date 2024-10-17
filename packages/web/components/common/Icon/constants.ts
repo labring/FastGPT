@@ -228,6 +228,7 @@ export const iconPaths = {
     import('./icons/core/workflow/template/duckduckgo.svg'),
   'core/workflow/template/extractJson': () =>
     import('./icons/core/workflow/template/extractJson.svg'),
+  'core/workflow/template/wiki': () => import('./icons/core/workflow/template/wiki.svg'),
   'core/workflow/template/fetchUrl': () => import('./icons/core/workflow/template/fetchUrl.svg'),
   'core/workflow/template/formInput': () => import('./icons/core/workflow/template/formInput.svg'),
   'core/workflow/template/getTime': () => import('./icons/core/workflow/template/getTime.svg'),
@@ -274,6 +275,7 @@ export const iconPaths = {
   'core/workflow/versionHistories': () => import('./icons/core/workflow/versionHistories.svg'),
   date: () => import('./icons/date.svg'),
   delete: () => import('./icons/delete.svg'),
+  drag: () => import('./icons/drag.svg'),
   edit: () => import('./icons/edit.svg'),
   empty: () => import('./icons/empty.svg'),
   export: () => import('./icons/export.svg'),

@@ -70,10 +70,10 @@ export const uploadMarkdownBase64 = async ({
   }
 
   // Remove white space on both sides of the picture
-  const trimReg = /(!\[.*\]\(.*\))\s*/g;
-  if (trimReg.test(rawText)) {
-    rawText = rawText.replace(trimReg, '$1');
-  }
+  // const trimReg = /(!\[.*\]\(.*\))\s*/g;
+  // if (trimReg.test(rawText)) {
+  //   rawText = rawText.replace(trimReg, '$1');
+  // }
 
   return rawText;
 };

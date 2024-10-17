@@ -230,6 +230,7 @@ export const appData2FlowNodeIO = ({
             FlowNodeInputTypeEnum.textarea,
             FlowNodeInputTypeEnum.reference
           ],
+          [VariableInputEnum.numberInput]: [FlowNodeInputTypeEnum.numberInput],
           [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
           [VariableInputEnum.custom]: [
             FlowNodeInputTypeEnum.input,
@@ -246,7 +247,7 @@ export const appData2FlowNodeIO = ({
           description: '',
           valueType: WorkflowIOValueTypeEnum.any,
           required: item.required,
-          list: item.enums.map((enumItem) => ({
+          list: item.enums?.map((enumItem) => ({
             label: enumItem.value,
             value: enumItem.value
           }))
@@ -391,22 +392,25 @@ export function replaceEditorVariable({
         }
       ];
     }
-    return [];
+    return [
+      {
+        id: item.key,
+        value: item.value,
+        nodeId: runningNode.nodeId
+      }
+    ];
   });
 
   const allVariables = [...globalVariables, ...nodeVariables, ...customInputs];
 
   // Replace {{$xxx.xxx$}} to value
   for (const key in allVariables) {
-    const val = allVariables[key];
-    const regex = new RegExp(`\\{\\{\\$(${val.nodeId}\\.${val.id})\\$\\}\\}`, 'g');
-    if (['string', 'number'].includes(typeof val.value)) {
-      text = text.replace(regex, String(val.value));
-    } else if (['object'].includes(typeof val.value)) {
-      text = text.replace(regex, JSON.stringify(val.value));
-    } else {
-      continue;
-    }
+    const variable = allVariables[key];
+    const val = variable.value;
+    const formatVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+
+    const regex = new RegExp(`\\{\\{\\$(${variable.nodeId}\\.${variable.id})\\$\\}\\}`, 'g');
+    text = text.replace(regex, formatVal);
   }
   return text || '';
 }

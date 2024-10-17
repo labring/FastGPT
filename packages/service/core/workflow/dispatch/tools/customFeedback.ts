@@ -17,7 +17,7 @@ export const dispatchCustomFeedback = (props: Record<string, any>): Response => 
   const {
     runningAppInfo: { id: appId },
     chatId,
-    responseChatItemId: chatItemId,
+    responseChatItemId: dataId,
     stream,
     workflowStreamResponse,
     params: { system_textareaInput: feedbackText = '' }
@@ -27,13 +27,13 @@ export const dispatchCustomFeedback = (props: Record<string, any>): Response => 
     addCustomFeedbacks({
       appId,
       chatId,
-      chatItemId,
+      dataId,
       feedbacks: [feedbackText]
     });
   }, 60000);
 
   if (stream) {
-    if (!chatId || !chatItemId) {
+    if (!chatId || !dataId) {
       workflowStreamResponse?.({
         event: SseResponseEventEnum.fastAnswer,
         data: textAdaptGptResponse({

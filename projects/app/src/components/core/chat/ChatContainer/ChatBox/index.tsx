@@ -66,6 +66,7 @@ import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useCreation, useMemoizedFn, useThrottleFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -142,10 +143,10 @@ const ChatBox = (
 
   const [feedbackId, setFeedbackId] = useState<string>();
   const [readFeedbackData, setReadFeedbackData] = useState<{
-    chatItemId: string;
+    dataId: string;
     content: string;
   }>();
-  const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { chatItemId: string }>();
+  const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { dataId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
 
   const {
@@ -383,7 +384,7 @@ const ChatBox = (
   /**
    * user confirm send prompt
    */
-  const sendPrompt: SendPromptFnType = useCallback(
+  const sendPrompt: SendPromptFnType = useMemoizedFn(
     ({
       text = '',
       files = [],
@@ -458,7 +459,6 @@ const ChatBox = (
               ] as UserChatItemValueItemType[],
               status: ChatStatusEnum.finish
             },
-            // 普通 chat 模式，需要增加一个 AI 来接收响应消息
             {
               dataId: responseChatId,
               obj: ChatRoleEnum.AI,
@@ -492,9 +492,12 @@ const ChatBox = (
             const abortSignal = new AbortController();
             chatController.current = abortSignal;
 
-            // 最后一条 AI 消息是空的，会被过滤掉，这里得到的 messages，不会包含最后一条 AI 消息，所以不需要 slice 了。
             // 这里，无论是否为交互模式，最后都是 Human 的消息。
-            const messages = chats2GPTMessages({ messages: newChatList, reserveId: true });
+            const messages = chats2GPTMessages({
+              messages: newChatList.slice(0, -1),
+              reserveId: true,
+              reserveTool: true
+            });
 
             const {
               responseData,
@@ -519,7 +522,7 @@ const ChatBox = (
                   ...item,
                   status: ChatStatusEnum.finish,
                   responseData: item.responseData
-                    ? [...item.responseData, ...responseData]
+                    ? mergeChatResponseData([...item.responseData, ...responseData])
                     : responseData
                 };
               });
@@ -571,28 +574,7 @@ const ChatBox = (
           console.log(err);
         }
       )();
-    },
-    [
-      abortRequest,
-      allVariableList,
-      chatHistories,
-      createQuestionGuide,
-      finishSegmentedAudio,
-      generatingMessage,
-      generatingScroll,
-      isChatting,
-      isPc,
-      onStartChat,
-      resetInputVal,
-      scrollToBottom,
-      setAudioPlayingChatId,
-      setChatHistories,
-      splitText2Audio,
-      startSegmentedAudio,
-      t,
-      toast,
-      variablesForm
-    ]
+    }
   );
 
   // retry input
@@ -660,16 +642,16 @@ const ChatBox = (
 
       if (chat.adminFeedback) {
         setAdminMarkData({
-          chatItemId: chat.dataId,
+          dataId: chat.dataId,
           datasetId: chat.adminFeedback.datasetId,
           collectionId: chat.adminFeedback.collectionId,
-          dataId: chat.adminFeedback.dataId,
+          feedbackDataId: chat.adminFeedback.feedbackDataId,
           q: chat.adminFeedback.q || q || '',
           a: chat.adminFeedback.a
         });
       } else {
         setAdminMarkData({
-          chatItemId: chat.dataId,
+          dataId: chat.dataId,
           q,
           a: formatChatValue2InputType(chat.value).text
         });
@@ -703,7 +685,7 @@ const ChatBox = (
           chatId,
           teamId,
           teamToken,
-          chatItemId: chat.dataId,
+          dataId: chat.dataId,
           shareId,
           outLinkUid,
           userGoodFeedback: isGoodFeedback ? undefined : 'yes'
@@ -725,7 +707,7 @@ const ChatBox = (
         teamId,
         teamToken,
         chatId,
-        chatItemId: chat.dataId,
+        dataId: chat.dataId,
         userGoodFeedback: undefined
       });
     };
@@ -750,7 +732,7 @@ const ChatBox = (
           updateChatUserFeedback({
             appId,
             chatId,
-            chatItemId: chat.dataId,
+            dataId: chat.dataId,
             shareId,
             teamId,
             teamToken,
@@ -767,7 +749,7 @@ const ChatBox = (
     return () => {
       if (!chat.dataId) return;
       setReadFeedbackData({
-        chatItemId: chat.dataId || '',
+        dataId: chat.dataId || '',
         content: chat.userBadFeedback || ''
       });
     };
@@ -778,7 +760,7 @@ const ChatBox = (
         closeCustomFeedback({
           appId,
           chatId,
-          chatItemId: chat.dataId,
+          dataId: chat.dataId,
           index: i
         });
         // update dom
@@ -945,7 +927,7 @@ const ChatBox = (
                             text={t('common:core.app.feedback.Custom feedback')}
                           />
                           {item.customFeedbacks.map((text, i) => (
-                            <Box key={`${text}${i}`}>
+                            <Box key={i}>
                               <MyTooltip
                                 label={t('common:core.app.feedback.close custom feedback')}
                               >
@@ -1035,7 +1017,7 @@ const ChatBox = (
           teamId={teamId}
           teamToken={teamToken}
           chatId={chatId}
-          chatItemId={feedbackId}
+          dataId={feedbackId}
           shareId={shareId}
           outLinkUid={outLinkUid}
           onClose={() => setFeedbackId(undefined)}
@@ -1057,7 +1039,7 @@ const ChatBox = (
           onCloseFeedback={() => {
             setChatHistories((state) =>
               state.map((chatItem) =>
-                chatItem.dataId === readFeedbackData.chatItemId
+                chatItem.dataId === readFeedbackData.dataId
                   ? { ...chatItem, userBadFeedback: undefined }
                   : chatItem
               )
@@ -1067,7 +1049,7 @@ const ChatBox = (
               updateChatUserFeedback({
                 appId,
                 chatId,
-                chatItemId: readFeedbackData.chatItemId
+                dataId: readFeedbackData.dataId
               });
             } catch (error) {}
             setReadFeedbackData(undefined);
@@ -1078,21 +1060,21 @@ const ChatBox = (
       {!!adminMarkData && (
         <SelectMarkCollection
           adminMarkData={adminMarkData}
-          setAdminMarkData={(e) => setAdminMarkData({ ...e, chatItemId: adminMarkData.chatItemId })}
+          setAdminMarkData={(e) => setAdminMarkData({ ...e, dataId: adminMarkData.dataId })}
           onClose={() => setAdminMarkData(undefined)}
           onSuccess={(adminFeedback) => {
-            if (!appId || !chatId || !adminMarkData.chatItemId) return;
+            if (!appId || !chatId || !adminMarkData.dataId) return;
             updateChatAdminFeedback({
               appId,
               chatId,
-              chatItemId: adminMarkData.chatItemId,
+              dataId: adminMarkData.dataId,
               ...adminFeedback
             });
 
             // update dom
             setChatHistories((state) =>
               state.map((chatItem) =>
-                chatItem.dataId === adminMarkData.chatItemId
+                chatItem.dataId === adminMarkData.dataId
                   ? {
                       ...chatItem,
                       adminFeedback
@@ -1105,12 +1087,12 @@ const ChatBox = (
               updateChatUserFeedback({
                 appId,
                 chatId,
-                chatItemId: readFeedbackData.chatItemId,
+                dataId: readFeedbackData.dataId,
                 userBadFeedback: undefined
               });
               setChatHistories((state) =>
                 state.map((chatItem) =>
-                  chatItem.dataId === readFeedbackData.chatItemId
+                  chatItem.dataId === readFeedbackData.dataId
                     ? { ...chatItem, userBadFeedback: undefined }
                     : chatItem
                 )

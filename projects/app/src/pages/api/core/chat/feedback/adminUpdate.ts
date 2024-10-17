@@ -10,10 +10,10 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { appId, chatId, chatItemId, datasetId, dataId, q, a } =
+    const { appId, chatId, dataId, datasetId, feedbackDataId, q, a } =
       req.body as AdminUpdateFeedbackParams;
 
-    if (!chatItemId || !datasetId || !dataId || !q) {
+    if (!dataId || !datasetId || !feedbackDataId || !q) {
       throw new Error('missing parameter');
     }
 
@@ -29,12 +29,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         appId,
         chatId,
-        dataId: chatItemId
+        dataId
       },
       {
         adminFeedback: {
           datasetId,
-          dataId,
+          dataId: feedbackDataId,
           q,
           a
         }

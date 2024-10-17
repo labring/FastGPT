@@ -29,6 +29,7 @@ async function handler(
     authApp({
       req,
       authToken: true,
+      authApiKey: true,
       appId,
       per: ReadPermissionVal
     }),
