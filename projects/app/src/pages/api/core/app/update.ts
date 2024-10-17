@@ -41,7 +41,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
   // 1. dataset search limit, less than model quoteMaxToken
   const isFolder = AppFolderTypeList.includes(app.type);
 
-  const onUpdate = async (session?: ClientSession) => {
+  const onUpdate = async (session?: ClientSession, resumeInheritPermission?: boolean) => {
     const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
 
     return MongoApp.findByIdAndUpdate(
@@ -59,7 +59,8 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
         ...(edges && {
           edges
         }),
-        ...(chatConfig && { chatConfig })
+        ...(chatConfig && { chatConfig }),
+        ...(resumeInheritPermission && { inheritPermission: true })
       },
       { session }
     );
@@ -69,7 +70,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
   if (parentId !== undefined) {
     await mongoSessionRun(async (session) => {
       // Inherit folder: Sync children permission and it's clbs
-      if (isFolder && app.inheritPermission) {
+      if (isFolder) {
         const parentClbsAndGroups = await getResourceClbsAndGroups({
           teamId: app.teamId,
           resourceId: parentId,
@@ -93,11 +94,8 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
           collaborators: parentClbsAndGroups,
           session
         });
-
-        return onUpdate(session);
       }
-
-      return onUpdate(session);
+      return onUpdate(session, true);
     });
   } else {
     return onUpdate();
