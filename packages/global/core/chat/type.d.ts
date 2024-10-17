@@ -126,6 +126,7 @@ export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatIt
   moduleName?: string;
   ttsBuffer?: Uint8Array;
   responseData?: ChatHistoryItemResType[];
+  time?: string;
 } & ChatBoxInputType &
   ResponseTagItemType;
 
