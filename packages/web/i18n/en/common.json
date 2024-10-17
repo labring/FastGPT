@@ -800,6 +800,7 @@
   "core.workflow.inputType.selectDataset": "Dataset Select",
   "core.workflow.inputType.selectLLMModel": "Chat Model Select",
   "core.workflow.inputType.switch": "Switch",
+  "core.workflow.inputType.textInput": "Text Input box",
   "core.workflow.inputType.textarea": "Multi-line Input Box",
   "core.workflow.publish.OnRevert version": "Click to Revert to This Version",
   "core.workflow.publish.OnRevert version confirm": "Confirm to Revert to This Version? The configuration of the editing version will be saved, and a new release version will be created for the reverted version.",

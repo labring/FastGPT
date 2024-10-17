@@ -230,6 +230,10 @@ export const appData2FlowNodeIO = ({
             FlowNodeInputTypeEnum.textarea,
             FlowNodeInputTypeEnum.reference
           ],
+          [VariableInputEnum.textInput]: [
+            FlowNodeInputTypeEnum.textInput,
+            FlowNodeInputTypeEnum.reference
+          ],
           [VariableInputEnum.numberInput]: [FlowNodeInputTypeEnum.numberInput],
           [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
           [VariableInputEnum.custom]: [

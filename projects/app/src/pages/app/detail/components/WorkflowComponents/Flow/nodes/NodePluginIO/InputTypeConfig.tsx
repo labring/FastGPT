@@ -34,6 +34,7 @@ import { useFieldArray, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 
 type ListValueType = { id: string; value: string; label: string }[];
 
@@ -136,7 +137,7 @@ const InputTypeConfig = ({
   }, [inputType]);
 
   const showMaxLenInput = useMemo(() => {
-    const list = [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.textarea];
+    const list = [FlowNodeInputTypeEnum.textInput];
     return list.includes(inputType as FlowNodeInputTypeEnum);
   }, [inputType]);
 
@@ -147,8 +148,7 @@ const InputTypeConfig = ({
 
   const showDefaultValue = useMemo(() => {
     const list = [
-      FlowNodeInputTypeEnum.input,
-      FlowNodeInputTypeEnum.textarea,
+      FlowNodeInputTypeEnum.textInput,
       FlowNodeInputTypeEnum.JSONEditor,
       FlowNodeInputTypeEnum.numberInput,
       FlowNodeInputTypeEnum.switch,
@@ -305,63 +305,70 @@ const InputTypeConfig = ({
 
         {showDefaultValue && (
           <Flex alignItems={'center'} minH={'40px'}>
-            <FormLabel
-              flex={inputType === FlowNodeInputTypeEnum.switch ? 1 : '0 0 132px'}
-              fontWeight={'medium'}
-            >
+            <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
               {t('common:core.module.Default Value')}
             </FormLabel>
-            {inputType === FlowNodeInputTypeEnum.numberInput && (
-              <NumberInput flex={1} step={1} min={min} max={max} position={'relative'}>
-                <NumberInputField
-                  {...register('defaultValue', {
-                    min: min,
-                    max: max
-                  })}
+            <Flex alignItems={'start'} flex={1} h={10}>
+              {inputType === FlowNodeInputTypeEnum.numberInput && (
+                <NumberInput flex={1} step={1} min={min} max={max} position={'relative'}>
+                  <NumberInputField
+                    {...register('defaultValue', {
+                      min: min,
+                      max: max
+                    })}
+                  />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+              {inputType === FlowNodeInputTypeEnum.textInput && (
+                <PromptEditor
+                  value={defaultValue}
+                  onChange={(e) => {
+                    setValue('defaultValue', e);
+                  }}
+                  minH={40}
+                  maxH={200}
+                  showOpenModal={false}
+                  bg={'myGray.50'}
                 />
-                <NumberInputStepper>
-                  <NumberIncrementStepper />
-                  <NumberDecrementStepper />
-                </NumberInputStepper>
-              </NumberInput>
-            )}
-            {inputType === FlowNodeInputTypeEnum.input && (
-              <Input bg={'myGray.50'} maxLength={maxLength} {...register('defaultValue')} />
-            )}
-            {inputType === FlowNodeInputTypeEnum.textarea && (
-              <Textarea bg={'myGray.50'} maxLength={maxLength} {...register('defaultValue')} />
-            )}
-            {inputType === FlowNodeInputTypeEnum.JSONEditor && (
-              <JsonEditor
-                bg={'myGray.50'}
-                resize
-                w={'full'}
-                onChange={(e) => {
-                  setValue('defaultValue', e);
-                }}
-                defaultValue={defaultValue}
-              />
-            )}
-            {inputType === FlowNodeInputTypeEnum.switch && <Switch {...register('defaultValue')} />}
-            {inputType === FlowNodeInputTypeEnum.select && (
-              <MySelect<string>
-                list={[defaultListValue, ...listValue]
-                  .filter((item) => item.label !== '')
-                  .map((item) => ({
-                    label: item.label,
-                    value: item.value
-                  }))}
-                value={
-                  defaultValue && listValue.map((item) => item.value).includes(defaultValue)
-                    ? defaultValue
-                    : ''
-                }
-                onchange={(e) => {
-                  setValue('defaultValue', e);
-                }}
-                w={'200px'}
-              />
-            )}
+              )}
+              {inputType === FlowNodeInputTypeEnum.JSONEditor && (
+                <JsonEditor
+                  bg={'myGray.50'}
+                  resize
+                  w={'full'}
+                  onChange={(e) => {
+                    setValue('defaultValue', e);
+                  }}
+                  defaultValue={defaultValue}
+                />
+              )}
+              {inputType === FlowNodeInputTypeEnum.switch && (
+                <Switch {...register('defaultValue')} />
+              )}
+              {inputType === FlowNodeInputTypeEnum.select && (
+                <MySelect<string>
+                  list={[defaultListValue, ...listValue]
+                    .filter((item) => item.label !== '')
+                    .map((item) => ({
+                      label: item.label,
+                      value: item.value
+                    }))}
+                  value={
+                    defaultValue && listValue.map((item) => item.value).includes(defaultValue)
+                      ? defaultValue
+                      : ''
+                  }
+                  onchange={(e) => {
+                    setValue('defaultValue', e);
+                  }}
+                  w={'200px'}
+                />
+              )}
+            </Flex>
           </Flex>
         )}
 
