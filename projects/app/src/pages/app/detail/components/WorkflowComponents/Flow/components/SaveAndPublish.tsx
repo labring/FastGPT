@@ -68,7 +68,8 @@ const SaveAndPublishModal = ({
             toast({
               status: 'success',
               title: t('app:publish_success'),
-              position: 'top-right'
+              position: 'top-right',
+              isClosable: true
             });
             onClose();
           })}
