@@ -57,7 +57,7 @@ export const useDebug = () => {
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const filteredVar = useMemo(() => {
-    const variables = appDetail.chatConfig.variables;
+    const variables = appDetail.chatConfig?.variables;
     return variables?.filter((item) => item.type !== VariableInputEnum.custom) || [];
   }, [appDetail.chatConfig.variables]);
 
