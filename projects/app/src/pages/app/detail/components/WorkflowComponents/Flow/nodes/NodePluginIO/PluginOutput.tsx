@@ -85,7 +85,7 @@ const NodePluginOutput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           onSubmit={({ data }) => {
             onChangeNode({
               nodeId,
-              type: 'addInput',
+              type: 'addOutput',
               value: data
             });
           }}
