@@ -863,6 +863,7 @@
   "error.missingParams": "参数缺失",
   "error.upload_file_error_filename": "{{name}} 上传失败",
   "error.username_empty": "账号不能为空",
+  "error.qps_limit_exceeded": "请求过多，请稍后再试",
   "extraction_results": "提取结果",
   "field_name": "字段名",
   "free": "免费",
