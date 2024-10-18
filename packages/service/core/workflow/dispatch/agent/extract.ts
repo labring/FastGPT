@@ -243,7 +243,7 @@ const toolChoice = async (props: ActionProps) => {
   const arg: Record<string, any> = (() => {
     try {
       return json5.parse(
-        response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || '{}'
+        response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || ''
       );
     } catch (error) {
       console.log(agentFunction.parameters);
