@@ -38,7 +38,7 @@ import { dispatchQueryExtension } from './tools/queryExternsion';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
-import { removeSystemVariable, valueTypeFormat } from './utils';
+import { formatHttpError, removeSystemVariable, valueTypeFormat } from './utils';
 import {
   filterWorkflowEdges,
   checkNodeRunStatus
@@ -532,8 +532,16 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
     // run module
     const dispatchRes: Record<string, any> = await (async () => {
-      if (callbackMap[node.flowNodeType]) {
-        return callbackMap[node.flowNodeType](dispatchData);
+      try {
+        if (callbackMap[node.flowNodeType]) {
+          return await callbackMap[node.flowNodeType](dispatchData);
+        }
+      } catch (error) {
+        return {
+          [DispatchNodeResponseKeyEnum.nodeResponse]: {
+            error: formatHttpError(error)
+          }
+        };
       }
       return {};
     })();

@@ -17,6 +17,7 @@ import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { WarningTwoIcon } from '@chakra-ui/icons';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -24,6 +25,7 @@ type sideTabItemType = {
   runningTime?: number;
   moduleType: string;
   // nodeId:string; // abandon
+  error?: Record<string, any>;
   id: string;
   children: sideTabItemType[];
 };
@@ -485,9 +487,10 @@ const SideTabItem = ({
             borderRadius={'sm'}
           />
           <Box ml={2}>
-            <Box fontSize={'xs'} fontWeight={'bold'}>
+            <Flex fontSize={'xs'} fontWeight={'bold'} alignItems={'center'}>
               {t(sideBarItem.moduleName as any)}
-            </Box>
+              {sideBarItem.error && <WarningTwoIcon color={'red.500'} ml={2} />}
+            </Flex>
             <Box fontSize={'2xs'} color={'myGray.500'}>
               {t(sideBarItem.runningTime as any) + 's'}
             </Box>
@@ -596,6 +599,7 @@ export const ResponseBox = React.memo(function ResponseBox({
           moduleName: item.moduleName,
           runningTime: item.runningTime,
           moduleType: item.moduleType,
+          error: item.error,
           id: item.id ?? item.nodeId,
           children
         };
