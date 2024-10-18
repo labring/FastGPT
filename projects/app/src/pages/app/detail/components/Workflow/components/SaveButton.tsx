@@ -25,7 +25,12 @@ const SaveButton = ({
 }) => {
   const { t } = useTranslation();
   const [isSave, setIsSave] = useState(false);
-  const { toast } = useToast();
+  const { toast } = useToast({
+    containerStyle: {
+      mt: 20,
+      fontSize: 'sm'
+    }
+  });
 
   const {
     isOpen: isSaveAndPublishModalOpen,
