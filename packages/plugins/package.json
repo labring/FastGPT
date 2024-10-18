@@ -3,11 +3,14 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
+    "@types/pg": "^8.6.6",
     "axios": "^1.5.1",
     "duck-duck-scrape": "^2.2.5",
     "echarts": "5.4.1",
     "expr-eval": "^2.0.2",
     "lodash": "^4.17.21",
+    "mysql2": "^3.11.3",
+    "pg": "^8.10.0",
     "wikijs": "^6.4.1"
   },
   "devDependencies": {
