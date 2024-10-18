@@ -22,6 +22,7 @@ import { useTranslation } from 'next-i18next';
 import { AIChatItemValueItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import { isEqual } from 'lodash';
+import dayjs from 'dayjs';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -110,22 +111,25 @@ const AIContentCard = React.memo(function AIContentCard({
 const ChatItem = (props: Props) => {
   const { type, avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
 
-  const styleMap: BoxProps =
-    type === ChatRoleEnum.Human
+  const styleMap: BoxProps = {
+    ...(type === ChatRoleEnum.Human
       ? {
-          order: 0,
-          borderRadius: '8px 0 8px 8px',
-          justifyContent: 'flex-end',
-          textAlign: 'right',
-          bg: 'primary.100'
-        }
+        order: 0,
+        borderRadius: '8px 0 8px 8px',
+        justifyContent: 'flex-end',
+        textAlign: 'right',
+        bg: 'primary.100'
+      }
       : {
-          order: 1,
-          borderRadius: '0 8px 8px 8px',
-          justifyContent: 'flex-start',
-          textAlign: 'left',
-          bg: 'myGray.50'
-        };
+        order: 1,
+        borderRadius: '0 8px 8px 8px',
+        justifyContent: 'flex-start',
+        textAlign: 'left',
+        bg: 'myGray.50'
+      }),
+    fontSize: 'var(--chakra-fontSizes-xs)',
+    color: 'var(--sl-color-gray-500)'
+  };
 
   const { t } = useTranslation();
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
@@ -198,7 +202,14 @@ const ChatItem = (props: Props) => {
   return (
     <>
       {/* control icon */}
-      <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
+      <Flex w={'100%'} alignItems={'flex-end'} gap={2} justifyContent={styleMap.justifyContent}>
+        <Box
+          order={type === ChatRoleEnum.AI ? 2 : 0}
+          fontSize={styleMap.fontSize}
+          color={styleMap.color}
+        >
+          {dayjs(chat.time).format('YYYY/MM/DD HH:mm')}
+        </Box>
         {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
           <Box order={styleMap.order} ml={styleMap.ml}>
             <ChatController {...props} isLastChild={isLastChild} />
