@@ -6,7 +6,7 @@
  *
  */
 
-import { useState, useRef, useTransition, useCallback } from 'react';
+import { useState, useTransition } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
