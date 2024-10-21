@@ -46,23 +46,15 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
   const { setLastChatId, setLastChatAppId } = useChatStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isPc } = useSystem();
-  const {
-    isOpen: isOpenRedirect,
-    onOpen: onOpenRedirect,
-    onClose: onCloseRedirect
-  } = useDisclosure();
+
   const {
     isOpen: isOpenCookiesDrawer,
     onOpen: onOpenCookiesDrawer,
     onClose: onCloseCookiesDrawer
   } = useDisclosure();
-
-  const [showRedirect, setShowRedirect] = useLocalStorageState<boolean>('showRedirect', {
-    defaultValue: true
-  });
-  const cookieVersion = 1;
+  const cookieVersion = '1';
   const [localCookieVersion, setLocalCookieVersion] =
-    useLocalStorageState<number>('localCookieVersion');
+    useLocalStorageState<string>('localCookieVersion');
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
@@ -99,6 +91,14 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
     );
   }, [feConfigs.oauth]);
 
+  const {
+    isOpen: isOpenRedirect,
+    onOpen: onOpenRedirect,
+    onClose: onCloseRedirect
+  } = useDisclosure();
+  const [showRedirect, setShowRedirect] = useLocalStorageState<boolean>('showRedirect', {
+    defaultValue: true
+  });
   const checkIpInChina = useCallback(async () => {
     try {
       const res = await GET<any>(ipDetectURL);
@@ -116,9 +116,11 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
       console.log(error);
     }
   }, [onOpenRedirect]);
+
   useMount(() => {
     clearToken();
     router.prefetch('/app/list');
+
     ChineseRedirectUrl && showRedirect && checkIpInChina();
     localCookieVersion !== cookieVersion && onOpenCookiesDrawer();
   });
@@ -249,7 +251,6 @@ function RedirectDrawer({
 
 function CookiesDrawer({ onClose, onAgree }: { onClose: () => void; onAgree: () => void }) {
   const { t } = useTranslation();
-  const router = useRouter();
 
   return (
     <Drawer placement="bottom" size={'xs'} isOpen={true} onClose={onClose}>
@@ -268,7 +269,7 @@ function CookiesDrawer({ onClose, onAgree }: { onClose: () => void; onAgree: () 
               textDecorationLine={'underline'}
               cursor={'pointer'}
               w={'fit-content'}
-              onClick={() => router.push(getDocPath('/docs/agreement/privacy/'))}
+              onClick={() => window.open(getDocPath('/docs/agreement/privacy/'), '_blank')}
             >
               {t('login:privacy_policy')}
             </Box>
