@@ -4,6 +4,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import {
+  ManagePermissionVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -18,6 +19,8 @@ import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import { ClientSession } from 'mongoose';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { TeamWritePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 
 export type AppUpdateQuery = {
   appId: string;
@@ -34,8 +37,24 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
   if (!appId) {
     Promise.reject(CommonErrEnum.missingParams);
   }
+  const isMove = parentId !== undefined;
 
-  const { app } = await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+  const { app } = await (async () => {
+    if (isMove) {
+      if (parentId) {
+        await authApp({ req, authToken: true, appId: parentId, per: ManagePermissionVal });
+      } else {
+        // move to root
+        await authUserPer({
+          req,
+          authToken: true,
+          per: TeamWritePermissionVal
+        });
+      }
+      return await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
+    }
+    return await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+  })();
 
   // format nodes data
   // 1. dataset search limit, less than model quoteMaxToken

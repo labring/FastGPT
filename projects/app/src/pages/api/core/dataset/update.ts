@@ -13,12 +13,13 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ClientSession } from 'mongoose';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
 import {
   syncChildrenPermission,
   syncCollaborators
 } from '@fastgpt/service/support/permission/inheritPermission';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { TeamWritePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -27,34 +28,33 @@ async function handler(
   req: ApiRequestProps<DatasetUpdateBody, DatasetUpdateQuery>,
   _res: ApiResponseType<any>
 ): Promise<DatasetUpdateResponse> {
-  const {
-    id,
-    parentId,
-    name,
-    avatar,
-    intro,
-    agentModel,
-    websiteConfig,
-    externalReadUrl,
-    defaultPermission,
-    status
-  } = req.body;
+  const { id, parentId, name, avatar, intro, agentModel, websiteConfig, externalReadUrl, status } =
+    req.body;
 
   if (!id) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  const { dataset } = (await (async () => {
-    if (defaultPermission !== undefined) {
+  const isMove = parentId !== undefined;
+  const { dataset } = await (async () => {
+    if (isMove) {
+      if (parentId) {
+        await authDataset({ req, authToken: true, datasetId: parentId, per: ManagePermissionVal });
+      } else {
+        await authUserPer({
+          req,
+          authToken: true,
+          per: TeamWritePermissionVal
+        });
+      }
       return await authDataset({ req, authToken: true, datasetId: id, per: ManagePermissionVal });
-    } else {
-      return await authDataset({ req, authToken: true, datasetId: id, per: WritePermissionVal });
     }
-  })()) as { dataset: DatasetSchemaType };
+    return await authDataset({ req, authToken: true, datasetId: id, per: WritePermissionVal });
+  })();
 
   const isFolder = dataset.type === DatasetTypeEnum.folder;
 
-  const onUpdate = async (session?: ClientSession) => {
+  const onUpdate = async (session?: ClientSession, resumeInheritPermission?: boolean) => {
     await MongoDataset.findByIdAndUpdate(
       id,
       {
@@ -65,14 +65,14 @@ async function handler(
         ...(websiteConfig && { websiteConfig }),
         ...(status && { status }),
         ...(intro !== undefined && { intro }),
-        ...(externalReadUrl !== undefined && { externalReadUrl })
+        ...(externalReadUrl !== undefined && { externalReadUrl }),
+        ...(resumeInheritPermission && { inheritPermission: true })
       },
       { session }
     );
   };
 
-  // move
-  if (parentId !== undefined) {
+  if (isMove) {
     await mongoSessionRun(async (session) => {
       if (isFolder && dataset.inheritPermission) {
         const parentClbsAndGroups = await getResourceClbsAndGroups({
@@ -98,7 +98,7 @@ async function handler(
           collaborators: parentClbsAndGroups,
           session
         });
-        return onUpdate(session);
+        return onUpdate(session, true);
       }
       return onUpdate(session);
     });
