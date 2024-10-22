@@ -176,7 +176,15 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       errorToast: t('common:common.Delete Failed')
     }
   );
-  const onDelApp = useCallback(() => openConfirmDel(deleteApp)(), [deleteApp, openConfirmDel]);
+  const onDelApp = useCallback(
+    () =>
+      openConfirmDel(
+        deleteApp,
+        undefined,
+        t('app:confirm_del_app_tip', { name: appDetail.name })
+      )(),
+    [appDetail.name, deleteApp, openConfirmDel, t]
+  );
 
   const contextValue: AppContextType = {
     appId,
