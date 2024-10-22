@@ -29,10 +29,6 @@ const RenderList: {
     Component: dynamic(() => import('./templates/Switch'))
   },
   {
-    types: [FlowNodeInputTypeEnum.textInput],
-    Component: dynamic(() => import('./templates/TextInput'))
-  },
-  {
     types: [FlowNodeInputTypeEnum.selectApp],
     Component: dynamic(() => import('./templates/SelectApp'))
   },

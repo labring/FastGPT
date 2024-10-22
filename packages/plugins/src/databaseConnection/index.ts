@@ -60,11 +60,10 @@ const main = async ({
     // 使用类型断言来处理错误
     if (error instanceof Error) {
       console.error('Database query error:', error.message);
-      throw new Error(error.message);
-    } else {
-      console.error('Database query error:', error);
-      throw new Error('An unknown error occurred');
+      return Promise.reject(error.message);
     }
+    console.error('Database query error:', error);
+    return Promise.reject('An unknown error occurred');
   }
 };
 

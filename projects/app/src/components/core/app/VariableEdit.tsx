@@ -36,7 +36,7 @@ export const defaultVariable: VariableItemType = {
   id: nanoid(),
   key: '',
   label: '',
-  type: VariableInputEnum.textInput,
+  type: VariableInputEnum.input,
   description: '',
   required: true,
   valueType: WorkflowIOValueTypeEnum.string
@@ -73,10 +73,7 @@ const VariableEdit = ({
   const inputTypeList = useMemo(
     () =>
       Object.values(variableMap)
-        .filter(
-          (item) =>
-            item.value !== VariableInputEnum.input && item.value !== VariableInputEnum.textarea
-        )
+        .filter((item) => item.value !== VariableInputEnum.textarea)
         .map((item) => ({
           icon: item.icon,
           label: t(item.label as any),
