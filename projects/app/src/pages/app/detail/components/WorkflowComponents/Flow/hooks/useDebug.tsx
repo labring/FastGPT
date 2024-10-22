@@ -13,7 +13,6 @@ import {
   Box,
   Button,
   Flex,
-  Textarea,
   NumberDecrementStepper,
   NumberIncrementStepper,
   NumberInput,
@@ -34,6 +33,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '../../../context';
 import { VariableInputItem } from '@/components/core/chat/ChatContainer/ChatBox/components/VariableInput';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 
 const MyRightDrawer = dynamic(
   () => import('@fastgpt/web/components/common/MyDrawer/MyRightDrawer')
@@ -270,10 +270,14 @@ export const useDebug = () => {
               const RenderInput = (() => {
                 if (input.valueType === WorkflowIOValueTypeEnum.string) {
                   return (
-                    <Textarea
-                      {...register(`nodeVariables.${input.key}`, {
-                        required
-                      })}
+                    <PromptEditor
+                      value={getValues(`nodeVariables.${input.key}`)}
+                      onChange={(e) => {
+                        setValue(`nodeVariables.${input.key}`, e);
+                      }}
+                      minH={50}
+                      maxH={150}
+                      showOpenModal={false}
                       placeholder={t(input.placeholder || ('' as any))}
                       bg={'myGray.50'}
                     />

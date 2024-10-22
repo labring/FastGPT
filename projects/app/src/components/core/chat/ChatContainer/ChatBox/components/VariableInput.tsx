@@ -24,6 +24,7 @@ import { ChatBoxContext } from '../Provider';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useDeepCompareEffect } from 'ahooks';
 import { VariableItemType } from '@fastgpt/global/core/app/type';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 
 export const VariableInputItem = ({
   item,
@@ -75,6 +76,16 @@ export const VariableInputItem = ({
           rows={5}
           bg={'myGray.50'}
           maxLength={item.maxLength || 4000}
+        />
+      )}
+      {item.type === VariableInputEnum.textInput && (
+        <PromptEditor
+          value={item.defaultValue}
+          onChange={(e) => setValue(item.key, e)}
+          bg={'myGray.50'}
+          minH={50}
+          maxH={150}
+          showOpenModal={false}
         />
       )}
       {item.type === VariableInputEnum.select && (
