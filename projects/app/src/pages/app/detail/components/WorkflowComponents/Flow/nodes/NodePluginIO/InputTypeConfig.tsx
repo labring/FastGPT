@@ -34,7 +34,7 @@ import { useFieldArray, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
-import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import MyTextarea from '@/components/common/Textarea/MyTextarea';
 
 type ListValueType = { id: string; value: string; label: string }[];
 
@@ -316,15 +316,12 @@ const InputTypeConfig = ({
                 </NumberInput>
               )}
               {inputType === FlowNodeInputTypeEnum.input && (
-                <PromptEditor
-                  value={defaultValue}
-                  onChange={(e) => {
-                    setValue('defaultValue', e);
-                  }}
-                  minH={40}
-                  maxH={200}
-                  showOpenModal={false}
+                <MyTextarea
+                  {...register('defaultValue')}
                   bg={'myGray.50'}
+                  autoHeight
+                  minH={40}
+                  maxH={100}
                 />
               )}
               {inputType === FlowNodeInputTypeEnum.JSONEditor && (

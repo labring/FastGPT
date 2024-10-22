@@ -23,12 +23,12 @@ import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import MyRadio from '@/components/common/MyRadio';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import SelectAiModel from '@/components/Select/AIModelSelector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyTextarea from '@/components/common/Textarea/MyTextarea';
 
 export type DatasetParamsProps = {
   searchMode: `${DatasetSearchModeEnum}`;
@@ -317,14 +317,14 @@ const DatasetParamsModal = ({
                     ></QuestionTip>
                   </Flex>
                   <Box mt={1}>
-                    <PromptEditor
+                    <MyTextarea
+                      autoHeight
                       minH={150}
                       maxH={300}
-                      showOpenModal={false}
                       placeholder={t('common:core.module.QueryExtension.placeholder')}
                       value={cfbBgDesc}
                       onChange={(e) => {
-                        setValue('datasetSearchExtensionBg', e);
+                        setValue('datasetSearchExtensionBg', e.target.value);
                       }}
                     />
                   </Box>
