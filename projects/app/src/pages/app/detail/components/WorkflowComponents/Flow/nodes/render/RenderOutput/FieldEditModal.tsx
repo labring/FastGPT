@@ -116,7 +116,7 @@ const FieldModal = ({
     <MyModal
       isOpen={true}
       iconSrc="/imgs/workflow/extract.png"
-      title={isEdit ? t('workflow:edit_input') : t('workflow:add_new_input')}
+      title={isEdit ? t('workflow:edit_output') : t('workflow:add_new_output')}
       overflow={'unset'}
     >
       <ModalBody w={'100%'} overflow={'auto'} display={'flex'} flexDirection={['column', 'row']}>
