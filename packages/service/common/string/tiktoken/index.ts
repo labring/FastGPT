@@ -25,7 +25,7 @@ export const countGptMessagesTokens = async (
       number
     >({
       name: WorkerNameEnum.countGptMessagesTokens,
-      maxReservedThreads: global.systemEnv?.tokenWorkers || 20
+      maxReservedThreads: global.systemEnv?.tokenWorkers || 50
     });
 
     const total = await workerController.run({ messages, tools, functionCall });

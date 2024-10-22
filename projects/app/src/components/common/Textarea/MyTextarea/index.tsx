@@ -24,6 +24,7 @@ type Props = TextareaProps & {
 const MyTextarea = React.forwardRef<HTMLTextAreaElement, Props>(function MyTextarea(props, ref) {
   const ModalTextareaRef = useRef<HTMLTextAreaElement>(null);
   const TextareaRef = useRef<HTMLTextAreaElement>(null);
+  React.useImperativeHandle(ref, () => TextareaRef.current!);
 
   const { t } = useTranslation();
   const {

@@ -24,10 +24,7 @@ export class MilvusCtrl {
 
     global.milvusClient = new MilvusClient({
       address: MILVUS_ADDRESS,
-      token: MILVUS_TOKEN,
-      loaderOptions: {
-        longs: Function
-      }
+      token: MILVUS_TOKEN
     });
 
     addLog.info(`Milvus connected`);
@@ -329,19 +326,10 @@ export class MilvusCtrl {
       id: string;
       teamId: string;
       datasetId: string;
-      int64: {
-        low: bigint;
-        high: bigint;
-        unsigned: boolean;
-      };
     }[];
 
     return rows.map((item) => ({
-      id: String({
-        low: BigInt(item.int64.low),
-        high: BigInt(item.int64.high),
-        unsigned: item.int64.unsigned
-      }),
+      id: String(item.id),
       teamId: item.teamId,
       datasetId: item.datasetId
     }));

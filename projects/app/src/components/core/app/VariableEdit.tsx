@@ -120,10 +120,8 @@ const VariableEdit = ({
 
       if (data.type === VariableInputEnum.custom) {
         data.required = false;
-      }
-
-      if (data.type === VariableInputEnum.numberInput) {
-        data.valueType = WorkflowIOValueTypeEnum.number;
+      } else {
+        data.valueType = inputTypeList.find((item) => item.value === data.type)?.defaultValueType;
       }
 
       const onChangeVariable = [...variables];
@@ -152,7 +150,7 @@ const VariableEdit = ({
         });
       }
     },
-    [variables, toast, t, onChange, reset]
+    [variables, toast, t, inputTypeList, onChange, reset]
   );
 
   const onSubmitError = useCallback(
@@ -205,7 +203,7 @@ const VariableEdit = ({
                     p={0}
                   />
                   <Th fontSize={'mini'}>{t('workflow:Variable_name')}</Th>
-                  <Th fontSize={'mini'}>{t('common:core.module.variable.key')}</Th>
+                  <Th fontSize={'mini'}>{t('app:global_variables_desc')}</Th>
                   <Th fontSize={'mini'}>{t('common:common.Require Input')}</Th>
                   <Th fontSize={'mini'} borderRadius={'none !important'}></Th>
                 </Tr>
@@ -216,9 +214,17 @@ const VariableEdit = ({
                     <Td p={0} pl={3}>
                       <MyIcon name={item.icon as any} w={'16px'} color={'myGray.500'} />
                     </Td>
-                    <Td>{item.label}</Td>
                     <Td>{item.key}</Td>
-                    <Td>{item.required ? '✔' : ''}</Td>
+                    <Td
+                      maxW={'200px'}
+                      fontSize={'sm'}
+                      whiteSpace={'pre-wrap'}
+                      wordBreak={'break-all'}
+                      px={0}
+                    >
+                      {item.description || '-'}
+                    </Td>
+                    <Td>{item.required ? '✔' : '-'}</Td>
                     <Td>
                       <MyIcon
                         mr={3}

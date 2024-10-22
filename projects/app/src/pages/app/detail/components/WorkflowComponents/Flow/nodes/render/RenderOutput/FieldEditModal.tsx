@@ -142,7 +142,7 @@ const FieldModal = ({
           {/* key */}
           <Flex mt={3} alignItems={'center'}>
             <FormLabel flex={'0 0 70px'} required>
-              {t('common:core.module.Field Name')}
+              {t('workflow:Variable_name')}
             </FormLabel>
             <Input
               bg={'myGray.50'}

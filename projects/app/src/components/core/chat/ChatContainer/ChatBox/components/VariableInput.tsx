@@ -64,8 +64,9 @@ export const VariableInputItem = ({
           minH={40}
           maxH={160}
           bg={'myGray.50'}
-          value={item.defaultValue}
-          onChange={(e) => setValue(item.key, e.target.value)}
+          {...register(item.key, {
+            required: item.required
+          })}
         />
       )}
       {item.type === VariableInputEnum.textarea && (

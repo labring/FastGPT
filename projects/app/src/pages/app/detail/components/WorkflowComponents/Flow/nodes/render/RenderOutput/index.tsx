@@ -78,7 +78,7 @@ const RenderOutput = ({
           position={'relative'}
         >
           <Box position={'relative'} fontWeight={'medium'}>
-            {t('common:core.workflow.Custom outputs')}
+            {t((addOutput.label || 'common:core.workflow.Custom outputs') as any)}
           </Box>
           {addOutput.description && <QuestionTip ml={1} label={addOutput.description} />}
           <Box flex={'1 0 0'} />

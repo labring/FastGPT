@@ -26,12 +26,11 @@ export const useI18nLng = () => {
     if (!navigator || !localStorage) return;
     if (getCookie(LANG_KEY)) return onChangeLng(getCookie(LANG_KEY) as string);
 
-    const languageMap = {
+    const languageMap: Record<string, string> = {
       zh: 'zh',
       'zh-CN': 'zh'
     };
 
-    // @ts-ignore
     const lang = languageMap[navigator.language] || 'en';
 
     // currentLng not in userLang
