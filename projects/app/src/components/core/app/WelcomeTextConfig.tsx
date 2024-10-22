@@ -17,6 +17,7 @@ const WelcomeTextConfig = (props: TextareaProps) => {
         <ChatFunctionTip type={'welcome'} />
       </Flex>
       <MyTextarea
+        className="nowheel"
         iconSrc={'core/app/simpleMode/chat'}
         title={t('common:core.app.Welcome Text')}
         mt={2}

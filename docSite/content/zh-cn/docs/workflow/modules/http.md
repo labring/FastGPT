@@ -120,10 +120,12 @@ HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Pos
 
 ### 如何获取返回值
 
-从图中可以看出，FastGPT可以添加多个返回值，这个返回值并不代表接口的返回值，而是代表`如何解析接口返回值`，可以通过 key 来`提取`接口响应的值。例如: 
+从图中可以看出，FastGPT可以添加多个返回值，这个返回值并不代表接口的返回值，而是代表`如何解析接口返回值`，可以通过 `JSON path` 的语法，来`提取`接口响应的值。
+
+语法可以参考: https://github.com/JSONPath-Plus/JSONPath?tab=readme-ov-file
 
 {{< tabs tabTotal="2" >}}
-{{< tab tabName="接口响应格式" >}}
+{{< tab tabName="接口响应示例" >}}
 {{< markdownify >}}
 
 ```json
@@ -148,23 +150,23 @@ HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Pos
 
 {{< /markdownify >}}
 {{< /tab >}}
-{{< tab tabName="FastGPT 转化后的格式" >}}
+{{< tab tabName="提取示例" >}}
 {{< markdownify >}}
 
 ```json
 {
-  "message": "测试",
-  "data.user": { "name": "xxx", "age": 12 },
-  "data.user.name": "xxx",
-  "data.user.age": 12,
-  "data.list": [ { "name": "xxx", "age": 50 }, [{ "test": 22 }] ],
-  "data.list[0]": { "name": "xxx", "age": 50 },
-  "data.list[0].name": "xxx",
-  "data.list[0].age": 50,
-  "data.list[1]": [ { "test": 22 } ],
-  "data.list[1][0]": { "test": 22 },
-  "data.list[1][0].test": 22,
-  "data.psw": "xxx"
+  "$.message": "测试",
+  "$.data.user": { "name": "xxx", "age": 12 },
+  "$.data.user.name": "xxx",
+  "$.data.user.age": 12,
+  "$.data.list": [ { "name": "xxx", "age": 50 }, [{ "test": 22 }] ],
+  "$.data.list[0]": { "name": "xxx", "age": 50 },
+  "$.data.list[0].name": "xxx",
+  "$.data.list[0].age": 50,
+  "$.data.list[1]": [ { "test": 22 } ],
+  "$.data.list[1][0]": { "test": 22 },
+  "$.data.list[1][0].test": 22,
+  "$.data.psw": "xxx"
 }
 ```
 

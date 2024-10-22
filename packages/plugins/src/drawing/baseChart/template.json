@@ -50,10 +50,10 @@
             "canEdit": true,
             "key": "xAxis",
             "label": "xAxis",
-            "description": "x轴数据，例如：['A', 'B', 'C']",
+            "description": "x轴数据，例如：[\"A\", \"B\", \"C\"]",
             "defaultValue": "",
             "required": true,
-            "toolDescription": "x轴数据，例如：['A', 'B', 'C']",
+            "toolDescription": "x轴数据，例如：[\"A\", \"B\", \"C\"]",
             "list": [
               {
                 "label": "",

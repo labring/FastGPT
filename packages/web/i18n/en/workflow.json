@@ -64,6 +64,8 @@
   "full_response_data": "Full Response Data",
   "greater_than": "Greater Than",
   "greater_than_or_equal_to": "Greater Than or Equal To",
+  "http_extract_output": "Output field extraction",
+  "http_extract_output_description": "Specified fields in the response value can be extracted through JSONPath syntax",
   "http_raw_response_description": "Raw HTTP response. Only accepts string or JSON type response data.",
   "http_request": "HTTP Request",
   "http_request_error_info": "HTTP request error information, returns empty on success",

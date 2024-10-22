@@ -222,10 +222,9 @@ export const loadRequestMessages = async ({
             };
           }
         }
-        // if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-        //   if (item.content === undefined && !item.tool_calls && !item.function_call) return;
-        //   if (Array.isArray(item.content) && item.content.length === 0) return;
-        // }
+        if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+          if (item.content === undefined && !item.tool_calls && !item.function_call) return;
+        }
 
         return item;
       })

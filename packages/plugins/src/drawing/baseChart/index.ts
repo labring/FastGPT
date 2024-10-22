@@ -1,4 +1,8 @@
 import * as echarts from 'echarts';
+import json5 from 'json5';
+import { getFileSavePath } from '../../../utils';
+import * as fs from 'fs';
+import { SystemPluginSpecialResponse } from '../../../type.d';
 
 type Props = {
   title: string;
@@ -8,7 +12,7 @@ type Props = {
 };
 
 type Response = Promise<{
-  result: string;
+  result: SystemPluginSpecialResponse;
 }>;
 
 type SeriesData = {
@@ -37,8 +41,8 @@ const generateChart = async (title: string, xAxis: string, yAxis: string, chartT
   let parsedXAxis: string[] = [];
   let parsedYAxis: number[] = [];
   try {
-    parsedXAxis = JSON.parse(xAxis);
-    parsedYAxis = JSON.parse(yAxis);
+    parsedXAxis = json5.parse(xAxis);
+    parsedYAxis = json5.parse(yAxis);
   } catch (error: any) {
     console.error('解析数据时出错:', error);
     return Promise.reject('Data error');
@@ -78,16 +82,26 @@ const generateChart = async (title: string, xAxis: string, yAxis: string, chartT
 
   chart.setOption(option);
   // 生成 Base64 图像
-  const base64Image = chart.getDataURL({ type: 'png' });
+  const base64Image = chart.getDataURL();
+  const svgData = decodeURIComponent(base64Image.split(',')[1]);
+
+  const fileName = `chart_${Date.now()}.svg`;
+  const filePath = getFileSavePath(fileName);
+  fs.writeFileSync(filePath, svgData);
   // 释放图表实例
   chart.dispose();
 
-  return base64Image;
+  return filePath;
 };
 
 const main = async ({ title, xAxis, yAxis, chartType }: Props): Response => {
+  const filePath = await generateChart(title, xAxis, yAxis, chartType);
   return {
-    result: await generateChart(title, xAxis, yAxis, chartType)
+    result: {
+      type: 'SYSTEM_PLUGIN_FILE',
+      path: filePath,
+      contentType: 'image/svg+xml'
+    }
   };
 };
 
