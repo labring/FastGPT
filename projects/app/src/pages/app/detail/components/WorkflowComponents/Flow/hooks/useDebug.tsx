@@ -13,7 +13,6 @@ import {
   Box,
   Button,
   Flex,
-  Textarea,
   NumberDecrementStepper,
   NumberIncrementStepper,
   NumberInput,
