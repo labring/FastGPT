@@ -1,6 +1,6 @@
 {
   "author": "",
-  "version": "486",
+  "version": "4812",
   "name": "基础图表",
   "avatar": "core/workflow/template/baseChart",
   "intro": "根据数据生成图表，可根据chartType生成柱状图，折线图，饼图",
@@ -8,7 +8,7 @@
   "weight": 10,
 
   "isTool": true,
-  "templateType": "search",
+  "templateType": "tools",
 
   "workflow": {
     "nodes": [
@@ -21,12 +21,12 @@
         "showStatus": false,
         "position": {
           "x": 613.7921798611637,
-          "y": -124.66724109717275
+          "y": -123.07734867626235
         },
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -44,13 +44,13 @@
             "toolDescription": "BI图表的标题"
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
             "key": "xAxis",
             "label": "xAxis",
-            "description": "x轴数据",
+            "description": "x轴数据，例如：['A', 'B', 'C']",
             "defaultValue": "",
             "required": true,
             "toolDescription": "x轴数据，例如：['A', 'B', 'C']",
@@ -62,13 +62,13 @@
             ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
             "key": "yAxis",
             "label": "yAxis",
-            "description": "y轴数据",
+            "description": "y轴数据，例如：['1', '2', '3']",
             "defaultValue": "",
             "list": [
               {
@@ -77,10 +77,10 @@
               }
             ],
             "required": true,
-            "toolDescription": "y轴数据，例如：['A', 'B', 'C']"
+            "toolDescription": "y轴数据，例如：['1', '2', '3']"
           },
           {
-            "renderTypeList": ["select"],
+            "renderTypeList": ["select", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -103,7 +103,7 @@
                 "value": "饼图"
               }
             ],
-            "toolDescription": "图表类型，目前支持三种: 柱状图，折线图，饼图"
+            "toolDescription": "图表类型：柱状图，折线图，饼图"
           }
         ],
         "outputs": [
@@ -181,7 +181,7 @@
             "valueType": "dynamic",
             "label": "",
             "required": false,
-            "description": "接收前方节点的输出值作为变量，这些变量可以被 HTTP 请求参数使用。",
+            "description": "common:core.module.input.description.HTTP Dynamic Input",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -192,6 +192,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -237,7 +238,7 @@
             "renderTypeList": ["hidden"],
             "valueType": "string",
             "label": "",
-            "description": "新的 HTTP 请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。",
+            "description": "common:core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
             "valueDesc": "",
@@ -251,7 +252,7 @@
             "valueType": "any",
             "value": [],
             "label": "",
-            "description": "自定义请求头，请严格填入 JSON 字符串。\n1. 确保最后一个属性没有逗号\n2. 确保 key 包含双引号\n例如：{\"Authorization\":\"Bearer xxx\"}",
+            "description": "common:core.module.input.description.Http Request Header",
             "placeholder": "common:core.module.input.description.Http Request Header",
             "required": false,
             "valueDesc": "",
@@ -322,6 +323,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -351,6 +353,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -380,6 +383,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -409,6 +413,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -424,6 +429,23 @@
           }
         ],
         "outputs": [
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:request_error",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "required": true,
+            "label": "workflow:raw_response",
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
           {
             "id": "system_addOutputParam",
             "key": "system_addOutputParam",
@@ -454,25 +476,6 @@
             "description": ""
           },
           {
-            "id": "error",
-            "key": "error",
-            "label": "请求错误",
-            "description": "HTTP请求错误信息，成功时返回空",
-            "valueType": "object",
-            "type": "static",
-            "valueDesc": ""
-          },
-          {
-            "id": "httpRawResponse",
-            "key": "httpRawResponse",
-            "required": true,
-            "label": "原始响应",
-            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
-            "valueType": "any",
-            "type": "static",
-            "valueDesc": ""
-          },
-          {
             "id": "bzaYjKyQFOw2",
             "valueType": "string",
             "type": "dynamic",
@@ -495,6 +498,26 @@
         "sourceHandle": "ws0DFKJnCPhk-source-right",
         "targetHandle": "pluginOutput-target-left"
       }
-    ]
+    ],
+    "chatConfig": {
+      "welcomeText": "",
+      "variables": [],
+      "questionGuide": false,
+      "ttsConfig": {
+        "type": "web"
+      },
+      "whisperConfig": {
+        "open": false,
+        "autoSend": false,
+        "autoTTSResponse": false
+      },
+      "chatInputGuide": {
+        "open": false,
+        "textList": [],
+        "customUrl": ""
+      },
+      "instruction": "数据源配置，支持主流数据库配置",
+      "_id": "670a23b31957c5b9899b4a4d"
+    }
   }
 }
