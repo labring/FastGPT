@@ -231,6 +231,7 @@ export const iconPaths = {
   'core/workflow/template/wiki': () => import('./icons/core/workflow/template/wiki.svg'),
   'core/workflow/template/datasource': () =>
     import('./icons/core/workflow/template/datasource.svg'),
+  'core/workflow/template/google': () => import('./icons/core/workflow/template/google.svg'),
   'core/workflow/template/fetchUrl': () => import('./icons/core/workflow/template/fetchUrl.svg'),
   'core/workflow/template/formInput': () => import('./icons/core/workflow/template/formInput.svg'),
   'core/workflow/template/getTime': () => import('./icons/core/workflow/template/getTime.svg'),
