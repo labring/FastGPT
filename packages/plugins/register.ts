@@ -14,7 +14,8 @@ const staticPluginList = [
   `Doc2X/FilePDF2text`,
   `Doc2X/FileImg2text`,
   'feishu',
-  'google'
+  'google',
+  'bing'
 ];
 // Run in worker thread (Have npm packages)
 const packagePluginList = [
