@@ -1,4 +1,4 @@
-import React, { Dispatch, useMemo, useState } from 'react';
+import React, { Dispatch, useMemo } from 'react';
 import { NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -10,7 +10,7 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { AppContext } from '../../../../context';
 import { AppChatConfigType, AppDetailType } from '@fastgpt/global/core/app/type';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
-import { useCreation, useMount } from 'ahooks';
+import { useMount } from 'ahooks';
 import ChatFunctionTip from '@/components/core/app/Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { WorkflowContext } from '../../../context';
@@ -96,6 +96,9 @@ function Instruction({ chatConfig: { instruction }, setAppDetail }: ComponentPro
         resize={'both'}
         placeholder={t('workflow:plugin.Instruction_Tip')}
         value={instruction}
+        autoHeight
+        minH={100}
+        maxH={240}
         onChange={(e) => {
           setAppDetail((state) => ({
             ...state,

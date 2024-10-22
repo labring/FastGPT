@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Controller, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import {
   Box,
   Button,
   Card,
-  Input,
   NumberDecrementStepper,
   NumberIncrementStepper,
   NumberInput,
@@ -24,7 +23,7 @@ import { ChatBoxContext } from '../Provider';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useDeepCompareEffect } from 'ahooks';
 import { VariableItemType } from '@fastgpt/global/core/app/type';
-import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import MyTextarea from '@/components/common/Textarea/MyTextarea';
 
 export const VariableInputItem = ({
   item,
@@ -60,13 +59,13 @@ export const VariableInputItem = ({
         {item.description && <QuestionTip ml={1} label={item.description} />}
       </Box>
       {item.type === VariableInputEnum.input && (
-        <PromptEditor
-          value={item.defaultValue}
-          onChange={(e) => setValue(item.key, e)}
-          bg={'myGray.50'}
+        <MyTextarea
+          autoHeight
           minH={40}
-          maxH={150}
-          showOpenModal={false}
+          maxH={160}
+          bg={'myGray.50'}
+          value={item.defaultValue}
+          onChange={(e) => setValue(item.key, e.target.value)}
         />
       )}
       {item.type === VariableInputEnum.textarea && (

@@ -11,7 +11,9 @@ export default function VariableLabel({
   nodeAvatar: string;
 }) {
   const { t } = useTranslation();
-  const [parentLabel, childLabel] = variableLabel.split('.');
+  // avoid including '.' in the variable name.
+  const [parentLabel, ...childLabels] = variableLabel.split('.');
+  const childLabel = childLabels.join('.');
 
   return (
     <>

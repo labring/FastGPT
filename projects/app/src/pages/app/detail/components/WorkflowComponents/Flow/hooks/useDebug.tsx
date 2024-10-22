@@ -33,7 +33,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '../../../context';
 import { VariableInputItem } from '@/components/core/chat/ChatContainer/ChatBox/components/VariableInput';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import MyTextarea from '@/components/common/Textarea/MyTextarea';
 
 const MyRightDrawer = dynamic(
   () => import('@fastgpt/web/components/common/MyDrawer/MyRightDrawer')
@@ -270,16 +270,16 @@ export const useDebug = () => {
               const RenderInput = (() => {
                 if (input.valueType === WorkflowIOValueTypeEnum.string) {
                   return (
-                    <PromptEditor
+                    <MyTextarea
+                      autoHeight
+                      minH={40}
+                      maxH={160}
+                      bg={'myGray.50'}
+                      placeholder={t(input.placeholder || ('' as any))}
                       value={getValues(`nodeVariables.${input.key}`)}
                       onChange={(e) => {
-                        setValue(`nodeVariables.${input.key}`, e);
+                        setValue(`nodeVariables.${input.key}`, e.target.value);
                       }}
-                      minH={50}
-                      maxH={150}
-                      showOpenModal={false}
-                      placeholder={t(input.placeholder || ('' as any))}
-                      bg={'myGray.50'}
                     />
                   );
                 }
