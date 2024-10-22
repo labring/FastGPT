@@ -20,7 +20,6 @@ const PromptEditor = ({
   maxLength,
   placeholder,
   title,
-  isFlow,
   bg = 'white'
 }: {
   showOpenModal?: boolean;
@@ -34,7 +33,6 @@ const PromptEditor = ({
   maxLength?: number;
   placeholder?: string;
   title?: string;
-  isFlow?: boolean;
   bg?: string;
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -69,7 +67,6 @@ const PromptEditor = ({
         onChange={onChangeInput}
         onBlur={onBlurInput}
         placeholder={placeholder}
-        isFlow={isFlow}
         bg={bg}
       />
       <MyModal isOpen={isOpen} onClose={onClose} iconSrc="modal/edit" title={title} w={'full'}>

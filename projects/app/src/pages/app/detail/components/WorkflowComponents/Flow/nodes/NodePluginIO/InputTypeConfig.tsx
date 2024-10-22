@@ -51,8 +51,6 @@ const InputTypeConfig = ({
   defaultValue,
   isToolInput,
   setIsToolInput,
-  isRefrence,
-  setIsRefrence,
   valueType,
   defaultValueType,
   onSubmitSuccess,
@@ -75,8 +73,6 @@ const InputTypeConfig = ({
   // Plugin-specific fields
   isToolInput?: boolean;
   setIsToolInput?: () => void;
-  isRefrence?: boolean;
-  setIsRefrence?: () => void;
   valueType?: WorkflowIOValueTypeEnum;
   defaultValueType?: WorkflowIOValueTypeEnum;
 
@@ -158,6 +154,18 @@ const InputTypeConfig = ({
     return list.includes(inputType as FlowNodeInputTypeEnum);
   }, [inputType]);
 
+  const showIsToolInput = useMemo(() => {
+    const list = [
+      FlowNodeInputTypeEnum.reference,
+      FlowNodeInputTypeEnum.JSONEditor,
+      FlowNodeInputTypeEnum.input,
+      FlowNodeInputTypeEnum.numberInput,
+      FlowNodeInputTypeEnum.switch,
+      FlowNodeInputTypeEnum.select
+    ];
+    return type === 'plugin' && list.includes(inputType as FlowNodeInputTypeEnum);
+  }, [inputType, type]);
+
   return (
     <Stack flex={1} borderLeft={'1px solid #F0F1F6'} justifyContent={'space-between'}>
       <Flex flexDirection={'column'} p={8} pb={2} gap={4} flex={'1 0 0'} overflow={'auto'}>
@@ -218,24 +226,8 @@ const InputTypeConfig = ({
             <Switch {...register('required')} />
           </Flex>
         )}
-
-        {inputType !== FlowNodeInputTypeEnum.reference && setIsRefrence && (
-          <>
-            <Flex alignItems={'center'} minH={'40px'}>
-              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
-                {t('workflow:field_used_as_reference')}
-              </FormLabel>
-              <Switch
-                isChecked={isRefrence}
-                onChange={(e) => {
-                  setIsRefrence();
-                }}
-              />
-            </Flex>
-          </>
-        )}
         {/* reference */}
-        {(inputType === FlowNodeInputTypeEnum.reference || isRefrence) && (
+        {showIsToolInput && (
           <>
             <Flex alignItems={'center'} minH={'40px'}>
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>

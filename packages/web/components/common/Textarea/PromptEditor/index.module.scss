@@ -11,26 +11,7 @@
   overflow-y: auto;
 }
 
-.contentEditable_isFlow {
-  position: relative;
-  height: 100%;
-  width: 100%;
-  border: 1px solid var(--chakra-colors-myGray-200);
-  border-radius: var(--chakra-radii-sm);
-  padding: 6px 8px;
-  // background: #fff;
-  font-size: var(--chakra-fontSizes-sm);
-  overflow-y: auto;
-}
-
 .contentEditable:focus {
-  outline: none;
-  border: 1px solid;
-  border-color: var(--chakra-colors-primary-600);
-  box-shadow: 0px 0px 0px 2.4px rgba(51, 112, 255, 0.15);
-}
-
-.contentEditable_isFlow:focus {
   outline: none;
   border: 1px solid;
   border-color: var(--chakra-colors-primary-600);
