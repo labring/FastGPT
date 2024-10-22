@@ -10,9 +10,7 @@ import { getEditorVariables } from '../../../../../utils';
 
 const TextInputRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const { nodeList, edges, onChangeNode } = useContextSelector(WorkflowContext, (v) => v);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -51,7 +49,7 @@ const TextInputRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
         maxLength={item.maxLength}
         minH={40}
         maxH={120}
-        placeholder={t((item.placeholder as any) || '')}
+        placeholder={t(item.placeholder as any)}
         value={item.value}
         onChange={onChange}
         isFlow={true}

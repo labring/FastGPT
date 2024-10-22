@@ -1,8 +1,9 @@
 import { WorkflowIOValueTypeEnum } from '../constants';
 import { i18nT } from '../../../../web/i18n/utils';
 export enum FlowNodeInputTypeEnum { // render ui
-  textInput = 'textInput',
   reference = 'reference', // reference to other node output
+  input = 'input', // one line input
+  textarea = 'textarea',
   numberInput = 'numberInput',
   switch = 'switch', // true/false
   select = 'select',
@@ -26,11 +27,7 @@ export enum FlowNodeInputTypeEnum { // render ui
   settingDatasetQuotePrompt = 'settingDatasetQuotePrompt',
 
   hidden = 'hidden',
-  custom = 'custom',
-
-  // deprecated
-  input = 'input', // one line input
-  textarea = 'textarea'
+  custom = 'custom'
 }
 export const FlowNodeInputMap: Record<
   FlowNodeInputTypeEnum,
@@ -38,9 +35,6 @@ export const FlowNodeInputMap: Record<
     icon: string;
   }
 > = {
-  [FlowNodeInputTypeEnum.textInput]: {
-    icon: 'core/workflow/inputType/input'
-  },
   [FlowNodeInputTypeEnum.reference]: {
     icon: 'core/workflow/inputType/reference'
   },

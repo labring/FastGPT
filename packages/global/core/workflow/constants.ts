@@ -267,7 +267,6 @@ export enum NodeOutputKeyEnum {
 export enum VariableInputEnum {
   input = 'input',
   textarea = 'textarea',
-  textInput = 'textInput',
   numberInput = 'numberInput',
   select = 'select',
   custom = 'custom'
@@ -284,7 +283,7 @@ export const variableMap: Record<
 > = {
   [VariableInputEnum.input]: {
     icon: 'core/workflow/inputType/input',
-    label: i18nT('common:core.workflow.inputType.input'),
+    label: i18nT('common:core.workflow.inputType.textInput'),
     value: VariableInputEnum.input,
     defaultValueType: WorkflowIOValueTypeEnum.string
   },
@@ -294,12 +293,6 @@ export const variableMap: Record<
     value: VariableInputEnum.textarea,
     defaultValueType: WorkflowIOValueTypeEnum.string,
     description: i18nT('app:variable.textarea_type_desc')
-  },
-  [VariableInputEnum.textInput]: {
-    icon: 'core/workflow/inputType/input',
-    label: i18nT('common:core.workflow.inputType.textInput'),
-    value: VariableInputEnum.textInput,
-    defaultValueType: WorkflowIOValueTypeEnum.string
   },
   [VariableInputEnum.numberInput]: {
     icon: 'core/workflow/inputType/numberInput',

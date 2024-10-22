@@ -60,12 +60,13 @@ export const VariableInputItem = ({
         {item.description && <QuestionTip ml={1} label={item.description} />}
       </Box>
       {item.type === VariableInputEnum.input && (
-        <Input
-          maxLength={item.maxLength || 4000}
+        <PromptEditor
+          value={item.defaultValue}
+          onChange={(e) => setValue(item.key, e)}
           bg={'myGray.50'}
-          {...register(item.key, {
-            required: item.required
-          })}
+          minH={40}
+          maxH={150}
+          showOpenModal={false}
         />
       )}
       {item.type === VariableInputEnum.textarea && (
@@ -78,16 +79,7 @@ export const VariableInputItem = ({
           maxLength={item.maxLength || 4000}
         />
       )}
-      {item.type === VariableInputEnum.textInput && (
-        <PromptEditor
-          value={item.defaultValue}
-          onChange={(e) => setValue(item.key, e)}
-          bg={'myGray.50'}
-          minH={50}
-          maxH={150}
-          showOpenModal={false}
-        />
-      )}
+
       {item.type === VariableInputEnum.select && (
         <Controller
           key={item.key}
