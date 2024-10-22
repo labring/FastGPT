@@ -27,7 +27,7 @@ const SaveButton = ({
   const [isSave, setIsSave] = useState(false);
   const { toast } = useToast({
     containerStyle: {
-      mt: 20,
+      mt: '60px',
       fontSize: 'sm'
     }
   });

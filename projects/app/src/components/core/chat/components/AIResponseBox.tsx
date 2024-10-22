@@ -221,13 +221,12 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
             {input.description && <QuestionTip ml={1} label={input.description} />}
           </Flex>
           {input.type === FlowNodeInputTypeEnum.input && (
-            <Input
-              bg={'white'}
-              maxLength={input.maxLength}
-              isDisabled={interactive.params.submitted}
-              {...register(input.label, {
-                required: input.required
-              })}
+            <PromptEditor
+              value={input.value}
+              onChange={(e) => setValue(input.label, e)}
+              minH={40}
+              maxH={100}
+              showOpenModal={false}
             />
           )}
           {input.type === FlowNodeInputTypeEnum.textarea && (
@@ -239,15 +238,6 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
               })}
               rows={5}
               maxLength={input.maxLength || 4000}
-            />
-          )}
-          {input.type === FlowNodeInputTypeEnum.textInput && (
-            <PromptEditor
-              value={input.value}
-              onChange={(e) => setValue(input.label, e)}
-              minH={40}
-              maxH={100}
-              showOpenModal={false}
             />
           )}
           {input.type === FlowNodeInputTypeEnum.numberInput && (

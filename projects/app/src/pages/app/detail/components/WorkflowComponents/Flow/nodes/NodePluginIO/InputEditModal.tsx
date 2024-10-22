@@ -55,7 +55,7 @@ const FieldEditModal = ({
           {
             icon: 'core/workflow/inputType/input',
             label: t('common:core.workflow.inputType.textInput'),
-            value: FlowNodeInputTypeEnum.textInput,
+            value: FlowNodeInputTypeEnum.input,
             defaultValueType: WorkflowIOValueTypeEnum.string
           },
           {

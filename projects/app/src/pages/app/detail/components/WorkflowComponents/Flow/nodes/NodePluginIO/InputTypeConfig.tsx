@@ -137,7 +137,7 @@ const InputTypeConfig = ({
   }, [inputType]);
 
   const showMaxLenInput = useMemo(() => {
-    const list = [FlowNodeInputTypeEnum.textInput];
+    const list = [FlowNodeInputTypeEnum.input];
     return list.includes(inputType as FlowNodeInputTypeEnum);
   }, [inputType]);
 
@@ -148,7 +148,7 @@ const InputTypeConfig = ({
 
   const showDefaultValue = useMemo(() => {
     const list = [
-      FlowNodeInputTypeEnum.textInput,
+      FlowNodeInputTypeEnum.input,
       FlowNodeInputTypeEnum.JSONEditor,
       FlowNodeInputTypeEnum.numberInput,
       FlowNodeInputTypeEnum.switch,
@@ -323,7 +323,7 @@ const InputTypeConfig = ({
                   </NumberInputStepper>
                 </NumberInput>
               )}
-              {inputType === FlowNodeInputTypeEnum.textInput && (
+              {inputType === FlowNodeInputTypeEnum.input && (
                 <PromptEditor
                   value={defaultValue}
                   onChange={(e) => {
