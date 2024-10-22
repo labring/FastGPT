@@ -26,7 +26,7 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,

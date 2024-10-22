@@ -43,7 +43,6 @@ export default function Editor({
   onBlur,
   value,
   placeholder = '',
-  isFlow,
   bg = 'white'
 }: {
   minH?: number;
@@ -57,7 +56,6 @@ export default function Editor({
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
   placeholder?: string;
-  isFlow?: boolean;
   bg?: string;
 }) {
   const [key, setKey] = useState(getNanoid(6));
@@ -92,7 +90,7 @@ export default function Editor({
         <PlainTextPlugin
           contentEditable={
             <ContentEditable
-              className={isFlow ? styles.contentEditable_isFlow : styles.contentEditable}
+              className={styles.contentEditable}
               style={{
                 minHeight: `${minH}px`,
                 maxHeight: `${maxH}px`

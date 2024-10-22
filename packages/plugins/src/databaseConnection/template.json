@@ -20,15 +20,13 @@
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 335.8310044079668,
+          "x": 334.24111198705634,
           "y": -260.8285440670886
         },
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": [
-              "select"
-            ],
+            "renderTypeList": ["select", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -49,9 +47,7 @@
             "required": true
           },
           {
-            "renderTypeList": [
-              "input"
-            ],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -68,11 +64,9 @@
             ]
           },
           {
-            "renderTypeList": [
-              "input"
-            ],
+            "renderTypeList": ["numberInput", "reference"],
             "selectedTypeIndex": 0,
-            "valueType": "string",
+            "valueType": "number",
             "canEdit": true,
             "key": "port",
             "label": "port",
@@ -87,9 +81,7 @@
             ]
           },
           {
-            "renderTypeList": [
-              "input"
-            ],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -106,9 +98,7 @@
             ]
           },
           {
-            "renderTypeList": [
-              "input"
-            ],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -125,9 +115,7 @@
             "required": true
           },
           {
-            "renderTypeList": [
-              "input"
-            ],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -144,9 +132,7 @@
             "required": true
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -181,7 +167,7 @@
           },
           {
             "id": "port",
-            "valueType": "string",
+            "valueType": "number",
             "key": "port",
             "label": "port",
             "type": "hidden"
@@ -230,19 +216,14 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "result",
             "label": "result",
             "isToolOutput": true,
             "description": "数据库连接结果",
-            "value": [
-              "zBeXy7YZEiXe",
-              "httpRawResponse"
-            ]
+            "value": ["zBeXy7YZEiXe", "httpRawResponse"]
           }
         ],
         "outputs": []
@@ -276,9 +257,7 @@
         "inputs": [
           {
             "key": "system_addInputParam",
-            "renderTypeList": [
-              "addInputParam"
-            ],
+            "renderTypeList": ["addInputParam"],
             "valueType": "dynamic",
             "label": "",
             "required": false,
@@ -310,9 +289,7 @@
           },
           {
             "key": "system_httpMethod",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "string",
             "label": "",
             "value": "POST",
@@ -324,9 +301,7 @@
           },
           {
             "key": "system_httpTimeout",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "number",
             "label": "",
             "value": 30,
@@ -340,9 +315,7 @@
           },
           {
             "key": "system_httpReqUrl",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "string",
             "label": "",
             "description": "common:core.module.input.description.Http Request Url",
@@ -355,9 +328,7 @@
           },
           {
             "key": "system_httpHeader",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -370,9 +341,7 @@
           },
           {
             "key": "system_httpParams",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -384,9 +353,7 @@
           },
           {
             "key": "system_httpJsonBody",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": "{\r\n  \"databaseType\":\"{{databaseType-H}}\",\r\n  \"host\":\"{{host-H}}\",\r\n  \"port\":\"{{port-H}}\",\r\n  \"databaseName\":\"{{databaseName-H}}\",\r\n  \"user\":\"{{databaseUser-H}}\",\r\n  \"password\":\"{{databasePwd-H}}\",\r\n  \"sql\":\"{{sql-H}}\"\r\n}",
             "label": "",
@@ -398,9 +365,7 @@
           },
           {
             "key": "system_httpFormBody",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -412,9 +377,7 @@
           },
           {
             "key": "system_httpContentType",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "string",
             "value": "json",
             "label": "",
@@ -425,9 +388,7 @@
             "toolDescription": ""
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "databaseType-H",
@@ -454,15 +415,10 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "databaseType"
-            ]
+            "value": ["pluginInput", "databaseType"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "host-H",
@@ -489,16 +445,11 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "host"
-            ]
+            "value": ["pluginInput", "host"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
-            "valueType": "string",
+            "renderTypeList": ["reference"],
+            "valueType": "number",
             "canEdit": true,
             "key": "port-H",
             "label": "port-H",
@@ -524,15 +475,10 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "port"
-            ]
+            "value": ["pluginInput", "port"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "databaseName-H",
@@ -559,15 +505,10 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "dataBaseName"
-            ]
+            "value": ["pluginInput", "dataBaseName"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "databasePwd-H",
@@ -594,15 +535,10 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "dataBasePwd"
-            ]
+            "value": ["pluginInput", "dataBasePwd"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "databaseUser-H",
@@ -629,15 +565,10 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "user"
-            ]
+            "value": ["pluginInput", "user"]
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "sql-H",
@@ -664,10 +595,7 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [
-              "pluginInput",
-              "sql"
-            ]
+            "value": ["pluginInput", "sql"]
           }
         ],
         "outputs": [
