@@ -41,6 +41,7 @@
   "file_recover": "File will overwrite current content",
   "file_upload": "File Upload",
   "file_upload_tip": "Once enabled, documents/images can be uploaded. Documents are retained for 7 days, images for 15 days. Using this feature may incur additional costs. To ensure a good experience, please choose an AI model with a larger context length when using this feature.",
+  "global_variables_desc": "Variable description",
   "go_to_chat": "Go to Conversation",
   "go_to_run": "Go to Execution",
   "image_upload": "Image Upload",
