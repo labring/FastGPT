@@ -35,6 +35,8 @@ weight: 707
 
 ### Milvus版本
 
+暂不推荐，部分系统存在精度丢失，等待修复。
+
 对于千万级以上向量性能更优秀。
 
 [点击查看 Milvus 官方推荐配置](https://milvus.io/docs/prerequisite-docker.md)
@@ -48,6 +50,8 @@ weight: 707
 {{< /table >}}
 
 ### zilliz cloud版本
+
+暂不推荐，部分系统存在精度丢失，等待修复。
 
 亿级以上向量首选。
 
