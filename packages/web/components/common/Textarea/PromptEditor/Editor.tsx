@@ -61,6 +61,7 @@ export default function Editor({
   const [key, setKey] = useState(getNanoid(6));
   const [_, startSts] = useTransition();
   const [focus, setFocus] = useState(false);
+  const [scrollHeight, setScrollHeight] = useState(0);
 
   const initialConfig = {
     namespace: 'promptEditor',
@@ -128,6 +129,8 @@ export default function Editor({
         <FocusPlugin focus={focus} setFocus={setFocus} />
         <OnChangePlugin
           onChange={(editorState, editor) => {
+            const rootElement = editor.getRootElement();
+            setScrollHeight(rootElement?.scrollHeight || 0);
             startSts(() => {
               onChange?.(editorState, editor);
             });
@@ -139,7 +142,7 @@ export default function Editor({
         <VariablePickerPlugin variables={variableLabels.length > 0 ? [] : variables} />
         <OnBlurPlugin onBlur={onBlur} />
       </LexicalComposer>
-      {showOpenModal && (
+      {showOpenModal && scrollHeight > maxH && (
         <Box
           zIndex={10}
           position={'absolute'}
