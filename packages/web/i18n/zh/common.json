@@ -805,6 +805,7 @@
   "core.workflow.inputType.selectDataset": "知识库选择",
   "core.workflow.inputType.selectLLMModel": "对话模型选择",
   "core.workflow.inputType.switch": "开关",
+  "core.workflow.inputType.textInput": "文本输入框",
   "core.workflow.inputType.textarea": "多行输入框",
   "core.workflow.publish.OnRevert version": "点击回退到该版本",
   "core.workflow.publish.OnRevert version confirm": "确认回退至该版本？会为您保存编辑中版本的配置，并为回退版本创建一个新的发布版本。",
