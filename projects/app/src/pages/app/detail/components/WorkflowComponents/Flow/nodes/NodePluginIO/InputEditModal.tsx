@@ -49,37 +49,37 @@ const FieldEditModal = ({
           {
             icon: 'core/workflow/inputType/reference',
             label: t('common:core.workflow.inputType.Reference'),
-            value: FlowNodeInputTypeEnum.reference,
+            value: [FlowNodeInputTypeEnum.reference],
             defaultValueType: WorkflowIOValueTypeEnum.string
           },
           {
             icon: 'core/workflow/inputType/input',
             label: t('common:core.workflow.inputType.textInput'),
-            value: FlowNodeInputTypeEnum.input,
+            value: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
             defaultValueType: WorkflowIOValueTypeEnum.string
           },
           {
             icon: 'core/workflow/inputType/jsonEditor',
             label: t('common:core.workflow.inputType.JSON Editor'),
-            value: FlowNodeInputTypeEnum.JSONEditor,
+            value: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference],
             defaultValueType: WorkflowIOValueTypeEnum.string
           },
           {
             icon: 'core/workflow/inputType/numberInput',
             label: t('common:core.workflow.inputType.number input'),
-            value: FlowNodeInputTypeEnum.numberInput,
+            value: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
             defaultValueType: WorkflowIOValueTypeEnum.number
           },
           {
             icon: 'core/workflow/inputType/option',
             label: t('common:core.workflow.inputType.select'),
-            value: FlowNodeInputTypeEnum.select,
+            value: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
             defaultValueType: WorkflowIOValueTypeEnum.string
           },
           {
             icon: 'core/workflow/inputType/switch',
             label: t('common:core.workflow.inputType.switch'),
-            value: FlowNodeInputTypeEnum.switch,
+            value: [FlowNodeInputTypeEnum.switch, FlowNodeInputTypeEnum.reference],
             defaultValueType: WorkflowIOValueTypeEnum.boolean
           }
         ],
@@ -87,13 +87,13 @@ const FieldEditModal = ({
           {
             icon: 'core/workflow/inputType/selectLLM',
             label: t('common:core.workflow.inputType.selectLLMModel'),
-            value: FlowNodeInputTypeEnum.selectLLMModel,
+            value: [FlowNodeInputTypeEnum.selectLLMModel],
             defaultValueType: WorkflowIOValueTypeEnum.string
           },
           {
             icon: 'core/workflow/inputType/selectDataset',
             label: t('common:core.workflow.inputType.selectDataset'),
-            value: FlowNodeInputTypeEnum.selectDataset,
+            value: [FlowNodeInputTypeEnum.selectDataset],
             defaultValueType: WorkflowIOValueTypeEnum.selectDataset
           },
           ...(hasDynamicInput
@@ -102,7 +102,7 @@ const FieldEditModal = ({
                 {
                   icon: 'core/workflow/inputType/dynamic',
                   label: t('common:core.workflow.inputType.dynamicTargetInput'),
-                  value: FlowNodeInputTypeEnum.addInputParam,
+                  value: [FlowNodeInputTypeEnum.addInputParam],
                   defaultValueType: WorkflowIOValueTypeEnum.dynamic
                 }
               ])
@@ -111,7 +111,7 @@ const FieldEditModal = ({
           {
             icon: 'core/workflow/inputType/customVariable',
             label: t('common:core.workflow.inputType.custom'),
-            value: FlowNodeInputTypeEnum.customVariable,
+            value: [FlowNodeInputTypeEnum.customVariable],
             defaultValueType: WorkflowIOValueTypeEnum.string,
             description: t('app:variable.select type_desc')
           }
@@ -119,7 +119,7 @@ const FieldEditModal = ({
       ] as {
         icon: string;
         label: string;
-        value: FlowNodeInputTypeEnum;
+        value: FlowNodeInputTypeEnum[];
         defaultValueType: WorkflowIOValueTypeEnum;
         description?: string;
       }[][],
@@ -138,27 +138,18 @@ const FieldEditModal = ({
 
   const [isToolInput, { toggle: setIsToolInput }] = useBoolean(!!getValues('toolDescription'));
 
-  const isRefrence = renderTypeList.includes(FlowNodeInputTypeEnum.reference);
-  const setIsRefrence = () => {
-    if (isRefrence) {
-      setValue(
-        'renderTypeList',
-        renderTypeList.filter((item) => item !== FlowNodeInputTypeEnum.reference)
-      );
-    } else {
-      setValue('renderTypeList', [...getValues('renderTypeList'), FlowNodeInputTypeEnum.reference]);
-    }
-  };
-
   const maxLength = watch('maxLength');
   const max = watch('max');
   const min = watch('min');
   const selectValueTypeList = watch('customInputConfig.selectValueTypeList');
   const defaultInputValue = watch('defaultValue');
 
-  const defaultValueType =
-    inputTypeList.flat().find((item) => item.value === inputType)?.defaultValueType ||
-    WorkflowIOValueTypeEnum.string;
+  const defaultValueType = useMemo(
+    () =>
+      inputTypeList.flat().find((item) => item.value[0] === inputType)?.defaultValueType ||
+      WorkflowIOValueTypeEnum.string,
+    [inputType, inputTypeList]
+  );
 
   const onSubmitSuccess = useCallback(
     (data: FlowNodeInputItemType, action: 'confirm' | 'continue') => {
@@ -171,6 +162,7 @@ const FieldEditModal = ({
         });
       }
 
+      // Auto set valueType
       if (
         data.renderTypeList[0] !== FlowNodeInputTypeEnum.reference &&
         data.renderTypeList[0] !== FlowNodeInputTypeEnum.customVariable
@@ -178,6 +170,7 @@ const FieldEditModal = ({
         data.valueType = defaultValueType;
       }
 
+      // Remove required
       if (
         data.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam ||
         data.renderTypeList[0] === FlowNodeInputTypeEnum.customVariable
@@ -273,7 +266,7 @@ const FieldEditModal = ({
                     mt={5}
                   >
                     {list.map((item) => {
-                      const isSelected = inputType === item.value;
+                      const isSelected = inputType === item.value[0];
                       return (
                         <Box
                           display={'flex'}
@@ -299,7 +292,7 @@ const FieldEditModal = ({
                             boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
                           }}
                           onClick={() => {
-                            setValue('renderTypeList.0', item.value);
+                            setValue('renderTypeList', item.value);
                           }}
                         >
                           <MyIcon
@@ -335,8 +328,6 @@ const FieldEditModal = ({
           defaultValue={defaultInputValue}
           isToolInput={isToolInput}
           setIsToolInput={setIsToolInput}
-          isRefrence={isRefrence}
-          setIsRefrence={setIsRefrence}
           valueType={valueType}
           defaultValueType={defaultValueType}
           onSubmitSuccess={onSubmitSuccess}

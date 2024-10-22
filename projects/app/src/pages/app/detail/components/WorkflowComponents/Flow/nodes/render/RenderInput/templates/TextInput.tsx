@@ -47,12 +47,11 @@ const TextInputRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
         variables={variables}
         title={t(item.label as any)}
         maxLength={item.maxLength}
-        minH={40}
+        minH={30}
         maxH={120}
         placeholder={t(item.placeholder as any)}
         value={item.value}
         onChange={onChange}
-        isFlow={true}
       />
     );
   }, [item.label, item.maxLength, item.placeholder, item.value, onChange, t, variables]);
