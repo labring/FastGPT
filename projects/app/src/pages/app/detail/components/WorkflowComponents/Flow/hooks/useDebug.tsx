@@ -276,8 +276,8 @@ export const useDebug = () => {
                       onChange={(e) => {
                         setValue(`nodeVariables.${input.key}`, e);
                       }}
-                      minH={100}
-                      maxH={200}
+                      minH={50}
+                      maxH={150}
                       showOpenModal={false}
                       placeholder={t(input.placeholder || ('' as any))}
                       bg={'myGray.50'}

@@ -83,8 +83,8 @@ export const VariableInputItem = ({
           value={item.defaultValue}
           onChange={(e) => setValue(item.key, e)}
           bg={'myGray.50'}
-          minH={100}
-          maxH={200}
+          minH={50}
+          maxH={150}
           showOpenModal={false}
         />
       )}
