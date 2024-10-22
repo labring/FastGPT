@@ -61,8 +61,8 @@ export const VariableInputItem = ({
       {item.type === VariableInputEnum.input && (
         <MyTextarea
           autoHeight
-          minH={10}
-          maxH={40}
+          minH={40}
+          maxH={160}
           bg={'myGray.50'}
           value={item.defaultValue}
           onChange={(e) => setValue(item.key, e.target.value)}

@@ -272,8 +272,8 @@ export const useDebug = () => {
                   return (
                     <MyTextarea
                       autoHeight
-                      minH={10}
-                      maxH={40}
+                      minH={40}
+                      maxH={160}
                       bg={'myGray.50'}
                       placeholder={t(input.placeholder || ('' as any))}
                       value={getValues(`nodeVariables.${input.key}`)}

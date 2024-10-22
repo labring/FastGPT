@@ -319,8 +319,8 @@ const DatasetParamsModal = ({
                   <Box mt={1}>
                     <MyTextarea
                       autoHeight
-                      minH={40}
-                      maxH={80}
+                      minH={150}
+                      maxH={300}
                       placeholder={t('common:core.module.QueryExtension.placeholder')}
                       value={cfbBgDesc}
                       onChange={(e) => {

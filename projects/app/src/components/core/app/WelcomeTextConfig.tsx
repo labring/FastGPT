@@ -25,8 +25,8 @@ const WelcomeTextConfig = (props: TextareaProps) => {
         bg={'myGray.50'}
         placeholder={t('common:core.app.tip.welcomeTextTip')}
         autoHeight
-        minH={28}
-        maxH={60}
+        minH={100}
+        maxH={200}
         {...props}
       />
     </>

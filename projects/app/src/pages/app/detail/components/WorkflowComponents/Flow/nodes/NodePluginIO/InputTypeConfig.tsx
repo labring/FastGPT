@@ -320,8 +320,8 @@ const InputTypeConfig = ({
                   {...register('defaultValue')}
                   bg={'myGray.50'}
                   autoHeight
-                  minH={10}
-                  maxH={24}
+                  minH={40}
+                  maxH={100}
                 />
               )}
               {inputType === FlowNodeInputTypeEnum.JSONEditor && (

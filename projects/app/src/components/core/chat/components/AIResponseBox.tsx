@@ -228,8 +228,8 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
               })}
               bg={'white'}
               autoHeight
-              minH={10}
-              maxH={24}
+              minH={40}
+              maxH={100}
             />
           )}
           {input.type === FlowNodeInputTypeEnum.textarea && (

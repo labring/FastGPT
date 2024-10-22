@@ -97,8 +97,8 @@ function Instruction({ chatConfig: { instruction }, setAppDetail }: ComponentPro
         placeholder={t('workflow:plugin.Instruction_Tip')}
         value={instruction}
         autoHeight
-        minH={28}
-        maxH={60}
+        minH={100}
+        maxH={240}
         onChange={(e) => {
           setAppDetail((state) => ({
             ...state,

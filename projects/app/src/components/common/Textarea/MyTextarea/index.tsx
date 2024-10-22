@@ -32,6 +32,7 @@ const MyTextarea = React.forwardRef<HTMLTextAreaElement, Props>(function MyTexta
     autoHeight = false,
     onChange,
     maxH,
+    minH,
     ...childProps
   } = props;
 
@@ -44,6 +45,8 @@ const MyTextarea = React.forwardRef<HTMLTextAreaElement, Props>(function MyTexta
         autoHeight={autoHeight}
         onChange={onChange}
         maxH={maxH}
+        minH={minH}
+        showResize={!autoHeight}
         {...childProps}
         onOpenModal={onOpen}
       />
@@ -52,12 +55,12 @@ const MyTextarea = React.forwardRef<HTMLTextAreaElement, Props>(function MyTexta
           <ModalBody>
             <Editor
               textareaRef={ModalTextareaRef}
-              autoHeight={autoHeight}
               onChange={onChange}
               {...childProps}
-              minH={80}
               maxH={500}
+              minH={500}
               minW={['100%', '512px']}
+              showResize={false}
             />
           </ModalBody>
           <ModalFooter>
@@ -87,10 +90,13 @@ const Editor = React.memo(function Editor({
   autoHeight = false,
   onChange,
   maxH,
+  minH,
+  showResize,
   ...props
 }: Props & {
   textareaRef: React.RefObject<HTMLTextAreaElement>;
   onOpenModal?: () => void;
+  showResize?: boolean;
 }) {
   const { t } = useTranslation();
   const [scrollHeight, setScrollHeight] = useState(0);
@@ -102,7 +108,7 @@ const Editor = React.memo(function Editor({
         maxW={'100%'}
         as={autoHeight ? ResizeTextarea : undefined}
         sx={
-          autoHeight
+          !showResize
             ? {
                 '::-webkit-resizer': {
                   display: 'none'
@@ -111,13 +117,14 @@ const Editor = React.memo(function Editor({
             : {}
         }
         {...props}
-        maxH={maxH}
+        maxH={`${maxH}px`}
+        minH={`${minH}px`}
         onChange={(e) => {
           setScrollHeight(e.target.scrollHeight);
           onChange?.(e);
         }}
       />
-      {onOpenModal && maxH && scrollHeight > Number(maxH) * 4 && (
+      {onOpenModal && maxH && scrollHeight > Number(maxH) && (
         <Box
           zIndex={1}
           position={'absolute'}
