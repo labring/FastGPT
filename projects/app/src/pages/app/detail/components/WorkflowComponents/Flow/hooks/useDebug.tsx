@@ -59,7 +59,7 @@ export const useDebug = () => {
   const filteredVar = useMemo(() => {
     const variables = appDetail.chatConfig?.variables;
     return variables?.filter((item) => item.type !== VariableInputEnum.custom) || [];
-  }, [appDetail.chatConfig.variables]);
+  }, [appDetail.chatConfig?.variables]);
 
   const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(
     filteredVar.reduce(
@@ -272,14 +272,13 @@ export const useDebug = () => {
                   return (
                     <MyTextarea
                       autoHeight
-                      minH={40}
+                      minH={60}
                       maxH={160}
                       bg={'myGray.50'}
                       placeholder={t(input.placeholder || ('' as any))}
-                      value={getValues(`nodeVariables.${input.key}`)}
-                      onChange={(e) => {
-                        setValue(`nodeVariables.${input.key}`, e.target.value);
-                      }}
+                      {...register(`nodeVariables.${input.key}`, {
+                        required: input.required
+                      })}
                     />
                   );
                 }

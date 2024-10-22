@@ -322,10 +322,7 @@ const DatasetParamsModal = ({
                       minH={150}
                       maxH={300}
                       placeholder={t('common:core.module.QueryExtension.placeholder')}
-                      value={cfbBgDesc}
-                      onChange={(e) => {
-                        setValue('datasetSearchExtensionBg', e.target.value);
-                      }}
+                      {...register('datasetSearchExtensionBg')}
                     />
                   </Box>
                 </Box>
