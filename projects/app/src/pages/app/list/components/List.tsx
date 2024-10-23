@@ -47,6 +47,12 @@ const ListItem = () => {
   const { loadAndGetTeamMembers } = useUserStore();
   const { lastChatAppId, setLastChatAppId } = useChatStore();
 
+  const { openConfirm: openMoveConfirm, ConfirmModal: MoveConfirmModal } = useConfirm({
+    type: 'common',
+    title: t('common:move.confirm'),
+    content: t('app:move.hint')
+  });
+
   const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail } = useContextSelector(
     AppListContext,
     (v) => v
@@ -67,12 +73,14 @@ const ListItem = () => {
       borderColor: 'primary.600'
     },
     onDrop: async (dragId: string, targetId: string) => {
-      setLoadingAppId(dragId);
-      try {
-        await putAppById(dragId, { parentId: targetId });
-        loadMyApps();
-      } catch (error) {}
-      setLoadingAppId(undefined);
+      openMoveConfirm(async () => {
+        setLoadingAppId(dragId);
+        try {
+          await putAppById(dragId, { parentId: targetId });
+          loadMyApps();
+        } catch (error) {}
+        setLoadingAppId(undefined);
+      })();
     }
   });
 
@@ -447,6 +455,7 @@ const ListItem = () => {
           onClose={() => setEditHttpPlugin(undefined)}
         />
       )}
+      <MoveConfirmModal />
     </>
   );
 };

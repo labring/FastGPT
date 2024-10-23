@@ -20,6 +20,7 @@
   "Folder": "文件夹",
   "Login": "登录",
   "Move": "移动",
+  "move.confirm": "确认移动",
   "Name": "名称",
   "None": "无",
   "Rename": "重命名",

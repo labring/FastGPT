@@ -35,6 +35,5 @@
   "permission.des.read": "可查看知识库内容",
   "permission.des.write": "可增加和变更知识库内容",
   "permission.des.manage": "可管理整个知识库数据和信息",
-  "move.hint": "移动后，所选知识库/文件夹将继承新文件夹的权限设置，原先的权限设置失效。",
-  "move.confirm": "确认移动"
+  "move.hint": "移动后，所选知识库/文件夹将继承新文件夹的权限设置，原先的权限设置失效。"
 }

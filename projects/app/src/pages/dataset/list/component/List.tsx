@@ -59,7 +59,7 @@ function List() {
 
   const { openConfirm: openMoveConfirm, ConfirmModal: MoveConfirmModal } = useConfirm({
     type: 'common',
-    title: t('dataset:move.confirm'),
+    title: t('common:move.confirm'),
     content: t('dataset:move.hint')
   });
 
