@@ -21,6 +21,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamWritePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
 export type AppUpdateQuery = {
   appId: string;
@@ -39,28 +40,43 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
   }
   const isMove = parentId !== undefined;
 
-  const { app } = await (async () => {
-    if (isMove) {
-      if (parentId) {
-        await authApp({ req, authToken: true, appId: parentId, per: ManagePermissionVal });
-      } else {
-        // move to root
-        await authUserPer({
-          req,
-          authToken: true,
-          per: TeamWritePermissionVal
-        });
-      }
-      return await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
+  // the lowest permission is WritePermissionVal to invoke this api, thus we can authApp with WritePermissionVal first.
+  const { app, permission } = await authApp({
+    req,
+    authToken: true,
+    appId,
+    per: WritePermissionVal
+  });
+  if (!app) {
+    Promise.reject(AppErrEnum.unExist);
+  }
+
+  if (isMove) {
+    if (parentId) {
+      // move to a folder, check the target folder's permission
+      await authApp({ req, authToken: true, appId: parentId, per: ManagePermissionVal });
+    } else if (parentId === null || !app.parentId) {
+      // move to root or move from root
+      await authUserPer({
+        req,
+        authToken: true,
+        per: TeamWritePermissionVal
+      });
     }
-    return await authApp({ req, authToken: true, appId, per: WritePermissionVal });
-  })();
+    if (app.parentId) {
+      // move from a folder, check the (old) folder's permission
+      await authApp({ req, authToken: true, appId: app.parentId, per: ManagePermissionVal });
+    } else {
+      // move from root
+      if (!permission.hasManagePer) return Promise.reject(AppErrEnum.unAuthApp);
+    }
+  }
 
   // format nodes data
   // 1. dataset search limit, less than model quoteMaxToken
   const isFolder = AppFolderTypeList.includes(app.type);
 
-  const onUpdate = async (session?: ClientSession, resumeInheritPermission?: boolean) => {
+  const onUpdate = async (session?: ClientSession) => {
     const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
 
     return MongoApp.findByIdAndUpdate(
@@ -79,14 +95,14 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
           edges
         }),
         ...(chatConfig && { chatConfig }),
-        ...(resumeInheritPermission && { inheritPermission: true })
+        ...(isMove && { inheritPermission: true })
       },
       { session }
     );
   };
 
   // Move
-  if (parentId !== undefined) {
+  if (isMove) {
     await mongoSessionRun(async (session) => {
       // Inherit folder: Sync children permission and it's clbs
       if (isFolder) {
@@ -114,7 +130,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
           session
         });
       }
-      return onUpdate(session, true);
+      return onUpdate(session);
     });
   } else {
     return onUpdate();

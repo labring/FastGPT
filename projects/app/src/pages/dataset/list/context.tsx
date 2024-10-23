@@ -109,10 +109,10 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   });
 
   const onMoveDataset = useCallback(
-    async (id: string, parentId: ParentIdType) => {
+    async (parentId: ParentIdType) => {
       if (!moveDatasetId) return;
       await onUpdateDataset({
-        id,
+        id: moveDatasetId,
         parentId
       });
     },
@@ -125,10 +125,12 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
         parentId,
         type: DatasetTypeEnum.folder
       })
-    ).map((item) => ({
-      id: item._id,
-      name: item.name
-    }));
+    )
+      .filter((item) => item.permission.hasManagePer)
+      .map((item) => ({
+        id: item._id,
+        name: item.name
+      }));
   }, []);
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
@@ -164,7 +166,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
           server={getDatasetFolderList}
           title={t('common:Move')}
           onClose={() => setMoveDatasetId(undefined)}
-          onConfirm={(parentId) => onMoveDataset(moveDatasetId, parentId)}
+          onConfirm={(parentId) => onMoveDataset(parentId)}
           moveHint={t('dataset:move.hint')}
         />
       )}

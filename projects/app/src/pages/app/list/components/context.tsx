@@ -129,10 +129,12 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
       parentId,
       type: AppTypeEnum.folder
     }).then((res) =>
-      res.map((item) => ({
-        id: item._id,
-        name: item.name
-      }))
+      res
+        .filter((item) => item.permission.hasWritePer)
+        .map((item) => ({
+          id: item._id,
+          name: item.name
+        }))
     );
   }, []);
 

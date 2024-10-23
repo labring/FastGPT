@@ -38,7 +38,6 @@ const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditRe
 
 function List() {
   const { setLoading } = useSystemStore();
-  const { toast } = useToast();
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const { commonT } = useI18n();
@@ -55,7 +54,12 @@ function List() {
     folderDetail
   } = useContextSelector(DatasetsContext, (v) => v);
   const [editPerDatasetIndex, setEditPerDatasetIndex] = useState<number>();
-  const [loadingDatasetId, setLoadingDatasetId] = useState<string>();
+  const router = useRouter();
+  const { parentId = null } = router.query as { parentId?: string | null };
+  const parentDataset = useMemo(
+    () => myDatasets.find((item) => String(item._id) === parentId),
+    [parentId, myDatasets]
+  );
 
   const { openConfirm: openMoveConfirm, ConfirmModal: MoveConfirmModal } = useConfirm({
     type: 'common',
@@ -63,21 +67,19 @@ function List() {
     content: t('dataset:move.hint')
   });
 
+  const { runAsync: updateDataset } = useRequest2(onUpdateDataset);
+
   const { getBoxProps } = useFolderDrag({
     activeStyles: {
       borderColor: 'primary.600'
     },
-    onDrop: async (dragId: string, targetId: string) => {
-      openMoveConfirm(async () => {
-        setLoadingDatasetId(dragId);
-        try {
-          await onUpdateDataset({
-            id: dragId,
-            parentId: targetId
-          });
-        } catch (error) {}
-        setLoadingDatasetId(undefined);
-      })();
+    onDrop: (dragId: string, targetId: string) => {
+      openMoveConfirm(() =>
+        updateDataset({
+          id: dragId,
+          parentId: targetId
+        })
+      )();
     }
   });
 
@@ -90,10 +92,6 @@ function List() {
     [editPerDatasetIndex, myDatasets]
   );
 
-  const router = useRouter();
-
-  const { parentId = null } = router.query as { parentId?: string | null };
-
   const { mutate: exportDataset } = useRequest({
     mutationFn: async (dataset: DatasetItemType) => {
       setLoading(true);
@@ -104,15 +102,10 @@ function List() {
         filename: `${dataset.name}.csv`
       });
     },
-    onSuccess() {
-      toast({
-        status: 'success',
-        title: t('common:core.dataset.Start export')
-      });
-    },
     onSettled() {
       setLoading(false);
     },
+    successToast: t('common:core.dataset.Start export'),
     errorToast: t('common:dataset.Export Dataset Limit Error')
   });
 
@@ -180,7 +173,6 @@ function List() {
                 }
               >
                 <MyBox
-                  isLoading={loadingDatasetId === dataset._id}
                   display={'flex'}
                   flexDirection={'column'}
                   lineHeight={1.5}
@@ -342,13 +334,18 @@ function List() {
                                         avatar: dataset.avatar
                                       })
                                   },
-                                  {
-                                    icon: 'common/file/move',
-                                    label: t('common:Move'),
-                                    onClick: () => {
-                                      setMoveDatasetId(dataset._id);
-                                    }
-                                  },
+                                  ...((parentDataset ? parentDataset : dataset)?.permission
+                                    .hasManagePer
+                                    ? [
+                                        {
+                                          icon: 'common/file/move',
+                                          label: t('common:Move'),
+                                          onClick: () => {
+                                            setMoveDatasetId(dataset._id);
+                                          }
+                                        }
+                                      ]
+                                    : []),
                                   ...(dataset.permission.hasManagePer
                                     ? [
                                         {

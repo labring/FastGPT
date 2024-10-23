@@ -20,6 +20,7 @@ import {
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamWritePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -36,25 +37,42 @@ async function handler(
   }
 
   const isMove = parentId !== undefined;
-  const { dataset } = await (async () => {
-    if (isMove) {
-      if (parentId) {
-        await authDataset({ req, authToken: true, datasetId: parentId, per: ManagePermissionVal });
-      } else {
-        await authUserPer({
-          req,
-          authToken: true,
-          per: TeamWritePermissionVal
-        });
-      }
-      return await authDataset({ req, authToken: true, datasetId: id, per: ManagePermissionVal });
+
+  const { dataset, permission } = await authDataset({
+    req,
+    authToken: true,
+    datasetId: id,
+    per: WritePermissionVal
+  });
+  if (isMove) {
+    if (parentId) {
+      // move to a folder, check the target folder's permission
+      await authDataset({ req, authToken: true, datasetId: parentId, per: ManagePermissionVal });
+    } else if (parentId === null || !dataset.parentId) {
+      // move to root or move from root
+      await authUserPer({
+        req,
+        authToken: true,
+        per: TeamWritePermissionVal
+      });
     }
-    return await authDataset({ req, authToken: true, datasetId: id, per: WritePermissionVal });
-  })();
+    if (dataset.parentId) {
+      // move from a folder, check the (old) folder's permission
+      await authDataset({
+        req,
+        authToken: true,
+        datasetId: dataset.parentId,
+        per: ManagePermissionVal
+      });
+    } else {
+      // move from root
+      if (!permission.hasManagePer) return Promise.reject(DatasetErrEnum.unAuthDataset);
+    }
+  }
 
   const isFolder = dataset.type === DatasetTypeEnum.folder;
 
-  const onUpdate = async (session?: ClientSession, resumeInheritPermission?: boolean) => {
+  const onUpdate = async (session?: ClientSession) => {
     await MongoDataset.findByIdAndUpdate(
       id,
       {
@@ -66,7 +84,7 @@ async function handler(
         ...(status && { status }),
         ...(intro !== undefined && { intro }),
         ...(externalReadUrl !== undefined && { externalReadUrl }),
-        ...(resumeInheritPermission && { inheritPermission: true })
+        ...(isMove && { inheritPermission: true })
       },
       { session }
     );
@@ -98,7 +116,7 @@ async function handler(
           collaborators: parentClbsAndGroups,
           session
         });
-        return onUpdate(session, true);
+        return onUpdate(session);
       }
       return onUpdate(session);
     });

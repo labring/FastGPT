@@ -57,7 +57,6 @@ const ListItem = () => {
     AppListContext,
     (v) => v
   );
-  const [loadingAppId, setLoadingAppId] = useState<string>();
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editHttpPlugin, setEditHttpPlugin] = useState<EditHttpPluginProps>();
@@ -68,19 +67,20 @@ const ListItem = () => {
     [editPerAppIndex, myApps]
   );
 
+  const parentApp = useMemo(() => myApps.find((item) => item._id === parentId), [parentId, myApps]);
+
+  const { runAsync: onPutAppById } = useRequest2(putAppById, {
+    onSuccess() {
+      loadMyApps();
+    }
+  });
+
   const { getBoxProps } = useFolderDrag({
     activeStyles: {
       borderColor: 'primary.600'
     },
-    onDrop: async (dragId: string, targetId: string) => {
-      openMoveConfirm(async () => {
-        setLoadingAppId(dragId);
-        try {
-          await putAppById(dragId, { parentId: targetId });
-          loadMyApps();
-        } catch (error) {}
-        setLoadingAppId(undefined);
-      })();
+    onDrop: (dragId: string, targetId: string) => {
+      openMoveConfirm(async () => onPutAppById(dragId, { parentId: targetId }))();
     }
   });
 
@@ -158,7 +158,6 @@ const ListItem = () => {
               }
             >
               <MyBox
-                isLoading={loadingAppId === app._id}
                 lineHeight={1.5}
                 h="100%"
                 pt={5}
@@ -323,7 +322,9 @@ const ListItem = () => {
                                           }
                                         }
                                       },
-                                      ...(folderDetail?.type === AppTypeEnum.httpPlugin
+                                      ...(folderDetail?.type === AppTypeEnum.httpPlugin &&
+                                      !(parentApp ? parentApp.permission : app.permission)
+                                        .hasManagePer
                                         ? []
                                         : [
                                             {
