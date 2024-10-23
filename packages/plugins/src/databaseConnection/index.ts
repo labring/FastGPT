@@ -12,8 +12,26 @@ type Props = {
 };
 
 type Response = Promise<{
-  result: any; // 根据你的 SQL 查询结果类型调整
+  executionResult: any;
+  executionSQL: string;
 }>;
+
+const handleError = (
+  error: unknown,
+  sql: string
+): { executionResult: string; executionSQL: string } => {
+  if (error instanceof Error) {
+    return {
+      executionResult: `错误信息: ${error.message}`,
+      executionSQL: sql
+    };
+  } else {
+    return {
+      executionResult: '未知错误，请查看fastgpt日志',
+      executionSQL: sql
+    };
+  }
+};
 
 const main = async ({
   databaseType,
@@ -54,16 +72,11 @@ const main = async ({
       await connection.end();
     }
     return {
-      result
+      executionResult: result,
+      executionSQL: sql
     };
   } catch (error: unknown) {
-    // 使用类型断言来处理错误
-    if (error instanceof Error) {
-      console.error('Database query error:', error.message);
-      return Promise.reject(error.message);
-    }
-    console.error('Database query error:', error);
-    return Promise.reject('An unknown error occurred');
+    return handleError(error, sql);
   }
 };
 

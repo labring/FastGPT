@@ -1,9 +1,9 @@
 {
   "author": "",
   "version": "4811",
-  "name": "数据源配置",
-  "avatar": "core/workflow/template/datasource",
-  "intro": "可连接常用数据库，并执行sql",
+  "name": "历史记录转文件",
+  "avatar": "core/workflow/template/historyToMd",
+  "intro": "对话历史记录转markdown文件，返回值：base64文件数据，md源数据",
   "showStatus": true,
   "weight": 10,
 
@@ -20,147 +20,47 @@
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 334.24111198705634,
-          "y": -260.8285440670886
+          "x": 354.3120526249659,
+          "y": -204.7313912808486
         },
         "version": "481",
         "inputs": [
           {
             "renderTypeList": [
-              "select",
               "reference"
             ],
             "selectedTypeIndex": 0,
-            "valueType": "string",
+            "valueType": "chatHistory",
             "canEdit": true,
-            "key": "databaseType",
-            "label": "databaseType",
-            "description": "数据库的类型",
+            "key": "history",
+            "label": "history",
+            "description": "历史对话的聊天记录",
             "defaultValue": "",
-            "list": [
-              {
-                "label": "MySQL",
-                "value": "MySQL"
-              },
-              {
-                "label": "PostgreSQL",
-                "value": "PostgreSQL"
-              }
-            ],
-            "required": true
-          },
-          {
-            "renderTypeList": [
-              "input",
-              "reference"
-            ],
-            "selectedTypeIndex": 0,
-            "valueType": "string",
-            "canEdit": true,
-            "key": "host",
-            "label": "host",
-            "description": "数据库连接host",
-            "defaultValue": "",
-            "required": true,
             "list": [
               {
                 "label": "",
                 "value": ""
               }
-            ]
+            ],
+            "required": true,
+            "toolDescription": "历史对话的聊天记录",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "chatHistory"
+              ]
+            }
           },
           {
             "renderTypeList": [
-              "numberInput",
-              "reference"
+              "numberInput"
             ],
             "selectedTypeIndex": 0,
             "valueType": "number",
             "canEdit": true,
-            "key": "port",
-            "label": "port",
-            "description": "数据库连接端口号",
-            "defaultValue": "",
-            "required": true,
-            "list": [
-              {
-                "label": "",
-                "value": ""
-              }
-            ]
-          },
-          {
-            "renderTypeList": [
-              "input",
-              "reference"
-            ],
-            "selectedTypeIndex": 0,
-            "valueType": "string",
-            "canEdit": true,
-            "key": "user",
-            "label": "user",
-            "description": "数据库账号",
-            "defaultValue": "",
-            "list": [
-              {
-                "label": "",
-                "value": ""
-              }
-            ],
-            "required": true
-          },
-          {
-            "renderTypeList": [
-              "input",
-              "reference"
-            ],
-            "selectedTypeIndex": 0,
-            "valueType": "string",
-            "canEdit": true,
-            "key": "password",
-            "label": "password",
-            "description": "数据库密码",
-            "defaultValue": "",
-            "list": [
-              {
-                "label": "",
-                "value": ""
-              }
-            ],
-            "required": true
-          },
-          {
-            "renderTypeList": [
-              "input",
-              "reference"
-            ],
-            "selectedTypeIndex": 0,
-            "valueType": "string",
-            "canEdit": true,
-            "key": "databaseName",
-            "label": "databaseName",
-            "description": "数据库名称",
-            "defaultValue": "",
-            "required": true,
-            "list": [
-              {
-                "label": "",
-                "value": ""
-              }
-            ]
-          },
-          {
-            "renderTypeList": [
-              "input",
-              "reference"
-            ],
-            "selectedTypeIndex": 0,
-            "valueType": "string",
-            "canEdit": true,
-            "key": "sql",
-            "label": "sql",
-            "description": "sql语句，可以传入sql语句直接执行",
-            "defaultValue": "",
+            "key": "historyCount",
+            "label": "historyCount",
+            "description": "对话的历史记录的长度",
+            "defaultValue": "4",
             "list": [
               {
                 "label": "",
@@ -168,57 +68,23 @@
               }
             ],
             "required": true,
-            "toolDescription": "sql语句，可以传入sql语句直接执行"
+            "max": 200,
+            "min": 1
           }
         ],
         "outputs": [
           {
-            "id": "databaseType",
-            "valueType": "string",
-            "key": "databaseType",
-            "label": "databaseType",
-            "type": "hidden"
-          },
-          {
-            "id": "host",
-            "valueType": "string",
-            "key": "host",
-            "label": "host",
-            "type": "hidden"
-          },
-          {
-            "id": "port",
-            "valueType": "number",
-            "key": "port",
-            "label": "port",
-            "type": "hidden"
-          },
-          {
-            "id": "user",
-            "valueType": "string",
-            "key": "user",
-            "label": "user",
-            "type": "hidden"
-          },
-          {
-            "id": "dataBasePwd",
-            "valueType": "string",
-            "key": "password",
-            "label": "password",
-            "type": "hidden"
-          },
-          {
-            "id": "dataBaseName",
-            "valueType": "string",
-            "key": "databaseName",
-            "label": "databaseName",
-            "type": "hidden"
-          },
-          {
             "id": "sql",
-            "valueType": "string",
-            "key": "sql",
-            "label": "sql",
+            "valueType": "chatHistory",
+            "key": "history",
+            "label": "history",
+            "type": "hidden"
+          },
+          {
+            "id": "historyCount",
+            "valueType": "number",
+            "key": "historyCount",
+            "label": "historyCount",
             "type": "hidden"
           }
         ]
@@ -231,8 +97,8 @@
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1852.5552656153445,
-          "y": 45.76286589767827
+          "x": 1788.4723692358186,
+          "y": -153.2313912808486
         },
         "version": "481",
         "inputs": [
@@ -242,13 +108,13 @@
             ],
             "valueType": "string",
             "canEdit": true,
-            "key": "executionResult",
-            "label": "executionResult",
+            "key": "result",
+            "label": "result",
             "isToolOutput": true,
-            "description": "sql的执行结果",
+            "description": "原始响应",
             "value": [
-              "zBeXy7YZEiXe",
-              "muPxjv8sXJco"
+              "b9Mb1i1p8N5K",
+              "httpRawResponse"
             ]
           },
           {
@@ -257,13 +123,28 @@
             ],
             "valueType": "string",
             "canEdit": true,
-            "key": "executionSQL",
-            "label": "executionSQL",
+            "key": "base64",
+            "label": "base64",
             "isToolOutput": true,
-            "description": "执行的sql",
+            "description": "文件的base64数据",
             "value": [
-              "zBeXy7YZEiXe",
-              "pMOPGndf1z8F"
+              "b9Mb1i1p8N5K",
+              "ifH7zahiH9T3"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "markdownContent",
+            "label": "markdownContent",
+            "isToolOutput": true,
+            "description": "md文件的原始数据",
+            "value": [
+              "b9Mb1i1p8N5K",
+              "xfFFXBiVp7nZ"
             ]
           }
         ],
@@ -276,23 +157,23 @@
         "avatar": "core/workflow/template/systemConfig",
         "flowNodeType": "pluginConfig",
         "position": {
-          "x": -133.25818142678844,
-          "y": -200.98784849888733
+          "x": -81.77526139371972,
+          "y": -251.53350799667828
         },
         "version": "4811",
         "inputs": [],
         "outputs": []
       },
       {
-        "nodeId": "zBeXy7YZEiXe",
-        "name": "数据库连接",
+        "nodeId": "b9Mb1i1p8N5K",
+        "name": "HTTP 请求",
         "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
         "avatar": "core/workflow/template/httpRequest",
         "flowNodeType": "httpRequest468",
         "showStatus": true,
         "position": {
-          "x": 1035.92763304296,
-          "y": -498.57137296107504
+          "x": 960.4522794583786,
+          "y": -406.3265960253499
         },
         "version": "481",
         "inputs": [
@@ -370,7 +251,7 @@
             "description": "common:core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "databaseConnection",
+            "value": "historyToMd",
             "valueDesc": "",
             "debugLabel": "",
             "toolDescription": ""
@@ -410,7 +291,7 @@
               "hidden"
             ],
             "valueType": "any",
-            "value": "{\r\n  \"databaseType\":\"{{databaseType-H}}\",\r\n  \"host\":\"{{host-H}}\",\r\n  \"port\":\"{{port-H}}\",\r\n  \"databaseName\":\"{{databaseName-H}}\",\r\n  \"user\":\"{{databaseUser-H}}\",\r\n  \"password\":\"{{databasePwd-H}}\",\r\n  \"sql\":\"{{sql-H}}\"\r\n}",
+            "value": "{\r\n  \"history\":{{history-H}},\r\n  \"historyCount\":{{historyCount-H}}\r\n}",
             "label": "",
             "required": false,
             "valueDesc": "",
@@ -441,8 +322,6 @@
             "value": "json",
             "label": "",
             "required": false,
-            "valueDesc": "",
-            "description": "",
             "debugLabel": "",
             "toolDescription": ""
           },
@@ -450,10 +329,10 @@
             "renderTypeList": [
               "reference"
             ],
-            "valueType": "string",
+            "valueType": "chatHistory",
             "canEdit": true,
-            "key": "databaseType-H",
-            "label": "databaseType-H",
+            "key": "history-H",
+            "label": "history-H",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -477,43 +356,8 @@
             },
             "required": true,
             "value": [
-              "pluginInput",
-              "databaseType"
-            ]
-          },
-          {
-            "renderTypeList": [
-              "reference"
-            ],
-            "valueType": "string",
-            "canEdit": true,
-            "key": "host-H",
-            "label": "host-H",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "arrayAny",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": [
-              "pluginInput",
-              "host"
+              "VARIABLE_NODE_ID",
+              "histories"
             ]
           },
           {
@@ -522,8 +366,8 @@
             ],
             "valueType": "number",
             "canEdit": true,
-            "key": "port-H",
-            "label": "port-H",
+            "key": "historyCount-H",
+            "label": "historyCount-H",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -548,147 +392,7 @@
             "required": true,
             "value": [
               "pluginInput",
-              "port"
-            ]
-          },
-          {
-            "renderTypeList": [
-              "reference"
-            ],
-            "valueType": "string",
-            "canEdit": true,
-            "key": "databaseName-H",
-            "label": "databaseName-H",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "arrayAny",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": [
-              "pluginInput",
-              "dataBaseName"
-            ]
-          },
-          {
-            "renderTypeList": [
-              "reference"
-            ],
-            "valueType": "string",
-            "canEdit": true,
-            "key": "databasePwd-H",
-            "label": "databasePwd-H",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "arrayAny",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": [
-              "pluginInput",
-              "dataBasePwd"
-            ]
-          },
-          {
-            "renderTypeList": [
-              "reference"
-            ],
-            "valueType": "string",
-            "canEdit": true,
-            "key": "databaseUser-H",
-            "label": "databaseUser-H",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "arrayAny",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": [
-              "pluginInput",
-              "user"
-            ]
-          },
-          {
-            "renderTypeList": [
-              "reference"
-            ],
-            "valueType": "string",
-            "canEdit": true,
-            "key": "sql-H",
-            "label": "sql-H",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "arrayAny",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": [
-              "pluginInput",
-              "sql"
+              "historyCount"
             ]
           }
         ],
@@ -741,18 +445,18 @@
             "description": ""
           },
           {
-            "id": "muPxjv8sXJco",
+            "id": "ifH7zahiH9T3",
             "valueType": "string",
             "type": "dynamic",
-            "key": "executionResult",
-            "label": "executionResult"
+            "key": "base64",
+            "label": "base64"
           },
           {
-            "id": "pMOPGndf1z8F",
+            "id": "xfFFXBiVp7nZ",
             "valueType": "string",
             "type": "dynamic",
-            "key": "executionSQL",
-            "label": "executionSQL"
+            "key": "markdownContent",
+            "label": "markdownContent"
           }
         ]
       }
@@ -760,14 +464,14 @@
     "edges": [
       {
         "source": "pluginInput",
-        "target": "zBeXy7YZEiXe",
+        "target": "b9Mb1i1p8N5K",
         "sourceHandle": "pluginInput-source-right",
-        "targetHandle": "zBeXy7YZEiXe-target-left"
+        "targetHandle": "b9Mb1i1p8N5K-target-left"
       },
       {
-        "source": "zBeXy7YZEiXe",
+        "source": "b9Mb1i1p8N5K",
         "target": "pluginOutput",
-        "sourceHandle": "zBeXy7YZEiXe-source-right",
+        "sourceHandle": "b9Mb1i1p8N5K-source-right",
         "targetHandle": "pluginOutput-target-left"
       }
     ],
@@ -788,7 +492,7 @@
         "textList": [],
         "customUrl": ""
       },
-      "instruction": "数据源配置，支持主流数据库配置",
+      "instruction": "对话历史记录转markdown文件，返回值：base64文件数据，md源数据",
       "_id": "670a23b31957c5b9899b4a4d"
     }
   }
