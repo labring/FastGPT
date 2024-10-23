@@ -1195,7 +1195,7 @@
   "user.team.invite.Reject Confirm": "确认拒绝该邀请？",
   "user.team.invite.accept": "接受",
   "user.team.invite.reject": "拒绝",
-  "user.team.member.Confirm Leave": "确认离开该团队？",
+  "user.team.member.Confirm Leave": "确认离开该团队？\n退出后，您在该团队所有的资源（ 应用、知识库、文件夹、管理的群组等）均转让给团队所有者。",
   "user.team.member.active": "已加入",
   "user.team.member.reject": "拒绝",
   "user.team.member.waiting": "待接受",
