@@ -1,14 +1,14 @@
 {
   "author": "",
   "version": "4811",
-  "name": "Google搜索",
-  "avatar": "core/workflow/template/google",
-  "intro": "在google中搜索。",
+  "name": "Bing搜索",
+  "avatar": "core/workflow/template/bing",
+  "intro": "在Bing中搜索。",
   "showStatus": true,
   "weight": 10,
-  "courseUrl": "https://fael3z0zfze.feishu.cn/wiki/Vqk1w4ltNiuLifkHTuoc0hSrnVg?fromScene=spaceOverview",
+  "courseUrl": "https://fael3z0zfze.feishu.cn/wiki/LsKAwOmtniA4vkkC259cmfxXnAc?fromScene=spaceOverview",
   "isTool": true,
-  "templateType": "search",
+  "templateType": "tools",
 
   "workflow": {
     "nodes": [
@@ -26,36 +26,18 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": ["input", "reference"],
-            "selectedTypeIndex": 0,
-            "valueType": "string",
-            "canEdit": true,
-            "key": "cx",
-            "label": "cx",
-            "description": "Google搜索cxID",
-            "defaultValue": "",
-            "list": [
-              {
-                "label": "",
-                "value": ""
-              }
-            ],
-            "required": true
-          },
-          {
-            "renderTypeList": ["input", "reference"],
+            "renderTypeList": ["input"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
             "key": "key",
             "label": "key",
-            "description": "Google搜索key",
+            "description": "bing搜索key",
             "defaultValue": "",
-            "required": true,
-            "list": []
+            "required": true
           },
           {
-            "renderTypeList": ["input", "reference"],
+            "renderTypeList": ["reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -74,13 +56,6 @@
           }
         ],
         "outputs": [
-          {
-            "id": "cx",
-            "valueType": "string",
-            "key": "cx",
-            "label": "cx",
-            "type": "hidden"
-          },
           {
             "id": "key",
             "valueType": "string",
@@ -211,7 +186,7 @@
             "description": "common:core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "https://www.googleapis.com/customsearch/v1",
+            "value": "https://api.bing.microsoft.com/v7.0/search",
             "debugLabel": "",
             "toolDescription": ""
           },
@@ -219,7 +194,13 @@
             "key": "system_httpHeader",
             "renderTypeList": ["custom"],
             "valueType": "any",
-            "value": [],
+            "value": [
+              {
+                "key": "Ocp-Apim-Subscription-Key",
+                "type": "string",
+                "value": "{{$pluginInput.key$}}"
+              }
+            ],
             "label": "",
             "description": "common:core.module.input.description.Http Request Header",
             "placeholder": "common:core.module.input.description.Http Request Header",
@@ -236,36 +217,6 @@
                 "key": "q",
                 "type": "string",
                 "value": "{{query}}"
-              },
-              {
-                "key": "cx",
-                "type": "string",
-                "value": "{{$pluginInput.cx$}}"
-              },
-              {
-                "key": "key",
-                "type": "string",
-                "value": "{{$pluginInput.key$}}"
-              },
-              {
-                "key": "c2coff",
-                "type": "string",
-                "value": "1"
-              },
-              {
-                "key": "start",
-                "type": "string",
-                "value": "1"
-              },
-              {
-                "key": "end",
-                "type": "string",
-                "value": "20"
-              },
-              {
-                "key": "dateRestrict",
-                "type": "string",
-                "value": "m[1]"
               }
             ],
             "label": "",
@@ -437,7 +388,7 @@
             "key": "code",
             "renderTypeList": ["custom"],
             "label": "",
-            "value": "function main({data}){\n    const result = data.items.map((item) => ({\n      title: item.title,\n      link: item.link,\n      snippet: item.snippet\n    }))\n    return  JSON.stringify(result) \n}",
+            "value": "function main({data}){\n    const result = data.webPages.value.map((item) => ({\n      title: item.name,\n      link: item.url,\n      snippet: item.snippet\n    }))\n    return  JSON.stringify(result) \n}",
             "debugLabel": "",
             "toolDescription": ""
           },
