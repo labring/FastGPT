@@ -57,19 +57,27 @@ function List() {
   const [editPerDatasetIndex, setEditPerDatasetIndex] = useState<number>();
   const [loadingDatasetId, setLoadingDatasetId] = useState<string>();
 
+  const { openConfirm: openMoveConfirm, ConfirmModal: MoveConfirmModal } = useConfirm({
+    type: 'common',
+    title: t('dataset:move.confirm'),
+    content: t('dataset:move.hint')
+  });
+
   const { getBoxProps } = useFolderDrag({
     activeStyles: {
       borderColor: 'primary.600'
     },
     onDrop: async (dragId: string, targetId: string) => {
-      setLoadingDatasetId(dragId);
-      try {
-        await onUpdateDataset({
-          id: dragId,
-          parentId: targetId
-        });
-      } catch (error) {}
-      setLoadingDatasetId(undefined);
+      openMoveConfirm(async () => {
+        setLoadingDatasetId(dragId);
+        try {
+          await onUpdateDataset({
+            id: dragId,
+            parentId: targetId
+          });
+        } catch (error) {}
+        setLoadingDatasetId(undefined);
+      })();
     }
   });
 
@@ -337,7 +345,9 @@ function List() {
                                   {
                                     icon: 'common/file/move',
                                     label: t('common:Move'),
-                                    onClick: () => setMoveDatasetId(dataset._id)
+                                    onClick: () => {
+                                      setMoveDatasetId(dataset._id);
+                                    }
                                   },
                                   ...(dataset.permission.hasManagePer
                                     ? [
@@ -446,6 +456,7 @@ function List() {
         />
       )}
       <ConfirmModal />
+      <MoveConfirmModal />
     </>
   );
 }

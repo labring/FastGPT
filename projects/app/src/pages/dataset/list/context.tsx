@@ -13,7 +13,6 @@ import {
 import { useRouter } from 'next/router';
 import React, { useCallback, useState } from 'react';
 import { createContext } from 'use-context-selector';
-import { useI18n } from '@/web/context/I18n';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
 import dynamic from 'next/dynamic';
@@ -68,7 +67,6 @@ export const DatasetsContext = createContext<DatasetContextType>({
 
 function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { commonT } = useI18n();
   const { t } = useTranslation();
   const [moveDatasetId, setMoveDatasetId] = useState<string>();
   const [searchKey, setSearchKey] = useState('');
@@ -111,10 +109,10 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   });
 
   const onMoveDataset = useCallback(
-    async (parentId: ParentIdType) => {
+    async (id: string, parentId: ParentIdType) => {
       if (!moveDatasetId) return;
       await onUpdateDataset({
-        id: moveDatasetId,
+        id,
         parentId
       });
     },
@@ -164,9 +162,10 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
         <MoveModal
           moveResourceId={moveDatasetId}
           server={getDatasetFolderList}
-          title={commonT('Move')}
+          title={t('common:Move')}
           onClose={() => setMoveDatasetId(undefined)}
-          onConfirm={onMoveDataset}
+          onConfirm={(parentId) => onMoveDataset(moveDatasetId, parentId)}
+          moveHint={t('dataset:move.hint')}
         />
       )}
     </DatasetsContext.Provider>
