@@ -5,6 +5,8 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type Props = {
   query: string;
+  proxy: string;
+  max_results: number;
 };
 
 // Response type same as HTTP outputs
@@ -13,12 +15,16 @@ type Response = Promise<{
 }>;
 
 const main = async (props: Props, retry = 3): Response => {
-  const { query } = props;
+  const { query, proxy, max_results } = props;
 
   try {
-    const searchResults = await searchNews(query, {
-      safeSearch: SafeSearchType.STRICT
-    });
+    const searchResults = await searchNews(
+      query,
+      {
+        safeSearch: SafeSearchType.STRICT
+      },
+      proxy ? { proxy: proxy } : undefined
+    );
 
     const result = searchResults.results
       .map((item) => ({
@@ -26,7 +32,7 @@ const main = async (props: Props, retry = 3): Response => {
         excerpt: item.excerpt,
         url: item.url
       }))
-      .slice(0, 10);
+      .slice(0, max_results);
 
     return {
       result: JSON.stringify(result)

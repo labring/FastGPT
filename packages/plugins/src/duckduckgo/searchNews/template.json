@@ -35,6 +35,31 @@
             "description": "检索词",
             "required": true,
             "toolDescription": "检索词"
+          },
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "proxy",
+            "label": "proxy",
+            "description": "代理地址",
+            "required": false,
+            "defaultValue": "",
+            "maxLength": 255
+          },
+          {
+            "renderTypeList": ["numberInput"],
+            "selectedTypeIndex": 0,
+            "valueType": "number",
+            "canEdit": true,
+            "key": "max_results",
+            "label": "max_results",
+            "description": "最大结果数量",
+            "required": false,
+            "defaultValue": "10",
+            "max": 10,
+            "min": 1
           }
         ],
         "outputs": [
@@ -43,6 +68,20 @@
             "valueType": "string",
             "key": "query",
             "label": "query",
+            "type": "hidden"
+          },
+          {
+            "id": "proxy",
+            "valueType": "string",
+            "key": "proxy",
+            "label": "proxy",
+            "type": "hidden"
+          },
+          {
+            "id": "max_results",
+            "valueType": "number",
+            "key": "max_results",
+            "label": "max_results",
             "type": "hidden"
           }
         ]
@@ -176,7 +215,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\n  \"query\": \"{{query}}\"\n}",
+            "value": "{\n  \"query\": \"{{query}}\", \"proxy\": \"{{proxy}}\", \"max_results\": \"{{max_results}}\"\n}",
             "label": "",
             "required": false,
             "debugLabel": "",
@@ -231,6 +270,64 @@
             },
             "required": true,
             "value": ["pluginInput", "query"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "proxy",
+            "label": "proxy",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["pluginInput", "proxy"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "number",
+            "canEdit": true,
+            "key": "max_results",
+            "label": "max_results",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["pluginInput", "max_results"]
           }
         ],
         "outputs": [
