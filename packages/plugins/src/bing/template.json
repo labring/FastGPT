@@ -6,7 +6,7 @@
   "intro": "在Bing中搜索。",
   "showStatus": true,
   "weight": 10,
-
+  "courseUrl": "https://fael3z0zfze.feishu.cn/wiki/LsKAwOmtniA4vkkC259cmfxXnAc?fromScene=spaceOverview",
   "isTool": true,
   "templateType": "tools",
 
@@ -32,7 +32,7 @@
             "canEdit": true,
             "key": "key",
             "label": "key",
-            "description": "Google搜索key",
+            "description": "bing搜索key",
             "defaultValue": "",
             "required": true
           },
