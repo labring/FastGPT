@@ -5,8 +5,8 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type Props = {
   query: string;
-  proxy: string;
-  max_results: number;
+  proxy?: string;
+  max_results?: number;
 };
 
 // Response type same as HTTP outputs
@@ -15,7 +15,7 @@ type Response = Promise<{
 }>;
 
 const main = async (props: Props, retry = 3): Response => {
-  const { query, proxy, max_results } = props;
+  const { query, proxy = undefined, max_results = 10 } = props;
 
   try {
     const searchResults = await searchNews(
