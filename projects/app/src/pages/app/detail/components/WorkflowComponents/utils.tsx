@@ -1,6 +1,6 @@
 import { computedNodeInputReference } from '@/web/core/workflow/utils';
 import { AppDetailType } from '@fastgpt/global/core/app/type';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -125,7 +125,7 @@ export const getEditorVariables = ({
     : sourceNodes
         .map((node) => {
           return node.outputs
-            .filter((output) => !!output.label)
+            .filter((output) => !!output.label && output.id !== NodeOutputKeyEnum.addOutputParam)
             .map((output) => {
               return {
                 label: t((output.label as any) || ''),

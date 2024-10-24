@@ -232,10 +232,15 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
 
     // format output value type
     const results: Record<string, any> = {};
-    node.outputs.forEach((item) => {
-      const key = item.key.startsWith('$') ? item.key : `$.${item.key}`;
-      results[item.key] = JSONPath({ path: key, json: formatResponse })[0];
-    });
+    node.outputs
+      .filter(
+        (item) =>
+          item.key !== NodeOutputKeyEnum.error && item.key !== NodeOutputKeyEnum.httpRawResponse
+      )
+      .forEach((item) => {
+        const key = item.key.startsWith('$') ? item.key : `$.${item.key}`;
+        results[item.key] = JSONPath({ path: key, json: formatResponse })[0];
+      });
 
     if (typeof formatResponse[NodeOutputKeyEnum.answerText] === 'string') {
       workflowStreamResponse?.({
