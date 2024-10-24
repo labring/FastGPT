@@ -1,8 +1,7 @@
 export enum TmpDataEnum {
   FeishuAccessToken = 'feishu_access_token',
   WecomAccessToken = 'wecom_access_token',
-  OffiAccountAccessToken = 'offiaccount_access_token',
-  QPSLimit = 'qps_limit'
+  OffiAccountAccessToken = 'offiaccount_access_token'
 }
 
 type _TmpDataMetadata = {
@@ -16,9 +15,6 @@ type _TmpDataMetadata = {
   [TmpDataEnum.OffiAccountAccessToken]: {
     AppId: string;
   };
-  [TmpDataEnum.QPSLimit]: {
-    ip: string;
-  };
 };
 
 type _TmpDataType = {
@@ -31,16 +27,12 @@ type _TmpDataType = {
   [TmpDataEnum.OffiAccountAccessToken]: {
     accessToken: string;
   };
-  [TmpDataEnum.QPSLimit]: {
-    requestTimes: number;
-  };
 };
 
 export const TmpDataExpireTime = {
   [TmpDataEnum.FeishuAccessToken]: 1000 * 60 * 60 * 1.5, // 1.5 hours
   [TmpDataEnum.WecomAccessToken]: 1000 * 60 * 60 * 2, // 2 hours
-  [TmpDataEnum.OffiAccountAccessToken]: 1000 * 60 * 60 * 2, // 2 hours
-  [TmpDataEnum.QPSLimit]: 1000 // 1 second
+  [TmpDataEnum.OffiAccountAccessToken]: 1000 * 60 * 60 * 2 // 2 hours
 };
 
 export type TmpDataMetadata<T extends TmpDataEnum> = _TmpDataMetadata[T];
