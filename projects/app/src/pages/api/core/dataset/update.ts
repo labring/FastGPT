@@ -5,7 +5,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import {
   ManagePermissionVal,
   PerResourceTypeEnum,
-  WritePermissionVal
+  ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
@@ -25,6 +25,17 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
 
+// 更新知识库接口
+// 包括如下功能：
+// 1. 更新应用的信息（包括名称，类型，头像，介绍等）
+// 2. 更新数据库的配置信息
+// 3. 移动知识库
+// 操作权限：
+// 1. 更新信息和配置编排需要有知识库的写权限
+// 2. 移动应用需要有
+//  (1) 父目录的管理权限
+//  (2) 目标目录的管理权限
+//  (3) 如果从根目录移动或移动到根目录，需要有团队的应用创建权限
 async function handler(
   req: ApiRequestProps<DatasetUpdateBody, DatasetUpdateQuery>,
   _res: ApiResponseType<any>
@@ -42,19 +53,12 @@ async function handler(
     req,
     authToken: true,
     datasetId: id,
-    per: WritePermissionVal
+    per: ReadPermissionVal
   });
   if (isMove) {
     if (parentId) {
       // move to a folder, check the target folder's permission
       await authDataset({ req, authToken: true, datasetId: parentId, per: ManagePermissionVal });
-    } else if (parentId === null || !dataset.parentId) {
-      // move to root or move from root
-      await authUserPer({
-        req,
-        authToken: true,
-        per: TeamWritePermissionVal
-      });
     }
     if (dataset.parentId) {
       // move from a folder, check the (old) folder's permission
@@ -64,10 +68,18 @@ async function handler(
         datasetId: dataset.parentId,
         per: ManagePermissionVal
       });
-    } else {
-      // move from root
-      if (!permission.hasManagePer) return Promise.reject(DatasetErrEnum.unAuthDataset);
     }
+    if (parentId === null || !dataset.parentId) {
+      // move to root or move from root
+      await authUserPer({
+        req,
+        authToken: true,
+        per: TeamWritePermissionVal
+      });
+    }
+  } else {
+    // is not move
+    if (!permission.hasWritePer) return Promise.reject(DatasetErrEnum.unAuthDataset);
   }
 
   const isFolder = dataset.type === DatasetTypeEnum.folder;

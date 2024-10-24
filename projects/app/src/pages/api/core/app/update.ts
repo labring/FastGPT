@@ -6,6 +6,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import {
   ManagePermissionVal,
   PerResourceTypeEnum,
+  ReadPermissionVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
@@ -29,7 +30,17 @@ export type AppUpdateQuery = {
 
 export type AppUpdateBody = AppUpdateParams;
 
-// update the app information or move the app to another folder
+// 更新应用接口
+// 包括如下功能：
+// 1. 更新应用的信息（包括名称，类型，头像，介绍等）
+// 2. 更新应用的编排信息
+// 3. 移动应用
+// 操作权限：
+// 1. 更新信息和工作流编排需要有应用的写权限
+// 2. 移动应用需要有
+//  (1) 父目录的管理权限
+//  (2) 目标目录的管理权限
+//  (3) 如果从根目录移动或移动到根目录，需要有团队的应用创建权限
 async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
   const { parentId, name, avatar, type, intro, nodes, edges, chatConfig, teamTags } = req.body;
 
@@ -40,13 +51,15 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
   }
   const isMove = parentId !== undefined;
 
-  // the lowest permission is WritePermissionVal to invoke this api, thus we can authApp with WritePermissionVal first.
+  // this step is to get the app and its permission, and we will check the permission manually for
+  // different cases
   const { app, permission } = await authApp({
     req,
     authToken: true,
     appId,
-    per: WritePermissionVal
+    per: ReadPermissionVal
   });
+
   if (!app) {
     Promise.reject(AppErrEnum.unExist);
   }
@@ -55,7 +68,12 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
     if (parentId) {
       // move to a folder, check the target folder's permission
       await authApp({ req, authToken: true, appId: parentId, per: ManagePermissionVal });
-    } else if (parentId === null || !app.parentId) {
+    }
+    if (app.parentId) {
+      // move from a folder, check the (old) folder's permission
+      await authApp({ req, authToken: true, appId: app.parentId, per: ManagePermissionVal });
+    }
+    if (parentId === null || !app.parentId) {
       // move to root or move from root
       await authUserPer({
         req,
@@ -63,20 +81,16 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
         per: TeamWritePermissionVal
       });
     }
-    if (app.parentId) {
-      // move from a folder, check the (old) folder's permission
-      await authApp({ req, authToken: true, appId: app.parentId, per: ManagePermissionVal });
-    } else {
-      // move from root
-      if (!permission.hasManagePer) return Promise.reject(AppErrEnum.unAuthApp);
+  } else {
+    // is not move, write permission of the app.
+    if (!permission.hasWritePer) {
+      return Promise.reject(AppErrEnum.unAuthApp);
     }
   }
 
-  // format nodes data
-  // 1. dataset search limit, less than model quoteMaxToken
-  const isFolder = AppFolderTypeList.includes(app.type);
-
   const onUpdate = async (session?: ClientSession) => {
+    // format nodes data
+    // 1. dataset search limit, less than model quoteMaxToken
     const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
 
     return MongoApp.findByIdAndUpdate(
@@ -105,7 +119,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
   if (isMove) {
     await mongoSessionRun(async (session) => {
       // Inherit folder: Sync children permission and it's clbs
-      if (isFolder) {
+      if (AppFolderTypeList.includes(app.type)) {
         const parentClbsAndGroups = await getResourceClbsAndGroups({
           teamId: app.teamId,
           resourceId: parentId,
