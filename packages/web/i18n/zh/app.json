@@ -71,6 +71,7 @@
   "modules.Title is required": "模块名不能为空",
   "month.unit": "号",
   "move_app": "移动应用",
+  "move.hint": "移动后，所选应用/文件夹将继承新文件夹的权限设置，原先的权限设置失效。",
   "not_json_file": "请选择JSON文件",
   "or_drag_JSON": "或拖入JSON文件",
   "paste_config": "粘贴配置",
