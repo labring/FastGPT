@@ -58,7 +58,7 @@
             "description": "最大结果数量",
             "required": false,
             "defaultValue": "10",
-            "max": 10,
+            "max": 20,
             "min": 1
           }
         ],
