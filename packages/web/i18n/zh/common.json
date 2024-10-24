@@ -49,6 +49,7 @@
   "code_error.error_code.406": "请求格式错误",
   "code_error.error_code.410": "资源已删除",
   "code_error.error_code.422": "验证错误",
+  "code_error.error_code.429": "请求过于频繁",
   "code_error.error_code.500": "服务器发生错误",
   "code_error.error_code.502": "网关错误",
   "code_error.error_code.503": "服务器暂时过载或正在维护",

@@ -19,6 +19,7 @@ export const ERROR_CODE: { [key: number]: string } = {
   406: i18nT('common:code_error.error_code.406'),
   410: i18nT('common:code_error.error_code.410'),
   422: i18nT('common:code_error.error_code.422'),
+  429: i18nT('common:code_error.error_code.429'),
   500: i18nT('common:code_error.error_code.500'),
   502: i18nT('common:code_error.error_code.502'),
   503: i18nT('common:code_error.error_code.503'),
@@ -39,7 +40,8 @@ export enum ERROR_ENUM {
   insufficientQuota = 'insufficientQuota',
   unAuthModel = 'unAuthModel',
   unAuthApiKey = 'unAuthApiKey',
-  unAuthFile = 'unAuthFile'
+  unAuthFile = 'unAuthFile',
+  QPSLimitExceed = 'QPSLimitExceed'
 }
 
 export type ErrType<T> = Record<
@@ -65,6 +67,12 @@ export const ERROR_RESPONSE: Record<
     code: 403,
     statusText: ERROR_ENUM.unAuthorization,
     message: i18nT('common:code_error.error_message.403'),
+    data: null
+  },
+  [ERROR_ENUM.QPSLimitExceed]: {
+    code: 429,
+    statusText: ERROR_ENUM.QPSLimitExceed,
+    message: i18nT('common:code_error.error_code.429'),
     data: null
   },
   [ERROR_ENUM.insufficientQuota]: {

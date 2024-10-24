@@ -33,6 +33,7 @@
     "papaparse": "5.4.1",
     "pdfjs-dist": "4.4.168",
     "pg": "^8.10.0",
+    "request-ip": "^3.3.0",
     "tiktoken": "^1.0.15",
     "tunnel": "^0.0.6",
     "turndown": "^7.1.2"
@@ -46,6 +47,7 @@
     "@types/node-cron": "^3.0.11",
     "@types/papaparse": "5.3.7",
     "@types/pg": "^8.6.6",
+    "@types/request-ip": "^0.0.37",
     "@types/tunnel": "^0.0.4",
     "@types/turndown": "^5.0.4"
   }
