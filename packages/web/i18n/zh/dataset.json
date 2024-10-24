@@ -34,5 +34,6 @@
   "website_dataset_desc": "Web 站点同步允许你直接使用一个网页链接构建知识库",
   "permission.des.read": "可查看知识库内容",
   "permission.des.write": "可增加和变更知识库内容",
-  "permission.des.manage": "可管理整个知识库数据和信息"
+  "permission.des.manage": "可管理整个知识库数据和信息",
+  "move.hint": "移动后，所选知识库/文件夹将继承新文件夹的权限设置，原先的权限设置失效。"
 }
