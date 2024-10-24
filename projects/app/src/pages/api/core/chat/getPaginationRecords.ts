@@ -67,13 +67,13 @@ async function handler(
   })();
 
   const fieldMap = {
-    [GetChatTypeEnum.normal]: `dataId obj value adminFeedback userBadFeedback userGoodFeedback ${
+    [GetChatTypeEnum.normal]: `dataId obj value adminFeedback userBadFeedback userGoodFeedback time ${
       DispatchNodeResponseKeyEnum.nodeResponse
     } ${loadCustomFeedbacks ? 'customFeedbacks' : ''}`,
-    [GetChatTypeEnum.outLink]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback ${
+    [GetChatTypeEnum.outLink]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback time ${
       shareChat?.responseDetail || isPlugin ? `${DispatchNodeResponseKeyEnum.nodeResponse}` : ''
     } `,
-    [GetChatTypeEnum.team]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback ${DispatchNodeResponseKeyEnum.nodeResponse}`
+    [GetChatTypeEnum.team]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback time ${DispatchNodeResponseKeyEnum.nodeResponse}`
   };
 
   const { total, histories } = await getChatItems({
