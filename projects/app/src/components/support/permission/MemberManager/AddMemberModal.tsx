@@ -95,6 +95,7 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
       iconSrc="modal/AddClb"
       title={t('user:team.add_collaborator')}
       minW="800px"
+      isCentered
       isLoading={loadingMembersAndGroups}
     >
       <ModalBody>

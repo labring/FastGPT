@@ -32,6 +32,9 @@ export type DatasetSchemaType = {
   };
   externalReadUrl?: string;
   inheritPermission: boolean;
+
+  // abandon
+  defaultPermission?: number;
 };
 
 export type DatasetCollectionSchemaType = {

@@ -112,7 +112,10 @@ const AppSchema = new Schema({
   inheritPermission: {
     type: Boolean,
     default: true
-  }
+  },
+
+  // abandoned
+  defaultPermission: Number
 });
 
 AppSchema.index({ teamId: 1, updateTime: -1 });

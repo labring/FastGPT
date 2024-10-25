@@ -89,7 +89,10 @@ const DatasetSchema = new Schema({
   inheritPermission: {
     type: Boolean,
     default: true
-  }
+  },
+
+  // abandoned
+  defaultPermission: Number
 });
 
 try {
