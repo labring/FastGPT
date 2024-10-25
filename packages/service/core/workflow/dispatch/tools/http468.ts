@@ -252,6 +252,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     }
 
     return {
+      ...results,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: 0,
         params: Object.keys(params).length > 0 ? params : undefined,
@@ -261,8 +262,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       },
       [DispatchNodeResponseKeyEnum.toolResponses]:
         Object.keys(results).length > 0 ? results : rawResponse,
-      [NodeOutputKeyEnum.httpRawResponse]: rawResponse,
-      ...results
+      [NodeOutputKeyEnum.httpRawResponse]: rawResponse
     };
   } catch (error) {
     addLog.error('Http request error', error);
