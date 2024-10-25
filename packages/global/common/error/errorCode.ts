@@ -41,7 +41,7 @@ export enum ERROR_ENUM {
   unAuthModel = 'unAuthModel',
   unAuthApiKey = 'unAuthApiKey',
   unAuthFile = 'unAuthFile',
-  QPSLimitExceed = 'QPSLimitExceed'
+  tooManyRequest = 'tooManyRequest'
 }
 
 export type ErrType<T> = Record<
@@ -69,10 +69,10 @@ export const ERROR_RESPONSE: Record<
     message: i18nT('common:code_error.error_message.403'),
     data: null
   },
-  [ERROR_ENUM.QPSLimitExceed]: {
+  [ERROR_ENUM.tooManyRequest]: {
     code: 429,
-    statusText: ERROR_ENUM.QPSLimitExceed,
-    message: i18nT('common:code_error.error_code.429'),
+    statusText: ERROR_ENUM.tooManyRequest,
+    message: 'Too many request',
     data: null
   },
   [ERROR_ENUM.insufficientQuota]: {
