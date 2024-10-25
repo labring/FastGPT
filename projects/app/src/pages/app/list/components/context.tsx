@@ -12,9 +12,9 @@ import {
 } from '@fastgpt/global/common/parentFolder/type';
 import { AppUpdateParams } from '@/global/core/app/api';
 import dynamic from 'next/dynamic';
-import { useI18n } from '@/web/context/I18n';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useTranslation } from 'next-i18next';
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 type AppListContextType = {
@@ -58,7 +58,7 @@ export const AppListContext = createContext<AppListContextType>({
 });
 
 const AppListContextProvider = ({ children }: { children: ReactNode }) => {
-  const { appT } = useI18n();
+  const { t } = useTranslation();
   const router = useRouter();
   const { parentId = null, type = 'ALL' } = router.query as {
     parentId?: string | null;
@@ -129,10 +129,12 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
       parentId,
       type: AppTypeEnum.folder
     }).then((res) =>
-      res.map((item) => ({
-        id: item._id,
-        name: item.name
-      }))
+      res
+        .filter((item) => item.permission.hasWritePer)
+        .map((item) => ({
+          id: item._id,
+          name: item.name
+        }))
     );
   }, []);
 
@@ -162,9 +164,10 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
         <MoveModal
           moveResourceId={moveAppId}
           server={getAppFolderList}
-          title={appT('move_app')}
+          title={t('app:move_app')}
           onClose={() => setMoveAppId(undefined)}
           onConfirm={onMoveApp}
+          moveHint={t('app:move.hint')}
         />
       )}
     </AppListContext.Provider>

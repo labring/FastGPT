@@ -17,10 +17,7 @@ import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import {
-  AppDefaultPermissionVal,
-  AppPermissionList
-} from '@fastgpt/global/support/permission/app/constant';
+import { AppPermissionList } from '@fastgpt/global/support/permission/app/constant';
 import {
   deleteAppCollaborators,
   getCollaboratorList,
@@ -38,6 +35,7 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useChatStore } from '@/web/core/chat/context/storeChat';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
@@ -49,11 +47,16 @@ const ListItem = () => {
   const { loadAndGetTeamMembers } = useUserStore();
   const { lastChatAppId, setLastChatAppId } = useChatStore();
 
+  const { openConfirm: openMoveConfirm, ConfirmModal: MoveConfirmModal } = useConfirm({
+    type: 'common',
+    title: t('common:move.confirm'),
+    content: t('app:move.hint')
+  });
+
   const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail } = useContextSelector(
     AppListContext,
     (v) => v
   );
-  const [loadingAppId, setLoadingAppId] = useState<string>();
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editHttpPlugin, setEditHttpPlugin] = useState<EditHttpPluginProps>();
@@ -64,17 +67,20 @@ const ListItem = () => {
     [editPerAppIndex, myApps]
   );
 
+  const parentApp = useMemo(() => myApps.find((item) => item._id === parentId), [parentId, myApps]);
+
+  const { runAsync: onPutAppById } = useRequest2(putAppById, {
+    onSuccess() {
+      loadMyApps();
+    }
+  });
+
   const { getBoxProps } = useFolderDrag({
     activeStyles: {
       borderColor: 'primary.600'
     },
-    onDrop: async (dragId: string, targetId: string) => {
-      setLoadingAppId(dragId);
-      try {
-        await putAppById(dragId, { parentId: targetId });
-        loadMyApps();
-      } catch (error) {}
-      setLoadingAppId(undefined);
+    onDrop: (dragId: string, targetId: string) => {
+      openMoveConfirm(async () => onPutAppById(dragId, { parentId: targetId }))();
     }
   });
 
@@ -152,7 +158,6 @@ const ListItem = () => {
               }
             >
               <MyBox
-                isLoading={loadingAppId === app._id}
                 lineHeight={1.5}
                 h="100%"
                 pt={5}
@@ -233,7 +238,7 @@ const ListItem = () => {
                     )}
 
                     <PermissionIconText
-                      defaultPermission={app.defaultPermission}
+                      private={app.private}
                       color={'myGray.500'}
                       iconColor={'myGray.400'}
                       w={'0.875rem'}
@@ -247,7 +252,9 @@ const ListItem = () => {
                         <Box color={'myGray.500'}>{formatTimeToChatTime(app.updateTime)}</Box>
                       </HStack>
                     )}
-                    {app.permission.hasWritePer && (
+                    {(AppFolderTypeList.includes(app.type)
+                      ? app.permission.hasManagePer
+                      : app.permission.hasWritePer) && (
                       <Box className="more" display={['', 'none']}>
                         <MyMenu
                           Button={
@@ -315,7 +322,9 @@ const ListItem = () => {
                                           }
                                         }
                                       },
-                                      ...(folderDetail?.type === AppTypeEnum.httpPlugin
+                                      ...(folderDetail?.type === AppTypeEnum.httpPlugin &&
+                                      !(parentApp ? parentApp.permission : app.permission)
+                                        .hasManagePer
                                         ? []
                                         : [
                                             {
@@ -412,34 +421,29 @@ const ListItem = () => {
           isInheritPermission={editPerApp.inheritPermission}
           avatar={editPerApp.avatar}
           name={editPerApp.name}
-          defaultPer={{
-            value: editPerApp.defaultPermission,
-            defaultValue: AppDefaultPermissionVal,
-            onChange: (e) => {
-              return onUpdateApp(editPerApp._id, { defaultPermission: e });
-            }
-          }}
           managePer={{
+            mode: 'all',
             permission: editPerApp.permission,
             onGetCollaboratorList: () => getCollaboratorList(editPerApp._id),
             permissionList: AppPermissionList,
-            onUpdateCollaborators: ({
-              members = [], // TODO: remove the default value after group is ready
-              permission
-            }: {
+            onUpdateCollaborators: (props: {
               members?: string[];
+              groups?: string[];
               permission: number;
-            }) => {
-              return postUpdateAppCollaborators({
-                members,
-                permission,
+            }) =>
+              postUpdateAppCollaborators({
+                ...props,
                 appId: editPerApp._id
-              });
-            },
-            onDelOneCollaborator: (tmbId: string) =>
+              }),
+            onDelOneCollaborator: async (
+              props: RequireOnlyOne<{
+                tmbId?: string;
+                groupId?: string;
+              }>
+            ) =>
               deleteAppCollaborators({
-                appId: editPerApp._id,
-                tmbId
+                ...props,
+                appId: editPerApp._id
               }),
             refreshDeps: [editPerApp.inheritPermission]
           }}
@@ -452,6 +456,7 @@ const ListItem = () => {
           onClose={() => setEditHttpPlugin(undefined)}
         />
       )}
+      <MoveConfirmModal />
     </>
   );
 };

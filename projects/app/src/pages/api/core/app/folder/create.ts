@@ -2,6 +2,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import {
+  OwnerPermissionVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -11,11 +12,12 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { syncCollaborators } from '@fastgpt/service/support/permission/inheritPermission';
-import { getResourceAllClbs } from '@fastgpt/service/support/permission/controller';
+import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
+import { TeamWritePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 
 export type CreateAppFolderBody = {
   parentId?: ParentIdType;
@@ -31,20 +33,21 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
   }
 
   // 凭证校验
-  const { teamId, tmbId } = await authUserPer({ req, authToken: true, per: WritePermissionVal });
-  const parentApp = await (async () => {
-    if (parentId) {
-      // if it is not a root folder
-      return (
-        await authApp({
-          req,
-          appId: parentId,
-          per: WritePermissionVal,
-          authToken: true
-        })
-      ).app; // check the parent folder permission
-    }
-  })();
+  const { teamId, tmbId } = await authUserPer({
+    req,
+    authToken: true,
+    per: TeamWritePermissionVal
+  });
+
+  if (parentId) {
+    // if it is not a root folder
+    await authApp({
+      req,
+      appId: parentId,
+      per: WritePermissionVal,
+      authToken: true
+    });
+  }
 
   // Create app
   await mongoSessionRun(async (session) => {
@@ -55,13 +58,11 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
       intro,
       teamId,
       tmbId,
-      type: AppTypeEnum.folder,
-      // inheritPermission: !!parentApp ? true : false,
-      defaultPermission: !!parentApp ? parentApp.defaultPermission : AppDefaultPermissionVal
+      type: AppTypeEnum.folder
     });
 
     if (parentId) {
-      const parentClbs = await getResourceAllClbs({
+      const parentClbsAndGroups = await getResourceClbsAndGroups({
         teamId,
         resourceId: parentId,
         resourceType: PerResourceTypeEnum.app,
@@ -72,9 +73,25 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
         resourceType: PerResourceTypeEnum.app,
         teamId,
         resourceId: app._id,
-        collaborators: parentClbs,
+        collaborators: parentClbsAndGroups,
         session
       });
+    } else {
+      // Create default permission
+      await MongoResourcePermission.create(
+        [
+          {
+            resourceType: PerResourceTypeEnum.app,
+            teamId,
+            resourceId: app._id,
+            tmbId,
+            permission: OwnerPermissionVal
+          }
+        ],
+        {
+          session
+        }
+      );
     }
   });
 }

@@ -1,12 +1,12 @@
-import { getTestRequest } from '@/test/utils';
 import '../../__mocks__/base';
+import { getTestRequest } from '@/test/utils';
 import handler, { OutLinkUpdateBody, OutLinkUpdateQuery } from './update';
-import { root } from '../../__mocks__/db/init';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { root } from '../../__mocks__/db/init';
 
-test('Update Outlink', async () => {
-  const outlink = await MongoOutLink.create({
+beforeAll(async () => {
+  await MongoOutLink.create({
     shareId: 'aaa',
     appId: root.appId,
     tmbId: root.tmbId,
@@ -14,8 +14,13 @@ test('Update Outlink', async () => {
     type: 'share',
     name: 'aaa'
   });
+});
 
-  await outlink.save();
+test('Update Outlink', async () => {
+  const outlink = await MongoOutLink.findOne({ name: 'aaa' }).lean();
+  if (!outlink) {
+    throw new Error('Outlink not found');
+  }
 
   const res = (await handler(
     ...getTestRequest<OutLinkUpdateQuery, OutLinkUpdateBody>({
@@ -27,6 +32,7 @@ test('Update Outlink', async () => {
     })
   )) as any;
 
+  console.log(res);
   expect(res.code).toBe(200);
 
   const link = await MongoOutLink.findById(outlink._id).lean();

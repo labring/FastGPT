@@ -28,16 +28,13 @@ import {
 } from '@/web/core/app/api/collaborator';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pages/app/detail/components/context';
-import {
-  AppDefaultPermissionVal,
-  AppPermissionList
-} from '@fastgpt/global/support/permission/app/constant';
-import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
+import { AppPermissionList } from '@fastgpt/global/support/permission/app/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { resumeInheritPer } from '@/web/core/app/api';
 import { useI18n } from '@/web/context/I18n';
 import ResumeInherit from '@/components/support/permission/ResumeInheritText';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -67,8 +64,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
       await updateAppDetail({
         name: data.name,
         avatar: data.avatar,
-        intro: data.intro,
-        defaultPermission: data.defaultPermission
+        intro: data.intro
       });
     },
     {
@@ -129,24 +125,25 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
 
   const onUpdateCollaborators = ({
     members,
+    groups,
     permission
   }: {
-    members: string[];
+    members?: string[];
+    groups?: string[];
     permission: PermissionValueType;
-  }) => {
-    return postUpdateAppCollaborators({
+  }) =>
+    postUpdateAppCollaborators({
       members,
+      groups,
       permission,
       appId: appDetail._id
     });
-  };
 
-  const onDelCollaborator = (tmbId: string) => {
-    return deleteAppCollaborators({
+  const onDelCollaborator = async (props: RequireOnlyOne<{ tmbId: string; groupId: string }>) =>
+    deleteAppCollaborators({
       appId: appDetail._id,
-      tmbId
+      ...props
     });
-  };
 
   const { runAsync: resumeInheritPermission } = useRequest2(() => resumeInheritPer(appDetail._id), {
     errorToast: t('common:resume_failed'),
@@ -204,33 +201,19 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                 <ResumeInherit onResume={resumeInheritPermission} />
               </Box>
             )}
-            <Box mt="4">
-              <Box fontSize={'sm'}>{t('common:permission.Default permission')}</Box>
-              <DefaultPermissionList
-                mt="2"
-                per={appDetail.defaultPermission}
-                defaultPer={AppDefaultPermissionVal}
-                isInheritPermission={appDetail.inheritPermission}
-                onChange={(v) => {
-                  setValue('defaultPermission', v);
-                  return handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)();
-                }}
-                hasParent={!!appDetail.parentId}
-              />
-            </Box>
             <Box mt={6}>
               <CollaboratorContextProvider
+                mode="all"
                 permission={appDetail.permission}
                 onGetCollaboratorList={() => getCollaboratorList(appDetail._id)}
                 permissionList={AppPermissionList}
-                onUpdateCollaborators={(props) => {
-                  if (props.members) {
-                    return onUpdateCollaborators({
-                      permission: props.permission,
-                      members: props.members
-                    });
-                  }
-                }}
+                onUpdateCollaborators={async (props) =>
+                  onUpdateCollaborators({
+                    permission: props.permission,
+                    members: props.members,
+                    groups: props.groups
+                  })
+                }
                 onDelOneCollaborator={onDelCollaborator}
                 refreshDeps={[appDetail.inheritPermission]}
                 isInheritPermission={appDetail.inheritPermission}

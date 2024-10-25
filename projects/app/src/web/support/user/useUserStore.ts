@@ -28,6 +28,7 @@ type State = {
   loadAndGetTeamMembers: (init?: boolean) => Promise<TeamMemberItemType[]>;
 
   teamMemberGroups: MemberGroupListType;
+  myGroups: MemberGroupListType;
   loadAndGetGroups: (init?: boolean) => Promise<MemberGroupListType>;
 };
 
@@ -106,6 +107,7 @@ export const useUserStore = create<State>()(
           return res;
         },
         teamMemberGroups: [],
+        myGroups: [],
         loadAndGetGroups: async (init = false) => {
           if (!useSystemStore.getState()?.feConfigs?.isPlus) return [];
 
@@ -116,6 +118,9 @@ export const useUserStore = create<State>()(
           const res = await getGroupList();
           set((state) => {
             state.teamMemberGroups = res;
+            state.myGroups = res.filter((item) =>
+              item.members.map((i) => String(i.tmbId)).includes(String(state.userInfo?.team?.tmbId))
+            );
           });
 
           return res;
