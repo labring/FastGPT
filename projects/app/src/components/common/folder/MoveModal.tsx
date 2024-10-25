@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
@@ -11,6 +11,7 @@ import { useMemoizedFn, useMount } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import LightTip from '@fastgpt/web/components/common/LightTip';
 
 type FolderItemType = {
   id: string;
@@ -27,9 +28,10 @@ type Props = {
   server: (e: GetResourceFolderListProps) => Promise<GetResourceFolderListItemResponse[]>;
   onConfirm: (id: ParentIdType) => Promise<any>;
   onClose: () => void;
+  moveHint?: string;
 };
 
-const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose }: Props) => {
+const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint }: Props) => {
   const { t } = useTranslation();
   const [selectedId, setSelectedId] = React.useState<string>();
   const [requestingIdList, setRequestingIdList] = useState<ParentIdType[]>([]);
@@ -170,6 +172,7 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose }: Props)
       onClose={onClose}
     >
       <ModalBody flex={'1 0 0'} overflow={'auto'} minH={'400px'}>
+        {moveHint && <LightTip text={moveHint} />}
         <RenderList list={folderList} />
       </ModalBody>
       <ModalFooter>

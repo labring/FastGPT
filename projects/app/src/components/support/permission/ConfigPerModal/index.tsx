@@ -1,11 +1,9 @@
 import React from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import CollaboratorContextProvider, { MemberManagerInputPropsType } from '../MemberManager/context';
 import { Box, Button, Flex, HStack, ModalBody, useDisclosure } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import DefaultPermissionList from '../DefaultPerList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ResumeInherit from '../ResumeInheritText';
 import { ChangeOwnerModal } from '../ChangeOwnerModal';
@@ -14,11 +12,6 @@ export type ConfigPerModalProps = {
   avatar?: string;
   name: string;
 
-  defaultPer: {
-    value: PermissionValueType;
-    defaultValue: PermissionValueType;
-    onChange: (v: PermissionValueType) => Promise<any>;
-  };
   managePer: MemberManagerInputPropsType;
   isInheritPermission?: boolean;
   resumeInheritPermission?: () => void;
@@ -30,7 +23,6 @@ export type ConfigPerModalProps = {
 const ConfigPerModal = ({
   avatar,
   name,
-  defaultPer,
   managePer,
   isInheritPermission,
   resumeInheritPermission,
@@ -66,17 +58,6 @@ const ConfigPerModal = ({
               <ResumeInherit onResume={resumeInheritPermission} />
             </Box>
           )}
-          <Box mt={5}>
-            <Box fontSize={'sm'}>{t('common:permission.Default permission')}</Box>
-            <DefaultPermissionList
-              mt="1"
-              per={defaultPer.value}
-              defaultPer={defaultPer.defaultValue}
-              isInheritPermission={isInheritPermission}
-              onChange={(v) => defaultPer.onChange(v)}
-              hasParent={hasParent}
-            />
-          </Box>
           <Box mt={4}>
             <CollaboratorContextProvider
               {...managePer}

@@ -18,10 +18,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetsContext } from '../context';
-import {
-  DatasetDefaultPermissionVal,
-  DatasetPermissionList
-} from '@fastgpt/global/support/permission/dataset/constant';
+import { DatasetPermissionList } from '@fastgpt/global/support/permission/dataset/constant';
 import ConfigPerModal from '@/components/support/permission/ConfigPerModal';
 import {
   deleteDatasetCollaborators,
@@ -34,7 +31,6 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useI18n } from '@/web/context/I18n';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideTag from './SideTag';
 
@@ -42,7 +38,6 @@ const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditRe
 
 function List() {
   const { setLoading } = useSystemStore();
-  const { toast } = useToast();
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const { commonT } = useI18n();
@@ -59,21 +54,32 @@ function List() {
     folderDetail
   } = useContextSelector(DatasetsContext, (v) => v);
   const [editPerDatasetIndex, setEditPerDatasetIndex] = useState<number>();
-  const [loadingDatasetId, setLoadingDatasetId] = useState<string>();
+  const router = useRouter();
+  const { parentId = null } = router.query as { parentId?: string | null };
+  const parentDataset = useMemo(
+    () => myDatasets.find((item) => String(item._id) === parentId),
+    [parentId, myDatasets]
+  );
+
+  const { openConfirm: openMoveConfirm, ConfirmModal: MoveConfirmModal } = useConfirm({
+    type: 'common',
+    title: t('common:move.confirm'),
+    content: t('dataset:move.hint')
+  });
+
+  const { runAsync: updateDataset } = useRequest2(onUpdateDataset);
 
   const { getBoxProps } = useFolderDrag({
     activeStyles: {
       borderColor: 'primary.600'
     },
-    onDrop: async (dragId: string, targetId: string) => {
-      setLoadingDatasetId(dragId);
-      try {
-        await onUpdateDataset({
+    onDrop: (dragId: string, targetId: string) => {
+      openMoveConfirm(() =>
+        updateDataset({
           id: dragId,
           parentId: targetId
-        });
-      } catch (error) {}
-      setLoadingDatasetId(undefined);
+        })
+      )();
     }
   });
 
@@ -86,10 +92,6 @@ function List() {
     [editPerDatasetIndex, myDatasets]
   );
 
-  const router = useRouter();
-
-  const { parentId = null } = router.query as { parentId?: string | null };
-
   const { mutate: exportDataset } = useRequest({
     mutationFn: async (dataset: DatasetItemType) => {
       setLoading(true);
@@ -100,15 +102,10 @@ function List() {
         filename: `${dataset.name}.csv`
       });
     },
-    onSuccess() {
-      toast({
-        status: 'success',
-        title: t('common:core.dataset.Start export')
-      });
-    },
     onSettled() {
       setLoading(false);
     },
+    successToast: t('common:core.dataset.Start export'),
     errorToast: t('common:dataset.Export Dataset Limit Error')
   });
 
@@ -176,7 +173,6 @@ function List() {
                 }
               >
                 <MyBox
-                  isLoading={loadingDatasetId === dataset._id}
                   display={'flex'}
                   flexDirection={'column'}
                   lineHeight={1.5}
@@ -278,8 +274,8 @@ function List() {
                         </HStack>
                       )}
                       <PermissionIconText
+                        private={dataset.private}
                         iconColor="myGray.400"
-                        defaultPermission={dataset.defaultPermission}
                         color={'myGray.500'}
                       />
                     </HStack>
@@ -293,7 +289,9 @@ function List() {
                           </Box>
                         </HStack>
                       )}
-                      {dataset.permission.hasWritePer && (
+                      {(dataset.type === DatasetTypeEnum.folder
+                        ? dataset.permission.hasManagePer
+                        : dataset.permission.hasWritePer) && (
                         <Box
                           className="more"
                           display={['', 'none']}
@@ -336,11 +334,18 @@ function List() {
                                         avatar: dataset.avatar
                                       })
                                   },
-                                  {
-                                    icon: 'common/file/move',
-                                    label: t('common:Move'),
-                                    onClick: () => setMoveDatasetId(dataset._id)
-                                  },
+                                  ...((parentDataset ? parentDataset : dataset)?.permission
+                                    .hasManagePer
+                                    ? [
+                                        {
+                                          icon: 'common/file/move',
+                                          label: t('common:Move'),
+                                          onClick: () => {
+                                            setMoveDatasetId(dataset._id);
+                                          }
+                                        }
+                                      ]
+                                    : []),
                                   ...(dataset.permission.hasManagePer
                                     ? [
                                         {
@@ -427,36 +432,20 @@ function List() {
           }
           avatar={editPerDataset.avatar}
           name={editPerDataset.name}
-          defaultPer={{
-            value: editPerDataset.defaultPermission,
-            defaultValue: DatasetDefaultPermissionVal,
-            onChange: (e) =>
-              onUpdateDataset({
-                id: editPerDataset._id,
-                defaultPermission: e
-              })
-          }}
           managePer={{
+            mode: 'all',
             permission: editPerDataset.permission,
             onGetCollaboratorList: () => getCollaboratorList(editPerDataset._id),
             permissionList: DatasetPermissionList,
-            onUpdateCollaborators: ({
-              members = [], // TODO: remove default value after group is ready
-              permission
-            }: {
-              members?: string[];
-              permission: number;
-            }) => {
-              return postUpdateDatasetCollaborators({
-                members,
-                permission,
+            onUpdateCollaborators: (props) =>
+              postUpdateDatasetCollaborators({
+                ...props,
                 datasetId: editPerDataset._id
-              });
-            },
-            onDelOneCollaborator: (tmbId: string) =>
+              }),
+            onDelOneCollaborator: async (props) =>
               deleteDatasetCollaborators({
-                datasetId: editPerDataset._id,
-                tmbId
+                ...props,
+                datasetId: editPerDataset._id
               }),
             refreshDeps: [editPerDataset._id, editPerDataset.inheritPermission]
           }}
@@ -464,6 +453,7 @@ function List() {
         />
       )}
       <ConfirmModal />
+      <MoveConfirmModal />
     </>
   );
 }
