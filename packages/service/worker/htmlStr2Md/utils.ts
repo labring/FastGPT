@@ -1,24 +1,10 @@
-import TurndownService from 'turndown';
-const turndownPluginGfm = require('joplin-turndown-plugin-gfm');
+import { serverRequestBaseUrl } from '../../common/api/serverRequest';
+import init, { html2md as wasm_html2md } from './pkg/html2md_rust';
 
+await init(fetch(serverRequestBaseUrl + '/wasm/html2md_rust_bg.wasm'));
 export const html2md = (html: string): string => {
-  const turndownService = new TurndownService({
-    headingStyle: 'atx',
-    bulletListMarker: '-',
-    codeBlockStyle: 'fenced',
-    fence: '```',
-    emDelimiter: '_',
-    strongDelimiter: '**',
-    linkStyle: 'inlined',
-    linkReferenceStyle: 'full'
-  });
-
   try {
-    turndownService.remove(['i', 'script', 'iframe', 'style']);
-
-    turndownService.use(turndownPluginGfm.gfm);
-
-    return turndownService.turndown(html);
+    return wasm_html2md(html);
   } catch (error) {
     console.log('html 2 markdown error', error);
     return '';

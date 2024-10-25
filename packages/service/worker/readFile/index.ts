@@ -8,7 +8,7 @@ import { readPptxRawText } from './extension/pptx';
 import { readXlsxRawText } from './extension/xlsx';
 import { readCsvRawText } from './extension/csv';
 
-parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array>) => {
+parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array> & { teamId: string }) => {
   const readRawContentByFileBuffer = async (params: ReadRawTextByBuffer) => {
     switch (params.extension) {
       case 'txt':
@@ -19,7 +19,10 @@ parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array>) => {
       case 'pdf':
         return readPdfFile(params);
       case 'docx':
-        return readDocsFile(params);
+        return readDocsFile({
+          ...params,
+          teamId: props.teamId
+        });
       case 'pptx':
         return readPptxRawText(params);
       case 'xlsx':

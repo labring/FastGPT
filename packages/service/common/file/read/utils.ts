@@ -1,7 +1,5 @@
-import { markdownProcess } from '@fastgpt/global/common/string/markdown';
 import { uploadMongoImg } from '../image/controller';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import { addHours } from 'date-fns';
 import FormData from 'form-data';
 
 import { WorkerNameEnum, runWorker } from '../../../worker/utils';
@@ -54,18 +52,18 @@ export const readRawContentByFileBuffer = async ({
   metadata?: Record<string, any>;
 }) => {
   // Upload image in markdown
-  const matchMdImgTextAndUpload = ({ teamId, md }: { md: string; teamId: string }) =>
-    markdownProcess({
-      rawText: md,
-      uploadImgController: (base64Img) =>
-        uploadMongoImg({
-          type: MongoImageTypeEnum.collectionImage,
-          base64Img,
-          teamId,
-          metadata,
-          expiredTime: addHours(new Date(), 1)
-        })
-    });
+  // const matchMdImgTextAndUpload = ({ teamId, md }: { md: string; teamId: string }) =>
+  //   markdownProcess({
+  //     rawText: md,
+  //     uploadImgController: (base64Img) =>
+  //       uploadMongoImg({
+  //         type: MongoImageTypeEnum.collectionImage,
+  //         base64Img,
+  //         teamId,
+  //         metadata,
+  //         expiredTime: addHours(new Date(), 1)
+  //       })
+  //   });
 
   /* If */
   const customReadfileUrl = process.env.CUSTOM_READ_FILE_URL;
@@ -111,20 +109,31 @@ export const readRawContentByFileBuffer = async ({
     };
   };
 
-  let { rawText, formatText } =
+  let { rawText, formatText, imageList } =
     (await readFileFromCustomService()) ||
     (await runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
       extension,
       encoding,
-      buffer
+      buffer,
+      teamId
     }));
 
   // markdown data format
   if (['md', 'html', 'docx', ...customReadFileExtension.split(',')].includes(extension)) {
-    rawText = await matchMdImgTextAndUpload({
-      teamId: teamId,
-      md: rawText
-    });
+    if (imageList) {
+      for await (const item of imageList) {
+        const src = await uploadMongoImg({
+          type: MongoImageTypeEnum.collectionImage,
+          base64Img: `data:${item.mime};base64,${item.base64}`,
+          teamId,
+          metadata: {
+            ...metadata,
+            mime: item.mime
+          }
+        });
+        rawText = rawText.replace(item.uuid, src);
+      }
+    }
   }
 
   if (['csv', 'xlsx'].includes(extension)) {

@@ -32,6 +32,7 @@ async function handler(req: ApiRequestProps<FileIdCreateDatasetCollectionParams>
     ...body
   } = req.body;
 
+  const start = Date.now();
   const { teamId, tmbId, dataset } = await authDataset({
     req,
     authToken: true,
@@ -46,6 +47,7 @@ async function handler(req: ApiRequestProps<FileIdCreateDatasetCollectionParams>
     bucketName: BucketNameEnum.dataset,
     fileId
   });
+
   // 2. split chunks
   const chunks = rawText2Chunks({
     rawText,
@@ -54,6 +56,7 @@ async function handler(req: ApiRequestProps<FileIdCreateDatasetCollectionParams>
     customReg: chunkSplitter ? [chunkSplitter] : []
   });
 
+  console.log('FileID start checkDatasetLimit', Date.now() - start, Date.now());
   // 3. auth limit
   await checkDatasetLimit({
     teamId,

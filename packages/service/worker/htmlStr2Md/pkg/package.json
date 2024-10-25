@@ -1,0 +1,15 @@
+{
+  "name": "html2md-rust",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "html2md_rust_bg.wasm",
+    "html2md_rust.js",
+    "html2md_rust.d.ts"
+  ],
+  "main": "html2md_rust.js",
+  "types": "html2md_rust.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
