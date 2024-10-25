@@ -33,79 +33,6 @@ enum CronJobTypeEnum {
 }
 type CronType = 'month' | 'week' | 'day' | 'interval';
 
-const get24HoursOptions = () => {
-  return Array.from({ length: 24 }, (_, i) => ({
-    label: `${i < 10 ? '0' : ''}${i}:00`,
-    value: i
-  }));
-};
-
-const getRoute = (i: number) => {
-  switch (i) {
-    case 0:
-      return 'app:week.Sunday';
-    case 1:
-      return 'app:week.Monday';
-    case 2:
-      return 'app:week.Tuesday';
-    case 3:
-      return 'app:week.Wednesday';
-    case 4:
-      return 'app:week.Thursday';
-    case 5:
-      return 'app:week.Friday';
-    case 6:
-      return 'app:week.Saturday';
-    default:
-      return 'app:week.Sunday';
-  }
-};
-
-const getWeekOptions = () => {
-  return Array.from({ length: 7 }, (_, i) => {
-    return {
-      label: i18nT(getRoute(i)),
-      value: i,
-      children: get24HoursOptions()
-    };
-  });
-};
-const getMonthOptions = () => {
-  return Array.from({ length: 28 }, (_, i) => ({
-    label: `${i + 1}` + i18nT('app:month.unit'),
-    value: i,
-    children: get24HoursOptions()
-  }));
-};
-const getInterValOptions = () => {
-  // 每n小时
-  return [
-    {
-      label: i18nT('app:interval.per_hour'),
-      value: 1
-    },
-    {
-      label: i18nT('app:interval.2_hours'),
-      value: 2
-    },
-    {
-      label: i18nT('app:interval.3_hours'),
-      value: 3
-    },
-    {
-      label: i18nT('app:interval.4_hours'),
-      value: 4
-    },
-    {
-      label: i18nT('app:interval.6_hours'),
-      value: 6
-    },
-    {
-      label: i18nT('app:interval.12_hours'),
-      value: 12
-    }
-  ];
-};
 const defaultValue = ['day', 0, 0];
 const defaultCronString = '0 0 * * *';
 
@@ -124,6 +51,81 @@ const ScheduledTriggerConfig = ({
   const timezone = value?.timezone;
   const cronString = value?.cronString;
   const defaultPrompt = value?.defaultPrompt;
+
+  const get24HoursOptions = () => {
+    return Array.from({ length: 24 }, (_, i) => ({
+      label: `${i < 10 ? '0' : ''}${i}:00`,
+      value: i
+    }));
+  };
+
+  const getRoute = (i: number) => {
+    const { t } = useTranslation();
+    switch (i) {
+      case 0:
+        return t('app:week.Sunday');
+      case 1:
+        return t('app:week.Monday');
+      case 2:
+        return t('app:week.Tuesday');
+      case 3:
+        return t('app:week.Wednesday');
+      case 4:
+        return t('app:week.Thursday');
+      case 5:
+        return t('app:week.Friday');
+      case 6:
+        return t('app:week.Saturday');
+      default:
+        return t('app:week.Sunday');
+    }
+  };
+
+  const getWeekOptions = () => {
+    return Array.from({ length: 7 }, (_, i) => {
+      return {
+        label: getRoute(i),
+        value: i,
+        children: get24HoursOptions()
+      };
+    });
+  };
+  const getMonthOptions = () => {
+    return Array.from({ length: 28 }, (_, i) => ({
+      label: `${i + 1}` + t('app:month.unit'),
+      value: i,
+      children: get24HoursOptions()
+    }));
+  };
+  const getInterValOptions = () => {
+    // 每n小时
+    return [
+      {
+        label: t('app:interval.per_hour'),
+        value: 1
+      },
+      {
+        label: t('app:interval.2_hours'),
+        value: 2
+      },
+      {
+        label: t('app:interval.3_hours'),
+        value: 3
+      },
+      {
+        label: t('app:interval.4_hours'),
+        value: 4
+      },
+      {
+        label: t('app:interval.6_hours'),
+        value: 6
+      },
+      {
+        label: t('app:interval.12_hours'),
+        value: 12
+      }
+    ];
+  };
 
   const cronSelectList = useRef<MultipleSelectProps['list']>([
     {

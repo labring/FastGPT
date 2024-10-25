@@ -17,7 +17,7 @@ const FrequencyLimitSchema = new Schema({
 });
 
 try {
-  FrequencyLimitSchema.index({ eventId: 1 }, { unique: true });
+  FrequencyLimitSchema.index({ eventId: 1, expiredTime: 1 });
   FrequencyLimitSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 0 });
 } catch (error) {}
 

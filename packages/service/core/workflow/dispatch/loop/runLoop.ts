@@ -32,8 +32,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     return Promise.reject('Input array length cannot be greater than 50');
   }
 
-  const runNodes = runtimeNodes.filter((node) => childrenNodeIdList.includes(node.nodeId));
-
   const outputValueArr = [];
   const loopDetail: ChatHistoryItemResType[] = [];
   let assistantResponses: AIChatItemValueItemType[] = [];
@@ -43,7 +41,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   for await (const item of loopInputArray) {
     const response = await dispatchWorkFlow({
       ...props,
-      runtimeNodes: runNodes.map((node) =>
+      runtimeNodes: runtimeNodes.map((node) =>
         node.flowNodeType === FlowNodeTypeEnum.loopStart
           ? {
               ...node,
