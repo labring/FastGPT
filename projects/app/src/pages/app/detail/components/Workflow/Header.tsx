@@ -34,7 +34,11 @@ const Header = () => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const router = useRouter();
-  const { toast } = useToast();
+  const { toast: backSaveToast } = useToast({
+    containerStyle: {
+      mt: '60px'
+    }
+  });
 
   const { appDetail, onSaveApp, currentTab } = useContextSelector(AppContext, (v) => v);
   const isV2Workflow = appDetail?.version === 'v2';
@@ -273,7 +277,7 @@ const Header = () => {
               await onClickSave({});
               onCloseBackConfirm();
               onBack();
-              toast({
+              backSaveToast({
                 status: 'success',
                 title: t('app:saved_success'),
                 position: 'top-right'

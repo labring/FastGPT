@@ -172,7 +172,11 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
       onClose={onClose}
     >
       <ModalBody flex={'1 0 0'} overflow={'auto'} minH={'400px'}>
-        {moveHint && <LightTip text={moveHint} />}
+        {moveHint && (
+          <Box mb={1}>
+            <LightTip text={moveHint} />
+          </Box>
+        )}
         <RenderList list={folderList} />
       </ModalBody>
       <ModalFooter>

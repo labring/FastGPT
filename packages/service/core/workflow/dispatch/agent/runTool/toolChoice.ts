@@ -27,7 +27,7 @@ import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools
 import { addLog } from '../../../../../common/system/log';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 type ToolRunResponseType = {
   toolRunResponse: DispatchFlowResponse;
