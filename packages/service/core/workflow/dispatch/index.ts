@@ -162,7 +162,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('X-Accel-Buffering', 'no');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
-    console.log(1111111111111111);
 
     // 10s sends a message to prevent the browser from thinking that the connection is disconnected
     const sendStreamTimerSign = () => {
@@ -176,7 +175,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         sendStreamTimerSign();
       }, 10000);
     };
-    // sendStreamTimerSign();
+    sendStreamTimerSign();
   }
 
   variables = {
