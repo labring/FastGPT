@@ -7,6 +7,7 @@ import {
 import { dispatchWorkFlow } from '..';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { AIChatItemValueItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { cloneDeep } from 'lodash';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopInputArray]: Array<any>;
@@ -19,6 +20,7 @@ type Response = DispatchNodeResultType<{
 export const dispatchLoop = async (props: Props): Promise<Response> => {
   const {
     params,
+    runtimeEdges,
     runtimeNodes,
     user,
     node: { name }
@@ -41,6 +43,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   for await (const item of loopInputArray) {
     const response = await dispatchWorkFlow({
       ...props,
+      runtimeEdges: cloneDeep(runtimeEdges),
       runtimeNodes: runtimeNodes.map((node) =>
         node.flowNodeType === FlowNodeTypeEnum.loopStart
           ? {
