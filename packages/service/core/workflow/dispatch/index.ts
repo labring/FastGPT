@@ -41,7 +41,8 @@ import { dispatchPluginOutput } from './plugin/runOutput';
 import { removeSystemVariable, valueTypeFormat } from './utils';
 import {
   filterWorkflowEdges,
-  checkNodeRunStatus
+  checkNodeRunStatus,
+  textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
@@ -161,6 +162,20 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('X-Accel-Buffering', 'no');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
+
+    // 10s sends a message to prevent the browser from thinking that the connection is disconnected
+    const sendStreamTimerSign = () => {
+      setTimeout(() => {
+        props?.workflowStreamResponse?.({
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            text: ''
+          })
+        });
+        sendStreamTimerSign();
+      }, 10000);
+    };
+    sendStreamTimerSign();
   }
 
   variables = {
@@ -592,56 +607,60 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     };
   }
 
-  // start process width initInput
-  const entryNodes = runtimeNodes.filter((item) => item.isEntry);
-  // reset entry
-  runtimeNodes.forEach((item) => {
-    // Interactive node is not the entry node, return interactive result
-    if (
-      item.flowNodeType !== FlowNodeTypeEnum.userSelect &&
-      item.flowNodeType !== FlowNodeTypeEnum.formInput &&
-      item.flowNodeType !== FlowNodeTypeEnum.tools
-    ) {
-      item.isEntry = false;
-    }
-  });
-  await Promise.all(entryNodes.map((node) => checkNodeCanRun(node)));
+  try {
+    // start process width initInput
+    const entryNodes = runtimeNodes.filter((item) => item.isEntry);
+    // reset entry
+    runtimeNodes.forEach((item) => {
+      // Interactive node is not the entry node, return interactive result
+      if (
+        item.flowNodeType !== FlowNodeTypeEnum.userSelect &&
+        item.flowNodeType !== FlowNodeTypeEnum.formInput &&
+        item.flowNodeType !== FlowNodeTypeEnum.tools
+      ) {
+        item.isEntry = false;
+      }
+    });
+    await Promise.all(entryNodes.map((node) => checkNodeCanRun(node)));
 
-  // focus try to run pluginOutput
-  const pluginOutputModule = runtimeNodes.find(
-    (item) => item.flowNodeType === FlowNodeTypeEnum.pluginOutput
-  );
-  if (pluginOutputModule && props.mode !== 'debug') {
-    await nodeRunWithActive(pluginOutputModule);
+    // focus try to run pluginOutput
+    const pluginOutputModule = runtimeNodes.find(
+      (item) => item.flowNodeType === FlowNodeTypeEnum.pluginOutput
+    );
+    if (pluginOutputModule && props.mode !== 'debug') {
+      await nodeRunWithActive(pluginOutputModule);
+    }
+
+    // Interactive node
+    const interactiveResult = (() => {
+      if (nodeInteractiveResponse) {
+        const interactiveAssistant = handleInteractiveResult({
+          entryNodeIds: nodeInteractiveResponse.entryNodeIds,
+          interactiveResponse: nodeInteractiveResponse.interactiveResponse
+        });
+        chatAssistantResponse.push(interactiveAssistant);
+        return interactiveAssistant.interactive;
+      }
+    })();
+
+    return {
+      flowResponses: chatResponses,
+      flowUsages: chatNodeUsages,
+      debugResponse: {
+        finishedNodes: runtimeNodes,
+        finishedEdges: runtimeEdges,
+        nextStepRunNodes: debugNextStepRunNodes
+      },
+      workflowInteractiveResponse: interactiveResult,
+      [DispatchNodeResponseKeyEnum.runTimes]: workflowRunTimes,
+      [DispatchNodeResponseKeyEnum.assistantResponses]:
+        mergeAssistantResponseAnswerText(chatAssistantResponse),
+      [DispatchNodeResponseKeyEnum.toolResponses]: toolRunResponse,
+      newVariables: removeSystemVariable(variables)
+    };
+  } catch (error) {
+    return Promise.reject(error);
   }
-
-  // Interactive node
-  const interactiveResult = (() => {
-    if (nodeInteractiveResponse) {
-      const interactiveAssistant = handleInteractiveResult({
-        entryNodeIds: nodeInteractiveResponse.entryNodeIds,
-        interactiveResponse: nodeInteractiveResponse.interactiveResponse
-      });
-      chatAssistantResponse.push(interactiveAssistant);
-      return interactiveAssistant.interactive;
-    }
-  })();
-
-  return {
-    flowResponses: chatResponses,
-    flowUsages: chatNodeUsages,
-    debugResponse: {
-      finishedNodes: runtimeNodes,
-      finishedEdges: runtimeEdges,
-      nextStepRunNodes: debugNextStepRunNodes
-    },
-    workflowInteractiveResponse: interactiveResult,
-    [DispatchNodeResponseKeyEnum.runTimes]: workflowRunTimes,
-    [DispatchNodeResponseKeyEnum.assistantResponses]:
-      mergeAssistantResponseAnswerText(chatAssistantResponse),
-    [DispatchNodeResponseKeyEnum.toolResponses]: toolRunResponse,
-    newVariables: removeSystemVariable(variables)
-  };
 }
 
 /* get system variable */
