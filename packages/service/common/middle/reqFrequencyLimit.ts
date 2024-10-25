@@ -1,4 +1,4 @@
-import { ApiRequestProps } from 'type/next';
+import { ApiRequestProps } from '../../type/next';
 import requestIp from 'request-ip';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { authFrequencyLimit } from '../system/frequencyLimit/utils';
