@@ -45,6 +45,7 @@ import { computedMaxToken, llmCompletionsBodyFormat } from '../../../ai/utils';
 import { WorkflowResponseType } from '../type';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -262,7 +263,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     });
 
     if (user.openaiAccount?.baseUrl) {
-      return Promise.reject(`您的 OpenAI key 出错了: ${JSON.stringify(requestBody)}`);
+      return Promise.reject(`您的 OpenAI key 出错了: ${getErrText(error)}`);
     }
 
     return Promise.reject(error);
