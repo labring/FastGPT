@@ -15,6 +15,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useI18n } from '@/web/context/I18n';
+import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 const AddMemberModal = dynamic(() => import('./AddMemberModal'));
 const ManageModal = dynamic(() => import('./ManageModal'));
 
@@ -22,10 +23,12 @@ export type MemberManagerInputPropsType = {
   permission: Permission;
   onGetCollaboratorList: () => Promise<CollaboratorItemType[]>;
   permissionList: PermissionListType;
-  onUpdateCollaborators: (props: any) => any; // TODO: type. should be UpdatePermissionBody after app and dataset permission refactored
-  onDelOneCollaborator: (tmbId: string) => any;
+  onUpdateCollaborators: (props: UpdateClbPermissionProps) => Promise<any>;
+  onDelOneCollaborator: (props: RequireOnlyOne<{ tmbId: string; groupId: string }>) => Promise<any>;
   refreshDeps?: any[];
+  mode?: 'member' | 'all';
 };
+
 export type MemberManagerPropsType = MemberManagerInputPropsType & {
   collaboratorList: CollaboratorItemType[];
   refetchCollaboratorList: () => void;
@@ -72,7 +75,8 @@ const CollaboratorContextProvider = ({
   refetchResource,
   refreshDeps = [],
   isInheritPermission,
-  hasParent
+  hasParent,
+  mode = 'member'
 }: MemberManagerInputPropsType & {
   children: (props: ChildrenProps) => ReactNode;
   refetchResource?: () => void;
@@ -83,8 +87,10 @@ const CollaboratorContextProvider = ({
     await onUpdateCollaborators(props);
     refetchCollaboratorList();
   };
-  const onDelOneCollaboratorThen = async (tmbId: string) => {
-    await onDelOneCollaborator(tmbId);
+  const onDelOneCollaboratorThen = async (
+    props: RequireOnlyOne<{ tmbId: string; groupId: string }>
+  ) => {
+    await onDelOneCollaborator(props);
     refetchCollaboratorList();
   };
 
@@ -197,6 +203,7 @@ const CollaboratorContextProvider = ({
             onCloseAddMember();
             refetchResource?.();
           }}
+          mode={mode}
         />
       )}
       {isOpenManageModal && (

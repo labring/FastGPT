@@ -1,4 +1,3 @@
-import { Permission } from './controller';
 import { PermissionListType } from './type';
 import { i18nT } from '../../../web/i18n/utils';
 export enum AuthUserTypeEnum {

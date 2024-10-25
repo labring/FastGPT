@@ -1,14 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Box,
-  Checkbox,
-  Flex,
-  Grid,
-  HStack,
-  Input,
-  InputGroup,
-  InputLeftElement
-} from '@chakra-ui/react';
+import { Box, Checkbox, Flex, Grid, HStack } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
@@ -16,6 +7,7 @@ import { Control, Controller } from 'react-hook-form';
 import { RequireAtLeastOne } from '@fastgpt/global/common/type/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 
 type memberType = {
   type: 'member';
@@ -120,19 +112,14 @@ function SelectMember({
       h={'100%'}
     >
       <Flex flexDirection="column" p="4" h={'100%'} overflow={'auto'}>
-        <InputGroup alignItems="center" size={'sm'}>
-          <InputLeftElement>
-            <MyIcon name="common/searchLight" w="16px" color={'myGray.500'} />
-          </InputLeftElement>
-          <Input
-            placeholder={t('user:search_user')}
-            fontSize="sm"
-            bg={'myGray.50'}
-            onChange={(e) => {
-              setSearchKey(e.target.value);
-            }}
-          />
-        </InputGroup>
+        <SearchInput
+          placeholder={t('user:search_user')}
+          fontSize="sm"
+          bg={'myGray.50'}
+          onChange={(e) => {
+            setSearchKey(e.target.value);
+          }}
+        />
         <Flex flexDirection="column" mt={3}>
           {filtered.map((member) => {
             return (

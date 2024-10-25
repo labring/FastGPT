@@ -11,5 +11,5 @@ export const getCollaboratorList = (datasetId: string) =>
 export const postUpdateDatasetCollaborators = (body: UpdateDatasetCollaboratorBody) =>
   POST('/proApi/core/dataset/collaborator/update', body);
 
-export const deleteDatasetCollaborators = ({ ...params }: DatasetCollaboratorDeleteParams) =>
-  DELETE('/proApi/core/dataset/collaborator/delete', { ...params });
+export const deleteDatasetCollaborators = (params: DatasetCollaboratorDeleteParams) =>
+  DELETE('/proApi/core/dataset/collaborator/delete', params);

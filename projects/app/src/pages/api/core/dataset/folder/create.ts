@@ -4,6 +4,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import {
+  OwnerPermissionVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -12,9 +13,9 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
-import { getResourceAllClbs } from '@fastgpt/service/support/permission/controller';
+import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
 import { syncCollaborators } from '@fastgpt/service/support/permission/inheritPermission';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 export type DatasetFolderCreateQuery = {};
 export type DatasetFolderCreateBody = {
   parentId?: string;
@@ -38,35 +39,28 @@ async function handler(
     authToken: true
   });
 
-  const parentFolder = await (async () => {
-    if (parentId) {
-      return (
-        await authDataset({
-          datasetId: parentId,
-          per: WritePermissionVal,
-          req,
-          authToken: true
-        })
-      ).dataset;
-    }
-  })();
+  if (parentId) {
+    await authDataset({
+      datasetId: parentId,
+      per: WritePermissionVal,
+      req,
+      authToken: true
+    });
+  }
 
   await mongoSessionRun(async (session) => {
-    const app = await MongoDataset.create({
+    const dataset = await MongoDataset.create({
       ...parseParentIdInMongo(parentId),
       avatar: FolderImgUrl,
       name,
       intro,
       teamId,
       tmbId,
-      type: DatasetTypeEnum.folder,
-      defaultPermission: !!parentFolder
-        ? parentFolder.defaultPermission
-        : DatasetDefaultPermissionVal
+      type: DatasetTypeEnum.folder
     });
 
     if (parentId) {
-      const parentClbs = await getResourceAllClbs({
+      const parentClbsAndGroups = await getResourceClbsAndGroups({
         teamId,
         resourceId: parentId,
         resourceType: PerResourceTypeEnum.dataset,
@@ -76,10 +70,25 @@ async function handler(
       await syncCollaborators({
         resourceType: PerResourceTypeEnum.dataset,
         teamId,
-        resourceId: app._id,
-        collaborators: parentClbs,
+        resourceId: dataset._id,
+        collaborators: parentClbsAndGroups,
         session
       });
+    }
+
+    if (!parentId) {
+      await MongoResourcePermission.create(
+        [
+          {
+            resourceType: PerResourceTypeEnum.dataset,
+            teamId,
+            resourceId: dataset._id,
+            tmbId,
+            permission: OwnerPermissionVal
+          }
+        ],
+        { session }
+      );
     }
   });
 
