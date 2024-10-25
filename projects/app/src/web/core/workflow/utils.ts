@@ -193,10 +193,11 @@ export const computedNodeInputReference = ({
   if (!node) {
     return;
   }
+  const parentId = node.parentNodeId;
   let sourceNodes: FlowNodeItemType[] = [];
   // 根据 edge 获取所有的 source 节点（source节点会继续向前递归获取）
   const findSourceNode = (nodeId: string) => {
-    const targetEdges = edges.filter((item) => item.target === nodeId);
+    const targetEdges = edges.filter((item) => item.target === nodeId || item.target === parentId);
     targetEdges.forEach((edge) => {
       const sourceNode = nodes.find((item) => item.nodeId === edge.source);
       if (!sourceNode) return;

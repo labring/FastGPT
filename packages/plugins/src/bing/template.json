@@ -8,7 +8,7 @@
   "weight": 10,
   "courseUrl": "https://fael3z0zfze.feishu.cn/wiki/LsKAwOmtniA4vkkC259cmfxXnAc?fromScene=spaceOverview",
   "isTool": true,
-  "templateType": "tools",
+  "templateType": "search",
 
   "workflow": {
     "nodes": [
@@ -37,7 +37,7 @@
             "required": true
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,

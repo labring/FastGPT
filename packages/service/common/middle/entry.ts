@@ -19,8 +19,11 @@ export const NextEntry = ({ beforeCallback = [] }: { beforeCallback?: Promise<an
         await Promise.all([withNextCors(req, res), ...beforeCallback]);
 
         let response = null;
-        for (const handler of args) {
+        for await (const handler of args) {
           response = await handler(req, res);
+          if (res.writableFinished) {
+            break;
+          }
         }
 
         // Get request duration
