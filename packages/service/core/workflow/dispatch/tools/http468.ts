@@ -239,7 +239,15 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       )
       .forEach((item) => {
         const key = item.key.startsWith('$') ? item.key : `$.${item.key}`;
-        results[item.key] = JSONPath({ path: key, json: formatResponse })[0];
+        results[item.key] = (() => {
+          // 检查是否是简单的属性访问或单一索引访问
+          if (/^\$(\.[a-zA-Z_][a-zA-Z0-9_]*)+$/.test(key) || /^\$(\[\d+\])+$/.test(key)) {
+            return JSONPath({ path: key, json: formatResponse })[0];
+          }
+
+          // 如果无法确定，默认返回数组
+          return JSONPath({ path: key, json: formatResponse });
+        })();
       });
 
     if (typeof formatResponse[NodeOutputKeyEnum.answerText] === 'string') {
@@ -252,6 +260,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     }
 
     return {
+      ...results,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: 0,
         params: Object.keys(params).length > 0 ? params : undefined,
@@ -261,8 +270,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       },
       [DispatchNodeResponseKeyEnum.toolResponses]:
         Object.keys(results).length > 0 ? results : rawResponse,
-      [NodeOutputKeyEnum.httpRawResponse]: rawResponse,
-      ...results
+      [NodeOutputKeyEnum.httpRawResponse]: rawResponse
     };
   } catch (error) {
     addLog.error('Http request error', error);
