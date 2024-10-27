@@ -33,7 +33,6 @@ import { EditResourceInfoFormType } from '@/components/common/Modal/EditResource
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
 const Info = ({ datasetId }: { datasetId: string }) => {
-  const [openBaseConfig, setOpenBaseConfig] = useState(true);
   const { t } = useTranslation();
   const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
@@ -174,21 +173,11 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
       <MyDivider my={4} h={'2px'} maxW={'500px'} />
 
-      <Box overflow={'hidden'} h={openBaseConfig ? 'auto' : '24px'}>
+      <Box overflow={'hidden'}>
         <Flex justify={'space-between'} alignItems={'center'} fontSize={'mini'} h={'24px'}>
           <Box fontWeight={'500'} color={'myGray.900'} userSelect={'none'}>
             {t('common:common.base_config')}
           </Box>
-          <MyIcon
-            w={'16px'}
-            _hover={{ color: 'primary.500', cursor: 'pointer' }}
-            color={'myGray.500'}
-            name={openBaseConfig ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
-            onClick={(e) => {
-              e.preventDefault();
-              setOpenBaseConfig(!openBaseConfig);
-            }}
-          />
         </Flex>
         <Flex mt={3} w={'100%'} flexDir={'column'}>
           <FormLabel fontSize={'mini'} fontWeight={'500'}>
@@ -198,7 +187,10 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Flex>
 
         <Box mt={5} w={'100%'}>
-          <Box pt={2} flex={[1, '0 0 320px']}>
+          <FormLabel fontSize={'mini'} fontWeight={'500'}>
+            {t('common:core.ai.model.Vector Model')}
+          </FormLabel>
+          <Box pt={2}>
             <AIModelSelector
               w={'100%'}
               value={vectorModel.model}
