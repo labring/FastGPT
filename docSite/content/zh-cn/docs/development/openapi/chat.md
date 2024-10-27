@@ -45,7 +45,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
     "messages": [
         {
             "role": "user",
-            "content": "导演是谁",
+            "content": "导演是谁"
         }
     ]
 }'
