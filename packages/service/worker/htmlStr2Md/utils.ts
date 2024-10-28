@@ -1,6 +1,6 @@
 import TurndownService from 'turndown';
 // @ts-ignore
-const turndownPluginGfm = require('turndown-plugin-gfm');
+const turndownPluginGfm = require('joplin-turndown-plugin-gfm');
 
 export const html2md = (html: string): string => {
   const turndownService = new TurndownService({

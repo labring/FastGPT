@@ -8,6 +8,7 @@ import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
 import axios from 'axios';
 import { addLog } from '../../system/log';
+import { batchRun } from '@fastgpt/global/common/fn/utils';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -120,7 +121,8 @@ export const readRawContentByFileBuffer = async ({
 
   // markdown data format
   if (imageList) {
-    for await (const item of imageList) {
+    const subMap = new Map<string, string>(); // for replace image uuid to src
+    batchRun(imageList, async (item) => {
       const src = await uploadMongoImg({
         type: MongoImageTypeEnum.collectionImage,
         base64Img: `data:${item.mime};base64,${item.base64}`,
@@ -130,8 +132,9 @@ export const readRawContentByFileBuffer = async ({
           mime: item.mime
         }
       });
-      rawText = rawText.replace(item.uuid, src);
-    }
+      subMap.set(item.uuid, src);
+    });
+    rawText = rawText.replace(/\!\[\]\((.*?)\)/g, (match, uuid) => subMap.get(uuid) || match);
   }
 
   if (['csv', 'xlsx'].includes(extension)) {
