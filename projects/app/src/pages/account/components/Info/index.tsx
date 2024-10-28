@@ -325,6 +325,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     </Box>
   );
 };
+
 const PlanUsage = () => {
   const router = useRouter();
   const { t } = useTranslation();

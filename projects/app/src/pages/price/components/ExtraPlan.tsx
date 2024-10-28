@@ -13,7 +13,6 @@ import { useTranslation } from 'next-i18next';
 import React, { useCallback, useState } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -272,31 +271,15 @@ const ExtraPlan = () => {
               <MyIcon mr={2} name={'support/bill/shoppingCart'} w={'16px'} color={'primary.600'} />
               {t('common:support.wallet.buy_resource')}
             </Flex>
-            {/* <Flex mt={4} alignItems={'center'}>
-              <Box flex={['0 0 100px', '1 0 0']}>
+            <Flex mt={4} alignItems={'center'}>
+              <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'}>
                 {t('common:support.wallet.subscription.Month amount')}
               </Box>
               <Flex alignItems={'center'} mt={1} w={'180px'} position={'relative'}>
-                <NumberInput size={'sm'} flex={1} step={1} min={1} max={12} position={'relative'}>
-                  <NumberInputField
-                    pr={'30px'}
-                    {...registerExtraPoints('month', {
-                      required: true,
-                      min: 1,
-                      max: 12,
-                      valueAsNumber: true
-                    })}
-                  />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-                <Box position={'absolute'} right={'20px'} color={'myGray.500'} fontSize={'xs'}>
-                  {t('common:common.month')}
-                </Box>
+                <Box>1</Box>
+                <Box color={'myGray.600'}>{t('common:common.month')}</Box>
               </Flex>
-            </Flex> */}
+            </Flex>
             <Flex mt={4} alignItems={'center'}>
               <Box flex={['0 0 100px', '1 0 0']} color={'myGray.600'}>
                 {t('common:support.wallet.subscription.Update extra ai points')}

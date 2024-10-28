@@ -33,8 +33,6 @@ import { EditResourceInfoFormType } from '@/components/common/Modal/EditResource
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
 const Info = ({ datasetId }: { datasetId: string }) => {
-  const [openBaseConfig, setOpenBaseConfig] = useState(true);
-  const [openPermissionConfig, setOpenPermissionConfig] = useState(true);
   const { t } = useTranslation();
   const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
@@ -175,23 +173,13 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
       <MyDivider my={4} h={'2px'} maxW={'500px'} />
 
-      <Box overflow={'hidden'} h={openBaseConfig ? 'auto' : '24px'}>
+      <Box overflow={'hidden'}>
         <Flex justify={'space-between'} alignItems={'center'} fontSize={'mini'} h={'24px'}>
           <Box fontWeight={'500'} color={'myGray.900'} userSelect={'none'}>
             {t('common:common.base_config')}
           </Box>
-          <MyIcon
-            w={'16px'}
-            _hover={{ color: 'primary.500', cursor: 'pointer' }}
-            color={'myGray.500'}
-            name={openBaseConfig ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
-            onClick={(e) => {
-              e.preventDefault();
-              setOpenBaseConfig(!openBaseConfig);
-            }}
-          />
         </Flex>
-        <Flex mt={3} w={'100%'} flexDir={'column'} userSelect={'none'}>
+        <Flex mt={3} w={'100%'} flexDir={'column'}>
           <FormLabel fontSize={'mini'} fontWeight={'500'}>
             {t('common:core.dataset.Dataset ID')}
           </FormLabel>
@@ -202,7 +190,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           <FormLabel fontSize={'mini'} fontWeight={'500'}>
             {t('common:core.ai.model.Vector Model')}
           </FormLabel>
-          <Box pt={2} flex={[1, '0 0 320px']}>
+          <Box pt={2}>
             <AIModelSelector
               w={'100%'}
               value={vectorModel.model}
@@ -231,12 +219,10 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Box>
 
         <Flex mt={2} w={'100%'} alignItems={'center'}>
-          <FormLabel flex={['0 0 90px', '0 0 160px']} fontSize={'mini'} w={0} fontWeight={'500'}>
+          <FormLabel flex={1} fontSize={'mini'} w={0} fontWeight={'500'}>
             {t('common:core.Max Token')}
           </FormLabel>
-          <Box flex={[1, '0 0 320px']} fontSize={'mini'}>
-            {vectorModel.maxToken}
-          </Box>
+          <Box fontSize={'mini'}>{vectorModel.maxToken}</Box>
         </Flex>
 
         <Box pt={5}>
@@ -286,54 +272,33 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       {datasetDetail.permission.hasManagePer && (
         <>
           <MyDivider my={4} h={'2px'} maxW={'500px'} />
-          <Box overflow={'hidden'} h={openPermissionConfig ? 'auto' : '24px'}>
-            <Flex justify={'space-between'} alignItems={'center'} fontSize={'mini'} h={'24px'}>
-              <Box fontWeight={'500'} color={'myGray.900'} userSelect={'none'}>
-                {t('common:permission.Permission config')}
-              </Box>
-              <MyIcon
-                w={'16px'}
-                _hover={{ color: 'primary.500', cursor: 'pointer' }}
-                color={'myGray.500'}
-                name={openPermissionConfig ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
-                onClick={() => setOpenPermissionConfig(!openPermissionConfig)}
-              />
-            </Flex>
-
-            <Box mt={3}>
-              <FormLabel fontWeight={'500'} fontSize={'mini'} pb={3} userSelect={'none'}>
-                {t('common:permission.Default permission')}
-              </FormLabel>
-            </Box>
-
-            <Box py={4}>
-              <MemberManager
-                managePer={{
-                  mode: 'all',
-                  permission: datasetDetail.permission,
-                  onGetCollaboratorList: () => getCollaboratorList(datasetId),
-                  permissionList: DatasetPermissionList,
-                  onUpdateCollaborators: (body) =>
-                    postUpdateDatasetCollaborators({
-                      ...body,
-                      datasetId
-                    }),
-                  onDelOneCollaborator: async ({ groupId, tmbId }) => {
-                    if (tmbId) {
-                      return deleteDatasetCollaborators({
-                        datasetId,
-                        tmbId
-                      });
-                    } else if (groupId) {
-                      return deleteDatasetCollaborators({
-                        datasetId,
-                        groupId
-                      });
-                    }
+          <Box>
+            <MemberManager
+              managePer={{
+                mode: 'all',
+                permission: datasetDetail.permission,
+                onGetCollaboratorList: () => getCollaboratorList(datasetId),
+                permissionList: DatasetPermissionList,
+                onUpdateCollaborators: (body) =>
+                  postUpdateDatasetCollaborators({
+                    ...body,
+                    datasetId
+                  }),
+                onDelOneCollaborator: async ({ groupId, tmbId }) => {
+                  if (tmbId) {
+                    return deleteDatasetCollaborators({
+                      datasetId,
+                      tmbId
+                    });
+                  } else if (groupId) {
+                    return deleteDatasetCollaborators({
+                      datasetId,
+                      groupId
+                    });
                   }
-                }}
-              />
-            </Box>
+                }
+              }}
+            />
           </Box>
         </>
       )}

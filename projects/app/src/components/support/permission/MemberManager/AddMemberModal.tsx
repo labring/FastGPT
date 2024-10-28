@@ -95,23 +95,19 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
       iconSrc="modal/AddClb"
       title={t('user:team.add_collaborator')}
       minW="800px"
+      h={'100%'}
       isCentered
       isLoading={loadingMembersAndGroups}
     >
-      <ModalBody>
+      <ModalBody flex={'1'}>
         <Grid
           border="1px solid"
           borderColor="myGray.200"
           borderRadius="0.5rem"
           gridTemplateColumns="1fr 1fr"
+          h={'100%'}
         >
-          <Flex
-            flexDirection="column"
-            borderRight="1px solid"
-            borderColor="myGray.200"
-            p="4"
-            minH="200px"
-          >
+          <Flex flexDirection="column" borderRight="1px solid" borderColor="myGray.200" p="4">
             <SearchInput
               placeholder={t('user:search_user')}
               bgColor="myGray.50"

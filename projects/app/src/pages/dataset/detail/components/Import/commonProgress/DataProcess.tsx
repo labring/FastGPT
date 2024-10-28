@@ -78,7 +78,7 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
     <Box h={'100%'} display={['block', 'flex']} fontSize={'sm'}>
       <Box
         flex={'1 0 0'}
-        minW={['auto', '540px']}
+        minW={['auto', '500px']}
         maxW={'600px'}
         h={['auto', '100%']}
         overflow={'auto'}
@@ -86,11 +86,11 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
       >
         <Flex alignItems={'center'}>
           <MyIcon name={'common/settingLight'} w={'20px'} />
-          <Box fontSize={'md'}>{t('common:core.dataset.import.Data process params')}</Box>
+          <Box fontSize={'md'}>{t('dataset:data_process_setting')}</Box>
         </Flex>
 
         <Box display={['block', 'flex']} mt={4} alignItems={'center'}>
-          <FormLabel flex={'0 0 100px'}>{t('common:core.dataset.import.Training mode')}</FormLabel>
+          <FormLabel flex={'0 0 100px'}>{t('dataset:training_mode')}</FormLabel>
           <LeftRadio
             list={trainingModeList.map(([key, value]) => ({
               title: t(value.label as any),
@@ -107,8 +107,9 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
             flexWrap={'wrap'}
           />
         </Box>
+
         <Box display={['block', 'flex']} mt={5}>
-          <FormLabel flex={'0 0 100px'}>{t('common:core.dataset.import.Process way')}</FormLabel>
+          <FormLabel flex={'0 0 100px'}>{t('dataset:data_process_params')}</FormLabel>
           <LeftRadio
             list={[
               {
@@ -117,18 +118,16 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
                 value: ImportProcessWayEnum.auto
               },
               {
-                title: t('common:core.dataset.import.Custom process'),
-                desc: t('common:core.dataset.import.Custom process desc'),
+                title: t('dataset:custom_data_process_params'),
+                desc: t('dataset:custom_data_process_params_desc'),
                 value: ImportProcessWayEnum.custom,
                 children: way === ImportProcessWayEnum.custom && (
                   <Box mt={5}>
                     {showChunkInput && chunkSizeField && (
                       <Box>
                         <Flex alignItems={'center'}>
-                          <Box>{t('common:core.dataset.import.Ideal chunk length')}</Box>
-                          <MyTooltip
-                            label={t('common:core.dataset.import.Ideal chunk length Tips')}
-                          >
+                          <Box>{t('dataset:ideal_chunk_length')}</Box>
+                          <MyTooltip label={t('dataset:ideal_chunk_length_tips')}>
                             <MyIcon
                               name={'common/questionLight'}
                               ml={1}
@@ -269,15 +268,15 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
             }}
           ></LeftRadio>
         </Box>
-        <Box mt={5} pl={[0, '100px']} gap={3}>
-          {feConfigs?.show_pay && (
-            <MyTooltip label={priceTip}>
-              <MyTag colorSchema={'gray'} py={1.5} borderRadius={'md'} px={3} whiteSpace={'wrap'}>
-                {priceTip}
-              </MyTag>
-            </MyTooltip>
-          )}
-        </Box>
+
+        {feConfigs?.show_pay && (
+          <Box mt={5} pl={[0, '100px']} gap={3}>
+            <MyTag colorSchema={'gray'} py={1.5} borderRadius={'md'} px={3} whiteSpace={'wrap'}>
+              {priceTip}
+            </MyTag>
+          </Box>
+        )}
+
         <Flex mt={5} gap={3} justifyContent={'flex-end'}>
           <Button
             onClick={() => {
