@@ -51,7 +51,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   const pluginData = await authPluginByTmbId({
     appId,
     tmbId: runningAppInfo.tmbId,
-    per: ReadPermissionVal
+    per: ReadPermissionVal,
+    isRoot: true
   });
 
   const plugin = await getChildAppRuntimeById(appId, version);
