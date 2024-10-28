@@ -56,7 +56,6 @@ async function handler(req: ApiRequestProps<FileIdCreateDatasetCollectionParams>
     customReg: chunkSplitter ? [chunkSplitter] : []
   });
 
-  console.log('FileID start checkDatasetLimit', Date.now() - start, Date.now());
   // 3. auth limit
   await checkDatasetLimit({
     teamId,

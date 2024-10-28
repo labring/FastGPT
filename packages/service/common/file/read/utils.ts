@@ -52,21 +52,6 @@ export const readRawContentByFileBuffer = async ({
   encoding: string;
   metadata?: Record<string, any>;
 }) => {
-  // Upload image in markdown
-  // const matchMdImgTextAndUpload = ({ teamId, md }: { md: string; teamId: string }) =>
-  //   markdownProcess({
-  //     rawText: md,
-  //     uploadImgController: (base64Img) =>
-  //       uploadMongoImg({
-  //         type: MongoImageTypeEnum.collectionImage,
-  //         base64Img,
-  //         teamId,
-  //         metadata,
-  //         expiredTime: addHours(new Date(), 1)
-  //       })
-  //   });
-
-  /* If */
   const customReadfileUrl = process.env.CUSTOM_READ_FILE_URL;
   const customReadFileExtension = process.env.CUSTOM_READ_FILE_EXTENSION || '';
   const ocrParse = process.env.CUSTOM_READ_FILE_OCR || 'false';
@@ -121,8 +106,7 @@ export const readRawContentByFileBuffer = async ({
 
   // markdown data format
   if (imageList) {
-    const subMap = new Map<string, string>(); // for replace image uuid to src
-    batchRun(imageList, async (item) => {
+    await batchRun(imageList, async (item) => {
       const src = await uploadMongoImg({
         type: MongoImageTypeEnum.collectionImage,
         base64Img: `data:${item.mime};base64,${item.base64}`,
@@ -132,9 +116,8 @@ export const readRawContentByFileBuffer = async ({
           mime: item.mime
         }
       });
-      subMap.set(item.uuid, src);
+      rawText = rawText.replace(item.uuid, src);
     });
-    rawText = rawText.replace(/\!\[\]\((.*?)\)/g, (match, uuid) => subMap.get(uuid) || match);
   }
 
   if (['csv', 'xlsx'].includes(extension)) {

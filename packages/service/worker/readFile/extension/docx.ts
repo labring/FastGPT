@@ -29,7 +29,7 @@ export const readDocsFile = async ({ buffer }: ReadRawTextByBuffer): Promise<Rea
       }
     );
 
-    const rawText = html2md(html);
+    const { rawText } = html2md(html);
 
     return {
       rawText,
