@@ -353,7 +353,14 @@ export const checkWorkflowNodeAndConnection = ({
     }
 
     // check empty node(not edge)
-    const hasEdge = edges.some(
+    const edgeFilted = edges.filter(
+      (edge) =>
+        !(
+          data.flowNodeType === FlowNodeTypeEnum.tools &&
+          edge.sourceHandle === NodeOutputKeyEnum.selectedTools
+        )
+    );
+    const hasEdge = edgeFilted.some(
       (edge) => edge.source === data.nodeId || edge.target === data.nodeId
     );
     if (!hasEdge) {
