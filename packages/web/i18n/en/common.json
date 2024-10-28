@@ -624,7 +624,7 @@
   "core.dataset.test.test result placeholder": "Test results will be displayed here",
   "core.dataset.test.test result tip": "Sort based on the similarity between the Dataset content and the test text. You can adjust the corresponding text based on the test results.\nNote: The data in the test records may have been modified. Clicking on a test data will display the latest data.",
   "core.dataset.training.Agent queue": "QA Training Queue",
-  "core.dataset.training.Auto mode": "Enhanced Processing (Experimental)",
+  "core.dataset.training.Auto mode": "Auto Processing",
   "core.dataset.training.Auto mode Tip": "Increase the semantic richness of data blocks by generating related questions and summaries through sub-indexes and calling models, making it more conducive to retrieval. Requires more storage space and increases AI call times.",
   "core.dataset.training.Chunk mode": "Direct Segmentation",
   "core.dataset.training.Full": "Estimated Over 5 Minutes",

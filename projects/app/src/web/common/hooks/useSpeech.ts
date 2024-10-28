@@ -100,7 +100,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
             if (MediaRecorder.isTypeSupported('video/mp4')) {
               return {
                 options: { mimeType: 'video/mp4', videoBitsPerSecond: 100000 },
-                filename: 'recording.mp3'
+                filename: 'recording.mp4'
               };
             }
             return {
