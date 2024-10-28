@@ -352,7 +352,7 @@ export const checkWorkflowNodeAndConnection = ({
       return [data.nodeId];
     }
 
-    // check empty node(not edge)
+    // filter tools node edge
     const edgeFilted = edges.filter(
       (edge) =>
         !(
@@ -360,6 +360,7 @@ export const checkWorkflowNodeAndConnection = ({
           edge.sourceHandle === NodeOutputKeyEnum.selectedTools
         )
     );
+    // check node has edge
     const hasEdge = edgeFilted.some(
       (edge) => edge.source === data.nodeId || edge.target === data.nodeId
     );
