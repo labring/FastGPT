@@ -1,3 +1,4 @@
+import { SystemPluginListItemType } from '@fastgpt/global/core/app/type';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   SystemPluginTemplateItemType,
@@ -19,6 +20,8 @@ export type SystemPluginConfigSchemaType = {
     version: string;
     weight?: number;
     workflow: WorkflowTemplateBasicType;
-    templateType: FlowNodeTemplateTypeEnum;
+    templateType: string;
+    associatedPlugin: Omit<SystemPluginListItemType, 'workflow'>;
+    userGuide: string;
   };
 };

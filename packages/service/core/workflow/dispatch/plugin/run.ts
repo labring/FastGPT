@@ -2,7 +2,7 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import { dispatchWorkFlow } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getChildAppRuntimeById } from '../../../app/plugin/controller';
+import { getChildAppRuntimeById, splitCombinePluginId } from '../../../app/plugin/controller';
 import {
   getWorkflowEntryNodeIds,
   initWorkflowEdgeStatus,
@@ -17,6 +17,7 @@ import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { getSystemPluginTemplates } from '../../../../../plugins/register';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -36,16 +37,24 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     return Promise.reject('pluginId can not find');
   }
 
+  let appId = pluginId;
+
+  const { pluginId: currentPluginId } = await splitCombinePluginId(pluginId);
+  const pluginTemplate = getSystemPluginTemplates().find((plugin) => plugin.id === currentPluginId);
+  if (!!pluginTemplate?.associatedPlugin?._id) {
+    appId = pluginTemplate.associatedPlugin?._id;
+  }
+
   const { files } = chatValue2RuntimePrompt(query);
 
   // auth plugin
   const pluginData = await authPluginByTmbId({
-    appId: pluginId,
+    appId,
     tmbId: runningAppInfo.tmbId,
     per: ReadPermissionVal
   });
 
-  const plugin = await getChildAppRuntimeById(pluginId, version);
+  const plugin = await getChildAppRuntimeById(appId, version);
 
   const outputFilterMap =
     plugin.nodes

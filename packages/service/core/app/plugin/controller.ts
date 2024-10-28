@@ -84,6 +84,20 @@ export async function getChildAppPreviewNode({
     }
   })();
 
+  if (app.associatedPlugin?._id) {
+    const item = await MongoApp.findById(app.associatedPlugin?._id).lean();
+    if (!item) return Promise.reject('plugin not found');
+
+    const version = await getAppLatestVersion(app.associatedPlugin?._id, item);
+
+    if (!version.versionId) return Promise.reject('App version not found');
+    app.workflow = {
+      nodes: version.nodes,
+      edges: version.edges,
+      chatConfig: version.chatConfig
+    };
+  }
+
   const isPlugin = !!app.workflow.nodes.find(
     (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
   );

@@ -3,7 +3,6 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { NextAPI } from '@/service/middleware/entry';
 import { getSystemPlugins } from '@/service/core/app/plugin';
-import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
@@ -32,14 +31,15 @@ async function handler(
         id: plugin.id,
         isFolder: plugin.isFolder,
         parentId: plugin.parentId,
-        templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
+        templateType: plugin.templateType,
         flowNodeType: FlowNodeTypeEnum.pluginModule,
         avatar: plugin.avatar,
         name: plugin.name,
         intro: plugin.intro,
         isTool: plugin.isTool,
         currentCost: plugin.currentCost,
-        author: plugin.author
+        author: plugin.author,
+        instructions: plugin.userGuide
       }))
       .filter((item) => {
         if (searchKey) {

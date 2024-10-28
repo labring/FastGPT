@@ -86,6 +86,7 @@
   "permission.des.manage": "Based on write permissions, you can configure publishing channels, view conversation logs, and assign permissions to the application.",
   "permission.des.read": "Use the app to have conversations",
   "permission.des.write": "Can view and edit apps",
+  "plugin.Instructions": "Instructions",
   "plugin_cost_per_times": "{{cost}}/time",
   "plugin_dispatch": "Plugin Invocation",
   "plugin_dispatch_tip": "Adds extra capabilities to the model. The specific plugins to be invoked will be autonomously decided by the model.\nIf a plugin is selected, the Dataset invocation will automatically be treated as a special plugin.",

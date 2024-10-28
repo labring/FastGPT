@@ -5,11 +5,19 @@ import { GET, POST } from '@fastgpt/service/common/api/plusRequest';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { SystemPluginResponseType } from '@fastgpt/plugins/type';
+import { PluginGroupSchemaType } from '@fastgpt/service/core/app/store/type';
 
 /* Get plugins */
 const getCommercialPlugins = () => {
   return GET<SystemPluginTemplateItemType[]>('/core/app/plugin/getSystemPlugins');
 };
+
+export const getPluginGroups = async () => {
+  return FastGPTProUrl
+    ? await GET<PluginGroupSchemaType[]>('/core/app/plugin/getSystemPluginGroups')
+    : [];
+};
+
 export const getSystemPlugins = async (refresh = false) => {
   if (isProduction && global.systemPlugins && global.systemPlugins.length > 0 && !refresh)
     return cloneDeep(global.systemPlugins);
