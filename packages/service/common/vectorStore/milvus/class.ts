@@ -13,6 +13,7 @@ import type {
 } from '../controller.d';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { addLog } from '../../../common/system/log';
+import { customNanoid } from '@fastgpt/global/common/string/tools';
 
 export class MilvusCtrl {
   constructor() {}
@@ -63,7 +64,7 @@ export class MilvusCtrl {
             name: 'id',
             data_type: DataType.Int64,
             is_primary_key: true,
-            autoID: true
+            autoID: false // disable auto id, and we need to set id in insert
           },
           {
             name: 'vector',
@@ -127,11 +128,21 @@ export class MilvusCtrl {
     const client = await this.getClient();
     const { teamId, datasetId, collectionId, vector, retry = 3 } = props;
 
+    const generateId = () => {
+      // in js, the max safe integer is 2^53 - 1: 9007199254740991
+      // so we can generate a random number between 1-8 as the first digit
+      // and the rest 15 digits can be random
+      const firstDigit = customNanoid('12345678', 1);
+      const restDigits = customNanoid('1234567890', 15);
+      return Number(`${firstDigit}${restDigits}`);
+    };
+    const id = generateId();
     try {
       const result = await client.insert({
         collection_name: DatasetVectorTableName,
         data: [
           {
+            id,
             vector,
             teamId: String(teamId),
             datasetId: String(datasetId),
