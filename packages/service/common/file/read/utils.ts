@@ -119,20 +119,18 @@ export const readRawContentByFileBuffer = async ({
     }));
 
   // markdown data format
-  if (['md', 'html', 'docx', ...customReadFileExtension.split(',')].includes(extension)) {
-    if (imageList) {
-      for await (const item of imageList) {
-        const src = await uploadMongoImg({
-          type: MongoImageTypeEnum.collectionImage,
-          base64Img: `data:${item.mime};base64,${item.base64}`,
-          teamId,
-          metadata: {
-            ...metadata,
-            mime: item.mime
-          }
-        });
-        rawText = rawText.replace(item.uuid, src);
-      }
+  if (imageList) {
+    for await (const item of imageList) {
+      const src = await uploadMongoImg({
+        type: MongoImageTypeEnum.collectionImage,
+        base64Img: `data:${item.mime};base64,${item.base64}`,
+        teamId,
+        metadata: {
+          ...metadata,
+          mime: item.mime
+        }
+      });
+      rawText = rawText.replace(item.uuid, src);
     }
   }
 

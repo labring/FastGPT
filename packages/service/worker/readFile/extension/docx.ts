@@ -22,9 +22,8 @@ export const readDocsFile = async ({ buffer }: ReadRawTextByBuffer): Promise<Rea
             base64: imageBase64,
             mime
           });
-          const src = `${uuid}`;
           return {
-            src
+            src: uuid
           };
         })
       }

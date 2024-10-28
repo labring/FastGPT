@@ -1,10 +1,25 @@
-import { serverRequestBaseUrl } from '../../common/api/serverRequest';
-import init, { html2md as wasm_html2md } from './pkg/html2md_rust';
+import TurndownService from 'turndown';
+// @ts-ignore
+const turndownPluginGfm = require('turndown-plugin-gfm');
 
-await init(fetch(serverRequestBaseUrl + '/wasm/html2md_rust_bg.wasm'));
 export const html2md = (html: string): string => {
+  const turndownService = new TurndownService({
+    headingStyle: 'atx',
+    bulletListMarker: '-',
+    codeBlockStyle: 'fenced',
+    fence: '```',
+    emDelimiter: '_',
+    strongDelimiter: '**',
+    linkStyle: 'inlined',
+    linkReferenceStyle: 'full'
+  });
+
   try {
-    return wasm_html2md(html);
+    turndownService.remove(['i', 'script', 'iframe', 'style']);
+
+    turndownService.use(turndownPluginGfm.gfm);
+
+    return turndownService.turndown(html);
   } catch (error) {
     console.log('html 2 markdown error', error);
     return '';
