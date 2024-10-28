@@ -1,7 +1,5 @@
-import { markdownProcess } from '@fastgpt/global/common/string/markdown';
 import { uploadMongoImg } from '../image/controller';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import { addHours } from 'date-fns';
 import FormData from 'form-data';
 
 import { WorkerNameEnum, runWorker } from '../../../worker/utils';
@@ -10,6 +8,7 @@ import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
 import axios from 'axios';
 import { addLog } from '../../system/log';
+import { batchRun } from '@fastgpt/global/common/fn/utils';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -53,21 +52,6 @@ export const readRawContentByFileBuffer = async ({
   encoding: string;
   metadata?: Record<string, any>;
 }) => {
-  // Upload image in markdown
-  const matchMdImgTextAndUpload = ({ teamId, md }: { md: string; teamId: string }) =>
-    markdownProcess({
-      rawText: md,
-      uploadImgController: (base64Img) =>
-        uploadMongoImg({
-          type: MongoImageTypeEnum.collectionImage,
-          base64Img,
-          teamId,
-          metadata,
-          expiredTime: addHours(new Date(), 1)
-        })
-    });
-
-  /* If */
   const customReadfileUrl = process.env.CUSTOM_READ_FILE_URL;
   const customReadFileExtension = process.env.CUSTOM_READ_FILE_EXTENSION || '';
   const ocrParse = process.env.CUSTOM_READ_FILE_OCR || 'false';
@@ -111,19 +95,28 @@ export const readRawContentByFileBuffer = async ({
     };
   };
 
-  let { rawText, formatText } =
+  let { rawText, formatText, imageList } =
     (await readFileFromCustomService()) ||
     (await runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
       extension,
       encoding,
-      buffer
+      buffer,
+      teamId
     }));
 
   // markdown data format
-  if (['md', 'html', 'docx', ...customReadFileExtension.split(',')].includes(extension)) {
-    rawText = await matchMdImgTextAndUpload({
-      teamId: teamId,
-      md: rawText
+  if (imageList) {
+    await batchRun(imageList, async (item) => {
+      const src = await uploadMongoImg({
+        type: MongoImageTypeEnum.collectionImage,
+        base64Img: `data:${item.mime};base64,${item.base64}`,
+        teamId,
+        metadata: {
+          ...metadata,
+          mime: item.mime
+        }
+      });
+      rawText = rawText.replace(item.uuid, src);
     });
   }
 
