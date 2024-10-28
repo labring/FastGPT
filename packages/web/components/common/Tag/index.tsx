@@ -19,7 +19,7 @@ const colorMap: Record<
   }
 > = {
   white: {
-    borderColor: 'myGray.400',
+    borderColor: 'myGray.200',
     bg: 'white',
     color: 'myGray.700'
   },

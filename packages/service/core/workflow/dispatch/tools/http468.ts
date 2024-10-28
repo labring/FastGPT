@@ -240,13 +240,22 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       .forEach((item) => {
         const key = item.key.startsWith('$') ? item.key : `$.${item.key}`;
         results[item.key] = (() => {
-          // 检查是否是简单的属性访问或单一索引访问
-          if (/^\$(\.[a-zA-Z_][a-zA-Z0-9_]*)+$/.test(key) || /^\$(\[\d+\])+$/.test(key)) {
-            return JSONPath({ path: key, json: formatResponse })[0];
+          const result = JSONPath({ path: key, json: formatResponse });
+
+          // 如果结果为空,返回 undefined
+          if (!result || result.length === 0) {
+            return undefined;
           }
 
-          // 如果无法确定，默认返回数组
-          return JSONPath({ path: key, json: formatResponse });
+          // 以下情况返回数组:
+          // 1. 使用通配符 *
+          // 2. 使用数组切片 [start:end]
+          // 3. 使用过滤表达式 [?(...)]
+          // 4. 使用递归下降 ..
+          // 5. 使用多个结果运算符 ,
+          const needArrayResult = /[*]|[\[][:?]|\.\.|\,/.test(key);
+
+          return needArrayResult ? result : result[0];
         })();
       });
 

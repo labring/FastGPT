@@ -27,7 +27,6 @@
   "cron.every_month": "Run Monthly",
   "cron.every_week": "Run Weekly",
   "cron.interval": "Run at Intervals",
-  "current_settings": "Current Configuration",
   "day": "Day",
   "document_quote": "Document Reference",
   "document_quote_tip": "Usually used to accept user-uploaded document content (requires document parsing), and can also be used to reference other string data.",

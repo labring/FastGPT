@@ -182,7 +182,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       showChunkInput: false,
       showPromptInput: false,
       charsPointsPrice: agentModel.charsPointsPrice,
-      priceTip: t('common:core.dataset.import.Auto mode Estimated Price Tips', {
+      priceTip: t('dataset:import.Auto mode Estimated Price Tips', {
         price: agentModel.charsPointsPrice
       }),
       uploadRate: 100
@@ -197,7 +197,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       showChunkInput: true,
       showPromptInput: false,
       charsPointsPrice: vectorModel.charsPointsPrice,
-      priceTip: t('common:core.dataset.import.Embedding Estimated Price Tips', {
+      priceTip: t('dataset:import.Embedding Estimated Price Tips', {
         price: vectorModel.charsPointsPrice
       }),
       uploadRate: 150
@@ -212,8 +212,8 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       showChunkInput: true,
       showPromptInput: true,
       charsPointsPrice: agentModel.charsPointsPrice,
-      priceTip: t('common:core.dataset.import.QA Estimated Price Tips', {
-        price: agentModel?.charsPointsPrice
+      priceTip: t('dataset:import.Auto mode Estimated Price Tips', {
+        price: agentModel.charsPointsPrice
       }),
       uploadRate: 30
     }

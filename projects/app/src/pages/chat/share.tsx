@@ -386,7 +386,7 @@ const Render = (props: Props) => {
 
   return (
     <>
-      <NextHead title={props.appName} desc={props.appIntro} icon={props.appAvatar} />
+      <NextHead title={props.appName || 'AI'} desc={props.appIntro} icon={props.appAvatar} />
       {systemLoaded && (
         <ChatContextProvider params={contextParams}>
           <OutLink {...props} outLinkUid={contextParams.outLinkUid} />;
