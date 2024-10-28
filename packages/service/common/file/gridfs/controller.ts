@@ -159,7 +159,6 @@ export const readFileContentFromMongo = async ({
     getFileById({ bucketName, fileId }),
     getDownloadStream({ bucketName, fileId })
   ]);
-  // console.log('get file stream', Date.now() - start);
   if (!file) {
     return Promise.reject(CommonErrEnum.fileNotFound);
   }
