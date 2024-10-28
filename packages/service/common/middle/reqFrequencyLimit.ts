@@ -12,7 +12,7 @@ import { jsonRes } from '../response';
 export function useReqFrequencyLimit(seconds: number, limit: number) {
   return async (req: ApiRequestProps, res: NextApiResponse) => {
     const ip = requestIp.getClientIp(req);
-    if (!ip && process.env.USE_IP_LIMIT !== 'true') {
+    if (!ip || process.env.USE_IP_LIMIT !== 'true') {
       return;
     }
     try {

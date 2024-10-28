@@ -27,7 +27,6 @@
   "cron.every_month": "每月执行",
   "cron.every_week": "每周执行",
   "cron.interval": "间隔执行",
-  "current_settings": "当前配置",
   "day": "日",
   "document_quote": "文档引用",
   "document_quote_tip": "通常用于接受用户上传的文档内容(这需要文档解析)，也可以用于引用其他字符串数据。",

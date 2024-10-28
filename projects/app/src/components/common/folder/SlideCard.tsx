@@ -126,27 +126,9 @@ const FolderSlideCard = ({
           <MyDivider my={6} />
 
           <Box>
-            <FormLabel>{t('common:support.permission.Permission')}</FormLabel>
-
             {!isInheritPermission && (
               <Box mt={2}>
                 <ResumeInherit onResume={() => resumeInheritPermission?.().then(refetchResource)} />
-              </Box>
-            )}
-
-            {managePer.permission.hasManagePer && !!defaultPer && (
-              <Box mt={5}>
-                <Box fontSize={'sm'} color={'myGray.500'}>
-                  {t('common:permission.Default permission')}
-                </Box>
-                <DefaultPermissionList
-                  mt="1"
-                  per={defaultPer.value}
-                  defaultPer={defaultPer.defaultValue}
-                  isInheritPermission={isInheritPermission}
-                  onChange={(v) => defaultPer.onChange(v)}
-                  hasParent={hasParent}
-                />
               </Box>
             )}
             <Box mt={6}>
@@ -190,8 +172,8 @@ const FolderSlideCard = ({
                       <MemberListCard
                         mt={2}
                         tagStyle={{
-                          type: 'borderSolid',
-                          colorSchema: 'gray'
+                          type: 'fill',
+                          colorSchema: 'white'
                         }}
                       />
                     </>

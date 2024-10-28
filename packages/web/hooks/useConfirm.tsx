@@ -75,15 +75,22 @@ export const useConfirm = (props?: {
       const [requesting, setRequesting] = useState(false);
 
       useEffect(() => {
-        timer.current = setInterval(() => {
-          setCountDownAmount((val) => {
-            if (val <= 0) {
-              clearInterval(timer.current);
-            }
-            return val - 1;
-          });
-        }, 1000);
-      }, []);
+        if (isOpen) {
+          setCountDownAmount(countDown);
+          timer.current = setInterval(() => {
+            setCountDownAmount((val) => {
+              if (val <= 0) {
+                clearInterval(timer.current);
+              }
+              return val - 1;
+            });
+          }, 1000);
+
+          return () => {
+            clearInterval(timer.current);
+          };
+        }
+      }, [isOpen]);
 
       return (
         <MyModal isOpen={isOpen} iconSrc={iconSrc} title={title} maxW={['90vw', '400px']}>
