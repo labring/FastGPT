@@ -526,7 +526,8 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories
 --data-raw '{
     "appId": "appId",
     "offset": 0,
-    "pageSize": 20
+    "pageSize": 20,
+    "source: "api"
 }'
 ```
 
@@ -540,6 +541,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories
 - appId - 应用 Id
 - offset - 偏移量，即从第几条数据开始取
 - pageSize - 记录数量
+- source - 对话源
 {{% /alert %}}
 
 {{< /markdownify >}}

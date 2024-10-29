@@ -39,6 +39,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       return await authApp({
         req,
         authToken: true,
+        authApiKey: true,
         appId: parentId,
         per: ReadPermissionVal
       });
@@ -47,6 +48,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
         ...(await authUserPer({
           req,
           authToken: true,
+          authApiKey: true,
           per: ReadPermissionVal
         })),
         app: undefined
