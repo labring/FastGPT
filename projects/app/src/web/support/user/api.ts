@@ -30,17 +30,20 @@ export const postRegister = ({
   username,
   password,
   code,
-  inviterId
+  inviterId,
+  bd_vid
 }: {
   username: string;
   code: string;
   password: string;
   inviterId?: string;
+  bd_vid?: string;
 }) =>
   POST<ResLogin>(`/proApi/support/user/account/register/emailAndPhone`, {
     username,
     code,
     inviterId,
+    bd_vid,
     password: hashStr(password)
   });
 
