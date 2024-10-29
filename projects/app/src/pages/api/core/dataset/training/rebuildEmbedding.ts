@@ -117,7 +117,6 @@ async function handler(req: ApiRequestProps<rebuildEmbeddingBody>): Promise<Resp
                 billId,
                 mode: TrainingModeEnum.chunk,
                 model: vectorModel,
-                q: '1',
                 dataId: data._id
               }
             ],

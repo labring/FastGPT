@@ -190,7 +190,6 @@ const rebuildData = async ({
             billId: trainingData.billId,
             mode: TrainingModeEnum.chunk,
             model: trainingData.model,
-            q: '1',
             dataId: newRebuildingData._id
           }
         ],
