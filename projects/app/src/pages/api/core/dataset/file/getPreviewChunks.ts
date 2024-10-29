@@ -3,7 +3,7 @@ import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { OwnerPermissionVal, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authFile } from '@fastgpt/service/support/permission/auth/file';
 
 export type PostPreviewFilesChunksProps = {
@@ -60,6 +60,6 @@ async function handler(
     overlapRatio,
     customReg: customSplitChar ? [customSplitChar] : [],
     isQAImport: isQAImport
-  }).slice(0, 5);
+  }).slice(0, 15);
 }
 export default NextAPI(handler);
