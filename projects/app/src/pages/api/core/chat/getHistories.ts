@@ -17,8 +17,16 @@ async function handler(
   req: ApiRequestProps<getHistoriesBody, getHistoriesQuery>,
   res: ApiResponseType<any>
 ): Promise<PaginationResponse<getHistoriesResponse>> {
-  const { appId, shareId, outLinkUid, teamId, teamToken, offset, pageSize } =
-    req.body as getHistoriesBody;
+  const {
+    appId,
+    shareId,
+    outLinkUid,
+    teamId,
+    teamToken,
+    offset,
+    pageSize,
+    source = ChatSourceEnum.online
+  } = req.body as getHistoriesBody;
 
   const match = await (async () => {
     if (shareId && outLinkUid) {
@@ -47,7 +55,7 @@ async function handler(
       return {
         tmbId,
         appId,
-        source: ChatSourceEnum.online
+        source: source
       };
     }
   })();
