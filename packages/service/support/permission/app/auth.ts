@@ -72,6 +72,12 @@ export const authAppByTmbId = async ({
     const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
 
     const { Per } = await (async () => {
+      if (isOwner) {
+        return {
+          Per: new AppPermission({ isOwner: true })
+        };
+      }
+
       if (
         AppFolderTypeList.includes(app.type) ||
         app.inheritPermission === false ||

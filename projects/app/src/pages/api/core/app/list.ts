@@ -107,16 +107,11 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       .limit(searchKey ? 20 : 1000)
       .lean(),
     MongoResourcePermission.find({
-      $and: [
-        {
-          resourceType: PerResourceTypeEnum.app,
-          teamId,
-          resourceId: {
-            $exists: true
-          }
-        },
-        { $or: [{ tmbId }, { groupId: { $in: myGroupIds } }] }
-      ]
+      resourceType: PerResourceTypeEnum.app,
+      teamId,
+      resourceId: {
+        $exists: true
+      }
     }).lean()
   ]);
 
@@ -143,7 +138,8 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
               per: tmbPer ?? groupPer ?? AppDefaultPermissionVal,
               isOwner: String(app.tmbId) === String(tmbId) || myPer.isOwner
             }),
-            privateApp: !tmbPer && !groupPer
+            privateApp:
+              perList.filter((item) => String(item.resourceId) === String(app._id)).length <= 1
           };
         } else {
           const tmbPer = perList.find(
@@ -160,14 +156,16 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
               per: tmbPer ?? groupPer ?? AppDefaultPermissionVal,
               isOwner: String(app.tmbId) === String(tmbId) || myPer.isOwner
             }),
-            privateApp: !tmbPer && !groupPer
+            privateApp:
+              perList.filter((item) => String(item.resourceId) === String(app._id)).length <= 1
           };
         }
       })();
+
       return {
         ...app,
         permission: Per,
-        privateApp: privateApp
+        privateApp
       };
     })
     .filter((app) => app.permission.hasReadPer);
