@@ -4,6 +4,7 @@ import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { RequestPaging } from '@/types';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 export type GetChatSpeechProps = {
   ttsConfig: AppTTSConfigType;
   input: string;
@@ -56,6 +57,7 @@ export type InitChatResponse = {
 /* ---------- history ----------- */
 export type GetHistoriesProps = OutLinkChatAuthProps & {
   appId?: string;
+  source?: `${ChatSourceEnum}`;
 };
 
 export type UpdateHistoryProps = OutLinkChatAuthProps & {

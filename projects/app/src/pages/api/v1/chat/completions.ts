@@ -536,12 +536,13 @@ const authHeaderRequest = async ({
 
   const { app } = await (async () => {
     if (authType === AuthUserTypeEnum.apikey) {
-      if (!apiKeyAppId) {
+      const currentAppId = apiKeyAppId || appId;
+      if (!currentAppId) {
         return Promise.reject(
           'Key is error. You need to use the app key rather than the account key.'
         );
       }
-      const app = await MongoApp.findById(apiKeyAppId);
+      const app = await MongoApp.findById(currentAppId);
 
       if (!app) {
         return Promise.reject('app is empty');
