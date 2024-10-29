@@ -191,7 +191,7 @@ export type DatasetDataItemType = {
   chunkIndex: number;
   indexes: DatasetDataIndexItemType[];
   isOwner: boolean;
-  canWrite: boolean;
+  // permission: DatasetPermission;
 };
 
 /* --------------- file ---------------------- */
@@ -212,7 +212,7 @@ export type DatasetFileSchema = {
 /* ============= search =============== */
 export type SearchDataResponseItemType = Omit<
   DatasetDataItemType,
-  'teamId' | 'indexes' | 'isOwner' | 'canWrite'
+  'teamId' | 'indexes' | 'isOwner'
 > & {
   score: { type: `${SearchScoreTypeEnum}`; value: number; index: number }[];
   // score: number;
