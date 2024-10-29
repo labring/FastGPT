@@ -4,7 +4,6 @@ import { NextAPI } from '@/service/middleware/entry';
 import { DatasetTrainingCollectionName } from '@fastgpt/service/core/dataset/training/schema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/schema';
-import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -177,10 +176,6 @@ async function handler(
       permission
     }))
   );
-
-  if (data.find((item) => item.trainingAmount > 0)) {
-    startTrainingQueue();
-  }
 
   // count collections
   return {
