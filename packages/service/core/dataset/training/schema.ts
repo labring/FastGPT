@@ -63,7 +63,7 @@ const TrainingDataSchema = new Schema({
   },
   q: {
     type: String,
-    required: true
+    default: ''
   },
   a: {
     type: String,

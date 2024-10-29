@@ -83,7 +83,7 @@ importers:
     dependencies:
       '@types/pg':
         specifier: ^8.6.6
-        version: 8.11.6
+        version: 8.11.10
       axios:
         specifier: ^1.5.1
         version: 1.7.2
@@ -107,7 +107,7 @@ importers:
         version: 3.11.3
       pg:
         specifier: ^8.10.0
-        version: 8.12.0
+        version: 8.13.0
       wikijs:
         specifier: ^6.4.1
         version: 6.4.1(encoding@0.1.13)
@@ -140,7 +140,7 @@ importers:
         specifier: 2.4.2
         version: 2.4.2
       axios:
-        specifier: ^1.7.7
+        specifier: ^1.5.1
         version: 1.7.7
       chalk:
         specifier: ^5.3.0
@@ -155,7 +155,7 @@ importers:
         specifier: 2.30.0
         version: 2.30.0
       dayjs:
-        specifier: ^1.11.13
+        specifier: ^1.11.7
         version: 1.11.13
       decompress:
         specifier: ^4.2.1
@@ -167,10 +167,10 @@ importers:
         specifier: ^0.1.13
         version: 0.1.13
       file-type:
-        specifier: ^19.6.0
+        specifier: ^19.0.0
         version: 19.6.0
       form-data:
-        specifier: ^4.0.1
+        specifier: ^4.0.0
         version: 4.0.1
       iconv-lite:
         specifier: ^0.6.3
@@ -191,10 +191,10 @@ importers:
         specifier: ^4.17.21
         version: 4.17.21
       mammoth:
-        specifier: ^1.8.0
+        specifier: ^1.6.0
         version: 1.8.0
       mongoose:
-        specifier: ^7.8.2
+        specifier: ^7.0.2
         version: 7.8.2
       multer:
         specifier: 1.4.5-lts.1
@@ -208,9 +208,6 @@ importers:
       node-cron:
         specifier: ^3.0.3
         version: 3.0.3
-      node-html-markdown:
-        specifier: ^1.3.0
-        version: 1.3.0
       node-xlsx:
         specifier: ^0.24.0
         version: 0.24.0
@@ -221,40 +218,35 @@ importers:
         specifier: 4.4.168
         version: 4.4.168(encoding@0.1.13)
       pg:
-<<<<<<< HEAD
         specifier: ^8.10.0
-        version: 8.12.0
+        version: 8.13.0
       request-ip:
         specifier: ^3.3.0
         version: 3.3.0
-=======
-        specifier: ^8.13.0
-        version: 8.13.0
->>>>>>> 127e388f7 (fix: upload file)
       tiktoken:
-        specifier: ^1.0.17
+        specifier: ^1.0.15
         version: 1.0.17
       tunnel:
         specifier: ^0.0.6
         version: 0.0.6
       turndown:
-        specifier: ^7.2.0
+        specifier: ^7.1.2
         version: 7.2.0
     devDependencies:
       '@types/cookie':
-        specifier: ^0.5.4
+        specifier: ^0.5.2
         version: 0.5.4
       '@types/decompress':
         specifier: ^4.2.7
         version: 4.2.7
       '@types/jsonwebtoken':
-        specifier: ^9.0.7
+        specifier: ^9.0.3
         version: 9.0.7
       '@types/lodash':
-        specifier: ^4.17.12
+        specifier: ^4.14.191
         version: 4.17.12
       '@types/multer':
-        specifier: ^1.4.12
+        specifier: ^1.4.10
         version: 1.4.12
       '@types/node-cron':
         specifier: ^3.0.11
@@ -263,21 +255,16 @@ importers:
         specifier: 5.3.7
         version: 5.3.7
       '@types/pg':
-<<<<<<< HEAD
         specifier: ^8.6.6
-        version: 8.11.6
+        version: 8.11.10
       '@types/request-ip':
         specifier: ^0.0.37
         version: 0.0.37
-=======
-        specifier: ^8.11.10
-        version: 8.11.10
->>>>>>> 127e388f7 (fix: upload file)
       '@types/tunnel':
         specifier: ^0.0.4
         version: 0.0.4
       '@types/turndown':
-        specifier: ^5.0.5
+        specifier: ^5.0.4
         version: 5.0.5
 
   packages/web:
@@ -5675,10 +5662,6 @@ packages:
   hastscript@8.0.0:
     resolution: {integrity: sha512-dMOtzCEd3ABUeSIISmrETiKuyydk1w0pa+gE/uormcTpSYuaNJPbX1NU3JLyscSLjwAQM8bWMhhIlnCqnRvDTw==}
 
-  he@1.2.0:
-    resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
-    hasBin: true
-
   hexoid@1.0.0:
     resolution: {integrity: sha512-QFLV0taWQOZtvIRIAdBChesmogZrtuXvVWsFHZTk2SU+anspqZ2vMnoLg7IE1+Uk16N19APic1BuF8bC8c2m5g==}
     engines: {node: '>=8'}
@@ -7065,7 +7048,6 @@ packages:
     resolution: {integrity: sha512-avsJQhyd+680gKXyG/sQc0nXaC6rBkPOfyHYcFb9+hdkqQkR9bdnkJ0AMZhke0oesPqIO+mFFJ+IdBc7mst4IA==}
     engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
 
-<<<<<<< HEAD
   mysql2@3.11.3:
     resolution: {integrity: sha512-Qpu2ADfbKzyLdwC/5d4W7+5Yz7yBzCU05YWt5npWzACST37wJsB23wgOSo00qi043urkiRwXtEvJc9UnuLX/MQ==}
     engines: {node: '>= 8.0'}
@@ -7074,12 +7056,8 @@ packages:
     resolution: {integrity: sha512-eLoBxg6wE/rZkJPhU/xRX1WTpkFEwDJEN96oxFrTsqBdbT5ec295Q+CoHrL9IT0DipqKhmGcaZmwOt8OON5x1w==}
     engines: {node: '>=12.0.0'}
 
-  nan@2.20.0:
-    resolution: {integrity: sha512-bk3gXBZDGILuuo/6sKtr0DQmSThYHLtNCdSdXk9YkxD/jK6X2vmCyyXBBxyqZ4XcnzTyYEAThfX3DCEnLf6igw==}
-=======
   nan@2.22.0:
     resolution: {integrity: sha512-nbajikzWTMwsW+eSsNm3QwlOs7het9gGJU5dDZzRTQGk03vyBOauxgI4VakDzE0PtsGTmXPsXTbbjVhRwR5mpw==}
->>>>>>> 127e388f7 (fix: upload file)
 
   nanoid@3.3.7:
     resolution: {integrity: sha512-eSRppjcPIatRIMC1U6UngP8XFcz8MQWGQdt1MTBQ7NaAmvXDfvNxbvWV3x2y6CdEUciCSsDHDQZbhYaB8QEo2g==}
@@ -7182,13 +7160,6 @@ packages:
     resolution: {integrity: sha512-sp3FonBAaFe4aYTcFdZUn2NYkbP7xroPGYvQmP4Nl5PxamznItBnNCgjrVTKrEfQynInMsJvZrdmqUnysCJ8rw==}
     engines: {node: ^16.14.0 || >=18.0.0}
     hasBin: true
-
-  node-html-markdown@1.3.0:
-    resolution: {integrity: sha512-OeFi3QwC/cPjvVKZ114tzzu+YoR+v9UXW5RwSXGUqGb0qCl0DvP406tzdL7SFn8pZrMyzXoisfG2zcuF9+zw4g==}
-    engines: {node: '>=10.0.0'}
-
-  node-html-parser@6.1.13:
-    resolution: {integrity: sha512-qIsTMOY4C/dAa5Q5vsobRpOOvPfC4pB61UVW2uSwZNUp0QU/jCekTal1vMmbO0DgdHeLUJpv/ARmDqErVxA3Sg==}
 
   node-int64@0.4.0:
     resolution: {integrity: sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==}
@@ -12290,11 +12261,11 @@ snapshots:
   '@types/body-parser@1.19.5':
     dependencies:
       '@types/connect': 3.4.38
-      '@types/node': 22.7.8
+      '@types/node': 20.14.11
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 22.7.8
+      '@types/node': 20.14.11
 
   '@types/cookie@0.5.4': {}
 
@@ -12443,7 +12414,7 @@ snapshots:
 
   '@types/express-serve-static-core@5.0.0':
     dependencies:
-      '@types/node': 22.7.8
+      '@types/node': 20.14.11
       '@types/qs': 6.9.16
       '@types/range-parser': 1.2.7
       '@types/send': 0.17.4
@@ -12513,13 +12484,13 @@ snapshots:
 
   '@types/jsonwebtoken@9.0.7':
     dependencies:
-      '@types/node': 22.7.8
+      '@types/node': 20.14.11
 
   '@types/katex@0.16.7': {}
 
   '@types/lodash.mergewith@4.6.7':
     dependencies:
-      '@types/lodash': 4.17.7
+      '@types/lodash': 4.17.12
 
   '@types/lodash@4.17.12': {}
 
@@ -12576,7 +12547,7 @@ snapshots:
 
   '@types/pg@8.11.10':
     dependencies:
-      '@types/node': 22.7.8
+      '@types/node': 20.14.11
       pg-protocol: 1.7.0
       pg-types: 4.0.2
 
@@ -12626,12 +12597,12 @@ snapshots:
   '@types/send@0.17.4':
     dependencies:
       '@types/mime': 1.3.5
-      '@types/node': 22.7.8
+      '@types/node': 20.14.11
 
   '@types/serve-static@1.15.7':
     dependencies:
       '@types/http-errors': 2.0.4
-      '@types/node': 22.7.8
+      '@types/node': 20.14.11
       '@types/send': 0.17.4
 
   '@types/stack-utils@2.0.3': {}
@@ -12667,7 +12638,7 @@ snapshots:
 
   '@types/whatwg-url@8.2.2':
     dependencies:
-      '@types/node': 22.7.8
+      '@types/node': 20.14.11
       '@types/webidl-conversions': 7.0.3
 
   '@types/yargs-parser@21.0.3': {}
@@ -13003,7 +12974,7 @@ snapshots:
   ahooks@3.8.0(react@18.3.1):
     dependencies:
       '@babel/runtime': 7.24.8
-      dayjs: 1.11.11
+      dayjs: 1.11.13
       intersection-observer: 0.12.2
       js-cookie: 2.2.1
       lodash: 4.17.21
@@ -14522,7 +14493,7 @@ snapshots:
       eslint: 8.56.0
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.56.0))(eslint@8.56.0)
-      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.56.0))(eslint@8.56.0))(eslint@8.56.0)
+      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-typescript@3.6.1)(eslint@8.56.0)
       eslint-plugin-jsx-a11y: 6.9.0(eslint@8.56.0)
       eslint-plugin-react: 7.34.4(eslint@8.56.0)
       eslint-plugin-react-hooks: 4.6.2(eslint@8.56.0)
@@ -14546,7 +14517,7 @@ snapshots:
       enhanced-resolve: 5.17.0
       eslint: 8.56.0
       eslint-module-utils: 2.8.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.56.0))(eslint@8.56.0))(eslint@8.56.0)
-      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.56.0))(eslint@8.56.0))(eslint@8.56.0)
+      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-typescript@3.6.1)(eslint@8.56.0)
       fast-glob: 3.3.2
       get-tsconfig: 4.7.5
       is-core-module: 2.14.0
@@ -14568,7 +14539,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.56.0))(eslint@8.56.0))(eslint@8.56.0):
+  eslint-plugin-import@2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-typescript@3.6.1)(eslint@8.56.0):
     dependencies:
       array-includes: 3.1.8
       array.prototype.findlastindex: 1.2.5
@@ -15372,8 +15343,6 @@ snapshots:
       hast-util-parse-selector: 4.0.0
       property-information: 6.5.0
       space-separated-tokens: 2.0.2
-
-  he@1.2.0: {}
 
   hexoid@1.0.0: {}
 
@@ -16696,7 +16665,7 @@ snapshots:
       d3: 7.9.0
       d3-sankey: 0.12.3
       dagre-d3-es: 7.0.10
-      dayjs: 1.11.11
+      dayjs: 1.11.13
       dompurify: 3.1.6
       elkjs: 0.9.3
       katex: 0.16.11
@@ -17303,7 +17272,6 @@ snapshots:
 
   mute-stream@1.0.0: {}
 
-<<<<<<< HEAD
   mysql2@3.11.3:
     dependencies:
       aws-ssl-profiles: 1.1.2
@@ -17320,10 +17288,7 @@ snapshots:
     dependencies:
       lru-cache: 7.18.3
 
-  nan@2.20.0:
-=======
   nan@2.22.0:
->>>>>>> 127e388f7 (fix: upload file)
     optional: true
 
   nanoid@3.3.7: {}
@@ -17433,15 +17398,6 @@ snapshots:
       which: 4.0.0
     transitivePeerDependencies:
       - supports-color
-
-  node-html-markdown@1.3.0:
-    dependencies:
-      node-html-parser: 6.1.13
-
-  node-html-parser@6.1.13:
-    dependencies:
-      css-select: 5.1.0
-      he: 1.2.0
 
   node-int64@0.4.0: {}
 
@@ -17932,7 +17888,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
-      '@types/node': 22.7.8
+      '@types/node': 20.14.11
       long: 5.2.3
 
   proxy-addr@2.0.7:
