@@ -5,7 +5,6 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 
 async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
   const { dataId, q, a, indexes = [] } = req.body;
