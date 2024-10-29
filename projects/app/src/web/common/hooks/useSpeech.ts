@@ -111,7 +111,6 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
 
           const blob = new Blob(chunks, options);
           const duration = Math.round((Date.now() - startTimestamp.current) / 1000);
-          console.log(options, filename, '=-=-');
           formData.append('file', blob, filename);
           formData.append(
             'data',

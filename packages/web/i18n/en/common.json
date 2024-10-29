@@ -559,7 +559,7 @@
   "core.dataset.import.Link name placeholder": "Only supports static links. If the data is empty after uploading, the link may not be readable\nEach line one, up to 10 links at a time",
   "core.dataset.import.Local file": "Local File",
   "core.dataset.import.Local file desc": "Upload files in PDF, TXT, DOCX, etc. formats",
-  "core.dataset.import.Preview chunks": "Preview Segments (up to 5 segments)",
+  "core.dataset.import.Preview chunks": "Preview Chunks (limit 15)",
   "core.dataset.import.Preview raw text": "Preview Raw Text (up to 3000 characters)",
   "core.dataset.import.Process way": "Processing Method",
   "core.dataset.import.QA Estimated Price Tips": "Requires calling the file processing model, which consumes a lot of AI points: {{price}} points/1K tokens",

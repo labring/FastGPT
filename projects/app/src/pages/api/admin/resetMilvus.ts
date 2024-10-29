@@ -54,7 +54,6 @@ async function handler(
           }
         );
         dataLength += data.matchedCount;
-        console.log(data.matchedCount, '=-=-');
 
         // 插入数据进入训练库
         const max = global.systemEnv?.vectorMaxProcess || 10;
