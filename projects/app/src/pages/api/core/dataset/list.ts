@@ -92,16 +92,11 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
       })
       .lean(),
     MongoResourcePermission.find({
-      $and: [
-        {
-          resourceType: PerResourceTypeEnum.dataset,
-          teamId,
-          resourceId: {
-            $exists: true
-          }
-        },
-        { $or: [{ tmbId }, { groupId: { $in: myGroupIds } }] }
-      ]
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId,
+      resourceId: {
+        $exists: true
+      }
     }).lean()
   ]);
 
@@ -127,7 +122,8 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
               per: tmbPer ?? groupPer ?? DatasetDefaultPermissionVal,
               isOwner: String(parentDataset.tmbId) === tmbId || myPer.isOwner
             }),
-            privateDataset: !tmbPer && !groupPer
+            privateDataset:
+              perList.filter((item) => String(item.resourceId) === String(dataset._id)).length <= 1
           };
         } else {
           const tmbPer = perList.find(
@@ -148,10 +144,12 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
               per: tmbPer ?? groupPer ?? DatasetDefaultPermissionVal,
               isOwner: String(dataset.tmbId) === tmbId || myPer.isOwner
             }),
-            privateDataset: !tmbPer && !groupPer
+            privateDataset:
+              perList.filter((item) => String(item.resourceId) === String(dataset._id)).length <= 1
           };
         }
       })();
+
       return {
         ...dataset,
         permission: Per,
