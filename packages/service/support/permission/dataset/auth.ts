@@ -64,6 +64,11 @@ export const authDatasetByTmbId = async ({
 
     // get dataset permission or inherit permission from parent folder.
     const { Per } = await (async () => {
+      if (isOwner) {
+        return {
+          Per: new DatasetPermission({ isOwner: true })
+        };
+      }
       if (
         dataset.type === DatasetTypeEnum.folder ||
         dataset.inheritPermission === false ||
