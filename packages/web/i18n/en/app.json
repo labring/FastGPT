@@ -75,6 +75,7 @@
   "month.unit": "Day",
   "move_app": "Move Application",
   "not_json_file": "Please select a JSON file",
+  "open_vision_function_tip": "In addition to receiving file links, the node also needs to turn on the image recognition mode so that the model can process the image.",
   "or_drag_JSON": "or drag in JSON file",
   "paste_config": "Paste Configuration",
   "permission.des.manage": "Based on write permissions, you can configure publishing channels, view conversation logs, and assign permissions to the application.",
