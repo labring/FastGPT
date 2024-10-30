@@ -16,6 +16,7 @@
     "@babel/generator": "^7.25.6",
     "@babel/parser": "^7.25.6",
     "@babel/traverse": "^7.25.6",
-    "babel": "^6.23.0"
+    "babel": "^6.23.0",
+    "test": "file:"
   }
 }

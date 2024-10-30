@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "dependencies": {
     "@apidevtools/swagger-parser": "^10.1.0",
+    "@fastgpt/global": "file:",
     "axios": "^1.5.1",
     "cron-parser": "^4.9.0",
     "dayjs": "^1.11.7",

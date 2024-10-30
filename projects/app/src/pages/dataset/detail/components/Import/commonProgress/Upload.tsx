@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import {
   Box,
@@ -43,14 +43,18 @@ const Upload = () => {
   const { importSource, parentId, sources, setSources, processParamsForm, chunkSize } =
     useContextSelector(DatasetImportContext, (v) => v);
 
-  const isUploading = sources.some((file) => file.createStatus === 'creating');
-  const uploadComplete = sources.every((file) => file.createStatus === 'finish');
-  const hasErrors = sources.some((file) => file.errorMsg !== undefined);
-
   const { handleSubmit } = processParamsForm;
 
-  const totalFilesCount = sources.length;
-  const waitingFilesCount = sources.filter((file) => file.createStatus === 'waiting').length;
+  const { totalFilesCount, waitingFilesCount } = useMemo(() => {
+    const totalFiles = sources.length;
+    const waitingFiles = sources.filter((file) => file.createStatus === 'waiting').length;
+    return { totalFilesCount: totalFiles, waitingFilesCount: waitingFiles };
+  }, [sources]);
+
+  const { isAllWaiting } = useMemo(() => {
+    const isAllWaiting = waitingFilesCount === totalFilesCount;
+    return { isAllWaiting };
+  }, [waitingFilesCount, totalFilesCount, sources]);
 
   const { mutate: startUpload, isLoading } = useRequest({
     mutationFn: async ({ mode, customSplitChar, qaPrompt, webSelector }: ImportFormType) => {
@@ -127,7 +131,7 @@ const Upload = () => {
       }
     },
     onSuccess() {
-      if (!hasErrors) {
+      if (!sources.some((file) => file.errorMsg !== undefined)) {
         toast({
           title: t('common:core.dataset.import.Import success'),
           status: 'success'
@@ -205,17 +209,20 @@ const Upload = () => {
                   </Box>
                 </Td>
                 <Td>
-                  {!isUploading && item.createStatus !== 'finish' && (
-                    <IconButton
-                      variant={'grayDanger'}
-                      size={'sm'}
-                      icon={<MyIcon name={'delete'} w={'14px'} />}
-                      aria-label={'Delete file'}
-                      onClick={() => {
-                        setSources((prevFiles) => prevFiles.filter((file) => file.id !== item.id));
-                      }}
-                    />
-                  )}
+                  {!sources.some((file) => file.createStatus === 'creating') &&
+                    item.createStatus !== 'finish' && (
+                      <IconButton
+                        variant={'grayDanger'}
+                        size={'sm'}
+                        icon={<MyIcon name={'delete'} w={'14px'} />}
+                        aria-label={'Delete file'}
+                        onClick={() => {
+                          setSources((prevFiles) =>
+                            prevFiles.filter((file) => file.id !== item.id)
+                          );
+                        }}
+                      />
+                    )}
                 </Td>
               </Tr>
             ))}
@@ -225,14 +232,14 @@ const Upload = () => {
 
       <Flex justifyContent={'flex-end'} mt={4}>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => startUpload(data))}>
-          {totalFilesCount > 0
-            ? `${t('core.dataset.import.Total files', { total: totalFilesCount })} | `
-            : ''}
-          {waitingFilesCount === totalFilesCount
-            ? t('common:core.dataset.import.Start upload')
-            : sources.every((file) => file.createStatus === 'finish')
-              ? t('common:core.dataset.import.Upload complete')
-              : t('common:core.dataset.import.Continue upload')}
+          {totalFilesCount > 0 &&
+            `${t('core.dataset.import.Total files', { total: totalFilesCount })} | `}
+          {(() => {
+            if (isAllWaiting) return t('common:core.dataset.import.Start upload');
+            if (sources.every((file) => file.createStatus === 'finish'))
+              return t('common:core.dataset.import.Upload complete');
+            return t('common:core.dataset.import.Continue upload');
+          })()}
         </Button>
       </Flex>
     </Box>
