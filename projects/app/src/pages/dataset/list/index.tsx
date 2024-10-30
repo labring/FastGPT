@@ -157,19 +157,19 @@ const Dataset = () => {
                           icon: 'core/dataset/commonDatasetColor',
                           label: t('dataset:common_dataset'),
                           description: t('dataset:common_dataset_desc'),
-                          onClick: () => setCreateDatasetType(DatasetTypeEnum.dataset)
+                          onClick: () => onSelectDatasetType(DatasetTypeEnum.dataset)
                         },
                         {
                           icon: 'core/dataset/websiteDatasetColor',
                           label: t('dataset:website_dataset'),
                           description: t('dataset:website_dataset_desc'),
-                          onClick: () => setCreateDatasetType(DatasetTypeEnum.websiteDataset)
+                          onClick: () => onSelectDatasetType(DatasetTypeEnum.websiteDataset)
                         },
                         {
                           icon: 'core/dataset/externalDatasetColor',
                           label: t('dataset:external_file'),
                           description: t('dataset:external_file_dataset_desc'),
-                          onClick: () => setCreateDatasetType(DatasetTypeEnum.externalFile)
+                          onClick: () => onSelectDatasetType(DatasetTypeEnum.externalFile)
                         }
                       ]
                     },
