@@ -117,6 +117,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     }).lean()
   ]);
 
+  // Filter apps by permission
   const filterApps = myApps
     .map((app) => {
       const { Per, privateApp } = (() => {
@@ -124,20 +125,21 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
           (item) =>
             String(item.tmbId) === String(tmbId) || myGroupIds.includes(String(item.groupId))
         );
-        const getPer = (id: string) => {
+        const getPer = (appId: string) => {
           const tmbPer = myPerList.find(
-            (item) => String(item.resourceId) === id && !!item.tmbId
+            (item) => String(item.resourceId) === appId && !!item.tmbId
           )?.permission;
           const groupPer = getGroupPer(
             myPerList
               .filter(
                 (item) =>
-                  String(item.resourceId) === id && myGroupIds.includes(String(item.groupId))
+                  String(item.resourceId) === appId && myGroupIds.includes(String(item.groupId))
               )
               .map((item) => item.permission)
           );
 
-          const clbCount = perList.filter((item) => String(item.resourceId) === id).length;
+          // Count app collaborators
+          const clbCount = perList.filter((item) => String(item.resourceId) === appId).length;
 
           return {
             Per: new AppPermission({
