@@ -60,22 +60,6 @@ const Dataset = () => {
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
   const [createDatasetType, setCreateDatasetType] = useState<CreateDatasetType>();
 
-  const onSelectDatasetType = useCallback(
-    (e: CreateDatasetType) => {
-      if (
-        !feConfigs?.isPlus &&
-        (e === DatasetTypeEnum.websiteDataset || e === DatasetTypeEnum.externalFile)
-      ) {
-        return toast({
-          status: 'warning',
-          title: t('common:common.system.Commercial version function')
-        });
-      }
-      setCreateDatasetType(e);
-    },
-    [t, toast]
-  );
-
   const RenderSearchInput = useMemo(
     () => (
       <InputGroup maxW={['auto', '250px']}>

@@ -108,20 +108,20 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
             String(item.tmbId) === String(tmbId) || myGroupIds.includes(String(item.groupId))
         );
 
-        const getPer = (id: string) => {
+        const getPer = (datasetId: string) => {
           const tmbPer = myPerList.find(
-            (item) => String(item.resourceId) === id && !!item.tmbId
+            (item) => String(item.resourceId) === datasetId && !!item.tmbId
           )?.permission;
           const groupPer = getGroupPer(
             myPerList
               .filter(
                 (item) =>
-                  String(item.resourceId) === id && myGroupIds.includes(String(item.groupId))
+                  String(item.resourceId) === datasetId && myGroupIds.includes(String(item.groupId))
               )
               .map((item) => item.permission)
           );
 
-          const clbCount = perList.filter((item) => String(item.resourceId) === id).length;
+          const clbCount = perList.filter((item) => String(item.resourceId) === datasetId).length;
 
           return {
             Per: new DatasetPermission({
