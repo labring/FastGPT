@@ -28,6 +28,7 @@ import { CreateDatasetType } from './component/CreateModal';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -56,6 +57,7 @@ const Dataset = () => {
     setSearchKey
   } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
+  const { feConfigs } = useSystemStore();
   const { toast } = useToast();
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
   const [createDatasetType, setCreateDatasetType] = useState<CreateDatasetType>();
@@ -73,7 +75,7 @@ const Dataset = () => {
       }
       setCreateDatasetType(e);
     },
-    [t, toast]
+    [t, toast, feConfigs]
   );
 
   const RenderSearchInput = useMemo(
