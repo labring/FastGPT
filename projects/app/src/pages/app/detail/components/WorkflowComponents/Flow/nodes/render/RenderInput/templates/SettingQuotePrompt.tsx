@@ -327,7 +327,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
         {isOpen && <EditModal {...props} onClose={onClose} />}
       </>
     );
-  }, [isOpen, onClose, onOpen, t]);
+  }, [isOpen, onClose, onOpen, props, t]);
 
   return Render;
 };
