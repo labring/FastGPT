@@ -45,16 +45,19 @@ const Upload = () => {
 
   const { handleSubmit } = processParamsForm;
 
-  const { totalFilesCount, waitingFilesCount } = useMemo(() => {
-    const totalFiles = sources.length;
-    const waitingFiles = sources.filter((file) => file.createStatus === 'waiting').length;
-    return { totalFilesCount: totalFiles, waitingFilesCount: waitingFiles };
-  }, [sources]);
+  const totalFilesCount = sources.length;
+  const waitingFilesCount = sources.filter((file) => file.createStatus === 'waiting').length;
+  const isAllWaiting = waitingFilesCount === totalFilesCount;
 
-  const { isAllWaiting } = useMemo(() => {
-    const isAllWaiting = waitingFilesCount === totalFilesCount;
-    return { isAllWaiting };
-  }, [waitingFilesCount, totalFilesCount, sources]);
+  const buttonText = (() => {
+    if (isAllWaiting) {
+      return t('common:core.dataset.import.Start upload');
+    } else if (sources.every((file) => file.createStatus === 'finish')) {
+      return t('common:core.dataset.import.Upload complete');
+    } else {
+      return t('common:core.dataset.import.Continue upload');
+    }
+  })();
 
   const { mutate: startUpload, isLoading } = useRequest({
     mutationFn: async ({ mode, customSplitChar, qaPrompt, webSelector }: ImportFormType) => {
@@ -234,12 +237,7 @@ const Upload = () => {
         <Button isLoading={isLoading} onClick={handleSubmit((data) => startUpload(data))}>
           {totalFilesCount > 0 &&
             `${t('core.dataset.import.Total files', { total: totalFilesCount })} | `}
-          {(() => {
-            if (isAllWaiting) return t('common:core.dataset.import.Start upload');
-            if (sources.every((file) => file.createStatus === 'finish'))
-              return t('common:core.dataset.import.Upload complete');
-            return t('common:core.dataset.import.Continue upload');
-          })()}
+          {buttonText}
         </Button>
       </Flex>
     </Box>
