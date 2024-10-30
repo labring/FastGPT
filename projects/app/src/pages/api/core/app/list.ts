@@ -84,8 +84,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
 
     return {
       teamId,
-      ...(type && Array.isArray(type) && { type: { $in: type } }),
-      ...(type && { type }),
+      ...(type && (Array.isArray(type) ? { type: { $in: type } } : { type })),
       ...parseParentIdInMongo(parentId)
     };
   })();
