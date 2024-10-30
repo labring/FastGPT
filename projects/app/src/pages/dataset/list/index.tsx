@@ -60,6 +60,22 @@ const Dataset = () => {
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
   const [createDatasetType, setCreateDatasetType] = useState<CreateDatasetType>();
 
+  const onSelectDatasetType = useCallback(
+    (e: CreateDatasetType) => {
+      if (
+        !feConfigs?.isPlus &&
+        (e === DatasetTypeEnum.websiteDataset || e === DatasetTypeEnum.externalFile)
+      ) {
+        return toast({
+          status: 'warning',
+          title: t('common:common.system.Commercial version function')
+        });
+      }
+      setCreateDatasetType(e);
+    },
+    [t, toast]
+  );
+
   const RenderSearchInput = useMemo(
     () => (
       <InputGroup maxW={['auto', '250px']}>
@@ -141,19 +157,19 @@ const Dataset = () => {
                           icon: 'core/dataset/commonDatasetColor',
                           label: t('dataset:common_dataset'),
                           description: t('dataset:common_dataset_desc'),
-                          onClick: () => setCreateDatasetType(DatasetTypeEnum.dataset)
+                          onClick: () => onSelectDatasetType(DatasetTypeEnum.dataset)
                         },
                         {
                           icon: 'core/dataset/websiteDatasetColor',
                           label: t('dataset:website_dataset'),
                           description: t('dataset:website_dataset_desc'),
-                          onClick: () => setCreateDatasetType(DatasetTypeEnum.websiteDataset)
+                          onClick: () => onSelectDatasetType(DatasetTypeEnum.websiteDataset)
                         },
                         {
                           icon: 'core/dataset/externalDatasetColor',
                           label: t('dataset:external_file'),
                           description: t('dataset:external_file_dataset_desc'),
-                          onClick: () => setCreateDatasetType(DatasetTypeEnum.externalFile)
+                          onClick: () => onSelectDatasetType(DatasetTypeEnum.externalFile)
                         }
                       ]
                     },
