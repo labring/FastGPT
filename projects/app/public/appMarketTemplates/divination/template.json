@@ -1,0 +1,516 @@
+{
+  "name": "周易占卜",
+  "intro": "AI占卜,快来算算你的运势~",
+  "author": "",
+  "avatar": "/appMarketTemplates/divination/avatar.svg",
+  "tags": ["roleplay"],
+  "type": "advanced",
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "userGuide",
+        "name": "common:core.module.template.system_config",
+        "intro": "common:core.module.template.system_config_info",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "userGuide",
+        "position": {
+          "x": 262.2732338817093,
+          "y": -476.00241136598146
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "welcomeText",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "label": "core.app.Welcome Text",
+            "value": ""
+          },
+          {
+            "key": "variables",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "core.app.Chat Variable",
+            "value": []
+          },
+          {
+            "key": "questionGuide",
+            "valueType": "boolean",
+            "renderTypeList": ["hidden"],
+            "label": "core.app.Question Guide",
+            "value": false
+          },
+          {
+            "key": "tts",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "type": "web"
+            }
+          },
+          {
+            "key": "whisper",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "open": false,
+              "autoSend": false,
+              "autoTTSResponse": false
+            }
+          },
+          {
+            "key": "scheduleTrigger",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": null
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "448745",
+        "name": "common:core.module.template.work_start",
+        "intro": "",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "workflowStart",
+        "position": {
+          "x": 632.368838596004,
+          "y": -347.7446492944009
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "userChatInput",
+            "renderTypeList": ["reference", "textarea"],
+            "valueType": "string",
+            "label": "common:core.module.input.label.user question",
+            "required": true,
+            "toolDescription": "用户问题",
+            "debugLabel": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "userChatInput",
+            "key": "userChatInput",
+            "label": "common:core.module.input.label.user question",
+            "type": "static",
+            "valueType": "string",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "bg853CwHAw4a",
+        "name": "AI 对话",
+        "intro": "AI 大模型对话",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": 1318.728987052518,
+          "y": -612.0024113659815
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": ["settingLLMModel", "reference"],
+            "label": "AI 模型",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": "claude-3-5-sonnet-20240620"
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": 0,
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": 4000,
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": false,
+            "valueType": "boolean",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatQuoteRole",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "value": "system",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "boolean",
+            "value": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": ["textarea", "reference"],
+            "max": 3000,
+            "valueType": "string",
+            "label": "提示词",
+            "description": "core.app.tip.chatNodeSystemPromptTip",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": "你是精通中国传统周易八卦理论的卜算大师，能够对用户所求的问题进行占卜, 要列出正确的卦名，并用如下模版展示答案，注意模版中各部分内容字数，确保展示完全\n\n你应该先确认卦名，然后根据下表确认卦象对应的二进制，一步一步从上到下输出该二进制对应的阴阳爻，绝对不能出错, 在绘制svg的时候确保阴阳爻正确，最后根据阴阳爻得到svg卡片，最后输出对卦象的解读\n把思考过程输出到<thinking></thinking>中\n把 svg 卡片的内容输出到 svg 代码块中\n\n二进制转阴阳爻的示例: \n小畜卦的二进制是110111，从上到下对应的阴阳爻依次为: 阳阳阴阳阳阳\n损卦的二进制是100011，从上到下对应的阴阳爻依次为: 阳阴阴阴阳阳\n需卦的二进制是010111，从上到下对应的阴阳爻依次为: 阴阳阴阳阳阳\n\n\nsvg中的阳爻示例：\n<line x1=\"10\" y1=\"55\" x2=\"110\" y2=\"55\" stroke=\"#8A4419\" stroke-width=\"8\"/>\n\nsvg中的阴爻示例：\n<line x1=\"10\" y1=\"33\" x2=\"54\" y2=\"33\" stroke=\"#8A4419\" stroke-width=\"8\"/>\nline x1=\"66\" y1=\"33\" x2=\"110\" y2=\"33\" stroke=\"#8A4419\" stroke-width=\"8\"/>\n\n\n64卦对应的二进制 (注意二进制中的1表示阳，0表示阴):\n`\n| 卦名 | 二进制值 |\n|------|----------|\n| 乾   | 111111   |\n| 坤   | 000000   |\n| 屯   | 010001   |\n| 蒙   | 100010   |\n| 需   | 010111   |\n| 讼   | 111010   |\n| 师   | 000010   |\n| 比   | 010000   |\n| 小畜 | 110111   |\n| 履   | 111011   |\n| 泰   | 000111   |\n| 否   | 111000   |\n| 同人 | 111101   |\n| 大有 | 101111   |\n| 谦   | 000100   |\n| 豫   | 001000   |\n| 随   | 011001   |\n| 蛊   | 100110   |\n| 临   | 000011   |\n| 观   | 110000   |\n| 噬嗑 | 101001   |\n| 贲   | 100101   |\n| 剥   | 100000   |\n| 复   | 000001   |\n| 无妄 | 111001   |\n| 大畜 | 100111   |\n| 颐   | 100001   |\n| 大过 | 011110   |\n| 坎   | 010010   |\n| 离   | 101101   |\n| 咸   | 011100   |\n| 恒   | 001110   |\n| 遁   | 111100   |\n| 大壮 | 001111   |\n| 晋   | 101000   |\n| 明夷 | 000101   |\n| 家人 | 110101   |\n| 睽   | 101011   |\n| 蹇   | 010100   |\n| 解   | 001010   |\n| 损   | 100011   |\n| 益   | 110001   |\n| 夬   | 011111   |\n| 姤   | 111110   |\n| 萃   | 011000   |\n| 升   | 000110   |\n| 困   | 011010   |\n| 井   | 010110   |\n| 革   | 011101   |\n| 鼎   | 101110   |\n| 震   | 001001   |\n| 艮   | 100100   |\n| 渐   | 110100   |\n| 归妹 | 001011   |\n| 丰   | 001101   |\n| 旅   | 101100   |\n| 巽   | 110110   |\n| 兑   | 011011   |\n| 涣   | 110010   |\n| 节   | 010011   |\n| 中孚 | 110011   |\n| 小过 | 001100   |\n| 既济 | 010101   |\n| 未济 | 101010   |\n`\n\n\n模板\n`\n<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 600 820\">\n  <defs>\n    <filter id=\"paper-texture\" x=\"0\" y=\"0\" width=\"100%\" height=\"100%\">\n      <feTurbulence type=\"fractalNoise\" baseFrequency=\"0.04\" numOctaves=\"5\" result=\"noise\"/>\n      <feDiffuseLighting in=\"noise\" lighting-color=\"#f2e8c9\" surfaceScale=\"2\">\n        <feDistantLight azimuth=\"45\" elevation=\"60\"/>\n      </feDiffuseLighting>\n    </filter>\n    <pattern id=\"bamboo\" patternUnits=\"userSpaceOnUse\" width=\"100\" height=\"100\">\n      <path d=\"M50 0 Q60 25 50 50 Q40 75 50 100 M30 0 Q40 25 30 50 Q20 75 30 100 M70 0 Q80 25 70 50 Q60 75 70 100\" stroke=\"#476930\" fill=\"none\"/>\n    </pattern>\n  </defs>\n  \n  <!-- Background -->\n  <rect width=\"100%\" height=\"100%\" fill=\"#f2e8c9\" filter=\"url(#paper-texture)\"/>\n  \n  <!-- Decorative border -->\n  <rect x=\"20\" y=\"20\" width=\"560\" height=\"780\" fill=\"none\" stroke=\"#8A4419\" stroke-width=\"4\"/>\n  <rect x=\"30\" y=\"30\" width=\"540\" height=\"760\" fill=\"none\" stroke=\"#8A4419\" stroke-width=\"2\"/>\n  \n  <!-- Bamboo decoration -->\n  <rect x=\"40\" y=\"40\" width=\"20\" height=\"740\" fill=\"url(#bamboo)\"/>\n  <rect x=\"540\" y=\"40\" width=\"20\" height=\"740\" fill=\"url(#bamboo)\"/>\n  \n  <!-- Title -->\n  <text x=\"300\" y=\"80\" font-family=\"Noto Serif SC, STSong, serif\" font-size=\"36\" fill=\"#8A4419\" text-anchor=\"middle\" font-weight=\"bold\">周易筮占</text>\n  \n  <!-- Subtitle -->\n  <text x=\"300\" y=\"120\" font-family=\"Noto Serif SC, STKaiti, serif\" font-size=\"24\" fill=\"#8A4419\" text-anchor=\"middle\">睡后之财何时得</text>\n  \n  <!-- Divider -->\n  <line x1=\"100\" y1=\"140\" x2=\"500\" y2=\"140\" stroke=\"#8A4419\" stroke-width=\"2\"/>\n  \n  <!-- Question -->\n  <text x=\"300\" y=\"180\" font-family=\"Noto Serif SC, STSong, serif\" font-size=\"20\" fill=\"#8A4419\" text-anchor=\"middle\">\n    <tspan x=\"300\" dy=\"0\">问：某甲年三十有四，</tspan>\n    <tspan x=\"300\" dy=\"30\">何时可得睡后之财？</tspan>\n  </text>\n  \n  <!-- Hexagram -->\n  <g transform=\"translate(250, 250)\">\n    <!-- Bottom line (Yang) -->\n    <line x1=\"10\" y1=\"121\" x2=\"110\" y2=\"121\" stroke=\"#8A4419\" stroke-width=\"8\"/>\n    <!-- Second line (Yang) -->\n    <line x1=\"10\" y1=\"99\" x2=\"110\" y2=\"99\" stroke=\"#8A4419\" stroke-width=\"8\"/>\n    <!-- Third line (Yin) -->\n    <line x1=\"10\" y1=\"77\" x2=\"54\" y2=\"77\" stroke=\"#8A4419\" stroke-width=\"8\"/>\n    <line x1=\"66\" y1=\"77\" x2=\"110\" y2=\"77\" stroke=\"#8A4419\" stroke-width=\"8\"/>\n    <!-- Fourth line (Yang) -->\n    <line x1=\"10\" y1=\"55\" x2=\"110\" y2=\"55\" stroke=\"#8A4419\" stroke-width=\"8\"/>\n    <!-- Fifth line (Yin) -->\n    <line x1=\"10\" y1=\"33\" x2=\"54\" y2=\"33\" stroke=\"#8A4419\" stroke-width=\"8\"/>\n    <line x1=\"66\" y1=\"33\" x2=\"110\" y2=\"33\" stroke=\"#8A4419\" stroke-width=\"8\"/>\n    <!-- Top line (Yin) -->\n    <line x1=\"10\" y1=\"11\" x2=\"54\" y2=\"11\" stroke=\"#8A4419\" stroke-width=\"8\"/>\n    <line x1=\"66\" y1=\"11\" x2=\"110\" y2=\"11\" stroke=\"#8A4419\" stroke-width=\"8\"/>\n  </g>\n  \n  <!-- Hexagram name -->\n  <text x=\"300\" y=\"420\" font-family=\"Noto Serif SC, STKaiti, serif\" font-size=\"28\" fill=\"#8A4419\" text-anchor=\"middle\" font-weight=\"bold\">归妹 卦</text>\n  \n  <!-- Interpretation -->\n  <text x=\"80\" y=\"460\" font-family=\"Noto Serif SC, STSong, serif\" font-size=\"18\" fill=\"#8A4419\">\n    <tspan x=\"80\" dy=\"0\">筮得归妹卦，乃少女归于成家立业之象。观其卦象，</tspan>\n    <tspan x=\"80\" dy=\"30\">下兑上震，如雷声震动泽水，喜悦中带有变动。</tspan>\n    <tspan x=\"80\" dy=\"30\">子之睡后之财，当以喜悦之心迎接，但需警惕变数。</tspan>\n    <tspan x=\"80\" dy=\"30\">观其爻象，下二阳为基，显子有坚实基础；上四阴柔顺，</tspan>\n    <tspan x=\"80\" dy=\"30\">示当以柔克刚，静待时机，方可得财。</tspan>\n  </text>\n  \n  <!-- Summary -->\n  <text x=\"80\" y=\"650\" font-family=\"Noto Serif SC, STKaiti, serif\" font-size=\"22\" fill=\"#8A4419\" font-weight=\"bold\">\n    <tspan x=\"80\" dy=\"0\">卦意：喜悦中有变，柔中寓刚。当今三十有四，</tspan>\n    <tspan x=\"80\" dy=\"35\">至三十六七载，当有睡后之财渐成气候。</tspan>\n    <tspan x=\"80\" dy=\"35\">切记：以柔克刚，顺势而为，终可成就大事。</tspan>\n  </text>\n  \n  <!-- Seal -->\n  <circle cx=\"500\" cy=\"700\" r=\"40\" fill=\"#B22222\" opacity=\"0.5\"/>\n  <text x=\"500\" y=\"710\" font-family=\"Noto Serif SC, STKaiti, serif\" font-size=\"14\" fill=\"#FFFFFF\" text-anchor=\"middle\">\n    <tspan x=\"500\" dy=\"-10\">妙算</tspan>\n    <tspan x=\"500\" dy=\"20\">子印</tspan>\n  </text>\n  \n  <!-- Disclaimer -->\n  <text x=\"300\" y=\"770\" font-family=\"Noto Serif SC, STKaiti, serif\" font-size=\"16\" fill=\"#8A4419\" text-anchor=\"middle\" font-style=\"italic\">天机玄妙，此卦聊备参考，切勿执着</text>\n  \n  <!-- Footer -->\n  <text x=\"550\" y=\"815\" font-family=\"Noto Serif SC, STSong, serif\" font-size=\"14\" fill=\"#8A4419\" text-anchor=\"end\">妙算子 Claude 敬上</text>\n</svg>\n`"
+          },
+          {
+            "key": "history",
+            "renderTypeList": ["numberInput", "reference"],
+            "valueType": "chatHistory",
+            "label": "聊天记录",
+            "description": "workflow:max_dialog_rounds",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 6,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": ["settingDatasetQuotePrompt"],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "stringQuoteText",
+            "renderTypeList": ["reference", "textarea"],
+            "label": "文档引用",
+            "debugLabel": "文档引用",
+            "description": "app:document_quote_tip",
+            "valueType": "string",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": ["reference", "textarea"],
+            "valueType": "string",
+            "label": "用户问题",
+            "required": true,
+            "toolDescription": "用户问题",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "value": ["448745", "userChatInput"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "common:core.module.output.label.New context",
+            "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "common:core.module.output.label.Ai response content",
+            "description": "将在 stream 回复完毕后触发",
+            "valueType": "string",
+            "type": "static"
+          }
+        ]
+      },
+      {
+        "nodeId": "sbVUb0efY6Fm",
+        "name": "代码运行",
+        "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+        "avatar": "core/workflow/template/codeRun",
+        "flowNodeType": "code",
+        "showStatus": true,
+        "position": {
+          "x": 2210.2574140398733,
+          "y": -621.0024113659815
+        },
+        "version": "482",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "workflow:these_variables_will_be_input_parameters_for_code_execution",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "codeType",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": "js",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "code",
+            "renderTypeList": ["custom"],
+            "label": "",
+            "value": "function main({svg_str}){\n\n    // 正则表达式匹配代码块中的内容\n    const codeBlockRegex = /```[\\w]*\\n([\\s\\S]*?)```/;\n    const codeMatch = svg_str.match(codeBlockRegex);\n\n    // 正则表达式匹配 <thinking></thinking> 标签中的内容\n    const thinkingRegex = /<thinking>([\\s\\S]*?)<\\/thinking>/;\n    const thinkingMatch = svg_str.match(thinkingRegex);\n\n    // 提取代码块之后的所有内容\n    let contentAfterCodeBlock = null;\n    if (codeMatch) {\n        const endIndex = codeMatch.index + codeMatch[0].length;\n        contentAfterCodeBlock = svg_str.slice(endIndex).trim();\n    }\n\n    // 处理代码块内容\n    let base64 = null;\n    if (codeMatch) {\n        const extractedSvg = codeMatch[1].trim();\n        base64 = strToBase64(extractedSvg, 'data:image/svg+xml;base64,');\n    } else {\n        // 如果没有找到代码块，返回错误信息\n        return {\n            result: null,\n            thinking: null,\n            error: \"未找到有效的代码块标记。\"\n        };\n    }\n\n    // 处理 <thinking> 标签内容\n    let thinkingContent = null;\n    if (thinkingMatch) {\n        thinkingContent = thinkingMatch[1].trim();\n    }\n\n    return {\n        result: base64,\n        thinking: thinkingContent,\n        contentAfter: contentAfterCodeBlock\n    }\n}",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "svg_str",
+            "label": "svg_str",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": ["bg853CwHAw4a", "answerText"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_rawResponse",
+            "key": "system_rawResponse",
+            "label": "workflow:full_response_data",
+            "valueType": "object",
+            "type": "static",
+            "description": ""
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:execution_error",
+            "description": "代码运行错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key",
+            "valueDesc": ""
+          },
+          {
+            "id": "qLUQfhG0ILRX",
+            "type": "dynamic",
+            "key": "result",
+            "valueType": "string",
+            "label": "result",
+            "valueDesc": "",
+            "description": ""
+          },
+          {
+            "id": "faWiQXDtBUKj",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "thinking",
+            "label": "thinking"
+          },
+          {
+            "id": "mS7yAR8REIhZ",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "contentAfter",
+            "label": "contentAfter"
+          }
+        ]
+      },
+      {
+        "nodeId": "cPh2VZnVxjQ8",
+        "name": "指定回复",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 2911.2230784647795,
+          "y": -411.6915940628763
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": ["textarea", "reference"],
+            "valueType": "any",
+            "required": true,
+            "label": "回复的内容",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": "{{$sbVUb0efY6Fm.faWiQXDtBUKj$}}\n\n![]({{$sbVUb0efY6Fm.qLUQfhG0ILRX$}})\n\n{{$sbVUb0efY6Fm.mS7yAR8REIhZ$}}"
+          }
+        ],
+        "outputs": []
+      }
+    ],
+    "edges": [
+      {
+        "source": "bg853CwHAw4a",
+        "target": "sbVUb0efY6Fm",
+        "sourceHandle": "bg853CwHAw4a-source-right",
+        "targetHandle": "sbVUb0efY6Fm-target-left"
+      },
+      {
+        "source": "448745",
+        "target": "bg853CwHAw4a",
+        "sourceHandle": "448745-source-right",
+        "targetHandle": "bg853CwHAw4a-target-left"
+      },
+      {
+        "source": "sbVUb0efY6Fm",
+        "target": "cPh2VZnVxjQ8",
+        "sourceHandle": "sbVUb0efY6Fm-source-right",
+        "targetHandle": "cPh2VZnVxjQ8-target-left"
+      }
+    ],
+    "chatConfig": {
+      "welcomeText": "请输入您的问题，老朽将为您算上一卦~",
+      "variables": [],
+      "scheduledTriggerConfig": {
+        "cronString": "",
+        "timezone": "Asia/Shanghai",
+        "defaultPrompt": ""
+      },
+      "_id": "66f3c581e7fbb61a42775716"
+    }
+  }
+}
