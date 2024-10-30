@@ -120,47 +120,39 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   const filterApps = myApps
     .map((app) => {
       const { Per, privateApp } = (() => {
-        // Inherit app
-        if (app.inheritPermission && ParentApp && !AppFolderTypeList.includes(app.type)) {
-          const tmbPer = perList.find(
-            (item) => String(item.resourceId) === String(ParentApp._id) && !!item.tmbId
+        const myPerList = perList.filter(
+          (item) =>
+            String(item.tmbId) === String(tmbId) || myGroupIds.includes(String(item.groupId))
+        );
+        const getPer = (id: string) => {
+          const tmbPer = myPerList.find(
+            (item) => String(item.resourceId) === id && !!item.tmbId
           )?.permission;
           const groupPer = getGroupPer(
-            perList
+            myPerList
               .filter(
                 (item) =>
-                  String(item.resourceId) === String(ParentApp._id) &&
-                  myGroupIds.includes(String(item.groupId))
+                  String(item.resourceId) === id && myGroupIds.includes(String(item.groupId))
               )
               .map((item) => item.permission)
           );
+
+          const clbCount = perList.filter((item) => String(item.resourceId) === id).length;
 
           return {
             Per: new AppPermission({
               per: tmbPer ?? groupPer ?? AppDefaultPermissionVal,
               isOwner: String(app.tmbId) === String(tmbId) || myPer.isOwner
             }),
-            privateApp:
-              perList.filter((item) => String(item.resourceId) === String(app._id)).length <= 1
+            privateApp: AppFolderTypeList.includes(app.type) ? clbCount <= 1 : clbCount === 0
           };
+        };
+
+        // Inherit app
+        if (app.inheritPermission && ParentApp && !AppFolderTypeList.includes(app.type)) {
+          return getPer(String(ParentApp._id));
         } else {
-          const tmbPer = perList.find(
-            (item) => String(item.resourceId) === String(app._id) && !!item.tmbId
-          )?.permission;
-          const group = perList.filter(
-            (item) =>
-              String(item.resourceId) === String(app._id) &&
-              myGroupIds.includes(String(item.groupId))
-          );
-          const groupPer = getGroupPer(group.map((item) => item.permission));
-          return {
-            Per: new AppPermission({
-              per: tmbPer ?? groupPer ?? AppDefaultPermissionVal,
-              isOwner: String(app.tmbId) === String(tmbId) || myPer.isOwner
-            }),
-            privateApp:
-              perList.filter((item) => String(item.resourceId) === String(app._id)).length <= 1
-          };
+          return getPer(String(app._id));
         }
       })();
 
