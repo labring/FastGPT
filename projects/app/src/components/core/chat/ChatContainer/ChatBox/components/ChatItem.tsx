@@ -24,6 +24,7 @@ import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import { isEqual } from 'lodash';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatItemTime } from '@fastgpt/global/common/string/time';
+import dayjs from 'dayjs';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -132,8 +133,6 @@ const ChatItem = (props: Props) => {
     fontWeight: '400',
     color: 'myGray.500'
   };
-  const { isPc } = useSystem();
-  const timeLabelRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
 
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
@@ -205,37 +204,29 @@ const ChatItem = (props: Props) => {
 
   return (
     <Box
-      onClick={() => {
-        if (isPc || !timeLabelRef.current) return;
-        timeLabelRef.current.style.display =
-          timeLabelRef.current?.style.display === 'none' ? 'block' : 'none';
-      }}
       _hover={{
-        '& .time-label': isPc
-          ? {
-              display: 'block'
-            }
-          : {
-              display: 'none'
-            }
+        '& .time-label': {
+          display: 'block'
+        }
       }}
     >
       {/* control icon */}
       <Flex w={'100%'} alignItems={'flex-end'} gap={2} justifyContent={styleMap.justifyContent}>
         {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
           <Flex order={styleMap.order} ml={styleMap.ml} align={'center'} gap={'0.62rem'}>
-            <Box
-              className="time-label"
-              ref={timeLabelRef}
-              display={'none'}
-              order={type === ChatRoleEnum.AI ? 2 : 0}
-              fontSize={styleMap.fontSize}
-              textAlign={'center'}
-              color={styleMap.color}
-              fontWeight={styleMap.fontWeight}
-            >
-              {chat.time && (formatTimeToChatItemTime(chat.time) as any)}
-            </Box>
+            {chat.time && type === ChatRoleEnum.Human && (
+              <Box
+                className={'time-label'}
+                fontSize={styleMap.fontSize}
+                color={styleMap.color}
+                fontWeight={styleMap.fontWeight}
+                display={['block', 'none']}
+              >
+                {t(formatTimeToChatItemTime(chat.time) as any, {
+                  time: dayjs(chat.time).format('HH : mm')
+                })}
+              </Box>
+            )}
             <ChatController {...props} isLastChild={isLastChild} />
           </Flex>
         )}

@@ -68,6 +68,7 @@ import { useCreation, useMemoizedFn, useThrottleFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { formatTimeToChatItemTime } from '@fastgpt/global/common/string/time';
+import dayjs from 'dayjs';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -109,12 +110,12 @@ type Props = OutLinkChatAuthProps &
     onDelMessage?: (e: { contentId: string }) => void;
   };
 
-const ChatTimeBox = ({ time }: { time: string }) => {
+const ChatTimeBox = ({ time }: { time: Date }) => {
   const { t } = useTranslation();
 
   return (
     <Box w={'100%'} fontSize={'mini'} textAlign={'center'} color={'myGray.500'} fontWeight={'400'}>
-      {t(formatTimeToChatItemTime(time) as any)}
+      {t(formatTimeToChatItemTime(time) as any, { time: dayjs(time).format('HH : mm') })}
     </Box>
   );
 };
@@ -447,7 +448,7 @@ const ChatBox = (
             {
               dataId: getNanoid(24),
               obj: ChatRoleEnum.Human,
-              time: new Date().toString(),
+              time: new Date(),
               value: [
                 ...files.map((file) => ({
                   type: ChatItemValueTypeEnum.file,
@@ -533,7 +534,7 @@ const ChatBox = (
                 return {
                   ...item,
                   status: ChatStatusEnum.finish,
-                  time: new Date().toString(),
+                  time: new Date(),
                   responseData: item.responseData
                     ? mergeChatResponseData([...item.responseData, ...responseData])
                     : responseData
@@ -575,7 +576,7 @@ const ChatBox = (
                 if (index !== state.length - 1) return item;
                 return {
                   ...item,
-                  time: new Date().toString(),
+                  time: new Date(),
                   status: ChatStatusEnum.finish
                 };
               })

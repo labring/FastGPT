@@ -13,7 +13,7 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { formatTimeToChatTime } from '../../../../../../packages/global/common/string/time';
+import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 
 type HistoryItemType = {
   id: string;

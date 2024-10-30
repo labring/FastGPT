@@ -46,7 +46,7 @@ export const formatTimeToChatTime = (time: Date) => {
   return target.format('YYYY-M-D');
 };
 
-export const formatTimeToChatItemTime = (time: string) => {
+export const formatTimeToChatItemTime = (time: Date) => {
   const now = dayjs();
   const target = dayjs(time);
   const detailTime = target.format('HH : mm');
@@ -58,7 +58,7 @@ export const formatTimeToChatItemTime = (time: string) => {
 
   // 如果是昨天，展示昨天+几时:几分
   if (now.subtract(1, 'day').isSame(target, 'day')) {
-    return `common:yesterday_detail_time, { time: ${detailTime} }`;
+    return i18nT('common:yesterday_detail_time');
   }
 
   // 如果是今年，展示某月某日+几时:几分
