@@ -106,68 +106,75 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
   /* Perform a voice playback */
   const playAudioByText = useCallback(
     async ({ text, buffer }: { text: string; buffer?: Uint8Array }) => {
-      const playAudioBuffer = (buffer: Uint8Array) => {
-        if (!audioRef.current) return;
-        const audioUrl = URL.createObjectURL(new Blob([buffer], { type: 'audio/mpeg' }));
+      return new Promise<{ buffer?: Uint8Array }>((resolve, reject) => {
+        const playAudioBuffer = (buffer: Uint8Array) => {
+          if (!audioRef.current) return;
+          const audioUrl = URL.createObjectURL(new Blob([buffer], { type: 'audio/mpeg' }));
 
-        audioRef.current.src = audioUrl;
-        audioRef.current.play();
-      };
-      const readAudioStream = (stream: ReadableStream<Uint8Array>) => {
-        if (!audioRef.current) return;
+          audioRef.current.src = audioUrl;
+          audioRef.current.play();
+        };
 
-        if (!MediaSource) {
-          toast({
-            status: 'error',
-            title: t('common:core.chat.Audio Not Support')
-          });
-          return;
-        }
+        const readAudioStreamWithMediaSource = async (stream: ReadableStream<Uint8Array>) => {
+          if (!audioRef.current) return;
 
-        // Create media source and play audio
-        const ms = new MediaSource();
-        const url = URL.createObjectURL(ms);
-        audioRef.current.src = url;
-        audioRef.current.play();
+          const ms = new MediaSource();
+          const url = URL.createObjectURL(ms);
+          audioRef.current.src = url;
+          audioRef.current.play();
 
-        let u8Arr: Uint8Array = new Uint8Array();
-        return new Promise<Uint8Array>(async (resolve, reject) => {
-          // Async to read data from ms
           await new Promise((resolve) => {
             ms.onsourceopen = resolve;
           });
           const sourceBuffer = ms.addSourceBuffer(contentType);
 
           const reader = stream.getReader();
+          const chunks: Uint8Array[] = [];
 
-          // read stream
           try {
             while (true) {
               const { done, value } = await reader.read();
-              if (done || audioRef.current?.paused) {
-                resolve(u8Arr);
-                if (sourceBuffer.updating) {
-                  await new Promise((resolve) => (sourceBuffer.onupdateend = resolve));
-                }
-                ms.endOfStream();
-                return;
-              }
-
-              u8Arr = new Uint8Array([...u8Arr, ...value]);
-
-              await new Promise((resolve) => {
-                sourceBuffer.onupdateend = resolve;
-                sourceBuffer.appendBuffer(value.buffer);
-              });
+              if (done) break;
+              chunks.push(value);
             }
-          } catch (error) {
-            reject(error);
-          }
-        });
-      };
 
-      return new Promise<{ buffer?: Uint8Array }>(async (resolve, reject) => {
-        text = text.replace(/\\n/g, '\n');
+            const audioBuffer = new Blob(chunks, { type: contentType });
+            const audioUrl = URL.createObjectURL(audioBuffer);
+            audioRef.current.src = audioUrl;
+            audioRef.current.play();
+          } catch (error) {
+            toast({
+              status: 'error',
+              title: getErrText(error, t('common:core.chat.Audio Speech Error'))
+            });
+          }
+        };
+
+        const readAudioStreamWithoutMediaSource = async (stream: ReadableStream<Uint8Array>) => {
+          if (!audioRef.current) return;
+
+          const reader = stream.getReader();
+          const chunks: Uint8Array[] = [];
+
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              chunks.push(value);
+            }
+
+            const audioBuffer = new Blob(chunks, { type: contentType });
+            const audioUrl = URL.createObjectURL(audioBuffer);
+            audioRef.current.src = audioUrl;
+            audioRef.current.play();
+          } catch (error) {
+            toast({
+              status: 'error',
+              title: getErrText(error, t('common:core.chat.Audio Speech Error'))
+            });
+          }
+        };
+
         try {
           // stop last audio
           cancelAudio();
@@ -181,11 +188,16 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
             }
 
             /* request tts */
-            const audioBuffer = await readAudioStream(await getAudioStream(text));
-
-            resolve({
-              buffer: audioBuffer
-            });
+            getAudioStream(text)
+              .then(async (audioStream) => {
+                if (typeof MediaSource !== 'undefined') {
+                  await readAudioStreamWithMediaSource(audioStream);
+                } else {
+                  await readAudioStreamWithoutMediaSource(audioStream);
+                }
+                resolve({});
+              })
+              .catch(reject);
           } else {
             // window speech
             playWebAudio(text);
