@@ -19,7 +19,7 @@ async function handler(req: NextApiRequest): Promise<DatasetSimpleItemType[]> {
   const {
     teamId,
     tmbId,
-    permission: tmbPer
+    permission: myPer
   } = await authUserPer({
     req,
     authToken: true,
@@ -43,65 +43,55 @@ async function handler(req: NextApiRequest): Promise<DatasetSimpleItemType[]> {
       })
       .lean(),
     MongoResourcePermission.find({
-      $and: [
-        {
-          resourceType: PerResourceTypeEnum.dataset,
-          teamId,
-          resourceId: {
-            $exists: true
-          }
-        },
-        { $or: [{ tmbId }, { groupId: { $in: myGroupIds } }] }
-      ]
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId,
+      resourceId: {
+        $exists: true
+      }
     }).lean()
   ]);
 
   const filterDatasets = myDatasets
     .map((dataset) => {
-      const perVal = (() => {
+      const per = (() => {
+        const myPerList = perList.filter(
+          (item) =>
+            String(item.tmbId) === String(tmbId) || myGroupIds.includes(String(item.groupId))
+        );
+
+        const getPer = (id: string) => {
+          const tmbPer = myPerList.find(
+            (item) => String(item.resourceId) === id && !!item.tmbId
+          )?.permission;
+          const groupPer = getGroupPer(
+            myPerList
+              .filter(
+                (item) =>
+                  String(item.resourceId) === id && myGroupIds.includes(String(item.groupId))
+              )
+              .map((item) => item.permission)
+          );
+
+          return new DatasetPermission({
+            per: tmbPer ?? groupPer ?? DatasetDefaultPermissionVal,
+            isOwner: String(dataset.tmbId) === String(tmbId) || myPer.isOwner
+          });
+        };
+
         const parentDataset = myDatasets.find(
           (item) => String(item._id) === String(dataset.parentId)
         );
 
         if (dataset.inheritPermission && dataset.parentId && parentDataset) {
-          const tmbPer = perList.find(
-            (item) => String(item.resourceId) === String(parentDataset._id) && !!item.tmbId
-          )?.permission;
-          const groupPer = getGroupPer(
-            perList
-              .filter(
-                (item) =>
-                  String(item.resourceId) === String(parentDataset._id) &&
-                  myGroupIds.includes(String(item.groupId))
-              )
-              .map((item) => item.permission)
-          );
-          return tmbPer ?? groupPer ?? DatasetDefaultPermissionVal;
+          return getPer(parentDataset._id);
         } else {
-          const tmbPer = perList.find(
-            (item) => String(item.resourceId) === String(dataset._id) && !!item.tmbId
-          )?.permission;
-          const groupPer = getGroupPer(
-            perList
-              .filter(
-                (item) =>
-                  String(item.resourceId) === String(dataset._id) &&
-                  myGroupIds.includes(String(item.groupId))
-              )
-              .map((item) => item.permission)
-          );
-          return tmbPer ?? groupPer ?? DatasetDefaultPermissionVal;
+          return getPer(dataset._id);
         }
       })();
 
-      const Per = new DatasetPermission({
-        per: perVal ?? DatasetDefaultPermissionVal,
-        isOwner: String(dataset.tmbId) === tmbId || tmbPer.isOwner
-      });
-
       return {
         ...dataset,
-        permission: Per
+        permission: per
       };
     })
     .filter((app) => app.permission.hasReadPer);
