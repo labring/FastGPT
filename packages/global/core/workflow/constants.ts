@@ -125,6 +125,7 @@ export enum NodeInputKeyEnum {
   textareaInput = 'system_textareaInput',
   addInputParam = 'system_addInputParam',
   forbidStream = 'system_forbid_stream',
+  fileLinks = 'system_fileLinks',
 
   // history
   historyMaxAmount = 'maxContext',

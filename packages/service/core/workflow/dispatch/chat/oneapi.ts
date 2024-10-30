@@ -46,6 +46,8 @@ import { WorkflowResponseType } from '../type';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getFileContentFromLinks, getHistoryFileLinks } from '../tools/readFiles';
+import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -69,7 +71,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     histories,
     node: { name },
     query,
+    runningAppInfo: { teamId },
     workflowStreamResponse,
+    chatConfig,
     params: {
       model,
       temperature = 0,
@@ -83,7 +87,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quoteTemplate,
       quotePrompt,
       aiChatVision,
-      stringQuoteText
+      system_fileLinks: fileLinks,
+      stringQuoteText //abandon
     }
   } = props;
   const { files: inputFiles } = chatValue2RuntimePrompt(query);
@@ -100,11 +105,22 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     return Promise.reject('The chat model is undefined, you need to select a chat model.');
   }
 
-  const { datasetQuoteText } = await filterDatasetQuote({
-    quoteQA,
-    model: modelConstantsData,
-    quoteTemplate
-  });
+  const [{ datasetQuoteText }, { documentQuoteText, userFiles }] = await Promise.all([
+    filterDatasetQuote({
+      quoteQA,
+      model: modelConstantsData,
+      quoteTemplate
+    }),
+    getMultiInput({
+      histories,
+      inputFiles,
+      fileLinks,
+      stringQuoteText,
+      requestOrigin,
+      maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
+      teamId
+    })
+  ]);
 
   const [{ filterMessages }] = await Promise.all([
     getChatMessages({
@@ -115,9 +131,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       aiChatQuoteRole,
       datasetQuotePrompt: quotePrompt,
       userChatInput,
-      inputFiles,
       systemPrompt,
-      stringQuoteText
+      userFiles,
+      documentQuoteText
     }),
     (() => {
       // censor model and system key
@@ -302,6 +318,65 @@ async function filterDatasetQuote({
     datasetQuoteText
   };
 }
+
+async function getMultiInput({
+  histories,
+  inputFiles,
+  fileLinks,
+  stringQuoteText,
+  requestOrigin,
+  maxFiles,
+  teamId
+}: {
+  histories: ChatItemType[];
+  inputFiles: UserChatItemValueItemType['file'][];
+  fileLinks?: string[];
+  stringQuoteText?: string; // file quote
+  requestOrigin?: string;
+  maxFiles: number;
+  teamId: string;
+}) {
+  // 旧版本适配=>
+  if (stringQuoteText)
+    return {
+      documentQuoteText: stringQuoteText,
+      userFiles: inputFiles
+    };
+
+  if (!fileLinks) {
+    return {
+      documentQuoteText: '',
+      userFiles: inputFiles
+    };
+  }
+
+  // If fileLinks params is not empty, it means it is a new version, not get the global file.
+
+  // Get files from histories
+  const filesFromHistories = getHistoryFileLinks(histories);
+  const urls = [...fileLinks, ...filesFromHistories];
+
+  if (urls.length === 0) {
+    return {
+      documentQuoteText: '',
+      userFiles: []
+    };
+  }
+
+  const { text } = await getFileContentFromLinks({
+    // Concat fileUrlList and filesFromHistories; remove not supported files
+    urls,
+    requestOrigin,
+    maxFiles,
+    teamId
+  });
+
+  return {
+    documentQuoteText: text,
+    userFiles: fileLinks.map((url) => parseUrlToFileType(url))
+  };
+}
+
 async function getChatMessages({
   aiChatQuoteRole,
   datasetQuotePrompt = '',
@@ -310,10 +385,11 @@ async function getChatMessages({
   histories = [],
   systemPrompt,
   userChatInput,
-  inputFiles,
+  userFiles,
   model,
-  stringQuoteText
+  documentQuoteText
 }: {
+  model: LLMModelItemType;
   // dataset quote
   aiChatQuoteRole: AiChatQuoteRoleType; // user: replace user prompt; system: replace system prompt
   datasetQuotePrompt?: string;
@@ -323,9 +399,9 @@ async function getChatMessages({
   histories: ChatItemType[];
   systemPrompt: string;
   userChatInput: string;
-  inputFiles: UserChatItemValueItemType['file'][];
-  model: LLMModelItemType;
-  stringQuoteText?: string; // file quote
+
+  userFiles: UserChatItemValueItemType['file'][];
+  documentQuoteText?: string; // document quote
 }) {
   // User role or prompt include question
   const quoteRole =
@@ -357,10 +433,10 @@ async function getChatMessages({
 
   const messages: ChatItemType[] = [
     ...getSystemPrompt_ChatItemType(replaceSystemPrompt),
-    ...(stringQuoteText // file quote
+    ...(documentQuoteText // file quote
       ? getSystemPrompt_ChatItemType(
           replaceVariable(Prompt_DocumentQuote, {
-            quote: stringQuoteText
+            quote: documentQuoteText
           })
         )
       : []),
@@ -368,7 +444,7 @@ async function getChatMessages({
     {
       obj: ChatRoleEnum.Human,
       value: runtimePrompt2ChatsValue({
-        files: inputFiles,
+        files: userFiles,
         text: replaceInputValue
       })
     }

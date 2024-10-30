@@ -1,14 +1,5 @@
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { countPromptTokens } from '../../common/string/tiktoken/index';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import {
-  getPluginInputsFromStoreNodes,
-  getPluginRunContent
-} from '@fastgpt/global/core/app/plugin/utils';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { RuntimeUserPromptType, UserChatItemType } from '@fastgpt/global/core/chat/type';
-import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 
 /* filter search result */
 export const filterSearchResultsByMaxChars = async (

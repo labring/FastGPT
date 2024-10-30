@@ -109,7 +109,7 @@ export const loadRequestMessages = async ({
     }
     return Promise.all(
       messages.map(async (item) => {
-        if (item.type === 'image_url') {
+        if (item.type === 'image_url' && process.env.MULTIPLE_DATA_TO_BASE64 === 'true') {
           // Remove url origin
           const imgUrl = (() => {
             if (origin && item.image_url.url.startsWith(origin)) {
@@ -149,7 +149,7 @@ export const loadRequestMessages = async ({
   };
   // Split question text and image
   const parseStringWithImages = (input: string): ChatCompletionContentPart[] => {
-    if (!useVision) {
+    if (!useVision || input.length > 500) {
       return [{ type: 'text', text: input || '' }];
     }
 
@@ -170,8 +170,8 @@ export const loadRequestMessages = async ({
       });
     });
 
-    // Too many images or too long text, return text
-    if (httpsImages.length > 4 || input.length > 1000) {
+    // Too many images return text
+    if (httpsImages.length > 4) {
       return [{ type: 'text', text: input || '' }];
     }
 
@@ -179,7 +179,7 @@ export const loadRequestMessages = async ({
     result.push({ type: 'text', text: input });
     return result;
   };
-  // Parse user content(text and img)
+  // Parse user content(text and img) Store history => api messages
   const parseUserContent = async (content: string | ChatCompletionContentPart[]) => {
     if (typeof content === 'string') {
       return loadImageToBase64(parseStringWithImages(content));
