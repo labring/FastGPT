@@ -409,12 +409,13 @@ const ListItem = () => {
       )}
       {!!editPerApp && (
         <ConfigPerModal
-          onChangeOwner={(tmbId: string) =>
-            changeOwner({
-              appId: editPerApp._id,
-              ownerId: tmbId
-            }).then(() => loadMyApps())
-          }
+          {...(editPerApp.permission.isOwner && {
+            onChangeOwner: (tmbId: string) =>
+              changeOwner({
+                appId: editPerApp._id,
+                ownerId: tmbId
+              }).then(() => loadMyApps())
+          })}
           refetchResource={loadMyApps}
           hasParent={Boolean(parentId)}
           resumeInheritPermission={onResumeInheritPermission}
