@@ -45,19 +45,26 @@ const Upload = () => {
 
   const { handleSubmit } = processParamsForm;
 
-  const totalFilesCount = sources.length;
-  const waitingFilesCount = sources.filter((file) => file.createStatus === 'waiting').length;
-  const isAllWaiting = waitingFilesCount === totalFilesCount;
+  const { totalFilesCount, waitingFilesCount, buttonText } = useMemo(() => {
+    let totalFilesCount = 0;
+    let waitingFilesCount = 0;
+    let allFinished = true;
 
-  const buttonText = (() => {
-    if (isAllWaiting) {
-      return t('common:core.dataset.import.Start upload');
-    } else if (sources.every((file) => file.createStatus === 'finish')) {
-      return t('common:core.dataset.import.Upload complete');
-    } else {
-      return t('common:core.dataset.import.Continue upload');
+    for (const file of sources) {
+      totalFilesCount++;
+      if (file.createStatus === 'waiting') waitingFilesCount++;
+      if (file.createStatus !== 'finish') allFinished = false;
     }
-  })();
+
+    const buttonText =
+      waitingFilesCount === totalFilesCount
+        ? t('common:core.dataset.import.Start upload')
+        : allFinished
+          ? t('common:core.dataset.import.Upload complete')
+          : t('common:core.dataset.import.Continue upload');
+
+    return { totalFilesCount, waitingFilesCount, buttonText };
+  }, [sources, t]);
 
   const { mutate: startUpload, isLoading } = useRequest({
     mutationFn: async ({ mode, customSplitChar, qaPrompt, webSelector }: ImportFormType) => {
@@ -195,20 +202,23 @@ const Upload = () => {
                 </Td>
                 <Td>
                   <Box display={'inline-block'}>
-                    {item.errorMsg ? (
+                    {item.errorMsg && (
                       <Tooltip label={item.errorMsg} fontSize="md">
                         <Flex alignItems="center">
                           <MyTag colorSchema={'red'}>{t('common:common.Error')}</MyTag>
                           <QuestionOutlineIcon ml={2} color="red.500" w="14px" />
                         </Flex>
                       </Tooltip>
-                    ) : item.createStatus === 'waiting' ? (
+                    )}
+                    {!item.errorMsg && item.createStatus === 'waiting' && (
                       <MyTag colorSchema={'gray'}>{t('common:common.Waiting')}</MyTag>
-                    ) : item.createStatus === 'creating' ? (
+                    )}
+                    {!item.errorMsg && item.createStatus === 'creating' && (
                       <MyTag colorSchema={'blue'}>{t('common:common.Creating')}</MyTag>
-                    ) : item.createStatus === 'finish' ? (
+                    )}
+                    {!item.errorMsg && item.createStatus === 'finish' && (
                       <MyTag colorSchema={'green'}>{t('common:common.Finish')}</MyTag>
-                    ) : null}
+                    )}
                   </Box>
                 </Td>
                 <Td>
