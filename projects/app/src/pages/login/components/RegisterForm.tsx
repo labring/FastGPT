@@ -50,7 +50,8 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           username,
           code,
           password,
-          inviterId: localStorage.getItem('inviterId') || undefined
+          inviterId: localStorage.getItem('inviterId') || undefined,
+          bd_vid: localStorage.getItem('bd_vid') || undefined
         })
       );
 
