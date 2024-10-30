@@ -274,6 +274,7 @@ function List() {
                         </HStack>
                       )}
                       <PermissionIconText
+                        flexShrink={0}
                         private={dataset.private}
                         iconColor="myGray.400"
                         color={'myGray.500'}
@@ -281,7 +282,7 @@ function List() {
                     </HStack>
 
                     <HStack>
-                      {isPc && (
+                      {isPc && dataset.type !== DatasetTypeEnum.folder && (
                         <HStack spacing={1} className="time">
                           <Avatar src={dataset.vectorModel.avatar} w={'0.85rem'} />
                           <Box color={'myGray.500'} fontSize={'mini'}>
