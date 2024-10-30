@@ -1,5 +1,5 @@
 import { Box, BoxProps, Card, Flex } from '@chakra-ui/react';
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
@@ -22,7 +22,8 @@ import { useTranslation } from 'next-i18next';
 import { AIChatItemValueItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import { isEqual } from 'lodash';
-import dayjs from 'dayjs';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { formatTimeToChatItemTime } from '@fastgpt/global/common/string/time';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -114,24 +115,27 @@ const ChatItem = (props: Props) => {
   const styleMap: BoxProps = {
     ...(type === ChatRoleEnum.Human
       ? {
-        order: 0,
-        borderRadius: '8px 0 8px 8px',
-        justifyContent: 'flex-end',
-        textAlign: 'right',
-        bg: 'primary.100'
-      }
+          order: 0,
+          borderRadius: '8px 0 8px 8px',
+          justifyContent: 'flex-end',
+          textAlign: 'right',
+          bg: 'primary.100'
+        }
       : {
-        order: 1,
-        borderRadius: '0 8px 8px 8px',
-        justifyContent: 'flex-start',
-        textAlign: 'left',
-        bg: 'myGray.50'
-      }),
-    fontSize: 'var(--chakra-fontSizes-xs)',
-    color: 'var(--sl-color-gray-500)'
+          order: 1,
+          borderRadius: '0 8px 8px 8px',
+          justifyContent: 'flex-start',
+          textAlign: 'left',
+          bg: 'myGray.50'
+        }),
+    fontSize: 'mini',
+    fontWeight: '400',
+    color: 'myGray.500'
   };
-
+  const { isPc } = useSystem();
+  const timeLabelRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
+
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
 
   const { copyData } = useCopyData();
@@ -200,20 +204,40 @@ const ChatItem = (props: Props) => {
   }, [chat.obj, chat.value, isChatting]);
 
   return (
-    <>
+    <Box
+      onClick={() => {
+        if (isPc || !timeLabelRef.current) return;
+        timeLabelRef.current.style.display =
+          timeLabelRef.current?.style.display === 'none' ? 'block' : 'none';
+      }}
+      _hover={{
+        '& .time-label': isPc
+          ? {
+              display: 'block'
+            }
+          : {
+              display: 'none'
+            }
+      }}
+    >
       {/* control icon */}
       <Flex w={'100%'} alignItems={'flex-end'} gap={2} justifyContent={styleMap.justifyContent}>
-        <Box
-          order={type === ChatRoleEnum.AI ? 2 : 0}
-          fontSize={styleMap.fontSize}
-          color={styleMap.color}
-        >
-          {dayjs(chat.time).format('YYYY/MM/DD HH:mm')}
-        </Box>
         {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
-          <Box order={styleMap.order} ml={styleMap.ml}>
+          <Flex order={styleMap.order} ml={styleMap.ml} align={'center'} gap={'0.62rem'}>
+            <Box
+              className="time-label"
+              ref={timeLabelRef}
+              display={'none'}
+              order={type === ChatRoleEnum.AI ? 2 : 0}
+              fontSize={styleMap.fontSize}
+              textAlign={'center'}
+              color={styleMap.color}
+              fontWeight={styleMap.fontWeight}
+            >
+              {chat.time && (formatTimeToChatItemTime(chat.time) as any)}
+            </Box>
             <ChatController {...props} isLastChild={isLastChild} />
-          </Box>
+          </Flex>
         )}
         <ChatAvatar src={avatar} type={type} />
 
@@ -301,7 +325,7 @@ const ChatItem = (props: Props) => {
           </Card>
         </Box>
       ))}
-    </>
+    </Box>
   );
 };
 

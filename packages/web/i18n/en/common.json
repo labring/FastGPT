@@ -69,8 +69,12 @@
   "code_error.system_error.community_version_num_limit": "Exceeded Open Source Version Limit, Please Upgrade to Commercial Version: https://tryfastgpt.ai",
   "code_error.team_error.ai_points_not_enough": "Insufficient AI Points",
   "code_error.team_error.app_amount_not_enough": "Application Limit Reached",
+  "code_error.team_error.cannot_delete_default_group": "Cannot delete default group",
   "code_error.team_error.dataset_amount_not_enough": "Dataset Limit Reached",
   "code_error.team_error.dataset_size_not_enough": "Insufficient Dataset Capacity, Please Expand",
+  "code_error.team_error.group_name_duplicate": "Duplicate group name",
+  "code_error.team_error.group_name_empty": "Group name cannot be empty",
+  "code_error.team_error.group_not_exist": "Group does not exist",
   "code_error.team_error.over_size": "error.team.overSize",
   "code_error.team_error.plugin_amount_not_enough": "Plugin Limit Reached",
   "code_error.team_error.re_rank_not_enough": "Unauthorized to Use Re-Rank",
@@ -1196,5 +1200,7 @@
   "user.type": "Type",
   "verification": "Verification",
   "xx_search_result": "{{key}} Search Results",
-  "yes": "Yes"
+  "yes": "Yes",
+  "yesterday": "yesterday",
+  "yesterday_detail_time": "Yesterday {{time}}"
 }
