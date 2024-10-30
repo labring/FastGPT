@@ -45,6 +45,7 @@ export async function createOneCollection({
   [key: string]: any;
   session?: ClientSession;
 }) {
+  const initialTotalData = trainingType === TrainingModeEnum.qa ? 0 : props.expectedTotalData || 0;
   // Create collection tags
   const collectionTags = await createOrGetCollectionTags({ tags, teamId, datasetId, session });
 
@@ -73,7 +74,8 @@ export async function createOneCollection({
         rawTextLength,
         hashRawText,
         metadata,
-        tags: collectionTags
+        tags: collectionTags,
+        totalData: initialTotalData
       }
     ],
     { session }

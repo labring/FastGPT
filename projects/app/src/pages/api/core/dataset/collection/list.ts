@@ -154,7 +154,7 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
         $project: {
           ...selectField,
           dataAmount: {
-            $ifNull: [{ $arrayElemAt: ['$dataCount.count', 0] }, 0]
+            $ifNull: ['$totalData', 0]
           },
           trainingAmount: {
             $ifNull: [{ $arrayElemAt: ['$trainingCount.count', 0] }, 0]

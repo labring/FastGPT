@@ -70,6 +70,11 @@ const DatasetCollectionSchema = new Schema({
   },
   ocrParse: Boolean,
 
+  totalData: {
+    type: Number,
+    default: 0
+  },
+
   tags: {
     type: [String],
     default: []
