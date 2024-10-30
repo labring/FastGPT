@@ -51,7 +51,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           code,
           password,
           inviterId: localStorage.getItem('inviterId') || undefined,
-          bd_vid: localStorage.getItem('fastgpt_bd_vid') || undefined
+          bd_vid: localStorage.getItem('bd_vid') || undefined
         })
       );
 

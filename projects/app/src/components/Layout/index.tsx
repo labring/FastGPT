@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -50,12 +50,6 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
-  const { bd_vid } = router.query;
-  useEffect(() => {
-    if (bd_vid) {
-      localStorage.setItem('fastgpt_bd_vid', bd_vid as string);
-    }
-  }, [bd_vid]);
 
   const isChatPage = useMemo(
     () => router.pathname === '/chat' && Object.values(router.query).join('').length !== 0,
