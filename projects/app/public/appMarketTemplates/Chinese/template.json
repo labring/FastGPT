@@ -1,0 +1,501 @@
+{
+  "name": "汉语新解",
+  "intro": "生成汉语释义图",
+  "author": "",
+  "avatar": "/appMarketTemplates/Chinese/avatar.svg",
+  "tags": ["roleplay"],
+  "type": "advanced",
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "userGuide",
+        "name": "common:core.module.template.system_config",
+        "intro": "common:core.module.template.system_config_info",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "userGuide",
+        "position": {
+          "x": 262.2732338817093,
+          "y": -476.00241136598146
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "welcomeText",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "label": "core.app.Welcome Text",
+            "value": ""
+          },
+          {
+            "key": "variables",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "core.app.Chat Variable",
+            "value": []
+          },
+          {
+            "key": "questionGuide",
+            "valueType": "boolean",
+            "renderTypeList": ["hidden"],
+            "label": "core.app.Question Guide",
+            "value": false
+          },
+          {
+            "key": "tts",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "type": "web"
+            }
+          },
+          {
+            "key": "whisper",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "open": false,
+              "autoSend": false,
+              "autoTTSResponse": false
+            }
+          },
+          {
+            "key": "scheduleTrigger",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": null
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "448745",
+        "name": "common:core.module.template.work_start",
+        "intro": "",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "workflowStart",
+        "position": {
+          "x": 632.368838596004,
+          "y": -347.7446492944009
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "userChatInput",
+            "renderTypeList": ["reference", "textarea"],
+            "valueType": "string",
+            "label": "common:core.module.input.label.user question",
+            "required": true,
+            "toolDescription": "用户问题",
+            "debugLabel": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "userChatInput",
+            "key": "userChatInput",
+            "label": "common:core.module.input.label.user question",
+            "type": "static",
+            "valueType": "string",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "bg853CwHAw4a",
+        "name": "AI 对话",
+        "intro": "AI 大模型对话",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": 1318.728987052518,
+          "y": -612.0024113659815
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": ["settingLLMModel", "reference"],
+            "label": "AI 模型",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": "claude-3-5-sonnet-20240620"
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": 0,
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": 2000,
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": false,
+            "valueType": "boolean",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatQuoteRole",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "value": "system",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "boolean",
+            "value": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": ["textarea", "reference"],
+            "max": 3000,
+            "valueType": "string",
+            "label": "提示词",
+            "description": "core.app.tip.chatNodeSystemPromptTip",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": "{提示词 START：\n;; 作者: 李继刚\n;; 版本: 0.3\n;; 模型: Claude Sonnet\n;; 用途: 将一个汉语词汇进行全新角度的解释\n\n;; 设定如下内容为你的 *System Prompt*\n(defun 新汉语老师 ()\n  \"你是年轻人,批判现实,思考深刻,语言风趣\"\n  (风格 . (\"Oscar Wilde\" \"鲁迅\" \"罗永浩\"))\n  (擅长 . 一针见血)\n  (表达 . 隐喻)\n  (批判 . 讽刺幽默))\n\n(defun 汉语新解 (用户输入)\n  \"你会用一个特殊视角来解释一个词汇\"\n  (let (解释 (精练表达\n              (隐喻 (一针见血 (辛辣讽刺 (抓住本质 用户输入))))))\n    (few-shots (委婉 . \"刺向他人时, 决定在剑刃上撒上止痛药。\"))\n    (SVG-Card 解释)))\n\n(defun SVG-Card (解释)\n  \"输出SVG 卡片\"\n  (setq design-rule \"合理使用负空间，整体排版要有呼吸感\"\n        design-principles '(干净 简洁 典雅))\n\n  (设置画布 '(宽度 400 高度 600 边距 20))\n  (标题字体 '毛笔楷体)\n  (自动缩放 '(最小字号 16))\n\n  (配色风格 '((背景色 (蒙德里安风格 设计感)))\n            (主要文字 (汇文明朝体 粉笔灰))\n            (装饰图案 随机几何图))\n\n  (卡片元素 ((居中标题 \"汉语新解\")\n             分隔线\n             (排版输出 用户输入 英文 日语)\n             解释\n             (线条图 (批判内核 解释))\n             (极简总结 线条图))))\n\n(defun start ()\n  \"启动时运行\"\n  (let (system-role 新汉语老师)\n    (print \"说吧, 他们又用哪个词来忽悠你了?\")))\n\n;; 运行规则\n;; 1. 启动时必须运行 (start) 函数\n;; 2. 之后调用主函数 (汉语新解 用户输入)\n提示词 END}\n\n（直接生成 svg 完整代码，我会复制，需要你用代码块）\n（除此之外不要有多余的解释，不要在开头加上任何说明）\n解释的内容自动加入换行标签，例如：\n<tspan x=\"50%\" dy=\"25\" font-size=\"18\" fill=\"#8B4513\">文字1，</tspan>\n    <tspan x=\"50%\" dy=\"25\" font-size=\"18\" fill=\"#8B4513\">文字12，</tspan>"
+          },
+          {
+            "key": "history",
+            "renderTypeList": ["numberInput", "reference"],
+            "valueType": "chatHistory",
+            "label": "聊天记录",
+            "description": "workflow:max_dialog_rounds",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 0,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": ["settingDatasetQuotePrompt"],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "stringQuoteText",
+            "renderTypeList": ["reference", "textarea"],
+            "label": "文档引用",
+            "debugLabel": "文档引用",
+            "description": "app:document_quote_tip",
+            "valueType": "string",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": ["reference", "textarea"],
+            "valueType": "string",
+            "label": "用户问题",
+            "required": true,
+            "toolDescription": "用户问题",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "value": ["448745", "userChatInput"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "common:core.module.output.label.New context",
+            "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "common:core.module.output.label.Ai response content",
+            "description": "将在 stream 回复完毕后触发",
+            "valueType": "string",
+            "type": "static"
+          }
+        ]
+      },
+      {
+        "nodeId": "sbVUb0efY6Fm",
+        "name": "代码运行",
+        "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+        "avatar": "core/workflow/template/codeRun",
+        "flowNodeType": "code",
+        "showStatus": true,
+        "position": {
+          "x": 2210.2574140398733,
+          "y": -621.0024113659815
+        },
+        "version": "482",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "workflow:these_variables_will_be_input_parameters_for_code_execution",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "codeType",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": "js",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "code",
+            "renderTypeList": ["custom"],
+            "label": "",
+            "value": "function main({svg_str}){\n\n    // 使用正则表达式匹配代码块中的内容\n    const match = svg_str.match(/```[\\w]*\\n([\\s\\S]*?)```/);\n\n    if (!match) {\n        // 如果没有匹配到代码块，返回一个错误信息或空结果\n        return {\n            result: null,\n            error: \"未找到有效的代码块标记。\"\n        };\n    }\n\n    // 提取代码块中的 SVG 内容\n    const extractedSvg = match[1].trim();\n    \n    const base64 = strToBase64(extractedSvg,'data:image/svg+xml;base64,')\n\n    return {\n        result: base64\n    }\n}",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "svg_str",
+            "label": "svg_str",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": ["bg853CwHAw4a", "answerText"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_rawResponse",
+            "key": "system_rawResponse",
+            "label": "workflow:full_response_data",
+            "valueType": "object",
+            "type": "static",
+            "description": ""
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:execution_error",
+            "description": "代码运行错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key",
+            "valueDesc": ""
+          },
+          {
+            "id": "qLUQfhG0ILRX",
+            "type": "dynamic",
+            "key": "result",
+            "valueType": "string",
+            "label": "result",
+            "valueDesc": "",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "cPh2VZnVxjQ8",
+        "name": "指定回复",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 2911.2230784647795,
+          "y": -411.6915940628763
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": ["textarea", "reference"],
+            "valueType": "any",
+            "required": true,
+            "label": "回复的内容",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": "SVG：\n\n{{$bg853CwHAw4a.answerText$}}\n\n卡片：\n\n![]({{$sbVUb0efY6Fm.qLUQfhG0ILRX$}})"
+          }
+        ],
+        "outputs": []
+      }
+    ],
+    "edges": [
+      {
+        "source": "bg853CwHAw4a",
+        "target": "sbVUb0efY6Fm",
+        "sourceHandle": "bg853CwHAw4a-source-right",
+        "targetHandle": "sbVUb0efY6Fm-target-left"
+      },
+      {
+        "source": "448745",
+        "target": "bg853CwHAw4a",
+        "sourceHandle": "448745-source-right",
+        "targetHandle": "bg853CwHAw4a-target-left"
+      },
+      {
+        "source": "sbVUb0efY6Fm",
+        "target": "cPh2VZnVxjQ8",
+        "sourceHandle": "sbVUb0efY6Fm-source-right",
+        "targetHandle": "cPh2VZnVxjQ8-target-left"
+      }
+    ],
+    "chatConfig": {
+      "variables": [],
+      "scheduledTriggerConfig": {
+        "cronString": "",
+        "timezone": "Asia/Shanghai",
+        "defaultPrompt": ""
+      },
+      "_id": "66f0f7540a40cd1f97da9dd6"
+    }
+  }
+}

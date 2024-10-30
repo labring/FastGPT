@@ -1,0 +1,501 @@
+{
+  "name": "动物的一生",
+  "intro": "使用AI生成任何事物的 “人生图”",
+  "author": "",
+  "avatar": "/appMarketTemplates/animalLife/avatar.svg",
+  "tags": ["roleplay"],
+  "type": "advanced",
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "userGuide",
+        "name": "common:core.module.template.system_config",
+        "intro": "common:core.module.template.system_config_info",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "userGuide",
+        "position": {
+          "x": 262.2732338817093,
+          "y": -476.00241136598146
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "welcomeText",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "label": "core.app.Welcome Text",
+            "value": ""
+          },
+          {
+            "key": "variables",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "core.app.Chat Variable",
+            "value": []
+          },
+          {
+            "key": "questionGuide",
+            "valueType": "boolean",
+            "renderTypeList": ["hidden"],
+            "label": "core.app.Question Guide",
+            "value": false
+          },
+          {
+            "key": "tts",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "type": "web"
+            }
+          },
+          {
+            "key": "whisper",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "open": false,
+              "autoSend": false,
+              "autoTTSResponse": false
+            }
+          },
+          {
+            "key": "scheduleTrigger",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "label": "",
+            "value": null
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "448745",
+        "name": "common:core.module.template.work_start",
+        "intro": "",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "workflowStart",
+        "position": {
+          "x": 632.368838596004,
+          "y": -347.7446492944009
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "userChatInput",
+            "renderTypeList": ["reference", "textarea"],
+            "valueType": "string",
+            "label": "common:core.module.input.label.user question",
+            "required": true,
+            "toolDescription": "用户问题",
+            "debugLabel": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "userChatInput",
+            "key": "userChatInput",
+            "label": "common:core.module.input.label.user question",
+            "type": "static",
+            "valueType": "string",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "bg853CwHAw4a",
+        "name": "AI 对话",
+        "intro": "AI 大模型对话",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": 1318.728987052518,
+          "y": -612.0024113659815
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": ["settingLLMModel", "reference"],
+            "label": "AI 模型",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": "claude-3-5-sonnet-20240620"
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": 0,
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": 4000,
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": false,
+            "valueType": "boolean",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatQuoteRole",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "value": "system",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "boolean",
+            "value": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": ["textarea", "reference"],
+            "max": 3000,
+            "valueType": "string",
+            "label": "提示词",
+            "description": "core.app.tip.systemPromptTip",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": "{提示词 START：\n;; 提示词：动物的一生\n;; 作者：空格 zephyr\n\n(defun 动物生命周期 ()\n  \"生成动物的生命周期SVG图表和描述\"\n  (lambda (主题)\n    (let* ((生命阶段 (获取生命阶段 主题))\n           (科普数据 (获取科普数据 主题))\n           (背景样式 (设计背景 主题))\n           (时间轴 (创建时间轴 主题))\n           (阶段emoji (选择阶段emoji 主题))\n           (装饰emoji (选择装饰emoji 主题))\n           (副标题 (生成副标题 主题 科普数据)))\n      (创建优化SVG图表 主题 生命阶段 科普数据 背景样式 时间轴 阶段emoji 装饰emoji 副标题))))\n\n(defun 获取生命阶段 (主题)\n  \"获取主题的主要生命阶段\"\n  (case 主题\n    (蝉 '(\"卵\" \"若虫期(地下)\" \"成虫期\"))\n    (鲸鱼 '(\"胎儿期\" \"幼年期\" \"青年期\" \"成年期\" \"老年期\"))\n    (长颈鹿 '(\"新生期\" \"幼年期\" \"青年期\" \"成年期\" \"老年期\"))\n    (t '(\"初期\" \"成长期\" \"成熟期\" \"衰老期\"))))\n\n(defun 获取科普数据 (主题)\n  \"获取主题的科普数据列表\"\n  (case 主题\n    (蝉 '((\"卵在树枝中孵化6-10周，每窝可产200-600颗卵。\"\n           \"若虫在地下生活多年，吸食树根汁液生存。\"\n           \"若虫经历5次蜕皮，体型可增大20倍。\"\n           \"最后一次蜕皮后钻出地面，变为成虫。\"\n           \"成虫期仅4-6周，专注于繁衍后代和鸣叫。\")\n          \"蝉的地下潜伏期长达17年，成虫仅存活4-6周，鸣叫声可达120分贝，相当于飞机起飞的噪音。\"))\n    (鲸鱼 '((\"蓝鲸胎儿每天增重90公斤，出生时重达2.5吨，长7米。\"\n            \"幼鲸每天喝380升奶，7个月增重30吨。\"\n            \"青年蓝鲸可潜水200米深，屏息长达40分钟。\"\n            \"成年蓝鲸长30米，重190吨，一天吃4吨磷虾。\"\n            \"最长寿蓝鲸年龄可达110岁，终生可游13次地球赤道距离。\")\n           \"蓝鲸是地球上最大的动物，心脏重达600公斤，舌头重如一头大象，叫声可传播1600公里。\"))\n    (t '((\"阶段1的数据描述\"\n          \"阶段2的数据描述\"\n          \"阶段3的数据描述\"\n          \"阶段4的数据描述\"\n          \"阶段5的数据描述\")\n         \"通用主题的有趣数据描述\"))))\n\n(defun 设计背景 (主题)\n  \"根据主题设计适合的背景\"\n  (case 主题\n    (蝉 '(渐变 \"E6F3FF\" \"B3E5FC\" 土地))\n    (鲸鱼 '(渐变 \"E3F2FD\" \"90CAF9\" 海洋))\n    (长颈鹿 '(渐变 \"FFF8E1\" \"FFE0B2\" 草原))\n    (t '(渐变 \"F5F5F5\" \"E0E0E0\" 通用))))\n\n(defun 创建时间轴 (主题)\n  \"创建主题生命周期的时间轴\"\n  (case 主题\n    (蝉 '(\"0年\" \"4年\" \"8年\" \"12年\" \"16年\" \"17年\"))\n    (鲸鱼 '(\"0年\" \"10年\" \"25年\" \"50年\" \"75年\" \"100年\"))\n    (长颈鹿 '(\"0月\" \"6月\" \"2年\" \"4年\" \"15年\" \"25年\"))\n    (t '(\"初期\" \"成长期\" \"成熟期\" \"后期\" \"衰老期\"))))\n\n(defun 选择阶段emoji (主题)\n  \"选择与生命阶段相关的emoji\"\n  (case 主题\n    (蝉 '(\"🥚\" \"🐛\" \"🦟\" \"🎵\"))\n    (鲸鱼 '(\"🤰\" \"🍼\" \"🏊\" \"🐋\" \"👵\"))\n    (长颈鹿 '(\"👶\" \"🐕\" \"🏃\" \"🦒\" \"👵\"))\n    (t '(\"🌱\" \"🌿\" \"🌳\" \"🍂\"))))\n\n(defun 选择装饰emoji (主题)\n  \"选择与主题相关的装饰emoji\"\n  (case 主题\n    (蝉 '(\"🌳\" \"🍃\" \"🌿\" \"🍂\"))\n    (鲸鱼 '(\"🌊\" \"🐠\" \"🦈\" \"🐙\"))\n    (长颈鹿 '(\"🌴\" \"🌿\" \"🦓\" \"🦁\"))\n    (t '(\"🌱\" \"🌳\" \"🍃\" \"🌞\"))))\n\n(defun 生成副标题 (主题 科普数据)\n  \"根据科普数据生成副标题\"\n  (format \"你知道吗？%s\" (第二个元素 科普数据)))\n\n(defun 创建优化SVG图表 (主题 生命阶段 科普数据 背景样式 时间轴 阶段emoji 装饰emoji 副标题)\n  \"创建优化的生命周期SVG图表\"\n  (let ((svg-template\n    \"<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" viewBox=\\\"0 0 800 500\\\">\n      <!-- 渐变背景 -->\n      <defs>\n        <linearGradient id=\\\"bgGradient\\\" x1=\\\"0%\\\" y1=\\\"0%\\\" x2=\\\"0%\\\" y2=\\\"100%\\\">\n          <stop offset=\\\"0%\\\" style=\\\"stop-color:#{背景颜色1};stop-opacity:1\\\" />\n          <stop offset=\\\"100%\\\" style=\\\"stop-color:#{背景颜色2};stop-opacity:1\\\" />\n        </linearGradient>\n      </defs>\n      <rect width=\\\"100%\\\" height=\\\"100%\\\" fill=\\\"url(#bgGradient)\\\" />\n      \n      <!-- 主题相关背景装饰 -->\n      {背景装饰）\n      <!-- 标题和副标题 -->\n      <text x=\\\"400\\\" y=\\\"30\\\" text-anchor=\\\"middle\\\" class=\\\"title\\\" fill=\\\"#333333\\\">{主题}的一生</text>\n      <text x=\\\"400\\\" y=\\\"60\\\" text-anchor=\\\"middle\\\" class=\\\"subtitle\\\" fill=\\\"#555555\\\">\n        <tspan x=\\\"400\\\" dy=\\\"0\\\">{副标题_第一行}</tspan>\n        <tspan x=\\\"400\\\" dy=\\\"20\\\">{副标题_第二行}</tspan>\n      </text>\n      <!-- 时间轴 -->\n      <line x1=\\\"50\\\" y1=\\\"400\\\" x2=\\\"750\\\" y2=\\\"400\\\" stroke=\\\"#555555\\\" stroke-width=\\\"2\\\" />\n      {时间标签}\n      <!-- 生命阶段 -->\n      {生命阶段标签}\n      <!-- 数据点和科普信息 -->\n      {数据点和科普信息}\n      <!-- 曲线连接 -->\n      <path d=\\\"M50,350 Q140,360 230,370 T400,330 T580,290 T730,250\\\" fill=\\\"none\\\" stroke=\\\"#555555\\\" stroke-width=\\\"2\\\"/>\n      <!-- 图例 -->\n      <rect x=\\\"50\\\" y=\\\"460\\\" width=\\\"700\\\" height=\\\"30\\\" fill=\\\"rgba(255,255,255,0.05)\\\"/>\n      <text x=\\\"60\\\" y=\\\"480\\\" class=\\\"legend-text\\\" fill=\\\"#333333\\\">图例：</text>\n      <circle cx=\\\"150\\\" cy=\\\"475\\\" r=\\\"8\\\" fill=\\\"#FFD700\\\"/>\n      <text x=\\\"170\\\" y=\\\"480\\\" class=\\\"legend-text\\\" fill=\\\"#333333\\\">生命阶段</text>\n      <line x1=\\\"270\\\" y1=\\\"470\\\" x2=\\\"270\\\" y2=\\\"480\\\" stroke=\\\"#555555\\\" stroke-width=\\\"2\\\"/>\n      <text x=\\\"290\\\" y=\\\"480\\\" class=\\\"legend-text\\\" fill=\\\"#333333\\\">生命历程</text>\n      <text x=\\\"420\\\" y=\\\"480\\\" class=\\\"legend-text\\\" fill=\\\"#333333\\\">{图例emoji}</text>\n      <!-- 底部装饰Emoji -->\n      {底部装饰Emoji}\n    </svg>\"))\n    (填充优化SVG模板 svg-template 主题 生命阶段 科普数据 背景样式 时间轴 阶段emoji 装饰emoji 副标题)))\n(defun start ()\n  (print \"请输入您想了解的生命主题（如：蝉、鲸鱼、长颈鹿等）：\")\n  (let ((用户输入 (read)))\n    (优化生命周期生成器 用户输入)))\n;; 运行规则\n;; 1. 启动时运行 (start) 函数\n;; 2. 根据用户输入的主题，生成对应的生命周期SVG图表和描述\n;; 3. 输出应包括优化后的SVG图表和相关的文字说明，重点突出科学数据和有趣事实\n提示词 END}\n\n（直接生成 svg 完整代码，我会复制，需要你用代码块）\n（除此之外不要有多余的解释，不要在开头加上任何说明）"
+          },
+          {
+            "key": "history",
+            "renderTypeList": ["numberInput", "reference"],
+            "valueType": "chatHistory",
+            "label": "聊天记录",
+            "description": "workflow:max_dialog_rounds",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 0,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": ["settingDatasetQuotePrompt"],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "stringQuoteText",
+            "renderTypeList": ["reference", "textarea"],
+            "label": "文档引用",
+            "debugLabel": "文档引用",
+            "description": "app:document_quote_tip",
+            "valueType": "string",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": ["reference", "textarea"],
+            "valueType": "string",
+            "label": "用户问题",
+            "required": true,
+            "toolDescription": "用户问题",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "value": ["448745", "userChatInput"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "common:core.module.output.label.New context",
+            "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "common:core.module.output.label.Ai response content",
+            "description": "将在 stream 回复完毕后触发",
+            "valueType": "string",
+            "type": "static"
+          }
+        ]
+      },
+      {
+        "nodeId": "sbVUb0efY6Fm",
+        "name": "代码运行",
+        "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+        "avatar": "core/workflow/template/codeRun",
+        "flowNodeType": "code",
+        "showStatus": true,
+        "position": {
+          "x": 2210.2574140398733,
+          "y": -621.0024113659815
+        },
+        "version": "482",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "workflow:these_variables_will_be_input_parameters_for_code_execution",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "codeType",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": "js",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "code",
+            "renderTypeList": ["custom"],
+            "label": "",
+            "value": "function main({svg_str}){\n\n    // 使用正则表达式匹配代码块中的内容\n    const match = svg_str.match(/```[\\w]*\\n([\\s\\S]*?)```/);\n\n    if (!match) {\n        // 如果没有匹配到代码块，返回一个错误信息或空结果\n        return {\n            result: null,\n            error: \"未找到有效的代码块标记。\"\n        };\n    }\n\n    // 提取代码块中的 SVG 内容\n    const extractedSvg = match[1].trim();\n    \n    const base64 = strToBase64(extractedSvg,'data:image/svg+xml;base64,')\n\n    return {\n        result: base64\n    }\n}",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "svg_str",
+            "label": "svg_str",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": ["bg853CwHAw4a", "answerText"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_rawResponse",
+            "key": "system_rawResponse",
+            "label": "workflow:full_response_data",
+            "valueType": "object",
+            "type": "static",
+            "description": ""
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:execution_error",
+            "description": "代码运行错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key",
+            "valueDesc": ""
+          },
+          {
+            "id": "qLUQfhG0ILRX",
+            "type": "dynamic",
+            "key": "result",
+            "valueType": "string",
+            "label": "result",
+            "valueDesc": "",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "cPh2VZnVxjQ8",
+        "name": "指定回复",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 2911.2230784647795,
+          "y": -411.6915940628763
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": ["textarea", "reference"],
+            "valueType": "any",
+            "required": true,
+            "label": "回复的内容",
+            "description": "common:core.module.input.description.Response content",
+            "placeholder": "common:core.module.input.description.Response content",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": "",
+            "value": "SVG：\n\n{{$bg853CwHAw4a.answerText$}}\n\n卡片：\n\n![]({{$sbVUb0efY6Fm.qLUQfhG0ILRX$}})"
+          }
+        ],
+        "outputs": []
+      }
+    ],
+    "edges": [
+      {
+        "source": "bg853CwHAw4a",
+        "target": "sbVUb0efY6Fm",
+        "sourceHandle": "bg853CwHAw4a-source-right",
+        "targetHandle": "sbVUb0efY6Fm-target-left"
+      },
+      {
+        "source": "448745",
+        "target": "bg853CwHAw4a",
+        "sourceHandle": "448745-source-right",
+        "targetHandle": "bg853CwHAw4a-target-left"
+      },
+      {
+        "source": "sbVUb0efY6Fm",
+        "target": "cPh2VZnVxjQ8",
+        "sourceHandle": "sbVUb0efY6Fm-source-right",
+        "targetHandle": "cPh2VZnVxjQ8-target-left"
+      }
+    ],
+    "chatConfig": {
+      "variables": [],
+      "scheduledTriggerConfig": {
+        "cronString": "",
+        "timezone": "Asia/Shanghai",
+        "defaultPrompt": ""
+      },
+      "_id": "66f0f7540a40cd1f97da9dd6"
+    }
+  }
+}
