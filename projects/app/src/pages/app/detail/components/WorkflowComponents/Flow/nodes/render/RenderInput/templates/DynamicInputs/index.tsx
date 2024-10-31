@@ -212,6 +212,7 @@ function Reference({
         list={referenceList}
         value={formatValue}
         onSelect={onSelect}
+        isArray={inputChildren.valueType?.includes('array')}
       />
 
       {!!editField && !!item.customInputConfig && (

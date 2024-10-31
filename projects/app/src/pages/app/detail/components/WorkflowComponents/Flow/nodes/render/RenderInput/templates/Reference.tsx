@@ -193,8 +193,9 @@ export const ReferSelector = ({
   isArray
 }: SelectProps) => {
   const { t } = useTranslation();
+  console.log(value);
   const selectValue = useMemo(() => {
-    if (!value) {
+    if (!value || value.every((item) => !item || item.every((subItem) => !subItem))) {
       return;
     }
     return value.map((valueItem) => {
@@ -209,6 +210,7 @@ export const ReferSelector = ({
       return [firstColumn, secondColumn];
     });
   }, [list, value]);
+  console.log(selectValue);
 
   const Render = useMemo(() => {
     return (

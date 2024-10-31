@@ -320,7 +320,7 @@ const Reference = ({
       placeholder={t('common:select_reference_variable')}
       list={referenceList}
       value={formatValue}
-      onSelect={onSelect}
+      onSelect={onSelect as any}
     />
   );
 };
