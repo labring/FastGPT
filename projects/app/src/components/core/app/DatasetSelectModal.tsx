@@ -55,6 +55,9 @@ export const DatasetSelectModal = ({
       )
     };
   }, [datasets, allDatasets, selectedDatasets]);
+  const activeVectorModel = allDatasets.find(
+    (dataset) => dataset._id === selectedDatasets[0]?.datasetId
+  )?.vectorModel?.model;
 
   return (
     <DatasetSelectContainer
@@ -141,11 +144,7 @@ export const DatasetSelectModal = ({
                         if (item.type === DatasetTypeEnum.folder) {
                           setParentId(item._id);
                         } else {
-                          const vectorModel = datasets.find(
-                            (dataset) => dataset._id === selectedDatasets[0]?.datasetId
-                          )?.vectorModel?.model;
-
-                          if (vectorModel && vectorModel !== item.vectorModel.model) {
+                          if (activeVectorModel && activeVectorModel !== item.vectorModel.model) {
                             return toast({
                               status: 'warning',
                               title: t('common:dataset.Select Dataset Tips')
@@ -168,13 +167,20 @@ export const DatasetSelectModal = ({
                           {item.name}
                         </Box>
                       </Flex>
-                      <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
+                      <Flex
+                        justifyContent={'flex-end'}
+                        alignItems={'center'}
+                        fontSize={'sm'}
+                        color={
+                          activeVectorModel === item.vectorModel.name ? 'primary.600' : 'myGray.500'
+                        }
+                      >
                         {item.type === DatasetTypeEnum.folder ? (
                           <Box color={'myGray.500'}>{t('common:Folder')}</Box>
                         ) : (
                           <>
                             <MyIcon mr={1} name="kbTest" w={'12px'} />
-                            <Box color={'myGray.500'}>{item.vectorModel.name}</Box>
+                            <Box>{item.vectorModel.name}</Box>
                           </>
                         )}
                       </Flex>
