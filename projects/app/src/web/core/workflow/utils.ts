@@ -327,24 +327,37 @@ export const checkWorkflowNodeAndConnection = ({
         // check reference invalid
         const renderType = input.renderTypeList[input.selectedTypeIndex || 0];
         if (renderType === FlowNodeInputTypeEnum.reference && input.required) {
-          if (!input.value || !Array.isArray(input.value) || input.value.length !== 2) {
-            return true;
+          const checkReference = (value: [string, string]) => {
+            if (value[0] === VARIABLE_NODE_ID) {
+              return false;
+            }
+
+            const sourceNode = nodes.find((item) => item.data.nodeId === value[0]);
+            if (!sourceNode) {
+              return true;
+            }
+
+            const sourceOutput = sourceNode.data.outputs.find((item) => item.id === value[1]);
+            return !sourceOutput;
+          };
+
+          // Old format
+          if (
+            Array.isArray(input.value) &&
+            input.value.length === 2 &&
+            typeof input.value[0] === 'string' &&
+            typeof input.value[1] === 'string'
+          ) {
+            return checkReference(input.value as [string, string]);
           }
 
-          // variable key not need to check
-          if (input.value[0] === VARIABLE_NODE_ID) {
-            return false;
-          }
-
-          // Can not find key
-          const sourceNode = nodes.find((item) => item.data.nodeId === input.value[0]);
-          if (!sourceNode) {
-            return true;
-          }
-          const sourceOutput = sourceNode.data.outputs.find((item) => item.id === input.value[1]);
-          if (!sourceOutput) {
-            return true;
-          }
+          // New format
+          return input.value.some((inputItem: ReferenceValueProps) => {
+            if (!Array.isArray(inputItem) || inputItem.length !== 2) {
+              return true;
+            }
+            return checkReference(inputItem as [string, string]);
+          });
         }
         return false;
       })

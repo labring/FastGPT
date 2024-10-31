@@ -42,7 +42,8 @@ import { removeSystemVariable, valueTypeFormat } from './utils';
 import {
   filterWorkflowEdges,
   checkNodeRunStatus,
-  textAdaptGptResponse
+  textAdaptGptResponse,
+  getReferenceArrayValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
@@ -494,8 +495,15 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         runningNode: node
       });
 
-      // replace reference variables
+      // replace original reference variables
       value = getReferenceVariableValue({
+        value,
+        nodes: runtimeNodes,
+        variables
+      });
+
+      // replace new reference variables
+      value = getReferenceArrayValue({
         value,
         nodes: runtimeNodes,
         variables

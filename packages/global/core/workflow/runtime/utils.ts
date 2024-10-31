@@ -256,6 +256,50 @@ export const getReferenceVariableValue = ({
   return outputValue;
 };
 
+export const getReferenceArrayValue = ({
+  value,
+  nodes,
+  variables
+}: {
+  value: ReferenceValueProps;
+  nodes: RuntimeNodeItemType[];
+  variables: Record<string, any>;
+}) => {
+  const nodeIds = nodes.map((node) => node.nodeId);
+  if (
+    !Array.isArray(value) ||
+    !value.every(
+      (val) => val?.length === 2 && typeof val[0] === 'string' && typeof val[1] === 'string'
+    )
+  ) {
+    return value;
+  }
+  const result = value.map((val) => {
+    if (!isReferenceValue(val, nodeIds)) {
+      return [val];
+    }
+
+    const sourceNodeId = val?.[0];
+    const outputId = val?.[1];
+
+    if (sourceNodeId === VARIABLE_NODE_ID && outputId) {
+      const variableValue = variables[outputId];
+      return Array.isArray(variableValue) ? variableValue : [variableValue];
+    }
+
+    const node = nodes.find((node) => node.nodeId === sourceNodeId);
+
+    if (!node) {
+      return undefined;
+    }
+
+    const outputValue = node.outputs.find((output) => output.id === outputId)?.value;
+    return Array.isArray(outputValue) ? outputValue : [outputValue];
+  });
+
+  return result.flat();
+};
+
 export const textAdaptGptResponse = ({
   text,
   model = '',

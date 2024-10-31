@@ -14,4 +14,5 @@ export type MultipleSelectProps<T = any> = {
   onSelect: (val: any[]) => void;
   styles?: ButtonProps;
   popDirection?: 'top' | 'bottom';
+  isArray?: boolean;
 };

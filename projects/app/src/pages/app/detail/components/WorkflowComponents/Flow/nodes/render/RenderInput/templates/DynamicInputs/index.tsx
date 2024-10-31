@@ -126,13 +126,13 @@ function Reference({
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
   const onSelect = useCallback(
-    (e: ReferenceValueProps) => {
+    (e: ReferenceValueProps | ReferenceValueProps[]) => {
       const workflowStartNode = nodeList.find(
         (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
       );
 
       const newValue =
-        e[0] === workflowStartNode?.id && !isWorkflowStartOutput(e[1])
+        e[0] === workflowStartNode?.id && !isWorkflowStartOutput(e[1] as string)
           ? [VARIABLE_NODE_ID, e[1]]
           : e;
 
