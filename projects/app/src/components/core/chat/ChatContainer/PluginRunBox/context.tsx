@@ -8,7 +8,6 @@ import {
 } from '@fastgpt/global/core/chat/type';
 import { FieldValues, useForm } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './constants';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -80,9 +79,7 @@ const PluginRunContextProvider = ({
   );
 
   const variablesForm = useForm<ChatBoxInputFormType>({
-    defaultValues: {
-      files: []
-    }
+    defaultValues: {}
   });
 
   const generatingMessage = useCallback(
@@ -179,8 +176,8 @@ const PluginRunContextProvider = ({
     [histories]
   );
 
-  const { runAsync: onSubmit } = useRequest2(
-    async (e: ChatBoxInputFormType, files?: UserInputFileItemType[]) => {
+  const onSubmit = useCallback(
+    async ({ variables }: ChatBoxInputFormType, files?: UserInputFileItemType[]) => {
       if (!onStartChat) return;
       if (isChatting) {
         toast({
@@ -199,7 +196,7 @@ const PluginRunContextProvider = ({
         {
           ...getPluginRunUserQuery({
             pluginInputs,
-            variables: e,
+            variables,
             files: files as RuntimeUserPromptType['files']
           }),
           status: 'finish'
@@ -234,10 +231,13 @@ const PluginRunContextProvider = ({
 
       try {
         const { responseData } = await onStartChat({
-          messages: messages,
+          messages,
           controller: chatController.current,
           generatingMessage,
-          variables: e
+          variables: {
+            files: files,
+            ...variables
+          }
         });
 
         setHistories((state) =>
@@ -262,7 +262,18 @@ const PluginRunContextProvider = ({
           })
         );
       }
-    }
+    },
+    [
+      abortRequest,
+      generatingMessage,
+      isChatting,
+      onStartChat,
+      pluginInputs,
+      setHistories,
+      setTab,
+      t,
+      toast
+    ]
   );
 
   const contextValue: PluginRunContextType = {

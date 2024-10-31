@@ -218,5 +218,5 @@ export type AIChatNodeProps = {
   [NodeInputKeyEnum.aiChatVision]?: boolean;
 
   [NodeInputKeyEnum.stringQuoteText]?: string;
-  [NodeInputKeyEnum.fileLinks]?: string[];
+  [NodeInputKeyEnum.fileUrlList]?: string[];
 };

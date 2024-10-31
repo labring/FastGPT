@@ -28,13 +28,10 @@ export const useChat = (params?: { chatId?: string; appId: string; type?: GetCha
 
       // Reset to empty input
       const data = variablesForm.getValues();
-      for (const key in data) {
-        data[key] = '';
-      }
 
       variablesForm.reset({
         ...data,
-        ...variables
+        variables
       });
     },
     [variablesForm]
@@ -42,8 +39,8 @@ export const useChat = (params?: { chatId?: string; appId: string; type?: GetCha
 
   const clearChatRecords = useCallback(() => {
     const data = variablesForm.getValues();
-    for (const key in data) {
-      variablesForm.setValue(key, '');
+    for (const key in data.variables) {
+      variablesForm.setValue(`variables.${key}`, '');
     }
 
     ChatBoxRef.current?.restartChat?.();

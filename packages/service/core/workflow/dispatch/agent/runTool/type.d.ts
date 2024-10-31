@@ -21,7 +21,7 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatTemperature]: number;
   [NodeInputKeyEnum.aiChatMaxToken]: number;
   [NodeInputKeyEnum.aiChatVision]?: boolean;
-  [NodeInputKeyEnum.fileLinks]?: string[];
+  [NodeInputKeyEnum.fileUrlList]?: string[];
 }> & {
   messages: ChatCompletionMessageParam[];
   toolNodes: ToolNodeItemType[];

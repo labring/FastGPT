@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { Controller } from 'react-hook-form';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Controller, useFieldArray } from 'react-hook-form';
 import RenderPluginInput from './renderPluginInput';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -42,6 +42,11 @@ const RenderInput = () => {
     formState: { errors }
   } = variablesForm;
 
+  /* ===> Global files(abandon) */
+  const fileCtrl = useFieldArray({
+    control: variablesForm.control,
+    name: 'files'
+  });
   const {
     File,
     onOpenSelectFile,
@@ -57,9 +62,18 @@ const RenderInput = () => {
     outLinkAuthData,
     chatId: chatId || '',
     fileSelectConfig: chatConfig?.fileSelectConfig,
-    control
+    fileCtrl
   });
   const isDisabledInput = histories.length > 0;
+  const hasFileUploading = useMemo(() => {
+    return fileList.some((item) => !item.url);
+  }, [fileList]);
+  useRequest2(uploadFiles, {
+    manual: false,
+    errorToast: t('common:upload_file_error'),
+    refreshDeps: [fileList, outLinkAuthData, chatId]
+  });
+  /* Global files(abandon) <=== */
 
   const onClickNewChat = useCallback(
     (e: ChatBoxInputFormType, files: UserInputFileItemType[] = []) => {
@@ -129,18 +143,12 @@ const RenderInput = () => {
     });
   }, [getValues, histories, isDisabledInput, pluginInputs, replaceFiles, reset, restartInputStore]);
 
-  const hasFileUploading = useMemo(() => {
-    return fileList.some((item) => !item.url);
-  }, [fileList]);
+  const [uploading, setUploading] = useState(false);
 
-  useRequest2(uploadFiles, {
-    manual: false,
-    errorToast: t('common:upload_file_error'),
-    refreshDeps: [fileList, outLinkAuthData, chatId]
-  });
+  const fileUploading = uploading || hasFileUploading;
 
   return (
-    <>
+    <Box>
       {/* instruction */}
       {chatConfig?.instruction && (
         <Box
@@ -155,7 +163,7 @@ const RenderInput = () => {
           <Markdown source={chatConfig.instruction} />
         </Box>
       )}
-      {/* file select */}
+      {/* file select(Abandoned) */}
       {(showSelectFile || showSelectImg) && (
         <Box mb={5}>
           <Flex alignItems={'center'}>
@@ -187,9 +195,9 @@ const RenderInput = () => {
       {pluginInputs.map((input) => {
         return (
           <Controller
-            key={input.key}
+            key={`variables.${input.key}`}
             control={control}
-            name={input.key}
+            name={`variables.${input.key}`}
             rules={{
               validate: (value) => {
                 if (!input.required) return true;
@@ -207,6 +215,7 @@ const RenderInput = () => {
                   isDisabled={isDisabledInput}
                   isInvalid={errors && Object.keys(errors).includes(input.key)}
                   input={input}
+                  setUploading={setUploading}
                 />
               );
             }}
@@ -217,7 +226,8 @@ const RenderInput = () => {
       {onStartChat && onNewChat && (
         <Flex justifyContent={'end'} mt={8}>
           <Button
-            isLoading={isChatting || hasFileUploading}
+            isLoading={isChatting}
+            isDisabled={fileUploading}
             onClick={() => {
               handleSubmit((e) => {
                 if (isDisabledInput) {
@@ -232,7 +242,7 @@ const RenderInput = () => {
           </Button>
         </Flex>
       )}
-    </>
+    </Box>
   );
 };
 

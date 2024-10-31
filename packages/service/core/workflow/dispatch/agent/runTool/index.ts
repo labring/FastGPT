@@ -45,7 +45,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     requestOrigin,
     chatConfig,
     runningAppInfo: { teamId },
-    params: { model, systemPrompt, userChatInput, history = 6, system_fileLinks: fileLinks }
+    params: { model, systemPrompt, userChatInput, history = 6, fileUrlList: fileLinks }
   } = props;
 
   const toolModel = getLLMModel(model);
@@ -96,17 +96,21 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     inputFiles: globalFiles
   });
 
+  const concatenateSystemPrompt = [
+    toolModel.defaultSystemChatPrompt,
+    systemPrompt,
+    documentQuoteText
+      ? replaceVariable(Prompt_DocumentQuote, {
+          quote: documentQuoteText
+        })
+      : ''
+  ]
+    .filter(Boolean)
+    .join('\n\n===---===---===\n\n');
+
   const messages: ChatItemType[] = (() => {
     const value: ChatItemType[] = [
-      ...getSystemPrompt_ChatItemType(toolModel.defaultSystemChatPrompt),
-      ...getSystemPrompt_ChatItemType(systemPrompt),
-      ...(documentQuoteText // file quote
-        ? getSystemPrompt_ChatItemType(
-            replaceVariable(Prompt_DocumentQuote, {
-              quote: documentQuoteText
-            })
-          )
-        : []),
+      ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
       // Add file input prompt to histories
       ...chatHistories.map((item) => {
         if (item.obj === ChatRoleEnum.Human) {

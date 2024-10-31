@@ -17,15 +17,16 @@ export const detectFileEncoding = (buffer: Buffer) => {
   return detect(buffer.slice(0, 200))?.encoding?.toLocaleLowerCase();
 };
 
+// Url => user upload file type
 export const parseUrlToFileType = (url: string): UserChatItemValueItemType['file'] | undefined => {
   const parseUrl = new URL(url, 'https://locaohost:3000');
 
   const filename = (() => {
-    // 来自我们系统上传的文件
+    // Old version file url: https://xxx.com/file/read?filename=xxx.pdf
     const filenameQuery = parseUrl.searchParams.get('filename');
     if (filenameQuery) return filenameQuery;
 
-    // 一般文件链接： https://xxx.com/xxx.pdf?xxxx=xxx
+    // Common file： https://xxx.com/xxx.pdf?xxxx=xxx
     const pathname = parseUrl.pathname;
     if (pathname) return pathname.split('/').pop();
   })();

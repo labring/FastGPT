@@ -17,6 +17,10 @@ const RenderList: {
     Component: dynamic(() => import('./templates/Reference'))
   },
   {
+    types: [FlowNodeInputTypeEnum.fileSelect],
+    Component: dynamic(() => import('./templates/Reference'))
+  },
+  {
     types: [FlowNodeInputTypeEnum.select],
     Component: dynamic(() => import('./templates/Select'))
   },

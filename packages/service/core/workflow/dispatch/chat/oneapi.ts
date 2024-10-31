@@ -87,11 +87,11 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quoteTemplate,
       quotePrompt,
       aiChatVision,
-      system_fileLinks: fileLinks,
+      fileUrlList: fileLinks, // node quote file links
       stringQuoteText //abandon
     }
   } = props;
-  const { files: inputFiles } = chatValue2RuntimePrompt(query);
+  const { files: inputFiles } = chatValue2RuntimePrompt(query); // Chat box input files
 
   if (!userChatInput && inputFiles.length === 0) {
     return Promise.reject('Question is empty');
@@ -148,22 +148,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     })()
   ]);
 
-  // Get the request messages
-  const concatMessages = [
-    ...(modelConstantsData.defaultSystemChatPrompt
-      ? [
-          {
-            role: ChatCompletionRequestMessageRoleEnum.System,
-            content: modelConstantsData.defaultSystemChatPrompt
-          }
-        ]
-      : []),
-    ...filterMessages
-  ] as ChatCompletionMessageParam[];
-
   const [requestMessages, max_tokens] = await Promise.all([
     loadRequestMessages({
-      messages: concatMessages,
+      messages: filterMessages,
       useVision: modelConstantsData.vision && aiChatVision,
       origin: requestOrigin
     }),
@@ -336,19 +323,22 @@ async function getMultiInput({
   maxFiles: number;
   teamId: string;
 }) {
-  // 旧版本适配=>
-  if (stringQuoteText)
+  // 旧版本适配====>
+  if (stringQuoteText) {
     return {
       documentQuoteText: stringQuoteText,
       userFiles: inputFiles
     };
+  }
 
+  // 没有引用文件参考，但是可能用了图片识别
   if (!fileLinks) {
     return {
       documentQuoteText: '',
       userFiles: inputFiles
     };
   }
+  // 旧版本适配<====
 
   // If fileLinks params is not empty, it means it is a new version, not get the global file.
 
@@ -378,6 +368,7 @@ async function getMultiInput({
 }
 
 async function getChatMessages({
+  model,
   aiChatQuoteRole,
   datasetQuotePrompt = '',
   datasetQuoteText,
@@ -386,7 +377,6 @@ async function getChatMessages({
   systemPrompt,
   userChatInput,
   userFiles,
-  model,
   documentQuoteText
 }: {
   model: LLMModelItemType;
@@ -403,6 +393,7 @@ async function getChatMessages({
   userFiles: UserChatItemValueItemType['file'][];
   documentQuoteText?: string; // document quote
 }) {
+  // Dataset prompt ====>
   // User role or prompt include question
   const quoteRole =
     aiChatQuoteRole === 'user' || datasetQuotePrompt.includes('{{question}}') ? 'user' : 'system';
@@ -413,6 +404,7 @@ async function getChatMessages({
       ? Prompt_userQuotePromptList[0].value
       : Prompt_systemQuotePromptList[0].value;
 
+  // Reset user input, add dataset quote to user input
   const replaceInputValue =
     useDatasetQuote && quoteRole === 'user'
       ? replaceVariable(datasetQuotePromptTemplate, {
@@ -420,26 +412,28 @@ async function getChatMessages({
           question: userChatInput
         })
       : userChatInput;
+  // Dataset prompt <====
 
-  const replaceSystemPrompt =
+  // Concat system prompt
+  const concatenateSystemPrompt = [
+    model.defaultSystemChatPrompt,
+    systemPrompt,
     useDatasetQuote && quoteRole === 'system'
-      ? `${systemPrompt ? systemPrompt + '\n\n------\n\n' : ''}${replaceVariable(
-          datasetQuotePromptTemplate,
-          {
-            quote: datasetQuoteText
-          }
-        )}`
-      : systemPrompt;
+      ? replaceVariable(datasetQuotePromptTemplate, {
+          quote: datasetQuoteText
+        })
+      : '',
+    documentQuoteText
+      ? replaceVariable(Prompt_DocumentQuote, {
+          quote: documentQuoteText
+        })
+      : ''
+  ]
+    .filter(Boolean)
+    .join('\n\n===---===---===\n\n');
 
   const messages: ChatItemType[] = [
-    ...getSystemPrompt_ChatItemType(replaceSystemPrompt),
-    ...(documentQuoteText // file quote
-      ? getSystemPrompt_ChatItemType(
-          replaceVariable(Prompt_DocumentQuote, {
-            quote: documentQuoteText
-          })
-        )
-      : []),
+    ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
     ...histories,
     {
       obj: ChatRoleEnum.Human,

@@ -65,10 +65,6 @@ const VariableEdit = ({
   const { setValue, reset, watch, getValues } = form;
   const value = getValues();
   const type = watch('type');
-  const valueType = watch('valueType');
-  const max = watch('max');
-  const min = watch('min');
-  const defaultValue = watch('defaultValue');
 
   const inputTypeList = useMemo(
     () =>
@@ -376,11 +372,7 @@ const VariableEdit = ({
               type={'variable'}
               isEdit={!!value.key}
               inputType={type}
-              valueType={valueType}
-              defaultValue={defaultValue}
               defaultValueType={defaultValueType}
-              max={max}
-              min={min}
               onClose={() => reset({})}
               onSubmitSuccess={onSubmitSuccess}
               onSubmitError={onSubmitError}

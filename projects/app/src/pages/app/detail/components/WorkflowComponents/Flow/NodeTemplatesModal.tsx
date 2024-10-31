@@ -465,13 +465,18 @@ const RenderList = React.memo(function RenderList({
 
       // Add default values to some inputs
       const defaultValueMap: Record<string, any> = {
-        [NodeInputKeyEnum.userChatInput]: undefined
+        [NodeInputKeyEnum.userChatInput]: undefined,
+        [NodeInputKeyEnum.fileUrlList]: undefined
       };
       nodeList.forEach((node) => {
         if (node.flowNodeType === FlowNodeTypeEnum.workflowStart) {
           defaultValueMap[NodeInputKeyEnum.userChatInput] = [
             node.nodeId,
             NodeOutputKeyEnum.userChatInput
+          ];
+          defaultValueMap[NodeInputKeyEnum.fileUrlList] = [
+            node.nodeId,
+            NodeOutputKeyEnum.userFiles
           ];
         }
       });

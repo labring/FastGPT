@@ -30,7 +30,7 @@ export const VariableInputItem = ({
   variablesForm
 }: {
   item: VariableItemType;
-  variablesForm: UseFormReturn<any>;
+  variablesForm: UseFormReturn<ChatBoxInputFormType>;
 }) => {
   const { register, control, setValue } = variablesForm;
 
@@ -64,14 +64,14 @@ export const VariableInputItem = ({
           minH={40}
           maxH={160}
           bg={'myGray.50'}
-          {...register(item.key, {
+          {...register(`variables.${item.key}`, {
             required: item.required
           })}
         />
       )}
       {item.type === VariableInputEnum.textarea && (
         <Textarea
-          {...register(item.key, {
+          {...register(`variables.${item.key}`, {
             required: item.required
           })}
           rows={5}
@@ -82,9 +82,9 @@ export const VariableInputItem = ({
 
       {item.type === VariableInputEnum.select && (
         <Controller
-          key={item.key}
+          key={`variables.${item.key}`}
           control={control}
-          name={item.key}
+          name={`variables.${item.key}`}
           rules={{ required: item.required }}
           render={({ field: { ref, value } }) => {
             return (
@@ -96,7 +96,7 @@ export const VariableInputItem = ({
                   value: item.value
                 }))}
                 value={value}
-                onchange={(e) => setValue(item.key, e)}
+                onchange={(e) => setValue(`variables.${item.key}`, e)}
               />
             );
           }}
@@ -104,9 +104,9 @@ export const VariableInputItem = ({
       )}
       {item.type === VariableInputEnum.numberInput && (
         <Controller
-          key={item.key}
+          key={`variables.${item.key}`}
           control={control}
-          name={item.key}
+          name={`variables.${item.key}`}
           rules={{ required: item.required, min: item.min, max: item.max }}
           render={({ field: { ref, value, onChange } }) => (
             <NumberInput

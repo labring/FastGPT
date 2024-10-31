@@ -55,9 +55,9 @@ const InputLabel = ({ nodeId, input }: Props) => {
           {description && <QuestionTip ml={1} label={t(description as any)}></QuestionTip>}
         </Flex>
         {/* value type */}
-        {renderType === FlowNodeInputTypeEnum.reference && (
-          <ValueTypeLabel valueType={valueType} valueDesc={valueDesc} />
-        )}
+        {[FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.fileSelect].includes(
+          renderType
+        ) && <ValueTypeLabel valueType={valueType} valueDesc={valueDesc} />}
 
         {/* input type select */}
         {renderTypeList && renderTypeList.length > 1 && (
