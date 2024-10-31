@@ -45,11 +45,7 @@ const Upload = () => {
 
   const { handleSubmit } = processParamsForm;
 
-  const hasCreatingFiles = useMemo(() => {
-    return sources.some((file) => file.createStatus === 'creating');
-  }, [sources]);
-
-  const { totalFilesCount, waitingFilesCount, allFinished } = useMemo(() => {
+  const { totalFilesCount, waitingFilesCount, allFinished, hasCreatingFiles } = useMemo(() => {
     const totalFilesCount = sources.length;
     const { waitingFilesCount, allFinished } = sources.reduce(
       (acc, file) => {
@@ -60,7 +56,9 @@ const Upload = () => {
       { waitingFilesCount: 0, allFinished: true }
     );
 
-    return { totalFilesCount, waitingFilesCount, allFinished };
+    const hasCreatingFiles = sources.some((file) => file.createStatus === 'creating');
+
+    return { totalFilesCount, waitingFilesCount, allFinished, hasCreatingFiles };
   }, [sources]);
 
   const buttonText = useMemo(() => {
@@ -71,7 +69,7 @@ const Upload = () => {
     } else {
       return t('common:core.dataset.import.Continue upload');
     }
-  }, [waitingFilesCount, allFinished, t]);
+  }, [waitingFilesCount, totalFilesCount, allFinished, t]);
 
   const { mutate: startUpload, isLoading } = useRequest({
     mutationFn: async ({ mode, customSplitChar, qaPrompt, webSelector }: ImportFormType) => {
