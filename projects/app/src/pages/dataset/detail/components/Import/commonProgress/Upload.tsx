@@ -47,16 +47,16 @@ const Upload = () => {
 
   const { totalFilesCount, waitingFilesCount, allFinished, hasCreatingFiles } = useMemo(() => {
     const totalFilesCount = sources.length;
-    const { waitingFilesCount, allFinished } = sources.reduce(
+
+    const { waitingFilesCount, allFinished, hasCreatingFiles } = sources.reduce(
       (acc, file) => {
         if (file.createStatus === 'waiting') acc.waitingFilesCount++;
+        if (file.createStatus === 'creating') acc.hasCreatingFiles = true;
         if (file.createStatus !== 'finish') acc.allFinished = false;
         return acc;
       },
-      { waitingFilesCount: 0, allFinished: true }
+      { waitingFilesCount: 0, allFinished: true, hasCreatingFiles: false }
     );
-
-    const hasCreatingFiles = sources.some((file) => file.createStatus === 'creating');
 
     return { totalFilesCount, waitingFilesCount, allFinished, hasCreatingFiles };
   }, [sources]);
