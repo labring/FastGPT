@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import {
   Box,
   TableContainer,
@@ -9,7 +10,9 @@ import {
   Td,
   Tbody,
   Flex,
-  Button
+  Button,
+  IconButton,
+  Tooltip
 } from '@chakra-ui/react';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
@@ -41,6 +44,32 @@ const Upload = () => {
     useContextSelector(DatasetImportContext, (v) => v);
 
   const { handleSubmit } = processParamsForm;
+
+  const { totalFilesCount, waitingFilesCount, allFinished, hasCreatingFiles } = useMemo(() => {
+    const totalFilesCount = sources.length;
+
+    const { waitingFilesCount, allFinished, hasCreatingFiles } = sources.reduce(
+      (acc, file) => {
+        if (file.createStatus === 'waiting') acc.waitingFilesCount++;
+        if (file.createStatus === 'creating') acc.hasCreatingFiles = true;
+        if (file.createStatus !== 'finish') acc.allFinished = false;
+        return acc;
+      },
+      { waitingFilesCount: 0, allFinished: true, hasCreatingFiles: false }
+    );
+
+    return { totalFilesCount, waitingFilesCount, allFinished, hasCreatingFiles };
+  }, [sources]);
+
+  const buttonText = useMemo(() => {
+    if (waitingFilesCount === totalFilesCount) {
+      return t('common:core.dataset.import.Start upload');
+    } else if (allFinished) {
+      return t('common:core.dataset.import.Upload complete');
+    } else {
+      return t('common:core.dataset.import.Continue upload');
+    }
+  }, [waitingFilesCount, totalFilesCount, allFinished, t]);
 
   const { mutate: startUpload, isLoading } = useRequest({
     mutationFn: async ({ mode, customSplitChar, qaPrompt, webSelector }: ImportFormType) => {
@@ -117,10 +146,12 @@ const Upload = () => {
       }
     },
     onSuccess() {
-      toast({
-        title: t('common:core.dataset.import.Import success'),
-        status: 'success'
-      });
+      if (!sources.some((file) => file.errorMsg !== undefined)) {
+        toast({
+          title: t('common:core.dataset.import.Import success'),
+          status: 'success'
+        });
+      }
 
       // close import page
       router.replace({
@@ -130,13 +161,14 @@ const Upload = () => {
         }
       });
     },
-    onError() {
+    onError(error) {
       setSources((state) =>
         state.map((source) =>
           source.createStatus === 'creating'
             ? {
                 ...source,
-                createStatus: 'waiting'
+                createStatus: 'waiting',
+                errorMsg: error.message || fileT('upload_failed')
               }
             : source
         )
@@ -157,6 +189,9 @@ const Upload = () => {
               <Th borderBottom={'none'} py={4}>
                 {t('common:core.dataset.import.Upload status')}
               </Th>
+              <Th borderRightRadius={'md'} borderBottom={'none'} py={4}>
+                {t('common:common.Action')}
+              </Th>
             </Tr>
           </Thead>
           <Tbody>
@@ -172,16 +207,40 @@ const Upload = () => {
                 </Td>
                 <Td>
                   <Box display={'inline-block'}>
-                    {item.createStatus === 'waiting' && (
-                      <MyTag colorSchema={'gray'}>{t('common:common.Waiting')}</MyTag>
-                    )}
-                    {item.createStatus === 'creating' && (
-                      <MyTag colorSchema={'blue'}>{t('common:common.Creating')}</MyTag>
-                    )}
-                    {item.createStatus === 'finish' && (
-                      <MyTag colorSchema={'green'}>{t('common:common.Finish')}</MyTag>
+                    {item.errorMsg ? (
+                      <Tooltip label={item.errorMsg} fontSize="md">
+                        <Flex alignItems="center">
+                          <MyTag colorSchema={'red'}>{t('common:common.Error')}</MyTag>
+                          <QuestionOutlineIcon ml={2} color="red.500" w="14px" />
+                        </Flex>
+                      </Tooltip>
+                    ) : (
+                      <>
+                        {item.createStatus === 'waiting' && (
+                          <MyTag colorSchema={'gray'}>{t('common:common.Waiting')}</MyTag>
+                        )}
+                        {item.createStatus === 'creating' && (
+                          <MyTag colorSchema={'blue'}>{t('common:common.Creating')}</MyTag>
+                        )}
+                        {item.createStatus === 'finish' && (
+                          <MyTag colorSchema={'green'}>{t('common:common.Finish')}</MyTag>
+                        )}
+                      </>
                     )}
                   </Box>
+                </Td>
+                <Td>
+                  {!hasCreatingFiles && item.createStatus !== 'finish' && (
+                    <IconButton
+                      variant={'grayDanger'}
+                      size={'sm'}
+                      icon={<MyIcon name={'delete'} w={'14px'} />}
+                      aria-label={'Delete file'}
+                      onClick={() => {
+                        setSources((prevFiles) => prevFiles.filter((file) => file.id !== item.id));
+                      }}
+                    />
+                  )}
                 </Td>
               </Tr>
             ))}
@@ -191,10 +250,11 @@ const Upload = () => {
 
       <Flex justifyContent={'flex-end'} mt={4}>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => startUpload(data))}>
-          {sources.length > 0
-            ? `${t('core.dataset.import.Total files', { total: sources.length })} | `
-            : ''}
-          {t('common:core.dataset.import.Start upload')}
+          {totalFilesCount > 0 &&
+            `${t('common:core.dataset.import.Total files', {
+              total: totalFilesCount
+            })} | `}
+          {buttonText}
         </Button>
       </Flex>
     </Box>
