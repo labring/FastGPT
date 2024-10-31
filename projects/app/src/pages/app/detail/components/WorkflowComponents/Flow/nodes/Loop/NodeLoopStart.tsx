@@ -100,7 +100,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           debug: true
         }}
       >
-        <Box px={4} w={'420px'} h={'116px'}>
+        <Box px={4} pt={2} w={'420px'} h={'116px'}>
           {!loopItemInputType ? (
             <EmptyTip text={t('workflow:loop_start_tip')} py={0} mt={4} iconSize={'32px'} />
           ) : (

@@ -290,7 +290,7 @@ export const useWorkflow = () => {
   // Loop node size and position
   const resetParentNodeSizeAndPosition = useMemoizedFn((rect: Rect, parentId: string) => {
     const width = rect.width + 110 > 900 ? rect.width + 110 : 900;
-    const height = rect.height + 380 > 900 ? rect.height + 380 : 900;
+    const height = rect.height + 420 > 900 ? rect.height + 420 : 900;
 
     // Update parentNode size and position
     onChangeNode({

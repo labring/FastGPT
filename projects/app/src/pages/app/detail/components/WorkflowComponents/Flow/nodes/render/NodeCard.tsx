@@ -373,7 +373,9 @@ const NodeCard = (props: Props) => {
     >
       <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />
       {Header}
-      {!isFolded ? children : <Box h={4} />}
+      <Flex flexDirection={'column'} flex={1} my={4} gap={2}>
+        {!isFolded ? children : <Box h={4} />}
+      </Flex>
       {RenderHandle}
       {RenderToolHandle}
 
@@ -584,32 +586,31 @@ const NodeIntro = React.memo(function NodeIntro({
           <Box fontSize={'sm'} color={'myGray.500'} flex={'1 0 0'}>
             {t(intro as any)}
           </Box>
-          {NodeIsTool && (
-            <Flex
-              p={'7px'}
-              rounded={'sm'}
-              alignItems={'center'}
-              _hover={{
-                bg: 'myGray.100'
-              }}
-              cursor={'pointer'}
-              onClick={() => {
-                onOpenIntroModal({
-                  defaultVal: intro,
-                  onSuccess(e) {
-                    onChangeNode({
-                      nodeId,
-                      type: 'attr',
-                      key: 'intro',
-                      value: e
-                    });
-                  }
-                });
-              }}
-            >
-              <MyIcon name={'edit'} w={'18px'} />
-            </Flex>
-          )}
+          <Flex
+            p={'7px'}
+            rounded={'sm'}
+            alignItems={'center'}
+            _hover={{
+              bg: NodeIsTool ? 'myGray.100' : 'transparent'
+            }}
+            cursor={NodeIsTool ? 'pointer' : 'default'}
+            onClick={() => {
+              if (!NodeIsTool) return;
+              onOpenIntroModal({
+                defaultVal: intro,
+                onSuccess(e) {
+                  onChangeNode({
+                    nodeId,
+                    type: 'attr',
+                    key: 'intro',
+                    value: e
+                  });
+                }
+              });
+            }}
+          >
+            <MyIcon name={'edit'} w={'18px'} opacity={NodeIsTool ? 1 : 0} />
+          </Flex>
         </Flex>
         <EditIntroModal maxLength={500} />
       </>

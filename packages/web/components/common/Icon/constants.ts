@@ -217,6 +217,7 @@ export const iconPaths = {
   'core/workflow/template/FileRead': () => import('./icons/core/workflow/template/FileRead.svg'),
   'core/workflow/template/aiChat': () => import('./icons/core/workflow/template/aiChat.svg'),
   'core/workflow/template/baseChart': () => import('./icons/core/workflow/template/baseChart.svg'),
+  'core/workflow/template/bing': () => import('./icons/core/workflow/template/bing.svg'),
   'core/workflow/template/codeRun': () => import('./icons/core/workflow/template/codeRun.svg'),
   'core/workflow/template/customFeedback': () =>
     import('./icons/core/workflow/template/customFeedback.svg'),
@@ -224,18 +225,16 @@ export const iconPaths = {
     import('./icons/core/workflow/template/datasetConcat.svg'),
   'core/workflow/template/datasetSearch': () =>
     import('./icons/core/workflow/template/datasetSearch.svg'),
+  'core/workflow/template/datasource': () =>
+    import('./icons/core/workflow/template/datasource.svg'),
   'core/workflow/template/duckduckgo': () =>
     import('./icons/core/workflow/template/duckduckgo.svg'),
   'core/workflow/template/extractJson': () =>
     import('./icons/core/workflow/template/extractJson.svg'),
-  'core/workflow/template/wiki': () => import('./icons/core/workflow/template/wiki.svg'),
-  'core/workflow/template/datasource': () =>
-    import('./icons/core/workflow/template/datasource.svg'),
-  'core/workflow/template/google': () => import('./icons/core/workflow/template/google.svg'),
-  'core/workflow/template/bing': () => import('./icons/core/workflow/template/bing.svg'),
   'core/workflow/template/fetchUrl': () => import('./icons/core/workflow/template/fetchUrl.svg'),
   'core/workflow/template/formInput': () => import('./icons/core/workflow/template/formInput.svg'),
   'core/workflow/template/getTime': () => import('./icons/core/workflow/template/getTime.svg'),
+  'core/workflow/template/google': () => import('./icons/core/workflow/template/google.svg'),
   'core/workflow/template/httpRequest': () =>
     import('./icons/core/workflow/template/httpRequest.svg'),
   'core/workflow/template/ifelse': () => import('./icons/core/workflow/template/ifelse.svg'),

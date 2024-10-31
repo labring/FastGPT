@@ -25,6 +25,7 @@ import { DatasetImportContext } from '../Context';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean }) {
   const { t } = useTranslation();
@@ -123,14 +124,7 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
                       <Box>
                         <Flex alignItems={'center'}>
                           <Box>{t('dataset:ideal_chunk_length')}</Box>
-                          <MyTooltip label={t('dataset:ideal_chunk_length_tips')}>
-                            <MyIcon
-                              name={'common/questionLight'}
-                              ml={1}
-                              w={'14px'}
-                              color={'myGray.500'}
-                            />
-                          </MyTooltip>
+                          <QuestionTip label={t('dataset:ideal_chunk_length_tips')} />
                         </Flex>
                         <Box
                           mt={1}
@@ -166,14 +160,9 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
                     <Box mt={3}>
                       <Box>
                         {t('common:core.dataset.import.Custom split char')}
-                        <MyTooltip label={t('common:core.dataset.import.Custom split char Tips')}>
-                          <MyIcon
-                            name={'common/questionLight'}
-                            ml={1}
-                            w={'14px'}
-                            color={'myGray.500'}
-                          />
-                        </MyTooltip>
+                        <QuestionTip
+                          label={t('common:core.dataset.import.Custom split char Tips')}
+                        />
                       </Box>
                       <Box mt={1}>
                         <Input
