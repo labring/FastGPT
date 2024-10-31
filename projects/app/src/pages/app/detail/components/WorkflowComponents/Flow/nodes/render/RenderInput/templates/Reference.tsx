@@ -184,7 +184,8 @@ export const useReference = ({
     formatValue
   };
 };
-export const ReferSelector = ({
+
+const ReferSelectorComponent = ({
   placeholder,
   value,
   list = [],
@@ -193,7 +194,6 @@ export const ReferSelector = ({
   isArray
 }: SelectProps) => {
   const { t } = useTranslation();
-  console.log(value);
   const selectValue = useMemo(() => {
     if (!value || value.every((item) => !item || item.every((subItem) => !subItem))) {
       return;
@@ -210,7 +210,6 @@ export const ReferSelector = ({
       return [firstColumn, secondColumn];
     });
   }, [list, value]);
-  console.log(selectValue);
 
   const Render = useMemo(() => {
     return (
@@ -301,3 +300,7 @@ export const ReferSelector = ({
 
   return Render;
 };
+
+ReferSelectorComponent.displayName = 'ReferSelector';
+
+export const ReferSelector = React.memo(ReferSelectorComponent);
