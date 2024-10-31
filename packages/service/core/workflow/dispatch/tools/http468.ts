@@ -389,7 +389,7 @@ async function replaceSystemPluginResponse({
           contentType: fileObj.contentType,
           metadata: {}
         });
-        response[key] = `${ReadFileBaseUrl}?filename=${filename}&token=${await createFileToken({
+        response[key] = `${ReadFileBaseUrl}/${filename}?token=${await createFileToken({
           bucketName: 'chat',
           teamId,
           tmbId,
