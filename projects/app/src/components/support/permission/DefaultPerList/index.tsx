@@ -61,6 +61,7 @@ const DefaultPermissionList = ({
             }
           }}
           fontSize={styles?.fontSize}
+          fontWeight={styles?.fontWeight}
         />
       </Box>
       <ConfirmModal />

@@ -46,7 +46,7 @@ const Button = defineStyleConfig({
       px: '2',
       py: '0',
       h: '24px',
-      fontWeight: 'normal',
+      fontWeight: 'medium',
       borderRadius: 'sm'
     },
     xsSquare: {
@@ -55,14 +55,14 @@ const Button = defineStyleConfig({
       py: '0',
       h: '24px',
       w: '24px',
-      fontWeight: 'normal',
+      fontWeight: 'medium',
       borderRadius: 'sm'
     },
     sm: {
       fontSize: 'sm',
       px: '3',
       py: 0,
-      fontWeight: 'normal',
+      fontWeight: 'medium',
       h: '30px',
       borderRadius: 'sm'
     },
@@ -70,7 +70,7 @@ const Button = defineStyleConfig({
       fontSize: 'sm',
       px: '0',
       py: 0,
-      fontWeight: 'normal',
+      fontWeight: 'medium',
       h: '30px',
       w: '30px',
       borderRadius: 'sm'
@@ -80,7 +80,7 @@ const Button = defineStyleConfig({
       px: '4',
       py: 0,
       h: '34px',
-      fontWeight: 'normal',
+      fontWeight: 'medium',
       borderRadius: 'sm'
     },
     mdSquare: {
@@ -89,7 +89,7 @@ const Button = defineStyleConfig({
       py: 0,
       h: '34px',
       w: '34px',
-      fontWeight: 'normal',
+      fontWeight: 'medium',
       borderRadius: 'sm'
     },
     lg: {
@@ -97,8 +97,8 @@ const Button = defineStyleConfig({
       px: '4',
       py: 0,
       h: '40px',
-      fontWeight: 'normal',
-      borderRadius: 'sm'
+      fontWeight: 'medium',
+      borderRadius: 'md'
     },
     lgSquare: {
       fontSize: 'md',
@@ -106,8 +106,8 @@ const Button = defineStyleConfig({
       py: 0,
       h: '40px',
       w: '40px',
-      fontWeight: 'normal',
-      borderRadius: 'sm'
+      fontWeight: 'medium',
+      borderRadius: 'md'
     }
   },
   variants: {
@@ -181,7 +181,7 @@ const Button = defineStyleConfig({
       bg: 'white',
       transition: 'background 0.1s',
       _hover: {
-        color: 'primary.700',
+        color: 'primary.600',
         borderColor: 'primary.300'
       }
     },
@@ -193,7 +193,7 @@ const Button = defineStyleConfig({
       transition: 'background 0.1s',
       boxShadow: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)',
       _hover: {
-        color: 'primary.700',
+        color: 'primary.600',
         background: 'primary.1',
         borderColor: 'primary.300'
       },
@@ -319,10 +319,14 @@ const Input: ComponentStyleConfig = {
       field: {
         border: '1px solid',
         borderColor: 'borderColor.low',
+        px: 3,
         _focus: {
           borderColor: 'primary.500',
           boxShadow: shadowLight,
           bg: 'white'
+        },
+        _hover: {
+          borderColor: 'primary.300'
         },
         _disabled: {
           color: 'myGray.400',
@@ -346,7 +350,7 @@ const NumberInput = numInputMultiStyle({
         fontsize: 'sm'
       }
     }),
-    md: defineStyle({
+    lg: defineStyle({
       field: {
         h: '40px',
         borderRadius: 'md',
@@ -391,16 +395,24 @@ const Textarea: ComponentStyleConfig = {
   variants: {
     outline: {
       border: '1px solid',
+      px: 3,
       borderRadius: 'md',
       borderColor: 'myGray.200',
       fontSize: 'sm',
       _hover: {
-        borderColor: ''
+        borderColor: 'primary.300'
       },
       _focus: {
         borderColor: 'primary.500',
         boxShadow: shadowLight,
         bg: 'white'
+      },
+      '&::-webkit-resizer': {
+        background: "url('/icon/resizer.svg') no-repeat",
+        backgroundSize: '11px',
+        backgroundPosition: 'right bottom',
+        backgroundPositionX: 'right 12px',
+        backgroundPositionY: 'bottom 12px'
       }
     }
   },

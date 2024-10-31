@@ -18,7 +18,7 @@ const LightRowTabs = <ValueType = string,>({
   list,
   size = 'md',
   value,
-  activeColor = 'primary.700',
+  activeColor = 'primary.600',
   defaultColor = 'transparent',
   onChange,
   inlineStyles,

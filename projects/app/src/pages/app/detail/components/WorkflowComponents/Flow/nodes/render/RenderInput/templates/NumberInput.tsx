@@ -21,7 +21,7 @@ const NumberInputRender = ({ item, nodeId }: RenderInputProps) => {
         min={item.min}
         max={item.max}
         bg={'white'}
-        rounded={'sm'}
+        rounded={'md'}
         onChange={(e) => {
           onChangeNode({
             nodeId,
@@ -37,7 +37,7 @@ const NumberInputRender = ({ item, nodeId }: RenderInputProps) => {
         <NumberInputField
           bg={'white'}
           px={3}
-          borderRadius={'sm'}
+          rounded={'md'}
           _hover={{
             borderColor: 'primary.500'
           }}
