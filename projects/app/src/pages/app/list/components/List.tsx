@@ -245,7 +245,7 @@ const ListItem = () => {
                       <HStack spacing={0.5} className="time">
                         <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
                         <Box color={'myGray.500'}>
-                          {t(formatTimeToChatTime(app.updateTime) as any)}
+                          {t(formatTimeToChatTime(app.updateTime) as any).replace('#', ':')}
                         </Box>
                       </HStack>
                     )}

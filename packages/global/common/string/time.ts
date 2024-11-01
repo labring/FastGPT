@@ -28,8 +28,9 @@ export const formatTimeToChatTime = (time: Date) => {
   }
 
   // 如果时间是今天，展示几时:几分
+  //用#占位，i18n生效后replace成:
   if (now.isSame(target, 'day')) {
-    return target.format('HH : mm');
+    return 'common:' + target.format('HH#mm');
   }
 
   // 如果是昨天，展示昨天
@@ -49,11 +50,11 @@ export const formatTimeToChatTime = (time: Date) => {
 export const formatTimeToChatItemTime = (time: Date) => {
   const now = dayjs();
   const target = dayjs(time);
-  const detailTime = target.format('HH : mm');
+  const detailTime = target.format('HH#mm');
 
   // 如果时间是今天，展示几时:几分
   if (now.isSame(target, 'day')) {
-    return detailTime;
+    return 'common:' + detailTime;
   }
 
   // 如果是昨天，展示昨天+几时:几分

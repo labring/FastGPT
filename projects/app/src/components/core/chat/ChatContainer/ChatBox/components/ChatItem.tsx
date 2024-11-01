@@ -113,6 +113,8 @@ const AIContentCard = React.memo(function AIContentCard({
 const ChatItem = (props: Props) => {
   const { type, avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
 
+  const { isPc } = useSystem();
+
   const styleMap: BoxProps = {
     ...(type === ChatRoleEnum.Human
       ? {
@@ -135,7 +137,9 @@ const ChatItem = (props: Props) => {
   };
   const { t } = useTranslation();
 
-  const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const { isChatting, isLog } = useContextSelector(ChatBoxContext, (v) => {
+    return { isChatting: v.isChatting, isLog: v.isLog };
+  });
 
   const { copyData } = useCopyData();
 
@@ -214,17 +218,17 @@ const ChatItem = (props: Props) => {
       <Flex w={'100%'} alignItems={'flex-end'} gap={2} justifyContent={styleMap.justifyContent}>
         {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
           <Flex order={styleMap.order} ml={styleMap.ml} align={'center'} gap={'0.62rem'}>
-            {chat.time && type === ChatRoleEnum.Human && (
+            {chat.time && type === ChatRoleEnum.Human && (isPc || isLog) && (
               <Box
                 className={'time-label'}
                 fontSize={styleMap.fontSize}
                 color={styleMap.color}
                 fontWeight={styleMap.fontWeight}
-                display={['block', 'none']}
+                display={isLog ? 'block' : 'none'}
               >
                 {t(formatTimeToChatItemTime(chat.time) as any, {
-                  time: dayjs(chat.time).format('HH : mm')
-                })}
+                  time: dayjs(chat.time).format('HH:mm')
+                }).replace('#', ':')}
               </Box>
             )}
             <ChatController {...props} isLastChild={isLastChild} />

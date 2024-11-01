@@ -234,7 +234,7 @@ const ChatHistorySlider = ({
                     fontSize={'mini'}
                     color={'myGray.500'}
                   >
-                    {t(formatTimeToChatTime(item.updateTime) as any)}
+                    {t(formatTimeToChatTime(item.updateTime) as any).replace('#', ':')}
                   </Box>
                   <Box className="more" display={['block', 'none']}>
                     <MyMenu

@@ -381,7 +381,9 @@ const TestHistories = React.memo(function TestHistories({
             <Box flex={1} mr={2} wordBreak={'break-all'} fontWeight={'400'}>
               {item.text}
             </Box>
-            <Box flex={'0 0 70px'}>{t(formatTimeToChatTime(item.time) as any)}</Box>
+            <Box flex={'0 0 70px'}>
+              {t(formatTimeToChatTime(item.time) as any).replace('#', ':')}
+            </Box>
             <MyTooltip label={t('common:core.dataset.test.delete test history')}>
               <Box w={'14px'} h={'14px'}>
                 <MyIcon

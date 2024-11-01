@@ -115,7 +115,9 @@ const ChatTimeBox = ({ time }: { time: Date }) => {
 
   return (
     <Box w={'100%'} fontSize={'mini'} textAlign={'center'} color={'myGray.500'} fontWeight={'400'}>
-      {t(formatTimeToChatItemTime(time) as any, { time: dayjs(time).format('HH : mm') })}
+      {t(formatTimeToChatItemTime(time) as any, {
+        time: dayjs(time).format('HH#mm')
+      }).replace('#', ':')}
     </Box>
   );
 };
