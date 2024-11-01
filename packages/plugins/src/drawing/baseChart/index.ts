@@ -1,7 +1,5 @@
 import * as echarts from 'echarts';
 import json5 from 'json5';
-import { getFileSavePath } from '../../../utils';
-import * as fs from 'fs';
 import { SystemPluginSpecialResponse } from '../../../type.d';
 
 type Props = {
@@ -82,25 +80,23 @@ const generateChart = async (title: string, xAxis: string, yAxis: string, chartT
 
   chart.setOption(option);
   // 生成 Base64 图像
-  const base64Image = chart.getDataURL();
-  const svgData = decodeURIComponent(base64Image.split(',')[1]);
+  const base64Image = chart.getDataURL({
+    type: 'png',
+    pixelRatio: 2 // 可以设置更高的像素比以获得更清晰的图像
+  });
+  const svgContent = decodeURIComponent(base64Image.split(',')[1]);
+  const base64 = `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`;
 
-  const fileName = `chart_${Date.now()}.svg`;
-  const filePath = getFileSavePath(fileName);
-  fs.writeFileSync(filePath, svgData);
-  // 释放图表实例
-  chart.dispose();
-
-  return filePath;
+  return base64;
 };
 
 const main = async ({ title, xAxis, yAxis, chartType }: Props): Response => {
-  const filePath = await generateChart(title, xAxis, yAxis, chartType);
+  const base64 = await generateChart(title, xAxis, yAxis, chartType);
   return {
     result: {
-      type: 'SYSTEM_PLUGIN_FILE',
-      path: filePath,
-      contentType: 'image/svg+xml'
+      type: 'SYSTEM_PLUGIN_BASE64',
+      value: base64,
+      extension: 'svg'
     }
   };
 };

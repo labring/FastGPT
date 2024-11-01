@@ -18,11 +18,11 @@ import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/util
 import { getSystemPluginCb } from '../../../../../plugins/register';
 import { ContentTypes } from '@fastgpt/global/core/workflow/constants';
 import { replaceEditorVariable } from '@fastgpt/global/core/workflow/utils';
-import { uploadFile } from '../../../../common/file/gridfs/controller';
+import { uploadFileFromBase64Img } from '../../../../common/file/gridfs/controller';
 import { ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
 import { createFileToken } from '../../../../support/permission/controller';
-import { removeFilesByPaths } from '../../../../common/file/utils';
 import { JSONPath } from 'jsonpath-plus';
+import type { SystemPluginSpecialResponse } from '../../../../../plugins/type';
 
 type PropsArrType = {
   key: string;
@@ -376,27 +376,25 @@ async function replaceSystemPluginResponse({
   tmbId: string;
 }) {
   for await (const key of Object.keys(response)) {
-    if (typeof response[key] === 'object' && response[key].type === 'SYSTEM_PLUGIN_FILE') {
-      const fileObj = response[key];
-      const filename = fileObj.path.split('/').pop() || `${tmbId}-${Date.now()}`;
+    if (typeof response[key] === 'object' && response[key].type === 'SYSTEM_PLUGIN_BASE64') {
+      const fileObj = response[key] as SystemPluginSpecialResponse;
+      const filename = `${tmbId}-${Date.now()}.${fileObj.extension}`;
       try {
-        const fileId = await uploadFile({
+        const fileId = await uploadFileFromBase64Img({
           teamId,
           tmbId,
           bucketName: 'chat',
-          path: fileObj.path,
+          base64: fileObj.value,
           filename,
-          contentType: fileObj.contentType,
           metadata: {}
         });
-        response[key] = `${ReadFileBaseUrl}?filename=${filename}&token=${await createFileToken({
+        response[key] = `${ReadFileBaseUrl}/${filename}?token=${await createFileToken({
           bucketName: 'chat',
           teamId,
           tmbId,
           fileId
         })}`;
       } catch (error) {}
-      removeFilesByPaths([fileObj.path]);
     }
   }
   return response;
