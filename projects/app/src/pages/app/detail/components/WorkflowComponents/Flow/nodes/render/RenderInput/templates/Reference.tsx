@@ -152,7 +152,17 @@ export const useReference = ({
                 currentType === output.valueType ||
                 // array
                 output.valueType === valueType ||
-                valueType === WorkflowIOValueTypeEnum.arrayAny
+                (valueType === WorkflowIOValueTypeEnum.arrayAny &&
+                  [
+                    WorkflowIOValueTypeEnum.arrayString,
+                    WorkflowIOValueTypeEnum.arrayNumber,
+                    WorkflowIOValueTypeEnum.arrayBoolean,
+                    WorkflowIOValueTypeEnum.arrayObject,
+                    WorkflowIOValueTypeEnum.string,
+                    WorkflowIOValueTypeEnum.number,
+                    WorkflowIOValueTypeEnum.boolean,
+                    WorkflowIOValueTypeEnum.object
+                  ].includes(output.valueType as WorkflowIOValueTypeEnum))
             )
             .filter((output) => output.id !== NodeOutputKeyEnum.addOutputParam)
             .map((output) => {
@@ -282,7 +292,7 @@ const ReferSelectorComponent = ({
               )}
             </Flex>
           ) : (
-            <Box pl={2} fontSize={'14px'}>
+            <Box pl={2} py={1} fontSize={'14px'}>
               {placeholder}
             </Box>
           )

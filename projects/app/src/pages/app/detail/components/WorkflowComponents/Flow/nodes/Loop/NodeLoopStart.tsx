@@ -19,8 +19,7 @@ const typeMap = {
   [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.string,
   [WorkflowIOValueTypeEnum.arrayNumber]: WorkflowIOValueTypeEnum.number,
   [WorkflowIOValueTypeEnum.arrayBoolean]: WorkflowIOValueTypeEnum.boolean,
-  [WorkflowIOValueTypeEnum.arrayObject]: WorkflowIOValueTypeEnum.object,
-  [WorkflowIOValueTypeEnum.arrayAny]: WorkflowIOValueTypeEnum.any
+  [WorkflowIOValueTypeEnum.arrayObject]: WorkflowIOValueTypeEnum.object
 };
 
 const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
@@ -39,12 +38,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     const parentArrayInput = parentNode?.inputs.find(
       (input) => input.key === NodeInputKeyEnum.loopInputArray
     );
-    return parentArrayInput?.value
-      ? (nodeList
-          .find((node) => node.nodeId === parentArrayInput?.value[0])
-          ?.outputs.find((output) => output.id === parentArrayInput?.value[1])
-          ?.valueType as keyof typeof typeMap)
-      : undefined;
+    return typeMap[parentArrayInput?.valueType as keyof typeof typeMap];
   }, [loopStartNode?.parentNodeId, nodeList]);
 
   // Auth update loopStartInput output
@@ -71,7 +65,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           key: NodeOutputKeyEnum.loopStartInput,
           label: t('workflow:Array_element'),
           type: FlowNodeOutputTypeEnum.static,
-          valueType: typeMap[loopItemInputType as keyof typeof typeMap]
+          valueType: loopItemInputType
         }
       });
     }
@@ -83,7 +77,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         key: NodeOutputKeyEnum.loopStartInput,
         value: {
           ...loopArrayOutput,
-          valueType: typeMap[loopItemInputType as keyof typeof typeMap]
+          valueType: loopItemInputType
         }
       });
     }
@@ -128,7 +122,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                           {t('workflow:Array_element')}
                         </Flex>
                       </Td>
-                      <Td>{typeMap[loopItemInputType]}</Td>
+                      <Td>{loopItemInputType}</Td>
                     </Tr>
                   </Tbody>
                 </Table>
