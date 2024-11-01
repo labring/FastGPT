@@ -39,7 +39,7 @@ type SelectProps = {
   isArray?: boolean;
 };
 
-const isReference = (val: any) =>
+export const isReference = (val: any) =>
   Array.isArray(val) &&
   val.length === 2 &&
   typeof val[0] === 'string' &&
@@ -204,6 +204,7 @@ const ReferSelectorComponent = ({
   isArray
 }: SelectProps) => {
   const { t } = useTranslation();
+
   const selectValue = useMemo(() => {
     if (!value || value.every((item) => !item || item.every((subItem) => !subItem))) {
       return;
@@ -220,7 +221,6 @@ const ReferSelectorComponent = ({
       return [firstColumn, secondColumn];
     });
   }, [list, value]);
-  console.log('selectValue', value, selectValue, isArray);
 
   const Render = useMemo(() => {
     return (

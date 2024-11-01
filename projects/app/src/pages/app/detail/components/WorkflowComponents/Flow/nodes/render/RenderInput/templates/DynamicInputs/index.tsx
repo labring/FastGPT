@@ -12,7 +12,7 @@ import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponent
 import { defaultInput } from '../../FieldEditModal';
 import { getInputComponentProps } from '@fastgpt/global/core/workflow/node/io/utils';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
-import { ReferSelector, useReference } from '../Reference';
+import { isReference, ReferSelector, useReference } from '../Reference';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from '../../../ValueTypeLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -155,18 +155,42 @@ function Reference({
     value: inputChildren.value
   });
 
+  // handle array and non-array type conversion
+  const getValueTypeChange = useCallback(
+    (data: FlowNodeInputItemType, oldType: string | undefined) => {
+      const newType = data.valueType;
+      if (oldType === newType) return data.value;
+
+      if (!oldType?.includes('array') && newType?.includes('array')) {
+        return Array.isArray(data.value) && data.value.every((item) => isReference(item))
+          ? data.value
+          : [data.value];
+      }
+      if (oldType?.includes('array') && !newType?.includes('array')) {
+        return Array.isArray(data.value) ? data.value[0] : data.value;
+      }
+      return data.value;
+    },
+    []
+  );
+
   const onUpdateField = useCallback(
     ({ data }: { data: FlowNodeInputItemType }) => {
       if (!data.key) return;
+
+      const updatedValue = getValueTypeChange(data, inputChildren.valueType);
 
       onChangeNode({
         nodeId,
         type: 'replaceInput',
         key: inputChildren.key,
-        value: data
+        value: {
+          ...data,
+          value: updatedValue
+        }
       });
     },
-    [inputChildren.key, nodeId, onChangeNode]
+    [inputChildren, nodeId, onChangeNode, getValueTypeChange]
   );
   const onDel = useCallback(() => {
     onChangeNode({
