@@ -12,6 +12,7 @@ import { gridFsStream2Buffer, stream2Encoding } from './utils';
 import { addLog } from '../../system/log';
 import { readFromSecondary } from '../../mongo/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+import { Readable } from 'stream';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoDatasetFileSchema;
@@ -52,6 +53,59 @@ export async function uploadFile({
   if (!stats.isFile()) return Promise.reject(`${path} is not a file`);
 
   const { stream: readStream, encoding } = await stream2Encoding(fs.createReadStream(path));
+
+  // Add default metadata
+  metadata.teamId = teamId;
+  metadata.tmbId = tmbId;
+  metadata.encoding = encoding;
+
+  // create a gridfs bucket
+  const bucket = getGridBucket(bucketName);
+
+  const stream = bucket.openUploadStream(filename, {
+    metadata,
+    contentType
+  });
+
+  // save to gridfs
+  await new Promise((resolve, reject) => {
+    readStream
+      .pipe(stream as any)
+      .on('finish', resolve)
+      .on('error', reject);
+  });
+
+  return String(stream.id);
+}
+export async function uploadFileFromBase64Img({
+  bucketName,
+  teamId,
+  tmbId,
+  base64,
+  filename,
+  metadata = {}
+}: {
+  bucketName: `${BucketNameEnum}`;
+  teamId: string;
+  tmbId: string;
+  base64: string;
+  filename: string;
+  metadata?: Record<string, any>;
+}) {
+  if (!base64) return Promise.reject(`filePath is empty`);
+  if (!filename) return Promise.reject(`filename is empty`);
+
+  const base64Data = base64.split(',')[1];
+  const contentType = base64.split(',')?.[0]?.split?.(':')?.[1];
+  const buffer = Buffer.from(base64Data, 'base64');
+  const readableStream = new Readable({
+    read() {
+      this.push(buffer);
+      this.push(null);
+    }
+  });
+
+  const { stream: readStream, encoding } = await stream2Encoding(readableStream);
 
   // Add default metadata
   metadata.teamId = teamId;

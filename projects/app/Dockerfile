@@ -75,9 +75,6 @@ COPY --from=builder /app/projects/app/package.json ./package.json
 COPY ./projects/app/data /app/data
 RUN chown -R nextjs:nodejs /app/data
 
-# create plugin_file directory
-RUN mkdir -p /app/plugin_file && chown -R nextjs:nodejs /app/plugin_file
-
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
