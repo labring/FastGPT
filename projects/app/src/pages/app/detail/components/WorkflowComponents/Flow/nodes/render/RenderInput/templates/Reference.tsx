@@ -220,6 +220,7 @@ const ReferSelectorComponent = ({
       return [firstColumn, secondColumn];
     });
   }, [list, value]);
+  console.log('selectValue', value, selectValue, isArray);
 
   const Render = useMemo(() => {
     return (
@@ -233,62 +234,69 @@ const ReferSelectorComponent = ({
               fontSize={'14px'}
             >
               {isArray ? (
-                // new style (array) [[variableId, outputId], ...]
-                selectValue.map((item, index) => (
-                  <Flex
-                    alignItems={'center'}
-                    key={index}
-                    bg={item === undefined ? 'red.50' : 'primary.50'}
-                    color={item === undefined ? 'red.600' : 'myGray.900'}
-                    py={1}
-                    px={1.5}
-                    rounded={'sm'}
-                  >
-                    {item === undefined ? (
-                      t('common:invalid_variable')
-                    ) : (
-                      <>
-                        {item?.[0].label}
-                        <MyIcon
-                          name={'common/rightArrowLight'}
-                          mx={1}
-                          w={'12px'}
-                          color={'myGray.500'}
-                        />
-                        {item?.[1].label}
-                      </>
-                    )}
-                    <MyIcon
-                      name={'common/closeLight'}
-                      w={'16px'}
-                      ml={1}
-                      cursor={'pointer'}
-                      color={'myGray.500'}
-                      _hover={{
-                        color: 'primary.600'
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (item === undefined) {
-                          const filteredValue = value?.filter((_, i) => i !== index);
-                          onSelect(filteredValue as any);
-                          return;
-                        }
-                        const filteredValue = value?.filter(
-                          (val) => val[0] !== item?.[0].value || val[1] !== item?.[1].value
-                        );
-                        filteredValue && onSelect(filteredValue);
-                      }}
-                    />
-                  </Flex>
-                ))
-              ) : (
-                // origin style [variableId, outputId]
-                <>
-                  {selectValue[0]?.[0].label}
+                // [[variableId, outputId], ...]
+                selectValue.map((item, index) => {
+                  const isInvalidItem = item === undefined;
+                  return (
+                    <Flex
+                      alignItems={'center'}
+                      key={index}
+                      bg={isInvalidItem ? 'red.50' : 'primary.50'}
+                      color={isInvalidItem ? 'red.600' : 'myGray.900'}
+                      py={1}
+                      px={1.5}
+                      rounded={'sm'}
+                    >
+                      {isInvalidItem ? (
+                        t('common:invalid_variable')
+                      ) : (
+                        <>
+                          {item?.[0].label}
+                          <MyIcon
+                            name={'common/rightArrowLight'}
+                            mx={1}
+                            w={'12px'}
+                            color={'myGray.500'}
+                          />
+                          {item?.[1].label}
+                        </>
+                      )}
+                      <MyIcon
+                        name={'common/closeLight'}
+                        w={'16px'}
+                        ml={1}
+                        cursor={'pointer'}
+                        color={'myGray.500'}
+                        _hover={{
+                          color: 'primary.600'
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isInvalidItem) {
+                            const filteredValue = value?.filter((_, i) => i !== index);
+                            onSelect(filteredValue as any);
+                            return;
+                          }
+                          const filteredValue = value?.filter(
+                            (val) => val[0] !== item?.[0].value || val[1] !== item?.[1].value
+                          );
+                          filteredValue && onSelect(filteredValue);
+                        }}
+                      />
+                    </Flex>
+                  );
+                })
+              ) : // [variableId, outputId]
+              selectValue[0] ? (
+                <Flex py={1} pl={1}>
+                  {selectValue[0][0].label}
                   <MyIcon name={'common/rightArrowLight'} mx={1} w={'12px'} color={'myGray.500'} />
-                  {selectValue[0]?.[1].label}
-                </>
+                  {selectValue[0][1].label}
+                </Flex>
+              ) : (
+                <Box pl={2} py={1} fontSize={'14px'}>
+                  {placeholder}
+                </Box>
               )}
             </Flex>
           ) : (
