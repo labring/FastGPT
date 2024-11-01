@@ -95,7 +95,7 @@ const NodeCard = (props: Props) => {
     return { node, parentNode };
   }, [nodeList, nodeId]);
 
-  const { data: nodeTemplate, runAsync: getNodeLatestTemplate } = useRequest2(
+  const { data: nodeTemplate } = useRequest2(
     async () => {
       if (
         node?.flowNodeType === FlowNodeTypeEnum.pluginModule ||
@@ -117,35 +117,27 @@ const NodeCard = (props: Props) => {
     }
   );
 
-  const { openConfirm: onOpenConfirmSync, ConfirmModal: ConfirmSyncModal } = useConfirm({
+  const {
+    openConfirm: onOpenConfirmSync,
+    onClose: onCloseConfirmSync,
+    ConfirmModal: ConfirmSyncModal
+  } = useConfirm({
     content: t('workflow:Confirm_sync_node')
   });
   const hasNewVersion = nodeTemplate && nodeTemplate.version !== node?.version;
 
   const { runAsync: onClickSyncVersion } = useRequest2(
     async () => {
-      const template = moduleTemplatesFlat.find((item) => item.flowNodeType === node?.flowNodeType);
-      if (!node || !template) return;
-
-      if (
-        node?.flowNodeType === FlowNodeTypeEnum.pluginModule ||
-        node?.flowNodeType === FlowNodeTypeEnum.appModule
-      ) {
-        if (!node.pluginId) return;
+      if (!!nodeTemplate) {
         onResetNode({
           id: nodeId,
-          node: await getPreviewPluginNode({ appId: node.pluginId })
-        });
-      } else {
-        onResetNode({
-          id: nodeId,
-          node: getLatestNodeTemplate(node, template)
+          node: nodeTemplate
         });
       }
-      await getNodeLatestTemplate();
+      onCloseConfirmSync();
     },
     {
-      refreshDeps: [node, nodeId, onResetNode, getNodeLatestTemplate]
+      refreshDeps: [node, nodeId, onResetNode]
     }
   );
 
