@@ -4,9 +4,9 @@ import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type
 
 export type SystemPluginResponseType = Promise<Record<string, any>>;
 export type SystemPluginSpecialResponse = {
-  type: 'SYSTEM_PLUGIN_FILE';
-  path: string;
-  contentType: string;
+  type: 'SYSTEM_PLUGIN_BASE64';
+  value: string;
+  extension: string;
 };
 
 declare global {
