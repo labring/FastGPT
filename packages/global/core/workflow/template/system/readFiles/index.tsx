@@ -23,7 +23,7 @@ export const ReadFilesNode: FlowNodeTemplateType = {
   name: i18nT('app:workflow.read_files'),
   intro: i18nT('app:workflow.read_files_tip'),
   showStatus: true,
-  version: '489',
+  version: '4812',
   isTool: true,
   inputs: [
     {

@@ -32,6 +32,7 @@ import { IfElseResultEnum } from './template/system/ifElse/constant';
 import { RuntimeNodeItemType } from './runtime/type';
 import { getReferenceVariableValue } from './runtime/utils';
 import {
+  Input_Template_File_Link,
   Input_Template_History,
   Input_Template_Stream_MODE,
   Input_Template_UserChatInput
@@ -261,8 +262,10 @@ export const appData2FlowNodeIO = ({
     inputs: [
       Input_Template_Stream_MODE,
       Input_Template_History,
+      ...(chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg
+        ? [Input_Template_File_Link]
+        : []),
       Input_Template_UserChatInput,
-      // ...(showFileLink ? [Input_Template_File_Link] : []),
       ...variableInput
     ],
     outputs: [

@@ -56,6 +56,11 @@ export type FlowNodeInputItemType = InputComponentPropsType & {
   canEdit?: boolean; // dynamic inputs
   isPro?: boolean; // Pro version field
   isToolOutput?: boolean;
+
+  // file
+  canSelectFile?: boolean;
+  canSelectImg?: boolean;
+  maxFiles?: number;
 };
 
 export type FlowNodeOutputItemType = {

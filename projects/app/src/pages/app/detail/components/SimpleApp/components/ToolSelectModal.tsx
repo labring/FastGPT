@@ -387,6 +387,7 @@ const RenderList = React.memo(function RenderList({
                           isInvalid={errors && Object.keys(errors).includes(input.key)}
                           onChange={onChange}
                           input={input}
+                          setUploading={() => {}}
                         />
                       );
                     }}
