@@ -30,7 +30,7 @@ import {
 } from '../app/constants';
 import { IfElseResultEnum } from './template/system/ifElse/constant';
 import { RuntimeNodeItemType } from './runtime/type';
-import { getReferenceArrayValue, getReferenceVariableValue } from './runtime/utils';
+import { getReferenceVariableValue } from './runtime/utils';
 import {
   Input_Template_File_Link,
   Input_Template_History,
@@ -383,20 +383,14 @@ export function replaceEditorVariable({
   // Get runningNode inputs(Will be replaced with reference)
   const customInputs = runningNode.inputs.flatMap((item) => {
     if (Array.isArray(item.value)) {
-      let value = getReferenceVariableValue({
-        value: item.value as ReferenceValueProps,
-        nodes,
-        variables
-      });
-      value = getReferenceArrayValue({
-        value,
-        nodes,
-        variables
-      });
       return [
         {
           id: item.key,
-          value,
+          value: getReferenceVariableValue({
+            value: item.value as ReferenceValueProps,
+            nodes,
+            variables
+          }),
           nodeId: runningNode.nodeId
         }
       ];

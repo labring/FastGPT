@@ -4,10 +4,7 @@ import {
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import {
-  getReferenceArrayValue,
-  getReferenceVariableValue
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { removeSystemVariable, valueTypeFormat } from '../utils';
@@ -43,15 +40,10 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
             })
           : formatValue;
       } else {
-        let value = getReferenceVariableValue({
+        const value = getReferenceVariableValue({
           value: item.value,
           variables,
           nodes: runtimeNodes
-        });
-        value = getReferenceArrayValue({
-          value,
-          nodes: runtimeNodes,
-          variables
         });
 
         return value;

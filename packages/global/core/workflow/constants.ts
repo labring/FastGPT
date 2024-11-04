@@ -334,3 +334,14 @@ export enum ContentTypes {
   xml = 'xml',
   raw = 'raw-text'
 }
+
+export const ArrayTypeMap = {
+  [WorkflowIOValueTypeEnum.string]: WorkflowIOValueTypeEnum.arrayString,
+  [WorkflowIOValueTypeEnum.number]: WorkflowIOValueTypeEnum.arrayNumber,
+  [WorkflowIOValueTypeEnum.boolean]: WorkflowIOValueTypeEnum.arrayBoolean,
+  [WorkflowIOValueTypeEnum.object]: WorkflowIOValueTypeEnum.arrayObject,
+  [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.arrayString,
+  [WorkflowIOValueTypeEnum.arrayNumber]: WorkflowIOValueTypeEnum.arrayNumber,
+  [WorkflowIOValueTypeEnum.arrayBoolean]: WorkflowIOValueTypeEnum.arrayBoolean,
+  [WorkflowIOValueTypeEnum.arrayObject]: WorkflowIOValueTypeEnum.arrayObject
+};

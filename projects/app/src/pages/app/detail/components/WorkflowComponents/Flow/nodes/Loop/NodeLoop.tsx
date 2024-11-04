@@ -16,6 +16,7 @@ import { Box } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RenderOutput from '../render/RenderOutput';
 import {
+  ArrayTypeMap,
   NodeInputKeyEnum,
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
@@ -26,17 +27,6 @@ import { WorkflowContext } from '../../../context';
 import { cloneDeep } from 'lodash';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { AppContext } from '../../../../context';
-
-const ARRAY_TYPE_MAP = {
-  [WorkflowIOValueTypeEnum.string]: WorkflowIOValueTypeEnum.arrayString,
-  [WorkflowIOValueTypeEnum.number]: WorkflowIOValueTypeEnum.arrayNumber,
-  [WorkflowIOValueTypeEnum.boolean]: WorkflowIOValueTypeEnum.arrayBoolean,
-  [WorkflowIOValueTypeEnum.object]: WorkflowIOValueTypeEnum.arrayObject,
-  [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.arrayString,
-  [WorkflowIOValueTypeEnum.arrayNumber]: WorkflowIOValueTypeEnum.arrayNumber,
-  [WorkflowIOValueTypeEnum.arrayBoolean]: WorkflowIOValueTypeEnum.arrayBoolean,
-  [WorkflowIOValueTypeEnum.arrayObject]: WorkflowIOValueTypeEnum.arrayObject
-};
 
 const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -88,7 +78,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       value: {
         ...arrayInput,
         valueType: arrayType
-          ? ARRAY_TYPE_MAP[arrayType as keyof typeof ARRAY_TYPE_MAP]
+          ? ArrayTypeMap[arrayType as keyof typeof ArrayTypeMap]
           : WorkflowIOValueTypeEnum.arrayAny
       }
     });

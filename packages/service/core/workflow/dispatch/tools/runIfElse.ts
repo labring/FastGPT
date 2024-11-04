@@ -12,10 +12,7 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
-import {
-  getReferenceArrayValue,
-  getReferenceVariableValue
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.condition]: IfElseConditionType;
@@ -108,15 +105,10 @@ function getResult(
   const listResult = list.map((item) => {
     const { variable, condition: variableCondition, value } = item;
 
-    let inputValue = getReferenceVariableValue({
+    const inputValue = getReferenceVariableValue({
       value: variable,
       variables,
       nodes: runtimeNodes
-    });
-    inputValue = getReferenceArrayValue({
-      value: inputValue,
-      nodes: runtimeNodes,
-      variables
     });
 
     return checkCondition(variableCondition as VariableConditionEnum, inputValue, value || '');
