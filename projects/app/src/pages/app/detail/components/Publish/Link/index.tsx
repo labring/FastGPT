@@ -150,7 +150,9 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                   </>
                 )}
                 <Td>
-                  {item.lastTime ? formatTimeToChatTime(item.lastTime) : t('common:common.Un used')}
+                  {item.lastTime
+                    ? t(formatTimeToChatTime(item.lastTime) as any).replace('#', ':')
+                    : t('common:common.Un used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Button

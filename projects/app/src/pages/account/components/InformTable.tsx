@@ -43,7 +43,7 @@ const InformTable = () => {
             <Flex alignItems={'center'}>
               <Box fontWeight={'bold'}>{item.title}</Box>
               <Box ml={2} color={'myGray.500'} flex={'1 0 0'}>
-                ({formatTimeToChatTime(item.time)})
+                ({t(formatTimeToChatTime(item.time) as any).replace('#', ':')})
               </Box>
               {!item.read && (
                 <Button
