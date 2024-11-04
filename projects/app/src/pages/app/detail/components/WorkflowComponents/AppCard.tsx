@@ -74,39 +74,34 @@ const AppCard = ({
                 <Box fontSize={'sm'}>{t('app:Role_setting')}</Box>
               </MyBox>
               <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
-              {currentTab === TabEnum.appEdit && (
-                <>
-                  <MyBox
-                    display={'flex'}
-                    size={'md'}
-                    px={1}
-                    py={1.5}
-                    rounded={'4px'}
-                    _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
-                    cursor={'pointer'}
-                    onClick={onOpenImport}
-                  >
-                    <MyIcon name={'common/importLight'} w={'16px'} mr={2} />
-                    <Box fontSize={'sm'}>{t('app:import_configs')}</Box>
-                  </MyBox>
-                  <MyBox
-                    display={'flex'}
-                    size={'md'}
-                    px={1}
-                    py={1.5}
-                    rounded={'4px'}
-                    _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
-                    cursor={'pointer'}
-                  >
-                    {ExportPopover({
-                      chatConfig: appDetail.chatConfig,
-                      appName: appDetail.name
-                    })}
-                  </MyBox>
-                  <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
-                </>
-              )}
-
+              <MyBox
+                display={'flex'}
+                size={'md'}
+                px={1}
+                py={1.5}
+                rounded={'4px'}
+                _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
+                cursor={'pointer'}
+                onClick={onOpenImport}
+              >
+                <MyIcon name={'common/importLight'} w={'16px'} mr={2} />
+                <Box fontSize={'sm'}>{t('app:import_configs')}</Box>
+              </MyBox>
+              <MyBox
+                display={'flex'}
+                size={'md'}
+                px={1}
+                py={1.5}
+                rounded={'4px'}
+                _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
+                cursor={'pointer'}
+              >
+                {ExportPopover({
+                  chatConfig: appDetail.chatConfig,
+                  appName: appDetail.name
+                })}
+              </MyBox>
+              <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
               {appDetail.permission.hasWritePer && feConfigs?.show_team_chat && (
                 <>
                   <MyBox
