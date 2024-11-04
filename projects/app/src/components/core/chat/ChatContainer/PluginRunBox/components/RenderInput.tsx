@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useFieldArray } from 'react-hook-form';
 import RenderPluginInput from './renderPluginInput';
 import { Box, Button, Flex } from '@chakra-ui/react';
@@ -14,7 +14,8 @@ import { useFileUpload } from '../../ChatBox/hooks/useFileUpload';
 import FilePreview from '../../components/FilePreview';
 import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { ChatBoxInputFormType, UserInputFileItemType } from '../../ChatBox/type';
+import { ChatBoxInputFormType } from '../../ChatBox/type';
+import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 const RenderInput = () => {
   const { t } = useTranslation();
@@ -29,9 +30,7 @@ const RenderInput = () => {
     isChatting,
     chatConfig,
     chatId,
-    outLinkAuthData,
-    restartInputStore,
-    setRestartInputStore
+    outLinkAuthData
   } = useContextSelector(PluginRunContext, (v) => v);
 
   const {
@@ -75,37 +74,59 @@ const RenderInput = () => {
   });
   /* Global files(abandon) <=== */
 
+  const [restartData, setRestartData] = useState<ChatBoxInputFormType>();
   const onClickNewChat = useCallback(
-    (e: ChatBoxInputFormType, files: UserInputFileItemType[] = []) => {
-      setRestartInputStore({
-        ...e,
-        files
-      });
+    (e: ChatBoxInputFormType) => {
+      setRestartData(e);
       onNewChat?.();
     },
-    [onNewChat, setRestartInputStore]
+    [onNewChat]
   );
 
+  const formatPluginInputs = useMemo(() => {
+    if (histories.length === 0) return pluginInputs;
+    try {
+      const historyValue = histories[0]?.value as UserChatItemValueItemType[];
+      const inputValueString = historyValue.find((item) => item.type === 'text')?.text?.content;
+
+      if (!inputValueString) return pluginInputs;
+      return JSON.parse(inputValueString) as FlowNodeInputItemType[];
+    } catch (error) {
+      console.error('Failed to parse input value:', error);
+      return pluginInputs;
+    }
+  }, [histories, pluginInputs]);
+
+  // Reset input value
   useEffect(() => {
-    // Set last run value
-    if (!isDisabledInput && restartInputStore) {
-      reset(restartInputStore);
+    // Set config default value
+    if (histories.length === 0) {
+      // Restart
+      if (restartData) {
+        reset(restartData);
+        setRestartData(undefined);
+        return;
+      }
+      const defaultFormValues = formatPluginInputs.reduce(
+        (acc, input) => {
+          acc[input.key] = input.defaultValue;
+          return acc;
+        },
+        {} as Record<string, any>
+      );
+
+      reset({
+        files: [],
+        variables: defaultFormValues
+      });
       return;
     }
 
     // Set history to default value
+    const historyVariables = (() => {
+      const historyValue = histories[0]?.value as UserChatItemValueItemType[];
+      if (!historyValue) return undefined;
 
-    const defaultFormValues = pluginInputs.reduce(
-      (acc, input) => {
-        acc[input.key] = input.defaultValue;
-        return acc;
-      },
-      {} as Record<string, any>
-    );
-
-    const historyFormValues = (() => {
-      if (!isDisabledInput) return undefined;
-      const historyValue = histories[0].value;
       try {
         const inputValueString = historyValue.find((item) => item.type === 'text')?.text?.content;
         return (
@@ -129,19 +150,17 @@ const RenderInput = () => {
         return undefined;
       }
     })();
-
     // Parse history file
     const historyFileList = (() => {
-      if (!isDisabledInput) return [];
-      const historyValue = histories[0].value as UserChatItemValueItemType[];
-      return historyValue.filter((item) => item.type === 'file').map((item) => item.file);
+      const historyValue = histories[0]?.value as UserChatItemValueItemType[];
+      return historyValue?.filter((item) => item.type === 'file').map((item) => item.file);
     })();
 
     reset({
-      ...(historyFormValues || defaultFormValues),
+      variables: historyVariables,
       files: historyFileList
     });
-  }, [getValues, histories, isDisabledInput, pluginInputs, replaceFiles, reset, restartInputStore]);
+  }, [histories.length]);
 
   const [uploading, setUploading] = useState(false);
 
@@ -192,7 +211,7 @@ const RenderInput = () => {
         </Box>
       )}
       {/* Filed */}
-      {pluginInputs.map((input) => {
+      {formatPluginInputs.map((input) => {
         return (
           <Controller
             key={`variables.${input.key}`}
@@ -231,9 +250,9 @@ const RenderInput = () => {
             onClick={() => {
               handleSubmit((e) => {
                 if (isDisabledInput) {
-                  onClickNewChat(e, fileList);
+                  onClickNewChat(e);
                 } else {
-                  onSubmit(e, fileList);
+                  onSubmit(e);
                 }
               })();
             }}

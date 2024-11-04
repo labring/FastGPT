@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import React, { ReactNode, useCallback, useMemo, useRef } from 'react';
 import { createContext } from 'use-context-selector';
 import { PluginRunBoxProps } from './type';
 import {
@@ -15,17 +15,15 @@ import { generatingMessageProps } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useTranslation } from 'next-i18next';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { ChatBoxInputFormType, UserInputFileItemType } from '../ChatBox/type';
+import { ChatBoxInputFormType } from '../ChatBox/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 
 type PluginRunContextType = OutLinkChatAuthProps &
   PluginRunBoxProps & {
     isChatting: boolean;
-    onSubmit: (e: ChatBoxInputFormType, files?: UserInputFileItemType[]) => Promise<any>;
+    onSubmit: (e: ChatBoxInputFormType) => Promise<any>;
     outLinkAuthData: OutLinkChatAuthProps;
-    restartInputStore?: ChatBoxInputFormType;
-    setRestartInputStore: React.Dispatch<React.SetStateAction<ChatBoxInputFormType | undefined>>;
   };
 
 export const PluginRunContext = createContext<PluginRunContextType>({
@@ -57,8 +55,6 @@ const PluginRunContextProvider = ({
   ...props
 }: PluginRunBoxProps & { children: ReactNode }) => {
   const { pluginInputs, onStartChat, setHistories, histories, setTab } = props;
-
-  const [restartInputStore, setRestartInputStore] = useState<ChatBoxInputFormType>();
 
   const { toast } = useToast();
   const chatController = useRef(new AbortController());
@@ -177,7 +173,7 @@ const PluginRunContextProvider = ({
   );
 
   const onSubmit = useCallback(
-    async ({ variables }: ChatBoxInputFormType, files?: UserInputFileItemType[]) => {
+    async ({ variables, files }: ChatBoxInputFormType) => {
       if (!onStartChat) return;
       if (isChatting) {
         toast({
@@ -281,9 +277,7 @@ const PluginRunContextProvider = ({
     isChatting,
     onSubmit,
     outLinkAuthData,
-    variablesForm,
-    restartInputStore,
-    setRestartInputStore
+    variablesForm
   };
   return <PluginRunContext.Provider value={contextValue}>{children}</PluginRunContext.Provider>;
 };

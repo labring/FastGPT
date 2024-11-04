@@ -54,7 +54,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
 
   // Get files from histories
   const filesFromHistories = version !== '489' ? [] : getHistoryFileLinks(histories);
-  console.log(filesFromHistories);
+
   const { text, readFilesResult } = await getFileContentFromLinks({
     // Concat fileUrlList and filesFromHistories; remove not supported files
     urls: [...fileUrlList, ...filesFromHistories],

@@ -29,9 +29,23 @@ export const useChat = (params?: { chatId?: string; appId: string; type?: GetCha
       // Reset to empty input
       const data = variablesForm.getValues();
 
+      // Reset the old variables to empty
+      const resetVariables: Record<string, any> = {};
+      for (const key in data.variables) {
+        resetVariables[key] = (() => {
+          if (Array.isArray(data.variables[key])) {
+            return [];
+          }
+          return '';
+        })();
+      }
+
       variablesForm.reset({
         ...data,
-        variables
+        variables: {
+          ...resetVariables,
+          ...variables
+        }
       });
     },
     [variablesForm]

@@ -245,7 +245,11 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         tokens,
         query: `${userChatInput}`,
         maxToken: max_tokens,
-        historyPreview: getHistoryPreview(chatCompleteMessages, 10000),
+        historyPreview: getHistoryPreview(
+          chatCompleteMessages,
+          10000,
+          modelConstantsData.vision && aiChatVision
+        ),
         contextTotalLen: completeMessages.length
       },
       [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [

@@ -45,10 +45,18 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     requestOrigin,
     chatConfig,
     runningAppInfo: { teamId },
-    params: { model, systemPrompt, userChatInput, history = 6, fileUrlList: fileLinks }
+    params: {
+      model,
+      systemPrompt,
+      userChatInput,
+      history = 6,
+      fileUrlList: fileLinks,
+      aiChatVision
+    }
   } = props;
 
   const toolModel = getLLMModel(model);
+  const useVision = aiChatVision && toolModel.vision;
   const chatHistories = getHistories(history, histories);
 
   const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
@@ -236,7 +244,11 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       childTotalPoints: flatUsages.reduce((sum, item) => sum + item.totalPoints, 0),
       model: modelName,
       query: userChatInput,
-      historyPreview: getHistoryPreview(GPTMessages2Chats(completeMessages, false), 10000),
+      historyPreview: getHistoryPreview(
+        GPTMessages2Chats(completeMessages, false),
+        10000,
+        useVision
+      ),
       toolDetail: childToolResponse,
       mergeSignId: nodeId
     },
