@@ -34,7 +34,7 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
   2. Check that the workflow starts at the interaction node
 */
 export const getLastInteractiveValue = (histories: ChatItemType[]) => {
-  const lastAIMessage = histories.findLast((item) => item.obj === ChatRoleEnum.AI);
+  const lastAIMessage = [...histories].reverse().find((item) => item.obj === ChatRoleEnum.AI);
 
   if (lastAIMessage) {
     const lastValue = lastAIMessage.value[lastAIMessage.value.length - 1];
