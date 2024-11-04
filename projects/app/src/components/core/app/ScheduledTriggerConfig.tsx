@@ -270,7 +270,7 @@ const ScheduledTriggerConfig = ({
         <Flex alignItems={'center'}>
           <MyIcon name={'core/app/schedulePlan'} w={'20px'} />
           <HStack ml={2} flex={1} spacing={1}>
-            <FormLabel>{t('common:core.app.Interval timer run')}</FormLabel>
+            <FormLabel color={'myGray.600'}>{t('common:core.app.Interval timer run')}</FormLabel>
             <QuestionTip label={t('common:core.app.Interval timer tip')} />
           </HStack>
           <MyTooltip label={t('common:core.app.Config schedule plan')}>
@@ -279,6 +279,7 @@ const ScheduledTriggerConfig = ({
               iconSpacing={1}
               size={'sm'}
               mr={'-5px'}
+              color={'myGray.600'}
               onClick={onOpen}
             >
               {formatLabel}

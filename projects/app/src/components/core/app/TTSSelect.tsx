@@ -82,7 +82,7 @@ const TTSSelect = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/tts'} mr={2} w={'20px'} />
-      <FormLabel>{t('common:core.app.TTS')}</FormLabel>
+      <FormLabel color={'myGray.600'}>{t('common:core.app.TTS')}</FormLabel>
       <ChatFunctionTip type={'tts'} />
       <Box flex={1} />
       <MyTooltip label={t('common:core.app.Select TTS')}>
@@ -92,6 +92,7 @@ const TTSSelect = ({
           size={'sm'}
           mr={'-5px'}
           onClick={onOpen}
+          color={'myGray.600'}
         >
           {formLabel}
         </Button>

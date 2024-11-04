@@ -148,7 +148,6 @@ const MyMenu = ({
             color={isOpen ? 'primary.600' : ''}
             w="fit-content"
             p="1"
-            bgColor={isOpen ? 'myGray.50' : ''}
             h="fit-content"
             borderRadius="sm"
           >

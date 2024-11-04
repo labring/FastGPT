@@ -1,4 +1,4 @@
-export const primaryColor = '#3370FF';
+export const primaryColor = '#487FFF';
 export const lowPrimaryColor = '#94B5FF';
 export const handleSize = {
   width: '18px',

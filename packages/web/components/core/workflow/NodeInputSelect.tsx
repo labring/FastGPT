@@ -150,12 +150,20 @@ const NodeInputSelect = ({
       trigger="click"
       Button={
         <Button
-          size={'xs'}
-          leftIcon={<MyIcon name={renderTypeData.icon as any} w={'0.8rem'} color={'primary.600'} />}
-          rightIcon={<MyIcon name={'common/select'} w={'0.8rem'} color={'myGray.500'} />}
+          leftIcon={
+            <MyIcon name={renderTypeData.icon as any} w={'14px'} color={'primary.600'} mr={-0.5} />
+          }
+          rightIcon={<MyIcon name={'common/select'} w={'0.8rem'} color={'myGray.500'} ml={-1} />}
           variant={'grayBase'}
           border={theme.borders.base}
-          borderRadius={'xs'}
+          borderColor={'myGray.200'}
+          borderRadius={'sm'}
+          px={'10px'}
+          py={'6px'}
+          fontSize={'mini'}
+          color={'myGray.600'}
+          h={'28px'}
+          bg={'myGray.100'}
         >
           <Box fontWeight={'medium'}>{renderTypeData.title}</Box>
         </Button>

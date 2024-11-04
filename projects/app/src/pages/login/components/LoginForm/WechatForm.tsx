@@ -5,7 +5,6 @@ import { Box, Center, Image } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { getWXLoginQR, getWXLoginResult } from '@/web/support/user/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useRouter } from 'next/router';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import FormLayout from './components/FormLayout';
 import { useTranslation } from 'next-i18next';
@@ -40,7 +39,7 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
   return (
     <FormLayout setPageType={setPageType} pageType={LoginPageTypeEnum.wechat}>
       <Box>
-        <Box w={'full'} textAlign={'center'} pt={5}>
+        <Box w={'full'} textAlign={'center'} pt={6} fontWeight={'medium'}>
           {t('common:support.user.login.wx_qr_login')}
         </Box>
         <Box p={5} display={'flex'} w={'full'} justifyContent={'center'}>

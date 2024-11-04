@@ -68,7 +68,9 @@ const SettingLLMModel = ({
         <Button
           w={'100%'}
           justifyContent={'flex-start'}
-          variant={'whiteBase'}
+          variant={'whitePrimaryOutline'}
+          size={'lg'}
+          fontSize={'sm'}
           bg={bg}
           _active={{
             transform: 'none'
@@ -81,8 +83,9 @@ const SettingLLMModel = ({
               w={'18px'}
             />
           }
-          rightIcon={<MyIcon name={'common/select'} w={'1rem'} />}
-          pl={4}
+          rightIcon={<MyIcon name={'common/select'} w={'1.2rem'} color={'myGray.500'} />}
+          px={3}
+          pr={2}
           onClick={onOpenAIChatSetting}
         >
           <Box flex={1} textAlign={'left'}>
