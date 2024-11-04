@@ -116,13 +116,13 @@ const ButtonEdge = (props: EdgeProps) => {
       (edge) => edge.sourceHandle === sourceHandleId && edge.targetHandle === targetHandleId
     );
     if (!targetEdge) {
-      if (highlightEdge) return '#3370ff';
+      if (highlightEdge) return '#487FFF';
       return '#94B5FF';
     }
 
     // debug mode
     const colorMap = {
-      [RuntimeEdgeStatusEnum.active]: '#39CC83',
+      [RuntimeEdgeStatusEnum.active]: '#487FFF',
       [RuntimeEdgeStatusEnum.waiting]: '#5E8FFF',
       [RuntimeEdgeStatusEnum.skipped]: '#8A95A7'
     };

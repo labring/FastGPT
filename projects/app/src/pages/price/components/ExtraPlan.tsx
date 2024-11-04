@@ -1,14 +1,4 @@
-import {
-  Box,
-  Flex,
-  Grid,
-  NumberDecrementStepper,
-  NumberInput,
-  NumberIncrementStepper,
-  NumberInputField,
-  NumberInputStepper,
-  Button
-} from '@chakra-ui/react';
+import { Box, Flex, Grid, Button } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useState } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -19,6 +9,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getWxPayQRCode } from '@/web/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 
 const ExtraPlan = () => {
   const { t } = useTranslation();
@@ -170,22 +161,14 @@ const ExtraPlan = () => {
                 {t('common:support.wallet.subscription.Month amount')}
               </Box>
               <Flex alignItems={'center'} mt={1} w={'180px'} position={'relative'}>
-                <NumberInput size={'sm'} flex={1} step={1} min={1} max={12} position={'relative'}>
-                  <NumberInputField
-                    pr={'30px'}
-                    {...registerDatasetSize('month', {
-                      required: true,
-                      min: 1,
-                      max: 12,
-                      valueAsNumber: true
-                    })}
-                  />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-                <Box position={'absolute'} right={'20px'} color={'myGray.600'} fontSize={'xs'}>
+                <MyNumberInput
+                  name="month"
+                  register={registerDatasetSize}
+                  min={1}
+                  max={12}
+                  size={'sm'}
+                />
+                <Box position={'absolute'} right={'30px'} color={'myGray.600'} fontSize={'xs'}>
                   {t('common:common.month')}
                 </Box>
               </Flex>
@@ -195,30 +178,14 @@ const ExtraPlan = () => {
                 {t('common:support.wallet.subscription.Update extra dataset size')}
               </Box>
               <Flex alignItems={'center'} mt={1} w={'180px'} position={'relative'}>
-                <NumberInput
-                  size={'sm'}
-                  flex={1}
+                <MyNumberInput
+                  name="datasetSize"
+                  register={registerDatasetSize}
                   min={0}
                   max={10000}
-                  step={1}
-                  position={'relative'}
-                >
-                  <NumberInputField
-                    pr={'30px'}
-                    {...registerDatasetSize('datasetSize', {
-                      required: true,
-                      min: 0,
-                      max: 10000,
-                      valueAsNumber: true
-                    })}
-                    step={1}
-                  />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-                <Box position={'absolute'} right={'20px'} color={'myGray.600'} fontSize={'xs'}>
+                  size={'sm'}
+                />
+                <Box position={'absolute'} right={'30px'} color={'myGray.600'} fontSize={'xs'}>
                   000{t('common:core.dataset.data.unit')}
                 </Box>
               </Flex>
@@ -291,30 +258,14 @@ const ExtraPlan = () => {
                 position={'relative'}
                 color={'myGray.500'}
               >
-                <NumberInput
-                  size={'sm'}
-                  flex={1}
+                <MyNumberInput
+                  name="points"
+                  register={registerDatasetSize}
                   min={0}
                   max={10000}
-                  step={1}
-                  position={'relative'}
-                >
-                  <NumberInputField
-                    pr={'30px'}
-                    step={1}
-                    {...registerExtraPoints('points', {
-                      required: true,
-                      min: 0,
-                      max: 10000,
-                      valueAsNumber: true
-                    })}
-                  />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-                <Box position={'absolute'} right={'20px'} color={'myGray.500'} fontSize={'xs'}>
+                  size={'sm'}
+                />
+                <Box position={'absolute'} right={'30px'} color={'myGray.500'} fontSize={'xs'}>
                   {'000' + t('common:support.wallet.subscription.point')}
                 </Box>
               </Flex>
