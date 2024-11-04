@@ -180,6 +180,7 @@ const DetailLogsModal = ({
               chatConfig={chat?.app?.chatConfig}
               appId={appId}
               chatId={chatId}
+              isLog={true}
             />
           )}
         </Box>

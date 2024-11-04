@@ -13,12 +13,14 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 
 type HistoryItemType = {
   id: string;
   title: string;
   customTitle?: string;
   top?: boolean;
+  updateTime: Date;
 };
 
 const ChatHistorySlider = ({
@@ -59,11 +61,18 @@ const ChatHistorySlider = ({
 
   const concatHistory = useMemo(() => {
     const formatHistories: HistoryItemType[] = histories.map((item) => {
-      return { id: item.chatId, title: item.title, customTitle: item.customTitle, top: item.top };
+      return {
+        id: item.chatId,
+        title: item.title,
+        customTitle: item.customTitle,
+        top: item.top,
+        updateTime: item.updateTime
+      };
     });
     const newChat: HistoryItemType = {
       id: activeChatId,
-      title: t('common:core.chat.New Chat')
+      title: t('common:core.chat.New Chat'),
+      updateTime: new Date()
     };
     const activeChat = histories.find((item) => item.chatId === activeChatId);
 
@@ -188,7 +197,10 @@ const ChatHistorySlider = ({
               _hover={{
                 bg: 'myGray.50',
                 '& .more': {
-                  visibility: 'visible'
+                  display: 'block'
+                },
+                '& .time': {
+                  display: isPc ? 'none' : 'block'
                 }
               }}
               bg={item.top ? '#E6F6F6 !important' : ''}
@@ -214,69 +226,80 @@ const ChatHistorySlider = ({
                 {item.customTitle || item.title}
               </Box>
               {!!item.id && (
-                <Box className="more" visibility={['visible', 'hidden']}>
-                  <MyMenu
-                    Button={
-                      <IconButton
-                        size={'xs'}
-                        variant={'whiteBase'}
-                        icon={<MyIcon name={'more'} w={'14px'} p={1} />}
-                        aria-label={''}
-                      />
-                    }
-                    menuList={[
-                      {
-                        children: [
-                          ...(onSetHistoryTop
-                            ? [
-                                {
-                                  label: item.top
-                                    ? t('common:core.chat.Unpin')
-                                    : t('common:core.chat.Pin'),
-                                  icon: 'core/chat/setTopLight',
-                                  onClick: () => {
-                                    onSetHistoryTop({
-                                      chatId: item.id,
-                                      top: !item.top
-                                    });
-                                  }
-                                }
-                              ]
-                            : []),
-                          ...(onSetCustomTitle
-                            ? [
-                                {
-                                  label: t('common:common.Custom Title'),
-                                  icon: 'common/customTitleLight',
-                                  onClick: () => {
-                                    onOpenModal({
-                                      defaultVal: item.customTitle || item.title,
-                                      onSuccess: (e) =>
-                                        onSetCustomTitle({
-                                          chatId: item.id,
-                                          title: e
-                                        })
-                                    });
-                                  }
-                                }
-                              ]
-                            : []),
-                          {
-                            label: t('common:common.Delete'),
-                            icon: 'delete',
-                            onClick: () => {
-                              onDelHistory({ chatId: item.id });
-                              if (item.id === activeChatId) {
-                                onChangeChatId();
-                              }
-                            },
-                            type: 'danger'
-                          }
-                        ]
+                <Flex gap={2} alignItems={'center'}>
+                  <Box
+                    className="time"
+                    display={'block'}
+                    fontWeight={'400'}
+                    fontSize={'mini'}
+                    color={'myGray.500'}
+                  >
+                    {t(formatTimeToChatTime(item.updateTime) as any).replace('#', ':')}
+                  </Box>
+                  <Box className="more" display={['block', 'none']}>
+                    <MyMenu
+                      Button={
+                        <IconButton
+                          size={'xs'}
+                          variant={'whiteBase'}
+                          icon={<MyIcon name={'more'} w={'14px'} p={1} />}
+                          aria-label={''}
+                        />
                       }
-                    ]}
-                  />
-                </Box>
+                      menuList={[
+                        {
+                          children: [
+                            ...(onSetHistoryTop
+                              ? [
+                                  {
+                                    label: item.top
+                                      ? t('common:core.chat.Unpin')
+                                      : t('common:core.chat.Pin'),
+                                    icon: 'core/chat/setTopLight',
+                                    onClick: () => {
+                                      onSetHistoryTop({
+                                        chatId: item.id,
+                                        top: !item.top
+                                      });
+                                    }
+                                  }
+                                ]
+                              : []),
+                            ...(onSetCustomTitle
+                              ? [
+                                  {
+                                    label: t('common:common.Custom Title'),
+                                    icon: 'common/customTitleLight',
+                                    onClick: () => {
+                                      onOpenModal({
+                                        defaultVal: item.customTitle || item.title,
+                                        onSuccess: (e) =>
+                                          onSetCustomTitle({
+                                            chatId: item.id,
+                                            title: e
+                                          })
+                                      });
+                                    }
+                                  }
+                                ]
+                              : []),
+                            {
+                              label: t('common:common.Delete'),
+                              icon: 'delete',
+                              onClick: () => {
+                                onDelHistory({ chatId: item.id });
+                                if (item.id === activeChatId) {
+                                  onChangeChatId();
+                                }
+                              },
+                              type: 'danger'
+                            }
+                          ]
+                        }
+                      ]}
+                    />
+                  </Box>
+                </Flex>
               )}
             </Flex>
           ))}
