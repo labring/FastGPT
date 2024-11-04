@@ -25,44 +25,15 @@ import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getMultiplePrompt, Prompt_Tool_Call } from './constants';
 import { filterToolResponseToPreview } from './utils';
 import { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFiles';
+import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
+import { Prompt_DocumentQuote } from '@fastgpt/global/core/ai/prompt/AIChat';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
   [DispatchNodeResponseKeyEnum.interactive]?: InteractiveNodeResponseType;
 }>;
-
-/* 
-  Tool call， auth add file prompt to question。
-  Guide the LLM to call tool.
-*/
-export const toolCallMessagesAdapt = ({
-  userInput
-}: {
-  userInput: UserChatItemValueItemType[];
-}) => {
-  const files = userInput.filter((item) => item.type === 'file');
-
-  if (files.length > 0) {
-    return userInput.map((item) => {
-      if (item.type === 'text') {
-        const filesCount = files.filter((file) => file.file?.type === 'file').length;
-        const imgCount = files.filter((file) => file.file?.type === 'image').length;
-        const text = item.text?.content || '';
-
-        return {
-          ...item,
-          text: {
-            content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: text })
-          }
-        };
-      }
-
-      return item;
-    });
-  }
-
-  return userInput;
-};
 
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
@@ -71,11 +42,21 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     runtimeEdges,
     histories,
     query,
-
-    params: { model, systemPrompt, userChatInput, history = 6 }
+    requestOrigin,
+    chatConfig,
+    runningAppInfo: { teamId },
+    params: {
+      model,
+      systemPrompt,
+      userChatInput,
+      history = 6,
+      fileUrlList: fileLinks,
+      aiChatVision
+    }
   } = props;
 
   const toolModel = getLLMModel(model);
+  const useVision = aiChatVision && toolModel.vision;
   const chatHistories = getHistories(history, histories);
 
   const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
@@ -109,18 +90,43 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     }
   })();
   props.node.isEntry = false;
+  const hasReadFilesTool = toolNodes.some(
+    (item) => item.flowNodeType === FlowNodeTypeEnum.readFiles
+  );
+
+  const globalFiles = chatValue2RuntimePrompt(query).files;
+  const { documentQuoteText, userFiles } = await getMultiInput({
+    histories,
+    requestOrigin,
+    maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
+    teamId,
+    fileLinks,
+    inputFiles: globalFiles
+  });
+
+  const concatenateSystemPrompt = [
+    toolModel.defaultSystemChatPrompt,
+    systemPrompt,
+    documentQuoteText
+      ? replaceVariable(Prompt_DocumentQuote, {
+          quote: documentQuoteText
+        })
+      : ''
+  ]
+    .filter(Boolean)
+    .join('\n\n===---===---===\n\n');
 
   const messages: ChatItemType[] = (() => {
     const value: ChatItemType[] = [
-      ...getSystemPrompt_ChatItemType(toolModel.defaultSystemChatPrompt),
-      ...getSystemPrompt_ChatItemType(systemPrompt),
+      ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
       // Add file input prompt to histories
       ...chatHistories.map((item) => {
         if (item.obj === ChatRoleEnum.Human) {
           return {
             ...item,
             value: toolCallMessagesAdapt({
-              userInput: item.value
+              userInput: item.value,
+              skip: !hasReadFilesTool
             })
           };
         }
@@ -129,9 +135,10 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       {
         obj: ChatRoleEnum.Human,
         value: toolCallMessagesAdapt({
+          skip: !hasReadFilesTool,
           userInput: runtimePrompt2ChatsValue({
             text: userChatInput,
-            files: chatValue2RuntimePrompt(query).files
+            files: userFiles
           })
         })
       }
@@ -237,7 +244,11 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       childTotalPoints: flatUsages.reduce((sum, item) => sum + item.totalPoints, 0),
       model: modelName,
       query: userChatInput,
-      historyPreview: getHistoryPreview(GPTMessages2Chats(completeMessages, false), 10000),
+      historyPreview: getHistoryPreview(
+        GPTMessages2Chats(completeMessages, false),
+        10000,
+        useVision
+      ),
       toolDetail: childToolResponse,
       mergeSignId: nodeId
     },
@@ -252,4 +263,89 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     ],
     [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
   };
+};
+
+const getMultiInput = async ({
+  histories,
+  fileLinks,
+  requestOrigin,
+  maxFiles,
+  teamId,
+  inputFiles
+}: {
+  histories: ChatItemType[];
+  fileLinks?: string[];
+  requestOrigin?: string;
+  maxFiles: number;
+  teamId: string;
+  inputFiles: UserChatItemValueItemType['file'][];
+}) => {
+  // Not file quote
+  if (!fileLinks) {
+    return {
+      documentQuoteText: '',
+      userFiles: inputFiles
+    };
+  }
+
+  const filesFromHistories = getHistoryFileLinks(histories);
+  const urls = [...fileLinks, ...filesFromHistories];
+
+  if (urls.length === 0) {
+    return {
+      documentQuoteText: '',
+      userFiles: []
+    };
+  }
+
+  // Get files from histories
+  const { text } = await getFileContentFromLinks({
+    // Concat fileUrlList and filesFromHistories; remove not supported files
+    urls,
+    requestOrigin,
+    maxFiles,
+    teamId
+  });
+
+  return {
+    documentQuoteText: text,
+    userFiles: fileLinks.map((url) => parseUrlToFileType(url))
+  };
+};
+
+/* 
+Tool call， auth add file prompt to question。
+Guide the LLM to call tool.
+*/
+const toolCallMessagesAdapt = ({
+  userInput,
+  skip
+}: {
+  userInput: UserChatItemValueItemType[];
+  skip?: boolean;
+}) => {
+  if (skip) return userInput;
+
+  const files = userInput.filter((item) => item.type === 'file');
+
+  if (files.length > 0) {
+    return userInput.map((item) => {
+      if (item.type === 'text') {
+        const filesCount = files.filter((file) => file.file?.type === 'file').length;
+        const imgCount = files.filter((file) => file.file?.type === 'image').length;
+        const text = item.text?.content || '';
+
+        return {
+          ...item,
+          text: {
+            content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: text })
+          }
+        };
+      }
+
+      return item;
+    });
+  }
+
+  return userInput;
 };

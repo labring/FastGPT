@@ -393,7 +393,7 @@ const ChatBox = (
       isInteractivePrompt = false
     }) => {
       variablesForm.handleSubmit(
-        async (variables) => {
+        async ({ variables }) => {
           if (!onStartChat) return;
           if (isChatting) {
             toast({
