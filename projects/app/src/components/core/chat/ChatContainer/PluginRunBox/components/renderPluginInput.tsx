@@ -1,15 +1,4 @@
-import {
-  Box,
-  Button,
-  Flex,
-  NumberDecrementStepper,
-  NumberIncrementStepper,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  Switch,
-  Textarea
-} from '@chakra-ui/react';
+import { Box, Button, Flex, Switch, Textarea } from '@chakra-ui/react';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -27,17 +16,21 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useEffect, useMemo } from 'react';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useFieldArray } from 'react-hook-form';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import { isEqual } from 'lodash';
 
 const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
 
 const FileSelector = ({
   input,
   setUploading,
-  onChange
+  onChange,
+  value
 }: {
   input: FlowNodeInputItemType;
   setUploading: React.Dispatch<React.SetStateAction<boolean>>;
   onChange: (...event: any[]) => void;
+  value: any;
 }) => {
   const { t } = useTranslation();
   const { variablesForm, histories, chatId, outLinkAuthData } = useContextSelector(
@@ -56,7 +49,8 @@ const FileSelector = ({
     uploadFiles,
     onOpenSelectFile,
     onSelectFile,
-    removeFiles
+    removeFiles,
+    replaceFiles
   } = useFileUpload({
     outLinkAuthData,
     chatId: chatId || '',
@@ -68,6 +62,22 @@ const FileSelector = ({
     // @ts-ignore
     fileCtrl
   });
+
+  useEffect(() => {
+    if (!Array.isArray(value)) {
+      replaceFiles([]);
+      return;
+    }
+
+    // compare file names and update if different
+    const valueFileNames = value.map((item) => item.name);
+    const currentFileNames = fileList.map((item) => item.name);
+    if (!isEqual(valueFileNames, currentFileNames)) {
+      replaceFiles(value);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
   const isDisabledInput = histories.length > 0;
   useRequest2(uploadFiles, {
     manual: false,
@@ -151,7 +161,9 @@ const RenderPluginInput = ({
       );
     }
     if (inputType === FlowNodeInputTypeEnum.fileSelect) {
-      return <FileSelector onChange={onChange} input={input} setUploading={setUploading} />;
+      return (
+        <FileSelector onChange={onChange} input={input} setUploading={setUploading} value={value} />
+      );
     }
 
     if (input.valueType === WorkflowIOValueTypeEnum.string) {
@@ -169,20 +181,17 @@ const RenderPluginInput = ({
     }
     if (input.valueType === WorkflowIOValueTypeEnum.number) {
       return (
-        <NumberInput
+        <MyNumberInput
           step={1}
           min={input.min}
           max={input.max}
           bg={'myGray.50'}
           isDisabled={isDisabled}
           isInvalid={isInvalid}
-        >
-          <NumberInputField value={value} onChange={onChange} defaultValue={input.defaultValue} />
-          <NumberInputStepper>
-            <NumberIncrementStepper />
-            <NumberDecrementStepper />
-          </NumberInputStepper>
-        </NumberInput>
+          value={value}
+          onChange={onChange}
+          defaultValue={input.defaultValue}
+        />
       );
     }
     if (input.valueType === WorkflowIOValueTypeEnum.boolean) {

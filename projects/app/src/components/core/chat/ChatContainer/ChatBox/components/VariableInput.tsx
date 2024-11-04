@@ -24,6 +24,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useDeepCompareEffect } from 'ahooks';
 import { VariableItemType } from '@fastgpt/global/core/app/type';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 
 export const VariableInputItem = ({
   item,
@@ -108,23 +109,15 @@ export const VariableInputItem = ({
           control={control}
           name={`variables.${item.key}`}
           rules={{ required: item.required, min: item.min, max: item.max }}
-          render={({ field: { ref, value, onChange } }) => (
-            <NumberInput
+          render={({ field: { value, onChange } }) => (
+            <MyNumberInput
               step={1}
               min={item.min}
               max={item.max}
               bg={'white'}
-              rounded={'md'}
-              clampValueOnBlur={false}
               value={value}
-              onChange={(valueString) => onChange(Number(valueString))}
-            >
-              <NumberInputField ref={ref} bg={'white'} />
-              <NumberInputStepper>
-                <NumberIncrementStepper />
-                <NumberDecrementStepper />
-              </NumberInputStepper>
-            </NumberInput>
+              onChange={onChange}
+            />
           )}
         />
       )}
