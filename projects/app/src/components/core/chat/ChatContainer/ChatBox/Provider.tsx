@@ -34,6 +34,7 @@ export type ChatProviderProps = OutLinkChatAuthProps & {
 
   // not chat test params
   chatId?: string;
+  isLog?: boolean;
 };
 
 type useChatStoreType = OutLinkChatAuthProps &

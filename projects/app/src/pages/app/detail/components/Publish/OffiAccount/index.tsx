@@ -150,7 +150,7 @@ const OffiAccount = ({ appId }: { appId: string }) => {
                 )}
                 <Td>
                   {item.lastTime
-                    ? t(formatTimeToChatTime(item.lastTime) as any)
+                    ? t(formatTimeToChatTime(item.lastTime) as any).replace('#', ':')
                     : t('common:common.Un used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
