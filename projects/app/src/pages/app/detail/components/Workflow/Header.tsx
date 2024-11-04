@@ -70,7 +70,7 @@ const Header = () => {
   useDebounceEffect(
     () => {
       const savedSnapshot =
-        future.findLast((snapshot) => snapshot.isSaved) ||
+        [...future].reverse().find((snapshot) => snapshot.isSaved) ||
         past.find((snapshot) => snapshot.isSaved);
 
       const val = compareSnapshot(

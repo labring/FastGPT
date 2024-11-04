@@ -7,14 +7,20 @@ import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
   1. Commercial plugin: n points per times
   2. Other plugin: sum of children points
 */
-export const computedPluginUsage = async (
-  plugin: PluginRuntimeType,
-  childrenUsage: ChatNodeUsageType[]
-) => {
+export const computedPluginUsage = async ({
+  plugin,
+  childrenUsage,
+  error
+}: {
+  plugin: PluginRuntimeType;
+  childrenUsage: ChatNodeUsageType[];
+  error?: boolean;
+}) => {
   const { source } = await splitCombinePluginId(plugin.id);
 
   // Commercial plugin: n points per times
   if (source === PluginSourceEnum.commercial) {
+    if (error) return 0;
     return plugin.currentCost ?? 0;
   }
 
