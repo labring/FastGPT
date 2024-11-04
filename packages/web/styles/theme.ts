@@ -46,7 +46,7 @@ const Button = defineStyleConfig({
       px: '2',
       py: '0',
       h: '24px',
-      fontWeight: 'normal',
+      fontWeight: 'medium',
       borderRadius: 'sm'
     },
     xsSquare: {
@@ -55,14 +55,14 @@ const Button = defineStyleConfig({
       py: '0',
       h: '24px',
       w: '24px',
-      fontWeight: 'normal',
+      fontWeight: 'medium',
       borderRadius: 'sm'
     },
     sm: {
       fontSize: 'sm',
       px: '3',
       py: 0,
-      fontWeight: 'normal',
+      fontWeight: 'medium',
       h: '30px',
       borderRadius: 'sm'
     },
@@ -70,7 +70,7 @@ const Button = defineStyleConfig({
       fontSize: 'sm',
       px: '0',
       py: 0,
-      fontWeight: 'normal',
+      fontWeight: 'medium',
       h: '30px',
       w: '30px',
       borderRadius: 'sm'
@@ -80,8 +80,8 @@ const Button = defineStyleConfig({
       px: '4',
       py: 0,
       h: '34px',
-      fontWeight: 'normal',
-      borderRadius: 'md'
+      fontWeight: 'medium',
+      borderRadius: 'sm'
     },
     mdSquare: {
       fontSize: 'sm',
@@ -89,16 +89,16 @@ const Button = defineStyleConfig({
       py: 0,
       h: '34px',
       w: '34px',
-      fontWeight: 'normal',
-      borderRadius: 'md'
+      fontWeight: 'medium',
+      borderRadius: 'sm'
     },
     lg: {
       fontSize: 'md',
       px: '4',
       py: 0,
       h: '40px',
-      fontWeight: 'normal',
-      borderRadius: 'lg'
+      fontWeight: 'medium',
+      borderRadius: 'md'
     },
     lgSquare: {
       fontSize: 'md',
@@ -106,8 +106,8 @@ const Button = defineStyleConfig({
       py: 0,
       h: '40px',
       w: '40px',
-      fontWeight: 'normal',
-      borderRadius: 'lg'
+      fontWeight: 'medium',
+      borderRadius: 'md'
     }
   },
   variants: {
@@ -173,6 +173,16 @@ const Button = defineStyleConfig({
       },
       _disabled: {
         color: 'myGray.600 !important'
+      }
+    },
+    whitePrimaryOutline: {
+      border: '1px solid',
+      borderColor: 'myGray.250',
+      bg: 'white',
+      transition: 'background 0.1s',
+      _hover: {
+        color: 'primary.600',
+        borderColor: 'primary.300'
       }
     },
     whitePrimary: {
@@ -288,12 +298,18 @@ const Input: ComponentStyleConfig = {
     sm: defineStyle({
       field: {
         h: '32px',
-        borderRadius: 'md'
+        borderRadius: 'sm'
       }
     }),
     md: defineStyle({
       field: {
-        h: '34px',
+        h: '36px',
+        borderRadius: 'sm'
+      }
+    }),
+    lg: defineStyle({
+      field: {
+        h: '40px',
         borderRadius: 'md'
       }
     })
@@ -303,10 +319,14 @@ const Input: ComponentStyleConfig = {
       field: {
         border: '1px solid',
         borderColor: 'borderColor.low',
+        px: 3,
         _focus: {
           borderColor: 'primary.500',
           boxShadow: shadowLight,
           bg: 'white'
+        },
+        _hover: {
+          borderColor: 'primary.300'
         },
         _disabled: {
           color: 'myGray.400',
@@ -330,7 +350,7 @@ const NumberInput = numInputMultiStyle({
         fontsize: 'sm'
       }
     }),
-    md: defineStyle({
+    lg: defineStyle({
       field: {
         h: '40px',
         borderRadius: 'md',
@@ -347,7 +367,7 @@ const NumberInput = numInputMultiStyle({
         _focus: {
           borderColor: 'primary.500 !important',
           boxShadow: `${shadowLight} !important`,
-          bg: 'transparent'
+          bg: 'white'
         },
         _disabled: {
           color: 'myGray.400 !important',
@@ -356,10 +376,12 @@ const NumberInput = numInputMultiStyle({
       },
       stepper: {
         bg: 'transparent',
-        border: 'none',
         color: 'myGray.600',
         _active: {
           color: 'primary.500'
+        },
+        _hover: {
+          bg: 'myGray.100'
         }
       }
     })
@@ -373,16 +395,24 @@ const Textarea: ComponentStyleConfig = {
   variants: {
     outline: {
       border: '1px solid',
+      px: 3,
       borderRadius: 'md',
       borderColor: 'myGray.200',
       fontSize: 'sm',
       _hover: {
-        borderColor: ''
+        borderColor: 'primary.300'
       },
       _focus: {
         borderColor: 'primary.500',
         boxShadow: shadowLight,
         bg: 'white'
+      },
+      '&::-webkit-resizer': {
+        background: "url('/icon/resizer.svg') no-repeat",
+        backgroundSize: '11px',
+        backgroundPosition: 'right bottom',
+        backgroundPositionX: 'right 12px',
+        backgroundPositionY: 'bottom 12px'
       }
     }
   },

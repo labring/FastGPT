@@ -91,11 +91,11 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
 
   return (
     <>
-      <Box fontWeight={'bold'} fontSize={'2xl'} textAlign={'center'}>
+      <Box fontWeight={'medium'} fontSize={'lg'} textAlign={'center'} color={'myGray.900'}>
         {t('user:register.register_account', { account: feConfigs?.systemTitle })}
       </Box>
       <Box
-        mt={'42px'}
+        mt={9}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey && !requesting) {
             handleSubmit(onclickRegister)();
@@ -105,6 +105,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         <FormControl isInvalid={!!errors.username}>
           <Input
             bg={'myGray.50'}
+            size={'lg'}
             placeholder={placeholder}
             {...register('username', {
               required: t('user:password.email_phone_void'),
@@ -124,6 +125,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           position={'relative'}
         >
           <Input
+            size={'lg'}
             bg={'myGray.50'}
             flex={1}
             maxLength={8}
@@ -137,6 +139,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         <FormControl mt={6} isInvalid={!!errors.password}>
           <Input
             bg={'myGray.50'}
+            size={'lg'}
             type={'password'}
             placeholder={t('user:password.new_password')}
             {...register('password', {
@@ -155,6 +158,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         <FormControl mt={6} isInvalid={!!errors.password2}>
           <Input
             bg={'myGray.50'}
+            size={'lg'}
             type={'password'}
             placeholder={t('user:password.confirm')}
             {...register('password2', {
@@ -165,9 +169,12 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         </FormControl>
         <Button
           type="submit"
-          mt={6}
+          mt={12}
           w={'100%'}
           size={['md', 'md']}
+          rounded={['md', 'md']}
+          h={[10, 10]}
+          fontWeight={['medium', 'medium']}
           colorScheme="blue"
           isLoading={requesting}
           onClick={handleSubmit(onclickRegister)}
@@ -176,9 +183,10 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         </Button>
         <Box
           float={'right'}
-          fontSize="sm"
-          mt={2}
+          fontSize="mini"
+          mt={3}
           mb={'50px'}
+          fontWeight={'medium'}
           color={'primary.700'}
           cursor={'pointer'}
           _hover={{ textDecoration: 'underline' }}

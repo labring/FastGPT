@@ -4,6 +4,7 @@ export const iconPaths = {
   book: () => import('./icons/book.svg'),
   change: () => import('./icons/change.svg'),
   chatSend: () => import('./icons/chatSend.svg'),
+  check: () => import('./icons/check.svg'),
   closeSolid: () => import('./icons/closeSolid.svg'),
   collectionLight: () => import('./icons/collectionLight.svg'),
   collectionSolid: () => import('./icons/collectionSolid.svg'),
@@ -59,7 +60,6 @@ export const iconPaths = {
   'common/playFill': () => import('./icons/common/playFill.svg'),
   'common/playLight': () => import('./icons/common/playLight.svg'),
   'common/publishFill': () => import('./icons/common/publishFill.svg'),
-  'common/questionLight': () => import('./icons/common/questionLight.svg'),
   'common/refreshLight': () => import('./icons/common/refreshLight.svg'),
   'common/resultLight': () => import('./icons/common/resultLight.svg'),
   'common/retryLight': () => import('./icons/common/retryLight.svg'),
@@ -217,6 +217,7 @@ export const iconPaths = {
   'core/workflow/template/FileRead': () => import('./icons/core/workflow/template/FileRead.svg'),
   'core/workflow/template/aiChat': () => import('./icons/core/workflow/template/aiChat.svg'),
   'core/workflow/template/baseChart': () => import('./icons/core/workflow/template/baseChart.svg'),
+  'core/workflow/template/bing': () => import('./icons/core/workflow/template/bing.svg'),
   'core/workflow/template/codeRun': () => import('./icons/core/workflow/template/codeRun.svg'),
   'core/workflow/template/customFeedback': () =>
     import('./icons/core/workflow/template/customFeedback.svg'),
@@ -224,18 +225,16 @@ export const iconPaths = {
     import('./icons/core/workflow/template/datasetConcat.svg'),
   'core/workflow/template/datasetSearch': () =>
     import('./icons/core/workflow/template/datasetSearch.svg'),
+  'core/workflow/template/datasource': () =>
+    import('./icons/core/workflow/template/datasource.svg'),
   'core/workflow/template/duckduckgo': () =>
     import('./icons/core/workflow/template/duckduckgo.svg'),
   'core/workflow/template/extractJson': () =>
     import('./icons/core/workflow/template/extractJson.svg'),
-  'core/workflow/template/wiki': () => import('./icons/core/workflow/template/wiki.svg'),
-  'core/workflow/template/datasource': () =>
-    import('./icons/core/workflow/template/datasource.svg'),
-  'core/workflow/template/google': () => import('./icons/core/workflow/template/google.svg'),
-  'core/workflow/template/bing': () => import('./icons/core/workflow/template/bing.svg'),
   'core/workflow/template/fetchUrl': () => import('./icons/core/workflow/template/fetchUrl.svg'),
   'core/workflow/template/formInput': () => import('./icons/core/workflow/template/formInput.svg'),
   'core/workflow/template/getTime': () => import('./icons/core/workflow/template/getTime.svg'),
+  'core/workflow/template/google': () => import('./icons/core/workflow/template/google.svg'),
   'core/workflow/template/httpRequest': () =>
     import('./icons/core/workflow/template/httpRequest.svg'),
   'core/workflow/template/ifelse': () => import('./icons/core/workflow/template/ifelse.svg'),
@@ -271,6 +270,7 @@ export const iconPaths = {
   'core/workflow/template/variable': () => import('./icons/core/workflow/template/variable.svg'),
   'core/workflow/template/variableUpdate': () =>
     import('./icons/core/workflow/template/variableUpdate.svg'),
+  'core/workflow/template/wiki': () => import('./icons/core/workflow/template/wiki.svg'),
   'core/workflow/template/workflowStart': () =>
     import('./icons/core/workflow/template/workflowStart.svg'),
   'core/workflow/touchTable': () => import('./icons/core/workflow/touchTable.svg'),
@@ -280,6 +280,7 @@ export const iconPaths = {
   date: () => import('./icons/date.svg'),
   delete: () => import('./icons/delete.svg'),
   drag: () => import('./icons/drag.svg'),
+  edgeAdd: () => import('./icons/edgeAdd.svg'),
   edit: () => import('./icons/edit.svg'),
   empty: () => import('./icons/empty.svg'),
   export: () => import('./icons/export.svg'),
@@ -302,6 +303,7 @@ export const iconPaths = {
   'file/pdf': () => import('./icons/file/pdf.svg'),
   'file/qaImport': () => import('./icons/file/qaImport.svg'),
   'file/uploadFile': () => import('./icons/file/uploadFile.svg'),
+  help: () => import('./icons/help.svg'),
   history: () => import('./icons/history.svg'),
   infoRounded: () => import('./icons/infoRounded.svg'),
   kbTest: () => import('./icons/kbTest.svg'),
@@ -331,7 +333,6 @@ export const iconPaths = {
   save: () => import('./icons/save.svg'),
   stop: () => import('./icons/stop.svg'),
   'support/account/loginoutLight': () => import('./icons/support/account/loginoutLight.svg'),
-  'support/account/passwordLogin': () => import('./icons/support/account/passwordLogin.svg'),
   'support/account/plans': () => import('./icons/support/account/plans.svg'),
   'support/account/promotionLight': () => import('./icons/support/account/promotionLight.svg'),
   'support/bill/extraDatasetsize': () => import('./icons/support/bill/extraDatasetsize.svg'),

@@ -1,9 +1,9 @@
 import React, { useRef, useCallback, useState } from 'react';
 import { Button, useDisclosure, Box, Flex, useOutsideClick } from '@chakra-ui/react';
-import { ChevronDownIcon } from '@chakra-ui/icons';
 import { MultipleSelectProps } from './type';
 import EmptyTip from '../EmptyTip';
 import { useTranslation } from 'next-i18next';
+import MyIcon from '../../common/Icon';
 
 const MultipleRowSelect = ({
   placeholder,
@@ -106,17 +106,25 @@ const MultipleRowSelect = ({
       <Button
         justifyContent={'space-between'}
         width={'100%'}
-        rightIcon={<ChevronDownIcon />}
-        variant={'whiteBase'}
+        variant={'whitePrimaryOutline'}
+        size={'lg'}
+        fontSize={'sm'}
+        px={3}
+        outline={'none'}
+        rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
         _active={{
           transform: 'none'
         }}
         {...(isOpen
           ? {
-              boxShadow: '0px 0px 4px #A8DBFF',
-              borderColor: 'primary.500'
+              borderColor: 'primary.600',
+              color: 'primary.700',
+              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
             }
-          : {})}
+          : {
+              borderColor: 'myGray.200',
+              boxShadow: 'none'
+            })}
         {...styles}
         onClick={() => (isOpen ? onClose() : onOpenSelect())}
       >

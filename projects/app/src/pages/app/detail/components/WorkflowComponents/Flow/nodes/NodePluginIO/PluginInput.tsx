@@ -35,6 +35,7 @@ const FieldEditModal = dynamic(() => import('./InputEditModal'));
 const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs = [], outputs } = data;
+  console.log(outputs);
 
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
@@ -141,7 +142,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             }}
           />
         </Container>
-        {!!outputs.length && (
+        {!!outputs.filter((output) => output.type !== FlowNodeOutputTypeEnum.hidden).length && (
           <Container>
             <IOTitle text={t('common:common.Output')} />
             <RenderOutput nodeId={nodeId} flowOutputList={outputs} />

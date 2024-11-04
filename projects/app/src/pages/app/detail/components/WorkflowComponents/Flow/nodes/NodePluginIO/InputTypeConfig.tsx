@@ -24,7 +24,6 @@ import {
   FlowValueTypeMap
 } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -35,6 +34,7 @@ import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 
 type ListValueType = { id: string; value: string; label: string }[];
 
@@ -249,8 +249,6 @@ const InputTypeConfig = ({
               {t('common:core.module.Max Length')}
             </FormLabel>
             <MyNumberInput
-              flex={'1 0 0'}
-              bg={'myGray.50'}
               placeholder={t('common:core.module.Max Length placeholder')}
               value={maxLength}
               max={50000}
@@ -269,8 +267,6 @@ const InputTypeConfig = ({
                 {t('common:core.module.Max Value')}
               </FormLabel>
               <MyNumberInput
-                flex={'1 0 0'}
-                bg={'myGray.50'}
                 value={max}
                 onChange={(e) => {
                   // @ts-ignore
@@ -283,8 +279,6 @@ const InputTypeConfig = ({
                 {t('common:core.module.Min Value')}
               </FormLabel>
               <MyNumberInput
-                flex={'1 0 0'}
-                bg={'myGray.50'}
                 value={min}
                 onChange={(e) => {
                   // @ts-ignore

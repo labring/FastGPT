@@ -39,6 +39,7 @@ import { useTranslation } from 'react-i18next';
 import { Controller, useForm } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 
 type props = {
   value: UserChatItemValueItemType | AIChatItemValueItemType;
@@ -244,25 +245,15 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
             />
           )}
           {input.type === FlowNodeInputTypeEnum.numberInput && (
-            <NumberInput
-              step={1}
+            <MyNumberInput
               min={input.min}
               max={input.max}
               isDisabled={interactive.params.submitted}
               bg={'white'}
-              rounded={'md'}
-            >
-              <NumberInputField
-                bg={'white'}
-                {...register(input.label, {
-                  required: input.required
-                })}
-              />
-              <NumberInputStepper>
-                <NumberIncrementStepper />
-                <NumberDecrementStepper />
-              </NumberInputStepper>
-            </NumberInput>
+              register={register}
+              name={input.label}
+              isRequired={input.required}
+            />
           )}
           {input.type === FlowNodeInputTypeEnum.select && (
             <Controller

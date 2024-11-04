@@ -72,11 +72,11 @@ const LightRowTabs = <ValueType = string,>({
             _hover={{
               color: activeColor
             }}
+            fontWeight={'medium'}
             {...(value === item.value
               ? {
                   color: activeColor,
                   cursor: 'default',
-                  fontWeight: 'bold',
                   borderBottomColor: activeColor
                 }
               : {
