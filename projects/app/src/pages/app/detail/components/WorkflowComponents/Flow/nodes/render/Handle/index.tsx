@@ -5,6 +5,7 @@ import { handleHighLightStyle, sourceCommonStyle, handleConnectedStyle, handleSi
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../../context';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 type Props = {
   nodeId: string;
@@ -108,9 +109,7 @@ const MySourceHandle = React.memo(function MySourceHandle({
         position={position}
         isConnectableEnd={false}
       >
-        {showAddIcon && (
-          <SmallAddIcon pointerEvents={'none'} color={'primary.600'} fontWeight={'bold'} />
-        )}
+        {showAddIcon && <MyIcon name={'edgeAdd'} />}
       </Handle>
     );
   }, [handleId, position, showAddIcon, styles, transform]);

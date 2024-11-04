@@ -21,6 +21,7 @@ import WelcomeTextConfig from '@/components/core/app/WelcomeTextConfig';
 import FileSelect from '@/components/core/app/FileSelect';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import Container from '../components/Container';
 
 type ComponentProps = {
   chatConfig: AppChatConfigType;
@@ -49,7 +50,7 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   return (
     <>
       <NodeCard
-        minW={'300px'}
+        minW={'420px'}
         selected={selected}
         menuForbid={{
           debug: true,
@@ -58,30 +59,30 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         }}
         {...data}
       >
-        <Box px={4} py={'10px'} position={'relative'} borderRadius={'md'} className="nodrag">
+        <Container>
           <WelcomeText {...componentsProps} />
-          <Box pt={4}>
+          <Box mt={2} pt={2}>
             <ChatStartVariable {...componentsProps} />
           </Box>
-          <Box mt={3} pt={3} borderTop={'base'}>
+          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
             <FileSelectConfig {...componentsProps} />
           </Box>
-          <Box mt={3} pt={3} borderTop={'base'}>
+          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
             <TTSGuide {...componentsProps} />
           </Box>
-          <Box mt={3} pt={3} borderTop={'base'}>
+          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
             <WhisperGuide {...componentsProps} />
           </Box>
-          <Box mt={3} pt={3} borderTop={'base'}>
+          <Box mt={3} pt={4} borderTop={'base'} borderColor={'myGray.200'}>
             <QuestionGuide {...componentsProps} />
           </Box>
-          <Box mt={3} pt={3} borderTop={'base'}>
+          <Box mt={4} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
             <ScheduledTrigger {...componentsProps} />
           </Box>
-          <Box mt={3} pt={3} borderTop={'base'}>
+          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
             <QuestionInputGuide {...componentsProps} />
           </Box>
-        </Box>
+        </Container>
       </NodeCard>
     </>
   );

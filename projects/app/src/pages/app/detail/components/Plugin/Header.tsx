@@ -145,7 +145,6 @@ const Header = () => {
         )}
         <Flex
           mt={[2, 0]}
-          py={3}
           pl={[2, 4]}
           pr={[2, 6]}
           borderBottom={'base'}
@@ -163,12 +162,20 @@ const Header = () => {
               })}
         >
           {/* back */}
-          <MyIcon
-            name={'common/leftArrowLight'}
-            w={'1.75rem'}
-            cursor={'pointer'}
-            onClick={isPublished ? onBack : onOpenBackConfirm}
-          />
+          <Box
+            _hover={{
+              bg: 'myGray.200'
+            }}
+            p={0.5}
+            borderRadius={'sm'}
+          >
+            <MyIcon
+              name={'common/leftArrowLight'}
+              w={6}
+              cursor={'pointer'}
+              onClick={isPublished ? onBack : onOpenBackConfirm}
+            />
+          </Box>
 
           {/* app info */}
           <Box ml={1}>

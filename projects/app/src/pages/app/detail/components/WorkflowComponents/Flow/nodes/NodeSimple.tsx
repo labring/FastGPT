@@ -15,7 +15,7 @@ import { WorkflowContext } from '../../context';
 const NodeSimple = ({
   data,
   selected,
-  minW = '350px',
+  minW = '524px',
   maxW
 }: NodeProps<FlowNodeItemType> & { minW?: string | number; maxW?: string | number }) => {
   const { t } = useTranslation();

@@ -34,7 +34,7 @@ const WhisperConfig = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/whisper'} mr={2} w={'20px'} />
-      <FormLabel>{t('common:core.app.Whisper')}</FormLabel>
+      <FormLabel color={'myGray.600'}>{t('common:core.app.Whisper')}</FormLabel>
       <Box flex={1} />
       <MyTooltip label={t('common:core.app.Config whisper')}>
         <Button
@@ -42,6 +42,7 @@ const WhisperConfig = ({
           iconSpacing={1}
           size={'sm'}
           mr={'-5px'}
+          color={'myGray.600'}
           onClick={onOpen}
         >
           {formLabel}

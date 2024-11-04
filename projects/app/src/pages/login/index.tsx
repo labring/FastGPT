@@ -145,7 +145,6 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
         backgroundSize={'cover'}
         userSelect={'none'}
         h={'100%'}
-        px={[0, '10vw']}
       >
         {isPc && (
           <Box position={'absolute'} top={'24px'} right={'50px'}>
@@ -154,16 +153,15 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
         )}
         <Flex
           flexDirection={'column'}
-          w={['100%', 'auto']}
-          h={['100%', '700px']}
-          maxH={['100%', '90vh']}
+          w={['100%', '556px']}
+          h={['100%', '677px']}
           bg={'white'}
           px={['5vw', '88px']}
-          py={'5vh'}
-          borderRadius={[0, '24px']}
+          py={['5vh', '64px']}
+          borderRadius={[0, '16px']}
           boxShadow={[
             '',
-            '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 32px 64px -12px rgba(19, 51, 107, 0.20)'
+            '0px 32px 64px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)'
           ]}
         >
           <Box w={['100%', '380px']} flex={'1 0 0'}>
@@ -179,6 +177,8 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
             <Box
               mt={8}
               color={'primary.700'}
+              fontSize={'mini'}
+              fontWeight={'medium'}
               cursor={'pointer'}
               textAlign={'center'}
               onClick={onOpen}
