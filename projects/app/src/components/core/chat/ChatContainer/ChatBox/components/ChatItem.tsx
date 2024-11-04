@@ -137,8 +137,8 @@ const ChatItem = (props: Props) => {
   };
   const { t } = useTranslation();
 
-  const { isChatting, isLog } = useContextSelector(ChatBoxContext, (v) => {
-    return { isChatting: v.isChatting, isLog: v.isLog };
+  const { isChatting, chatType } = useContextSelector(ChatBoxContext, (v) => {
+    return { isChatting: v.isChatting, chatType: v.chatType };
   });
 
   const { copyData } = useCopyData();
@@ -218,13 +218,14 @@ const ChatItem = (props: Props) => {
       <Flex w={'100%'} alignItems={'flex-end'} gap={2} justifyContent={styleMap.justifyContent}>
         {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
           <Flex order={styleMap.order} ml={styleMap.ml} align={'center'} gap={'0.62rem'}>
-            {chat.time && type === ChatRoleEnum.Human && (isPc || isLog) && (
+            {chat.time && (isPc || chatType === 'log') && (
               <Box
+                order={type === ChatRoleEnum.AI ? 2 : 0}
                 className={'time-label'}
                 fontSize={styleMap.fontSize}
                 color={styleMap.color}
                 fontWeight={styleMap.fontWeight}
-                display={isLog ? 'block' : 'none'}
+                display={chatType === 'log' ? 'block' : 'none'}
               >
                 {t(formatTimeToChatItemTime(chat.time) as any, {
                   time: dayjs(chat.time).format('HH:mm')
