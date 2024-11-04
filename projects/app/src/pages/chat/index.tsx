@@ -34,7 +34,6 @@ import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { InitChatResponse } from '@/global/core/chat/api';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
 const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 

@@ -58,8 +58,8 @@ const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
     [FnTypeEnum.visionModel]: {
       icon: '/imgs/app/question.svg',
       title: t('app:vision_model_title'),
-      desc: t('app:llm_use_vision_tip'),
-      imgUrl: '/imgs/app/visionModel.png'
+      desc: t('app:open_vision_function_tip'),
+      imgUrl: '/imgs/app/visionModel.svg'
     },
     [FnTypeEnum.instruction]: {
       icon: '/imgs/app/help.svg',
