@@ -30,7 +30,7 @@ export const VariableInputItem = ({
   variablesForm
 }: {
   item: VariableItemType;
-  variablesForm: UseFormReturn<ChatBoxInputFormType>;
+  variablesForm: UseFormReturn<any>;
 }) => {
   const { register, control, setValue } = variablesForm;
 
