@@ -20,9 +20,9 @@ export type UserInputFileItemType = {
 
 export type ChatBoxInputFormType = {
   input: string;
-  files: UserInputFileItemType[];
+  files: UserInputFileItemType[]; // global files
   chatStarted: boolean;
-  [key: string]: any;
+  variables: Record<string, any>;
 };
 
 export type ChatBoxInputType = {
