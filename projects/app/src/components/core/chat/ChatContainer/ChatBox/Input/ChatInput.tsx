@@ -8,7 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { ChatBoxInputFormType, ChatBoxInputType, SendPromptFnType } from '../type';
 import { textareaMinH } from '../constants';
-import { UseFormReturn } from 'react-hook-form';
+import { useFieldArray, UseFormReturn } from 'react-hook-form';
 import { ChatBoxContext } from '../Provider';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
@@ -58,6 +58,10 @@ const ChatInput = ({
     fileSelectConfig
   } = useContextSelector(ChatBoxContext, (v) => v);
 
+  const fileCtrl = useFieldArray({
+    control,
+    name: 'files'
+  });
   const {
     File,
     onOpenSelectFile,
@@ -74,7 +78,7 @@ const ChatInput = ({
     outLinkAuthData,
     chatId: chatId || '',
     fileSelectConfig,
-    control
+    fileCtrl
   });
   const havInput = !!inputValue || fileList.length > 0;
   const hasFileUploading = fileList.some((item) => !item.url);
@@ -468,7 +472,7 @@ const ChatInput = ({
         {RenderTranslateLoading}
 
         {/* file preview */}
-        <Box px={[2, 4]}>
+        <Box px={[1, 3]}>
           <FilePreview fileList={fileList} removeFiles={removeFiles} />
         </Box>
 
