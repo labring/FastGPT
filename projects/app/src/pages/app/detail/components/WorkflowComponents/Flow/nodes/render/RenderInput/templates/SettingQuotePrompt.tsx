@@ -302,9 +302,9 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
     return (
       <>
         <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
-          <Box position={'relative'} color={'myGray.600'} fontWeight={'medium'}>
+          <FormLabel position={'relative'} color={'myGray.600'} fontWeight={'medium'}>
             {t('common:core.module.Dataset quote.label')}
-          </Box>
+          </FormLabel>
           <ValueTypeLabel
             valueType={WorkflowIOValueTypeEnum.datasetQuote}
             valueDesc={datasetQuoteValueDesc}
@@ -320,7 +320,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
             />
           </MyTooltip>
         </Flex>
-        <Box mt={1}>
+        <Box mt={3}>
           <Reference {...props} />
         </Box>
 

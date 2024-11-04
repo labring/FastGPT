@@ -130,7 +130,7 @@ export const useReference = ({
           label: (
             <Flex alignItems={'center'}>
               <Avatar src={node.avatar} w={'1.25rem'} borderRadius={'xs'} />
-              <Box ml={1}>{t(node.name as any)}</Box>
+              <Box ml={2}>{t(node.name as any)}</Box>
             </Flex>
           ),
           value: node.nodeId,
@@ -205,7 +205,7 @@ export const ReferSelector = ({
           selectItemLabel ? (
             <Flex alignItems={'center'}>
               {selectItemLabel[0].label}
-              <MyIcon name={'common/rightArrowLight'} mx={1} w={'14px'}></MyIcon>
+              <MyIcon name={'core/chat/chevronRight'} mx={1} w={4} />
               {selectItemLabel[1].label}
             </Flex>
           ) : (

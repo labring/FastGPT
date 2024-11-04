@@ -26,7 +26,7 @@ const NodeTools = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
       </Container>
       <Box position={'relative'}>
-        <Box borderBottomLeftRadius={'md'} borderBottomRadius={'md'} overflow={'hidden'}>
+        <Box mb={-4} borderBottomLeftRadius={'md'} borderBottomRadius={'md'} overflow={'hidden'}>
           <Divider
             showBorderBottom={false}
             icon={<MyIcon name="phoneTabbar/tool" w={'16px'} h={'16px'} />}
