@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { Handle, Position } from 'reactflow';
-import { SmallAddIcon } from '@chakra-ui/icons';
 import { handleHighLightStyle, sourceCommonStyle, handleConnectedStyle, handleSize } from './style';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
@@ -109,7 +108,7 @@ const MySourceHandle = React.memo(function MySourceHandle({
         position={position}
         isConnectableEnd={false}
       >
-        {showAddIcon && <MyIcon name={'edgeAdd'} />}
+        {showAddIcon && <MyIcon name={'edgeAdd'} pointerEvents={'none'} />}
       </Handle>
     );
   }, [handleId, position, showAddIcon, styles, transform]);
