@@ -22,6 +22,7 @@ const CodeLight = dynamic(() => import('./CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
 const MdImage = dynamic(() => import('./img/Image'), { ssr: false });
 const EChartsCodeBlock = dynamic(() => import('./img/EChartsCodeBlock'), { ssr: false });
+const IframeCodeBlock = dynamic(() => import('./codeBlock/Iframe'), { ssr: false });
 
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
@@ -76,7 +77,7 @@ const Markdown = ({
     );
 
     return finalText;
-  }, [showAnimation, source]);
+  }, [forbidZhFormat, showAnimation, source]);
 
   const urlTransform = useCallback((val: string) => {
     return val;
@@ -122,6 +123,9 @@ function Code(e: any) {
     }
     if (codeType === CodeClassNameEnum.echarts) {
       return <EChartsCodeBlock code={strChildren} />;
+    }
+    if (codeType === CodeClassNameEnum.iframe) {
+      return <IframeCodeBlock code={strChildren} />;
     }
 
     return (

@@ -346,14 +346,14 @@ const NumberInput = numInputMultiStyle({
     sm: defineStyle({
       field: {
         h: '32px',
-        borderRadius: 'md',
+        borderRadius: 'sm',
         fontsize: 'sm'
       }
     }),
     lg: defineStyle({
       field: {
         h: '40px',
-        borderRadius: 'md',
+        borderRadius: 'sm',
         fontsize: 'sm'
       }
     })
