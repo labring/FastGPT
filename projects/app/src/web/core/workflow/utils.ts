@@ -22,7 +22,8 @@ import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textare
 import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
-  getGuideModule
+  getGuideModule,
+  isReferenceValue
 } from '@fastgpt/global/core/workflow/utils';
 import { TFunction } from 'next-i18next';
 import {
@@ -269,6 +270,7 @@ export const checkWorkflowNodeAndConnection = ({
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
 }): string[] | undefined => {
+  const nodeIds: string[] = nodes.map((node) => node.data.nodeId);
   // 1. reference check. Required value
   for (const node of nodes) {
     const data = node.data;
@@ -322,6 +324,13 @@ export const checkWorkflowNodeAndConnection = ({
         if (input.required) {
           if (Array.isArray(input.value) && input.value.length === 0) return true;
           if (input.value === undefined) return true;
+        }
+
+        if (
+          node.data.flowNodeType === FlowNodeTypeEnum.pluginOutput &&
+          !(isReferenceValue(input.value, nodeIds) && input.value[1])
+        ) {
+          return true;
         }
 
         // check reference invalid
