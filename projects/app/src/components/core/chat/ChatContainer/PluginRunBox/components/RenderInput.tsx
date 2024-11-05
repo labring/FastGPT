@@ -80,7 +80,7 @@ const RenderInput = () => {
       setRestartData(e);
       onNewChat?.();
     },
-    [onNewChat]
+    [onNewChat, setRestartData]
   );
 
   const formatPluginInputs = useMemo(() => {
@@ -101,12 +101,12 @@ const RenderInput = () => {
   useEffect(() => {
     // Set config default value
     if (histories.length === 0) {
-      // Restart
       if (restartData) {
         reset(restartData);
         setRestartData(undefined);
         return;
       }
+
       const defaultFormValues = formatPluginInputs.reduce(
         (acc, input) => {
           acc[input.key] = input.defaultValue;
@@ -160,7 +160,8 @@ const RenderInput = () => {
       variables: historyVariables,
       files: historyFileList
     });
-  }, [histories.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [histories]);
 
   const [uploading, setUploading] = useState(false);
 

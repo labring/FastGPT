@@ -40,11 +40,13 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
             })
           : formatValue;
       } else {
-        return getReferenceVariableValue({
+        const value = getReferenceVariableValue({
           value: item.value,
           variables,
           nodes: runtimeNodes
         });
+
+        return value;
       }
     })();
 
