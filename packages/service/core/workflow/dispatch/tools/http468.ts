@@ -14,10 +14,12 @@ import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
 import { addLog } from '../../../../common/system/log';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  textAdaptGptResponse,
+  replaceEditorVariable
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import { getSystemPluginCb } from '../../../../../plugins/register';
 import { ContentTypes } from '@fastgpt/global/core/workflow/constants';
-import { replaceEditorVariable } from '@fastgpt/global/core/workflow/utils';
 import { uploadFileFromBase64Img } from '../../../../common/file/gridfs/controller';
 import { ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
 import { createFileToken } from '../../../../support/permission/controller';

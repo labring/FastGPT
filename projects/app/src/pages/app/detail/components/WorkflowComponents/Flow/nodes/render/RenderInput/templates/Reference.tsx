@@ -1,28 +1,37 @@
 import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
-import { Flex, Box, ButtonProps } from '@chakra-ui/react';
+import { Flex, Box, ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { computedNodeInputReference } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import {
   NodeOutputKeyEnum,
-  VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import type { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  ReferenceArrayValueType,
+  ReferenceItemValueType,
+  ReferenceValueType
+} from '@fastgpt/global/core/workflow/type/io';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '@/pages/app/detail/components/context';
 
-const MultipleRowSelect = dynamic(
-  () => import('@fastgpt/web/components/common/MySelect/MultipleRowSelect')
+const MultipleRowSelect = dynamic(() =>
+  import('@fastgpt/web/components/common/MySelect/MultipleRowSelect').then(
+    (v) => v.MultipleRowSelect
+  )
+);
+const MultipleRowArraySelect = dynamic(() =>
+  import('@fastgpt/web/components/common/MySelect/MultipleRowSelect').then(
+    (v) => v.MultipleRowArraySelect
+  )
 );
 const Avatar = dynamic(() => import('@fastgpt/web/components/common/Avatar'));
 
-type SelectProps = {
-  value?: ReferenceValueProps[];
+type CommonSelectProps = {
   placeholder?: string;
   list: {
     label: string | React.ReactNode;
@@ -33,95 +42,27 @@ type SelectProps = {
       valueType?: WorkflowIOValueTypeEnum;
     }[];
   }[];
-  onSelect: (val: ReferenceValueProps | ReferenceValueProps[]) => void;
   popDirection?: 'top' | 'bottom';
   styles?: ButtonProps;
-  isArray?: boolean;
 };
-
-export const isReference = (val: any) =>
-  Array.isArray(val) &&
-  val.length === 2 &&
-  typeof val[0] === 'string' &&
-  typeof val[1] === 'string';
-
-const Reference = ({ item, nodeId }: RenderInputProps) => {
-  const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-
-  const onSelect = useCallback(
-    (e: ReferenceValueProps | ReferenceValueProps[]) => {
-      const workflowStartNode = nodeList.find(
-        (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
-      );
-      if (e[0] === workflowStartNode?.id && e[1] !== NodeOutputKeyEnum.userChatInput) {
-        onChangeNode({
-          nodeId,
-          type: 'updateInput',
-          key: item.key,
-          value: {
-            ...item,
-            value: [VARIABLE_NODE_ID, e[1]]
-          }
-        });
-      } else {
-        onChangeNode({
-          nodeId,
-          type: 'updateInput',
-          key: item.key,
-          value: {
-            ...item,
-            value: e
-          }
-        });
-      }
-    },
-    [item, nodeId, nodeList, onChangeNode]
-  );
-
-  const { referenceList, formatValue } = useReference({
-    nodeId,
-    valueType: item.valueType,
-    value: item.value
-  });
-
-  const popDirection = useMemo(() => {
-    const node = nodeList.find((node) => node.nodeId === nodeId);
-    if (!node) return 'bottom';
-    return node.flowNodeType === FlowNodeTypeEnum.loop ? 'top' : 'bottom';
-  }, [nodeId, nodeList]);
-
-  return (
-    <ReferSelector
-      placeholder={t((item.referencePlaceholder as any) || 'select_reference_variable')}
-      list={referenceList}
-      value={formatValue}
-      onSelect={onSelect}
-      popDirection={popDirection}
-      isArray={item.valueType?.includes('array')}
-    />
-  );
+type SelectProps<T extends boolean> = CommonSelectProps & {
+  isArray?: T;
+  value?: T extends true ? ReferenceArrayValueType : ReferenceItemValueType;
+  onSelect: (val?: T extends true ? ReferenceArrayValueType : ReferenceItemValueType) => void;
 };
-
-export default React.memo(Reference);
 
 export const useReference = ({
   nodeId,
-  valueType = WorkflowIOValueTypeEnum.any,
-  value
+  valueType = WorkflowIOValueTypeEnum.any
 }: {
   nodeId: string;
   valueType?: WorkflowIOValueTypeEnum;
-  value?: any;
 }) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
-  const isArray = valueType?.includes('array');
-  const currentType = isArray ? valueType.replace('array', '').toLowerCase() : valueType;
+  const { nodeList, edges } = useContextSelector(WorkflowContext, (v) => v);
 
+  // 获取可选的变量列表
   const referenceList = useMemo(() => {
     const sourceNodes = computedNodeInputReference({
       nodeId,
@@ -133,8 +74,11 @@ export const useReference = ({
 
     if (!sourceNodes) return [];
 
+    const isArray = valueType?.includes('array');
+    const arrayItemType = isArray ? valueType.replace('array', '').toLowerCase() : valueType;
+
     // 转换为 select 的数据结构
-    const list: SelectProps['list'] = sourceNodes
+    const list: CommonSelectProps['list'] = sourceNodes
       .map((node) => {
         return {
           label: (
@@ -148,26 +92,16 @@ export const useReference = ({
             .filter(
               (output) =>
                 valueType === WorkflowIOValueTypeEnum.any ||
+                valueType === WorkflowIOValueTypeEnum.arrayAny ||
                 output.valueType === WorkflowIOValueTypeEnum.any ||
-                currentType === output.valueType ||
-                // array
                 output.valueType === valueType ||
-                (valueType === WorkflowIOValueTypeEnum.arrayAny &&
-                  [
-                    WorkflowIOValueTypeEnum.arrayString,
-                    WorkflowIOValueTypeEnum.arrayNumber,
-                    WorkflowIOValueTypeEnum.arrayBoolean,
-                    WorkflowIOValueTypeEnum.arrayObject,
-                    WorkflowIOValueTypeEnum.string,
-                    WorkflowIOValueTypeEnum.number,
-                    WorkflowIOValueTypeEnum.boolean,
-                    WorkflowIOValueTypeEnum.object
-                  ].includes(output.valueType as WorkflowIOValueTypeEnum))
+                // Array<String> can select string
+                arrayItemType === output.valueType
             )
             .filter((output) => output.id !== NodeOutputKeyEnum.addOutputParam)
             .map((output) => {
               return {
-                label: t((output.label as any) || ''),
+                label: t(output.label as any),
                 value: output.id,
                 valueType: output.valueType
               };
@@ -177,148 +111,216 @@ export const useReference = ({
       .filter((item) => item.children.length > 0);
 
     return list;
-  }, [appDetail.chatConfig, currentType, edges, isArray, nodeId, nodeList, t, valueType]);
-
-  const formatValue = useMemo(() => {
-    // convert origin reference [variableId, outputId] to new reference [[variableId, outputId], ...]
-    if (isReference(value)) {
-      return [value] as ReferenceValueProps[];
-    } else if (Array.isArray(value) && value.every((item) => isReference(item))) {
-      return value as ReferenceValueProps[];
-    }
-    return undefined;
-  }, [value]);
+  }, [appDetail.chatConfig, edges, nodeId, nodeList, t, valueType]);
 
   return {
-    referenceList,
-    formatValue
+    referenceList
   };
 };
 
-const ReferSelectorComponent = ({
+const Reference = ({ item, nodeId }: RenderInputProps) => {
+  const { t } = useTranslation();
+  const { onChangeNode, nodeList } = useContextSelector(WorkflowContext, (v) => v);
+  const isArray = item.valueType?.includes('array') ?? false;
+
+  const onSelect = useCallback(
+    (e: ReferenceValueType) => {
+      onChangeNode({
+        nodeId,
+        type: 'updateInput',
+        key: item.key,
+        value: {
+          ...item,
+          value: e
+        }
+      });
+    },
+    [item, nodeId, onChangeNode]
+  );
+
+  const { referenceList } = useReference({
+    nodeId,
+    valueType: item.valueType
+  });
+
+  const popDirection = useMemo(() => {
+    const node = nodeList.find((node) => node.nodeId === nodeId);
+    if (!node) return 'bottom';
+    return node.flowNodeType === FlowNodeTypeEnum.loop ? 'top' : 'bottom';
+  }, [nodeId, nodeList]);
+
+  return (
+    <ReferSelector
+      placeholder={t(item.referencePlaceholder as any) || t('common:select_reference_variable')}
+      list={referenceList}
+      value={item.value}
+      onSelect={onSelect}
+      popDirection={popDirection}
+      isArray={isArray}
+    />
+  );
+};
+
+export default React.memo(Reference);
+
+const SingleReferenceSelector = ({
   placeholder,
   value,
   list = [],
   onSelect,
-  popDirection,
-  isArray
-}: SelectProps) => {
-  const { t } = useTranslation();
+  popDirection
+}: SelectProps<false>) => {
+  const getSelectValue = useCallback(
+    (value: ReferenceValueType) => {
+      if (!value) return [];
 
-  const selectValue = useMemo(() => {
-    if (!value || value.every((item) => !item || item.every((subItem) => !subItem))) {
-      return;
-    }
-    return value.map((valueItem) => {
-      const firstColumn = list.find((item) => item.value === valueItem[0]);
+      const firstColumn = list.find((item) => item.value === value[0]);
       if (!firstColumn) {
-        return;
+        return [];
       }
-      const secondColumn = firstColumn.children.find((item) => item.value === valueItem[1]);
+      const secondColumn = firstColumn.children.find((item) => item.value === value[1]);
       if (!secondColumn) {
-        return;
+        return [];
       }
-      return [firstColumn, secondColumn];
-    });
-  }, [list, value]);
+      return [firstColumn.label, secondColumn.label];
+    },
+    [list]
+  );
 
-  const Render = useMemo(() => {
+  const ItemSelector = useMemo(() => {
+    const selectorVal = value as ReferenceItemValueType;
+    const [nodeName, outputName] = getSelectValue(selectorVal);
+    const isValidSelect = nodeName && outputName;
+
     return (
       <MultipleRowSelect
         label={
-          selectValue && selectValue.length > 0 ? (
-            <Flex
-              gap={2}
-              flexWrap={isArray ? 'wrap' : undefined}
-              alignItems={'center'}
-              fontSize={'14px'}
-            >
-              {isArray ? (
-                // [[variableId, outputId], ...]
-                selectValue.map((item, index) => {
-                  const isInvalidItem = item === undefined;
-                  return (
-                    <Flex
-                      alignItems={'center'}
-                      key={index}
-                      bg={isInvalidItem ? 'red.50' : 'primary.50'}
-                      color={isInvalidItem ? 'red.600' : 'myGray.900'}
-                      py={1}
-                      px={1.5}
-                      rounded={'sm'}
-                    >
+          isValidSelect ? (
+            <Flex gap={2} alignItems={'center'} fontSize={'sm'}>
+              <Flex py={1} pl={1}>
+                {nodeName}
+                <MyIcon name={'common/rightArrowLight'} mx={1} w={'12px'} color={'myGray.500'} />
+                {outputName}
+              </Flex>
+            </Flex>
+          ) : (
+            <Box fontSize={'sm'} color={'myGray.400'}>
+              {placeholder}
+            </Box>
+          )
+        }
+        value={selectorVal}
+        list={list}
+        onSelect={onSelect as any}
+        popDirection={popDirection}
+      />
+    );
+  }, [getSelectValue, list, onSelect, placeholder, popDirection, value]);
+
+  return ItemSelector;
+};
+const MultipleReferenceSelector = ({
+  placeholder,
+  value,
+  list = [],
+  onSelect,
+  popDirection
+}: SelectProps<true>) => {
+  const { t } = useTranslation();
+
+  const getSelectValue = useCallback(
+    (value: ReferenceValueType) => {
+      if (!value) return [];
+
+      const firstColumn = list.find((item) => item.value === value[0]);
+      if (!firstColumn) {
+        return [];
+      }
+      const secondColumn = firstColumn.children.find((item) => item.value === value[1]);
+      if (!secondColumn) {
+        return [];
+      }
+      return [firstColumn.label, secondColumn.label];
+    },
+    [list]
+  );
+
+  const ArraySelector = useMemo(() => {
+    const selectorVal = value as ReferenceItemValueType[];
+
+    return (
+      <MultipleRowArraySelect
+        label={
+          selectorVal && selectorVal.length > 0 ? (
+            <Grid py={3} gridTemplateColumns={'1fr 1fr'} gap={2} fontSize={'sm'}>
+              {selectorVal.map((item, index) => {
+                const [nodeName, outputName] = getSelectValue(item);
+                const isInvalidItem = !nodeName || !outputName;
+
+                return (
+                  <Flex
+                    alignItems={'center'}
+                    key={index}
+                    bg={isInvalidItem ? 'red.50' : 'primary.50'}
+                    color={isInvalidItem ? 'red.600' : 'myGray.900'}
+                    py={1}
+                    px={1.5}
+                    rounded={'sm'}
+                  >
+                    <Flex alignItems={'center'} flex={1}>
                       {isInvalidItem ? (
                         t('common:invalid_variable')
                       ) : (
                         <>
-                          {item?.[0].label}
+                          {nodeName}
                           <MyIcon
                             name={'common/rightArrowLight'}
                             mx={1}
                             w={'12px'}
                             color={'myGray.500'}
                           />
-                          {item?.[1].label}
+                          {outputName}
                         </>
                       )}
-                      <MyIcon
-                        name={'common/closeLight'}
-                        w={'16px'}
-                        ml={1}
-                        cursor={'pointer'}
-                        color={'myGray.500'}
-                        _hover={{
-                          color: 'primary.600'
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isInvalidItem) {
-                            const filteredValue = value?.filter((_, i) => i !== index);
-                            onSelect(filteredValue as any);
-                            return;
-                          }
-                          const filteredValue = value?.filter(
-                            (val) => val[0] !== item?.[0].value || val[1] !== item?.[1].value
-                          );
-                          filteredValue && onSelect(filteredValue);
-                        }}
-                      />
                     </Flex>
-                  );
-                })
-              ) : // [variableId, outputId]
-              selectValue[0] ? (
-                <Flex py={1} pl={1}>
-                  {selectValue[0][0].label}
-                  <MyIcon name={'common/rightArrowLight'} mx={1} w={'12px'} color={'myGray.500'} />
-                  {selectValue[0][1].label}
-                </Flex>
-              ) : (
-                <Box pl={2} py={1} fontSize={'14px'}>
-                  {placeholder}
-                </Box>
-              )}
-            </Flex>
+                    <MyIcon
+                      name={'common/closeLight'}
+                      w={'16px'}
+                      ml={1}
+                      cursor={'pointer'}
+                      color={'myGray.500'}
+                      _hover={{
+                        color: 'primary.600'
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect(value?.filter((_, i) => i !== index));
+                      }}
+                    />
+                  </Flex>
+                );
+              })}
+            </Grid>
           ) : (
-            <Box pl={2} py={1} fontSize={'14px'}>
+            <Box fontSize={'sm'} color={'myGray.400'}>
               {placeholder}
             </Box>
           )
         }
-        value={value as any[]}
+        value={selectorVal as any}
         list={list}
-        onSelect={(e) => {
-          onSelect(e as ReferenceValueProps);
-        }}
+        onSelect={onSelect as any}
         popDirection={popDirection}
-        isArray={isArray}
       />
     );
-  }, [isArray, list, onSelect, placeholder, popDirection, selectValue, t, value]);
+  }, [getSelectValue, list, onSelect, placeholder, popDirection, t, value]);
 
-  return Render;
+  return ArraySelector;
 };
-
-ReferSelectorComponent.displayName = 'ReferSelector';
-
-export const ReferSelector = React.memo(ReferSelectorComponent);
+export const ReferSelector = <T extends boolean>(props: SelectProps<T>) => {
+  return props.isArray ? (
+    <MultipleReferenceSelector {...(props as SelectProps<true>)} />
+  ) : (
+    <SingleReferenceSelector {...(props as SelectProps<false>)} />
+  );
+};

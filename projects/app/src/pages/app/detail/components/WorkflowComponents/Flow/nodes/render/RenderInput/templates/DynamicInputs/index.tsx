@@ -5,20 +5,17 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { FlowNodeInputItemType, ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
+import { FlowNodeInputItemType, ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
 import { defaultInput } from '../../FieldEditModal';
 import { getInputComponentProps } from '@fastgpt/global/core/workflow/node/io/utils';
-import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
-import { isReference, ReferSelector, useReference } from '../Reference';
+import { ReferSelector, useReference } from '../Reference';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from '../../../ValueTypeLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useI18n } from '@/web/context/I18n';
-import { isWorkflowStartOutput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 
 const FieldEditModal = dynamic(() => import('../../FieldEditModal'));
 
@@ -126,59 +123,28 @@ function Reference({
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
   const onSelect = useCallback(
-    (e: ReferenceValueProps | ReferenceValueProps[]) => {
-      const workflowStartNode = nodeList.find(
-        (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
-      );
-
-      const newValue =
-        e[0] === workflowStartNode?.id && !isWorkflowStartOutput(e[1] as string)
-          ? [VARIABLE_NODE_ID, e[1]]
-          : e;
-
+    (e: ReferenceValueType) => {
       onChangeNode({
         nodeId,
         type: 'replaceInput',
         key: inputChildren.key,
         value: {
           ...inputChildren,
-          value: newValue
+          value: e
         }
       });
     },
-    [inputChildren, nodeId, nodeList, onChangeNode]
+    [inputChildren, nodeId, onChangeNode]
   );
 
-  const { referenceList, formatValue } = useReference({
+  const { referenceList } = useReference({
     nodeId,
-    valueType: inputChildren.valueType,
-    value: inputChildren.value
+    valueType: inputChildren.valueType
   });
-
-  // handle array and non-array type conversion
-  const getValueTypeChange = useCallback(
-    (data: FlowNodeInputItemType, oldType: string | undefined) => {
-      const newType = data.valueType;
-      if (oldType === newType) return data.value;
-
-      if (!oldType?.includes('array') && newType?.includes('array')) {
-        return Array.isArray(data.value) && data.value.every((item) => isReference(item))
-          ? data.value
-          : [data.value];
-      }
-      if (oldType?.includes('array') && !newType?.includes('array')) {
-        return Array.isArray(data.value) ? data.value[0] : data.value;
-      }
-      return data.value;
-    },
-    []
-  );
 
   const onUpdateField = useCallback(
     ({ data }: { data: FlowNodeInputItemType }) => {
       if (!data.key) return;
-
-      const updatedValue = getValueTypeChange(data, inputChildren.valueType);
 
       onChangeNode({
         nodeId,
@@ -186,11 +152,11 @@ function Reference({
         key: inputChildren.key,
         value: {
           ...data,
-          value: updatedValue
+          value: data
         }
       });
     },
-    [inputChildren, nodeId, onChangeNode, getValueTypeChange]
+    [inputChildren, nodeId, onChangeNode]
   );
   const onDel = useCallback(() => {
     onChangeNode({
@@ -234,7 +200,7 @@ function Reference({
       <ReferSelector
         placeholder={t((inputChildren.referencePlaceholder as any) || 'select_reference_variable')}
         list={referenceList}
-        value={formatValue}
+        value={inputChildren.value}
         onSelect={onSelect}
         isArray={inputChildren.valueType?.includes('array')}
       />

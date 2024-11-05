@@ -26,14 +26,14 @@ import Container from '../components/Container';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
+import { ReferenceItemValueType, ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 import { getRefData } from '@/web/core/workflow/utils';
-import { isReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { AppContext } from '@/pages/app/detail/components/context';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { useCreation, useMemoizedFn } from 'ahooks';
 import { getEditorVariables } from '../../utils';
+import { isArray } from 'lodash';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -103,18 +103,17 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         (item) => item.renderType === updateItem.renderType
       );
 
-      const nodeIds = nodeList.map((node) => node.nodeId);
-      const handleUpdate = (newValue: ReferenceValueProps | string) => {
-        if (isReferenceValue(newValue, nodeIds)) {
+      const handleUpdate = (newValue: ReferenceValueType | string) => {
+        if (typeof newValue === 'string') {
           onUpdateList(
             updateList.map((update, i) =>
-              i === index ? { ...update, value: newValue as ReferenceValueProps } : update
+              i === index ? { ...update, value: ['', newValue] } : update
             )
           );
         } else {
           onUpdateList(
             updateList.map((update, i) =>
-              i === index ? { ...update, value: ['', newValue as string] } : update
+              i === index ? { ...update, value: newValue as ReferenceItemValueType } : update
             )
           );
         }
@@ -124,7 +123,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         <Container key={index} mt={4} w={'full'} mx={0}>
           <Flex alignItems={'center'}>
             <Flex w={'60px'}>{t('common:core.workflow.variable')}</Flex>
-            <Reference
+            <VariableSelector
               nodeId={nodeId}
               variable={updateItem.variable}
               onSelect={(value) => {
@@ -135,7 +134,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                         ...update,
                         value: ['', ''],
                         valueType,
-                        variable: value
+                        variable: value as ReferenceItemValueType
                       };
                     }
                     return update;
@@ -202,7 +201,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
             {(() => {
               if (updateItem.renderType === FlowNodeInputTypeEnum.reference) {
                 return (
-                  <Reference
+                  <VariableSelector
                     nodeId={nodeId}
                     variable={updateItem.value}
                     valueType={valueType}
@@ -210,11 +209,14 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                   />
                 );
               }
+
+              const inputValue = isArray(updateItem.value?.[1]) ? '' : updateItem.value?.[1];
+
               if (valueType === WorkflowIOValueTypeEnum.string) {
                 return (
                   <Box w={'300px'}>
                     <PromptEditor
-                      value={updateItem.value?.[1] || ''}
+                      value={inputValue || ''}
                       onChange={handleUpdate}
                       showOpenModal={false}
                       variableLabels={variables}
@@ -225,7 +227,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               }
               if (valueType === WorkflowIOValueTypeEnum.number) {
                 return (
-                  <NumberInput value={Number(updateItem.value?.[1]) || 0}>
+                  <NumberInput value={Number(inputValue) || 0}>
                     <NumberInputField bg="white" onChange={(e) => handleUpdate(e.target.value)} />
                     <NumberInputStepper>
                       <NumberIncrementStepper />
@@ -237,7 +239,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               if (valueType === WorkflowIOValueTypeEnum.boolean) {
                 return (
                   <Switch
-                    defaultChecked={updateItem.value?.[1] === 'true'}
+                    defaultChecked={inputValue === 'true'}
                     onChange={(e) => handleUpdate(String(e.target.checked))}
                   />
                 );
@@ -246,7 +248,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               return (
                 <Box w={'300px'}>
                   <PromptEditor
-                    value={updateItem.value?.[1] || ''}
+                    value={inputValue || ''}
                     onChange={handleUpdate}
                     showOpenModal={false}
                     variableLabels={variables}
@@ -302,31 +304,31 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
 };
 export default React.memo(NodeVariableUpdate);
 
-const Reference = ({
+const VariableSelector = ({
   nodeId,
   variable,
   valueType,
   onSelect
 }: {
   nodeId: string;
-  variable?: ReferenceValueProps;
+  variable?: ReferenceValueType;
   valueType?: WorkflowIOValueTypeEnum;
-  onSelect: (e: ReferenceValueProps) => void;
+  onSelect: (e: ReferenceValueType) => void;
 }) => {
   const { t } = useTranslation();
 
-  const { referenceList, formatValue } = useReference({
+  const { referenceList } = useReference({
     nodeId,
-    valueType,
-    value: variable
+    valueType
   });
 
   return (
     <ReferSelector
       placeholder={t('common:select_reference_variable')}
       list={referenceList}
-      value={formatValue}
-      onSelect={onSelect as any}
+      value={variable}
+      onSelect={onSelect}
+      isArray={valueType?.includes('array')}
     />
   );
 };
