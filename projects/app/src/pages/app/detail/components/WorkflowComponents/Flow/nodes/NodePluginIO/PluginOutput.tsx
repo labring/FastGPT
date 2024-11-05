@@ -118,13 +118,13 @@ function Reference({
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
   const onSelect = useCallback(
-    (e: ReferenceValueProps) => {
+    (e: ReferenceValueProps | ReferenceValueProps[]) => {
       const workflowStartNode = nodeList.find(
         (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
       );
 
       const value =
-        e[0] === workflowStartNode?.id && !isWorkflowStartOutput(e[1])
+        e[0] === workflowStartNode?.id && !isWorkflowStartOutput(e[1] as string)
           ? [VARIABLE_NODE_ID, e[1]]
           : e;
 
@@ -219,6 +219,7 @@ function Reference({
         list={referenceList}
         value={formatValue}
         onSelect={onSelect}
+        isArray={input.valueType?.includes('array')}
       />
 
       {!!editField && (
