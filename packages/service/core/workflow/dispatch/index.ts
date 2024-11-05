@@ -500,7 +500,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         nodes: runtimeNodes,
         variables
       });
-
+      console.log(value, '=-=-');
       // Dynamic input is stored in the dynamic key
       if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
         params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
