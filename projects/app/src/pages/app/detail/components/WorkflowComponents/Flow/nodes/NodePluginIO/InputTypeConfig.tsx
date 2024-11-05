@@ -295,18 +295,15 @@ const InputTypeConfig = ({
             </FormLabel>
             <Flex alignItems={'start'} flex={1} h={10}>
               {inputType === FlowNodeInputTypeEnum.numberInput && (
-                <NumberInput flex={1} step={1} min={min} max={max} position={'relative'}>
-                  <NumberInputField
-                    {...register('defaultValue', {
-                      min: min,
-                      max: max
-                    })}
-                  />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
+                <MyNumberInput
+                  value={defaultValue}
+                  min={min}
+                  max={max}
+                  onChange={(e) => {
+                    // @ts-ignore
+                    setValue('defaultValue', e || '');
+                  }}
+                />
               )}
               {inputType === FlowNodeInputTypeEnum.input && (
                 <MyTextarea

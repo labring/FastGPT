@@ -281,7 +281,7 @@ const NodeCard = (props: Props) => {
                 </MyTooltip>
               )}
             </Flex>
-            <NodeIntro nodeId={nodeId} intro={intro} />
+            {intro && <NodeIntro nodeId={nodeId} intro={intro} />}
           </Box>
         )}
         <MenuRender nodeId={nodeId} menuForbid={menuForbid} nodeList={nodeList} />
