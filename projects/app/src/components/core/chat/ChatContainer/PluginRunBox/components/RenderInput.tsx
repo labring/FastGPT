@@ -56,7 +56,7 @@ const RenderInput = () => {
     showSelectFile,
     showSelectImg,
     removeFiles,
-    replaceFiles
+    hasFileUploading
   } = useFileUpload({
     outLinkAuthData,
     chatId: chatId || '',
@@ -64,9 +64,7 @@ const RenderInput = () => {
     fileCtrl
   });
   const isDisabledInput = histories.length > 0;
-  const hasFileUploading = useMemo(() => {
-    return fileList.some((item) => !item.url);
-  }, [fileList]);
+
   useRequest2(uploadFiles, {
     manual: false,
     errorToast: t('common:upload_file_error'),
@@ -203,7 +201,7 @@ const RenderInput = () => {
                 {t('chat:select')}
               </Button>
             )}
-            <File onSelect={(files) => onSelectFile({ files, fileList })} />
+            <File onSelect={(files) => onSelectFile({ files })} />
           </Flex>
           <FilePreview
             fileList={fileList}
