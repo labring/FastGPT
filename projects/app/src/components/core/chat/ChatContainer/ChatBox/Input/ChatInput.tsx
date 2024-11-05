@@ -73,7 +73,8 @@ const ChatInput = ({
     showSelectFile,
     showSelectImg,
     removeFiles,
-    replaceFiles
+    replaceFiles,
+    hasFileUploading
   } = useFileUpload({
     outLinkAuthData,
     chatId: chatId || '',
@@ -81,7 +82,6 @@ const ChatInput = ({
     fileCtrl
   });
   const havInput = !!inputValue || fileList.length > 0;
-  const hasFileUploading = fileList.some((item) => !item.url);
   const canSendMessage = havInput && !hasFileUploading;
 
   // Upload files
@@ -206,7 +206,7 @@ const ChatInput = ({
             <MyTooltip label={selectFileLabel}>
               <MyIcon name={selectFileIcon as any} w={'18px'} color={'myGray.600'} />
             </MyTooltip>
-            <File onSelect={(files) => onSelectFile({ files, fileList })} />
+            <File onSelect={(files) => onSelectFile({ files })} />
           </Flex>
         )}
 
@@ -282,7 +282,7 @@ const ChatInput = ({
                 .filter((file) => {
                   return file && fileTypeFilter(file);
                 }) as File[];
-              onSelectFile({ files, fileList });
+              onSelectFile({ files });
 
               if (files.length > 0) {
                 e.stopPropagation();
