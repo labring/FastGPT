@@ -12,7 +12,7 @@ import {
   VARIABLE_NODE_ID,
   NodeOutputKeyEnum
 } from './constants';
-import { FlowNodeInputItemType, FlowNodeOutputItemType, ReferenceValueProps } from './type/io.d';
+import { FlowNodeInputItemType, FlowNodeOutputItemType } from './type/io.d';
 import { StoreNodeItemType } from './type/node';
 import type {
   VariableItemType,
@@ -30,7 +30,6 @@ import {
 } from '../app/constants';
 import { IfElseResultEnum } from './template/system/ifElse/constant';
 import { RuntimeNodeItemType } from './runtime/type';
-import { getReferenceVariableValue } from './runtime/utils';
 import {
   Input_Template_File_Link,
   Input_Template_History,
@@ -301,9 +300,19 @@ export const formatEditorVariablePickerIcon = (
   }));
 };
 
-export const isReferenceValue = (value: any, nodeIds: string[]): boolean => {
-  const validIdList = [VARIABLE_NODE_ID, ...nodeIds];
-  return Array.isArray(value) && value.length === 2 && validIdList.includes(value[0]);
+export const isReferenceValue = (value: any, nodeIds: string[]): value is [string, string] => {
+  if (!Array.isArray(value) || value.length !== 2 || typeof value[0] !== 'string') return false;
+
+  const validIdSet = new Set([VARIABLE_NODE_ID, ...nodeIds]);
+  return validIdSet.has(value[0]);
+};
+export const isReferenceValueArray = (
+  value: any,
+  nodeIds: string[]
+): value is [string, string][] => {
+  if (!Array.isArray(value) || value.length === 0) return false;
+
+  return value.every((item) => isReferenceValue(item, nodeIds));
 };
 
 export const getElseIFLabel = (i: number) => {
@@ -344,79 +353,6 @@ export const updatePluginInputByVariables = (
       : node
   );
 };
-
-// replace {{$xx.xx$}} variables for text
-export function replaceEditorVariable({
-  text,
-  nodes,
-  variables,
-  runningNode
-}: {
-  text: any;
-  nodes: RuntimeNodeItemType[];
-  variables: Record<string, any>; // global variables
-  runningNode: RuntimeNodeItemType;
-}) {
-  if (typeof text !== 'string') return text;
-
-  const globalVariables = Object.keys(variables).map((key) => {
-    return {
-      nodeId: VARIABLE_NODE_ID,
-      id: key,
-      value: variables[key]
-    };
-  });
-
-  // Upstream node outputs
-  const nodeVariables = nodes
-    .map((node) => {
-      return node.outputs.map((output) => {
-        return {
-          nodeId: node.nodeId,
-          id: output.id,
-          value: output.value
-        };
-      });
-    })
-    .flat();
-
-  // Get runningNode inputs(Will be replaced with reference)
-  const customInputs = runningNode.inputs.flatMap((item) => {
-    if (Array.isArray(item.value)) {
-      return [
-        {
-          id: item.key,
-          value: getReferenceVariableValue({
-            value: item.value as ReferenceValueProps,
-            nodes,
-            variables
-          }),
-          nodeId: runningNode.nodeId
-        }
-      ];
-    }
-    return [
-      {
-        id: item.key,
-        value: item.value,
-        nodeId: runningNode.nodeId
-      }
-    ];
-  });
-
-  const allVariables = [...globalVariables, ...nodeVariables, ...customInputs];
-
-  // Replace {{$xxx.xxx$}} to value
-  for (const key in allVariables) {
-    const variable = allVariables[key];
-    const val = variable.value;
-    const formatVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
-
-    const regex = new RegExp(`\\{\\{\\$(${variable.nodeId}\\.${variable.id})\\$\\}\\}`, 'g');
-    text = text.replace(regex, formatVal);
-  }
-  return text || '';
-}
 
 /* Get plugin runtime input user query */
 export const getPluginRunUserQuery = ({

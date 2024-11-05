@@ -27,6 +27,8 @@ import { WorkflowContext } from '../../../context';
 import { cloneDeep } from 'lodash';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { AppContext } from '../../../../context';
+import { isReferenceValue, isReferenceValueArray } from '@fastgpt/global/core/workflow/utils';
+import { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 
 const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -34,7 +36,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { onChangeNode, nodeList } = useContextSelector(WorkflowContext, (v) => v);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
-  const arrayValue = inputs.find((input) => input.key === NodeInputKeyEnum.loopInputArray)?.value;
+  const loopInputArray = inputs.find((input) => input.key === NodeInputKeyEnum.loopInputArray);
 
   const { nodeWidth, nodeHeight } = useMemo(() => {
     return {
@@ -49,41 +51,53 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   }, [nodeId, nodeList]);
 
   // Detect and update array input type
-  useEffect(() => {
-    const inputsClone = cloneDeep(inputs);
+  const newValueType = useMemo(() => {
+    if (!loopInputArray) return WorkflowIOValueTypeEnum.arrayAny;
+
+    const nodeIds = nodeList.map((node) => node.nodeId);
     const globalVariables = getWorkflowGlobalVariables({
       nodes: nodeList,
       chatConfig: appDetail.chatConfig
     });
 
-    let arrayType: WorkflowIOValueTypeEnum | undefined;
-    if (arrayValue[0]?.[0] === VARIABLE_NODE_ID) {
-      arrayType = globalVariables.find((item) => item.key === arrayValue[0]?.[1])?.valueType;
-    } else {
-      const node = nodeList.find((node) => node.nodeId === arrayValue[0]?.[0]);
-      const output = node?.outputs.find((output) => output.id === arrayValue[0]?.[1]);
-      arrayType = output?.valueType;
-    }
+    const getValueType = (value: ReferenceItemValueType) => {
+      if (value?.[0] === VARIABLE_NODE_ID) {
+        return globalVariables.find((item) => item.key === value[1])?.valueType;
+      } else {
+        const node = nodeList.find((node) => node.nodeId === value?.[0]);
+        const output = node?.outputs.find((output) => output.id === value?.[1]);
+        return output?.valueType;
+      }
+    };
 
-    const arrayInput = inputsClone.find((input) => input.key === NodeInputKeyEnum.loopInputArray);
+    const valueType = (() => {
+      if (isReferenceValue(loopInputArray?.value, nodeIds)) {
+        return getValueType(loopInputArray?.value);
+      } else if (isReferenceValueArray(loopInputArray?.value, nodeIds)) {
+        return getValueType(loopInputArray?.value?.[0]);
+      } else {
+        return WorkflowIOValueTypeEnum.arrayAny;
+      }
+    })();
 
-    if (!arrayInput) {
-      return;
-    }
+    const type = ArrayTypeMap[valueType as keyof typeof ArrayTypeMap];
 
+    return type ?? WorkflowIOValueTypeEnum.arrayAny;
+  }, [appDetail.chatConfig, loopInputArray, nodeList]);
+  useEffect(() => {
+    if (!loopInputArray) return;
     onChangeNode({
       nodeId,
       type: 'updateInput',
       key: NodeInputKeyEnum.loopInputArray,
       value: {
-        ...arrayInput,
-        valueType: arrayType
-          ? ArrayTypeMap[arrayType as keyof typeof ArrayTypeMap]
-          : WorkflowIOValueTypeEnum.arrayAny
+        ...loopInputArray,
+        valueType: newValueType
       }
     });
-  }, [appDetail.chatConfig, arrayValue, inputs, nodeId, nodeList, onChangeNode]);
+  }, [newValueType]);
 
+  // Update childrenNodeIdList
   useEffect(() => {
     onChangeNode({
       nodeId,
@@ -112,7 +126,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       >
         <Container position={'relative'} flex={1}>
           <IOTitle text={t('common:common.Input')} />
-          <Box mb={6} maxW={'360'}>
+          <Box mb={6} maxW={'500px'}>
             <RenderInput nodeId={nodeId} flowInputList={inputs} />
           </Box>
           <FormLabel required fontWeight={'medium'} mb={3} color={'myGray.600'}>

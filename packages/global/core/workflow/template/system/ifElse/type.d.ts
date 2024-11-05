@@ -1,9 +1,9 @@
-import { ReferenceValueProps } from 'core/workflow/type/io';
+import { ReferenceItemValueType } from '../../../type/io';
 import { VariableConditionEnum } from './constant';
 
 export type IfElseConditionType = 'AND' | 'OR';
 export type ConditionListItemType = {
-  variable?: ReferenceValueProps;
+  variable?: ReferenceItemValueType;
   condition?: VariableConditionEnum;
   value?: string;
 };
