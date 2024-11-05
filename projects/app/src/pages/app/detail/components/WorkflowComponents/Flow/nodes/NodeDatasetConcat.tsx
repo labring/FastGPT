@@ -48,7 +48,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       });
 
       const onSelect = useCallback(
-        (e: ReferenceValueProps) => {
+        (e: ReferenceValueProps | ReferenceValueProps[]) => {
           const workflowStartNode = nodeList.find(
             (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
           );
@@ -60,7 +60,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             value: {
               ...inputChildren,
               value:
-                e[0] === workflowStartNode?.id && !isWorkflowStartOutput(e[1])
+                e[0] === workflowStartNode?.id && !isWorkflowStartOutput(e[1] as string)
                   ? [VARIABLE_NODE_ID, e[1]]
                   : e
             }

@@ -15,15 +15,26 @@ import RenderInput from '../render/RenderInput';
 import { Box } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RenderOutput from '../render/RenderOutput';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  ArrayTypeMap,
+  NodeInputKeyEnum,
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { Input_Template_Children_Node_List } from '@fastgpt/global/core/workflow/template/input';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
+import { cloneDeep } from 'lodash';
+import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
+import { AppContext } from '../../../../context';
 
 const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, isFolded } = data;
   const { onChangeNode, nodeList } = useContextSelector(WorkflowContext, (v) => v);
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
+
+  const arrayValue = inputs.find((input) => input.key === NodeInputKeyEnum.loopInputArray)?.value;
 
   const { nodeWidth, nodeHeight } = useMemo(() => {
     return {
@@ -37,6 +48,42 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     );
   }, [nodeId, nodeList]);
 
+  // Detect and update array input type
+  useEffect(() => {
+    const inputsClone = cloneDeep(inputs);
+    const globalVariables = getWorkflowGlobalVariables({
+      nodes: nodeList,
+      chatConfig: appDetail.chatConfig
+    });
+
+    let arrayType: WorkflowIOValueTypeEnum | undefined;
+    if (arrayValue[0]?.[0] === VARIABLE_NODE_ID) {
+      arrayType = globalVariables.find((item) => item.key === arrayValue[0]?.[1])?.valueType;
+    } else {
+      const node = nodeList.find((node) => node.nodeId === arrayValue[0]?.[0]);
+      const output = node?.outputs.find((output) => output.id === arrayValue[0]?.[1]);
+      arrayType = output?.valueType;
+    }
+
+    const arrayInput = inputsClone.find((input) => input.key === NodeInputKeyEnum.loopInputArray);
+
+    if (!arrayInput) {
+      return;
+    }
+
+    onChangeNode({
+      nodeId,
+      type: 'updateInput',
+      key: NodeInputKeyEnum.loopInputArray,
+      value: {
+        ...arrayInput,
+        valueType: arrayType
+          ? ArrayTypeMap[arrayType as keyof typeof ArrayTypeMap]
+          : WorkflowIOValueTypeEnum.arrayAny
+      }
+    });
+  }, [appDetail.chatConfig, arrayValue, inputs, nodeId, nodeList, onChangeNode]);
+
   useEffect(() => {
     onChangeNode({
       nodeId,
@@ -47,7 +94,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         value: JSON.parse(childrenNodeIdList)
       }
     });
-  }, [childrenNodeIdList]);
+  }, [childrenNodeIdList, nodeId, onChangeNode]);
 
   const Render = useMemo(() => {
     return (
@@ -80,7 +127,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         </Container>
       </NodeCard>
     );
-  }, [selected, nodeWidth, nodeHeight, data, t, nodeId, inputs, outputs]);
+  }, [selected, isFolded, nodeWidth, nodeHeight, data, t, nodeId, inputs, outputs]);
 
   return Render;
 };
