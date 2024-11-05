@@ -169,12 +169,4 @@ const Workflow = () => {
   );
 };
 
-const Render = () => {
-  return (
-    <ReactFlowProvider>
-      <Workflow />
-    </ReactFlowProvider>
-  );
-};
-
-export default React.memo(Render);
+export default React.memo(Workflow);

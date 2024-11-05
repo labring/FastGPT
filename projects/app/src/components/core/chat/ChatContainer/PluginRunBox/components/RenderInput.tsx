@@ -81,6 +81,7 @@ const RenderInput = () => {
     [onNewChat, setRestartData]
   );
 
+  // Get plugin input components
   const formatPluginInputs = useMemo(() => {
     if (histories.length === 0) return pluginInputs;
     try {

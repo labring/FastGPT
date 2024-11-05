@@ -172,6 +172,7 @@ const InputTypeConfig = ({
           </FormLabel>
           <Input
             bg={'myGray.50'}
+            maxLength={30}
             placeholder="appointment/sql"
             {...register('label', {
               required: true
