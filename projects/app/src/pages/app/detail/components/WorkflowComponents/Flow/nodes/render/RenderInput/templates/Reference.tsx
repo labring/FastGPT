@@ -22,7 +22,7 @@ const MultipleRowSelect = dynamic(
 const Avatar = dynamic(() => import('@fastgpt/web/components/common/Avatar'));
 
 type SelectProps = {
-  value?: ReferenceValueProps;
+  value?: ReferenceValueProps[];
   placeholder?: string;
   list: {
     label: string | React.ReactNode;
@@ -33,10 +33,17 @@ type SelectProps = {
       valueType?: WorkflowIOValueTypeEnum;
     }[];
   }[];
-  onSelect: (val: ReferenceValueProps) => void;
+  onSelect: (val: ReferenceValueProps | ReferenceValueProps[]) => void;
   popDirection?: 'top' | 'bottom';
   styles?: ButtonProps;
+  isArray?: boolean;
 };
+
+export const isReference = (val: any) =>
+  Array.isArray(val) &&
+  val.length === 2 &&
+  typeof val[0] === 'string' &&
+  typeof val[1] === 'string';
 
 const Reference = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -44,7 +51,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const onSelect = useCallback(
-    (e: ReferenceValueProps) => {
+    (e: ReferenceValueProps | ReferenceValueProps[]) => {
       const workflowStartNode = nodeList.find(
         (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
       );
@@ -92,6 +99,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
       value={formatValue}
       onSelect={onSelect}
       popDirection={popDirection}
+      isArray={item.valueType?.includes('array')}
     />
   );
 };
@@ -111,6 +119,8 @@ export const useReference = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+  const isArray = valueType?.includes('array');
+  const currentType = isArray ? valueType.replace('array', '').toLowerCase() : valueType;
 
   const referenceList = useMemo(() => {
     const sourceNodes = computedNodeInputReference({
@@ -129,8 +139,8 @@ export const useReference = ({
         return {
           label: (
             <Flex alignItems={'center'}>
-              <Avatar src={node.avatar} w={'1.25rem'} borderRadius={'xs'} />
-              <Box ml={2}>{t(node.name as any)}</Box>
+              <Avatar src={node.avatar} w={isArray ? '1rem' : '1.25rem'} borderRadius={'xs'} />
+              <Box ml={1}>{t(node.name as any)}</Box>
             </Flex>
           ),
           value: node.nodeId,
@@ -139,10 +149,20 @@ export const useReference = ({
               (output) =>
                 valueType === WorkflowIOValueTypeEnum.any ||
                 output.valueType === WorkflowIOValueTypeEnum.any ||
+                currentType === output.valueType ||
+                // array
                 output.valueType === valueType ||
-                // When valueType is arrayAny, return all array type outputs
                 (valueType === WorkflowIOValueTypeEnum.arrayAny &&
-                  output.valueType?.includes('array'))
+                  [
+                    WorkflowIOValueTypeEnum.arrayString,
+                    WorkflowIOValueTypeEnum.arrayNumber,
+                    WorkflowIOValueTypeEnum.arrayBoolean,
+                    WorkflowIOValueTypeEnum.arrayObject,
+                    WorkflowIOValueTypeEnum.string,
+                    WorkflowIOValueTypeEnum.number,
+                    WorkflowIOValueTypeEnum.boolean,
+                    WorkflowIOValueTypeEnum.object
+                  ].includes(output.valueType as WorkflowIOValueTypeEnum))
             )
             .filter((output) => output.id !== NodeOutputKeyEnum.addOutputParam)
             .map((output) => {
@@ -157,16 +177,14 @@ export const useReference = ({
       .filter((item) => item.children.length > 0);
 
     return list;
-  }, [appDetail.chatConfig, edges, nodeId, nodeList, t, valueType]);
+  }, [appDetail.chatConfig, currentType, edges, isArray, nodeId, nodeList, t, valueType]);
 
   const formatValue = useMemo(() => {
-    if (
-      Array.isArray(value) &&
-      value.length === 2 &&
-      typeof value[0] === 'string' &&
-      typeof value[1] === 'string'
-    ) {
-      return value as ReferenceValueProps;
+    // convert origin reference [variableId, outputId] to new reference [[variableId, outputId], ...]
+    if (isReference(value)) {
+      return [value] as ReferenceValueProps[];
+    } else if (Array.isArray(value) && value.every((item) => isReference(item))) {
+      return value as ReferenceValueProps[];
     }
     return undefined;
   }, [value]);
@@ -176,40 +194,115 @@ export const useReference = ({
     formatValue
   };
 };
-export const ReferSelector = ({
+
+const ReferSelectorComponent = ({
   placeholder,
   value,
   list = [],
   onSelect,
-  popDirection
+  popDirection,
+  isArray
 }: SelectProps) => {
-  const selectItemLabel = useMemo(() => {
-    if (!value) {
+  const { t } = useTranslation();
+
+  const selectValue = useMemo(() => {
+    if (!value || value.every((item) => !item || item.every((subItem) => !subItem))) {
       return;
     }
-    const firstColumn = list.find((item) => item.value === value[0]);
-    if (!firstColumn) {
-      return;
-    }
-    const secondColumn = firstColumn.children.find((item) => item.value === value[1]);
-    if (!secondColumn) {
-      return;
-    }
-    return [firstColumn, secondColumn];
+    return value.map((valueItem) => {
+      const firstColumn = list.find((item) => item.value === valueItem[0]);
+      if (!firstColumn) {
+        return;
+      }
+      const secondColumn = firstColumn.children.find((item) => item.value === valueItem[1]);
+      if (!secondColumn) {
+        return;
+      }
+      return [firstColumn, secondColumn];
+    });
   }, [list, value]);
 
   const Render = useMemo(() => {
     return (
       <MultipleRowSelect
         label={
-          selectItemLabel ? (
-            <Flex alignItems={'center'}>
-              {selectItemLabel[0].label}
-              <MyIcon name={'core/chat/chevronRight'} mx={1} w={4} />
-              {selectItemLabel[1].label}
+          selectValue && selectValue.length > 0 ? (
+            <Flex
+              gap={2}
+              flexWrap={isArray ? 'wrap' : undefined}
+              alignItems={'center'}
+              fontSize={'14px'}
+            >
+              {isArray ? (
+                // [[variableId, outputId], ...]
+                selectValue.map((item, index) => {
+                  const isInvalidItem = item === undefined;
+                  return (
+                    <Flex
+                      alignItems={'center'}
+                      key={index}
+                      bg={isInvalidItem ? 'red.50' : 'primary.50'}
+                      color={isInvalidItem ? 'red.600' : 'myGray.900'}
+                      py={1}
+                      px={1.5}
+                      rounded={'sm'}
+                    >
+                      {isInvalidItem ? (
+                        t('common:invalid_variable')
+                      ) : (
+                        <>
+                          {item?.[0].label}
+                          <MyIcon
+                            name={'common/rightArrowLight'}
+                            mx={1}
+                            w={'12px'}
+                            color={'myGray.500'}
+                          />
+                          {item?.[1].label}
+                        </>
+                      )}
+                      <MyIcon
+                        name={'common/closeLight'}
+                        w={'16px'}
+                        ml={1}
+                        cursor={'pointer'}
+                        color={'myGray.500'}
+                        _hover={{
+                          color: 'primary.600'
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isInvalidItem) {
+                            const filteredValue = value?.filter((_, i) => i !== index);
+                            onSelect(filteredValue as any);
+                            return;
+                          }
+                          const filteredValue = value?.filter(
+                            (val) => val[0] !== item?.[0].value || val[1] !== item?.[1].value
+                          );
+                          filteredValue && onSelect(filteredValue);
+                        }}
+                      />
+                    </Flex>
+                  );
+                })
+              ) : // [variableId, outputId]
+              selectValue[0] ? (
+                <Flex py={1} pl={1}>
+                  {selectValue[0][0].label}
+                  <MyIcon name={'common/rightArrowLight'} mx={1} w={'12px'} color={'myGray.500'} />
+                  {selectValue[0][1].label}
+                </Flex>
+              ) : (
+                <Box pl={2} py={1} fontSize={'14px'}>
+                  {placeholder}
+                </Box>
+              )}
             </Flex>
           ) : (
-            <Box>{placeholder}</Box>
+            <Box pl={2} py={1} fontSize={'14px'}>
+              {placeholder}
+            </Box>
           )
         }
         value={value as any[]}
@@ -218,9 +311,14 @@ export const ReferSelector = ({
           onSelect(e as ReferenceValueProps);
         }}
         popDirection={popDirection}
+        isArray={isArray}
       />
     );
-  }, [list, onSelect, placeholder, popDirection, selectItemLabel, value]);
+  }, [isArray, list, onSelect, placeholder, popDirection, selectValue, t, value]);
 
   return Render;
 };
+
+ReferSelectorComponent.displayName = 'ReferSelector';
+
+export const ReferSelector = React.memo(ReferSelectorComponent);
