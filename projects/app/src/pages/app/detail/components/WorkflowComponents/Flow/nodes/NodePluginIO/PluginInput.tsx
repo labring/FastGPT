@@ -35,7 +35,6 @@ const FieldEditModal = dynamic(() => import('./InputEditModal'));
 const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs = [], outputs } = data;
-  console.log(outputs);
 
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 

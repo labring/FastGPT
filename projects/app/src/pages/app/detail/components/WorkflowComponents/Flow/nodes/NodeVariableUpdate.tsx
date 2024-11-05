@@ -269,7 +269,13 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
             <ValueRender key={index} updateItem={updateItem} index={index} />
           ))}
         </>
-        <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
+        <Flex
+          className="nodrag"
+          cursor={'default'}
+          alignItems={'center'}
+          position={'relative'}
+          mt={4}
+        >
           <Button
             variant={'whiteBase'}
             leftIcon={<SmallAddIcon />}
