@@ -13,13 +13,16 @@ import dynamic from 'next/dynamic';
 import { cloneDeep } from 'lodash';
 
 import Flow from '../WorkflowComponents/Flow';
-import { t } from 'i18next';
+import { ReactFlowProvider } from 'reactflow';
+import { useTranslation } from 'next-i18next';
+
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
 
 const WorkflowEdit = () => {
   const { appDetail, currentTab } = useContextSelector(AppContext, (e) => e);
   const isV2Workflow = appDetail?.version === 'v2';
+  const { t } = useTranslation();
 
   const { openConfirm, ConfirmModal } = useConfirm({
     showCancel: false,
@@ -64,9 +67,11 @@ const WorkflowEdit = () => {
 
 const Render = () => {
   return (
-    <WorkflowContextProvider basicNodeTemplates={pluginSystemModuleTemplates}>
-      <WorkflowEdit />
-    </WorkflowContextProvider>
+    <ReactFlowProvider>
+      <WorkflowContextProvider basicNodeTemplates={pluginSystemModuleTemplates}>
+        <WorkflowEdit />
+      </WorkflowContextProvider>
+    </ReactFlowProvider>
   );
 };
 

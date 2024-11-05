@@ -23,7 +23,8 @@ import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
   getGuideModule,
-  isReferenceValue
+  isReferenceValue,
+  isReferenceValueArray
 } from '@fastgpt/global/core/workflow/utils';
 import { TFunction } from 'next-i18next';
 import {
@@ -328,7 +329,8 @@ export const checkWorkflowNodeAndConnection = ({
 
         if (
           node.data.flowNodeType === FlowNodeTypeEnum.pluginOutput &&
-          !(isReferenceValue(input.value, nodeIds) && input.value[1])
+          (input.value?.length === 0 ||
+            (isReferenceValue(input.value, nodeIds) && !input.value?.[1]))
         ) {
           return true;
         }
