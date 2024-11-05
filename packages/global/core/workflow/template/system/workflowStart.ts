@@ -43,6 +43,3 @@ export const WorkflowStart: FlowNodeTemplateType = {
     }
   ]
 };
-
-export const isWorkflowStartOutput = (key?: string) =>
-  !!WorkflowStart.outputs.find((output) => output.key === key);

@@ -28,7 +28,7 @@ import { TFunction } from 'next-i18next';
 import {
   FlowNodeInputItemType,
   FlowNodeOutputItemType,
-  ReferenceValueProps
+  ReferenceItemValueType
 } from '@fastgpt/global/core/workflow/type/io';
 import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
@@ -227,7 +227,7 @@ export const getRefData = ({
   nodeList,
   chatConfig
 }: {
-  variable?: ReferenceValueProps;
+  variable?: ReferenceItemValueType;
   nodeList: FlowNodeItemType[];
   chatConfig: AppChatConfigType;
 }) => {
@@ -352,7 +352,7 @@ export const checkWorkflowNodeAndConnection = ({
           }
 
           // New format
-          return input.value.some((inputItem: ReferenceValueProps) => {
+          return input.value.some((inputItem: ReferenceItemValueType) => {
             if (!Array.isArray(inputItem) || inputItem.length !== 2) {
               return true;
             }

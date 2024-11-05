@@ -46,6 +46,7 @@ const Button = defineStyleConfig({
       px: '2',
       py: '0',
       h: '24px',
+      minH: '24px',
       fontWeight: 'medium',
       borderRadius: 'sm'
     },
@@ -54,6 +55,7 @@ const Button = defineStyleConfig({
       px: '0',
       py: '0',
       h: '24px',
+      minH: '24px',
       w: '24px',
       fontWeight: 'medium',
       borderRadius: 'sm'
@@ -64,6 +66,7 @@ const Button = defineStyleConfig({
       py: 0,
       fontWeight: 'medium',
       h: '30px',
+      minH: '30px',
       borderRadius: 'sm'
     },
     smSquare: {
@@ -72,6 +75,7 @@ const Button = defineStyleConfig({
       py: 0,
       fontWeight: 'medium',
       h: '30px',
+      minH: '30px',
       w: '30px',
       borderRadius: 'sm'
     },
@@ -80,6 +84,7 @@ const Button = defineStyleConfig({
       px: '4',
       py: 0,
       h: '34px',
+      minH: '34px',
       fontWeight: 'medium',
       borderRadius: 'sm'
     },
@@ -88,6 +93,7 @@ const Button = defineStyleConfig({
       px: '0',
       py: 0,
       h: '34px',
+      minH: '34px',
       w: '34px',
       fontWeight: 'medium',
       borderRadius: 'sm'
@@ -97,6 +103,7 @@ const Button = defineStyleConfig({
       px: '4',
       py: 0,
       h: '40px',
+      minH: '40px',
       fontWeight: 'medium',
       borderRadius: 'md'
     },
@@ -105,6 +112,7 @@ const Button = defineStyleConfig({
       px: '0',
       py: 0,
       h: '40px',
+      minH: '40px',
       w: '40px',
       fontWeight: 'medium',
       borderRadius: 'md'
