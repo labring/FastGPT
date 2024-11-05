@@ -23,7 +23,6 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid, replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
-import { replaceEditorVariable } from '@fastgpt/global/core/workflow/utils';
 
 import { dispatchWorkflowStart } from './init/workflowStart';
 import { dispatchChatCompletion } from './chat/oneapi';
@@ -42,7 +41,8 @@ import { removeSystemVariable, valueTypeFormat } from './utils';
 import {
   filterWorkflowEdges,
   checkNodeRunStatus,
-  textAdaptGptResponse
+  textAdaptGptResponse,
+  replaceEditorVariable
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
