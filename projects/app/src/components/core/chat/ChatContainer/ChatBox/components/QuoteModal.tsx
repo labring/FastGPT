@@ -6,6 +6,7 @@ import { useTranslation } from 'next-i18next';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import QuoteItem from '@/components/core/dataset/QuoteItem';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const QuoteModal = ({
   rawSearch = [],
@@ -42,13 +43,13 @@ const QuoteModal = ({
         h={['90vh', '80vh']}
         isCentered
         minW={['90vw', '600px']}
-        iconSrc={!!metadata ? undefined : '/imgs/modal/quote.svg'}
+        iconSrc={!!metadata ? undefined : getWebReqUrl('/imgs/modal/quote.svg')}
         title={
           <Box>
             {metadata ? (
               <RawSourceBox {...metadata} canView={showDetail} />
             ) : (
-              <>{t('core.chat.Quote Amount', { amount: rawSearch.length })}</>
+              <>{t('common:core.chat.Quote Amount', { amount: rawSearch.length })}</>
             )}
             <Box fontSize={'xs'} color={'myGray.500'} fontWeight={'normal'}>
               {t('common:core.chat.quote.Quote Tip')}

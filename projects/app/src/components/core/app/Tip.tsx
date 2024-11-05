@@ -1,5 +1,5 @@
-import { useI18n } from '@/web/context/I18n';
-import { Box, Flex, Image } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useTranslation } from 'next-i18next';
 import React, { useRef } from 'react';
@@ -77,7 +77,7 @@ const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
       label={
         <Box pt={2}>
           <Flex alignItems={'flex-start'}>
-            <Image src={data.icon} w={'36px'} alt={''} />
+            <MyImage src={data.icon} w={'36px'} alt={''} />
             <Box ml={3}>
               <Box fontWeight="bold">{data.title}</Box>
               <Box fontSize={'xs'} color={'myGray.500'}>
@@ -85,7 +85,7 @@ const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
               </Box>
             </Box>
           </Flex>
-          <Image src={data.imgUrl} w={'100%'} minH={['auto', '250px']} mt={2} alt={''} />
+          <MyImage src={data.imgUrl} w={'100%'} minH={['auto', '250px']} mt={2} alt={''} />
         </Box>
       }
     />
