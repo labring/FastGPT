@@ -5,8 +5,8 @@ import { StoreNodeItemType } from '../type/node';
 import { StoreEdgeItemType } from '../type/edge';
 import { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
 import { VARIABLE_NODE_ID } from '../constants';
-import { isReferenceValue } from '../utils';
-import { FlowNodeOutputItemType, ReferenceValueProps } from '../type/io';
+import { isReferenceValue, isReferenceValueArray } from '../utils';
+import { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
 
@@ -225,15 +225,22 @@ export const checkNodeRunStatus = ({
   return 'wait';
 };
 
+/* 
+  Get the value of the reference variable/node output
+  1. [string,string]
+  2. [string,string][]
+*/
 export const getReferenceVariableValue = ({
   value,
   nodes,
   variables
 }: {
-  value: ReferenceValueProps;
+  value: ReferenceValueType;
   nodes: RuntimeNodeItemType[];
   variables: Record<string, any>;
 }) => {
+  if (!value) return undefined;
+
   const nodeIds = nodes.map((node) => node.nodeId);
 
   // handle single reference value
@@ -254,32 +261,13 @@ export const getReferenceVariableValue = ({
   }
 
   // handle reference array
-  if (
-    Array.isArray(value) &&
-    value.every(
-      (val) => val?.length === 2 && typeof val[0] === 'string' && typeof val[1] === 'string'
-    )
-  ) {
-    const result = value.map((val) => {
-      if (!isReferenceValue(val, nodeIds)) {
-        return [val];
-      }
-
-      const sourceNodeId = val?.[0];
-      const outputId = val?.[1];
-
-      if (sourceNodeId === VARIABLE_NODE_ID && outputId) {
-        const variableValue = variables[outputId];
-        return Array.isArray(variableValue) ? variableValue : [variableValue];
-      }
-
-      const node = nodes.find((node) => node.nodeId === sourceNodeId);
-      if (!node) {
-        return undefined;
-      }
-
-      const outputValue = node.outputs.find((output) => output.id === outputId)?.value;
-      return Array.isArray(outputValue) ? outputValue : [outputValue];
+  if (isReferenceValueArray(value, nodeIds)) {
+    const result = value.map<any>((val) => {
+      return getReferenceVariableValue({
+        value: val,
+        nodes,
+        variables
+      });
     });
 
     return result.flat();
@@ -287,6 +275,70 @@ export const getReferenceVariableValue = ({
 
   return value;
 };
+
+// replace {{$xx.xx$}} variables for text
+export function replaceEditorVariable({
+  text,
+  nodes,
+  variables,
+  runningNode
+}: {
+  text: any;
+  nodes: RuntimeNodeItemType[];
+  variables: Record<string, any>; // global variables
+  runningNode: RuntimeNodeItemType;
+}) {
+  if (typeof text !== 'string') return text;
+
+  const globalVariables = Object.keys(variables).map((key) => {
+    return {
+      nodeId: VARIABLE_NODE_ID,
+      id: key,
+      value: variables[key]
+    };
+  });
+
+  // Upstream node outputs
+  const nodeVariables = nodes
+    .map((node) => {
+      return node.outputs.map((output) => {
+        return {
+          nodeId: node.nodeId,
+          id: output.id,
+          value: output.value
+        };
+      });
+    })
+    .flat();
+
+  // Get runningNode inputs(Will be replaced with reference)
+  const customInputs = runningNode.inputs.flatMap((item) => {
+    return [
+      {
+        id: item.key,
+        value: getReferenceVariableValue({
+          value: item.value,
+          nodes,
+          variables
+        }),
+        nodeId: runningNode.nodeId
+      }
+    ];
+  });
+
+  const allVariables = [...globalVariables, ...nodeVariables, ...customInputs];
+
+  // Replace {{$xxx.xxx$}} to value
+  for (const key in allVariables) {
+    const variable = allVariables[key];
+    const val = variable.value;
+    const formatVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+
+    const regex = new RegExp(`\\{\\{\\$(${variable.nodeId}\\.${variable.id})\\$\\}\\}`, 'g');
+    text = text.replace(regex, formatVal);
+  }
+  return text || '';
+}
 
 export const textAdaptGptResponse = ({
   text,

@@ -7,7 +7,7 @@ import Container from '../../components/Container';
 import { MinusIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
+import { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 import { useTranslation } from 'next-i18next';
 import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -122,7 +122,7 @@ const ListItem = ({
                   <Flex gap={2} mb={2} alignItems={'center'}>
                     {/* variable reference */}
                     <Box minW={'250px'}>
-                      <Reference
+                      <VariableSelector
                         nodeId={nodeId}
                         variable={item.variable}
                         onSelect={(e) => {
@@ -302,29 +302,29 @@ const ListItem = ({
 
 export default React.memo(ListItem);
 
-const Reference = ({
+const VariableSelector = ({
   nodeId,
   variable,
   onSelect
 }: {
   nodeId: string;
-  variable?: ReferenceValueProps;
-  onSelect: (e: ReferenceValueProps) => void;
+  variable?: ReferenceItemValueType;
+  onSelect: (e: ReferenceItemValueType) => void;
 }) => {
   const { t } = useTranslation();
 
-  const { referenceList, formatValue } = useReference({
+  const { referenceList } = useReference({
     nodeId,
-    valueType: WorkflowIOValueTypeEnum.any,
-    value: variable
+    valueType: WorkflowIOValueTypeEnum.any
   });
 
   return (
     <ReferSelector
       placeholder={t('common:select_reference_variable')}
       list={referenceList}
-      value={formatValue}
-      onSelect={onSelect as any}
+      value={variable}
+      onSelect={onSelect}
+      isArray={false}
     />
   );
 };
@@ -336,7 +336,7 @@ const ConditionSelect = ({
   onSelect
 }: {
   condition?: VariableConditionEnum;
-  variable?: ReferenceValueProps;
+  variable?: ReferenceItemValueType;
   onSelect: (e: VariableConditionEnum) => void;
 }) => {
   const { t } = useTranslation();
@@ -414,7 +414,7 @@ const ConditionValueInput = ({
   onChange
 }: {
   value?: string;
-  variable?: ReferenceValueProps;
+  variable?: ReferenceItemValueType;
   condition?: VariableConditionEnum;
   onChange: (e: string) => void;
 }) => {
