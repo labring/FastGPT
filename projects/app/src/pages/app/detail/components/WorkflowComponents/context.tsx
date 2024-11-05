@@ -32,7 +32,8 @@ import {
   NodeChange,
   OnConnectStartParams,
   useEdgesState,
-  useNodesState
+  useNodesState,
+  useReactFlow
 } from 'reactflow';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { defaultRunningStatus } from './constants';
@@ -568,6 +569,7 @@ const WorkflowContextProvider = ({
   );
 
   /* ui flow to store data */
+  const { fitView } = useReactFlow();
   const flowData2StoreDataAndCheck = useMemoizedFn((hideTip = false) => {
     const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
 
@@ -577,6 +579,12 @@ const WorkflowContextProvider = ({
       return storeWorkflow;
     } else if (!hideTip) {
       checkResults.forEach((nodeId) => onUpdateNodeError(nodeId, true));
+
+      // View move to the node that failed
+      fitView({
+        nodes: nodes.filter((node) => checkResults.includes(node.data.nodeId))
+      });
+
       toast({
         status: 'warning',
         title: t('common:core.workflow.Check Failed')

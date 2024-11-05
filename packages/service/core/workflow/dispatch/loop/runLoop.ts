@@ -43,7 +43,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   let totalPoints = 0;
   let newVariables: Record<string, any> = props.variables;
 
-  for await (const item of loopInputArray) {
+  for await (const item of loopInputArray.filter(Boolean)) {
     runtimeNodes.forEach((node) => {
       if (
         childrenNodeIdList.includes(node.nodeId) &&
