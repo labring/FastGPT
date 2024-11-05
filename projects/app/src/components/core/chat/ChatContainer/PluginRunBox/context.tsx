@@ -239,6 +239,12 @@ const PluginRunContextProvider = ({
           generatingMessage,
           variables: e
         });
+        if (responseData?.[responseData.length - 1]?.error) {
+          toast({
+            title: responseData[responseData.length - 1].error?.message,
+            status: 'error'
+          });
+        }
 
         setHistories((state) =>
           state.map((item, index) => {

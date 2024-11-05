@@ -38,7 +38,7 @@ import { dispatchQueryExtension } from './tools/queryExternsion';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
-import { removeSystemVariable, valueTypeFormat } from './utils';
+import { formatHttpError, removeSystemVariable, valueTypeFormat } from './utils';
 import {
   filterWorkflowEdges,
   checkNodeRunStatus,
@@ -72,6 +72,7 @@ import { dispatchLoopEnd } from './loop/runLoopEnd';
 import { dispatchLoopStart } from './loop/runLoopStart';
 import { dispatchFormInput } from './interactive/formInput';
 import { dispatchToolParams } from './agent/runTool/toolParams';
+import { responseWrite } from '../../../common/response';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -548,7 +549,21 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     // run module
     const dispatchRes: Record<string, any> = await (async () => {
       if (callbackMap[node.flowNodeType]) {
-        return callbackMap[node.flowNodeType](dispatchData);
+        try {
+          return await callbackMap[node.flowNodeType](dispatchData);
+        } catch (error) {
+          // Get source handles of outgoing edges
+          const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);
+          const skipHandleIds = targetEdges.map((item) => item.sourceHandle);
+
+          // Skip all edges and return error
+          return {
+            [DispatchNodeResponseKeyEnum.nodeResponse]: {
+              error: formatHttpError(error)
+            },
+            [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleIds
+          };
+        }
       }
       return {};
     })();

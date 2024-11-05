@@ -510,6 +510,12 @@ const ChatBox = (
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
               variables: requestVariables
             });
+            if (responseData?.[responseData.length - 1]?.error) {
+              toast({
+                title: responseData[responseData.length - 1].error?.message,
+                status: 'error'
+              });
+            }
 
             isNewChatReplace.current = isNewChat;
 
