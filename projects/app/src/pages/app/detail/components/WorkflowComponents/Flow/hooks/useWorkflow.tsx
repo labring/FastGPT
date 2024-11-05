@@ -319,7 +319,7 @@ export const useWorkflow = () => {
         type: 'position',
         position: {
           x: rect.x - 50,
-          y: rect.y - 280
+          y: rect.y - 300
         }
       }
     ]);

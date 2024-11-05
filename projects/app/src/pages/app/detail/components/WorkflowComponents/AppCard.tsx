@@ -4,19 +4,18 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { WorkflowContext } from './context';
 import { filterSensitiveNodesData } from '@/web/core/workflow/utils';
 import dynamic from 'next/dynamic';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { publishStatusStyle } from '../constants';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { fileDownload } from '@/web/common/file/utils';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const ImportSettings = dynamic(() => import('./Flow/ImportSettings'));
 
@@ -28,11 +27,10 @@ const AppCard = ({
   isPublished: boolean;
 }) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
 
-  const { appDetail, onOpenInfoEdit, onOpenTeamTagModal, onDelApp } = useContextSelector(
-    AppContext,
-    (v) => v
-  );
+  const { appDetail, onOpenInfoEdit, onOpenTeamTagModal, onDelApp, currentTab } =
+    useContextSelector(AppContext, (v) => v);
 
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
 
@@ -104,36 +102,41 @@ const AppCard = ({
                 })}
               </MyBox>
               <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
+              {appDetail.permission.hasWritePer && feConfigs?.show_team_chat && (
+                <>
+                  <MyBox
+                    display={'flex'}
+                    size={'md'}
+                    px={1}
+                    py={1.5}
+                    rounded={'4px'}
+                    _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
+                    cursor={'pointer'}
+                    onClick={onOpenTeamTagModal}
+                  >
+                    <MyIcon name={'core/dataset/tag'} w={'16px'} mr={2} />
+                    <Box fontSize={'sm'}>{t('app:Team_Tags')}</Box>
+                  </MyBox>
+                  <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
+                </>
+              )}
 
-              <MyBox
-                display={'flex'}
-                size={'md'}
-                px={1}
-                py={1.5}
-                rounded={'4px'}
-                _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
-                cursor={'pointer'}
-                onClick={onOpenTeamTagModal}
-              >
-                <MyIcon name={'core/dataset/tag'} w={'16px'} mr={2} />
-                <Box fontSize={'sm'}>{t('app:Team_Tags')}</Box>
-              </MyBox>
-              <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
-
-              <MyBox
-                display={'flex'}
-                size={'md'}
-                px={1}
-                py={1.5}
-                rounded={'4px'}
-                color={'red.600'}
-                _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
-                cursor={'pointer'}
-                onClick={onDelApp}
-              >
-                <MyIcon name={'delete'} w={'16px'} mr={2} />
-                <Box fontSize={'sm'}>{t('common:common.Delete')}</Box>
-              </MyBox>
+              {appDetail.permission.isOwner && (
+                <MyBox
+                  display={'flex'}
+                  size={'md'}
+                  px={1}
+                  py={1.5}
+                  rounded={'4px'}
+                  color={'red.600'}
+                  _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
+                  cursor={'pointer'}
+                  onClick={onDelApp}
+                >
+                  <MyIcon name={'delete'} w={'16px'} mr={2} />
+                  <Box fontSize={'sm'}>{t('common:common.Delete')}</Box>
+                </MyBox>
+              )}
             </Box>
           )}
         </MyPopover>
@@ -142,6 +145,10 @@ const AppCard = ({
     [
       appDetail.chatConfig,
       appDetail.name,
+      appDetail.permission.hasWritePer,
+      appDetail.permission.isOwner,
+      currentTab,
+      feConfigs?.show_team_chat,
       onDelApp,
       onOpenImport,
       onOpenInfoEdit,
