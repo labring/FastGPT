@@ -365,7 +365,7 @@ const NodeCard = (props: Props) => {
     >
       <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />
       {Header}
-      <Flex flexDirection={'column'} flex={1} my={4} gap={2}>
+      <Flex flexDirection={'column'} flex={1} my={!isFolded ? 4 : 0} gap={2}>
         {!isFolded ? children : <Box h={4} />}
       </Flex>
       {RenderHandle}
