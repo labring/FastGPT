@@ -196,16 +196,13 @@ const VariableEdit = ({
               <Thead h={8}>
                 <Tr>
                   <Th
-                    fontSize={'mini'}
                     borderRadius={'none !important'}
+                    fontSize={'mini'}
                     bg={'myGray.50'}
                     p={0}
                     px={4}
                     fontWeight={'medium'}
                   >
-                    {t('common:core.module.variable.key')}
-                  </Th>
-                  <Th fontSize={'mini'} bg={'myGray.50'} p={0} px={4} fontWeight={'medium'}>
                     {t('workflow:Variable_name')}
                   </Th>
                   <Th fontSize={'mini'} bg={'myGray.50'} p={0} px={4} fontWeight={'medium'}>
@@ -236,18 +233,8 @@ const VariableEdit = ({
                     >
                       <Flex alignItems={'center'}>
                         <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={2} />
-                        {item.label}
+                        {item.key}
                       </Flex>
-                    </Td>
-                    <Td
-                      p={0}
-                      px={4}
-                      h={8}
-                      color={'myGray.900'}
-                      fontSize={'mini'}
-                      fontWeight={'medium'}
-                    >
-                      <Flex alignItems={'center'}>{item.key}</Flex>
                     </Td>
                     <Td p={0} px={4} h={8} color={'myGray.900'} fontSize={'mini'}>
                       <Flex alignItems={'center'}>

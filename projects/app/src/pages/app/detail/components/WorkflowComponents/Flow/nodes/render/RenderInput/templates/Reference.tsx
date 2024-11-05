@@ -247,11 +247,18 @@ const MultipleReferenceSelector = ({
 
   const ArraySelector = useMemo(() => {
     const selectorVal = value as ReferenceItemValueType[];
+    const notValidItem =
+      !selectorVal ||
+      selectorVal.length === 0 ||
+      selectorVal.every((item) => {
+        const [nodeName, outputName] = getSelectValue(item);
+        return !nodeName || !outputName;
+      });
 
     return (
       <MultipleRowArraySelect
         label={
-          selectorVal && selectorVal.length > 0 ? (
+          !notValidItem ? (
             <Grid py={3} gridTemplateColumns={'1fr 1fr'} gap={2} fontSize={'sm'}>
               {selectorVal.map((item, index) => {
                 const [nodeName, outputName] = getSelectValue(item);
@@ -261,36 +268,35 @@ const MultipleReferenceSelector = ({
                   <Flex
                     alignItems={'center'}
                     key={index}
-                    bg={isInvalidItem ? 'red.50' : 'primary.50'}
-                    color={isInvalidItem ? 'red.600' : 'myGray.900'}
+                    bg={'primary.50'}
+                    color={'myGray.900'}
                     py={1}
                     px={1.5}
                     rounded={'sm'}
                   >
-                    <Flex alignItems={'center'} flex={1}>
-                      {isInvalidItem ? (
-                        t('common:invalid_variable')
-                      ) : (
-                        <>
-                          {nodeName}
-                          <MyIcon
-                            name={'common/rightArrowLight'}
-                            mx={1}
-                            w={'12px'}
-                            color={'myGray.500'}
-                          />
-                          {outputName}
-                        </>
-                      )}
+                    <Flex
+                      alignItems={'center'}
+                      flex={'1 0 0'}
+                      maxW={'200px'}
+                      className="textEllipsis"
+                    >
+                      {nodeName}
+                      <MyIcon
+                        name={'common/rightArrowLight'}
+                        mx={1}
+                        w={'12px'}
+                        color={'myGray.500'}
+                      />
+                      {outputName}
                     </Flex>
                     <MyIcon
                       name={'common/closeLight'}
-                      w={'16px'}
+                      w={'1rem'}
                       ml={1}
                       cursor={'pointer'}
                       color={'myGray.500'}
                       _hover={{
-                        color: 'primary.600'
+                        color: 'red.600'
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
