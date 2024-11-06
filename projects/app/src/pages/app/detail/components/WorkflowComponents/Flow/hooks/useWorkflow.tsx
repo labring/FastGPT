@@ -335,41 +335,43 @@ export const useWorkflow = () => {
   const [helperLineVertical, setHelperLineVertical] = useState<THelperLine>();
 
   const checkNodeHelpLine = useMemoizedFn((change: NodeChange, nodes: Node[]) => {
-    const positionChange = change.type === 'position' && change.dragging ? change : undefined;
+    requestAnimationFrame(() => {
+      const positionChange = change.type === 'position' && change.dragging ? change : undefined;
 
-    if (positionChange?.position) {
-      // 只判断，3000px 内的 nodes，并按从近到远的顺序排序
-      const filterNodes = nodes
-        .filter((node) => {
-          if (!positionChange.position) return false;
+      if (positionChange?.position) {
+        // 只判断，3000px 内的 nodes，并按从近到远的顺序排序
+        const filterNodes = nodes
+          .filter((node) => {
+            if (!positionChange.position) return false;
 
-          return (
-            Math.abs(node.position.x - positionChange.position.x) <= 3000 &&
-            Math.abs(node.position.y - positionChange.position.y) <= 3000
-          );
-        })
-        .sort((a, b) => {
-          if (!positionChange.position) return 0;
-          return (
-            Math.abs(a.position.x - positionChange.position.x) +
-            Math.abs(a.position.y - positionChange.position.y) -
-            Math.abs(b.position.x - positionChange.position.x) -
-            Math.abs(b.position.y - positionChange.position.y)
-          );
-        })
-        .slice(0, 15);
+            return (
+              Math.abs(node.position.x - positionChange.position.x) <= 3000 &&
+              Math.abs(node.position.y - positionChange.position.y) <= 3000
+            );
+          })
+          .sort((a, b) => {
+            if (!positionChange.position) return 0;
+            return (
+              Math.abs(a.position.x - positionChange.position.x) +
+              Math.abs(a.position.y - positionChange.position.y) -
+              Math.abs(b.position.x - positionChange.position.x) -
+              Math.abs(b.position.y - positionChange.position.y)
+            );
+          })
+          .slice(0, 15);
 
-      const helperLines = computeHelperLines(positionChange, filterNodes);
+        const helperLines = computeHelperLines(positionChange, filterNodes);
 
-      positionChange.position.x = helperLines.snapPosition.x ?? positionChange.position.x;
-      positionChange.position.y = helperLines.snapPosition.y ?? positionChange.position.y;
+        positionChange.position.x = helperLines.snapPosition.x ?? positionChange.position.x;
+        positionChange.position.y = helperLines.snapPosition.y ?? positionChange.position.y;
 
-      setHelperLineHorizontal(helperLines.horizontal);
-      setHelperLineVertical(helperLines.vertical);
-    } else {
-      setHelperLineHorizontal(undefined);
-      setHelperLineVertical(undefined);
-    }
+        setHelperLineHorizontal(helperLines.horizontal);
+        setHelperLineVertical(helperLines.vertical);
+      } else {
+        setHelperLineHorizontal(undefined);
+        setHelperLineVertical(undefined);
+      }
+    });
   });
 
   // Check if a node is placed on top of a loop node

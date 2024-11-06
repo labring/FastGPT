@@ -28,7 +28,11 @@ const buttonStyle = {
 const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { zoom } = useViewport();
-  const { undo, redo, canRedo, canUndo, nodeList } = useContextSelector(WorkflowContext, (v) => v);
+  const undo = useContextSelector(WorkflowContext, (v) => v.undo);
+  const redo = useContextSelector(WorkflowContext, (v) => v.redo);
+  const canRedo = useContextSelector(WorkflowContext, (v) => v.canRedo);
+  const canUndo = useContextSelector(WorkflowContext, (v) => v.canUndo);
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const workflowControlMode = useContextSelector(
     WorkflowEventContext,
     (v) => v.workflowControlMode
