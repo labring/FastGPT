@@ -15,6 +15,6 @@ export const getWebReqUrl = (url: string = '') => {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
   if (!baseUrl) return url;
 
-  if (!url.startsWith('/')) return url;
+  if (!url.startsWith('/') || url.startsWith(baseUrl)) return url;
   return `${baseUrl}${url}`;
 };

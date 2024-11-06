@@ -61,18 +61,14 @@ export const chats2GPTMessages = ({
               return {
                 type: 'image_url',
                 image_url: {
-                  url: item.file?.url.startsWith(baseUrl)
-                    ? item.file.url
-                    : `${baseUrl}${item.file?.url || ''}`
+                  url: item.file.url
                 }
               };
             } else if (item.file?.type === ChatFileTypeEnum.file) {
               return {
                 type: 'file_url',
                 name: item.file?.name || '',
-                url: item.file?.url.startsWith(baseUrl)
-                  ? item.file.url
-                  : `${baseUrl}${item.file?.url || ''}`
+                url: item.file.url
               };
             }
           }
