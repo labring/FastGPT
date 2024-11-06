@@ -25,12 +25,16 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { THelperLine } from '@fastgpt/global/core/workflow/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useMemoizedFn } from 'ahooks';
+import { useDebounceEffect, useMemoizedFn } from 'ahooks';
 import {
   Input_Template_Node_Height,
   Input_Template_Node_Width
 } from '@fastgpt/global/core/workflow/template/input';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { WorkflowActionContext, WorkflowInitContext } from '../../context/workflowInitContext';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import { AppContext } from '../../../context';
+import { WorkflowEventContext } from '../../context/workflowEventContext';
 
 /* 
   Compute helper lines for snapping nodes to each other
@@ -271,21 +275,22 @@ export const useWorkflow = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
 
-  const { isDowningCtrl } = useKeyboard();
-  const {
-    setConnectingEdge,
-    edges,
-    nodes,
-    nodeList,
-    onNodesChange,
-    setEdges,
-    onChangeNode,
-    onEdgesChange,
-    setHoverEdgeId,
-    setMenu
-  } = useContextSelector(WorkflowContext, (v) => v);
+  const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
+
+  const nodes = useContextSelector(WorkflowInitContext, (state) => state.nodes);
+  const onNodesChange = useContextSelector(WorkflowActionContext, (state) => state.onNodesChange);
+  const edges = useContextSelector(WorkflowActionContext, (state) => state.edges);
+  const setEdges = useContextSelector(WorkflowActionContext, (v) => v.setEdges);
+  const onEdgesChange = useContextSelector(WorkflowActionContext, (v) => v.onEdgesChange);
+  const { setConnectingEdge, nodeList, onChangeNode, pushPastSnapshot } = useContextSelector(
+    WorkflowContext,
+    (v) => v
+  );
+  const setHoverEdgeId = useContextSelector(WorkflowEventContext, (v) => v.setHoverEdgeId);
+  const setMenu = useContextSelector(WorkflowEventContext, (v) => v.setMenu);
 
   const { getIntersectingNodes } = useReactFlow();
+  const { isDowningCtrl } = useKeyboard();
 
   // Loop node size and position
   const resetParentNodeSizeAndPosition = useMemoizedFn((rect: Rect, parentId: string) => {
@@ -641,6 +646,23 @@ export const useWorkflow = () => {
   const onPaneClick = useCallback(() => {
     setMenu(null);
   }, [setMenu]);
+
+  // Watch
+  // Auto save snapshot
+  useDebounceEffect(
+    () => {
+      if (nodes.length === 0 || !appDetail.chatConfig) return;
+
+      pushPastSnapshot({
+        pastNodes: nodes,
+        pastEdges: edges,
+        customTitle: formatTime2YMDHMS(new Date()),
+        chatConfig: appDetail.chatConfig
+      });
+    },
+    [nodes, edges, appDetail.chatConfig],
+    { wait: 500 }
+  );
 
   return {
     handleNodesChange,

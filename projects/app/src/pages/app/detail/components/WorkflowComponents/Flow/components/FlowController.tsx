@@ -15,8 +15,9 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import styles from './index.module.scss';
-import { maxZoom, minZoom } from '../index';
+import { maxZoom, minZoom } from '../../constants';
 import { useKeyPress } from 'ahooks';
+import { WorkflowEventContext } from '../../context/workflowEventContext';
 
 const buttonStyle = {
   border: 'none',
@@ -27,16 +28,16 @@ const buttonStyle = {
 const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { zoom } = useViewport();
-  const {
-    undo,
-    redo,
-    canRedo,
-    canUndo,
-    workflowControlMode,
-    setWorkflowControlMode,
-    mouseInCanvas,
-    nodeList
-  } = useContextSelector(WorkflowContext, (v) => v);
+  const { undo, redo, canRedo, canUndo, nodeList } = useContextSelector(WorkflowContext, (v) => v);
+  const workflowControlMode = useContextSelector(
+    WorkflowEventContext,
+    (v) => v.workflowControlMode
+  );
+  const setWorkflowControlMode = useContextSelector(
+    WorkflowEventContext,
+    (v) => v.setWorkflowControlMode
+  );
+  const mouseInCanvas = useContextSelector(WorkflowEventContext, (v) => v.mouseInCanvas);
   const { t } = useTranslation();
 
   const isMac = !window ? false : window.navigator.userAgent.toLocaleLowerCase().includes('mac');
