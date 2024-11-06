@@ -63,6 +63,8 @@ import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/u
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
   appId?: string;
+  customUid?: string;
+  metadata?: Record<string, any>;
 };
 
 export type Props = ChatCompletionCreateParams &
@@ -99,6 +101,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   let {
     chatId,
     appId,
+    customUid,
     // share chat
     shareId,
     outLinkUid,
@@ -110,7 +113,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     detail = false,
     messages = [],
     variables = {},
-    responseChatItemId = getNanoid()
+    responseChatItemId = getNanoid(),
+    metadata
   } = req.body as Props;
 
   const originIp = requestIp.getClientIp(req);
@@ -145,35 +149,44 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       3. get app
       4. parse outLink token
     */
-    const { teamId, tmbId, user, app, responseDetail, authType, apikey, canWrite, outLinkUserId } =
-      await (async () => {
-        // share chat
-        if (shareId && outLinkUid) {
-          return authShareChat({
-            shareId,
-            outLinkUid,
-            chatId,
-            ip: originIp,
-            question: startHookText
-          });
-        }
-        // team space chat
-        if (spaceTeamId && appId && teamToken) {
-          return authTeamSpaceChat({
-            teamId: spaceTeamId,
-            teamToken,
-            appId,
-            chatId
-          });
-        }
-
-        /* parse req: api or token */
-        return authHeaderRequest({
-          req,
+    const {
+      teamId,
+      tmbId,
+      user,
+      app,
+      responseDetail,
+      authType,
+      apikey,
+      canWrite,
+      outLinkUserId = customUid
+    } = await (async () => {
+      // share chat
+      if (shareId && outLinkUid) {
+        return authShareChat({
+          shareId,
+          outLinkUid,
+          chatId,
+          ip: originIp,
+          question: startHookText
+        });
+      }
+      // team space chat
+      if (spaceTeamId && appId && teamToken) {
+        return authTeamSpaceChat({
+          teamId: spaceTeamId,
+          teamToken,
           appId,
           chatId
         });
-      })();
+      }
+
+      /* parse req: api or token */
+      return authHeaderRequest({
+        req,
+        appId,
+        chatId
+      });
+    })();
     const isPlugin = app.type === AppTypeEnum.plugin;
 
     // Check message type
@@ -333,7 +346,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           source,
           content: [userQuestion, aiResponse],
           metadata: {
-            originIp
+            originIp,
+            ...metadata
           }
         });
       }

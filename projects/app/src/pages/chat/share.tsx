@@ -41,6 +41,7 @@ type Props = {
   appAvatar: string;
   shareId: string;
   authToken: string;
+  customUid: string;
 };
 
 const OutLink = ({
@@ -371,13 +372,13 @@ const OutLink = ({
 };
 
 const Render = (props: Props) => {
-  const { shareId, authToken } = props;
+  const { shareId, authToken, customUid } = props;
   const { localUId, loaded } = useShareChatStore();
   const [isLoaded, setIsLoaded] = useState(false);
 
   const contextParams = useMemo(() => {
-    return { shareId, outLinkUid: authToken || localUId };
-  }, [authToken, localUId, shareId]);
+    return { shareId, outLinkUid: customUid || authToken || localUId };
+  }, [authToken, customUid, localUId, shareId]);
 
   useMount(() => {
     setIsLoaded(true);
@@ -401,6 +402,7 @@ export default React.memo(Render);
 export async function getServerSideProps(context: any) {
   const shareId = context?.query?.shareId || '';
   const authToken = context?.query?.authToken || '';
+  const customUid = context?.query?.customUid || '';
 
   const app = await (async () => {
     try {
@@ -427,6 +429,7 @@ export async function getServerSideProps(context: any) {
       appIntro: app?.appId?.intro ?? 'intro',
       shareId: shareId ?? '',
       authToken: authToken ?? '',
+      customUid,
       ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))
     }
   };
