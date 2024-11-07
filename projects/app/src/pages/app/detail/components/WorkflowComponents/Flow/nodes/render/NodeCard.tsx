@@ -26,6 +26,8 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { WholeResponseContent } from '@/components/core/chat/components/WholeResponseModal';
 import { getDocPath } from '@/web/common/system/doc';
+import { WorkflowActionContext } from '../../../context/workflowInitContext';
+import { WorkflowEventContext } from '../../../context/workflowEventContext';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -68,10 +70,10 @@ const NodeCard = (props: Props) => {
     customStyle
   } = props;
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const setHoverNodeId = useContextSelector(WorkflowContext, (v) => v.setHoverNodeId);
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
+  const setHoverNodeId = useContextSelector(WorkflowEventContext, (v) => v.setHoverNodeId);
 
   // custom title edit
   const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
@@ -391,7 +393,8 @@ const MenuRender = React.memo(function MenuRender({
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
 
-  const { setNodes, setEdges, onNodesChange } = useContextSelector(WorkflowContext, (v) => v);
+  const setNodes = useContextSelector(WorkflowActionContext, (v) => v.setNodes);
+  const setEdges = useContextSelector(WorkflowActionContext, (v) => v.setEdges);
   const { computedNewNodeName } = useWorkflowUtils();
 
   const onCopyNode = useCallback(

@@ -29,6 +29,11 @@ import { useDebounceEffect } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SaveButton from '../Workflow/components/SaveButton';
 import PublishHistories from '../PublishHistoriesSlider';
+import {
+  WorkflowActionContext,
+  WorkflowInitContext
+} from '../WorkflowComponents/context/workflowInitContext';
+import { WorkflowEventContext } from '../WorkflowComponents/context/workflowEventContext';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -44,20 +49,24 @@ const Header = () => {
     onClose: onCloseBackConfirm
   } = useDisclosure();
 
+  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
+  const edges = useContextSelector(WorkflowActionContext, (v) => v.edges);
   const {
     flowData2StoreData,
     flowData2StoreDataAndCheck,
     setWorkflowTestData,
-    setShowHistoryModal,
-    showHistoryModal,
-    nodes,
-    edges,
     past,
     future,
     setPast,
     onSwitchTmpVersion,
     onSwitchCloudVersion
   } = useContextSelector(WorkflowContext, (v) => v);
+  const showHistoryModal = useContextSelector(WorkflowEventContext, (v) => v.showHistoryModal);
+  const setShowHistoryModal = useContextSelector(
+    WorkflowEventContext,
+    (v) => v.setShowHistoryModal
+  );
+
   const { lastAppListRouteType } = useSystemStore();
 
   const [isPublished, setIsPublished] = useState(false);
