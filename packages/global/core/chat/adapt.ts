@@ -14,7 +14,6 @@ import type {
   ChatCompletionToolMessageParam
 } from '../../core/ai/type.d';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
-
 const GPT2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
   [ChatCompletionRequestMessageRoleEnum.User]: ChatRoleEnum.Human,
@@ -61,14 +60,14 @@ export const chats2GPTMessages = ({
               return {
                 type: 'image_url',
                 image_url: {
-                  url: item.file?.url || ''
+                  url: item.file.url
                 }
               };
             } else if (item.file?.type === ChatFileTypeEnum.file) {
               return {
                 type: 'file_url',
                 name: item.file?.name || '',
-                url: item.file?.url || ''
+                url: item.file.url
               };
             }
           }

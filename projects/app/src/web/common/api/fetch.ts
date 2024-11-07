@@ -11,6 +11,7 @@ import {
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '../system/useSystemStore';
 import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 type StreamFetchProps = {
   url?: string;
@@ -136,7 +137,7 @@ export const streamFetch = ({
       };
 
       // send request
-      await fetchEventSource(url, {
+      await fetchEventSource(getWebReqUrl(url), {
         ...requestData,
         async onopen(res) {
           clearTimeout(timeoutId);

@@ -1,9 +1,10 @@
 import React from 'react';
 import { PhotoProvider, PhotoView } from 'react-photo-view';
 import 'react-photo-view/dist/react-photo-view.css';
-import { Box, Image, ImageProps } from '@chakra-ui/react';
+import { ImageProps } from '@chakra-ui/react';
 import { useSystem } from '../../../hooks/useSystem';
 import Loading from '../MyLoading';
+import MyImage from './MyImage';
 
 const MyPhotoView = ({ ...props }: ImageProps) => {
   const { isPc } = useSystem();
@@ -15,7 +16,7 @@ const MyPhotoView = ({ ...props }: ImageProps) => {
       loadingElement={<Loading fixed={false} />}
     >
       <PhotoView src={props.src}>
-        <Image cursor={'pointer'} {...props} />
+        <MyImage cursor={'pointer'} {...props} />
       </PhotoView>
     </PhotoProvider>
   );

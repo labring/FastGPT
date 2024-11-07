@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, Button, Card, Flex, FlexProps, Image } from '@chakra-ui/react';
+import { Box, Button, Card, Flex, FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -15,7 +15,7 @@ import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/Connect
 import { useDebug } from '../../hooks/useDebug';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
-import { storeNode2FlowNode, getLatestNodeTemplate } from '@/web/core/workflow/utils';
+import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
@@ -28,6 +28,7 @@ import { WholeResponseContent } from '@/components/core/chat/components/WholeRes
 import { getDocPath } from '@/web/common/system/doc';
 import { WorkflowActionContext } from '../../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../../context/workflowEventContext';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -244,7 +245,7 @@ const NodeCard = (props: Props) => {
               {!!nodeTemplate?.diagram && !hasNewVersion && (
                 <MyTooltip
                   label={
-                    <Image
+                    <MyImage
                       src={nodeTemplate?.diagram}
                       w={'100%'}
                       minH={['auto', '200px']}

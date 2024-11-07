@@ -13,6 +13,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { defaultTTSConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 
 const TTSSelect = ({
   value = defaultTTSConfig,
@@ -133,7 +134,7 @@ const TTSSelect = ({
             <Flex mt={10} justifyContent={'end'}>
               {audioPlaying ? (
                 <Flex>
-                  <Image src="/icon/speaking.gif" w={'24px'} alt={''} />
+                  <MyImage src="/icon/speaking.gif" w={'24px'} alt={''} />
                   <Button
                     ml={2}
                     variant={'grayBase'}

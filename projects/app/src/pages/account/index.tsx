@@ -13,6 +13,7 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import Script from 'next/script';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const Promotion = dynamic(() => import('./components/Promotion'));
 const UsageTable = dynamic(() => import('./components/UsageTable'));
@@ -128,7 +129,7 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
 
   return (
     <>
-      <Script src="/js/qrcode.min.js" strategy="lazyOnload"></Script>
+      <Script src={getWebReqUrl('/js/qrcode.min.js')} strategy="lazyOnload"></Script>
       <PageContainer>
         <Flex flexDirection={['column', 'row']} h={'100%'} pt={[4, 0]}>
           {isPc ? (
