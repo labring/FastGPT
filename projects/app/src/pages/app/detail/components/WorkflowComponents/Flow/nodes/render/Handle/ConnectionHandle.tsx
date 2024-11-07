@@ -52,7 +52,7 @@ export const ConnectionSourceHandle = ({
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Right}
-          translate={[2, 0]}
+          translate={[4, 0]}
         />
       );
     })();
@@ -69,7 +69,7 @@ export const ConnectionSourceHandle = ({
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Left}
-          translate={[-6, 0]}
+          translate={[-8, 0]}
         />
       );
     })();
@@ -92,7 +92,7 @@ export const ConnectionSourceHandle = ({
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Top}
-          translate={[0, -2]}
+          translate={[0, -5]}
         />
       );
     })();
@@ -108,7 +108,7 @@ export const ConnectionSourceHandle = ({
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Bottom}
-          translate={[0, 2]}
+          translate={[0, 5]}
         />
       );
     })();
@@ -194,7 +194,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Left}
-          translate={[-2, 0]}
+          translate={[-4, 0]}
           showHandle={showHandle}
         />
       );
@@ -209,7 +209,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Right}
-          translate={[2, 0]}
+          translate={[4, 0]}
           showHandle={showHandle}
         />
       );
@@ -224,7 +224,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Top}
-          translate={[0, -2]}
+          translate={[0, -5]}
           showHandle={showHandle}
         />
       );
@@ -239,7 +239,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Bottom}
-          translate={[0, 2]}
+          translate={[0, 5]}
           showHandle={showHandle}
         />
       );

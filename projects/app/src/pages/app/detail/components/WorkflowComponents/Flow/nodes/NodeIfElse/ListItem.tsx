@@ -266,7 +266,7 @@ const ListItem = ({
             nodeId={nodeId}
             handleId={handleId}
             position={Position.Right}
-            translate={[3, 0]}
+            translate={[5, 0]}
           />
         )}
       </Flex>

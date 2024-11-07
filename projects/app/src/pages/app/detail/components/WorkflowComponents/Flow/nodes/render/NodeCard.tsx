@@ -150,7 +150,7 @@ const NodeCard = (props: Props) => {
       <Box position={'relative'}>
         {/* debug */}
         {showHeader && (
-          <Box px={4} pt={4}>
+          <Box px={3} pt={4}>
             {/* tool target handle */}
             <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
 
@@ -667,7 +667,7 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
 
     return !!debugResult && !!statusData ? (
       <>
-        <Flex px={4} bg={statusData.bg} borderTopRadius={'md'} py={3}>
+        <Flex px={3} bg={statusData.bg} borderTopRadius={'md'} py={3}>
           <MyIcon name={statusData.icon as any} w={'16px'} mr={2} />
           <Box color={'myGray.900'} fontWeight={'bold'} flex={'1 0 0'}>
             {statusData.text}
@@ -708,7 +708,7 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
             border={'base'}
           >
             {/* Status header */}
-            <Flex h={'54x'} px={4} py={3} alignItems={'center'}>
+            <Flex h={'54x'} px={3} py={3} alignItems={'center'}>
               <MyIcon mr={1} name={'core/workflow/debugResult'} w={'20px'} color={'primary.600'} />
               <Box fontWeight={'bold'} flex={'1'}>
                 {t('common:core.workflow.debug.Run result')}
