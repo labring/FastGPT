@@ -2,7 +2,7 @@ import React from 'react';
 import { pluginSystemModuleTemplates } from '@fastgpt/global/core/workflow/template/constants';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
-import WorkflowContextProvider, { WorkflowContext } from '../WorkflowComponents/context';
+import { ReactFlowCustomProvider, WorkflowContext } from '../WorkflowComponents/context';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import { useMount } from 'ahooks';
@@ -13,7 +13,6 @@ import dynamic from 'next/dynamic';
 import { cloneDeep } from 'lodash';
 
 import Flow from '../WorkflowComponents/Flow';
-import { ReactFlowProvider } from 'reactflow';
 import { useTranslation } from 'next-i18next';
 
 const Logs = dynamic(() => import('../Logs/index'));
@@ -67,11 +66,9 @@ const WorkflowEdit = () => {
 
 const Render = () => {
   return (
-    <ReactFlowProvider>
-      <WorkflowContextProvider basicNodeTemplates={pluginSystemModuleTemplates}>
-        <WorkflowEdit />
-      </WorkflowContextProvider>
-    </ReactFlowProvider>
+    <ReactFlowCustomProvider templates={pluginSystemModuleTemplates}>
+      <WorkflowEdit />
+    </ReactFlowCustomProvider>
   );
 };
 
