@@ -43,7 +43,6 @@ export const chats2GPTMessages = ({
   reserveTool?: boolean;
 }): ChatCompletionMessageParam[] => {
   let results: ChatCompletionMessageParam[] = [];
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
 
   messages.forEach((item) => {
     const dataId = reserveId ? item.dataId : undefined;
