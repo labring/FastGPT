@@ -76,7 +76,7 @@ export const useEditTitle = ({
   // eslint-disable-next-line react/display-name
   const EditModal = useCallback(
     ({
-      maxLength = 30,
+      maxLength = 50,
       iconSrc = 'modal/edit',
       closeBtnText = t('common:common.Close')
     }: {

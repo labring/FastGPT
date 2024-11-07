@@ -260,9 +260,12 @@ const InputDataModal = ({
             className={'textEllipsis'}
             wordBreak={'break-all'}
             fontSize={'md'}
-            maxW={['200px', '80vw']}
+            maxW={['200px', '50vw']}
             fontWeight={'500'}
             color={'myGray.900'}
+            whiteSpace={'nowrap'}
+            overflow={'hidden'}
+            textOverflow={'ellipsis'}
           >
             {collection.sourceName || t('common:common.UnKnow Source')}
           </Box>
