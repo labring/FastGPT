@@ -157,10 +157,10 @@ const ButtonEdge = (props: EdgeProps) => {
             position={'absolute'}
             transform={`translate(-55%, -50%) translate(${labelX}px,${labelY}px)`}
             pointerEvents={'all'}
-            w={'17px'}
-            h={'17px'}
+            w={'18px'}
+            h={'18px'}
             bg={'white'}
-            borderRadius={'17px'}
+            borderRadius={'18px'}
             cursor={'pointer'}
             zIndex={defaultZIndex + 1000}
             onClick={() => onDelConnect(id)}
