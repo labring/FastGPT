@@ -90,3 +90,45 @@ jobs:
           -t ${Docker_Hub_Tag} \
           -t ${Docker_Hub_Latest} \
           .
+  build-fastgpt-images-child-route:
+    runs-on: ubuntu-20.04
+    steps:
+      # Set tag
+      - name: Set image name and tag
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-child-route:latest" >> $GITHUB_ENV
+            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-child-route:latest" >> $GITHUB_ENV
+            echo "Ali_Tag=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-child-route:latest" >> $GITHUB_ENV
+            echo "Ali_Latest=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-child-route:latest" >> $GITHUB_ENV
+            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-child-route:latest" >> $GITHUB_ENV
+            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-child-route:latest" >> $GITHUB_ENV
+          else
+            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-child-route:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-child-route:latest" >> $GITHUB_ENV
+            echo "Ali_Tag=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-child-route:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Ali_Latest=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-child-route:latest" >> $GITHUB_ENV
+            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-child-route:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-child-route:latest" >> $GITHUB_ENV
+          fi
+
+      - name: Build and publish image for main branch or tag push event
+        env:
+          DOCKER_REPO_TAGGED: ${{ env.DOCKER_REPO_TAGGED }}
+        run: |
+          docker buildx build \
+          -f projects/app/Dockerfile \
+          --platform linux/amd64,linux/arm64 \
+          --build-arg base_url=fastai \ 
+          --label "org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT" \
+          --label "org.opencontainers.image.description=fastgpt image" \
+          --push \
+          --cache-from=type=local,src=/tmp/.buildx-cache \
+          --cache-to=type=local,dest=/tmp/.buildx-cache \
+          -t ${Git_Tag} \
+          -t ${Git_Latest} \
+          -t ${Ali_Tag} \
+          -t ${Ali_Latest} \
+          -t ${Docker_Hub_Tag} \
+          -t ${Docker_Hub_Latest} \
+          .

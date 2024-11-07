@@ -89,14 +89,12 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                 <IconButton
                   p={2}
                   mr={2}
-                  w={'1.5rem'}
-                  h={'24px'}
                   border={'1px solid'}
                   borderColor={'myGray.200'}
                   boxShadow={'1'}
                   icon={<MyIcon name={'common/arrowLeft'} w={'16px'} color={'myGray.500'} />}
                   bg={'white'}
-                  size={'smSquare'}
+                  size={'xsSquare'}
                   borderRadius={'50%'}
                   aria-label={''}
                   _hover={'none'}
