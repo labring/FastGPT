@@ -9,6 +9,7 @@ import type { ReadFileResponse } from '../../../worker/readFile/type';
 import axios from 'axios';
 import { addLog } from '../../system/log';
 import { batchRun } from '@fastgpt/global/common/fn/utils';
+import { addHours } from 'date-fns';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -111,6 +112,7 @@ export const readRawContentByFileBuffer = async ({
         type: MongoImageTypeEnum.collectionImage,
         base64Img: `data:${item.mime};base64,${item.base64}`,
         teamId,
+        expiredTime: addHours(new Date(), 1),
         metadata: {
           ...metadata,
           mime: item.mime
