@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Box } from '@chakra-ui/react';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useMarkdownWidth } from '../hooks';
 
-const IframeBlock = ({ code }: { code: string }) => {
+const MermaidBlock = ({ code }: { code: string }) => {
   const { width, Ref } = useMarkdownWidth();
   return (
     <Box w={width} ref={Ref}>
@@ -21,4 +22,4 @@ const IframeBlock = ({ code }: { code: string }) => {
   );
 };
 
-export default IframeBlock;
+export default MermaidBlock;

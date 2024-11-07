@@ -1,5 +1,5 @@
 import { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io.d';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -41,7 +41,7 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
         <SourceHandle
           nodeId={nodeId}
           handleId={getHandleId(nodeId, 'source', output.key)}
-          translate={[26, 0]}
+          translate={[34, 0]}
           position={Position.Right}
         />
       )}
