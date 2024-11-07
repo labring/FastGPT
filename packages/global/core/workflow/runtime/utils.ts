@@ -261,8 +261,12 @@ export const getReferenceVariableValue = ({
   }
 
   // handle reference array
-  if (isReferenceValueArray(value, nodeIds)) {
-    const result = value.map<any>((val) => {
+  if (Array.isArray(value) && value.length > 0) {
+    const filterValue = value.filter((val) => {
+      return isReferenceValue(val, nodeIds);
+    });
+
+    const result = filterValue.map<any>((val) => {
       return getReferenceVariableValue({
         value: val,
         nodes,

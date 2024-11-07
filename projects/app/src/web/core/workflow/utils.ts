@@ -337,7 +337,7 @@ export const checkWorkflowNodeAndConnection = ({
 
         // check reference invalid
         const renderType = input.renderTypeList[input.selectedTypeIndex || 0];
-        if (renderType === FlowNodeInputTypeEnum.reference && input.required) {
+        if (renderType === FlowNodeInputTypeEnum.reference) {
           const checkReference = (value: [string, string]) => {
             if (value[0] === VARIABLE_NODE_ID) {
               return false;
@@ -348,7 +348,16 @@ export const checkWorkflowNodeAndConnection = ({
               return true;
             }
 
-            const sourceOutput = sourceNode.data.outputs.find((item) => item.id === value[1]);
+            const sourceOutput = sourceNode.data.outputs
+              .filter(
+                (output) =>
+                  input.valueType === WorkflowIOValueTypeEnum.any ||
+                  input.valueType === WorkflowIOValueTypeEnum.arrayAny ||
+                  output.valueType === WorkflowIOValueTypeEnum.any ||
+                  output.valueType === input.valueType ||
+                  input.valueType?.replace('array', '').toLowerCase() === output.valueType
+              )
+              .find((item) => item.id === value[1]);
             return !sourceOutput;
           };
 
@@ -359,7 +368,7 @@ export const checkWorkflowNodeAndConnection = ({
             typeof input.value[0] === 'string' &&
             typeof input.value[1] === 'string'
           ) {
-            return checkReference(input.value as [string, string]);
+            return input.required && checkReference(input.value as [string, string]);
           }
 
           // New format

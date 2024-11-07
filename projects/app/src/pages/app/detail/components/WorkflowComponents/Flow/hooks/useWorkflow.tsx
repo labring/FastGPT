@@ -293,9 +293,13 @@ export const useWorkflow = () => {
   const { isDowningCtrl } = useKeyboard();
 
   // Loop node size and position
-  const resetParentNodeSizeAndPosition = useMemoizedFn((rect: Rect, parentId: string) => {
-    const width = rect.width + 110 > 900 ? rect.width + 110 : 900;
-    const height = rect.height + 420 > 900 ? rect.height + 420 : 900;
+  const resetParentNodeSizeAndPosition = useMemoizedFn((parentId: string) => {
+    const childNodes = nodes.filter((node) => node.data.parentNodeId === parentId);
+    const rect = getNodesBounds(childNodes);
+
+    // Calculate parent node size with minimum width/height constraints
+    const width = Math.max(rect.width + 80, 840);
+    const height = Math.max(rect.height + 80, 600);
 
     // Update parentNode size and position
     onChangeNode({
@@ -317,14 +321,18 @@ export const useWorkflow = () => {
       }
     });
 
+    // Calculate position offset
+    const loopNode = nodes.find((node) => node.id === parentId);
+    const offsetHeight = loopNode?.height ? Math.max(loopNode.height - height - 380, 0) : 0;
+
     // Update parentNode position
     onNodesChange([
       {
         id: parentId,
         type: 'position',
         position: {
-          x: rect.x - 50,
-          y: rect.y - 300
+          x: rect.x - 70,
+          y: rect.y - (320 + offsetHeight)
         }
       }
     ]);
@@ -335,43 +343,41 @@ export const useWorkflow = () => {
   const [helperLineVertical, setHelperLineVertical] = useState<THelperLine>();
 
   const checkNodeHelpLine = useMemoizedFn((change: NodeChange, nodes: Node[]) => {
-    requestAnimationFrame(() => {
-      const positionChange = change.type === 'position' && change.dragging ? change : undefined;
+    const positionChange = change.type === 'position' && change.dragging ? change : undefined;
 
-      if (positionChange?.position) {
-        // 只判断，3000px 内的 nodes，并按从近到远的顺序排序
-        const filterNodes = nodes
-          .filter((node) => {
-            if (!positionChange.position) return false;
+    if (positionChange?.position) {
+      // 只判断，3000px 内的 nodes，并按从近到远的顺序排序
+      const filterNodes = nodes
+        .filter((node) => {
+          if (!positionChange.position) return false;
 
-            return (
-              Math.abs(node.position.x - positionChange.position.x) <= 3000 &&
-              Math.abs(node.position.y - positionChange.position.y) <= 3000
-            );
-          })
-          .sort((a, b) => {
-            if (!positionChange.position) return 0;
-            return (
-              Math.abs(a.position.x - positionChange.position.x) +
-              Math.abs(a.position.y - positionChange.position.y) -
-              Math.abs(b.position.x - positionChange.position.x) -
-              Math.abs(b.position.y - positionChange.position.y)
-            );
-          })
-          .slice(0, 15);
+          return (
+            Math.abs(node.position.x - positionChange.position.x) <= 3000 &&
+            Math.abs(node.position.y - positionChange.position.y) <= 3000
+          );
+        })
+        .sort((a, b) => {
+          if (!positionChange.position) return 0;
+          return (
+            Math.abs(a.position.x - positionChange.position.x) +
+            Math.abs(a.position.y - positionChange.position.y) -
+            Math.abs(b.position.x - positionChange.position.x) -
+            Math.abs(b.position.y - positionChange.position.y)
+          );
+        })
+        .slice(0, 15);
 
-        const helperLines = computeHelperLines(positionChange, filterNodes);
+      const helperLines = computeHelperLines(positionChange, filterNodes);
 
-        positionChange.position.x = helperLines.snapPosition.x ?? positionChange.position.x;
-        positionChange.position.y = helperLines.snapPosition.y ?? positionChange.position.y;
+      positionChange.position.x = helperLines.snapPosition.x ?? positionChange.position.x;
+      positionChange.position.y = helperLines.snapPosition.y ?? positionChange.position.y;
 
-        setHelperLineHorizontal(helperLines.horizontal);
-        setHelperLineVertical(helperLines.vertical);
-      } else {
-        setHelperLineHorizontal(undefined);
-        setHelperLineVertical(undefined);
-      }
-    });
+      setHelperLineHorizontal(helperLines.horizontal);
+      setHelperLineVertical(helperLines.vertical);
+    } else {
+      setHelperLineHorizontal(undefined);
+      setHelperLineVertical(undefined);
+    }
   });
 
   // Check if a node is placed on top of a loop node
@@ -412,9 +418,7 @@ export const useWorkflow = () => {
         state.filter((edge) => edge.source !== node.id && edge.target !== node.id)
       );
 
-      const childNodes = [...nodes.filter((n) => n.data.parentNodeId === parentNode.id), node];
-      const rect = getNodesBounds(childNodes);
-      resetParentNodeSizeAndPosition(rect, parentNode.id);
+      resetParentNodeSizeAndPosition(parentNode.id);
     }
   });
 
@@ -469,7 +473,7 @@ export const useWorkflow = () => {
         const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
         checkNodeHelpLine(change, childNodes);
 
-        resetParentNodeSizeAndPosition(getNodesBounds(childNodes), parentId);
+        resetParentNodeSizeAndPosition(parentId);
       }
       // If node is parent node, move parent node and child nodes
       else if (parentNode[node.data.flowNodeType]) {
@@ -679,7 +683,8 @@ export const useWorkflow = () => {
     helperLineVertical,
     onNodeDragStop,
     onPaneContextMenu,
-    onPaneClick
+    onPaneClick,
+    resetParentNodeSizeAndPosition
   };
 };
 
