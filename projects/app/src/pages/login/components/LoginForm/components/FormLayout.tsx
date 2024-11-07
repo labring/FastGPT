@@ -1,6 +1,6 @@
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { AbsoluteCenter, Box, Button, Flex, Image } from '@chakra-ui/react';
+import { AbsoluteCenter, Box, Button, Flex } from '@chakra-ui/react';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -10,6 +10,7 @@ import { Dispatch, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 8);
 
 interface Props {
@@ -86,7 +87,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
             alignItems={'center'}
             justifyContent={'center'}
           >
-            <Image src={LOGO_ICON} w={['22.5px', '36px']} alt={'icon'} />
+            <MyImage src={LOGO_ICON} w={['22.5px', '36px']} alt={'icon'} />
           </Flex>
           <Box ml={[3, 5]} fontSize={['lg', 'xl']} fontWeight={'bold'} color={'myGray.900'}>
             {feConfigs?.systemTitle}
@@ -137,7 +138,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
                   w={'100%'}
                   h={'40px'}
                   borderRadius={'sm'}
-                  leftIcon={<Image alt="" src={feConfigs.sso.icon as any} w="20px" />}
+                  leftIcon={<MyImage alt="" src={feConfigs.sso.icon as any} w="20px" />}
                   onClick={() => {
                     feConfigs.sso?.url && router.replace(feConfigs.sso?.url, '_self');
                   }}

@@ -3,6 +3,7 @@ import { Box, Image, Flex, ModalBody } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 
 export type ShowShareLinkModalProps = {
   shareLink: string;
@@ -40,7 +41,7 @@ function ShowShareLinkModal({ shareLink, onClose, img }: ShowShareLinkModalProps
           </Box>
         </Box>
         <Box mt="4" borderRadius="0.5rem" border="1px" borderStyle="solid" borderColor="myGray.200">
-          <Image src={img} borderRadius="0.5rem" alt="" />
+          <MyImage src={img} borderRadius="0.5rem" alt="" />
         </Box>
       </ModalBody>
     </MyModal>
