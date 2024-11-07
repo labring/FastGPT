@@ -29,7 +29,8 @@ type ComponentProps = {
 };
 
 const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
-  const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
 
   const chatConfig = useMemo<AppChatConfigType>(() => {
     return getAppChatConfig({
@@ -47,45 +48,49 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [chatConfig, setAppDetail]
   );
 
-  return (
-    <>
-      <NodeCard
-        minW={'420px'}
-        selected={selected}
-        menuForbid={{
-          debug: true,
-          copy: true,
-          delete: true
-        }}
-        {...data}
-      >
-        <Container>
-          <WelcomeText {...componentsProps} />
-          <Box mt={2} pt={2}>
-            <ChatStartVariable {...componentsProps} />
-          </Box>
-          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-            <FileSelectConfig {...componentsProps} />
-          </Box>
-          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-            <TTSGuide {...componentsProps} />
-          </Box>
-          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-            <WhisperGuide {...componentsProps} />
-          </Box>
-          <Box mt={3} pt={4} borderTop={'base'} borderColor={'myGray.200'}>
-            <QuestionGuide {...componentsProps} />
-          </Box>
-          <Box mt={4} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-            <ScheduledTrigger {...componentsProps} />
-          </Box>
-          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-            <QuestionInputGuide {...componentsProps} />
-          </Box>
-        </Container>
-      </NodeCard>
-    </>
-  );
+  const Render = useMemo(() => {
+    return (
+      <>
+        <NodeCard
+          minW={'420px'}
+          selected={selected}
+          menuForbid={{
+            debug: true,
+            copy: true,
+            delete: true
+          }}
+          {...data}
+        >
+          <Container>
+            <WelcomeText {...componentsProps} />
+            <Box mt={2} pt={2}>
+              <ChatStartVariable {...componentsProps} />
+            </Box>
+            <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
+              <FileSelectConfig {...componentsProps} />
+            </Box>
+            <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
+              <TTSGuide {...componentsProps} />
+            </Box>
+            <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
+              <WhisperGuide {...componentsProps} />
+            </Box>
+            <Box mt={3} pt={4} borderTop={'base'} borderColor={'myGray.200'}>
+              <QuestionGuide {...componentsProps} />
+            </Box>
+            <Box mt={4} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
+              <ScheduledTrigger {...componentsProps} />
+            </Box>
+            <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
+              <QuestionInputGuide {...componentsProps} />
+            </Box>
+          </Container>
+        </NodeCard>
+      </>
+    );
+  }, [componentsProps, data, selected]);
+
+  return Render;
 };
 
 export default React.memo(NodeUserGuide);
@@ -218,8 +223,10 @@ function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: Co
 
 function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: ComponentProps) {
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodes = useContextSelector(WorkflowContext, (v) => v.nodes);
-  const workflowStartNode = nodes.find((item) => item.type === FlowNodeTypeEnum.workflowStart)!;
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const workflowStartNode = nodeList.find(
+    (item) => item.flowNodeType === FlowNodeTypeEnum.workflowStart
+  )!;
 
   return (
     <FileSelect
@@ -235,7 +242,7 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
 
         // Dynamic add or delete userFilesInput
         const canUploadFiles = e.canSelectFile || e.canSelectImg;
-        const repeatKey = workflowStartNode?.data.outputs.find(
+        const repeatKey = workflowStartNode?.outputs.find(
           (item) => item.key === userFilesInput.key
         );
         if (canUploadFiles) {

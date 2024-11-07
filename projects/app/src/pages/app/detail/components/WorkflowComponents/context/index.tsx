@@ -15,7 +15,7 @@ import { RuntimeEdgeItemType, StoreEdgeItemType } from '@fastgpt/global/core/wor
 import { FlowNodeChangeProps } from '@fastgpt/global/core/workflow/type/fe';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useDebounceEffect, useLocalStorageState, useMemoizedFn, useUpdateEffect } from 'ahooks';
+import { useLocalStorageState, useMemoizedFn, useUpdateEffect } from 'ahooks';
 import React, {
   Dispatch,
   SetStateAction,
@@ -25,31 +25,40 @@ import React, {
   useRef,
   useState
 } from 'react';
-import {
-  Edge,
-  EdgeChange,
-  Node,
-  NodeChange,
-  OnConnectStartParams,
-  useEdgesState,
-  useNodesState,
-  useReactFlow
-} from 'reactflow';
+import { Edge, Node, OnConnectStartParams, ReactFlowProvider, useReactFlow } from 'reactflow';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { defaultRunningStatus } from './constants';
+import { defaultRunningStatus } from '../constants';
 import { checkNodeRunStatus } from '@fastgpt/global/core/workflow/runtime/utils';
-import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { AppContext } from '@/pages/app/detail/components/context';
-import ChatTest from './Flow/ChatTest';
+import ChatTest from '../Flow/ChatTest';
 import { useDisclosure } from '@chakra-ui/react';
-import { uiWorkflow2StoreWorkflow } from './utils';
+import { uiWorkflow2StoreWorkflow } from '../utils';
 import { useTranslation } from 'next-i18next';
 import { formatTime2YMDHMS, formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { cloneDeep } from 'lodash';
-import { SetState } from 'ahooks/lib/createUseStorageState';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
+import WorkflowInitContextProvider, { WorkflowActionContext } from './workflowInitContext';
+import WorkflowEventContextProvider from './workflowEventContext';
+
+export const ReactFlowCustomProvider = ({
+  templates,
+  children
+}: {
+  templates: FlowNodeTemplateType[];
+  children: React.ReactNode;
+}) => {
+  return (
+    <ReactFlowProvider>
+      <WorkflowInitContextProvider>
+        <WorkflowContextProvider basicNodeTemplates={templates}>
+          <WorkflowEventContextProvider>{children}</WorkflowEventContextProvider>
+        </WorkflowContextProvider>
+      </WorkflowInitContextProvider>
+    </ReactFlowProvider>
+  );
+};
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -65,33 +74,22 @@ type WorkflowContextType = {
   appId?: string;
   basicNodeTemplates: FlowNodeTemplateType[];
   filterAppIds?: string[];
-  reactFlowWrapper: React.RefObject<HTMLDivElement> | null;
-  mouseInCanvas: boolean;
 
   // nodes
-  nodes: Node<FlowNodeItemType, string | undefined>[];
   nodeList: FlowNodeItemType[];
-  setNodes: Dispatch<SetStateAction<Node<FlowNodeItemType, string | undefined>[]>>;
-  onNodesChange: OnChange<NodeChange>;
   hasToolNode: boolean;
-  hoverNodeId?: string;
-  setHoverNodeId: React.Dispatch<React.SetStateAction<string | undefined>>;
+
   onUpdateNodeError: (node: string, isError: Boolean) => void;
   onResetNode: (e: { id: string; node: FlowNodeTemplateType }) => void;
   onChangeNode: (e: FlowNodeChangeProps) => void;
   getNodeDynamicInputs: (nodeId: string) => FlowNodeInputItemType[];
 
   // edges
-  edges: Edge<any>[];
-  setEdges: Dispatch<SetStateAction<Edge<any>[]>>;
-  onEdgesChange: OnChange<EdgeChange>;
   onDelEdge: (e: {
     nodeId: string;
     sourceHandle?: string | undefined;
     targetHandle?: string | undefined;
   }) => void;
-  hoverEdgeId?: string;
-  setHoverEdgeId: React.Dispatch<React.SetStateAction<string | undefined>>;
 
   onSwitchTmpVersion: (data: WorkflowSnapshotsType, customTitle: string) => boolean;
   onSwitchCloudVersion: (appVersion: AppVersionSchemaType) => boolean;
@@ -102,6 +100,19 @@ type WorkflowContextType = {
   undo: () => void;
   canRedo: boolean;
   canUndo: boolean;
+  pushPastSnapshot: ({
+    pastNodes,
+    pastEdges,
+    customTitle,
+    chatConfig,
+    isSaved
+  }: {
+    pastNodes: Node[];
+    pastEdges: Edge[];
+    customTitle?: string;
+    chatConfig: AppChatConfigType;
+    isSaved?: boolean;
+  }) => boolean;
 
   // connect
   connectingEdge?: OnConnectStartParams;
@@ -159,10 +170,6 @@ type WorkflowContextType = {
   }) => Promise<void>;
   onStopNodeDebug: () => void;
 
-  // version history
-  showHistoryModal: boolean;
-  setShowHistoryModal: React.Dispatch<React.SetStateAction<boolean>>;
-
   // chat test
   setWorkflowTestData: React.Dispatch<
     React.SetStateAction<
@@ -173,15 +180,6 @@ type WorkflowContextType = {
       | undefined
     >
   >;
-
-  //
-  workflowControlMode?: 'drag' | 'select';
-  setWorkflowControlMode: (value?: SetState<'drag' | 'select'> | undefined) => void;
-  menu: {
-    top: number;
-    left: number;
-  } | null;
-  setMenu: (value: React.SetStateAction<{ top: number; left: number } | null>) => void;
 };
 
 type DebugDataType = {
@@ -198,30 +196,9 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     throw new Error('Function not implemented.');
   },
   basicNodeTemplates: [],
-  reactFlowWrapper: null,
-  nodes: [],
   nodeList: [],
-  mouseInCanvas: false,
-  setNodes: function (
-    value: React.SetStateAction<Node<FlowNodeItemType, string | undefined>[]>
-  ): void {
-    throw new Error('Function not implemented.');
-  },
-  onNodesChange: function (changes: NodeChange[]): void {
-    throw new Error('Function not implemented.');
-  },
   hasToolNode: false,
-  setHoverNodeId: function (value: React.SetStateAction<string | undefined>): void {
-    throw new Error('Function not implemented.');
-  },
   onUpdateNodeError: function (node: string, isError: Boolean): void {
-    throw new Error('Function not implemented.');
-  },
-  edges: [],
-  setEdges: function (value: React.SetStateAction<Edge<any>[]>): void {
-    throw new Error('Function not implemented.');
-  },
-  onEdgesChange: function (changes: EdgeChange[]): void {
     throw new Error('Function not implemented.');
   },
   onResetNode: function (e: { id: string; node: FlowNodeTemplateType }): void {
@@ -272,9 +249,6 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   onChangeNode: function (e: FlowNodeChangeProps): void {
     throw new Error('Function not implemented.');
   },
-  setHoverEdgeId: function (value: React.SetStateAction<string | undefined>): void {
-    throw new Error('Function not implemented.');
-  },
   setWorkflowTestData: function (
     value: React.SetStateAction<
       { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] } | undefined
@@ -290,10 +264,6 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   flowData2StoreData: function ():
     | { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }
     | undefined {
-    throw new Error('Function not implemented.');
-  },
-  showHistoryModal: false,
-  setShowHistoryModal: function (value: React.SetStateAction<boolean>): void {
     throw new Error('Function not implemented.');
   },
   getNodeDynamicInputs: function (nodeId: string): FlowNodeInputItemType[] {
@@ -312,18 +282,27 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   },
   canRedo: false,
   canUndo: false,
-  workflowControlMode: 'drag',
-  setWorkflowControlMode: function (value?: SetState<'drag' | 'select'> | undefined): void {
-    throw new Error('Function not implemented.');
-  },
+
   onSwitchTmpVersion: function (data: WorkflowSnapshotsType, customTitle: string): boolean {
     throw new Error('Function not implemented.');
   },
   onSwitchCloudVersion: function (appVersion: AppVersionSchemaType): boolean {
     throw new Error('Function not implemented.');
   },
-  menu: null,
-  setMenu: function (value: React.SetStateAction<{ top: number; left: number } | null>): void {
+
+  pushPastSnapshot: function ({
+    pastNodes,
+    pastEdges,
+    customTitle,
+    chatConfig,
+    isSaved
+  }: {
+    pastNodes: Node[];
+    pastEdges: Edge[];
+    customTitle?: string;
+    chatConfig: AppChatConfigType;
+    isSaved?: boolean;
+  }): boolean {
     throw new Error('Function not implemented.');
   }
 });
@@ -337,39 +316,14 @@ const WorkflowContextProvider = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
-  const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
   const appId = appDetail._id;
 
-  const [workflowControlMode, setWorkflowControlMode] = useLocalStorageState<'drag' | 'select'>(
-    'workflow-control-mode',
-    {
-      defaultValue: 'drag',
-      listenStorageChange: true
-    }
-  );
-
-  // Mouse in canvas
-  const [mouseInCanvas, setMouseInCanvas] = useState(false);
-  useEffect(() => {
-    const handleMouseInCanvas = (e: MouseEvent) => {
-      setMouseInCanvas(true);
-    };
-    const handleMouseOutCanvas = (e: MouseEvent) => {
-      setMouseInCanvas(false);
-    };
-    reactFlowWrapper?.current?.addEventListener('mouseenter', handleMouseInCanvas);
-    reactFlowWrapper?.current?.addEventListener('mouseleave', handleMouseOutCanvas);
-    return () => {
-      reactFlowWrapper?.current?.removeEventListener('mouseenter', handleMouseInCanvas);
-      reactFlowWrapper?.current?.removeEventListener('mouseleave', handleMouseOutCanvas);
-    };
-  }, [reactFlowWrapper?.current]);
-
   /* edge */
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [hoverEdgeId, setHoverEdgeId] = useState<string>();
+  const edges = useContextSelector(WorkflowActionContext, (state) => state.edges);
+  const setEdges = useContextSelector(WorkflowActionContext, (state) => state.setEdges);
   const onDelEdge = useCallback(
     ({
       nodeId,
@@ -397,31 +351,15 @@ const WorkflowContextProvider = ({
   const [connectingEdge, setConnectingEdge] = useState<OnConnectStartParams>();
 
   /* node */
-  const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
-  const [hoverNodeId, setHoverNodeId] = useState<string>();
+  const setNodes = useContextSelector(WorkflowActionContext, (state) => state.setNodes);
+  const getNodes = useContextSelector(WorkflowActionContext, (state) => state.getNodes);
+  const nodeListString = useContextSelector(WorkflowActionContext, (state) => state.nodeListString);
 
-  const nodeListString = JSON.stringify(nodes.map((node) => node.data));
+  console.log(121211111111);
   const nodeList = useMemo(
     () => JSON.parse(nodeListString) as FlowNodeItemType[],
     [nodeListString]
   );
-
-  // Elevate childNodes
-  useEffect(() => {
-    setNodes((nodes) =>
-      nodes.map((node) => (node.data.parentNodeId ? { ...node, zIndex: 1001 } : node))
-    );
-  }, [nodeList]);
-  // Elevate edges of childNodes
-  useEffect(() => {
-    setEdges((state) =>
-      state.map((item) =>
-        nodeList.some((node) => item.source === node.nodeId && node.parentNodeId)
-          ? { ...item, zIndex: 1001 }
-          : item
-      )
-    );
-  }, [edges.length]);
 
   const hasToolNode = useMemo(() => {
     return !!nodeList.find((node) => node.flowNodeType === FlowNodeTypeEnum.tools);
@@ -571,6 +509,7 @@ const WorkflowContextProvider = ({
   /* ui flow to store data */
   const { fitView } = useReactFlow();
   const flowData2StoreDataAndCheck = useMemoizedFn((hideTip = false) => {
+    const nodes = getNodes();
     const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
 
     if (!checkResults) {
@@ -593,6 +532,7 @@ const WorkflowContextProvider = ({
   });
 
   const flowData2StoreData = useMemoizedFn(() => {
+    const nodes = getNodes();
     return uiWorkflow2StoreWorkflow({ nodes, edges });
   });
 
@@ -892,22 +832,6 @@ const WorkflowContextProvider = ({
     });
   });
 
-  // Auto save snapshot
-  useDebounceEffect(
-    () => {
-      if (nodes.length === 0 || !appDetail.chatConfig) return;
-
-      pushPastSnapshot({
-        pastNodes: nodes,
-        pastEdges: edges,
-        customTitle: formatTime2YMDHMS(new Date()),
-        chatConfig: appDetail.chatConfig
-      });
-    },
-    [nodes, edges, appDetail.chatConfig],
-    { wait: 500 }
-  );
-
   const undo = useMemoizedFn(() => {
     if (past[1]) {
       setFuture((future) => [past[0], ...future]);
@@ -978,88 +902,80 @@ const WorkflowContextProvider = ({
     ]
   );
 
-  /* Version histories */
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const value = useMemo(
+    () => ({
+      appId,
+      basicNodeTemplates,
 
-  /* event bus */
-  useEffect(() => {
-    eventBus.on(EventNameEnum.requestWorkflowStore, () => {
-      eventBus.emit(EventNameEnum.receiveWorkflowStore, {
-        nodes,
-        edges
-      });
-    });
-    return () => {
-      eventBus.off(EventNameEnum.requestWorkflowStore);
-    };
-  }, [edges, nodes]);
+      // node
+      nodeList,
+      hasToolNode,
+      onUpdateNodeError,
+      onResetNode,
+      onChangeNode,
+      getNodeDynamicInputs,
 
-  const [menu, setMenu] = useState<{ top: number; left: number } | null>(null);
+      // edge
+      connectingEdge,
+      setConnectingEdge,
+      onDelEdge,
 
-  const value = {
-    appId,
-    reactFlowWrapper,
-    basicNodeTemplates,
-    workflowControlMode,
-    setWorkflowControlMode,
-    mouseInCanvas,
+      // snapshots
+      past,
+      setPast,
+      future,
+      undo,
+      redo,
+      canUndo: past.length > 1,
+      canRedo: !!future.length,
+      onSwitchTmpVersion,
+      onSwitchCloudVersion,
+      pushPastSnapshot,
 
-    // node
-    nodes,
-    setNodes,
-    onNodesChange,
-    nodeList,
-    hasToolNode,
-    hoverNodeId,
-    setHoverNodeId,
-    onUpdateNodeError,
-    onResetNode,
-    onChangeNode,
-    getNodeDynamicInputs,
+      // function
+      splitToolInputs,
+      initData,
+      flowData2StoreDataAndCheck,
+      flowData2StoreData,
 
-    // edge
-    edges,
-    setEdges,
-    hoverEdgeId,
-    setHoverEdgeId,
-    onEdgesChange,
-    connectingEdge,
-    setConnectingEdge,
-    onDelEdge,
+      // debug
+      workflowDebugData,
+      onNextNodeDebug,
+      onStartNodeDebug,
+      onStopNodeDebug,
 
-    // snapshots
-    past,
-    setPast,
-    future,
-    undo,
-    redo,
-    canUndo: past.length > 1,
-    canRedo: !!future.length,
-    onSwitchTmpVersion,
-    onSwitchCloudVersion,
-
-    // function
-    splitToolInputs,
-    initData,
-    flowData2StoreDataAndCheck,
-    flowData2StoreData,
-
-    // debug
-    workflowDebugData,
-    onNextNodeDebug,
-    onStartNodeDebug,
-    onStopNodeDebug,
-
-    // version history
-    showHistoryModal,
-    setShowHistoryModal,
-
-    // chat test
-    setWorkflowTestData,
-
-    menu,
-    setMenu
-  };
+      // chat test
+      setWorkflowTestData
+    }),
+    [
+      appId,
+      basicNodeTemplates,
+      connectingEdge,
+      flowData2StoreData,
+      flowData2StoreDataAndCheck,
+      future,
+      getNodeDynamicInputs,
+      hasToolNode,
+      initData,
+      nodeList,
+      onChangeNode,
+      onDelEdge,
+      onNextNodeDebug,
+      onResetNode,
+      onStartNodeDebug,
+      onStopNodeDebug,
+      onSwitchCloudVersion,
+      onSwitchTmpVersion,
+      onUpdateNodeError,
+      past,
+      pushPastSnapshot,
+      redo,
+      setPast,
+      splitToolInputs,
+      undo,
+      workflowDebugData
+    ]
+  );
 
   return (
     <WorkflowContext.Provider value={value}>
@@ -1068,18 +984,4 @@ const WorkflowContextProvider = ({
     </WorkflowContext.Provider>
   );
 };
-
-export default WorkflowContextProvider;
-
-type GetWorkflowStoreResponse = {
-  nodes: Node<FlowNodeItemType>[];
-  edges: Edge<any>[];
-};
-export const getWorkflowStore = () =>
-  new Promise<GetWorkflowStoreResponse>((resolve) => {
-    eventBus.on(EventNameEnum.receiveWorkflowStore, (data: GetWorkflowStoreResponse) => {
-      resolve(data);
-      eventBus.off(EventNameEnum.receiveWorkflowStore);
-    });
-    eventBus.emit(EventNameEnum.requestWorkflowStore);
-  });
+export default React.memo(WorkflowContextProvider);

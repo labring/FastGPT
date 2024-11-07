@@ -25,12 +25,16 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { THelperLine } from '@fastgpt/global/core/workflow/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useMemoizedFn } from 'ahooks';
+import { useDebounceEffect, useMemoizedFn } from 'ahooks';
 import {
   Input_Template_Node_Height,
   Input_Template_Node_Width
 } from '@fastgpt/global/core/workflow/template/input';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { WorkflowActionContext, WorkflowInitContext } from '../../context/workflowInitContext';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import { AppContext } from '../../../context';
+import { WorkflowEventContext } from '../../context/workflowEventContext';
 
 /* 
   Compute helper lines for snapping nodes to each other
@@ -271,21 +275,22 @@ export const useWorkflow = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
 
-  const { isDowningCtrl } = useKeyboard();
-  const {
-    setConnectingEdge,
-    edges,
-    nodes,
-    nodeList,
-    onNodesChange,
-    setEdges,
-    onChangeNode,
-    onEdgesChange,
-    setHoverEdgeId,
-    setMenu
-  } = useContextSelector(WorkflowContext, (v) => v);
+  const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
+
+  const nodes = useContextSelector(WorkflowInitContext, (state) => state.nodes);
+  const onNodesChange = useContextSelector(WorkflowActionContext, (state) => state.onNodesChange);
+  const edges = useContextSelector(WorkflowActionContext, (state) => state.edges);
+  const setEdges = useContextSelector(WorkflowActionContext, (v) => v.setEdges);
+  const onEdgesChange = useContextSelector(WorkflowActionContext, (v) => v.onEdgesChange);
+  const { setConnectingEdge, nodeList, onChangeNode, pushPastSnapshot } = useContextSelector(
+    WorkflowContext,
+    (v) => v
+  );
+  const setHoverEdgeId = useContextSelector(WorkflowEventContext, (v) => v.setHoverEdgeId);
+  const setMenu = useContextSelector(WorkflowEventContext, (v) => v.setMenu);
 
   const { getIntersectingNodes } = useReactFlow();
+  const { isDowningCtrl } = useKeyboard();
 
   // Loop node size and position
   const resetParentNodeSizeAndPosition = useMemoizedFn((rect: Rect, parentId: string) => {
@@ -330,41 +335,43 @@ export const useWorkflow = () => {
   const [helperLineVertical, setHelperLineVertical] = useState<THelperLine>();
 
   const checkNodeHelpLine = useMemoizedFn((change: NodeChange, nodes: Node[]) => {
-    const positionChange = change.type === 'position' && change.dragging ? change : undefined;
+    requestAnimationFrame(() => {
+      const positionChange = change.type === 'position' && change.dragging ? change : undefined;
 
-    if (positionChange?.position) {
-      // 只判断，3000px 内的 nodes，并按从近到远的顺序排序
-      const filterNodes = nodes
-        .filter((node) => {
-          if (!positionChange.position) return false;
+      if (positionChange?.position) {
+        // 只判断，3000px 内的 nodes，并按从近到远的顺序排序
+        const filterNodes = nodes
+          .filter((node) => {
+            if (!positionChange.position) return false;
 
-          return (
-            Math.abs(node.position.x - positionChange.position.x) <= 3000 &&
-            Math.abs(node.position.y - positionChange.position.y) <= 3000
-          );
-        })
-        .sort((a, b) => {
-          if (!positionChange.position) return 0;
-          return (
-            Math.abs(a.position.x - positionChange.position.x) +
-            Math.abs(a.position.y - positionChange.position.y) -
-            Math.abs(b.position.x - positionChange.position.x) -
-            Math.abs(b.position.y - positionChange.position.y)
-          );
-        })
-        .slice(0, 15);
+            return (
+              Math.abs(node.position.x - positionChange.position.x) <= 3000 &&
+              Math.abs(node.position.y - positionChange.position.y) <= 3000
+            );
+          })
+          .sort((a, b) => {
+            if (!positionChange.position) return 0;
+            return (
+              Math.abs(a.position.x - positionChange.position.x) +
+              Math.abs(a.position.y - positionChange.position.y) -
+              Math.abs(b.position.x - positionChange.position.x) -
+              Math.abs(b.position.y - positionChange.position.y)
+            );
+          })
+          .slice(0, 15);
 
-      const helperLines = computeHelperLines(positionChange, filterNodes);
+        const helperLines = computeHelperLines(positionChange, filterNodes);
 
-      positionChange.position.x = helperLines.snapPosition.x ?? positionChange.position.x;
-      positionChange.position.y = helperLines.snapPosition.y ?? positionChange.position.y;
+        positionChange.position.x = helperLines.snapPosition.x ?? positionChange.position.x;
+        positionChange.position.y = helperLines.snapPosition.y ?? positionChange.position.y;
 
-      setHelperLineHorizontal(helperLines.horizontal);
-      setHelperLineVertical(helperLines.vertical);
-    } else {
-      setHelperLineHorizontal(undefined);
-      setHelperLineVertical(undefined);
-    }
+        setHelperLineHorizontal(helperLines.horizontal);
+        setHelperLineVertical(helperLines.vertical);
+      } else {
+        setHelperLineHorizontal(undefined);
+        setHelperLineVertical(undefined);
+      }
+    });
   });
 
   // Check if a node is placed on top of a loop node
@@ -641,6 +648,23 @@ export const useWorkflow = () => {
   const onPaneClick = useCallback(() => {
     setMenu(null);
   }, [setMenu]);
+
+  // Watch
+  // Auto save snapshot
+  useDebounceEffect(
+    () => {
+      if (nodes.length === 0 || !appDetail.chatConfig) return;
+
+      pushPastSnapshot({
+        pastNodes: nodes,
+        pastEdges: edges,
+        customTitle: formatTime2YMDHMS(new Date()),
+        chatConfig: appDetail.chatConfig
+      });
+    },
+    [nodes, edges, appDetail.chatConfig],
+    { wait: 500 }
+  );
 
   return {
     handleNodesChange,

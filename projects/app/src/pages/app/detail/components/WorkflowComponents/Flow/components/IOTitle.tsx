@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box, StackProps, HStack } from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const IOTitle = ({ text, ...props }: { text?: 'Input' | 'Output' | string } & StackProps) => {
   return (
