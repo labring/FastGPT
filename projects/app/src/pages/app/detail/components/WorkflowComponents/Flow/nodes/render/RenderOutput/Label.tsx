@@ -13,44 +13,40 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
   const { t } = useTranslation();
   const { label = '', description, valueType, valueDesc } = output;
 
-  const Render = useMemo(() => {
-    return (
-      <Box position={'relative'}>
-        <Flex
-          className="nodrag"
-          cursor={'default'}
-          alignItems={'center'}
-          fontWeight={'medium'}
-          color={'myGray.600'}
-          {...(output.type === FlowNodeOutputTypeEnum.source
-            ? {
-                flexDirection: 'row-reverse'
-              }
-            : {})}
+  return (
+    <Box position={'relative'}>
+      <Flex
+        className="nodrag"
+        cursor={'default'}
+        alignItems={'center'}
+        fontWeight={'medium'}
+        color={'myGray.600'}
+        {...(output.type === FlowNodeOutputTypeEnum.source
+          ? {
+              flexDirection: 'row-reverse'
+            }
+          : {})}
+      >
+        <Box
+          position={'relative'}
+          mr={1}
+          ml={output.type === FlowNodeOutputTypeEnum.source ? 1 : 0}
         >
-          <Box
-            position={'relative'}
-            mr={1}
-            ml={output.type === FlowNodeOutputTypeEnum.source ? 1 : 0}
-          >
-            {t(label as any)}
-          </Box>
-          {description && <QuestionTip ml={1} label={t(description as any)} />}
-          <ValueTypeLabel valueType={valueType} valueDesc={valueDesc} />
-        </Flex>
-        {output.type === FlowNodeOutputTypeEnum.source && (
-          <SourceHandle
-            nodeId={nodeId}
-            handleId={getHandleId(nodeId, 'source', output.key)}
-            translate={[26, 0]}
-            position={Position.Right}
-          />
-        )}
-      </Box>
-    );
-  }, [output.type, output.key, t, label, description, valueType, valueDesc, nodeId]);
-
-  return Render;
+          {t(label as any)}
+        </Box>
+        {description && <QuestionTip ml={1} label={t(description as any)} />}
+        <ValueTypeLabel valueType={valueType} valueDesc={valueDesc} />
+      </Flex>
+      {output.type === FlowNodeOutputTypeEnum.source && (
+        <SourceHandle
+          nodeId={nodeId}
+          handleId={getHandleId(nodeId, 'source', output.key)}
+          translate={[26, 0]}
+          position={Position.Right}
+        />
+      )}
+    </Box>
+  );
 };
 
 export default React.memo(OutputLabel);

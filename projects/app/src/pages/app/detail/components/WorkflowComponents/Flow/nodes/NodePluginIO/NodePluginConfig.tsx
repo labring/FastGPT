@@ -53,24 +53,28 @@ const NodePluginConfig = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [chatConfig, setAppDetail]
   );
 
-  return (
-    <NodeCard
-      selected={selected}
-      menuForbid={{
-        debug: true,
-        copy: true,
-        delete: true
-      }}
-      {...data}
-    >
-      <Container w={'360px'}>
-        <Instruction {...componentsProps} />
-        <Box pt={4}>
-          <FileSelectConfig {...componentsProps} />
-        </Box>
-      </Container>
-    </NodeCard>
-  );
+  const Render = useMemo(() => {
+    return (
+      <NodeCard
+        selected={selected}
+        menuForbid={{
+          debug: true,
+          copy: true,
+          delete: true
+        }}
+        {...data}
+      >
+        <Container w={'360px'}>
+          <Instruction {...componentsProps} />
+          <Box pt={4}>
+            <FileSelectConfig {...componentsProps} />
+          </Box>
+        </Container>
+      </NodeCard>
+    );
+  }, [componentsProps, data, selected]);
+
+  return Render;
 };
 export default React.memo(NodePluginConfig);
 
@@ -116,8 +120,10 @@ function Instruction({ chatConfig: { instruction }, setAppDetail }: ComponentPro
 function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: ComponentProps) {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodes = useContextSelector(WorkflowContext, (v) => v.nodes);
-  const pluginInputNode = nodes.find((item) => item.type === FlowNodeTypeEnum.pluginInput)!;
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const pluginInputNode = nodeList.find(
+    (item) => item.flowNodeType === FlowNodeTypeEnum.pluginInput
+  )!;
 
   return (
     <>
@@ -137,7 +143,7 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
 
           // Dynamic add or delete userFilesInput
           const canUploadFiles = e.canSelectFile || e.canSelectImg;
-          const repeatKey = pluginInputNode?.data.outputs.find(
+          const repeatKey = pluginInputNode?.outputs.find(
             (item) => item.key === userFilesInput.key
           );
           if (canUploadFiles) {
