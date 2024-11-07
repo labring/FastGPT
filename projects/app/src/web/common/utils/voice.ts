@@ -8,6 +8,7 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import { useTranslation } from 'next-i18next';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat.d';
 import { useMount } from 'ahooks';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const contentType = 'audio/mpeg';
 const splitMarker = 'SPLIT_MARKER';
@@ -45,7 +46,7 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
       setAudioLoading(true);
       audioController.current = new AbortController();
 
-      const response = await fetch('/api/core/chat/item/getSpeech', {
+      const response = await fetch(getWebReqUrl('/api/core/chat/item/getSpeech'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

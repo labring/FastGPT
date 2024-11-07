@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Image, Skeleton, ImageProps } from '@chakra-ui/react';
+import { Skeleton, ImageProps } from '@chakra-ui/react';
+import CustomImage from '@fastgpt/web/components/common/Image/MyImage';
 
 export const MyImage = (props: ImageProps) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -13,7 +14,7 @@ export const MyImage = (props: ImageProps) => {
       justifyContent={'center'}
       my={1}
     >
-      <Image
+      <CustomImage
         display={'inline-block'}
         borderRadius={'md'}
         alt={''}
