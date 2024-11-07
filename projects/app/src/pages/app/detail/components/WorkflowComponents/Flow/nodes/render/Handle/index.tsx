@@ -112,7 +112,15 @@ const MySourceHandle = React.memo(function MySourceHandle({
         position={position}
         isConnectableEnd={false}
       >
-        {showAddIcon && <MyIcon name={'edgeAdd'} pointerEvents={'none'} />}
+        {showAddIcon && (
+          <MyIcon
+            name={'edgeAdd'}
+            color={'primary.500'}
+            pointerEvents={'none'}
+            w={'14px'}
+            h={'14px'}
+          />
+        )}
       </Handle>
     );
   }, [handleId, position, showAddIcon, styles, transform]);

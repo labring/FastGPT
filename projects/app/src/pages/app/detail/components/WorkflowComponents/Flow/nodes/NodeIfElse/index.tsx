@@ -98,7 +98,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               nodeId={nodeId}
               handleId={elseHandleId}
               position={Position.Right}
-              translate={[20, 0]}
+              translate={[18, 0]}
             />
           </Flex>
         </Container>
