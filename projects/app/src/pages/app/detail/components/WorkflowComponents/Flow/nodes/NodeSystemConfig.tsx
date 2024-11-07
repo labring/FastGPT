@@ -247,14 +247,14 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
         if (canUploadFiles) {
           !repeatKey &&
             onChangeNode({
-              nodeId: workflowStartNode.id,
+              nodeId: workflowStartNode.nodeId,
               type: 'addOutput',
               value: userFilesInput
             });
         } else {
           repeatKey &&
             onChangeNode({
-              nodeId: workflowStartNode.id,
+              nodeId: workflowStartNode.nodeId,
               type: 'delOutput',
               key: userFilesInput.key
             });
