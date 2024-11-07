@@ -84,24 +84,34 @@ const pushChatLog = async ({ chatItemId, appId }: { chatItemId: string; appId: s
   if (!chatItem) {
     return;
   }
-  const [chat] = (await MongoChat.find({ chatId: chatItem.chatId }).lean()) as [
-    {
-      title: string;
-      outLinkUid: string;
-      metadata: Object;
-      source: string;
-    }
-  ];
+  const [chat] = (await MongoChat.find({ chatId: chatItem.chatId }).lean()) as {
+    title: string;
+    outLinkUid: string | undefined;
+    tmbId: string;
+    teamId: string;
+    metadata: Object;
+    source: string;
+  }[];
+
+  // addLog.info('ChatLogDebug', chat);
+  // addLog.info('ChatLogDebug', chatItem);
+
   if (!chat) {
     return;
   }
-  const [question, answer] =
+
+  const uid = chat.outLinkUid || chat.tmbId;
+  const qas =
     chatItem.responseData
       .find((item) => item.moduleType === 'chatNode')
       ?.historyPreview.map((item) => item.value) ?? [];
+  // Pop last two items
+  const answer = qas.pop();
+  const question = qas.pop();
   if (!question || !answer) {
     return;
   }
+
   const chatLog: ChatLog = {
     title: chat.title,
     feedback: (() => {
@@ -114,7 +124,7 @@ const pushChatLog = async ({ chatItemId, appId }: { chatItemId: string; appId: s
       }
     })(),
     chatItemId: chatItemId,
-    uid: chat.outLinkUid,
+    uid,
     question,
     answer,
     chatId: chatItem.chatId,
@@ -126,7 +136,10 @@ const pushChatLog = async ({ chatItemId, appId }: { chatItemId: string; appId: s
     createdAt: new Date(chatItem.time).getTime(),
     sourceId: `crbeer-fastgpt-${appId}`
   };
-  const result = await axios.post(url + '/api/chat/push', chatLog);
+  const result = await axios.post(url + '/api/chat/push', chatLog).catch((e) => {
+    addLog.error('PushChatLog', { e, resData: e.response?.data });
+  });
+  addLog.info('PushChatLog', result?.data);
 };
 
 export async function saveChat({
