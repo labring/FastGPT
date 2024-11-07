@@ -6,6 +6,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 
 const RenderFilePreview = ({
   fileList,
@@ -70,7 +71,7 @@ const RenderFilePreview = ({
                 />
               )}
               {isImage && (
-                <Image
+                <MyImage
                   alt={'img'}
                   src={item.icon}
                   w={'full'}
