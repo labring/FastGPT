@@ -149,7 +149,7 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
           if (canUploadFiles) {
             !repeatKey &&
               onChangeNode({
-                nodeId: pluginInputNode.id,
+                nodeId: pluginInputNode.nodeId,
                 type: 'addOutput',
                 value: {
                   ...userFilesInput,
@@ -159,7 +159,7 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
           } else {
             repeatKey &&
               onChangeNode({
-                nodeId: pluginInputNode.id,
+                nodeId: pluginInputNode.nodeId,
                 type: 'delOutput',
                 key: userFilesInput.key
               });
