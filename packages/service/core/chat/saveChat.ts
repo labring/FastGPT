@@ -73,7 +73,7 @@ export async function saveChat({
     });
 
     await mongoSessionRun(async (session) => {
-      const [{}, { _id: chatItemId }] = await MongoChatItem.insertMany(
+      const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi }] = await MongoChatItem.insertMany(
         content.map((item) => ({
           chatId,
           teamId,
@@ -111,7 +111,13 @@ export async function saveChat({
           upsert: true
         }
       );
-      pushChatLog({ chatItemId: String(chatItemId), appId });
+
+      pushChatLog({
+        chatId,
+        chatItemIdHuman: String(chatItemIdHuman),
+        chatItemIdAi: String(chatItemIdAi),
+        appId
+      });
     });
 
     if (isUpdateUseTime) {
