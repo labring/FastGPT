@@ -62,6 +62,7 @@ const ListItem = ({
         position={'relative'}
         transform={snapshot.isDragging ? `scale(${getZoom()})` : ''}
         transformOrigin={'top left'}
+        mb={2}
       >
         <Container w={snapshot.isDragging ? '' : 'full'} className="nodrag">
           <Flex mb={4} alignItems={'center'}>
