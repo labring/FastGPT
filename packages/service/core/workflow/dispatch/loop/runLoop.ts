@@ -51,23 +51,16 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
         node.flowNodeType === FlowNodeTypeEnum.loopStart
       ) {
         node.isEntry = true;
-        node.inputs = node.inputs.map((input) => {
+        node.inputs.forEach((input) => {
           if (input.key === NodeInputKeyEnum.loopStartInput) {
-            return {
-              ...input,
-              value: item
-            };
-          } else if (input.key === NodeInputKeyEnum.loopStartInput) {
-            return {
-              ...input,
-              value: index++
-            };
-          } else {
-            return input;
+            input.value = item;
+          } else if (input.key === NodeInputKeyEnum.loopStartIndex) {
+            input.value = index++;
           }
         });
       }
     });
+
     const response = await dispatchWorkFlow({
       ...props,
       runtimeEdges: cloneDeep(runtimeEdges)
@@ -77,11 +70,13 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       (res) => res.moduleType === FlowNodeTypeEnum.loopEnd
     )?.loopOutputValue;
 
+    // Concat runtime response
     outputValueArr.push(loopOutputValue);
     loopDetail.push(...response.flowResponses);
     assistantResponses.push(...response.assistantResponses);
+    totalPoints += response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
 
-    totalPoints = response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
+    // Concat new variables
     newVariables = {
       ...newVariables,
       ...response.newVariables

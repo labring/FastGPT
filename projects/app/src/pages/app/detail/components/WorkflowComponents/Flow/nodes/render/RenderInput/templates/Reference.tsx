@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -240,25 +240,42 @@ const MultipleReferenceSelector = ({
     [list]
   );
 
-  const ArraySelector = useMemo(() => {
-    const selectorVal = value as ReferenceItemValueType[];
-    const validSelectValue = selectorVal && selectorVal.length > 0;
+  // Get valid item and remove invalid item
+  const formatList = useMemo(() => {
+    if (!value) return [];
 
+    return value?.map((item) => {
+      const [nodeName, outputName] = getSelectValue(item);
+      return {
+        rawValue: item,
+        nodeName,
+        outputName
+      };
+    });
+  }, [getSelectValue, value]);
+
+  useEffect(() => {
+    const validList = formatList.filter((item) => item.nodeName && item.outputName);
+    if (validList.length !== value?.length) {
+      onSelect(validList.map((item) => item.rawValue));
+    }
+  }, [formatList, onSelect, value]);
+
+  const ArraySelector = useMemo(() => {
     return (
       <MultipleRowArraySelect
         label={
-          validSelectValue ? (
+          formatList.length > 0 ? (
             <Grid py={3} gridTemplateColumns={'1fr 1fr'} gap={2} fontSize={'sm'}>
-              {selectorVal?.map((item, index) => {
-                const [nodeName, outputName] = getSelectValue(item);
-                const isInvalidItem = !nodeName || !outputName;
+              {formatList.map(({ nodeName, outputName }, index) => {
+                if (!nodeName || !outputName) return null;
 
                 return (
                   <Flex
                     alignItems={'center'}
                     key={index}
-                    bg={isInvalidItem ? 'red.50' : 'primary.50'}
-                    color={isInvalidItem ? 'red.500' : 'myGray.900'}
+                    bg={'primary.50'}
+                    color={'myGray.900'}
                     py={1}
                     px={1.5}
                     rounded={'sm'}
@@ -269,27 +286,21 @@ const MultipleReferenceSelector = ({
                       maxW={'200px'}
                       className="textEllipsis"
                     >
-                      {isInvalidItem ? (
-                        <>{t('common:invalid_variable')}</>
-                      ) : (
-                        <>
-                          {nodeName}
-                          <MyIcon
-                            name={'common/rightArrowLight'}
-                            mx={1}
-                            w={'12px'}
-                            color={'myGray.500'}
-                          />
-                          {outputName}
-                        </>
-                      )}
+                      {nodeName}
+                      <MyIcon
+                        name={'common/rightArrowLight'}
+                        mx={1}
+                        w={'12px'}
+                        color={'myGray.500'}
+                      />
+                      {outputName}
                     </Flex>
                     <MyIcon
                       name={'common/closeLight'}
                       w={'1rem'}
                       ml={1}
                       cursor={'pointer'}
-                      color={isInvalidItem ? 'red.500' : 'myGray.500'}
+                      color={'myGray.500'}
                       _hover={{
                         color: 'red.600'
                       }}
@@ -308,13 +319,13 @@ const MultipleReferenceSelector = ({
             </Box>
           )
         }
-        value={selectorVal as any}
+        value={value as any}
         list={list}
         onSelect={onSelect as any}
         popDirection={popDirection}
       />
     );
-  }, [getSelectValue, list, onSelect, placeholder, popDirection, t, value]);
+  }, [formatList, list, onSelect, placeholder, popDirection, value]);
 
   return ArraySelector;
 };
