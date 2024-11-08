@@ -18,7 +18,7 @@ import { useWorkflow } from './hooks/useWorkflow';
 import HelperLines from './components/HelperLines';
 import FlowController from './components/FlowController';
 import ContextMenu from './components/ContextMenu';
-import { WorkflowActionContext, WorkflowInitContext } from '../context/workflowInitContext';
+import { WorkflowNodeEdgeContext, WorkflowInitContext } from '../context/workflowInitContext';
 import { WorkflowEventContext } from '../context/workflowEventContext';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
@@ -66,7 +66,7 @@ const edgeTypes = {
 
 const Workflow = () => {
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const edges = useContextSelector(WorkflowActionContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const reactFlowWrapper = useContextSelector(WorkflowEventContext, (v) => v.reactFlowWrapper);
   const workflowControlMode = useContextSelector(
     WorkflowEventContext,

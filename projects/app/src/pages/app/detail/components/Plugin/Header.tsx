@@ -30,7 +30,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SaveButton from '../Workflow/components/SaveButton';
 import PublishHistories from '../PublishHistoriesSlider';
 import {
-  WorkflowActionContext,
+  WorkflowNodeEdgeContext,
   WorkflowInitContext
 } from '../WorkflowComponents/context/workflowInitContext';
 import { WorkflowEventContext } from '../WorkflowComponents/context/workflowEventContext';
@@ -50,7 +50,7 @@ const Header = () => {
   } = useDisclosure();
 
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const edges = useContextSelector(WorkflowActionContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const {
     flowData2StoreData,
     flowData2StoreDataAndCheck,

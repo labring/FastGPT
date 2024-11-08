@@ -7,12 +7,12 @@ import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comme
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { useReactFlow } from 'reactflow';
-import { WorkflowActionContext } from '../../context/workflowInitContext';
+import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../context/workflowEventContext';
 
 const ContextMenu = () => {
   const { t } = useTranslation();
-  const setNodes = useContextSelector(WorkflowActionContext, (v) => v.setNodes);
+  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
   const menu = useContextSelector(WorkflowEventContext, (v) => v.menu);
   const setMenu = useContextSelector(WorkflowEventContext, (ctx) => ctx.setMenu);
 
