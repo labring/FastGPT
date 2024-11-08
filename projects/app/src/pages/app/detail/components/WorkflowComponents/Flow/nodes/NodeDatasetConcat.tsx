@@ -147,7 +147,7 @@ const VariableSelector = ({
   });
 
   const onSelect = useCallback(
-    (e: ReferenceItemValueType) => {
+    (e?: ReferenceItemValueType) => {
       if (!e) return;
 
       onChangeNode({

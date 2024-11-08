@@ -39,9 +39,16 @@ import { useTranslation } from 'next-i18next';
 import { formatTime2YMDHMS, formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { cloneDeep } from 'lodash';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
-import WorkflowInitContextProvider, { WorkflowActionContext } from './workflowInitContext';
+import WorkflowInitContextProvider, { WorkflowNodeEdgeContext } from './workflowInitContext';
 import WorkflowEventContextProvider from './workflowEventContext';
 
+/* 
+  Context
+  1. WorkflowInitContext: 带 nodes
+  2. WorkflowNodeEdgeContext: 除了 nodes 外的，nodes 操作。以及 edges 和其操作
+  3. WorkflowContextProvider: 旧的 context，未拆分
+  4. WorkflowEventContextProvider：一些边缘的 event
+*/
 export const ReactFlowCustomProvider = ({
   templates,
   children
@@ -322,8 +329,8 @@ const WorkflowContextProvider = ({
   const appId = appDetail._id;
 
   /* edge */
-  const edges = useContextSelector(WorkflowActionContext, (state) => state.edges);
-  const setEdges = useContextSelector(WorkflowActionContext, (state) => state.setEdges);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (state) => state.edges);
+  const setEdges = useContextSelector(WorkflowNodeEdgeContext, (state) => state.setEdges);
   const onDelEdge = useCallback(
     ({
       nodeId,
@@ -351,9 +358,12 @@ const WorkflowContextProvider = ({
   const [connectingEdge, setConnectingEdge] = useState<OnConnectStartParams>();
 
   /* node */
-  const setNodes = useContextSelector(WorkflowActionContext, (state) => state.setNodes);
-  const getNodes = useContextSelector(WorkflowActionContext, (state) => state.getNodes);
-  const nodeListString = useContextSelector(WorkflowActionContext, (state) => state.nodeListString);
+  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (state) => state.setNodes);
+  const getNodes = useContextSelector(WorkflowNodeEdgeContext, (state) => state.getNodes);
+  const nodeListString = useContextSelector(
+    WorkflowNodeEdgeContext,
+    (state) => state.nodeListString
+  );
 
   const nodeList = useMemo(
     () => JSON.parse(nodeListString) as FlowNodeItemType[],

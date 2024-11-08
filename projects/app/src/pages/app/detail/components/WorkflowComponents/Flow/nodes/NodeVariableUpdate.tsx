@@ -34,7 +34,7 @@ import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { useCreation, useMemoizedFn } from 'ahooks';
 import { getEditorVariables } from '../../utils';
 import { isArray } from 'lodash';
-import { WorkflowActionContext } from '../../context/workflowInitContext';
+import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -43,7 +43,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const edges = useContextSelector(WorkflowActionContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
 
   const menuList = useRef([
     {
@@ -104,14 +104,14 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         (item) => item.renderType === updateItem.renderType
       );
 
-      const handleUpdate = (newValue: ReferenceValueType | string) => {
+      const handleUpdate = (newValue?: ReferenceValueType | string) => {
         if (typeof newValue === 'string') {
           onUpdateList(
             updateList.map((update, i) =>
               i === index ? { ...update, value: ['', newValue] } : update
             )
           );
-        } else {
+        } else if (newValue) {
           onUpdateList(
             updateList.map((update, i) =>
               i === index ? { ...update, value: newValue as ReferenceItemValueType } : update
@@ -181,7 +181,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                         if (i === index) {
                           return {
                             ...update,
-                            value: ['', ''],
+                            value: undefined,
                             renderType:
                               updateItem.renderType === FlowNodeInputTypeEnum.input
                                 ? FlowNodeInputTypeEnum.reference
@@ -318,7 +318,7 @@ const VariableSelector = ({
   nodeId: string;
   variable?: ReferenceValueType;
   valueType?: WorkflowIOValueTypeEnum;
-  onSelect: (e: ReferenceValueType) => void;
+  onSelect: (e?: ReferenceValueType) => void;
 }) => {
   const { t } = useTranslation();
 

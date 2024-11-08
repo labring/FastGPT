@@ -51,13 +51,12 @@ const FlowController = React.memo(function FlowController() {
     e.stopPropagation();
     if (!mouseInCanvas) return;
 
-    const isUndo = e.key.toLowerCase() === 'z' && !e.shiftKey;
     const isRedo = (e.key.toLowerCase() === 'z' && e.shiftKey) || e.key.toLowerCase() === 'y';
 
-    if (isUndo) {
-      undo();
-    } else if (isRedo) {
+    if (isRedo) {
       redo();
+    } else {
+      undo();
     }
   });
 

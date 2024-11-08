@@ -49,7 +49,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getEditorVariables } from '../../../utils';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { WorkflowActionContext } from '../../../context/workflowInitContext';
+import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 
 const defaultFormBody = {
@@ -82,7 +82,7 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const edges = useContextSelector(WorkflowActionContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -259,7 +259,7 @@ export function RenderHttpProps({
   const { t } = useTranslation();
   const [selectedTab, setSelectedTab] = useState(TabEnum.params);
 
-  const edges = useContextSelector(WorkflowActionContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);

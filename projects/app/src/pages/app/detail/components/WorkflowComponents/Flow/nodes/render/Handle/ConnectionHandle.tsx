@@ -5,7 +5,7 @@ import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../../context';
-import { WorkflowActionContext } from '../../../../context/workflowInitContext';
+import { WorkflowNodeEdgeContext } from '../../../../context/workflowInitContext';
 
 export const ConnectionSourceHandle = ({
   nodeId,
@@ -14,7 +14,7 @@ export const ConnectionSourceHandle = ({
   nodeId: string;
   isFoldNode?: boolean;
 }) => {
-  const edges = useContextSelector(WorkflowActionContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const { connectingEdge, nodeList } = useContextSelector(WorkflowContext, (ctx) => ctx);
 
   const { showSourceHandle, RightHandle, LeftHandlee, TopHandlee, BottomHandlee } = useMemo(() => {
@@ -137,7 +137,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
 }: {
   nodeId: string;
 }) {
-  const edges = useContextSelector(WorkflowActionContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const { connectingEdge, nodeList } = useContextSelector(WorkflowContext, (ctx) => ctx);
 
   const { LeftHandle, rightHandle, topHandle, bottomHandle } = useMemo(() => {
