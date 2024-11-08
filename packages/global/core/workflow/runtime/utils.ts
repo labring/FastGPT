@@ -5,7 +5,7 @@ import { StoreNodeItemType } from '../type/node';
 import { StoreEdgeItemType } from '../type/edge';
 import { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
 import { VARIABLE_NODE_ID } from '../constants';
-import { isReferenceValue, isReferenceValueArray } from '../utils';
+import { isReferenceValueFormat } from '../utils';
 import { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
@@ -244,7 +244,7 @@ export const getReferenceVariableValue = ({
   const nodeIds = nodes.map((node) => node.nodeId);
 
   // handle single reference value
-  if (isReferenceValue(value, nodeIds)) {
+  if (isReferenceValueFormat(value)) {
     const sourceNodeId = value[0];
     const outputId = value[1];
 
@@ -261,12 +261,12 @@ export const getReferenceVariableValue = ({
   }
 
   // handle reference array
-  if (Array.isArray(value) && value.length > 0) {
-    const filterValue = value.filter((val) => {
-      return isReferenceValue(val, nodeIds);
-    });
-
-    const result = filterValue.map<any>((val) => {
+  if (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((item) => isReferenceValueFormat(item))
+  ) {
+    const result = value.map<any>((val) => {
       return getReferenceVariableValue({
         value: val,
         nodes,
@@ -274,7 +274,7 @@ export const getReferenceVariableValue = ({
       });
     });
 
-    return result.flat();
+    return result.flat().filter((item) => item !== undefined);
   }
 
   return value;

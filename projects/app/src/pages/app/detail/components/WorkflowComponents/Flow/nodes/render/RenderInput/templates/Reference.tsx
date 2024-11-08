@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { computedNodeInputReference } from '@/web/core/workflow/utils';
+import { computedNodeInputReference, filterOutputsType } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import {
   NodeOutputKeyEnum,
@@ -77,7 +77,6 @@ export const useReference = ({
     if (!sourceNodes) return [];
 
     const isArray = valueType?.includes('array');
-    const arrayItemType = isArray ? valueType.replace('array', '').toLowerCase() : valueType;
 
     // 转换为 select 的数据结构
     const list: CommonSelectProps['list'] = sourceNodes
@@ -90,16 +89,7 @@ export const useReference = ({
             </Flex>
           ),
           value: node.nodeId,
-          children: node.outputs
-            .filter(
-              (output) =>
-                valueType === WorkflowIOValueTypeEnum.any ||
-                valueType === WorkflowIOValueTypeEnum.arrayAny ||
-                output.valueType === WorkflowIOValueTypeEnum.any ||
-                output.valueType === valueType ||
-                // Array<String> can select string
-                arrayItemType === output.valueType
-            )
+          children: filterOutputsType(node.outputs, valueType)
             .filter((output) => output.id !== NodeOutputKeyEnum.addOutputParam)
             .map((output) => {
               return {
@@ -276,16 +266,20 @@ const MultipleReferenceSelector = ({
                       maxW={'200px'}
                       className="textEllipsis"
                     >
-                      {isInvalidItem ? t('common:invalid_variable') : nodeName}
-                      {!isInvalidItem && (
-                        <MyIcon
-                          name={'common/rightArrowLight'}
-                          mx={1}
-                          w={'12px'}
-                          color={isInvalidItem ? 'red.500' : 'myGray.500'}
-                        />
+                      {isInvalidItem ? (
+                        <>{t('common:invalid_variable')}</>
+                      ) : (
+                        <>
+                          {nodeName}
+                          <MyIcon
+                            name={'common/rightArrowLight'}
+                            mx={1}
+                            w={'12px'}
+                            color={'myGray.500'}
+                          />
+                          {outputName}
+                        </>
                       )}
-                      {outputName}
                     </Flex>
                     <MyIcon
                       name={'common/closeLight'}

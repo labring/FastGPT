@@ -306,6 +306,15 @@ export const isReferenceValue = (value: any, nodeIds: string[]): value is [strin
   const validIdSet = new Set([VARIABLE_NODE_ID, ...nodeIds]);
   return validIdSet.has(value[0]);
 };
+
+export const isReferenceValueFormat = (value: any): value is [string, string] => {
+  return (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    typeof value[0] === 'string' &&
+    typeof value[1] === 'string'
+  );
+};
 export const isReferenceValueArray = (
   value: any,
   nodeIds: string[]

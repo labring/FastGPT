@@ -113,39 +113,16 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     });
   }, [childrenNodeIdList, nodeId, onChangeNode]);
 
-  const boxRef = useRef<HTMLDivElement>(null);
-
-  const handleHeightChange = useCallback(() => {
-    resetParentNodeSizeAndPosition(nodeId);
-  }, [nodeId, resetParentNodeSizeAndPosition]);
-
-  // 添加高度变化监听
   useEffect(() => {
-    const element = boxRef.current;
-    if (!element) return;
-    console.log('element', element);
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      if (entries[0].contentRect.height !== element.offsetHeight) {
-        setTimeout(() => {
-          handleHeightChange();
-        }, 0);
-      }
-    });
-
-    resizeObserver.observe(element);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [handleHeightChange]);
+    resetParentNodeSizeAndPosition(nodeId);
+  }, [loopInputArray, nodeId, resetParentNodeSizeAndPosition]);
 
   const Render = useMemo(() => {
     return (
       <NodeCard selected={selected} maxW="full" menuForbid={{ copy: true }} {...data}>
         <Container position={'relative'} flex={1}>
           <IOTitle text={t('common:common.Input')} />
-          <Box ref={boxRef} mb={6} maxW={'500px'}>
+          <Box mb={6} maxW={'500px'}>
             <RenderInput nodeId={nodeId} flowInputList={inputs} />
           </Box>
           <FormLabel required fontWeight={'medium'} mb={3} color={'myGray.600'}>
