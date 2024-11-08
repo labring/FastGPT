@@ -6,12 +6,12 @@ import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/w
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { useThrottleEffect } from 'ahooks';
-import { WorkflowActionContext, WorkflowInitContext } from '../../context/workflowInitContext';
+import { WorkflowNodeEdgeContext, WorkflowInitContext } from '../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../context/workflowEventContext';
 
 const ButtonEdge = (props: EdgeProps) => {
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const onEdgesChange = useContextSelector(WorkflowActionContext, (v) => v.onEdgesChange);
+  const onEdgesChange = useContextSelector(WorkflowNodeEdgeContext, (v) => v.onEdgesChange);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const workflowDebugData = useContextSelector(WorkflowContext, (v) => v.workflowDebugData);
   const hoverEdgeId = useContextSelector(WorkflowEventContext, (v) => v.hoverEdgeId);

@@ -80,6 +80,6 @@ export type FlowNodeOutputItemType = {
   customFieldConfig?: CustomFieldConfigType;
 };
 
-export type ReferenceItemValueType = undefined | [string, string];
-export type ReferenceArrayValueType = undefined | [string, string][];
+export type ReferenceItemValueType = [string, string | undefined];
+export type ReferenceArrayValueType = ReferenceItemValueType[];
 export type ReferenceValueType = ReferenceItemValueType | ReferenceArrayValueType;
