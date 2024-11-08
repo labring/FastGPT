@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Background,
   ControlButton,
@@ -46,17 +46,24 @@ const FlowController = React.memo(function FlowController() {
 
   const isMac = !window ? false : window.navigator.userAgent.toLocaleLowerCase().includes('mac');
 
-  // Controller shortcut key
-  useKeyPress(['ctrl.z', 'meta.z'], (e) => {
+  useKeyPress(['ctrl.z', 'meta.z', 'ctrl.shift.z', 'meta.shift.z', 'ctrl.y', 'meta.y'], (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!mouseInCanvas) return;
-    undo();
+
+    const isUndo = e.key.toLowerCase() === 'z' && !e.shiftKey;
+    const isRedo = (e.key.toLowerCase() === 'z' && e.shiftKey) || e.key.toLowerCase() === 'y';
+
+    if (isUndo) {
+      undo();
+    } else if (isRedo) {
+      redo();
+    }
   });
-  useKeyPress(['ctrl.shift.z', 'meta.shift.z', 'ctrl.y', 'meta.y'], (e) => {
-    if (!mouseInCanvas) return;
-    redo();
-  });
+
   useKeyPress(['ctrl.add', 'meta.add', 'ctrl.equalsign', 'meta.equalsign'], (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!mouseInCanvas) return;
     zoomIn();
   });

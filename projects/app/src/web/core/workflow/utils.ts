@@ -24,7 +24,7 @@ import {
   getAppChatConfig,
   getGuideModule,
   isReferenceValue,
-  isReferenceValueArray
+  isReferenceValueFormat
 } from '@fastgpt/global/core/workflow/utils';
 import { TFunction } from 'next-i18next';
 import {
@@ -263,6 +263,20 @@ export const getRefData = ({
   };
 };
 
+export const filterWorkflowNodeOutputsByType = (
+  outputs: FlowNodeOutputItemType[],
+  valueType: WorkflowIOValueTypeEnum
+): FlowNodeOutputItemType[] => {
+  return outputs.filter(
+    (output) =>
+      valueType === WorkflowIOValueTypeEnum.any ||
+      valueType === WorkflowIOValueTypeEnum.arrayAny ||
+      output.valueType === WorkflowIOValueTypeEnum.any ||
+      output.valueType === valueType ||
+      valueType?.replace('array', '').toLowerCase() === output.valueType
+  );
+};
+
 /* Connection rules */
 export const checkWorkflowNodeAndConnection = ({
   nodes,
@@ -337,7 +351,7 @@ export const checkWorkflowNodeAndConnection = ({
 
         // check reference invalid
         const renderType = input.renderTypeList[input.selectedTypeIndex || 0];
-        if (renderType === FlowNodeInputTypeEnum.reference && input.required) {
+        if (renderType === FlowNodeInputTypeEnum.reference) {
           const checkReference = (value: [string, string]) => {
             if (value[0] === VARIABLE_NODE_ID) {
               return false;
@@ -348,18 +362,16 @@ export const checkWorkflowNodeAndConnection = ({
               return true;
             }
 
-            const sourceOutput = sourceNode.data.outputs.find((item) => item.id === value[1]);
+            const sourceOutput = filterWorkflowNodeOutputsByType(
+              sourceNode.data.outputs,
+              input.valueType as WorkflowIOValueTypeEnum
+            ).find((item) => item.id === value[1]);
             return !sourceOutput;
           };
 
           // Old format
-          if (
-            Array.isArray(input.value) &&
-            input.value.length === 2 &&
-            typeof input.value[0] === 'string' &&
-            typeof input.value[1] === 'string'
-          ) {
-            return checkReference(input.value as [string, string]);
+          if (isReferenceValueFormat(input.value)) {
+            return input.required && checkReference(input.value);
           }
 
           // New format

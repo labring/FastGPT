@@ -111,7 +111,7 @@ export const Input_Template_Node_Height: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.hidden],
   valueType: WorkflowIOValueTypeEnum.number,
   label: '',
-  value: 960
+  value: 600
 };
 
 export const Input_Template_Stream_MODE: FlowNodeInputItemType = {
