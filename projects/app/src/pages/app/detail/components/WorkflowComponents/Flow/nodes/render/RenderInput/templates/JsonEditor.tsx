@@ -50,7 +50,7 @@ const JsonEditor = ({ inputs = [], item, nodeId }: RenderInputProps) => {
     }
     return JSON.stringify(item.value, null, 2);
   }, [item.value]);
-  console.log(12121);
+
   return (
     <JSONEditor
       className="nowheel"
