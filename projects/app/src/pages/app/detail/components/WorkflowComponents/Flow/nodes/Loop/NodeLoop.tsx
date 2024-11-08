@@ -143,7 +143,6 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         }
       };
     });
-    console.log(childNodesChange);
 
     onNodesChange(childNodesChange);
   }, [size?.height]);

@@ -506,7 +506,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
         params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
       }
-
       params[input.key] = valueTypeFormat(value, input.valueType);
     });
 

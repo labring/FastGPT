@@ -231,7 +231,7 @@ const PluginRunContextProvider = ({
           controller: chatController.current,
           generatingMessage,
           variables: {
-            files: files,
+            files,
             ...variables
           }
         });

@@ -413,8 +413,10 @@ export const checkWorkflowNodeAndConnection = ({
               return true;
             }
 
-            return input.required && !isValidArrayReferenceValue(input.value, nodeIds);
+            return !isValidArrayReferenceValue(input.value, nodeIds);
           }
+
+          // Single reference
           return input.required && !isValidReferenceValue(input.value, nodeIds);
         }
         return false;
