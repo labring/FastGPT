@@ -121,7 +121,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
       };
 
       return (
-        <Container key={index} mt={4} w={'full'} mx={0}>
+        <Container key={index} w={'full'} mx={0}>
           <Flex alignItems={'center'}>
             <Flex w={'60px'}>{t('common:core.workflow.variable')}</Flex>
             <VariableSelector
@@ -268,11 +268,11 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     return (
       <NodeCard selected={selected} maxW={'1000px'} {...data}>
         <Box px={4} pb={4}>
-          <>
+          <Flex flexDirection={'column'} gap={4}>
             {updateList.map((updateItem, index) => (
               <ValueRender key={index} updateItem={updateItem} index={index} />
             ))}
-          </>
+          </Flex>
           <Flex
             className="nodrag"
             cursor={'default'}
