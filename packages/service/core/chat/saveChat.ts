@@ -111,13 +111,7 @@ export async function saveChat({
           upsert: true
         }
       );
-      const interval = Number(process.env.CHAT_LOG_INTERVAL);
-      if (interval > 0) {
-        addLog.info(`[ChatLogPush] push chat log after ${interval}ms`, { appId, chatItemId });
-        setTimeout(() => {
-          pushChatLog({ chatItemId: String(chatItemId), appId });
-        }, interval);
-      }
+      pushChatLog({ chatItemId: String(chatItemId), appId });
     });
 
     if (isUpdateUseTime) {

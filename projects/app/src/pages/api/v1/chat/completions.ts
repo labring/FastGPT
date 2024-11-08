@@ -63,7 +63,7 @@ import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/u
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
   appId?: string;
-  customUid?: string;
+  customUid?: string; // non-undefined: will be the priority provider for the logger.
   metadata?: Record<string, any>;
 };
 
@@ -126,7 +126,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new Error('messages is not array');
     }
 
-    /* 
+    /*
       Web params: chatId + [Human]
       API params: chatId + [Human]
       API params: [histories, Human]
@@ -143,7 +143,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return JSON.stringify(variables);
     })();
 
-    /* 
+    /*
       1. auth app permission
       2. auth balance
       3. get app

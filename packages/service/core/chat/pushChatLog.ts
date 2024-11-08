@@ -19,11 +19,26 @@ type ChatLog = {
   sourceId: string;
 };
 
-export const pushChatLog = async ({ chatItemId, appId }: { chatItemId: string; appId: string }) => {
+export const pushChatLog = ({ chatItemId, appId }: { chatItemId: string; appId: string }) => {
+  const interval = Number(process.env.CHAT_LOG_INTERVAL);
   const url = process.env.CHAT_LOG_URL;
-  if (!url) {
-    return;
+  if (interval > 0 && url) {
+    addLog.info(`[ChatLogPush] push chat log after ${interval}ms`, { appId, chatItemId });
+    setTimeout(() => {
+      pushChatLogInternal({ chatItemId: String(chatItemId), appId, url });
+    }, interval);
   }
+};
+
+const pushChatLogInternal = async ({
+  chatItemId,
+  appId,
+  url
+}: {
+  chatItemId: string;
+  appId: string;
+  url: string;
+}) => {
   const chatItem = (await MongoChatItem.findById(chatItemId)) as ChatItemType & {
     userGoodFeedback?: string;
     userBadFeedback?: string;
@@ -91,7 +106,7 @@ export const pushChatLog = async ({ chatItemId, appId }: { chatItemId: string; a
     sourceId: `crbeer-fastgpt-${appId}`
   };
   const result = await axios.post(url + '/api/chat/push', chatLog).catch((e) => {
-    addLog.error('[ChatLogPush ] push failed', { e, resData: e.response?.data });
+    addLog.error('[ChatLogPush] push failed', { e, resData: e.response?.data });
   });
   addLog.info('[ChatLogPush] push success', result?.data);
 };
