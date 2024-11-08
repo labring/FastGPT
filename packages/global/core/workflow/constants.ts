@@ -256,9 +256,9 @@ export enum NodeOutputKeyEnum {
 
   // loop
   loopArray = 'loopArray',
-
   // loop start
   loopStartInput = 'loopStartInput',
+  loopArrayIndex = 'loopArrayIndex',
 
   // form input
   formInputResult = 'formInputResult'
