@@ -309,7 +309,7 @@ const VariableSelector = ({
 }: {
   nodeId: string;
   variable?: ReferenceItemValueType;
-  onSelect: (e: ReferenceItemValueType) => void;
+  onSelect: (e?: ReferenceItemValueType) => void;
 }) => {
   const { t } = useTranslation();
 

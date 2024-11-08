@@ -50,7 +50,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { WorkflowActionContext } from '../context/workflowInitContext';
+import { WorkflowNodeEdgeContext } from '../context/workflowInitContext';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -389,7 +389,7 @@ const RenderList = React.memo(function RenderList({
   const { computedNewNodeName } = useWorkflowUtils();
   const { toast } = useToast();
 
-  const setNodes = useContextSelector(WorkflowActionContext, (v) => v.setNodes);
+  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const formatTemplates = useMemo<NodeTemplateListType>(() => {

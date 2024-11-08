@@ -56,7 +56,7 @@ type WorkflowActionContextType = {
   setEdges: Dispatch<SetStateAction<Edge<any>[]>>;
   onEdgesChange: OnChange<EdgeChange>;
 };
-export const WorkflowActionContext = createContext<WorkflowActionContextType>({
+export const WorkflowNodeEdgeContext = createContext<WorkflowActionContextType>({
   setNodes: function (
     value: React.SetStateAction<Node<FlowNodeItemType, string | undefined>[]>
   ): void {
@@ -128,9 +128,9 @@ const WorkflowInitContextProvider = ({ children }: { children: ReactNode }) => {
         nodes
       }}
     >
-      <WorkflowActionContext.Provider value={actionContextValue}>
+      <WorkflowNodeEdgeContext.Provider value={actionContextValue}>
         {children}
-      </WorkflowActionContext.Provider>
+      </WorkflowNodeEdgeContext.Provider>
     </WorkflowInitContext.Provider>
   );
 };

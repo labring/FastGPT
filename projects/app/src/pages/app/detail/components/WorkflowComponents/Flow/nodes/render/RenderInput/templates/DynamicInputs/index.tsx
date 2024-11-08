@@ -123,7 +123,8 @@ function Reference({
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
   const onSelect = useCallback(
-    (e: ReferenceValueType) => {
+    (e?: ReferenceValueType) => {
+      if (!e) return;
       onChangeNode({
         nodeId,
         type: 'replaceInput',
