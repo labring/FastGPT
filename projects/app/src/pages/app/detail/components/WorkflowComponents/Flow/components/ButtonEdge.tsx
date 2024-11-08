@@ -34,9 +34,12 @@ const ButtonEdge = (props: EdgeProps) => {
 
   // If parentNode is folded, the edge will not be displayed
   const parentNode = useMemo(() => {
-    return nodeList.find(
-      (node) => (node.nodeId === source || node.nodeId === target) && node.parentNodeId
-    );
+    for (const node of nodeList) {
+      if ((node.nodeId === source || node.nodeId === target) && node.parentNodeId) {
+        return nodeList.find((parent) => parent.nodeId === node.parentNodeId);
+      }
+    }
+    return undefined;
   }, [nodeList, source, target]);
 
   const defaultZIndex = useMemo(

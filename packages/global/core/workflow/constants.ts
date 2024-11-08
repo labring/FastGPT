@@ -201,6 +201,7 @@ export enum NodeInputKeyEnum {
   nodeHeight = 'nodeHeight',
   // loop start
   loopStartInput = 'loopStartInput',
+  loopStartIndex = 'loopStartIndex',
   // loop end
   loopEndInput = 'loopEndInput',
 
@@ -258,7 +259,7 @@ export enum NodeOutputKeyEnum {
   loopArray = 'loopArray',
   // loop start
   loopStartInput = 'loopStartInput',
-  loopArrayIndex = 'loopArrayIndex',
+  loopStartIndex = 'loopStartIndex',
 
   // form input
   formInputResult = 'formInputResult'

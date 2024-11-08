@@ -294,7 +294,20 @@ export const useWorkflow = () => {
 
   // Loop node size and position
   const resetParentNodeSizeAndPosition = useMemoizedFn((parentId: string) => {
-    const childNodes = nodes.filter((node) => node.data.parentNodeId === parentId);
+    const { childNodes, loopNode } = nodes.reduce(
+      (acc, node) => {
+        if (node.data.parentNodeId === parentId) {
+          acc.childNodes.push(node);
+        }
+        if (node.id === parentId) {
+          acc.loopNode = node;
+        }
+        return acc;
+      },
+      { childNodes: [] as Node[], loopNode: undefined as Node | undefined }
+    );
+
+    if (!loopNode) return;
 
     const rect = getNodesBounds(childNodes);
     // Calculate parent node size with minimum width/height constraints
@@ -320,7 +333,6 @@ export const useWorkflow = () => {
         value: height
       }
     });
-
     // Update parentNode position
     onNodesChange([
       {
