@@ -1,8 +1,13 @@
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../../node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '../../../node/constant';
 import { FlowNodeTemplateType } from '../../../type/node.d';
 import {
   FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum,
+  NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '../../../constants';
 import { getHandleConfig } from '../../utils';
@@ -30,5 +35,13 @@ export const LoopStartNode: FlowNodeTemplateType = {
       value: ''
     }
   ],
-  outputs: []
+  outputs: [
+    {
+      id: NodeOutputKeyEnum.loopArrayIndex,
+      key: NodeOutputKeyEnum.loopArrayIndex,
+      label: i18nT('workflow:Array_element_index'),
+      type: FlowNodeOutputTypeEnum.static,
+      valueType: WorkflowIOValueTypeEnum.number
+    }
+  ]
 };
