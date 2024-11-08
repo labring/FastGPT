@@ -34,7 +34,7 @@ import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { useCreation, useMemoizedFn } from 'ahooks';
 import { getEditorVariables } from '../../utils';
 import { isArray } from 'lodash';
-import { WorkflowActionContext } from '../../context/workflowInitContext';
+import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -43,7 +43,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const edges = useContextSelector(WorkflowActionContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
 
   const menuList = useRef([
     {

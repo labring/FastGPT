@@ -29,14 +29,14 @@ import { AppContext } from '../../../../context';
 import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
 import { useWorkflow } from '../../hooks/useWorkflow';
-import { WorkflowActionContext } from '../../../context/workflowInitContext';
+import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { useSize } from 'ahooks';
 
 const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, isFolded } = data;
-  const getNodes = useContextSelector(WorkflowActionContext, (v) => v.getNodes);
-  const onNodesChange = useContextSelector(WorkflowActionContext, (v) => v.onNodesChange);
+  const getNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.getNodes);
+  const onNodesChange = useContextSelector(WorkflowNodeEdgeContext, (v) => v.onNodesChange);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);

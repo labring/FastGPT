@@ -34,7 +34,7 @@ import { AppContext } from '../../../context';
 import { VariableInputItem } from '@/components/core/chat/ChatContainer/ChatBox/components/VariableInput';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
-import { WorkflowActionContext } from '../../context/workflowInitContext';
+import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
 
 const MyRightDrawer = dynamic(
   () => import('@fastgpt/web/components/common/MyDrawer/MyRightDrawer')
@@ -50,9 +50,9 @@ export const useDebug = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const setNodes = useContextSelector(WorkflowActionContext, (v) => v.setNodes);
-  const getNodes = useContextSelector(WorkflowActionContext, (v) => v.getNodes);
-  const edges = useContextSelector(WorkflowActionContext, (v) => v.edges);
+  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
+  const getNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.getNodes);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
   const onStartNodeDebug = useContextSelector(WorkflowContext, (v) => v.onStartNodeDebug);
 

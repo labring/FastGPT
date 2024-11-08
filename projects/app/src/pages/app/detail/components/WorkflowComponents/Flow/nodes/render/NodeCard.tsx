@@ -26,7 +26,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { WholeResponseContent } from '@/components/core/chat/components/WholeResponseModal';
 import { getDocPath } from '@/web/common/system/doc';
-import { WorkflowActionContext } from '../../../context/workflowInitContext';
+import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 
@@ -394,8 +394,8 @@ const MenuRender = React.memo(function MenuRender({
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
 
-  const setNodes = useContextSelector(WorkflowActionContext, (v) => v.setNodes);
-  const setEdges = useContextSelector(WorkflowActionContext, (v) => v.setEdges);
+  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
+  const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
   const { computedNewNodeName } = useWorkflowUtils();
 
   const onCopyNode = useCallback(

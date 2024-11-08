@@ -6,7 +6,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../../context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
-  WorkflowActionContext,
+  WorkflowNodeEdgeContext,
   WorkflowInitContext
 } from '../../../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../../../context/workflowEventContext';
@@ -29,7 +29,7 @@ const MySourceHandle = React.memo(function MySourceHandle({
   highlightStyle: Record<string, any>;
   connectedStyle: Record<string, any>;
 }) {
-  const edges = useContextSelector(WorkflowActionContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const hoverNodeId = useContextSelector(WorkflowEventContext, (v) => v.hoverNodeId);
@@ -154,7 +154,7 @@ const MyTargetHandle = React.memo(function MyTargetHandle({
   highlightStyle: Record<string, any>;
   connectedStyle: Record<string, any>;
 }) {
-  const edges = useContextSelector(WorkflowActionContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
 
   const connected = edges.some((edge) => edge.targetHandle === handleId);

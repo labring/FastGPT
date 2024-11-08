@@ -31,7 +31,7 @@ import {
   Input_Template_Node_Width
 } from '@fastgpt/global/core/workflow/template/input';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { WorkflowActionContext, WorkflowInitContext } from '../../context/workflowInitContext';
+import { WorkflowNodeEdgeContext, WorkflowInitContext } from '../../context/workflowInitContext';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { AppContext } from '../../../context';
 import { WorkflowEventContext } from '../../context/workflowEventContext';
@@ -278,10 +278,10 @@ export const useWorkflow = () => {
   const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
 
   const nodes = useContextSelector(WorkflowInitContext, (state) => state.nodes);
-  const onNodesChange = useContextSelector(WorkflowActionContext, (state) => state.onNodesChange);
-  const edges = useContextSelector(WorkflowActionContext, (state) => state.edges);
-  const setEdges = useContextSelector(WorkflowActionContext, (v) => v.setEdges);
-  const onEdgesChange = useContextSelector(WorkflowActionContext, (v) => v.onEdgesChange);
+  const onNodesChange = useContextSelector(WorkflowNodeEdgeContext, (state) => state.onNodesChange);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (state) => state.edges);
+  const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
+  const onEdgesChange = useContextSelector(WorkflowNodeEdgeContext, (v) => v.onEdgesChange);
   const { setConnectingEdge, nodeList, onChangeNode, pushPastSnapshot } = useContextSelector(
     WorkflowContext,
     (v) => v
