@@ -17,6 +17,8 @@ export const dispatchPluginInput = (props: PluginInputProps) => {
     * 插件单独运行时，这里会是一个特殊的数组
     * 插件调用的话，这个参数是一个 string[] 不会进行处理
     * 硬性要求：API 单独调用插件时，要避免这种特殊类型冲突
+    
+    TODO: 需要 filter max files
   */
   for (const key in params) {
     const val = params[key];
