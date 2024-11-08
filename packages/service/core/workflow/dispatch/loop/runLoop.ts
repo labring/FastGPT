@@ -43,6 +43,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   let totalPoints = 0;
   let newVariables: Record<string, any> = props.variables;
 
+  let index = 0;
   for await (const item of loopInputArray.filter(Boolean)) {
     runtimeNodes.forEach((node) => {
       if (
@@ -50,14 +51,21 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
         node.flowNodeType === FlowNodeTypeEnum.loopStart
       ) {
         node.isEntry = true;
-        node.inputs = node.inputs.map((input) =>
-          input.key === NodeInputKeyEnum.loopStartInput
-            ? {
-                ...input,
-                value: item
-              }
-            : input
-        );
+        node.inputs = node.inputs.map((input) => {
+          if (input.key === NodeInputKeyEnum.loopStartInput) {
+            return {
+              ...input,
+              value: item
+            };
+          } else if (input.key === NodeInputKeyEnum.loopStartInput) {
+            return {
+              ...input,
+              value: index++
+            };
+          } else {
+            return input;
+          }
+        });
       }
     });
     const response = await dispatchWorkFlow({
