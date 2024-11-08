@@ -43,15 +43,11 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   const { resetParentNodeSizeAndPosition } = useWorkflow();
 
-  const loopInputArray = useMemo(
-    () => inputs.find((input) => input.key === NodeInputKeyEnum.loopInputArray),
-    [inputs]
-  );
-
-  const { nodeWidth, nodeHeight } = useMemo(() => {
+  const { nodeWidth, nodeHeight, loopInputArray } = useMemo(() => {
     return {
       nodeWidth: inputs.find((input) => input.key === NodeInputKeyEnum.nodeWidth)?.value,
-      nodeHeight: inputs.find((input) => input.key === NodeInputKeyEnum.nodeHeight)?.value
+      nodeHeight: inputs.find((input) => input.key === NodeInputKeyEnum.nodeHeight)?.value,
+      loopInputArray: inputs.find((input) => input.key === NodeInputKeyEnum.loopInputArray)
     };
   }, [inputs]);
 
