@@ -237,7 +237,9 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     node.outputs
       .filter(
         (item) =>
-          item.key !== NodeOutputKeyEnum.error && item.key !== NodeOutputKeyEnum.httpRawResponse
+          item.id !== NodeOutputKeyEnum.error &&
+          item.id !== NodeOutputKeyEnum.httpRawResponse &&
+          item.id !== NodeOutputKeyEnum.addOutputParam
       )
       .forEach((item) => {
         const key = item.key.startsWith('$') ? item.key : `$.${item.key}`;
