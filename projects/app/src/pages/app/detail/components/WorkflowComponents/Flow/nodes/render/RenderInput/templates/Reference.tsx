@@ -2,7 +2,10 @@ import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { computedNodeInputReference } from '@/web/core/workflow/utils';
+import {
+  computedNodeInputReference,
+  filterWorkflowNodeOutputsByType
+} from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import {
   NodeOutputKeyEnum,
@@ -77,7 +80,6 @@ export const useReference = ({
     if (!sourceNodes) return [];
 
     const isArray = valueType?.includes('array');
-    const arrayItemType = isArray ? valueType.replace('array', '').toLowerCase() : valueType;
 
     // 转换为 select 的数据结构
     const list: CommonSelectProps['list'] = sourceNodes
@@ -90,16 +92,7 @@ export const useReference = ({
             </Flex>
           ),
           value: node.nodeId,
-          children: node.outputs
-            .filter(
-              (output) =>
-                valueType === WorkflowIOValueTypeEnum.any ||
-                valueType === WorkflowIOValueTypeEnum.arrayAny ||
-                output.valueType === WorkflowIOValueTypeEnum.any ||
-                output.valueType === valueType ||
-                // Array<String> can select string
-                arrayItemType === output.valueType
-            )
+          children: filterWorkflowNodeOutputsByType(node.outputs, valueType)
             .filter((output) => output.id !== NodeOutputKeyEnum.addOutputParam)
             .map((output) => {
               return {
@@ -199,7 +192,7 @@ const SingleReferenceSelector = ({
         label={
           isValidSelect ? (
             <Flex gap={2} alignItems={'center'} fontSize={'sm'}>
-              <Flex py={1} pl={1}>
+              <Flex py={1} pl={1} alignItems={'center'}>
                 {nodeName}
                 <MyIcon name={'common/rightArrowLight'} mx={1} w={'12px'} color={'myGray.500'} />
                 {outputName}
@@ -249,20 +242,14 @@ const MultipleReferenceSelector = ({
 
   const ArraySelector = useMemo(() => {
     const selectorVal = value as ReferenceItemValueType[];
-    const notValidItem =
-      !selectorVal ||
-      selectorVal.length === 0 ||
-      selectorVal.every((item) => {
-        const [nodeName, outputName] = getSelectValue(item);
-        return !nodeName || !outputName;
-      });
+    const validSelectValue = selectorVal && selectorVal.length > 0;
 
     return (
       <MultipleRowArraySelect
         label={
-          !notValidItem ? (
+          validSelectValue ? (
             <Grid py={3} gridTemplateColumns={'1fr 1fr'} gap={2} fontSize={'sm'}>
-              {selectorVal.map((item, index) => {
+              {selectorVal?.map((item, index) => {
                 const [nodeName, outputName] = getSelectValue(item);
                 const isInvalidItem = !nodeName || !outputName;
 
@@ -270,8 +257,8 @@ const MultipleReferenceSelector = ({
                   <Flex
                     alignItems={'center'}
                     key={index}
-                    bg={'primary.50'}
-                    color={'myGray.900'}
+                    bg={isInvalidItem ? 'red.50' : 'primary.50'}
+                    color={isInvalidItem ? 'red.500' : 'myGray.900'}
                     py={1}
                     px={1.5}
                     rounded={'sm'}
@@ -282,21 +269,27 @@ const MultipleReferenceSelector = ({
                       maxW={'200px'}
                       className="textEllipsis"
                     >
-                      {nodeName}
-                      <MyIcon
-                        name={'common/rightArrowLight'}
-                        mx={1}
-                        w={'12px'}
-                        color={'myGray.500'}
-                      />
-                      {outputName}
+                      {isInvalidItem ? (
+                        <>{t('common:invalid_variable')}</>
+                      ) : (
+                        <>
+                          {nodeName}
+                          <MyIcon
+                            name={'common/rightArrowLight'}
+                            mx={1}
+                            w={'12px'}
+                            color={'myGray.500'}
+                          />
+                          {outputName}
+                        </>
+                      )}
                     </Flex>
                     <MyIcon
                       name={'common/closeLight'}
                       w={'1rem'}
                       ml={1}
                       cursor={'pointer'}
-                      color={'myGray.500'}
+                      color={isInvalidItem ? 'red.500' : 'myGray.500'}
                       _hover={{
                         color: 'red.600'
                       }}
@@ -321,7 +314,7 @@ const MultipleReferenceSelector = ({
         popDirection={popDirection}
       />
     );
-  }, [getSelectValue, list, onSelect, placeholder, popDirection, value]);
+  }, [getSelectValue, list, onSelect, placeholder, popDirection, t, value]);
 
   return ArraySelector;
 };

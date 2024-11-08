@@ -355,7 +355,6 @@ const WorkflowContextProvider = ({
   const getNodes = useContextSelector(WorkflowActionContext, (state) => state.getNodes);
   const nodeListString = useContextSelector(WorkflowActionContext, (state) => state.nodeListString);
 
-  console.log(121211111111);
   const nodeList = useMemo(
     () => JSON.parse(nodeListString) as FlowNodeItemType[],
     [nodeListString]
