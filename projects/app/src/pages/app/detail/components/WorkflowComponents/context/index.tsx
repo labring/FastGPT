@@ -364,7 +364,6 @@ const WorkflowContextProvider = ({
     WorkflowNodeEdgeContext,
     (state) => state.nodeListString
   );
-
   const nodeList = useMemo(
     () => JSON.parse(nodeListString) as FlowNodeItemType[],
     [nodeListString]

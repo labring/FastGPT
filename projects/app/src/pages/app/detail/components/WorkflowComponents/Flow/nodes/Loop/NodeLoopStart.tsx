@@ -121,7 +121,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                             mr={1}
                             color={'primary.600'}
                           />
-                          {t(output.label)}
+                          {t(output.label as any)}
                         </Flex>
                       </Td>
                       {output.valueType && <Td>{FlowValueTypeMap[output.valueType]?.label}</Td>}

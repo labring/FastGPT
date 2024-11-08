@@ -239,7 +239,7 @@ export const getReferenceVariableValue = ({
   nodes: RuntimeNodeItemType[];
   variables: Record<string, any>;
 }) => {
-  if (!value) return undefined;
+  if (!value) return value;
 
   // handle single reference value
   if (isValidReferenceValueFormat(value)) {
@@ -253,7 +253,7 @@ export const getReferenceVariableValue = ({
 
     const node = nodes.find((node) => node.nodeId === sourceNodeId);
     if (!node) {
-      return undefined;
+      return value;
     }
 
     return node.outputs.find((output) => output.id === outputId)?.value;
