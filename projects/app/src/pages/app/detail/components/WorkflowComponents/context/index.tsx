@@ -47,7 +47,7 @@ import WorkflowEventContextProvider from './workflowEventContext';
   1. WorkflowInitContext: 带 nodes
   2. WorkflowNodeEdgeContext: 除了 nodes 外的，nodes 操作。以及 edges 和其操作
   3. WorkflowContextProvider: 旧的 context，未拆分
-  4. WorkflowEventContextProvider：
+  4. WorkflowEventContextProvider：一些边缘的 event
 */
 export const ReactFlowCustomProvider = ({
   templates,
