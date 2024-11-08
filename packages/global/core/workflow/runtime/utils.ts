@@ -235,7 +235,7 @@ export const getReferenceVariableValue = ({
   nodes,
   variables
 }: {
-  value: ReferenceValueType;
+  value?: ReferenceValueType;
   nodes: RuntimeNodeItemType[];
   variables: Record<string, any>;
 }) => {

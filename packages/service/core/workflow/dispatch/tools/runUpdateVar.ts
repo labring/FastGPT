@@ -34,6 +34,10 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
     const varNodeId = variable[0];
     const varKey = variable[1];
 
+    if (!varKey) {
+      return null;
+    }
+
     const value = (() => {
       // If first item is empty, it means it is a input value
       if (!item.value?.[0]) {

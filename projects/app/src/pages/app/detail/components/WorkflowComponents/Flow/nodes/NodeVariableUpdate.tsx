@@ -104,14 +104,14 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         (item) => item.renderType === updateItem.renderType
       );
 
-      const handleUpdate = (newValue: ReferenceValueType | string) => {
+      const handleUpdate = (newValue?: ReferenceValueType | string) => {
         if (typeof newValue === 'string') {
           onUpdateList(
             updateList.map((update, i) =>
               i === index ? { ...update, value: ['', newValue] } : update
             )
           );
-        } else {
+        } else if (newValue) {
           onUpdateList(
             updateList.map((update, i) =>
               i === index ? { ...update, value: newValue as ReferenceItemValueType } : update
@@ -181,7 +181,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                         if (i === index) {
                           return {
                             ...update,
-                            value: ['', ''],
+                            value: undefined,
                             renderType:
                               updateItem.renderType === FlowNodeInputTypeEnum.input
                                 ? FlowNodeInputTypeEnum.reference
@@ -318,7 +318,7 @@ const VariableSelector = ({
   nodeId: string;
   variable?: ReferenceValueType;
   valueType?: WorkflowIOValueTypeEnum;
-  onSelect: (e: ReferenceValueType) => void;
+  onSelect: (e?: ReferenceValueType) => void;
 }) => {
   const { t } = useTranslation();
 
