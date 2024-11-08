@@ -5,8 +5,8 @@
 */
 
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import React, { useEffect, useMemo, useRef, useCallback } from 'react';
-import { Background, NodeProps } from 'reactflow';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { Background, NodePositionChange, NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
@@ -26,18 +26,27 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { AppContext } from '../../../../context';
-import { isReferenceValue, isReferenceValueArray } from '@fastgpt/global/core/workflow/utils';
-import { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
+import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
+import { ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
 import { useWorkflow } from '../../hooks/useWorkflow';
+import { WorkflowActionContext } from '../../../context/workflowInitContext';
+import { useSize } from 'ahooks';
 
 const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, isFolded } = data;
-  const { onChangeNode, nodeList } = useContextSelector(WorkflowContext, (v) => v);
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const getNodes = useContextSelector(WorkflowActionContext, (v) => v.getNodes);
+  const onNodesChange = useContextSelector(WorkflowActionContext, (v) => v.onNodesChange);
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+
   const { resetParentNodeSizeAndPosition } = useWorkflow();
 
-  const loopInputArray = inputs.find((input) => input.key === NodeInputKeyEnum.loopInputArray);
+  const loopInputArray = useMemo(
+    () => inputs.find((input) => input.key === NodeInputKeyEnum.loopInputArray),
+    [inputs]
+  );
 
   const { nodeWidth, nodeHeight } = useMemo(() => {
     return {
@@ -46,23 +55,28 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     };
   }, [inputs]);
 
-  const childrenNodeIdList = useMemo(() => {
-    return JSON.stringify(
-      nodeList.filter((node) => node.parentNodeId === nodeId).map((node) => node.nodeId)
-    );
-  }, [nodeId, nodeList]);
-
-  // Detect and update array input type
+  // Update array input type
+  // Computed the reference value type
   const newValueType = useMemo(() => {
     if (!loopInputArray) return WorkflowIOValueTypeEnum.arrayAny;
+    const value = loopInputArray.value as ReferenceArrayValueType;
 
-    const nodeIds = nodeList.map((node) => node.nodeId);
+    if (
+      !value ||
+      value.length === 0 ||
+      !isValidArrayReferenceValue(
+        value,
+        nodeList.map((node) => node.nodeId)
+      )
+    )
+      return WorkflowIOValueTypeEnum.arrayAny;
+
     const globalVariables = getWorkflowGlobalVariables({
       nodes: nodeList,
       chatConfig: appDetail.chatConfig
     });
 
-    const getValueType = (value: ReferenceItemValueType) => {
+    const valueType = ((value) => {
       if (value?.[0] === VARIABLE_NODE_ID) {
         return globalVariables.find((item) => item.key === value[1])?.valueType;
       } else {
@@ -70,21 +84,8 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         const output = node?.outputs.find((output) => output.id === value?.[1]);
         return output?.valueType;
       }
-    };
-
-    const valueType = (() => {
-      if (isReferenceValue(loopInputArray?.value, nodeIds)) {
-        return getValueType(loopInputArray?.value);
-      } else if (isReferenceValueArray(loopInputArray?.value, nodeIds)) {
-        return getValueType(loopInputArray?.value?.[0]);
-      } else {
-        return WorkflowIOValueTypeEnum.arrayAny;
-      }
-    })();
-
-    const type = ArrayTypeMap[valueType as keyof typeof ArrayTypeMap];
-
-    return type ?? WorkflowIOValueTypeEnum.arrayAny;
+    })(value[0]);
+    return ArrayTypeMap[valueType as keyof typeof ArrayTypeMap] ?? WorkflowIOValueTypeEnum.arrayAny;
   }, [appDetail.chatConfig, loopInputArray, nodeList]);
 
   useEffect(() => {
@@ -101,6 +102,11 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   }, [newValueType]);
 
   // Update childrenNodeIdList
+  const childrenNodeIdList = useMemo(() => {
+    return JSON.stringify(
+      nodeList.filter((node) => node.parentNodeId === nodeId).map((node) => node.nodeId)
+    );
+  }, [nodeId, nodeList]);
   useEffect(() => {
     onChangeNode({
       nodeId,
@@ -111,20 +117,47 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         value: JSON.parse(childrenNodeIdList)
       }
     });
-  }, [childrenNodeIdList, nodeId, onChangeNode]);
+    resetParentNodeSizeAndPosition(nodeId);
+  }, [childrenNodeIdList]);
 
+  // Update child node position
+  const inputBoxRef = useRef<HTMLDivElement>(null);
+  const size = useSize(inputBoxRef);
+  const prevHeightRef = useRef<number>(); // 添加 ref 来存储前一个高度值
   useEffect(() => {
-    setTimeout(() => {
-      resetParentNodeSizeAndPosition(nodeId);
-    }, 0);
-  }, [loopInputArray, nodeId, resetParentNodeSizeAndPosition]);
+    if (!size?.height) return;
+    if (prevHeightRef.current === size.height) return;
+    const diffHeight = prevHeightRef.current ? size.height - prevHeightRef.current : 0;
+    prevHeightRef.current = size.height;
+
+    if (diffHeight === 0) return;
+
+    // Get the height of the input box
+    // Computed input
+    const nodes = getNodes();
+    const childNodes = nodes.filter((n) => n.data.parentNodeId === nodeId);
+
+    const childNodesChange: NodePositionChange[] = childNodes.map((node) => {
+      return {
+        type: 'position',
+        id: node.id,
+        position: {
+          x: node.position.x,
+          y: node.position.y + diffHeight
+        }
+      };
+    });
+    console.log(childNodesChange);
+
+    onNodesChange(childNodesChange);
+  }, [size?.height]);
 
   const Render = useMemo(() => {
     return (
       <NodeCard selected={selected} maxW="full" menuForbid={{ copy: true }} {...data}>
         <Container position={'relative'} flex={1}>
           <IOTitle text={t('common:common.Input')} />
-          <Box mb={6} maxW={'500px'}>
+          <Box mb={6} maxW={'500px'} ref={inputBoxRef}>
             <RenderInput nodeId={nodeId} flowInputList={inputs} />
           </Box>
           <FormLabel required fontWeight={'medium'} mb={3} color={'myGray.600'}>

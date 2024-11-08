@@ -11,7 +11,7 @@ import {
 import { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { removeSystemVariable, valueTypeFormat } from '../utils';
-import { isReferenceValue } from '@fastgpt/global/core/workflow/utils';
+import { isValidReferenceValue } from '@fastgpt/global/core/workflow/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.updateList]: TUpdateListItem[];
@@ -27,7 +27,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
   const result = updateList.map((item) => {
     const variable = item.variable;
 
-    if (!isReferenceValue(variable, nodeIds)) {
+    if (!isValidReferenceValue(variable, nodeIds)) {
       return null;
     }
 

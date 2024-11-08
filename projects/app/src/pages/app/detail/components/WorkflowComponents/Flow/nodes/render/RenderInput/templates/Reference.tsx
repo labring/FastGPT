@@ -119,7 +119,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   const isArray = item.valueType?.includes('array') ?? false;
 
   const onSelect = useCallback(
-    (e: ReferenceValueType) => {
+    (e?: ReferenceValueType) => {
       onChangeNode({
         nodeId,
         type: 'updateInput',

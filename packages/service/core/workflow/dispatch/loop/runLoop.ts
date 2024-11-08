@@ -25,7 +25,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     user,
     node: { name }
   } = props;
-  const { loopInputArray = [], childrenNodeIdList } = params;
+  const { loopInputArray = [], childrenNodeIdList = [] } = params;
 
   if (!Array.isArray(loopInputArray)) {
     return Promise.reject('Input value is not an array');

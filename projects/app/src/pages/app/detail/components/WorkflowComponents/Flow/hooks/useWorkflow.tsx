@@ -294,20 +294,9 @@ export const useWorkflow = () => {
 
   // Loop node size and position
   const resetParentNodeSizeAndPosition = useMemoizedFn((parentId: string) => {
-    const { childNodes, loopNode } = nodes.reduce(
-      (acc, node) => {
-        if (node.data.parentNodeId === parentId) {
-          acc.childNodes.push(node);
-        }
-        if (node.id === parentId) {
-          acc.loopNode = node;
-        }
-        return acc;
-      },
-      { childNodes: [] as Node[], loopNode: undefined as Node | undefined }
-    );
-    const rect = getNodesBounds(childNodes);
+    const childNodes = nodes.filter((node) => node.data.parentNodeId === parentId);
 
+    const rect = getNodesBounds(childNodes);
     // Calculate parent node size with minimum width/height constraints
     const width = Math.max(rect.width + 80, 840);
     const height = Math.max(rect.height + 80, 600);
@@ -332,9 +321,6 @@ export const useWorkflow = () => {
       }
     });
 
-    // Calculate position offset
-    const offsetHeight = loopNode?.height ? loopNode.height - height - 380 : 0;
-
     // Update parentNode position
     onNodesChange([
       {
@@ -342,7 +328,7 @@ export const useWorkflow = () => {
         type: 'position',
         position: {
           x: rect.x - 70,
-          y: rect.y - (320 + offsetHeight)
+          y: rect.y - 320
         }
       }
     ]);
@@ -392,15 +378,6 @@ export const useWorkflow = () => {
 
   // Check if a node is placed on top of a loop node
   const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
-    if (!node) return;
-
-    // 获取所有与当前节点相交的节点
-    const intersections = getIntersectingNodes(node);
-    // 获取所有与当前节点相交的节点中，类型为 loop 的节点且它不能是折叠状态
-    const parentNode = intersections.find(
-      (item) => !item.data.isFolded && item.type === FlowNodeTypeEnum.loop
-    );
-
     const unSupportedTypes = [
       FlowNodeTypeEnum.workflowStart,
       FlowNodeTypeEnum.loop,
@@ -409,7 +386,16 @@ export const useWorkflow = () => {
       FlowNodeTypeEnum.systemConfig
     ];
 
-    if (parentNode && !node.data.parentNodeId) {
+    if (!node || node.data.parentNodeId) return;
+
+    // 获取所有与当前节点相交的节点
+    const intersections = getIntersectingNodes(node);
+    // 获取所有与当前节点相交的节点中，类型为 loop 的节点且它不能是折叠状态
+    const parentNode = intersections.find(
+      (item) => !item.data.isFolded && item.type === FlowNodeTypeEnum.loop
+    );
+
+    if (parentNode) {
       if (unSupportedTypes.includes(node.type as FlowNodeTypeEnum)) {
         return toast({
           status: 'warning',
@@ -427,8 +413,6 @@ export const useWorkflow = () => {
       setEdges((state) =>
         state.filter((edge) => edge.source !== node.id && edge.target !== node.id)
       );
-
-      resetParentNodeSizeAndPosition(parentNode.id);
     }
   });
 

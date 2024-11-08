@@ -12,7 +12,12 @@ import {
   VARIABLE_NODE_ID,
   NodeOutputKeyEnum
 } from './constants';
-import { FlowNodeInputItemType, FlowNodeOutputItemType } from './type/io.d';
+import {
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType,
+  ReferenceArrayValueType,
+  ReferenceItemValueType
+} from './type/io.d';
 import { StoreNodeItemType } from './type/node';
 import type {
   VariableItemType,
@@ -300,28 +305,37 @@ export const formatEditorVariablePickerIcon = (
   }));
 };
 
-export const isReferenceValue = (value: any, nodeIds: string[]): value is [string, string] => {
-  if (!Array.isArray(value) || value.length !== 2 || typeof value[0] !== 'string') return false;
+// Check the value is a valid reference value format: [variableId, outputId]
+export const isValidReferenceValueFormat = (value: any): value is ReferenceItemValueType => {
+  return Array.isArray(value) && value.length === 2 && typeof value[0] === 'string';
+};
+/* 
+  Check whether the value([variableId, outputId]) value is a valid reference value:
+  1. The value must be an array of length 2
+  2. The first item of the array must be one of VARIABLE_NODE_ID or nodeIds
+*/
+export const isValidReferenceValue = (
+  value: any,
+  nodeIds: string[]
+): value is ReferenceItemValueType => {
+  if (!isValidReferenceValueFormat(value)) return false;
 
   const validIdSet = new Set([VARIABLE_NODE_ID, ...nodeIds]);
   return validIdSet.has(value[0]);
 };
-
-export const isReferenceValueFormat = (value: any): value is [string, string] => {
-  return (
-    Array.isArray(value) &&
-    value.length === 2 &&
-    typeof value[0] === 'string' &&
-    typeof value[1] === 'string'
-  );
-};
-export const isReferenceValueArray = (
+/* 
+  Check whether the value([variableId, outputId][]) value is a valid reference value array:
+  1. The value must be an array
+  2. The array must contain at least one element
+  3. Each element in the array must be a valid reference value
+*/
+export const isValidArrayReferenceValue = (
   value: any,
   nodeIds: string[]
-): value is [string, string][] => {
-  if (!Array.isArray(value) || value.length === 0) return false;
+): value is ReferenceArrayValueType => {
+  if (!Array.isArray(value)) return false;
 
-  return value.every((item) => isReferenceValue(item, nodeIds));
+  return value.every((item) => isValidReferenceValue(item, nodeIds));
 };
 
 export const getElseIFLabel = (i: number) => {
