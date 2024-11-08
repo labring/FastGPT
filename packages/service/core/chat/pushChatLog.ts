@@ -2,7 +2,7 @@ import { addLog } from '../../common/system/log';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import axios from 'axios';
-import { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { AIChatItemType, ChatItemType } from '@fastgpt/global/core/chat/type';
 
 export type Metadata = {
   [key: string]: {
@@ -81,17 +81,15 @@ const pushChatLogInternal = async ({
   metadata?: Metadata;
 }) => {
   const [chatItemHuman, chatItemAi] = await Promise.all([
-    MongoChatItem.findById(chatItemIdHuman).lean() as Promise<ChatItem>,
-    MongoChatItem.findById(chatItemIdAi).lean() as Promise<ChatItem>
+    MongoChatItem.findById(chatItemIdHuman).lean(),
+    MongoChatItem.findById(chatItemIdAi).lean() as Promise<AIChatItemType>
   ]);
-  const [chat] = (await MongoChat.find({ chatId }).lean()) as {
-    title: string;
-    outLinkUid: string | undefined;
-    tmbId: string;
-    teamId: string;
-    metadata: Object;
-    source: string;
-  }[];
+
+  if (!chatItemHuman || !chatItemAi) {
+    return;
+  }
+
+  const chat = await MongoChat.findOne({ chatId }).lean();
 
   // addLog.warn('ChatLogDebug', chat);
   // addLog.warn('ChatLogDebug', { chatItemHuman, chatItemAi });
@@ -114,10 +112,7 @@ const pushChatLogInternal = async ({
     return;
   }
   const responseData = chatItemAi.responseData;
-  let responseTime = 0;
-  responseData.forEach((item) => {
-    responseTime += item.runningTime;
-  });
+  const responseTime = responseData?.reduce((acc, item) => acc + (item?.runningTime ?? 0), 0) || 0;
 
   const chatLog: ChatLog = {
     title: chat.title,
@@ -138,6 +133,7 @@ const pushChatLogInternal = async ({
     responseTime: responseTime * 1000,
     metadata: metadataString,
     sourceName: chat.source ?? '-',
+    // @ts-ignore
     createdAt: new Date(chatItemAi.time).getTime(),
     sourceId: `crbeer-fastgpt-${appId}`
   };
