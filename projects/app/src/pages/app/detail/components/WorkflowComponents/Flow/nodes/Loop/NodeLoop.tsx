@@ -103,6 +103,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       nodeList.filter((node) => node.parentNodeId === nodeId).map((node) => node.nodeId)
     );
   }, [nodeId, nodeList]);
+
   useEffect(() => {
     onChangeNode({
       nodeId,

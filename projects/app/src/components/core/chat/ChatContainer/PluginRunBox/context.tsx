@@ -18,6 +18,7 @@ import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ChatBoxInputFormType } from '../ChatBox/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
+import { cloneDeep } from 'lodash';
 
 type PluginRunContextType = OutLinkChatAuthProps &
   PluginRunBoxProps & {
@@ -226,13 +227,25 @@ const PluginRunContextProvider = ({
       });
 
       try {
+        // Remove files icon
+        const formatVariables = cloneDeep(variables);
+        for (const key in formatVariables) {
+          if (Array.isArray(formatVariables[key])) {
+            formatVariables[key].forEach((item) => {
+              if (item.url && item.icon) {
+                delete item.icon;
+              }
+            });
+          }
+        }
+
         const { responseData } = await onStartChat({
           messages,
           controller: chatController.current,
           generatingMessage,
           variables: {
             files,
-            ...variables
+            ...formatVariables
           }
         });
         if (responseData?.[responseData.length - 1]?.error) {

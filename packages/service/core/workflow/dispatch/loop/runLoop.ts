@@ -60,6 +60,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
         });
       }
     });
+
     const response = await dispatchWorkFlow({
       ...props,
       runtimeEdges: cloneDeep(runtimeEdges)

@@ -387,6 +387,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       node,
       runtimeEdges
     });
+
     const nodeRunResult = await (() => {
       if (status === 'run') {
         nodeRunBeforeHook(node);
@@ -482,7 +483,15 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       : {};
 
     node.inputs.forEach((input) => {
+      // Special input, not format
       if (input.key === dynamicInput?.key) return;
+
+      // Skip some special key
+      if (input.key === NodeInputKeyEnum.childrenNodeIdList) {
+        params[input.key] = input.value;
+
+        return;
+      }
 
       // replace {{xx}} variables
       let value = replaceVariable(input.value, variables);

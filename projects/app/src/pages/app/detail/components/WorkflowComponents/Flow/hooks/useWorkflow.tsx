@@ -333,7 +333,6 @@ export const useWorkflow = () => {
         value: height
       }
     });
-
     // Update parentNode position
     onNodesChange([
       {

@@ -253,7 +253,7 @@ export const getReferenceVariableValue = ({
 
     const node = nodes.find((node) => node.nodeId === sourceNodeId);
     if (!node) {
-      return undefined;
+      return value;
     }
 
     return node.outputs.find((output) => output.id === outputId)?.value;
