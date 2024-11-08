@@ -145,14 +145,25 @@ function Reference({
   const onUpdateField = useCallback(
     ({ data }: { data: FlowNodeInputItemType }) => {
       if (!data.key) return;
+      const oldType = inputChildren.valueType;
+      const newType = data.valueType;
+      let newValue = data.value;
+      if (oldType?.includes('array') && !newType?.includes('array')) {
+        newValue = data.value[0];
+      } else if (!oldType?.includes('array') && newType?.includes('array')) {
+        newValue = [data.value];
+      }
 
       onChangeNode({
         nodeId,
         type: 'replaceInput',
         key: inputChildren.key,
         value: {
-          ...data,
-          value: data
+          ...inputChildren,
+          value: newValue,
+          key: data.key,
+          label: data.label,
+          valueType: data.valueType
         }
       });
     },
