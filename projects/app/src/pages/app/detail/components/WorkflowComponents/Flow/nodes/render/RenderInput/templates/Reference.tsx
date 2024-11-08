@@ -2,7 +2,10 @@ import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { computedNodeInputReference, filterOutputsType } from '@/web/core/workflow/utils';
+import {
+  computedNodeInputReference,
+  filterWorkflowNodeOutputsByType
+} from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import {
   NodeOutputKeyEnum,
@@ -89,7 +92,7 @@ export const useReference = ({
             </Flex>
           ),
           value: node.nodeId,
-          children: filterOutputsType(node.outputs, valueType)
+          children: filterWorkflowNodeOutputsByType(node.outputs, valueType)
             .filter((output) => output.id !== NodeOutputKeyEnum.addOutputParam)
             .map((output) => {
               return {
@@ -239,12 +242,12 @@ const MultipleReferenceSelector = ({
 
   const ArraySelector = useMemo(() => {
     const selectorVal = value as ReferenceItemValueType[];
-    const notValidItem = !selectorVal || selectorVal.length === 0;
+    const validSelectValue = selectorVal && selectorVal.length > 0;
 
     return (
       <MultipleRowArraySelect
         label={
-          !notValidItem ? (
+          validSelectValue ? (
             <Grid py={3} gridTemplateColumns={'1fr 1fr'} gap={2} fontSize={'sm'}>
               {selectorVal?.map((item, index) => {
                 const [nodeName, outputName] = getSelectValue(item);

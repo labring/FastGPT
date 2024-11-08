@@ -114,7 +114,9 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   }, [childrenNodeIdList, nodeId, onChangeNode]);
 
   useEffect(() => {
-    resetParentNodeSizeAndPosition(nodeId);
+    setTimeout(() => {
+      resetParentNodeSizeAndPosition(nodeId);
+    }, 0);
   }, [loopInputArray, nodeId, resetParentNodeSizeAndPosition]);
 
   const Render = useMemo(() => {

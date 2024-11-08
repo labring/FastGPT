@@ -263,7 +263,7 @@ export const getRefData = ({
   };
 };
 
-export const filterOutputsType = (
+export const filterWorkflowNodeOutputsByType = (
   outputs: FlowNodeOutputItemType[],
   valueType: WorkflowIOValueTypeEnum
 ): FlowNodeOutputItemType[] => {
@@ -362,7 +362,7 @@ export const checkWorkflowNodeAndConnection = ({
               return true;
             }
 
-            const sourceOutput = filterOutputsType(
+            const sourceOutput = filterWorkflowNodeOutputsByType(
               sourceNode.data.outputs,
               input.valueType as WorkflowIOValueTypeEnum
             ).find((item) => item.id === value[1]);
