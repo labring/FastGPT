@@ -412,7 +412,8 @@ export const checkWorkflowNodeAndConnection = ({
             if (input.required && (!input.value || input.value.length === 0)) {
               return true;
             }
-            return isValidArrayReferenceValue(input.value, nodeIds);
+
+            return input.required && !isValidArrayReferenceValue(input.value, nodeIds);
           }
           return input.required && !isValidReferenceValue(input.value, nodeIds);
         }
