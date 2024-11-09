@@ -292,20 +292,6 @@ const ChatInput = ({
               }
             }
           }}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-
-            if (!(showSelectFile || showSelectImg)) return;
-
-            const droppedFiles = Array.from(e.dataTransfer.files).filter((file) =>
-              fileTypeFilter(file)
-            );
-
-            if (droppedFiles.length > 0) {
-              onSelectFile({ files: droppedFiles });
-            }
-          }}
         />
         <Flex alignItems={'center'} position={'absolute'} right={[2, 4]} bottom={['10px', '12px']}>
           {/* voice-input */}
