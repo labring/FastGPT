@@ -285,8 +285,23 @@ const ChatInput = ({
               onSelectFile({ files });
 
               if (files.length > 0) {
+                e.preventDefault();
                 e.stopPropagation();
               }
+            }
+          }}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+
+            if (!(showSelectFile || showSelectImg)) return;
+
+            const droppedFiles = Array.from(e.dataTransfer.files).filter((file) =>
+              fileTypeFilter(file)
+            );
+
+            if (droppedFiles.length > 0) {
+              onSelectFile({ files: droppedFiles });
             }
           }}
         />
