@@ -5,11 +5,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getAIApi } from '../../../ai/config';
-import type {
-  ChatCompletion,
-  ChatCompletionMessageParam,
-  StreamChatType
-} from '@fastgpt/global/core/ai/type.d';
+import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '../../../../common/api/requestPlusApi';
@@ -48,6 +44,7 @@ import { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/syst
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
+import { i18nT } from '../../../../../web/i18n/utils';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -93,9 +90,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   } = props;
   const { files: inputFiles } = chatValue2RuntimePrompt(query); // Chat box input files
 
-  if (!userChatInput && inputFiles.length === 0) {
-    return Promise.reject('Question is empty');
-  }
   stream = stream && isResponseAnswerText;
 
   const chatHistories = getHistories(history, histories);
@@ -112,7 +106,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quoteTemplate
     }),
     getMultiInput({
-      histories,
+      histories: chatHistories,
       inputFiles,
       fileLinks,
       stringQuoteText,
@@ -121,6 +115,10 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       teamId
     })
   ]);
+
+  if (!userChatInput && !documentQuoteText && userFiles.length === 0) {
+    return Promise.reject(i18nT('chat:AI_input_is_empty'));
+  }
 
   const [{ filterMessages }] = await Promise.all([
     getChatMessages({
@@ -198,7 +196,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         });
 
         if (!answer) {
-          throw new Error('LLM model response empty');
+          return Promise.reject(i18nT('chat:LLM_model_response_empty'));
         }
 
         return {

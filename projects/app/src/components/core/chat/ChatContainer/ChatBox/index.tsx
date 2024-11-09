@@ -527,7 +527,7 @@ const ChatBox = (
             });
             if (responseData?.[responseData.length - 1]?.error) {
               toast({
-                title: responseData[responseData.length - 1].error?.message,
+                title: t(responseData[responseData.length - 1].error?.message),
                 status: 'error'
               });
             }
