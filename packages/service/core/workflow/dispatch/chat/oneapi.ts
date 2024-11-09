@@ -106,7 +106,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quoteTemplate
     }),
     getMultiInput({
-      histories,
+      histories: chatHistories,
       inputFiles,
       fileLinks,
       stringQuoteText,
@@ -196,7 +196,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         });
 
         if (!answer) {
-          throw new Error(i18nT('chat:LLM_model_response_empty'));
+          return Promise.reject(i18nT('chat:LLM_model_response_empty'));
         }
 
         return {

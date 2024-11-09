@@ -19,6 +19,7 @@ export const detectFileEncoding = (buffer: Buffer) => {
 
 // Url => user upload file type
 export const parseUrlToFileType = (url: string): UserChatItemValueItemType['file'] | undefined => {
+  if (typeof url !== 'string') return;
   const parseUrl = new URL(url, 'https://locaohost:3000');
 
   const filename = (() => {
