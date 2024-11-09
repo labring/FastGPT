@@ -269,7 +269,7 @@ export const runToolWithToolChoice = async (
     },
     toolModel
   );
-  // console.log(JSON.stringify(requestMessages, null, 2), '==requestBody');
+  // console.log(JSON.stringify(requestBody, null, 2), '==requestBody');
   /* Run llm */
   const ai = getAIApi({
     timeout: 480000
