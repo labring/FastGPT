@@ -118,34 +118,47 @@ export const loadRequestMessages = async ({
             return item.image_url.url;
           })();
 
-          // If imgUrl is a local path, load image from local, and set url to base64
-          if (imgUrl.startsWith('/')) {
-            addLog.debug('Load image from local server', {
-              baseUrl: serverRequestBaseUrl,
-              requestUrl: imgUrl
-            });
-            const response = await axios.get(imgUrl, {
-              baseURL: serverRequestBaseUrl,
-              responseType: 'arraybuffer',
-              proxy: false
-            });
-            const base64 = Buffer.from(response.data, 'binary').toString('base64');
-            const imageType =
-              getFileContentTypeFromHeader(response.headers['content-type']) ||
-              guessBase64ImageType(base64);
+          try {
+            // If imgUrl is a local path, load image from local, and set url to base64
+            if (imgUrl.startsWith('/')) {
+              addLog.debug('Load image from local server', {
+                baseUrl: serverRequestBaseUrl,
+                requestUrl: imgUrl
+              });
+              const response = await axios.get(imgUrl, {
+                baseURL: serverRequestBaseUrl,
+                responseType: 'arraybuffer',
+                proxy: false
+              });
+              const base64 = Buffer.from(response.data, 'binary').toString('base64');
+              const imageType =
+                getFileContentTypeFromHeader(response.headers['content-type']) ||
+                guessBase64ImageType(base64);
 
-            return {
-              ...item,
-              image_url: {
-                ...item.image_url,
-                url: `data:${imageType};base64,${base64}`
-              }
-            };
+              return {
+                ...item,
+                image_url: {
+                  ...item.image_url,
+                  url: `data:${imageType};base64,${base64}`
+                }
+              };
+            }
+
+            // 检查下这个图片是否可以被访问，如果不行的话，则过滤掉
+            const response = await axios.head(imgUrl, {
+              timeout: 10000
+            });
+            if (response.status < 200 || response.status >= 400) {
+              addLog.info(`Filter invalid image: ${imgUrl}`);
+              return;
+            }
+          } catch (error) {
+            return;
           }
         }
         return item;
       })
-    );
+    ).then((res) => res.filter(Boolean) as ChatCompletionContentPart[]);
   };
   // Split question text and image
   const parseStringWithImages = (input: string): ChatCompletionContentPart[] => {

@@ -28,6 +28,7 @@ import { computedMaxToken, llmCompletionsBodyFormat } from '../../../../ai/utils
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { i18nT } from '../../../../../../web/i18n/utils';
 
 type FunctionRunResponseType = {
   toolRunResponse: DispatchFlowResponse;
@@ -549,7 +550,7 @@ async function streamResponse({
   }
 
   if (!textAnswer && functionCalls.length === 0) {
-    return Promise.reject('LLM api response empty');
+    return Promise.reject(i18nT('chat:LLM_model_response_empty'));
   }
 
   return { answer: textAnswer, functionCalls };

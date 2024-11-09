@@ -256,7 +256,6 @@ const ListItem = ({
             }}
             variant={'link'}
             leftIcon={<SmallAddIcon />}
-            my={3}
             color={'primary.600'}
           >
             {t('common:core.module.input.add')}

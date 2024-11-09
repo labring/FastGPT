@@ -335,7 +335,12 @@ export function replaceEditorVariable({
   for (const key in allVariables) {
     const variable = allVariables[key];
     const val = variable.value;
-    const formatVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+    const formatVal = (() => {
+      if (val === undefined) return '';
+      if (val === null) return 'null';
+
+      return typeof val === 'object' ? JSON.stringify(val) : String(val);
+    })();
 
     const regex = new RegExp(`\\{\\{\\$(${variable.nodeId}\\.${variable.id})\\$\\}\\}`, 'g');
     text = text.replace(regex, formatVal);

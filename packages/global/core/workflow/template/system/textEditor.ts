@@ -24,17 +24,8 @@ export const TextEditorNode: FlowNodeTemplateType = {
   name: i18nT('workflow:text_concatenation'),
   intro: i18nT('workflow:intro_text_concatenation'),
   courseUrl: '/docs/workflow/modules/text_editor/',
-  version: '486',
+  version: '4813',
   inputs: [
-    {
-      ...Input_Template_DynamicInput,
-      description: i18nT('workflow:dynamic_input_description_concat'),
-      customInputConfig: {
-        selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
-        showDescription: false,
-        showDefaultValue: false
-      }
-    },
     {
       key: NodeInputKeyEnum.textareaInput,
       renderTypeList: [FlowNodeInputTypeEnum.textarea],
