@@ -80,69 +80,76 @@ const pushChatLogInternal = async ({
   url: string;
   metadata?: Metadata;
 }) => {
-  const [chatItemHuman, chatItemAi] = await Promise.all([
-    MongoChatItem.findById(chatItemIdHuman).lean(),
-    MongoChatItem.findById(chatItemIdAi).lean() as Promise<AIChatItemType>
-  ]);
+  try {
+    const [chatItemHuman, chatItemAi] = await Promise.all([
+      MongoChatItem.findById(chatItemIdHuman).lean(),
+      MongoChatItem.findById(chatItemIdAi).lean() as Promise<AIChatItemType>
+    ]);
 
-  if (!chatItemHuman || !chatItemAi) {
-    return;
+    if (!chatItemHuman || !chatItemAi) {
+      return;
+    }
+
+    const chat = await MongoChat.findOne({ chatId }).lean();
+
+    // addLog.warn('ChatLogDebug', chat);
+    // addLog.warn('ChatLogDebug', { chatItemHuman, chatItemAi });
+
+    if (!chat) {
+      return;
+    }
+
+    const metadataString = JSON.stringify(metadata ?? {});
+
+    const uid = chat.outLinkUid || chat.tmbId;
+    // Pop last two items
+    const question = chatItemHuman.value[chatItemHuman.value.length - 1]?.text?.content;
+    const answer = chatItemAi.value[chatItemAi.value.length - 1]?.text?.content;
+    if (!question || !answer) {
+      addLog.error('[ChatLogPush] question or answer is empty', {
+        question: chatItemHuman.value,
+        answer: chatItemAi.value
+      });
+      return;
+    }
+    const responseData = chatItemAi.responseData;
+    const responseTime =
+      responseData?.reduce((acc, item) => acc + (item?.runningTime ?? 0), 0) || 0;
+
+    const sourceIdPrefix = process.env.SOURCE_ID_PREFIX ?? '';
+
+    const chatLog: ChatLog = {
+      title: chat.title,
+      feedback: (() => {
+        if (chatItemAi.userGoodFeedback) {
+          return 'like';
+        } else if (chatItemAi.userBadFeedback) {
+          return 'dislike';
+        } else {
+          return null;
+        }
+      })(),
+      chatItemId: `${chatItemIdHuman},${chatItemIdAi}`,
+      uid,
+      question,
+      answer,
+      chatId,
+      responseTime: responseTime * 1000,
+      metadata: metadataString,
+      sourceName: chat.source ?? '-',
+      // @ts-ignore
+      createdAt: new Date(chatItemAi.time).getTime(),
+      sourceId: `${sourceIdPrefix}${appId}`
+    };
+    await axios
+      .post(`${url}/api/chat/push`, chatLog)
+      .then((res) => {
+        addLog.info('[ChatLogPush] push success', res.data);
+      })
+      .catch((e) => {
+        addLog.error('[ChatLogPush] push failed', { e, resData: e.response?.data });
+      });
+  } catch (e) {
+    addLog.error('[ChatLogPush] error', e);
   }
-
-  const chat = await MongoChat.findOne({ chatId }).lean();
-
-  // addLog.warn('ChatLogDebug', chat);
-  // addLog.warn('ChatLogDebug', { chatItemHuman, chatItemAi });
-
-  if (!chat) {
-    return;
-  }
-
-  const metadataString = JSON.stringify(metadata ?? {});
-
-  const uid = chat.outLinkUid || chat.tmbId;
-  // Pop last two items
-  const question = chatItemHuman.value[chatItemHuman.value.length - 1]?.text?.content;
-  const answer = chatItemAi.value[chatItemAi.value.length - 1]?.text?.content;
-  if (!question || !answer) {
-    addLog.error('[ChatLogPush] question or answer is empty', {
-      question: chatItemHuman.value,
-      answer: chatItemAi.value
-    });
-    return;
-  }
-  const responseData = chatItemAi.responseData;
-  const responseTime = responseData?.reduce((acc, item) => acc + (item?.runningTime ?? 0), 0) || 0;
-
-  const chatLog: ChatLog = {
-    title: chat.title,
-    feedback: (() => {
-      if (chatItemAi.userGoodFeedback) {
-        return 'like';
-      } else if (chatItemAi.userBadFeedback) {
-        return 'dislike';
-      } else {
-        return null;
-      }
-    })(),
-    chatItemId: `${chatItemIdHuman},${chatItemIdAi}`,
-    uid,
-    question,
-    answer,
-    chatId,
-    responseTime: responseTime * 1000,
-    metadata: metadataString,
-    sourceName: chat.source ?? '-',
-    // @ts-ignore
-    createdAt: new Date(chatItemAi.time).getTime(),
-    sourceId: `crbeer-fastgpt-${appId}`
-  };
-  await axios
-    .post(url + '/api/chat/push', chatLog)
-    .then((res) => {
-      addLog.info('[ChatLogPush] push success', res.data);
-    })
-    .catch((e) => {
-      addLog.error('[ChatLogPush] push failed', { e, resData: e.response?.data });
-    });
 };
