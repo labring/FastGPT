@@ -207,8 +207,8 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
 ];
 
 // Document quote prompt
-export const Prompt_DocumentQuote = `将 <Reference></Reference> 中的内容作为本次对话的参考:
-<Reference>
+export const Prompt_DocumentQuote = `将 <FilesContent></FilesContent> 中的内容作为本次对话的参考:
+<FilesContent>
 {{quote}}
-</Reference>
+</FilesContent>
 `;

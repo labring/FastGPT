@@ -25,7 +25,7 @@ export const getOneQuoteInputTemplate = ({
 }): FlowNodeInputItemType => ({
   key,
   renderTypeList: [FlowNodeInputTypeEnum.reference],
-  label: `${i18nT('workflow:quote_num')}`,
+  label: `${i18nT('workflow:quote_num')}-${index}`,
   debugLabel: i18nT('workflow:knowledge_base_reference'),
   canEdit: true,
   valueType: WorkflowIOValueTypeEnum.datasetQuote

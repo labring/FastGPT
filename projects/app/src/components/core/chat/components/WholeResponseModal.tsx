@@ -237,6 +237,10 @@ export const WholeResponseContent = ({
           />
         )}
       </>
+      {/* dataset concat */}
+      <>
+        <Row label={t('chat:response.dataset_concat_length')} value={activeModule?.concatLength} />
+      </>
       {/* classify question */}
       <>
         <Row

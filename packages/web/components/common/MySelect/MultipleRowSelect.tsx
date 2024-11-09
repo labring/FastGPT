@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState } from 'react';
+import React, { useRef, useCallback, useState, useMemo } from 'react';
 import { Button, useDisclosure, Box, Flex, useOutsideClick, Checkbox } from '@chakra-ui/react';
 import { ListItemType, MultipleArraySelectProps, MultipleSelectProps } from './type';
 import EmptyTip from '../EmptyTip';
@@ -177,6 +177,10 @@ export const MultipleRowArraySelect = ({
 
   const [navigationPath, setNavigationPath] = useState<string[]>([]);
 
+  const formatValue = useMemo(() => {
+    return Array.isArray(value) ? value : [];
+  }, [value]);
+
   // Close when clicking outside
   useOutsideClick({
     ref: ref,
@@ -198,7 +202,7 @@ export const MultipleRowArraySelect = ({
           setNavigationPath(newPath);
         } else {
           const parentValue = navigationPath[0];
-          const newValues = [...value];
+          const newValues = [...formatValue];
           const newValue = [parentValue, item.value];
 
           if (newValues.some((v) => v[0] === parentValue && v[1] === item.value)) {
@@ -225,7 +229,7 @@ export const MultipleRowArraySelect = ({
               const showCheckbox = !hasChildren;
               const isChecked =
                 showCheckbox &&
-                value.some((v) => v[1] === item.value && v[0] === navigationPath[0]);
+                formatValue.some((v) => v[1] === item.value && v[0] === navigationPath[0]);
 
               return (
                 <Flex
@@ -264,13 +268,13 @@ export const MultipleRowArraySelect = ({
         </>
       );
     },
-    [navigationPath, value, onSelect]
+    [navigationPath, formatValue, onSelect]
   );
 
   const onOpenSelect = useCallback(() => {
     setNavigationPath([]);
     onOpen();
-  }, [value, onOpen]);
+  }, []);
 
   return (
     <Box ref={ref} position={'relative'}>
