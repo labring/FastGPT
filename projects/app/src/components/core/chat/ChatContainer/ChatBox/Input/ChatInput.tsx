@@ -17,6 +17,7 @@ import { documentFileType } from '@fastgpt/global/common/file/constants';
 import FilePreview from '../../components/FilePreview';
 import { useFileUpload } from '../hooks/useFileUpload';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -44,6 +45,7 @@ const ChatInput = ({
 }) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
+  const { toast } = useToast();
 
   const { setValue, watch, control } = chatForm;
   const inputValue = watch('input');
@@ -290,20 +292,6 @@ const ChatInput = ({
               }
             }
           }}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-
-            if (!(showSelectFile || showSelectImg)) return;
-
-            const droppedFiles = Array.from(e.dataTransfer.files).filter((file) =>
-              fileTypeFilter(file)
-            );
-
-            if (droppedFiles.length > 0) {
-              onSelectFile({ files: droppedFiles });
-            }
-          }}
         />
         <Flex alignItems={'center'} position={'absolute'} right={[2, 4]} bottom={['10px', '12px']}>
           {/* voice-input */}
@@ -450,7 +438,36 @@ const ChatInput = ({
   );
 
   return (
-    <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(800px, 100%)']} px={[0, 5]}>
+    <Box
+      m={['0 auto', '10px auto']}
+      w={'100%'}
+      maxW={['auto', 'min(800px, 100%)']}
+      px={[0, 5]}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+
+        if (!(showSelectFile || showSelectImg)) return;
+        const files = Array.from(e.dataTransfer.files);
+
+        const droppedFiles = files.filter((file) => fileTypeFilter(file));
+        if (droppedFiles.length > 0) {
+          onSelectFile({ files: droppedFiles });
+        }
+
+        const invalidFileName = files
+          .filter((file) => !fileTypeFilter(file))
+          .map((file) => file.name)
+          .join(', ');
+        if (invalidFileName) {
+          toast({
+            status: 'warning',
+            title: t('chat:unsupported_file_type'),
+            description: invalidFileName
+          });
+        }
+      }}
+    >
       <Box
         pt={fileList.length > 0 ? '0' : ['14px', '18px']}
         pb={['14px', '18px']}

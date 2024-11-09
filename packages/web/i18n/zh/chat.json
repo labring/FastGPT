@@ -43,6 +43,7 @@
   "select_file_img": "上传文件/图片",
   "select_img": "上传图片",
   "stream_output": "流输出",
+  "unsupported_file_type": "不支持的文件类型",
   "upload": "上传",
   "view_citations": "查看引用",
   "web_site_sync": "Web站点同步"

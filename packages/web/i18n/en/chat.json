@@ -42,6 +42,7 @@
   "select_file_img": "Upload file / image",
   "select_img": "Upload Image",
   "stream_output": "Stream Output",
+  "unsupported_file_type": "Unsupported file types",
   "upload": "Upload",
   "view_citations": "View References",
   "web_site_sync": "Web Site Sync"
