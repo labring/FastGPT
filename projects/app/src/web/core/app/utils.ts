@@ -181,7 +181,7 @@ export function form2AppWorkflow(
         },
         {
           ...Input_Template_File_Link_Prompt,
-          value: [workflowStartNodeId, NodeOutputKeyEnum.userFiles]
+          value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
         },
         {
           key: NodeInputKeyEnum.aiChatVision,
@@ -198,7 +198,7 @@ export function form2AppWorkflow(
     return {
       nodeId: datasetNodeId,
       name: t(DatasetSearchModule.name),
-      intro: t(DatasetSearchModule.intro),
+      intro: t('app:dataset_search_tool_description'),
       avatar: DatasetSearchModule.avatar,
       flowNodeType: DatasetSearchModule.flowNodeType,
       showStatus: true,
@@ -451,7 +451,7 @@ export function form2AppWorkflow(
             },
             {
               ...Input_Template_File_Link_Prompt,
-              value: [workflowStartNodeId, NodeOutputKeyEnum.userFiles]
+              value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
             },
             {
               key: 'userChatInput',
