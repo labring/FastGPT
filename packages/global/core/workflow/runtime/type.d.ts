@@ -135,6 +135,9 @@ export type DispatchNodeResponseType = {
   extensionResult?: string;
   extensionTokens?: number;
 
+  // dataset concat
+  concatLength?: number;
+
   // cq
   cqList?: ClassifyQuestionAgentItemType[];
   cqResult?: string;
