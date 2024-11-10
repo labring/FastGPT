@@ -65,6 +65,7 @@ export async function authOutLinkChatStart({
   ]);
 
   return {
+    sourceName: shareChat.name,
     teamId: shareChat.teamId,
     tmbId: shareChat.tmbId,
     authType: AuthUserTypeEnum.token,

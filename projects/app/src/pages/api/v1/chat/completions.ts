@@ -87,6 +87,7 @@ type AuthResponseType = {
   apikey?: string;
   canWrite: boolean;
   outLinkUserId?: string;
+  sourceName?: string;
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -156,6 +157,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       app,
       responseDetail,
       authType,
+      sourceName,
       apikey,
       canWrite,
       outLinkUserId = customUid
@@ -343,7 +345,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           newTitle,
           shareId,
           outLinkUid: outLinkUserId,
-          source,
+          source: sourceName || source,
           content: [userQuestion, aiResponse],
           metadata: {
             originIp,
@@ -459,7 +461,7 @@ const authShareChat = async ({
   shareId: string;
   chatId?: string;
 }): Promise<AuthResponseType> => {
-  const { teamId, tmbId, user, appId, authType, responseDetail, uid } =
+  const { teamId, tmbId, user, appId, authType, responseDetail, uid, sourceName } =
     await authOutLinkChatStart(data);
   const app = await MongoApp.findById(appId).lean();
 
@@ -474,6 +476,7 @@ const authShareChat = async ({
   }
 
   return {
+    sourceName,
     teamId,
     tmbId,
     user,
@@ -541,6 +544,7 @@ const authHeaderRequest = async ({
     teamId,
     tmbId,
     authType,
+    sourceName,
     apikey
   } = await authCert({
     req,
@@ -607,6 +611,7 @@ const authHeaderRequest = async ({
     responseDetail: true,
     apikey,
     authType,
+    sourceName,
     canWrite: true
   };
 };

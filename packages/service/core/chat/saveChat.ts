@@ -30,7 +30,7 @@ type Props = {
   variables?: Record<string, any>;
   isUpdateUseTime: boolean;
   newTitle: string;
-  source: `${ChatSourceEnum}`;
+  source: string;
   shareId?: string;
   outLinkUid?: string;
   content: [UserChatItemType & { dataId?: string }, AIChatItemType & { dataId?: string }];

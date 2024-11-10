@@ -57,6 +57,7 @@ const OutLink = ({
     showHistory = '1',
     showHead = '1',
     authToken,
+    customUid,
     ...customVariables
   } = router.query as {
     shareId: string;

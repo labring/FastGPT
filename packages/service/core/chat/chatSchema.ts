@@ -52,7 +52,6 @@ const ChatSchema = new Schema({
   },
   source: {
     type: String,
-    enum: Object.keys(ChatSourceMap),
     required: true
   },
   shareId: {
