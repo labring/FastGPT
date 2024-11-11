@@ -67,8 +67,6 @@ export const ReactFlowCustomProvider = ({
   );
 };
 
-type OnChange<ChangesType> = (changes: ChangesType[]) => void;
-
 export type WorkflowSnapshotsType = {
   nodes: Node[];
   edges: Edge[];

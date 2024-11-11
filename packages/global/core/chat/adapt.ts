@@ -76,6 +76,7 @@ export const chats2GPTMessages = ({
 
       results.push({
         dataId,
+        isAutoExecutePrompt: item.isAutoExecutePrompt,
         role: ChatCompletionRequestMessageRoleEnum.User,
         content: simpleUserContentPart(value)
       });
@@ -318,6 +319,7 @@ export const GPTMessages2Chats = (
       return {
         dataId: item.dataId,
         obj,
+        isAutoExecutePrompt: item.isAutoExecutePrompt,
         value
       } as ChatItemType;
     })

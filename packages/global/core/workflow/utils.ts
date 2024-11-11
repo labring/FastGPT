@@ -25,10 +25,12 @@ import type {
   AppWhisperConfigType,
   AppScheduledTriggerConfigType,
   ChatInputGuideConfigType,
-  AppChatConfigType
+  AppChatConfigType,
+  AppAutoExecuteConfigType
 } from '../app/type';
 import { EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import {
+  defaultAutoExecuteConfig,
   defaultChatInputGuideConfig,
   defaultTTSConfig,
   defaultWhisperConfig
@@ -98,6 +100,10 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
   const instruction: string =
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.instruction)?.value || '';
 
+  const autoExecute: AppAutoExecuteConfigType =
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.autoExecute)?.value ||
+    defaultAutoExecuteConfig;
+
   return {
     welcomeText,
     variables,
@@ -106,7 +112,8 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
     whisperConfig,
     scheduledTriggerConfig,
     chatInputGuide,
-    instruction
+    instruction,
+    autoExecute
   };
 };
 
@@ -132,7 +139,8 @@ export const getAppChatConfig = ({
     whisperConfig,
     scheduledTriggerConfig,
     chatInputGuide,
-    instruction
+    instruction,
+    autoExecute
   } = splitGuideModule(systemConfigNode);
 
   const config: AppChatConfigType = {
@@ -142,6 +150,7 @@ export const getAppChatConfig = ({
     scheduledTriggerConfig,
     chatInputGuide,
     instruction,
+    autoExecute,
     ...chatConfig,
     variables: storeVariables ?? chatConfig?.variables ?? variables,
     welcomeText: storeWelcomeText ?? chatConfig?.welcomeText ?? welcomeText

@@ -75,6 +75,7 @@ const OutLink = (
   const [isEmbed, setIdEmbed] = useState(true);
 
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
+  const chatConfig = chatData.app?.chatConfig;
 
   const {
     onUpdateHistoryTitle,
@@ -105,7 +106,8 @@ const OutLink = (
     chatRecords,
     ScrollData,
     setChatRecords,
-    totalRecordsCount
+    totalRecordsCount,
+    isRecordsLoading
   } = useChat(params);
 
   const startChat = useCallback(
@@ -224,6 +226,12 @@ const OutLink = (
       }
     }
   );
+
+  const isAutoExecute = useMemo(() => {
+    return (
+      !isRecordsLoading && chatRecords.length === 0 && !isLoading && chatConfig?.autoExecute?.open
+    );
+  }, [chatConfig?.autoExecute?.open, chatRecords.length, isLoading, isRecordsLoading]);
 
   // window init
   useMount(() => {
@@ -366,9 +374,10 @@ const OutLink = (
                   chatId={chatId}
                   shareId={shareId}
                   outLinkUid={outLinkUid}
-                  chatType="share"
                   showRawSource={showRawSource}
                   showNodeStatus={showNodeStatus}
+                  chatType={'share'}
+                  isAutoExecute={isAutoExecute}
                 />
               )}
             </Box>

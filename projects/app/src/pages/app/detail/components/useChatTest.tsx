@@ -32,6 +32,10 @@ export const useChatTest = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([]);
 
+  const isAutoExecute = useMemo(() => {
+    return chatRecords.length === 0 && chatConfig?.autoExecute?.open;
+  }, [chatConfig?.autoExecute?.open, chatRecords.length]);
+
   const startChat = useMemoizedFn(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
       /* get histories */
@@ -119,6 +123,7 @@ export const useChatTest = ({
         chatConfig={chatConfig}
         onStartChat={startChat}
         onDelMessage={() => {}}
+        isAutoExecute={isAutoExecute}
       />
     )
   );

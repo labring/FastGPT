@@ -64,7 +64,8 @@ export const useChat = (params?: { chatId?: string; appId: string; type?: GetCha
     data: chatRecords,
     ScrollData,
     setData: setChatRecords,
-    total: totalRecordsCount
+    total: totalRecordsCount,
+    isLoading: isRecordsLoading
   } = useScrollPagination(
     async (data: getPaginationRecordsBody): Promise<PaginationResponse<ChatSiteItemType>> => {
       const res = await getChatRecords(data);
@@ -106,7 +107,8 @@ export const useChat = (params?: { chatId?: string; appId: string; type?: GetCha
     chatRecords,
     ScrollData,
     setChatRecords,
-    totalRecordsCount
+    totalRecordsCount,
+    isRecordsLoading
   };
 };
 
