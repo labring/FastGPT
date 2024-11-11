@@ -430,9 +430,13 @@ const WorkflowContextProvider = ({
             item.key === props.key ? props.value : item
           );
         } else if (type === 'replaceInput') {
-          updateObj.inputs = updateObj.inputs.map((item) =>
-            item.key === props.key ? props.value : item
-          );
+          if (!updateObj.inputs.find((item) => item.key === props.key)) {
+            updateObj.inputs.push(props.value);
+          } else {
+            updateObj.inputs = updateObj.inputs.map((item) =>
+              item.key === props.key ? props.value : item
+            );
+          }
         } else if (type === 'addInput') {
           const input = node.data.inputs.find((input) => input.key === props.value.key);
           if (input) {

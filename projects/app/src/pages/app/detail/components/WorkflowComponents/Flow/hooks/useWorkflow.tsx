@@ -24,7 +24,7 @@ import { useKeyboard } from './useKeyboard';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { THelperLine } from '@fastgpt/global/core/workflow/type';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useDebounceEffect, useMemoizedFn } from 'ahooks';
 import {
   Input_Template_Node_Height,
@@ -304,7 +304,7 @@ export const useWorkflow = () => {
         }
         return acc;
       },
-      { childNodes: [] as Node[], loopNode: undefined as Node | undefined }
+      { childNodes: [] as Node[], loopNode: undefined as Node<FlowNodeItemType> | undefined }
     );
 
     if (!loopNode) return;
@@ -313,6 +313,10 @@ export const useWorkflow = () => {
     // Calculate parent node size with minimum width/height constraints
     const width = Math.max(rect.width + 80, 840);
     const height = Math.max(rect.height + 80, 600);
+
+    const offsetHeight =
+      loopNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.loopNodeInputHeight)
+        ?.value ?? 83;
 
     // Update parentNode size and position
     onChangeNode({
@@ -340,7 +344,7 @@ export const useWorkflow = () => {
         type: 'position',
         position: {
           x: rect.x - 70,
-          y: rect.y - 320
+          y: rect.y - offsetHeight - 240
         }
       }
     ]);
@@ -608,8 +612,36 @@ export const useWorkflow = () => {
           state
         )
       );
+
+      // Add default input
+      const node = nodeList.find((n) => n.nodeId === connect.target);
+      if (!node) return;
+
+      // 1. Add file input
+      if (
+        node.flowNodeType === FlowNodeTypeEnum.chatNode ||
+        node.flowNodeType === FlowNodeTypeEnum.tools ||
+        node.flowNodeType === FlowNodeTypeEnum.appModule
+      ) {
+        const input = node.inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);
+        if (input && (!input?.value || input.value.length === 0)) {
+          const workflowStartNode = nodeList.find(
+            (n) => n.flowNodeType === FlowNodeTypeEnum.workflowStart
+          );
+          if (!workflowStartNode) return;
+          onChangeNode({
+            nodeId: node.nodeId,
+            type: 'updateInput',
+            key: NodeInputKeyEnum.fileUrlList,
+            value: {
+              ...input,
+              value: [[workflowStartNode.nodeId, NodeOutputKeyEnum.userFiles]]
+            }
+          });
+        }
+      }
     },
-    [setEdges]
+    [nodeList, onChangeNode, setEdges]
   );
   const customOnConnect = useCallback(
     (connect: Connection) => {
