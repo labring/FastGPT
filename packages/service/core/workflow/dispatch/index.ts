@@ -699,5 +699,13 @@ export const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemTy
     result.push(item);
   }
 
+  // If result is empty, auto add a text message
+  if (result.length === 0) {
+    result.push({
+      type: ChatItemValueTypeEnum.text,
+      text: { content: '' }
+    });
+  }
+
   return result;
 };
