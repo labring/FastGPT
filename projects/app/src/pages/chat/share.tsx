@@ -44,13 +44,14 @@ type Props = {
   customUid: string;
 };
 
-const OutLink = ({
-  outLinkUid
-}: Props & {
-  outLinkUid: string;
-}) => {
+const OutLink = (
+  props: Props & {
+    outLinkUid: string;
+  }
+) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const { outLinkUid } = props;
   const {
     shareId = '',
     chatId = '',
@@ -297,6 +298,7 @@ const OutLink = ({
 
   return (
     <>
+      <NextHead title={props.appName || 'AI'} desc={props.appIntro} icon={props.appAvatar} />
       <PageContainer
         isLoading={loading}
         {...(isEmbed
@@ -388,11 +390,12 @@ const Render = (props: Props) => {
 
   return (
     <>
-      <NextHead title={props.appName || 'AI'} desc={props.appIntro} icon={props.appAvatar} />
-      {systemLoaded && (
+      {systemLoaded ? (
         <ChatContextProvider params={contextParams}>
           <OutLink {...props} outLinkUid={contextParams.outLinkUid} />;
         </ChatContextProvider>
+      ) : (
+        <NextHead title="Loading..." />
       )}
     </>
   );
@@ -425,9 +428,9 @@ export async function getServerSideProps(context: any) {
 
   return {
     props: {
-      appName: app?.appId?.name ?? 'name',
+      appName: app?.appId?.name ?? 'AI',
       appAvatar: app?.appId?.avatar ?? '',
-      appIntro: app?.appId?.intro ?? 'intro',
+      appIntro: app?.appId?.intro ?? 'AI',
       shareId: shareId ?? '',
       authToken: authToken ?? '',
       customUid,
