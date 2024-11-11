@@ -147,7 +147,6 @@ const MyMenu = ({
             position={'relative'}
             color={isOpen ? 'primary.600' : ''}
             w="fit-content"
-            p="1"
             h="fit-content"
             borderRadius="sm"
           >
