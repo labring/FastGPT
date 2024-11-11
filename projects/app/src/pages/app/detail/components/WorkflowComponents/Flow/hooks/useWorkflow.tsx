@@ -24,7 +24,7 @@ import { useKeyboard } from './useKeyboard';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { THelperLine } from '@fastgpt/global/core/workflow/type';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useDebounceEffect, useMemoizedFn } from 'ahooks';
 import {
   Input_Template_Node_Height,
@@ -608,8 +608,36 @@ export const useWorkflow = () => {
           state
         )
       );
+
+      // Add default input
+      const node = nodeList.find((n) => n.nodeId === connect.target);
+      if (!node) return;
+
+      // 1. Add file input
+      if (
+        node.flowNodeType === FlowNodeTypeEnum.chatNode ||
+        node.flowNodeType === FlowNodeTypeEnum.tools ||
+        node.flowNodeType === FlowNodeTypeEnum.appModule
+      ) {
+        const input = node.inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);
+        if (input && (!input?.value || input.value.length === 0)) {
+          const workflowStartNode = nodeList.find(
+            (n) => n.flowNodeType === FlowNodeTypeEnum.workflowStart
+          );
+          if (!workflowStartNode) return;
+          onChangeNode({
+            nodeId: node.nodeId,
+            type: 'updateInput',
+            key: NodeInputKeyEnum.fileUrlList,
+            value: {
+              ...input,
+              value: [[workflowStartNode.nodeId, NodeOutputKeyEnum.userFiles]]
+            }
+          });
+        }
+      }
     },
-    [setEdges]
+    [nodeList, onChangeNode, setEdges]
   );
   const customOnConnect = useCallback(
     (connect: Connection) => {
