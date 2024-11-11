@@ -14,6 +14,7 @@ import { getHandleConfig } from '../../utils';
 import { i18nT } from '../../../../../../web/i18n/utils';
 import {
   Input_Template_Children_Node_List,
+  Input_Template_LOOP_NODE_OFFSET,
   Input_Template_Node_Height,
   Input_Template_Node_Width
 } from '../../input';
@@ -40,7 +41,8 @@ export const LoopNode: FlowNodeTemplateType = {
     },
     Input_Template_Children_Node_List,
     Input_Template_Node_Width,
-    Input_Template_Node_Height
+    Input_Template_Node_Height,
+    Input_Template_LOOP_NODE_OFFSET
   ],
   outputs: [
     {

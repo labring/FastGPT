@@ -199,6 +199,7 @@ export enum NodeInputKeyEnum {
   childrenNodeIdList = 'childrenNodeIdList',
   nodeWidth = 'nodeWidth',
   nodeHeight = 'nodeHeight',
+  loopNodeInputHeight = 'loopNodeInputHeight',
   // loop start
   loopStartInput = 'loopStartInput',
   loopStartIndex = 'loopStartIndex',
