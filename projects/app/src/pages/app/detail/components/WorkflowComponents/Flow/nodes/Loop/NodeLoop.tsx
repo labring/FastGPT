@@ -6,7 +6,7 @@
 
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Background, NodePositionChange, NodeProps } from 'reactflow';
+import { Background, NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
@@ -21,7 +21,10 @@ import {
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { Input_Template_Children_Node_List } from '@fastgpt/global/core/workflow/template/input';
+import {
+  Input_Template_Children_Node_List,
+  Input_Template_LOOP_NODE_OFFSET
+} from '@fastgpt/global/core/workflow/template/input';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
@@ -29,25 +32,30 @@ import { AppContext } from '../../../../context';
 import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
 import { useWorkflow } from '../../hooks/useWorkflow';
-import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { useSize } from 'ahooks';
 
 const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, isFolded } = data;
-  const getNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.getNodes);
-  const onNodesChange = useContextSelector(WorkflowNodeEdgeContext, (v) => v.onNodesChange);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const { resetParentNodeSizeAndPosition } = useWorkflow();
 
-  const { nodeWidth, nodeHeight, loopInputArray } = useMemo(() => {
+  const {
+    nodeWidth,
+    nodeHeight,
+    loopInputArray,
+    loopNodeInputHeight = Input_Template_LOOP_NODE_OFFSET
+  } = useMemo(() => {
     return {
       nodeWidth: inputs.find((input) => input.key === NodeInputKeyEnum.nodeWidth)?.value,
       nodeHeight: inputs.find((input) => input.key === NodeInputKeyEnum.nodeHeight)?.value,
-      loopInputArray: inputs.find((input) => input.key === NodeInputKeyEnum.loopInputArray)
+      loopInputArray: inputs.find((input) => input.key === NodeInputKeyEnum.loopInputArray),
+      loopNodeInputHeight: inputs.find(
+        (input) => input.key === NodeInputKeyEnum.loopNodeInputHeight
+      )
     };
   }, [inputs]);
 
@@ -83,7 +91,6 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     })(value[0]);
     return ArrayTypeMap[valueType as keyof typeof ArrayTypeMap] ?? WorkflowIOValueTypeEnum.arrayAny;
   }, [appDetail.chatConfig, loopInputArray, nodeList]);
-
   useEffect(() => {
     if (!loopInputArray) return;
     onChangeNode({
@@ -103,7 +110,6 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       nodeList.filter((node) => node.parentNodeId === nodeId).map((node) => node.nodeId)
     );
   }, [nodeId, nodeList]);
-
   useEffect(() => {
     onChangeNode({
       nodeId,
@@ -117,35 +123,25 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     resetParentNodeSizeAndPosition(nodeId);
   }, [childrenNodeIdList]);
 
-  // Update child node position
+  // Update loop node offset value
   const inputBoxRef = useRef<HTMLDivElement>(null);
   const size = useSize(inputBoxRef);
-  const prevHeightRef = useRef<number>(); // 添加 ref 来存储前一个高度值
   useEffect(() => {
     if (!size?.height) return;
-    if (prevHeightRef.current === size.height) return;
-    const diffHeight = prevHeightRef.current ? size.height - prevHeightRef.current : 0;
-    prevHeightRef.current = size.height;
 
-    if (diffHeight === 0) return;
-
-    // Get the height of the input box
-    // Computed input
-    const nodes = getNodes();
-    const childNodes = nodes.filter((n) => n.data.parentNodeId === nodeId);
-
-    const childNodesChange: NodePositionChange[] = childNodes.map((node) => {
-      return {
-        type: 'position',
-        id: node.id,
-        position: {
-          x: node.position.x,
-          y: node.position.y + diffHeight
-        }
-      };
+    onChangeNode({
+      nodeId,
+      type: 'replaceInput',
+      key: NodeInputKeyEnum.loopNodeInputHeight,
+      value: {
+        ...loopNodeInputHeight,
+        value: size.height
+      }
     });
 
-    onNodesChange(childNodesChange);
+    setTimeout(() => {
+      resetParentNodeSizeAndPosition(nodeId);
+    }, 50);
   }, [size?.height]);
 
   const Render = useMemo(() => {

@@ -304,7 +304,7 @@ export const useWorkflow = () => {
         }
         return acc;
       },
-      { childNodes: [] as Node[], loopNode: undefined as Node | undefined }
+      { childNodes: [] as Node[], loopNode: undefined as Node<FlowNodeItemType> | undefined }
     );
 
     if (!loopNode) return;
@@ -313,6 +313,10 @@ export const useWorkflow = () => {
     // Calculate parent node size with minimum width/height constraints
     const width = Math.max(rect.width + 80, 840);
     const height = Math.max(rect.height + 80, 600);
+
+    const offsetHeight =
+      loopNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.loopNodeInputHeight)
+        ?.value ?? 83;
 
     // Update parentNode size and position
     onChangeNode({
@@ -340,7 +344,7 @@ export const useWorkflow = () => {
         type: 'position',
         position: {
           x: rect.x - 70,
-          y: rect.y - 320
+          y: rect.y - offsetHeight - 240
         }
       }
     ]);

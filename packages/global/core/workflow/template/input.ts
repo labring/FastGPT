@@ -113,6 +113,13 @@ export const Input_Template_Node_Height: FlowNodeInputItemType = {
   label: '',
   value: 600
 };
+export const Input_Template_LOOP_NODE_OFFSET: FlowNodeInputItemType = {
+  key: NodeInputKeyEnum.loopNodeInputHeight,
+  renderTypeList: [FlowNodeInputTypeEnum.hidden],
+  valueType: WorkflowIOValueTypeEnum.number,
+  label: '',
+  value: 320
+};
 
 export const Input_Template_Stream_MODE: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.forbidStream,
