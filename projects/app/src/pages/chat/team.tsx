@@ -297,6 +297,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                   teamId={teamId}
                   teamToken={teamToken}
                   chatType="team"
+                  showRawSource
+                  showNodeStatus
                 />
               )}
             </Box>

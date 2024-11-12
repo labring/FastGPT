@@ -20,10 +20,14 @@
   "official_account.edit_modal_title": "编辑微信公众号接入",
   "official_account.name": "微信公众号接入",
   "official_account.params": "微信公众号参数",
+  "private_config": "可见度配置",
   "publish_name": "名称",
   "qpm_is_empty": "QPM 不能为空",
   "qpm_tips": "每个 IP 每分钟最多提问多少次",
+  "quote_content": "知识库引用",
   "request_address": "请求地址",
+  "show_node": "实时运行状态",
+  "show_origin_content": "查看来源原文",
   "show_share_link_modal_title": "开始使用",
   "token_auth": "身份验证",
   "token_auth_tips": "身份校验服务器地址",
@@ -33,8 +37,5 @@
   "wecom.bot_desc": "通过 API 直接接入企业微信机器人",
   "wecom.create_modal_title": "创建企微机器人",
   "wecom.edit_modal_title": "编辑企微机器人",
-  "wecom.title": "发布到企业微信机器人",
-  "show_node": "实时运行状态",
-  "quote_content": "引用内容",
-  "show_origin_content": "查看来源原文"
+  "wecom.title": "发布到企业微信机器人"
 }

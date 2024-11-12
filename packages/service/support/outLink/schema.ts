@@ -42,6 +42,7 @@ const OutLinkSchema = new Schema({
   lastTime: {
     type: Date
   },
+
   responseDetail: {
     type: Boolean,
     default: false
@@ -50,7 +51,7 @@ const OutLinkSchema = new Schema({
     type: Boolean,
     default: false
   },
-  showCompleteQuote: {
+  showRawSource: {
     type: Boolean,
     default: false
   },
@@ -70,6 +71,8 @@ const OutLinkSchema = new Schema({
       type: String
     }
   },
+
+  // Third part app config
   app: {
     type: Object // could be FeishuAppType | WecomAppType | ...
   },

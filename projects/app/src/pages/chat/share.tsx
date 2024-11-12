@@ -42,7 +42,8 @@ type Props = {
   shareId: string;
   authToken: string;
   customUid: string;
-  showCompleteQuote: boolean;
+  showRawSource: boolean;
+  showNodeStatus: boolean;
 };
 
 const OutLink = (
@@ -52,7 +53,7 @@ const OutLink = (
 ) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { outLinkUid } = props;
+  const { outLinkUid, showRawSource, showNodeStatus } = props;
   const {
     shareId = '',
     chatId = '',
@@ -366,6 +367,8 @@ const OutLink = (
                   shareId={shareId}
                   outLinkUid={outLinkUid}
                   chatType="share"
+                  showRawSource={showRawSource}
+                  showNodeStatus={showNodeStatus}
                 />
               )}
             </Box>
@@ -377,13 +380,13 @@ const OutLink = (
 };
 
 const Render = (props: Props) => {
-  const { shareId, authToken, customUid, showCompleteQuote } = props;
+  const { shareId, authToken, customUid } = props;
   const { localUId, loaded } = useShareChatStore();
   const [isLoaded, setIsLoaded] = useState(false);
 
   const contextParams = useMemo(() => {
-    return { shareId, outLinkUid: authToken || localUId || customUid, showCompleteQuote };
-  }, [authToken, customUid, localUId, shareId, showCompleteQuote]);
+    return { shareId, outLinkUid: authToken || localUId || customUid };
+  }, [authToken, customUid, localUId, shareId]);
 
   useMount(() => {
     setIsLoaded(true);
@@ -417,7 +420,7 @@ export async function getServerSideProps(context: any) {
         {
           shareId
         },
-        'appId showCompleteQuote'
+        'appId showRawSource showNodeStatus'
       )
         .populate('appId', 'name avatar intro')
         .lean()) as OutLinkWithAppType;
@@ -433,7 +436,8 @@ export async function getServerSideProps(context: any) {
       appName: app?.appId?.name ?? 'AI',
       appAvatar: app?.appId?.avatar ?? '',
       appIntro: app?.appId?.intro ?? 'AI',
-      showCompleteQuote: app?.showCompleteQuote ?? false,
+      showRawSource: app?.showRawSource ?? false,
+      showNodeStatus: app?.showNodeStatus ?? false,
       shareId: shareId ?? '',
       authToken: authToken ?? '',
       customUid,

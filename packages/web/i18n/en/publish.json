@@ -20,6 +20,7 @@
   "official_account.edit_modal_title": "Edit WeChat Official Account Integration",
   "official_account.name": "WeChat Official Account Integration",
   "official_account.params": "WeChat Official Account Parameters",
+  "private_config": "Visibility configuration",
   "publish_name": "Name",
   "qpm_is_empty": "QPM cannot be empty",
   "qpm_tips": "Maximum number of queries per minute per IP",

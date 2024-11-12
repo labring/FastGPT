@@ -24,7 +24,7 @@ export const defaultOutLinkForm: OutLinkEditType = {
   name: '',
   responseDetail: false,
   showNodeStatus: false,
-  showCompleteQuote: false,
+  showRawSource: false,
   limit: {
     QPM: 100,
     maxUsagePoints: -1

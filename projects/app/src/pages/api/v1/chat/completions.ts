@@ -84,7 +84,6 @@ type AuthResponseType = {
   app: AppSchema;
   responseDetail?: boolean;
   showNodeStatus?: boolean;
-  showCompleteQuote?: boolean;
   authType: `${AuthUserTypeEnum}`;
   apikey?: string;
   canWrite: boolean;
