@@ -30,5 +30,5 @@ weight: 232
 
 
 {{% alert icon="🍅" context="success" %}}
-具体配置参数介绍可以参考: [AI参数配置说明](/docs/course/ai_settings)
+具体配置参数介绍可以参考: [AI参数配置说明](/docs/guide/course/ai_settings/)
 {{% /alert %}}
