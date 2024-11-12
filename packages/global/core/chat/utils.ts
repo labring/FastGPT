@@ -82,7 +82,7 @@ export const filterPublicNodeResponseData = ({
 }: {
   flowResponses?: ChatHistoryItemResType[];
 }) => {
-  const filedList = ['quoteList', 'moduleType', 'pluginOutput'];
+  const filedList = ['quoteList', 'moduleType', 'pluginOutput', 'runningTime'];
   const filterModuleTypeList: any[] = [
     FlowNodeTypeEnum.pluginModule,
     FlowNodeTypeEnum.datasetSearchNode,

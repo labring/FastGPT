@@ -9,6 +9,8 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { useContextSelector } from 'use-context-selector';
+import { ChatBoxContext } from '../chat/ChatContainer/ChatBox/Provider';
 
 const InputDataModal = dynamic(() => import('@/pages/dataset/detail/components/InputDataModal'));
 
@@ -53,6 +55,12 @@ const QuoteItem = ({
 }) => {
   const { t } = useTranslation();
   const [editInputData, setEditInputData] = useState<{ dataId: string; collectionId: string }>();
+
+  const { chatType } = useContextSelector(ChatBoxContext, (v) => v);
+
+  const canEdit = useMemo(() => {
+    return chatType !== 'share' && chatType !== 'team';
+  }, [chatType]);
 
   const score = useMemo(() => {
     if (!Array.isArray(quoteItem.score)) {
@@ -224,7 +232,7 @@ const QuoteItem = ({
               canView={canViewSource}
             />
             <Box flex={1} />
-            {quoteItem.id && (
+            {quoteItem.id && canEdit && (
               <MyTooltip label={t('common:core.dataset.data.Edit')}>
                 <Box
                   className="hover-data"
@@ -252,7 +260,7 @@ const QuoteItem = ({
                 </Box>
               </MyTooltip>
             )}
-            {linkToDataset && (
+            {linkToDataset && canEdit && (
               <Link
                 as={NextLink}
                 className="hover-data"

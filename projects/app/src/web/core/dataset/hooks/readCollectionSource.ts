@@ -1,10 +1,20 @@
+import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getCollectionSource } from '@/web/core/dataset/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { AuthOutLinkProps } from '@fastgpt/global/support/outLink/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 
-export function getCollectionSourceAndOpen(collectionId: string) {
+export function getCollectionSourceAndOpen({
+  collectionId,
+  authProps,
+  isShare
+}: {
+  collectionId: string;
+  authProps: AuthOutLinkProps;
+  isShare?: boolean;
+}) {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { setLoading } = useSystemStore();
@@ -12,7 +22,8 @@ export function getCollectionSourceAndOpen(collectionId: string) {
   return async () => {
     try {
       setLoading(true);
-      const { value: url } = await getCollectionSource(collectionId);
+
+      const { value: url } = await getCollectionSource({ collectionId, isShare, ...authProps });
 
       if (!url) {
         throw new Error('No file found');
