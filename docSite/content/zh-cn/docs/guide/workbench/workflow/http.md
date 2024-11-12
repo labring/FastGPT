@@ -250,6 +250,6 @@ export default async function (ctx: FunctionContext) {
 
 ## 相关示例
 
-- [谷歌搜索](/docs/workflow/examples/google_search/)
-- [发送飞书webhook](/docs/workflow/examples/feishu_webhook/)
-- [实验室预约（操作数据库）](/docs/workflow/examples/lab_appointment/)
+- [谷歌搜索](/docs/use-cases/app-cases/google_search/)
+- [发送飞书webhook](/docs/use-cases/app-cases/feishu_webhook/)
+- [实验室预约（操作数据库）](/docs/use-cases/app-cases/lab_appointment/)

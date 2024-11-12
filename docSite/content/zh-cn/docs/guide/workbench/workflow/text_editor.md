@@ -29,4 +29,4 @@ weight: 246
 
 ## 示例
 
-- [接入谷歌搜索](/docs/workflow/examples/google_search/)
+- [接入谷歌搜索](/docs/use-cases/app-cases/google_search/)

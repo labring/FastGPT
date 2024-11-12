@@ -67,5 +67,5 @@ weight: 236
 
 ## 相关示例
 
-- [谷歌搜索](/docs/workflow/examples/google_search/)
-- [发送飞书webhook](/docs/workflow/examples/feishu_webhook/)
+- [谷歌搜索](/docs/use-cases/app-cases/google_search/)
+- [发送飞书webhook](/docs/use-cases/app-cases/feishu_webhook/)
