@@ -4,7 +4,7 @@ description: 'FastGPT 常见应用使用问题，包括简易应用、工作流�
 icon: 'quiz'
 draft: false
 toc: true
-weight: 903
+weight: 908
 ---
 
 ## 工作流中多轮对话场景中如何使连续问题被问题分类节点正确的归类
