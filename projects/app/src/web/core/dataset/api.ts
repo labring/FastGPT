@@ -56,6 +56,7 @@ import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/contro
 import type { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import type { GetScrollCollectionsProps } from '@/pages/api/core/dataset/collection/scrollList';
+import { AuthOutLinkProps } from '@fastgpt/global/support/outLink/api';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -197,5 +198,6 @@ export const getPreviewChunks = (data: PostPreviewFilesChunksProps) =>
   POST<PreviewChunksResponse>('/core/dataset/file/getPreviewChunks', data);
 
 /* ================== read source ======================== */
-export const getCollectionSource = (collectionId: string) =>
-  GET<readCollectionSourceResponse>('/core/dataset/collection/read', { collectionId });
+export const getCollectionSource = (
+  data: { collectionId: string; isShare?: boolean } & AuthOutLinkProps
+) => POST<readCollectionSourceResponse>('/core/dataset/collection/read', data);

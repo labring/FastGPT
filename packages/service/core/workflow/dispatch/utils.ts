@@ -18,12 +18,14 @@ export const getWorkflowResponseWrite = ({
   res,
   detail,
   streamResponse,
-  id = getNanoid(24)
+  id = getNanoid(24),
+  showNodeStatus = true
 }: {
   res?: NextApiResponse;
   detail: boolean;
   streamResponse: boolean;
   id?: string;
+  showNodeStatus?: boolean;
 }) => {
   return ({
     write,
@@ -50,7 +52,17 @@ export const getWorkflowResponseWrite = ({
       SseResponseEventEnum.toolResponse,
       SseResponseEventEnum.updateVariables
     ];
+
     if (!detail && detailEvent.includes(event)) return;
+
+    if (
+      !showNodeStatus &&
+      (event === SseResponseEventEnum.flowNodeStatus ||
+        event === SseResponseEventEnum.toolCall ||
+        event === SseResponseEventEnum.toolParams ||
+        event === SseResponseEventEnum.toolResponse)
+    )
+      return;
 
     responseWrite({
       res,

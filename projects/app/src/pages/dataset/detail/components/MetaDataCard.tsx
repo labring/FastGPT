@@ -10,6 +10,8 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { DatasetCollectionTypeMap, TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useContextSelector } from 'use-context-selector';
+import { ChatBoxContext } from '@/components/core/chat/ChatContainer/ChatBox/Provider';
 
 const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
@@ -18,7 +20,17 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
     collectionId: string;
     datasetId: string;
   };
-  const readSource = getCollectionSourceAndOpen(collectionId);
+
+  const { shareId, outLinkUid, chatType } = useContextSelector(ChatBoxContext, (v) => v);
+
+  const readSource = getCollectionSourceAndOpen({
+    collectionId,
+    authProps: {
+      shareId,
+      outLinkUid
+    },
+    isShare: chatType === 'share'
+  });
   const { data: collection, loading: isLoading } = useRequest2(
     () => getDatasetCollectionById(collectionId),
     {

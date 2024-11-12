@@ -5,12 +5,15 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { createFileToken } from '@fastgpt/service/support/permission/controller';
 import { BucketNameEnum, ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AuthOutLinkProps } from '@fastgpt/global/support/outLink/api';
+import { authOutLink } from '@/service/support/permission/auth/outLink';
 
-export type readCollectionSourceQuery = {
+export type readCollectionSourceQuery = {};
+
+export type readCollectionSourceBody = {
   collectionId: string;
-};
-
-export type readCollectionSourceBody = {};
+  isShare?: boolean;
+} & AuthOutLinkProps;
 
 export type readCollectionSourceResponse = {
   type: 'url';
@@ -20,11 +23,17 @@ export type readCollectionSourceResponse = {
 async function handler(
   req: ApiRequestProps<readCollectionSourceBody, readCollectionSourceQuery>
 ): Promise<readCollectionSourceResponse> {
+  const { isShare, outLinkUid, shareId } = req.body;
+
+  if (isShare) {
+    await authOutLink({ shareId, outLinkUid });
+  }
+
   const { collection, teamId, tmbId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
-    collectionId: req.query.collectionId,
+    collectionId: req.body.collectionId,
     per: ReadPermissionVal
   });
 

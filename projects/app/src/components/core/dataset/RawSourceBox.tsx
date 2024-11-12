@@ -6,6 +6,8 @@ import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollect
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useI18n } from '@/web/context/I18n';
+import { ChatBoxContext } from '../chat/ChatContainer/ChatBox/Provider';
+import { useContextSelector } from 'use-context-selector';
 
 type Props = BoxProps & {
   sourceName?: string;
@@ -23,11 +25,19 @@ const RawSourceBox = ({
 }: Props) => {
   const { t } = useTranslation();
   const { fileT } = useI18n();
+  const { shareId, outLinkUid, chatType } = useContextSelector(ChatBoxContext, (v) => v);
 
   const canPreview = !!sourceId && canView;
 
   const icon = useMemo(() => getSourceNameIcon({ sourceId, sourceName }), [sourceId, sourceName]);
-  const read = getCollectionSourceAndOpen(collectionId);
+  const read = getCollectionSourceAndOpen({
+    collectionId,
+    authProps: {
+      shareId,
+      outLinkUid
+    },
+    isShare: chatType === 'share'
+  });
 
   return (
     <MyTooltip

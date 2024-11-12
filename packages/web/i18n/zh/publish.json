@@ -1,6 +1,7 @@
 {
   "app_key_tips": "这些 key 已有当前应用标识，具体使用可参考文档",
   "basic_info": "基本信息",
+  "config": "可见度配置",
   "copy_link_hint": "将下面链接复制到指定位置",
   "create_api_key": "创建新 key",
   "create_link": "创建链接",
@@ -25,12 +26,15 @@
   "request_address": "请求地址",
   "show_share_link_modal_title": "开始使用",
   "token_auth": "身份验证",
-  "token_auth_tips": "身份校验服务器地址，如填写该值，每次对话前都会向指定服务器发送一个请求，进行身份校验",
+  "token_auth_tips": "身份校验服务器地址",
   "token_auth_use_cases": "查看身份验证使用说明",
   "wecom.api": "企微 API",
   "wecom.bot": "企业微信机器人",
   "wecom.bot_desc": "通过 API 直接接入企业微信机器人",
   "wecom.create_modal_title": "创建企微机器人",
   "wecom.edit_modal_title": "编辑企微机器人",
-  "wecom.title": "发布到企业微信机器人"
+  "wecom.title": "发布到企业微信机器人",
+  "show_node": "实时运行状态",
+  "quote_content": "引用内容",
+  "show_origin_content": "查看来源原文"
 }
