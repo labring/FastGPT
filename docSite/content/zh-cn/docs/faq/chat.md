@@ -4,7 +4,7 @@ description: 'FastGPT 常见聊天框问题'
 icon: 'quiz'
 draft: false
 toc: true
-weight: 905
+weight: 906
 ---
 
 ## 我修改了工作台的应用，为什么在“聊天”时没有更新配置？

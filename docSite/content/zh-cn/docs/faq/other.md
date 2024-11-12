@@ -3,7 +3,7 @@ title: '其他问题'
 icon: 'quiz'
 draft: false
 toc: true
-weight: 925
+weight: 918
 ---
 
 ## oneapi 官网是哪个
