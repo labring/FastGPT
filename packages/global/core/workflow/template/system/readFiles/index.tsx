@@ -24,7 +24,8 @@ export const ReadFilesNode: FlowNodeTemplateType = {
   intro: i18nT('app:workflow.read_files_tip'),
   showStatus: true,
   version: '4812',
-  isTool: true,
+  isTool: false,
+  courseUrl: '/docs/guide/course/fileinput/',
   inputs: [
     {
       key: NodeInputKeyEnum.fileUrlList,

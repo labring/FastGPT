@@ -17,7 +17,6 @@ import {
   Input_Template_History,
   Input_Template_System_Prompt,
   Input_Template_UserChatInput,
-  Input_Template_Text_Quote,
   Input_Template_File_Link_Prompt
 } from '../../input';
 import { chatNodeSystemPromptTip, systemPromptTip } from '../../tip';
@@ -55,7 +54,7 @@ export const AiChatModule: FlowNodeTemplateType = {
   intro: i18nT('workflow:template.ai_chat_intro'),
   showStatus: true,
   isTool: true,
-  courseUrl: '/docs/workflow/modules/ai_chat/',
+  courseUrl: '/docs/guide/workbench/workflow/ai_chat/',
   version: '4813',
   inputs: [
     Input_Template_SettingAiModel,
