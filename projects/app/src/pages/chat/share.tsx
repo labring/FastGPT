@@ -42,6 +42,7 @@ type Props = {
   shareId: string;
   authToken: string;
   customUid: string;
+  showCompleteQuote: boolean;
 };
 
 const OutLink = (
@@ -364,6 +365,7 @@ const OutLink = (
                   chatId={chatId}
                   shareId={shareId}
                   outLinkUid={outLinkUid}
+                  chatType="share"
                 />
               )}
             </Box>
@@ -375,13 +377,13 @@ const OutLink = (
 };
 
 const Render = (props: Props) => {
-  const { shareId, authToken, customUid } = props;
+  const { shareId, authToken, customUid, showCompleteQuote } = props;
   const { localUId, loaded } = useShareChatStore();
   const [isLoaded, setIsLoaded] = useState(false);
 
   const contextParams = useMemo(() => {
-    return { shareId, outLinkUid: authToken || customUid || localUId };
-  }, [authToken, customUid, localUId, shareId]);
+    return { shareId, outLinkUid: authToken || localUId || customUid, showCompleteQuote };
+  }, [authToken, customUid, localUId, shareId, showCompleteQuote]);
 
   useMount(() => {
     setIsLoaded(true);
@@ -415,7 +417,7 @@ export async function getServerSideProps(context: any) {
         {
           shareId
         },
-        'appId'
+        'appId showCompleteQuote'
       )
         .populate('appId', 'name avatar intro')
         .lean()) as OutLinkWithAppType;
@@ -431,6 +433,7 @@ export async function getServerSideProps(context: any) {
       appName: app?.appId?.name ?? 'AI',
       appAvatar: app?.appId?.avatar ?? '',
       appIntro: app?.appId?.intro ?? 'AI',
+      showCompleteQuote: app?.showCompleteQuote ?? false,
       shareId: shareId ?? '',
       authToken: authToken ?? '',
       customUid,

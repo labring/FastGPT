@@ -74,6 +74,7 @@
   "module.type": "\"{{type}}\" type\n{{description}}",
   "modules.Title is required": "Module name cannot be empty",
   "month.unit": "Day",
+  "move.hint": "After moving, the selected application/folder will inherit the permission settings of the new folder, and the original permission settings will become invalid.",
   "move_app": "Move Application",
   "not_json_file": "Please select a JSON file",
   "open_vision_function_tip": "Models with icon switches have image recognition capabilities. \nAfter being turned on, the model will parse the pictures in the file link and automatically parse the pictures in the user's question (user question ≤ 500 words).",

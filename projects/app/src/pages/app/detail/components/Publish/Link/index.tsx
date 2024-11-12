@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Flex,
   Box,
@@ -184,6 +184,8 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                                 _id: item._id,
                                 name: item.name,
                                 responseDetail: item.responseDetail,
+                                showCompleteQuote: item.showCompleteQuote,
+                                showNodeStatus: item.showNodeStatus,
                                 limit: item.limit
                               })
                           },
@@ -272,10 +274,26 @@ function EditLinkModal({
   const {
     register,
     setValue,
+    watch,
     handleSubmit: submitShareChat
   } = useForm({
     defaultValues: defaultData
   });
+
+  const responseDetail = watch('responseDetail');
+  const showCompleteQuote = watch('showCompleteQuote');
+
+  useEffect(() => {
+    if (!responseDetail) {
+      setValue('showCompleteQuote', false);
+    }
+  }, [responseDetail, setValue]);
+
+  useEffect(() => {
+    if (showCompleteQuote) {
+      setValue('responseDetail', true);
+    }
+  }, [showCompleteQuote, setValue]);
 
   const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
 
@@ -302,100 +320,130 @@ function EditLinkModal({
       isOpen={true}
       iconSrc="/imgs/modal/shareFill.svg"
       title={isEdit ? publishT('edit_link') : publishT('create_link')}
+      w={'53.125rem'}
     >
-      <ModalBody>
-        <Flex alignItems={'center'}>
-          <FormLabel flex={'0 0 90px'}>{t('common:Name')}</FormLabel>
-          <Input
-            placeholder={publishT('link_name')}
-            maxLength={20}
-            {...register('name', {
-              required: t('common:common.name_is_empty') || 'name_is_empty'
-            })}
-          />
-        </Flex>
-        {feConfigs?.isPlus && (
-          <>
+      <ModalBody p={6}>
+        <Flex flexDir={['column', 'row']}>
+          <Box pr={[0, 6]} borderRight={['0px', '1px']} borderColor={['', 'myGray.150']}>
+            <Box fontSize={'sm'} fontWeight={'500'} color={'myGray.600'}>
+              {t('publish:basic_info')}
+            </Box>
             <Flex alignItems={'center'} mt={4}>
-              <FormLabel flex={'0 0 90px'} alignItems={'center'}>
-                {t('common:common.Expired Time')}
-              </FormLabel>
+              <FormLabel flex={'0 0 90px'}>{t('common:Name')}</FormLabel>
               <Input
-                type="datetime-local"
-                defaultValue={
-                  defaultData.limit?.expiredTime
-                    ? dayjs(defaultData.limit?.expiredTime).format('YYYY-MM-DDTHH:mm')
-                    : ''
-                }
-                onChange={(e) => {
-                  setValue('limit.expiredTime', new Date(e.target.value));
-                }}
-              />
-            </Flex>
-            <Flex alignItems={'center'} mt={4}>
-              <Flex flex={'0 0 90px'} alignItems={'center'}>
-                <FormLabel>QPM</FormLabel>
-                <QuestionTip ml={1} label={publishT('qpm_tips' || '')}></QuestionTip>
-              </Flex>
-              <Input
-                max={1000}
-                {...register('limit.QPM', {
-                  min: 0,
-                  max: 1000,
-                  valueAsNumber: true,
-                  required: publishT('qpm_is_empty') || ''
+                placeholder={publishT('link_name')}
+                maxLength={20}
+                {...register('name', {
+                  required: t('common:common.name_is_empty') || 'name_is_empty'
                 })}
               />
             </Flex>
-            <Flex alignItems={'center'} mt={4}>
-              <Flex flex={'0 0 90px'} alignItems={'center'}>
-                <FormLabel>{t('common:support.outlink.Max usage points')}</FormLabel>
+            {feConfigs?.isPlus && (
+              <>
+                <Flex alignItems={'center'} mt={4}>
+                  <FormLabel flex={'0 0 90px'} alignItems={'center'}>
+                    {t('common:common.Expired Time')}
+                  </FormLabel>
+                  <Input
+                    type="datetime-local"
+                    defaultValue={
+                      defaultData.limit?.expiredTime
+                        ? dayjs(defaultData.limit?.expiredTime).format('YYYY-MM-DDTHH:mm')
+                        : ''
+                    }
+                    onChange={(e) => {
+                      setValue('limit.expiredTime', new Date(e.target.value));
+                    }}
+                  />
+                </Flex>
+                <Flex alignItems={'center'} mt={4}>
+                  <Flex flex={'0 0 90px'} alignItems={'center'}>
+                    <FormLabel>QPM</FormLabel>
+                    <QuestionTip ml={1} label={publishT('qpm_tips' || '')}></QuestionTip>
+                  </Flex>
+                  <Input
+                    max={1000}
+                    {...register('limit.QPM', {
+                      min: 0,
+                      max: 1000,
+                      valueAsNumber: true,
+                      required: publishT('qpm_is_empty') || ''
+                    })}
+                  />
+                </Flex>
+                <Flex alignItems={'center'} mt={4}>
+                  <Flex flex={'0 0 90px'} alignItems={'center'}>
+                    <FormLabel>{t('common:support.outlink.Max usage points')}</FormLabel>
+                    <QuestionTip
+                      ml={1}
+                      label={t('common:support.outlink.Max usage points tip')}
+                    ></QuestionTip>
+                  </Flex>
+                  <Input
+                    {...register('limit.maxUsagePoints', {
+                      min: -1,
+                      max: 10000000,
+                      valueAsNumber: true,
+                      required: true
+                    })}
+                  />
+                </Flex>
+
+                <Flex alignItems={'center'} mt={4}>
+                  <Flex flex={'0 0 90px'} alignItems={'center'}>
+                    <FormLabel>{publishT('token_auth')}</FormLabel>
+                    <QuestionTip ml={1} label={publishT('token_auth_tips') || ''}></QuestionTip>
+                  </Flex>
+                  <Input
+                    placeholder={publishT('token_auth_tips') || ''}
+                    fontSize={'sm'}
+                    {...register('limit.hookUrl')}
+                  />
+                </Flex>
+                <Link
+                  href={getDocPath('/docs/development/openapi/share')}
+                  target={'_blank'}
+                  fontSize={'xs'}
+                  color={'myGray.500'}
+                >
+                  {publishT('token_auth_use_cases')}
+                </Link>
+              </>
+            )}
+          </Box>
+          <Box pl={[0, 6]} flexGrow={1} pt={[6, 0]}>
+            <Box fontSize={'sm'} fontWeight={'500'} color={'myGray.600'}>
+              {t('publish:config')}
+            </Box>
+            <Flex alignItems={'center'} mt={4} justify={'space-between'}>
+              <Flex alignItems={'center'}>
+                <FormLabel>{t('publish:show_node')}</FormLabel>
+              </Flex>
+              <Switch {...register('showNodeStatus')} />
+            </Flex>
+
+            <Flex alignItems={'center'} mt={4} justify={'space-between'}>
+              <Flex alignItems={'center'}>
+                <FormLabel>{t('common:support.outlink.share.Response Quote')}</FormLabel>
                 <QuestionTip
                   ml={1}
-                  label={t('common:support.outlink.Max usage points tip')}
+                  label={t('common:support.outlink.share.Response Quote tips' || '')}
                 ></QuestionTip>
               </Flex>
-              <Input
-                {...register('limit.maxUsagePoints', {
-                  min: -1,
-                  max: 10000000,
-                  valueAsNumber: true,
-                  required: true
-                })}
-              />
+              <Switch {...register('responseDetail')} isChecked={responseDetail} />
             </Flex>
 
-            <Flex alignItems={'center'} mt={4}>
-              <Flex flex={'0 0 90px'} alignItems={'center'}>
-                <FormLabel>{publishT('token_auth')}</FormLabel>
-                <QuestionTip ml={1} label={publishT('token_auth_tips') || ''}></QuestionTip>
+            <Flex alignItems={'center'} mt={4} justify={'space-between'}>
+              <Flex alignItems={'center'}>
+                <FormLabel>{t('common:support.outlink.share.show_complete_quote')}</FormLabel>
+                <QuestionTip
+                  ml={1}
+                  label={t('common:support.outlink.share.show_complete_quote_tips' || '')}
+                ></QuestionTip>
               </Flex>
-              <Input
-                placeholder={publishT('token_auth_tips') || ''}
-                fontSize={'sm'}
-                {...register('limit.hookUrl')}
-              />
+              <Switch {...register('showCompleteQuote')} isChecked={showCompleteQuote} />
             </Flex>
-            <Link
-              href={getDocPath('/docs/development/openapi/share')}
-              target={'_blank'}
-              fontSize={'xs'}
-              color={'myGray.500'}
-            >
-              {publishT('token_auth_use_cases')}
-            </Link>
-          </>
-        )}
-
-        <Flex alignItems={'center'} mt={4}>
-          <Flex flex={'0 0 90px'} alignItems={'center'}>
-            <FormLabel>{t('common:support.outlink.share.Response Quote')}</FormLabel>
-            <QuestionTip
-              ml={1}
-              label={t('support.outlink.share.Response Quote tips' || '')}
-            ></QuestionTip>
-          </Flex>
-          <Switch {...register('responseDetail')} />
+          </Box>
         </Flex>
       </ModalBody>
 

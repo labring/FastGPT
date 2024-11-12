@@ -16,7 +16,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
 type ChatContextValueType = {
-  params: Record<string, string | number>;
+  params: Record<string, string | number | boolean>;
 };
 type ChatContextType = {
   chatId: string;
@@ -44,6 +44,7 @@ type ChatContextType = {
   isLoading: boolean;
   histories: ChatHistoryItemType[];
   onUpdateHistoryTitle: ({ chatId, newTitle }: { chatId: string; newTitle: string }) => void;
+  showCompleteQuote: boolean;
 };
 
 export const ChatContext = createContext<ChatContextType>({
@@ -85,7 +86,8 @@ export const ChatContext = createContext<ChatContextType>({
   onChangeAppId: function (appId: string): void {
     throw new Error('Function not implemented.');
   },
-  isLoading: false
+  isLoading: false,
+  showCompleteQuote: true
 });
 
 const ChatContextProvider = ({
@@ -94,6 +96,7 @@ const ChatContextProvider = ({
 }: ChatContextValueType & { children: ReactNode }) => {
   const router = useRouter();
   const { chatId = '' } = router.query as { chatId: string };
+  const { showCompleteQuote }: { showCompleteQuote?: boolean } = params;
 
   const forbidLoadChat = useRef(false);
 
@@ -225,7 +228,8 @@ const ChatContextProvider = ({
     ScrollData,
     loadHistories,
     histories,
-    onUpdateHistoryTitle
+    onUpdateHistoryTitle,
+    showCompleteQuote: showCompleteQuote ?? true
   };
   return <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>;
 };

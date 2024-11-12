@@ -35,6 +35,7 @@
   "not_select_file": "No file selected",
   "plugins_output": "Plugin Output",
   "question_tip": "From top to bottom, the response order of each module",
+  "response.child total points": "Sub-workflow point consumption",
   "response.dataset_concat_length": "Combined total",
   "response.node_inputs": "Node Inputs",
   "select": "Select",
