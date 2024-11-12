@@ -90,6 +90,7 @@ export const chats2GPTMessages = ({
       }
     } else {
       const aiResults: ChatCompletionMessageParam[] = [];
+
       //AI
       item.value.forEach((value, i) => {
         if (value.type === ChatItemValueTypeEnum.tool && value.tools && reserveTool) {
@@ -130,7 +131,7 @@ export const chats2GPTMessages = ({
           if (
             lastValue &&
             lastValue.type === ChatItemValueTypeEnum.text &&
-            typeof lastResult.content === 'string'
+            typeof lastResult?.content === 'string'
           ) {
             lastResult.content += value.text.content;
           } else {

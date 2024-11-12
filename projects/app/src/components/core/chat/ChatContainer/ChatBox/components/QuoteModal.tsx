@@ -11,12 +11,14 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 const QuoteModal = ({
   rawSearch = [],
   onClose,
-  showDetail,
+  canEditDataset,
+  showRawSource,
   metadata
 }: {
   rawSearch: SearchDataResponseItemType[];
   onClose: () => void;
-  showDetail: boolean;
+  canEditDataset: boolean;
+  showRawSource: boolean;
   metadata?: {
     collectionId: string;
     sourceId?: string;
@@ -47,7 +49,7 @@ const QuoteModal = ({
         title={
           <Box>
             {metadata ? (
-              <RawSourceBox {...metadata} canView={showDetail} />
+              <RawSourceBox {...metadata} canView={showRawSource} />
             ) : (
               <>{t('common:core.chat.Quote Amount', { amount: rawSearch.length })}</>
             )}
@@ -58,7 +60,11 @@ const QuoteModal = ({
         }
       >
         <ModalBody>
-          <QuoteList rawSearch={filterResults} showDetail={showDetail} />
+          <QuoteList
+            rawSearch={filterResults}
+            canEditDataset={canEditDataset}
+            canViewSource={showRawSource}
+          />
         </ModalBody>
       </MyModal>
     </>
@@ -69,10 +75,12 @@ export default QuoteModal;
 
 export const QuoteList = React.memo(function QuoteList({
   rawSearch = [],
-  showDetail
+  canEditDataset,
+  canViewSource
 }: {
   rawSearch: SearchDataResponseItemType[];
-  showDetail: boolean;
+  canEditDataset: boolean;
+  canViewSource: boolean;
 }) {
   const theme = useTheme();
 
@@ -89,7 +97,11 @@ export const QuoteList = React.memo(function QuoteList({
           _hover={{ '& .hover-data': { display: 'flex' } }}
           bg={i % 2 === 0 ? 'white' : 'myWhite.500'}
         >
-          <QuoteItem quoteItem={item} canViewSource={showDetail} linkToDataset={showDetail} />
+          <QuoteItem
+            quoteItem={item}
+            canViewSource={canViewSource}
+            canEditDataset={canEditDataset}
+          />
         </Box>
       ))}
     </>

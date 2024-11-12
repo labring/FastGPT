@@ -17,16 +17,8 @@ async function handler(
   req: ApiRequestProps<getHistoriesBody, getHistoriesQuery>,
   res: ApiResponseType<any>
 ): Promise<PaginationResponse<getHistoriesResponse>> {
-  const {
-    appId,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken,
-    offset,
-    pageSize,
-    source = ChatSourceEnum.online
-  } = req.body as getHistoriesBody;
+  const { appId, shareId, outLinkUid, teamId, teamToken, offset, pageSize, source } =
+    req.body as getHistoriesBody;
 
   const match = await (async () => {
     if (shareId && outLinkUid) {
@@ -35,7 +27,6 @@ async function handler(
       return {
         shareId,
         outLinkUid: uid,
-        source: ChatSourceEnum.share,
         updateTime: {
           $gte: new Date(new Date().setDate(new Date().getDate() - 30))
         }
@@ -55,7 +46,7 @@ async function handler(
       return {
         tmbId,
         appId,
-        source: source
+        source
       };
     }
   })();

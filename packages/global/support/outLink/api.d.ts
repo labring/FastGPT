@@ -10,7 +10,3 @@ export type AuthOutLinkLimitProps = AuthOutLinkChatProps & { outLink: OutLinkSch
 export type AuthOutLinkResponse = {
   uid: string;
 };
-export type AuthOutLinkProps = {
-  shareId?: string;
-  outLinkUid?: string;
-};

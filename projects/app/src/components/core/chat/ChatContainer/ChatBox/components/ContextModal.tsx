@@ -54,6 +54,7 @@ const ContextModal = ({ onClose, dataId }: { onClose: () => void; dataId: string
             border={'base'}
             _notLast={{ mb: 2 }}
             position={'relative'}
+            bg={i % 2 === 0 ? 'white' : 'myGray.50'}
           >
             <Box fontWeight={'bold'}>{item.obj}</Box>
             <Box>{item.value}</Box>

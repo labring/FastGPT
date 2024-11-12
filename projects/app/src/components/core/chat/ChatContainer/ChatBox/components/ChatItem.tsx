@@ -137,7 +137,9 @@ const ChatItem = (props: Props) => {
   };
   const { t } = useTranslation();
 
-  const { isChatting, chatType } = useContextSelector(ChatBoxContext, (v) => v);
+  const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
+  const showNodeStatus = useContextSelector(ChatBoxContext, (v) => v.showNodeStatus);
   const isChatLog = chatType === 'log';
 
   const { copyData } = useCopyData();
@@ -237,7 +239,7 @@ const ChatItem = (props: Props) => {
         <ChatAvatar src={avatar} type={type} />
 
         {/* Workflow status */}
-        {!!chatStatusMap && statusBoxData && isLastChild && (
+        {!!chatStatusMap && statusBoxData && isLastChild && showNodeStatus && (
           <Flex
             alignItems={'center'}
             px={3}

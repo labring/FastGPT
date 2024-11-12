@@ -34,10 +34,7 @@ import type { CreateDatasetParams, InsertOneDatasetDataProps } from '@/global/co
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
-import type {
-  DatasetCollectionsListItemType,
-  DatasetDataListItemType
-} from '@/global/core/dataset/type.d';
+import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import { PagingData } from '@/types';
 import type { getDatasetTrainingQueueResponse } from '@/pages/api/core/dataset/training/getDatasetTrainingQueue';
 import type { rebuildEmbeddingBody } from '@/pages/api/core/dataset/training/rebuildEmbedding';
@@ -45,7 +42,10 @@ import type {
   PostPreviewFilesChunksProps,
   PreviewChunksResponse
 } from '@/pages/api/core/dataset/file/getPreviewChunks';
-import type { readCollectionSourceResponse } from '@/pages/api/core/dataset/collection/read';
+import type {
+  readCollectionSourceBody,
+  readCollectionSourceResponse
+} from '@/pages/api/core/dataset/collection/read';
 import type { GetDatasetListBody } from '@/pages/api/core/dataset/list';
 import type { UpdateDatasetCollectionParams } from '@/pages/api/core/dataset/collection/update';
 import type {
@@ -56,7 +56,6 @@ import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/contro
 import type { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import type { GetScrollCollectionsProps } from '@/pages/api/core/dataset/collection/scrollList';
-import { AuthOutLinkProps } from '@fastgpt/global/support/outLink/api';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -198,6 +197,5 @@ export const getPreviewChunks = (data: PostPreviewFilesChunksProps) =>
   POST<PreviewChunksResponse>('/core/dataset/file/getPreviewChunks', data);
 
 /* ================== read source ======================== */
-export const getCollectionSource = (
-  data: { collectionId: string; isShare?: boolean } & AuthOutLinkProps
-) => POST<readCollectionSourceResponse>('/core/dataset/collection/read', data);
+export const getCollectionSource = (data: readCollectionSourceBody) =>
+  POST<readCollectionSourceResponse>('/core/dataset/collection/read', data);

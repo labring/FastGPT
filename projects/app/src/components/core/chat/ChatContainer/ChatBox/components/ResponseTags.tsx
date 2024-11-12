@@ -7,13 +7,11 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import ChatBoxDivider from '@/components/core/chat/Divider';
-import { strIsLink } from '@fastgpt/global/common/string/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useSize } from 'ahooks';
-import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 
@@ -23,11 +21,9 @@ const WholeResponseModal = dynamic(() => import('../../../components/WholeRespon
 
 const ResponseTags = ({
   showTags,
-  showDetail,
   historyItem
 }: {
   showTags: boolean;
-  showDetail: boolean;
   historyItem: ChatSiteItemType;
 }) => {
   const { isPc } = useSystem();
@@ -51,12 +47,9 @@ const ResponseTags = ({
   }>();
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
 
-  const showCompleteQuote = useContextSelector(ChatContext, (v) => v.showCompleteQuote);
-  const { chatType } = useContextSelector(ChatBoxContext, (v) => v);
-
-  const showAllTag = useMemo(() => {
-    return chatType !== 'share' && chatType !== 'team';
-  }, [chatType]);
+  const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
+  const showRawSource = useContextSelector(ChatBoxContext, (v) => v.showRawSource);
+  const notSharePage = useMemo(() => chatType !== 'share', [chatType]);
 
   const {
     isOpen: isOpenWholeModal,
@@ -88,13 +81,20 @@ const ResponseTags = ({
         sourceName: item.sourceName,
         sourceId: item.sourceId,
         icon: getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
-        canReadQuote: showCompleteQuote || strIsLink(item.sourceId),
         collectionId: item.collectionId
       }));
-  }, [quoteList, showCompleteQuote]);
+  }, [quoteList]);
+
+  const notEmptyTags =
+    quoteList.length > 0 ||
+    (llmModuleAccount === 1 && notSharePage) ||
+    (llmModuleAccount > 1 && notSharePage) ||
+    (isPc && runningTime > 0) ||
+    notSharePage;
 
   return !showTags ? null : (
     <>
+      {/* quote */}
       {sourceList.length > 0 && (
         <>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
@@ -188,74 +188,74 @@ const ResponseTags = ({
         </>
       )}
 
-      <Flex alignItems={'center'} mt={3} flexWrap={'wrap'} gap={2}>
-        {quoteList.length > 0 && (
-          <MyTooltip label={t('chat:view_citations')}>
-            <MyTag
-              colorSchema="blue"
-              type="borderSolid"
-              cursor={'pointer'}
-              onClick={() => setQuoteModalData({ rawSearch: quoteList })}
-            >
-              {t('chat:citations', { num: quoteList.length })}
+      {notEmptyTags && (
+        <Flex alignItems={'center'} mt={3} flexWrap={'wrap'} gap={2}>
+          {quoteList.length > 0 && (
+            <MyTooltip label={t('chat:view_citations')}>
+              <MyTag
+                colorSchema="blue"
+                type="borderSolid"
+                cursor={'pointer'}
+                onClick={() => setQuoteModalData({ rawSearch: quoteList })}
+              >
+                {t('chat:citations', { num: quoteList.length })}
+              </MyTag>
+            </MyTooltip>
+          )}
+          {llmModuleAccount === 1 && notSharePage && (
+            <>
+              {historyPreviewLength > 0 && (
+                <MyTooltip label={t('chat:click_contextual_preview')}>
+                  <MyTag
+                    colorSchema="green"
+                    cursor={'pointer'}
+                    type="borderSolid"
+                    onClick={onOpenContextModal}
+                  >
+                    {t('chat:contextual', { num: historyPreviewLength })}
+                  </MyTag>
+                </MyTooltip>
+              )}
+            </>
+          )}
+          {llmModuleAccount > 1 && notSharePage && (
+            <MyTag type="borderSolid" colorSchema="blue">
+              {t('chat:multiple_AI_conversations')}
             </MyTag>
-          </MyTooltip>
-        )}
-        {llmModuleAccount === 1 && showAllTag && (
-          <>
-            {historyPreviewLength > 0 && (
-              <MyTooltip label={t('chat:click_contextual_preview')}>
-                <MyTag
-                  colorSchema="green"
-                  cursor={'pointer'}
-                  type="borderSolid"
-                  onClick={onOpenContextModal}
-                >
-                  {t('chat:contextual', { num: historyPreviewLength })}
-                </MyTag>
-              </MyTooltip>
-            )}
-          </>
-        )}
-        {llmModuleAccount > 1 && showAllTag && (
-          <MyTag type="borderSolid" colorSchema="blue">
-            {t('chat:multiple_AI_conversations')}
-          </MyTag>
-        )}
+          )}
+          {isPc && runningTime > 0 && (
+            <MyTooltip label={t('chat:module_runtime_and')}>
+              <MyTag colorSchema="purple" type="borderSolid" cursor={'default'}>
+                {runningTime}s
+              </MyTag>
+            </MyTooltip>
+          )}
 
-        {isPc && runningTime > 0 && (
-          <MyTooltip label={t('chat:module_runtime_and')}>
-            <MyTag colorSchema="purple" type="borderSolid" cursor={'default'}>
-              {runningTime}s
-            </MyTag>
-          </MyTooltip>
-        )}
-
-        {showAllTag && (
-          <MyTooltip label={t('common:core.chat.response.Read complete response tips')}>
-            <MyTag
-              colorSchema="gray"
-              type="borderSolid"
-              cursor={'pointer'}
-              onClick={onOpenWholeModal}
-            >
-              {t('common:core.chat.response.Read complete response')}
-            </MyTag>
-          </MyTooltip>
-        )}
-      </Flex>
+          {notSharePage && (
+            <MyTooltip label={t('common:core.chat.response.Read complete response tips')}>
+              <MyTag
+                colorSchema="gray"
+                type="borderSolid"
+                cursor={'pointer'}
+                onClick={onOpenWholeModal}
+              >
+                {t('common:core.chat.response.Read complete response')}
+              </MyTag>
+            </MyTooltip>
+          )}
+        </Flex>
+      )}
 
       {!!quoteModalData && (
         <QuoteModal
           {...quoteModalData}
-          showDetail={showCompleteQuote}
+          canEditDataset={notSharePage}
+          showRawSource={showRawSource}
           onClose={() => setQuoteModalData(undefined)}
         />
       )}
       {isOpenContextModal && <ContextModal dataId={dataId} onClose={onCloseContextModal} />}
-      {isOpenWholeModal && (
-        <WholeResponseModal dataId={dataId} showDetail={true} onClose={onCloseWholeModal} />
-      )}
+      {isOpenWholeModal && <WholeResponseModal dataId={dataId} onClose={onCloseWholeModal} />}
     </>
   );
 };
