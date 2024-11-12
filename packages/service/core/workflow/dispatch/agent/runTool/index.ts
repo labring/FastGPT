@@ -101,7 +101,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
     teamId,
     fileLinks,
-    inputFiles: globalFiles
+    inputFiles: globalFiles,
+    hasReadFilesTool
   });
 
   const concatenateSystemPrompt = [
@@ -184,7 +185,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     }
 
     const lastMessage = adaptMessages[adaptMessages.length - 1];
-    if (typeof lastMessage.content === 'string') {
+    if (typeof lastMessage?.content === 'string') {
       lastMessage.content = replaceVariable(Prompt_Tool_Call, {
         question: lastMessage.content
       });
@@ -271,7 +272,8 @@ const getMultiInput = async ({
   requestOrigin,
   maxFiles,
   teamId,
-  inputFiles
+  inputFiles,
+  hasReadFilesTool
 }: {
   histories: ChatItemType[];
   fileLinks?: string[];
@@ -279,9 +281,10 @@ const getMultiInput = async ({
   maxFiles: number;
   teamId: string;
   inputFiles: UserChatItemValueItemType['file'][];
+  hasReadFilesTool: boolean;
 }) => {
   // Not file quote
-  if (!fileLinks) {
+  if (!fileLinks || hasReadFilesTool) {
     return {
       documentQuoteText: '',
       userFiles: inputFiles
@@ -323,28 +326,40 @@ const toolCallMessagesAdapt = ({
 }: {
   userInput: UserChatItemValueItemType[];
   skip?: boolean;
-}) => {
+}): UserChatItemValueItemType[] => {
   if (skip) return userInput;
 
   const files = userInput.filter((item) => item.type === 'file');
 
   if (files.length > 0) {
-    return userInput.map((item) => {
-      if (item.type === 'text') {
-        const filesCount = files.filter((file) => file.file?.type === 'file').length;
-        const imgCount = files.filter((file) => file.file?.type === 'image').length;
-        const text = item.text?.content || '';
+    const filesCount = files.filter((file) => file.file?.type === 'file').length;
+    const imgCount = files.filter((file) => file.file?.type === 'image').length;
 
-        return {
-          ...item,
-          text: {
-            content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: text })
-          }
-        };
+    if (userInput.some((item) => item.type === 'text')) {
+      return userInput.map((item) => {
+        if (item.type === 'text') {
+          const text = item.text?.content || '';
+
+          return {
+            ...item,
+            text: {
+              content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: text })
+            }
+          };
+        }
+        return item;
+      });
+    }
+
+    // Every input is a file
+    return [
+      {
+        type: ChatItemValueTypeEnum.text,
+        text: {
+          content: getMultiplePrompt({ fileCount: filesCount, imgCount, question: '' })
+        }
       }
-
-      return item;
-    });
+    ];
   }
 
   return userInput;

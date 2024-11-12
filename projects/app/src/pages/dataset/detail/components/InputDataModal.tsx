@@ -99,7 +99,9 @@ const InputDataModal = ({
               mr={'0.38rem'}
               color={'myGray.500'}
               ml={1}
-              onClick={() => window.open(getDocPath('/docs/course/dataset_engine'), '_blank')}
+              onClick={() =>
+                window.open(getDocPath('/docs/guide/knowledge_base/dataset_engine/'), '_blank')
+              }
               _hover={{
                 color: 'primary.600',
                 cursor: 'pointer'
