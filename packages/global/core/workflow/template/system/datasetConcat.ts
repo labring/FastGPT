@@ -43,6 +43,7 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
 
   showStatus: false,
   version: '486',
+  courseUrl: '/docs/guide/workbench/workflow/knowledge_base_search_merge/',
   inputs: [
     {
       key: NodeInputKeyEnum.datasetMaxTokens,

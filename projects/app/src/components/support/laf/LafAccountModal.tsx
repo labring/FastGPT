@@ -101,7 +101,7 @@ const LafAccountModal = ({
         <Box fontSize={'sm'} color={'myGray.500'}>
           <Box>{t('common:support.user.Laf account intro')}</Box>
           <Box textDecoration={'underline'}>
-            <Link href={getDocPath('/docs/workflow/modules/laf/')} isExternal>
+            <Link href={getDocPath('/docs/guide/workbench/workflow/laf/')} isExternal>
               {t('common:support.user.Laf account course')}
             </Link>
           </Box>
