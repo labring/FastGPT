@@ -755,7 +755,7 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
                     {debugResult.message}
                   </Box>
                 )}
-                {response && <WholeResponseContent activeModule={response} showDetail />}
+                {response && <WholeResponseContent activeModule={response} />}
               </Box>
             )}
           </Card>
