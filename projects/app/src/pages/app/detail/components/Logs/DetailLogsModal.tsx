@@ -181,6 +181,8 @@ const DetailLogsModal = ({
               appId={appId}
               chatId={chatId}
               chatType="log"
+              showRawSource
+              showNodeStatus
             />
           )}
         </Box>

@@ -565,6 +565,7 @@ const ChatBox = (
             // tts audio
             autoTTSResponse && splitText2Audio(responseText, true);
           } catch (err: any) {
+            console.log(err);
             toast({
               title: t(getErrText(err, 'core.chat.error.Chat error') as any),
               status: 'error',
@@ -947,7 +948,6 @@ const ChatBox = (
                       >
                         <ResponseTags
                           showTags={index !== chatHistories.length - 1 || !isChatting}
-                          showDetail={!shareId && !teamId}
                           historyItem={item}
                         />
 

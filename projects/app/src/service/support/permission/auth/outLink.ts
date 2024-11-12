@@ -3,9 +3,9 @@ import type {
   AuthOutLinkChatProps,
   AuthOutLinkLimitProps,
   AuthOutLinkInitProps,
-  AuthOutLinkResponse,
-  AuthOutLinkProps
+  AuthOutLinkResponse
 } from '@fastgpt/global/support/outLink/api.d';
+import { ShareChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
 import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
@@ -24,7 +24,7 @@ export function authOutLinkChatLimit(data: AuthOutLinkLimitProps): Promise<AuthO
 export const authOutLink = async ({
   shareId,
   outLinkUid
-}: AuthOutLinkProps): Promise<{
+}: ShareChatAuthProps): Promise<{
   uid: string;
   appId: string;
   shareChat: OutLinkSchema;

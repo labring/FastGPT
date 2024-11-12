@@ -44,7 +44,6 @@ type ChatContextType = {
   isLoading: boolean;
   histories: ChatHistoryItemType[];
   onUpdateHistoryTitle: ({ chatId, newTitle }: { chatId: string; newTitle: string }) => void;
-  showCompleteQuote: boolean;
 };
 
 export const ChatContext = createContext<ChatContextType>({
@@ -86,8 +85,7 @@ export const ChatContext = createContext<ChatContextType>({
   onChangeAppId: function (appId: string): void {
     throw new Error('Function not implemented.');
   },
-  isLoading: false,
-  showCompleteQuote: true
+  isLoading: false
 });
 
 const ChatContextProvider = ({
@@ -96,7 +94,6 @@ const ChatContextProvider = ({
 }: ChatContextValueType & { children: ReactNode }) => {
   const router = useRouter();
   const { chatId = '' } = router.query as { chatId: string };
-  const { showCompleteQuote }: { showCompleteQuote?: boolean } = params;
 
   const forbidLoadChat = useRef(false);
 
@@ -228,8 +225,7 @@ const ChatContextProvider = ({
     ScrollData,
     loadHistories,
     histories,
-    onUpdateHistoryTitle,
-    showCompleteQuote: showCompleteQuote ?? true
+    onUpdateHistoryTitle
   };
   return <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>;
 };
