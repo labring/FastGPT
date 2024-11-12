@@ -69,6 +69,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { formatTimeToChatItemTime } from '@fastgpt/global/common/string/time';
 import dayjs from 'dayjs';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -1029,7 +1030,7 @@ const ChatBox = (
 
   return (
     <Flex flexDirection={'column'} h={'100%'} position={'relative'}>
-      <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
+      <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
       {/* chat box container */}
       {RenderRecords}
       {/* message input */}
