@@ -48,12 +48,10 @@ const OutLinkSchema = new Schema({
     default: false
   },
   showNodeStatus: {
-    type: Boolean,
-    default: false
+    type: Boolean
   },
   showRawSource: {
-    type: Boolean,
-    default: false
+    type: Boolean
   },
   limit: {
     maxUsagePoints: {

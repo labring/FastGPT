@@ -22,8 +22,8 @@ export const defaultApp: AppDetailType = {
 
 export const defaultOutLinkForm: OutLinkEditType = {
   name: '',
+  showNodeStatus: true,
   responseDetail: false,
-  showNodeStatus: false,
   showRawSource: false,
   limit: {
     QPM: 100,

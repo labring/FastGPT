@@ -52,9 +52,9 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   // whether the response content is detailed
   responseDetail: boolean;
   // whether to hide the node status
-  showNodeStatus: boolean;
+  showNodeStatus?: boolean;
   // whether to show the complete quote
-  showRawSource: boolean;
+  showRawSource?: boolean;
 
   // response when request
   immediateResponse?: string;
