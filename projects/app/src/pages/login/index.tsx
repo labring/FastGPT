@@ -86,6 +86,11 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
 
   /* default login type */
   useEffect(() => {
+    const bd_vid = sessionStorage.getItem('bd_vid');
+    if (bd_vid) {
+      setPageType(LoginPageTypeEnum.passwordLogin);
+      return;
+    }
     setPageType(
       feConfigs?.oauth?.wechat ? LoginPageTypeEnum.wechat : LoginPageTypeEnum.passwordLogin
     );

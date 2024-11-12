@@ -71,7 +71,8 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
       : [])
   ];
 
-  const show_oauth = !!(feConfigs?.sso || oAuthList.length > 0);
+  const show_oauth =
+    !sessionStorage.getItem('bd_vid') && !!(feConfigs?.sso || oAuthList.length > 0);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>

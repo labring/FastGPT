@@ -18,6 +18,9 @@ export type UserModelSchema = {
     key: string;
     baseUrl: string;
   };
+  fastgpt_sem?: {
+    keyword: string;
+  };
 };
 
 export type UserType = {

@@ -8,7 +8,7 @@ import { TrackEventName } from '../common/system/constants';
 
 export const useInitApp = () => {
   const router = useRouter();
-  const { hiId, bd_vid } = router.query as { hiId?: string; bd_vid?: string };
+  const { hiId, bd_vid, k } = router.query as { hiId?: string; bd_vid?: string; k?: string };
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
   const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AI');
@@ -59,8 +59,9 @@ export const useInitApp = () => {
 
   useEffect(() => {
     hiId && localStorage.setItem('inviterId', hiId);
-    bd_vid && localStorage.setItem('bd_vid', bd_vid);
-  }, [bd_vid, hiId]);
+    bd_vid && sessionStorage.setItem('bd_vid', bd_vid);
+    k && sessionStorage.setItem('fastgpt_sem', JSON.stringify({ keyword: k }));
+  }, [bd_vid, hiId, k]);
 
   return {
     feConfigs,
