@@ -907,101 +907,102 @@ const ChatBox = (
           )}
           {/* chat history */}
           <Box id={'history'}>
-            {chatHistories
-              .filter((item) => !item.isAutoExecutePrompt)
-              .map((item, index) => (
-                <Box key={item.dataId}>
-                  {/* 并且时间和上一条的time相差超过十分钟 */}
-                  {index !== 0 &&
-                    item.time &&
-                    chatHistories[index - 1].time !== undefined &&
-                    new Date(item.time).getTime() -
-                      new Date(chatHistories[index - 1].time!).getTime() >
-                      10 * 60 * 1000 && <ChatTimeBox time={item.time} />}
+            {chatHistories.map(
+              (item, index) =>
+                !item.isAutoExecutePrompt && (
+                  <Box key={item.dataId}>
+                    {/* 并且时间和上一条的time相差超过十分钟 */}
+                    {index !== 0 &&
+                      item.time &&
+                      chatHistories[index - 1].time !== undefined &&
+                      new Date(item.time).getTime() -
+                        new Date(chatHistories[index - 1].time!).getTime() >
+                        10 * 60 * 1000 && <ChatTimeBox time={item.time} />}
 
-                  <Box key={item.dataId} py={6}>
-                    {item.obj === ChatRoleEnum.Human && (
-                      <ChatItem
-                        type={item.obj}
-                        avatar={userAvatar}
-                        chat={item}
-                        onRetry={retryInput(item.dataId)}
-                        onDelete={delOneMessage(item.dataId)}
-                        isLastChild={index === chatHistories.length - 1}
-                      />
-                    )}
-                    {item.obj === ChatRoleEnum.AI && (
-                      <>
+                    <Box key={item.dataId} py={6}>
+                      {item.obj === ChatRoleEnum.Human && (
                         <ChatItem
                           type={item.obj}
-                          avatar={appAvatar}
+                          avatar={userAvatar}
                           chat={item}
+                          onRetry={retryInput(item.dataId)}
+                          onDelete={delOneMessage(item.dataId)}
                           isLastChild={index === chatHistories.length - 1}
-                          {...{
-                            showVoiceIcon,
-                            shareId,
-                            outLinkUid,
-                            teamId,
-                            teamToken,
-                            statusBoxData,
-                            questionGuides,
-                            onMark: onMark(
-                              item,
-                              formatChatValue2InputType(chatHistories[index - 1]?.value)?.text
-                            ),
-                            onAddUserLike: onAddUserLike(item),
-                            onCloseUserLike: onCloseUserLike(item),
-                            onAddUserDislike: onAddUserDislike(item),
-                            onReadUserDislike: onReadUserDislike(item)
-                          }}
-                        >
-                          <ResponseTags
-                            showTags={index !== chatHistories.length - 1 || !isChatting}
-                            historyItem={item}
-                          />
+                        />
+                      )}
+                      {item.obj === ChatRoleEnum.AI && (
+                        <>
+                          <ChatItem
+                            type={item.obj}
+                            avatar={appAvatar}
+                            chat={item}
+                            isLastChild={index === chatHistories.length - 1}
+                            {...{
+                              showVoiceIcon,
+                              shareId,
+                              outLinkUid,
+                              teamId,
+                              teamToken,
+                              statusBoxData,
+                              questionGuides,
+                              onMark: onMark(
+                                item,
+                                formatChatValue2InputType(chatHistories[index - 1]?.value)?.text
+                              ),
+                              onAddUserLike: onAddUserLike(item),
+                              onCloseUserLike: onCloseUserLike(item),
+                              onAddUserDislike: onAddUserDislike(item),
+                              onReadUserDislike: onReadUserDislike(item)
+                            }}
+                          >
+                            <ResponseTags
+                              showTags={index !== chatHistories.length - 1 || !isChatting}
+                              historyItem={item}
+                            />
 
-                          {/* custom feedback */}
-                          {item.customFeedbacks && item.customFeedbacks.length > 0 && (
-                            <Box>
-                              <ChatBoxDivider
-                                icon={'core/app/customFeedback'}
-                                text={t('common:core.app.feedback.Custom feedback')}
-                              />
-                              {item.customFeedbacks.map((text, i) => (
-                                <Box key={i}>
-                                  <MyTooltip
-                                    label={t('common:core.app.feedback.close custom feedback')}
-                                  >
-                                    <Checkbox
-                                      onChange={onCloseCustomFeedback(item, i)}
-                                      icon={<MyIcon name={'common/check'} w={'12px'} />}
+                            {/* custom feedback */}
+                            {item.customFeedbacks && item.customFeedbacks.length > 0 && (
+                              <Box>
+                                <ChatBoxDivider
+                                  icon={'core/app/customFeedback'}
+                                  text={t('common:core.app.feedback.Custom feedback')}
+                                />
+                                {item.customFeedbacks.map((text, i) => (
+                                  <Box key={i}>
+                                    <MyTooltip
+                                      label={t('common:core.app.feedback.close custom feedback')}
                                     >
-                                      {text}
-                                    </Checkbox>
-                                  </MyTooltip>
-                                </Box>
-                              ))}
-                            </Box>
-                          )}
-                          {/* admin mark content */}
-                          {showMarkIcon && item.adminFeedback && (
-                            <Box fontSize={'sm'}>
-                              <ChatBoxDivider
-                                icon="core/app/markLight"
-                                text={t('common:core.chat.Admin Mark Content')}
-                              />
-                              <Box whiteSpace={'pre-wrap'}>
-                                <Box color={'black'}>{item.adminFeedback.q}</Box>
-                                <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
+                                      <Checkbox
+                                        onChange={onCloseCustomFeedback(item, i)}
+                                        icon={<MyIcon name={'common/check'} w={'12px'} />}
+                                      >
+                                        {text}
+                                      </Checkbox>
+                                    </MyTooltip>
+                                  </Box>
+                                ))}
                               </Box>
-                            </Box>
-                          )}
-                        </ChatItem>
-                      </>
-                    )}
+                            )}
+                            {/* admin mark content */}
+                            {showMarkIcon && item.adminFeedback && (
+                              <Box fontSize={'sm'}>
+                                <ChatBoxDivider
+                                  icon="core/app/markLight"
+                                  text={t('common:core.chat.Admin Mark Content')}
+                                />
+                                <Box whiteSpace={'pre-wrap'}>
+                                  <Box color={'black'}>{item.adminFeedback.q}</Box>
+                                  <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
+                                </Box>
+                              </Box>
+                            )}
+                          </ChatItem>
+                        </>
+                      )}
+                    </Box>
                   </Box>
-                </Box>
-              ))}
+                )
+            )}
           </Box>
         </Box>
       </ScrollData>
