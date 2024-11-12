@@ -31,19 +31,24 @@ export const postRegister = ({
   password,
   code,
   inviterId,
-  bd_vid
+  bd_vid,
+  fastgpt_sem
 }: {
   username: string;
   code: string;
   password: string;
   inviterId?: string;
   bd_vid?: string;
+  fastgpt_sem?: {
+    keyword: string;
+  };
 }) =>
   POST<ResLogin>(`/proApi/support/user/account/register/emailAndPhone`, {
     username,
     code,
     inviterId,
     bd_vid,
+    fastgpt_sem,
     password: hashStr(password)
   });
 
