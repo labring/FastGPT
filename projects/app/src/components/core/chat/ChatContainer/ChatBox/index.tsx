@@ -181,7 +181,6 @@ const ChatBox = (
     variablesForm,
     isChatting
   } = useContextSelector(ChatBoxContext, (v) => v);
-  console.log('chatHistories', chatHistories);
 
   // Workflow running, there are user input or selection
   const isInteractive = useMemo(
@@ -839,13 +838,14 @@ const ChatBox = (
   useEffect(() => {
     isNewChatReplace.current = false;
     setQuestionGuide([]);
+    setValue('chatStarted', false);
     return () => {
       chatController.current?.abort('leave');
       if (!isNewChatReplace.current) {
         questionGuideController.current?.abort('leave');
       }
     };
-  }, [router.query]);
+  }, [router.query, setValue]);
 
   // add listener
   useEffect(() => {
@@ -906,11 +906,11 @@ const ChatBox = (
             <VariableInput chatStarted={chatStarted} chatForm={chatForm} />
           )}
           {/* chat history */}
-          <Box id={'history'} key={chatHistories.length}>
+          <Box id={'history'}>
             {chatHistories
               .filter((item) => !item.isAutoExecutePrompt)
               .map((item, index) => (
-                <>
+                <Box key={item.dataId}>
                   {/* 并且时间和上一条的time相差超过十分钟 */}
                   {index !== 0 &&
                     item.time &&
@@ -1000,7 +1000,7 @@ const ChatBox = (
                       </>
                     )}
                   </Box>
-                </>
+                </Box>
               ))}
           </Box>
         </Box>
@@ -1037,13 +1037,13 @@ const ChatBox = (
   ]);
 
   useEffect(() => {
-    if (isAutoExecute && chatHistories.length === 0 && chatStarted) {
+    if (isAutoExecute && chatStarted && autoExecute.open) {
       sendPrompt({
         text: autoExecute.defaultPrompt || 'AUTO_EXECUTE',
         isAutoExecutePrompt: true
       });
     }
-  }, [isAutoExecute, sendPrompt, chatStarted, autoExecute.defaultPrompt, chatHistories.length]);
+  }, [isAutoExecute, sendPrompt, chatStarted, autoExecute, chatHistories.length]);
 
   return (
     <Flex flexDirection={'column'} h={'100%'} position={'relative'}>

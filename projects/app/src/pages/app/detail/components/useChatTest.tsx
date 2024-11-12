@@ -33,8 +33,8 @@ export const useChatTest = ({
   const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([]);
 
   const isAutoExecute = useMemo(() => {
-    return chatRecords.length === 0 && chatConfig?.autoExecute?.open;
-  }, [chatConfig?.autoExecute?.open, chatRecords.length]);
+    return chatRecords.length === 0 && chatConfig?.autoExecute?.open && nodes.length > 0;
+  }, [chatConfig?.autoExecute?.open, chatRecords.length, nodes.length]);
 
   const startChat = useMemoizedFn(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
