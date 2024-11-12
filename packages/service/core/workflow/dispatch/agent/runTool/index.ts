@@ -184,7 +184,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     }
 
     const lastMessage = adaptMessages[adaptMessages.length - 1];
-    if (typeof lastMessage.content === 'string') {
+    if (typeof lastMessage?.content === 'string') {
       lastMessage.content = replaceVariable(Prompt_Tool_Call, {
         question: lastMessage.content
       });
