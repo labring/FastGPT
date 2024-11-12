@@ -29,6 +29,7 @@ import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFi
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { Prompt_DocumentQuote } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { postTextCensor } from '../../../../../common/api/requestPlusApi';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -45,6 +46,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     requestOrigin,
     chatConfig,
     runningAppInfo: { teamId },
+    user,
     params: {
       model,
       systemPrompt,
@@ -150,6 +152,15 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     return value;
   })();
 
+  // censor model and system key
+  if (toolModel.censor && !user.openaiAccount?.key) {
+    await postTextCensor({
+      text: `${systemPrompt}
+          ${userChatInput}
+        `
+    });
+  }
+
   const {
     toolWorkflowInteractiveResponse,
     dispatchFlowResponse, // tool flow response
@@ -217,13 +228,14 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     tokens: toolNodeTokens,
     modelType: ModelTypeEnum.llm
   });
+  const toolAIUsage = user.openaiAccount?.key ? 0 : totalPoints;
 
   // flat child tool response
   const childToolResponse = dispatchFlowResponse.map((item) => item.flowResponses).flat();
 
   // concat tool usage
   const totalPointsUsage =
-    totalPoints +
+    toolAIUsage +
     dispatchFlowResponse.reduce((sum, item) => {
       const childrenTotal = item.flowUsages.reduce((sum, item) => sum + item.totalPoints, 0);
       return sum + childrenTotal;
@@ -240,6 +252,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       .join(''),
     [DispatchNodeResponseKeyEnum.assistantResponses]: previewAssistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      // 展示的积分消耗
       totalPoints: totalPointsUsage,
       toolCallTokens: toolNodeTokens,
       childTotalPoints: flatUsages.reduce((sum, item) => sum + item.totalPoints, 0),
@@ -254,12 +267,14 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       mergeSignId: nodeId
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
+      // 工具调用本身的积分消耗
       {
         moduleName: name,
-        totalPoints,
+        totalPoints: toolAIUsage,
         model: modelName,
         tokens: toolNodeTokens
       },
+      // 工具的消耗
       ...flatUsages
     ],
     [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse

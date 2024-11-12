@@ -4,7 +4,7 @@ import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/co
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import { getAIApi } from '../../../ai/config';
+import { createChatCompletion } from '../../../ai/config';
 import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
@@ -138,7 +138,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       if (modelConstantsData.censor && !user.openaiAccount?.key) {
         return postTextCensor({
           text: `${systemPrompt}
-            ${datasetQuoteText}
             ${userChatInput}
           `
         });
@@ -171,20 +170,15 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   );
   // console.log(JSON.stringify(requestBody, null, 2), '===');
   try {
-    const ai = getAIApi({
+    const { response, isStreamResponse } = await createChatCompletion({
+      body: requestBody,
       userKey: user.openaiAccount,
-      timeout: 480000
-    });
-    const response = await ai.chat.completions.create(requestBody, {
-      headers: {
-        Accept: 'application/json, text/plain, */*'
+      options: {
+        headers: {
+          Accept: 'application/json, text/plain, */*'
+        }
       }
     });
-
-    const isStreamResponse =
-      typeof response === 'object' &&
-      response !== null &&
-      ('iterator' in response || 'controller' in response);
 
     const { answerText } = await (async () => {
       if (res && isStreamResponse) {
