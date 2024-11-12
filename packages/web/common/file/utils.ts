@@ -61,7 +61,7 @@ export const readFileRawText = ({
 
         reject(getErrText(err, 'Load file error'));
       };
-      reader.readAsText(file);
+      reader.readAsText(file,'gb2312');
     } catch (error) {
       reject('The browser does not support file content reading');
     }
