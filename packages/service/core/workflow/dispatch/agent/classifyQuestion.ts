@@ -2,7 +2,7 @@ import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { countMessagesTokens } from '../../../../common/string/tiktoken/index';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { getAIApi } from '../../../ai/config';
+import { createChatCompletion } from '../../../ai/config';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -120,13 +120,8 @@ const completions = async ({
     useVision: false
   });
 
-  const ai = getAIApi({
-    userKey: user.openaiAccount,
-    timeout: 480000
-  });
-
-  const data = await ai.chat.completions.create(
-    llmCompletionsBodyFormat(
+  const { response: data } = await createChatCompletion({
+    body: llmCompletionsBodyFormat(
       {
         model: cqModel.model,
         temperature: 0.01,
@@ -134,8 +129,9 @@ const completions = async ({
         stream: false
       },
       cqModel
-    )
-  );
+    ),
+    userKey: user.openaiAccount
+  });
   const answer = data.choices?.[0].message?.content || '';
 
   // console.log(JSON.stringify(chats2GPTMessages({ messages, reserveId: false }), null, 2));
