@@ -160,7 +160,7 @@ jobs:
           docker buildx build \
           -f projects/app/Dockerfile \
           --platform linux/amd64,linux/arm64 \
-          --build-arg base_url=fastai \
+          --build-arg base_url=/fastai \
           --label "org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT" \
           --label "org.opencontainers.image.description=fastgpt image" \
           --push \
