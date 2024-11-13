@@ -53,7 +53,7 @@ const main = async ({ apikey, files }: Props): Response => {
       continue;
     }
     if (!PDFResponse.ok) {
-      fail_reason += `\n---\nFile:${url} \n<Content>\nFailed to fetch PDF from URL\n</Content>\n`;
+      fail_reason += `\n---\nFile:${url} \n<Content>\nFailed to fetch PDF from URL: ${PDFResponse.text}\n</Content>\n`;
       flag = true;
       continue;
     }
@@ -65,72 +65,82 @@ const main = async ({ apikey, files }: Props): Response => {
       flag = true;
       continue;
     }
-
     const blob = await PDFResponse.blob();
-    const formData = new FormData();
-    formData.append('file', blob, file_name);
 
-    let upload_url = 'https://api.doc2x.noedgeai.com/api/platform/async/pdf';
-
-    let uuid;
-    let upload_flag = true;
-    const uploadAttempts = [1, 2, 3];
-    for await (const attempt of uploadAttempts) {
-      const upload_response = await fetch(upload_url, {
+    // Get pre-upload URL first
+    let preupload_url = 'https://v2.doc2x.noedgeai.com/api/v2/parse/preupload';
+    let preupload_response;
+    try {
+      preupload_response = await fetch(preupload_url, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apikey}`
-        },
-        body: formData
-      });
-      if (!upload_response.ok) {
-        // Rate limit, wait for 10s and retry at most 3 times
-        if (upload_response.status === 429 && attempt < 3) {
-          await delay(10000);
-          continue;
         }
-        fail_reason += `\n---\nFile:${file_name}\n<Content>\nFailed to upload file: ${await upload_response.text()}\n</Content>\n`;
-        flag = true;
-        upload_flag = false;
-      }
-      if (!upload_flag) {
-        continue;
-      }
-      const upload_data = await upload_response.json();
-      uuid = upload_data.data.uuid;
-      break;
+      });
+    } catch (e) {
+      fail_reason += `\n---\nFile:${file_name}\n<Content>\nFailed to get pre-upload URL: ${e}\n</Content>\n`;
+      flag = true;
+      continue;
     }
 
-    // Get the result by uuid
-    let result_url = 'https://api.doc2x.noedgeai.com/api/platform/async/status?uuid=' + uuid;
-    if (apikey.startsWith('sk-')) {
-      result_url = 'https://api.doc2x.noedgeai.com/api/v1/async/status?uuid=' + uuid;
+    if (!preupload_response.ok) {
+      fail_reason += `\n---\nFile:${file_name}\n<Content>\nFailed to get pre-upload URL: ${await preupload_response.text()}\n</Content>\n`;
+      flag = true;
+      continue;
     }
 
+    const preupload_data = await preupload_response.json();
+    if (preupload_data.code !== 'success') {
+      fail_reason += `\n---\nFile:${file_name}\n<Content>\nFailed to get pre-upload URL: ${JSON.stringify(preupload_data)}\n</Content>\n`;
+      flag = true;
+      continue;
+    }
+
+    const upload_url = preupload_data.data.url;
+    const uid = preupload_data.data.uid;
+
+    // Upload file to pre-signed URL
+    const upload_response = await fetch(upload_url, {
+      method: 'PUT',
+      body: blob
+    });
+
+    if (!upload_response.ok) {
+      fail_reason += `\n---\nFile:${file_name}\n<Content>\nFailed to upload file: ${await upload_response.text()}\n</Content>\n`;
+      flag = true;
+      continue;
+    }
+
+    // Get the result by uid
+    const result_url = `https://v2.doc2x.noedgeai.com/api/v2/parse/status?uid=${uid}`;
     let required_flag = true;
     let result = '';
-    // Wait for the result, at most 100s
-    const maxAttempts = 100;
+
+    // Wait for the result, at most 90s
+    const maxAttempts = 30;
     for await (const _ of Array(maxAttempts).keys()) {
       const result_response = await fetch(result_url, {
         headers: {
           Authorization: `Bearer ${apikey}`
         }
       });
+
       if (!result_response.ok) {
         fail_reason += `\n---\nFile:${file_name}\n<Content>\nFailed to get result: ${await result_response.text()}\n</Content>\n`;
         flag = true;
         required_flag = false;
         break;
       }
+
       const result_data = await result_response.json();
-      if (['ready', 'processing'].includes(result_data.data.status)) {
-        await delay(1000);
-      } else if (result_data.data.status === 'pages limit exceeded') {
-        fail_reason += `\n---\nFile:${file_name}\n<Content>\nPages limit exceeded\n</Content>\n`;
+      if (!['ok', 'success'].includes(result_data.code)) {
+        fail_reason += `\n---\nFile:${file_name}\n<Content>\nFailed to get result: ${result_data}\n</Content>\n`;
         flag = true;
         required_flag = false;
         break;
+      }
+      if (['ready', 'processing'].includes(result_data.data.status)) {
+        await delay(3000);
       } else if (result_data.data.status === 'success') {
         result = await Promise.all(
           result_data.data.result.pages.map((page: { md: any }) => page.md)
@@ -146,8 +156,9 @@ const main = async ({ apikey, files }: Props): Response => {
         break;
       }
     }
+
     if (required_flag) {
-      fail_reason += `\n---\nFile:${file_name}\n<Content>\nTimeout after 100s for uuid ${uuid}\n</Content>\n`;
+      fail_reason += `\n---\nFile:${file_name}\n<Content>\nTimeout for uid ${uid}\n</Content>\n`;
       flag = true;
     }
   }

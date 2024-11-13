@@ -33,10 +33,10 @@
             "canEdit": true,
             "key": "apikey",
             "label": "apikey",
-            "description": "Doc2X的验证密匙，对于个人用户可以从Doc2X官网 - 个人信息 - 身份令牌获得",
+            "description": "Doc2X的API密匙，可以从Doc2X开放平台获得",
             "required": true,
-            "toolDescription": "",
-            "defaultValue": ""
+            "defaultValue": "",
+            "list": []
           },
           {
             "renderTypeList": ["reference"],
@@ -45,21 +45,10 @@
             "canEdit": true,
             "key": "files",
             "label": "files",
-            "description": "待处理的PDF文件或URL",
+            "description": "待处理的PDF文件变量或URL地址",
             "required": true,
-            "toolDescription": "待处理的PDF文件或URL"
-          },
-          {
-            "renderTypeList": ["switch"],
-            "selectedTypeIndex": 0,
-            "valueType": "boolean",
-            "canEdit": true,
-            "key": "ocr",
-            "label": "ocr",
-            "description": "是否开启对PDF文件内图片的OCR识别，建议开启",
-            "required": true,
-            "toolDescription": "",
-            "defaultValue": true
+            "toolDescription": "待处理的PDF文件变量或URL地址",
+            "list": []
           }
         ],
         "outputs": [
@@ -76,13 +65,6 @@
             "key": "files",
             "label": "files",
             "type": "hidden"
-          },
-          {
-            "id": "formula",
-            "valueType": "boolean",
-            "key": "ocr",
-            "label": "ocr",
-            "type": "hidden"
           }
         ]
       },
@@ -94,8 +76,8 @@
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1649.7796447278438,
-          "y": -96.05331527115042
+          "x": 1808.5347800638815,
+          "y": -105.67504356429907
         },
         "version": "481",
         "inputs": [
@@ -148,7 +130,7 @@
             "valueType": "dynamic",
             "label": "",
             "required": false,
-            "description": "core.module.input.description.HTTP Dynamic Input",
+            "description": "common:core.module.input.description.HTTP Dynamic Input",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -159,6 +141,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -168,7 +151,9 @@
               ],
               "showDescription": false,
               "showDefaultValue": true
-            }
+            },
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpMethod",
@@ -176,17 +161,33 @@
             "valueType": "string",
             "label": "",
             "value": "POST",
-            "required": true
+            "required": true,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpTimeout",
+            "renderTypeList": ["custom"],
+            "valueType": "number",
+            "label": "",
+            "value": 30,
+            "min": 5,
+            "max": 600,
+            "required": true,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpReqUrl",
             "renderTypeList": ["hidden"],
             "valueType": "string",
             "label": "",
-            "description": "core.module.input.description.Http Request Url",
+            "description": "common:core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "Doc2X/PDF2text"
+            "value": "Doc2X/PDF2text",
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpHeader",
@@ -194,9 +195,11 @@
             "valueType": "any",
             "value": [],
             "label": "",
-            "description": "core.module.input.description.Http Request Header",
-            "placeholder": "core.module.input.description.Http Request Header",
-            "required": false
+            "description": "common:core.module.input.description.Http Request Header",
+            "placeholder": "common:core.module.input.description.Http Request Header",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpParams",
@@ -204,15 +207,39 @@
             "valueType": "any",
             "value": [],
             "label": "",
-            "required": false
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"files\": \"{{files}}\",\n  \"ocr\": {{ocr}}\n}",
+            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"files\": \"{{files}}\"}",
             "label": "",
-            "required": false
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpFormBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpContentType",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "value": "json",
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "renderTypeList": ["reference"],
@@ -230,6 +257,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -259,6 +287,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -271,42 +300,13 @@
             },
             "required": true,
             "value": ["pMBi7J7vcsqB", "system_text"]
-          },
-          {
-            "renderTypeList": ["reference"],
-            "valueType": "boolean",
-            "canEdit": true,
-            "key": "ocr",
-            "label": "ocr",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": ["pluginInput", "formula"]
           }
         ],
         "outputs": [
           {
             "id": "error",
             "key": "error",
-            "label": "请求错误",
+            "label": "workflow:request_error",
             "description": "HTTP请求错误信息，成功时返回空",
             "valueType": "object",
             "type": "static"
@@ -314,8 +314,8 @@
           {
             "id": "httpRawResponse",
             "key": "httpRawResponse",
-            "label": "原始响应",
             "required": true,
+            "label": "workflow:raw_response",
             "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
             "valueType": "any",
             "type": "static"
@@ -388,7 +388,7 @@
             "valueType": "dynamic",
             "label": "",
             "required": false,
-            "description": "可以引用其他节点的输出，作为文本拼接的变量，通过 {{字段名}} 来引用变量",
+            "description": "workflow:dynamic_input_description_concat",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -399,6 +399,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -408,7 +409,9 @@
               ],
               "showDescription": false,
               "showDefaultValue": false
-            }
+            },
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_textareaInput",
@@ -416,8 +419,10 @@
             "valueType": "string",
             "required": true,
             "label": "拼接文本",
-            "placeholder": "可通过 {{字段名}} 来引用变量",
-            "value": "{{files}}"
+            "placeholder": "workflow:input_variable_list",
+            "value": "{{files}}",
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "renderTypeList": ["reference"],
@@ -435,6 +440,7 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
@@ -453,9 +459,10 @@
           {
             "id": "system_text",
             "key": "system_text",
-            "label": "拼接结果",
+            "label": "workflow:concatenation_result",
             "type": "static",
-            "valueType": "string"
+            "valueType": "string",
+            "description": ""
           }
         ]
       }
@@ -479,6 +486,25 @@
         "sourceHandle": "pMBi7J7vcsqB-source-right",
         "targetHandle": "zHG5jJBkXmjB-target-left"
       }
-    ]
+    ],
+    "chatConfig": {
+      "questionGuide": false,
+      "ttsConfig": {
+        "type": "web"
+      },
+      "whisperConfig": {
+        "open": false,
+        "autoSend": false,
+        "autoTTSResponse": false
+      },
+      "chatInputGuide": {
+        "open": false,
+        "textList": [],
+        "customUrl": ""
+      },
+      "instruction": "",
+      "variables": [],
+      "welcomeText": ""
+    }
   }
 }
