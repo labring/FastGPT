@@ -51,6 +51,7 @@ const RouteTab = () => {
           px={2}
           py={0.5}
           fontWeight={'medium'}
+          borderRadius={'sm'}
           {...(currentTab === tab.id
             ? {
                 color: 'primary.700'
@@ -59,8 +60,7 @@ const RouteTab = () => {
                 color: 'myGray.600',
                 cursor: 'pointer',
                 _hover: {
-                  bg: 'myGray.200',
-                  borderRadius: 'md'
+                  bg: 'myGray.200'
                 },
                 onClick: () => setCurrentTab(tab.id)
               })}

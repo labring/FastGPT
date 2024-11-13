@@ -113,6 +113,9 @@ export const useChatTest = ({
         appAvatar={appDetail.avatar}
         userAvatar={userInfo?.avatar}
         showMarkIcon
+        chatType="chat"
+        showRawSource
+        showNodeStatus
         chatConfig={chatConfig}
         onStartChat={startChat}
         onDelMessage={() => {}}

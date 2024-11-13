@@ -18,12 +18,14 @@ export const getWorkflowResponseWrite = ({
   res,
   detail,
   streamResponse,
-  id = getNanoid(24)
+  id = getNanoid(24),
+  showNodeStatus = true
 }: {
   res?: NextApiResponse;
   detail: boolean;
   streamResponse: boolean;
   id?: string;
+  showNodeStatus?: boolean;
 }) => {
   return ({
     write,
@@ -40,17 +42,27 @@ export const getWorkflowResponseWrite = ({
 
     if (!res || res.closed || !useStreamResponse) return;
 
-    const detailEvent = [
-      SseResponseEventEnum.error,
-      SseResponseEventEnum.flowNodeStatus,
-      SseResponseEventEnum.flowResponses,
-      SseResponseEventEnum.interactive,
-      SseResponseEventEnum.toolCall,
-      SseResponseEventEnum.toolParams,
-      SseResponseEventEnum.toolResponse,
-      SseResponseEventEnum.updateVariables
-    ];
-    if (!detail && detailEvent.includes(event)) return;
+    // Forbid show detail
+    const detailEvent: Record<string, 1> = {
+      [SseResponseEventEnum.error]: 1,
+      [SseResponseEventEnum.flowNodeStatus]: 1,
+      [SseResponseEventEnum.flowResponses]: 1,
+      [SseResponseEventEnum.interactive]: 1,
+      [SseResponseEventEnum.toolCall]: 1,
+      [SseResponseEventEnum.toolParams]: 1,
+      [SseResponseEventEnum.toolResponse]: 1,
+      [SseResponseEventEnum.updateVariables]: 1
+    };
+    if (!detail && detailEvent[event]) return;
+
+    // Forbid show running status
+    const statusEvent: Record<string, 1> = {
+      [SseResponseEventEnum.flowNodeStatus]: 1,
+      [SseResponseEventEnum.toolCall]: 1,
+      [SseResponseEventEnum.toolParams]: 1,
+      [SseResponseEventEnum.toolResponse]: 1
+    };
+    if (!showNodeStatus && statusEvent[event]) return;
 
     responseWrite({
       res,

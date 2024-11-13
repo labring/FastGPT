@@ -25,6 +25,7 @@ export const UserSelectNode: FlowNodeTemplateType = {
   intro: i18nT(`app:workflow.user_select_tip`),
   isTool: true,
   version: '489',
+  courseUrl: '/docs/guide/workbench/workflow/user-selection/',
   inputs: [
     {
       key: NodeInputKeyEnum.description,

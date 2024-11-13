@@ -11,7 +11,11 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -30,9 +34,11 @@ import {
   AiChatQuoteTemplate
 } from '@fastgpt/global/core/workflow/template/system/aiChat/index';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
-import { ReadFilesNode } from '@fastgpt/global/core/workflow/template/system/readFiles';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { Input_Template_UserChatInput } from '@fastgpt/global/core/workflow/template/input';
+import {
+  Input_Template_File_Link_Prompt,
+  Input_Template_UserChatInput
+} from '@fastgpt/global/core/workflow/template/input';
 
 type WorkflowType = {
   nodes: StoreNodeItemType[];
@@ -174,6 +180,10 @@ export function form2AppWorkflow(
           value: selectedDatasets?.length > 0 ? [datasetNodeId, 'quoteQA'] : undefined
         },
         {
+          ...Input_Template_File_Link_Prompt,
+          value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
+        },
+        {
           key: NodeInputKeyEnum.aiChatVision,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
@@ -188,7 +198,7 @@ export function form2AppWorkflow(
     return {
       nodeId: datasetNodeId,
       name: t(DatasetSearchModule.name),
-      intro: t(DatasetSearchModule.intro),
+      intro: t('app:dataset_search_tool_description'),
       avatar: DatasetSearchModule.avatar,
       flowNodeType: DatasetSearchModule.flowNodeType,
       showStatus: true,
@@ -321,44 +331,6 @@ export function form2AppWorkflow(
             ]
           }
         : null;
-    // Read file tool config
-    const readFileTool: WorkflowType | null = data.chatConfig.fileSelectConfig?.canSelectFile
-      ? {
-          nodes: [
-            {
-              nodeId: ReadFilesNode.id,
-              name: t(ReadFilesNode.name),
-              intro: t(ReadFilesNode.intro),
-              avatar: ReadFilesNode.avatar,
-              flowNodeType: ReadFilesNode.flowNodeType,
-              showStatus: true,
-              position: {
-                x: 974.6209854328943,
-                y: 587.6378828744465
-              },
-              version: ReadFilesNode.version,
-              inputs: [
-                {
-                  key: NodeInputKeyEnum.fileUrlList,
-                  renderTypeList: [FlowNodeInputTypeEnum.reference],
-                  valueType: WorkflowIOValueTypeEnum.arrayString,
-                  label: t('app:workflow.file_url'),
-                  value: [workflowStartNodeId, 'userFiles']
-                }
-              ],
-              outputs: ReadFilesNode.outputs
-            }
-          ],
-          edges: [
-            {
-              source: toolNodeId,
-              target: ReadFilesNode.id,
-              sourceHandle: 'selectedTools',
-              targetHandle: 'selectedTools'
-            }
-          ]
-        }
-      : null;
 
     // Computed tools config
     const pluginTool: WorkflowType[] = formData.selectedTools.map((tool, i) => {
@@ -478,6 +450,10 @@ export function form2AppWorkflow(
               value: formData.aiSettings.maxHistories
             },
             {
+              ...Input_Template_File_Link_Prompt,
+              value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
+            },
+            {
               key: 'userChatInput',
               renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
               valueType: WorkflowIOValueTypeEnum.string,
@@ -497,7 +473,6 @@ export function form2AppWorkflow(
         },
         // tool nodes
         ...(datasetTool ? datasetTool.nodes : []),
-        ...(readFileTool ? readFileTool.nodes : []),
         ...pluginTool.map((tool) => tool.nodes).flat()
       ],
       edges: [
@@ -509,7 +484,6 @@ export function form2AppWorkflow(
         },
         // tool edges
         ...(datasetTool ? datasetTool.edges : []),
-        ...(readFileTool ? readFileTool.edges : []),
         ...pluginTool.map((tool) => tool.edges).flat()
       ]
     };
@@ -530,8 +504,7 @@ export function form2AppWorkflow(
   }
 
   const workflow = (() => {
-    if (data.selectedTools.length > 0 || data.chatConfig.fileSelectConfig?.canSelectFile)
-      return toolTemplates(data);
+    if (data.selectedTools.length > 0) return toolTemplates(data);
     if (selectedDatasets.length > 0) return datasetTemplate(data);
     return simpleChatTemplate(data);
   })();

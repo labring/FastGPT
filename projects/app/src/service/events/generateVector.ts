@@ -121,6 +121,7 @@ export async function generateVector(): Promise<any> {
     reduceQueue();
     generateVector();
   } catch (err: any) {
+    addLog.error(`[Vector Queue] Error`, err);
     reduceQueue();
 
     if (await checkInvalidChunkAndLock({ err, data, errText: '向量模型调用失败' })) {

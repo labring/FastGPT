@@ -55,7 +55,7 @@ export async function getVectorsByText({ model, input, type }: GetVectorProps) {
 
     return result;
   } catch (error) {
-    console.log(`Embedding Error`, error);
+    addLog.error(`Embedding Error`, error);
 
     return Promise.reject(error);
   }

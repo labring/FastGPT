@@ -9,21 +9,22 @@ import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { clone } from 'lodash';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Control, useFieldArray } from 'react-hook-form';
+import { UseFieldArrayReturn } from 'react-hook-form';
 import { ChatBoxInputFormType, UserInputFileItemType } from '../type';
 import { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
-interface UseFileUploadOptions {
-  outLinkAuthData: any;
+type UseFileUploadOptions = {
+  outLinkAuthData: OutLinkChatAuthProps;
   chatId: string;
   fileSelectConfig: AppFileSelectConfigType;
-  control: Control<ChatBoxInputFormType, any>;
-}
+  fileCtrl: UseFieldArrayReturn<ChatBoxInputFormType, 'files', 'id'>;
+};
 
 export const useFileUpload = (props: UseFileUploadOptions) => {
-  const { outLinkAuthData, chatId, fileSelectConfig, control } = props;
+  const { outLinkAuthData, chatId, fileSelectConfig, fileCtrl } = props;
   const { toast } = useToast();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -32,16 +33,16 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     update: updateFiles,
     remove: removeFiles,
     fields: fileList,
-    replace: replaceFiles
-  } = useFieldArray({
-    control: control,
-    name: 'files'
-  });
+    replace: replaceFiles,
+    append: appendFiles
+  } = fileCtrl;
+  const hasFileUploading = fileList.some((item) => !item.url);
 
   const showSelectFile = fileSelectConfig?.canSelectFile;
   const showSelectImg = fileSelectConfig?.canSelectImg;
   const maxSelectFiles = fileSelectConfig?.maxFiles ?? 10;
   const maxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024; // nkb
+  const canSelectFileAmount = maxSelectFiles - fileList.length;
 
   const { icon: selectFileIcon, label: selectFileLabel } = useMemo(() => {
     if (showSelectFile && showSelectImg) {
@@ -66,11 +67,11 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: `${showSelectImg ? 'image/*,' : ''} ${showSelectFile ? documentFileType : ''}`,
     multiple: true,
-    maxCount: maxSelectFiles
+    maxCount: canSelectFileAmount
   });
 
   const onSelectFile = useCallback(
-    async ({ files, fileList }: { files: File[]; fileList: UserInputFileItemType[] }) => {
+    async ({ files }: { files: File[] }) => {
       if (!files || files.length === 0) {
         return [];
       }
@@ -129,22 +130,11 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
         )
       );
 
-      // Document, image
-      const concatFileList = clone(
-        fileList.concat(loadFiles).sort((a, b) => {
-          if (a.type === ChatFileTypeEnum.image && b.type === ChatFileTypeEnum.file) {
-            return 1;
-          } else if (a.type === ChatFileTypeEnum.file && b.type === ChatFileTypeEnum.image) {
-            return -1;
-          }
-          return 0;
-        })
-      );
-      replaceFiles(concatFileList);
+      appendFiles(loadFiles);
 
       return loadFiles;
     },
-    [maxSelectFiles, replaceFiles, toast, t, maxSize]
+    [maxSelectFiles, appendFiles, toast, t, maxSize]
   );
 
   const uploadFiles = async () => {
@@ -198,10 +188,23 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     removeFiles(errorFileIndex);
   };
 
+  const sortFileList = useMemo(() => {
+    // Sort: Document, image
+    const sortResult = clone(fileList).sort((a, b) => {
+      if (a.type === ChatFileTypeEnum.image && b.type === ChatFileTypeEnum.file) {
+        return 1;
+      } else if (a.type === ChatFileTypeEnum.file && b.type === ChatFileTypeEnum.image) {
+        return -1;
+      }
+      return 0;
+    });
+    return sortResult;
+  }, [fileList]);
+
   return {
     File,
     onOpenSelectFile,
-    fileList,
+    fileList: sortFileList,
     onSelectFile,
     uploadFiles,
     selectFileIcon,
@@ -209,6 +212,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     showSelectFile,
     showSelectImg,
     removeFiles,
-    replaceFiles
+    replaceFiles,
+    hasFileUploading
   };
 };

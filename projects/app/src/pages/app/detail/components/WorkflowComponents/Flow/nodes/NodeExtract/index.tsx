@@ -60,7 +60,8 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
             </Box>
             <Button
               size={'sm'}
-              variant={'whitePrimary'}
+              variant={'ghost'}
+              color={'myGray.600'}
               leftIcon={<AddIcon fontSize={'10px'} />}
               onClick={() => setEditExtractField(defaultField)}
             >
@@ -78,12 +79,10 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
               <Table bg={'white'}>
                 <Thead>
                   <Tr>
-                    <Th bg={'myGray.50'} borderRadius={'none !important'}>
-                      {t('common:item_name')}
-                    </Th>
-                    <Th bg={'myGray.50'}>{t('common:item_description')}</Th>
-                    <Th bg={'myGray.50'}>{t('common:required')}</Th>
-                    <Th bg={'myGray.50'} borderRadius={'none !important'}></Th>
+                    <Th borderRadius={'none !important'}>{t('common:item_name')}</Th>
+                    <Th>{t('common:item_description')}</Th>
+                    <Th>{t('common:required')}</Th>
+                    <Th borderRadius={'none !important'}></Th>
                   </Tr>
                 </Thead>
                 <Tbody>

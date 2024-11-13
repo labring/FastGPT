@@ -1,4 +1,4 @@
-name: Build fastgpt-sandbox images and copy image to docker hub
+name: Build fastgpt-sandbox images
 on:
   workflow_dispatch:
   push:

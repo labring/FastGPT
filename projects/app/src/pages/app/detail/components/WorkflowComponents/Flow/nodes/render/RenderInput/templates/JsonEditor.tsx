@@ -51,24 +51,20 @@ const JsonEditor = ({ inputs = [], item, nodeId }: RenderInputProps) => {
     return JSON.stringify(item.value, null, 2);
   }, [item.value]);
 
-  const Render = useMemo(() => {
-    return (
-      <JSONEditor
-        className="nowheel"
-        bg={'white'}
-        borderRadius={'sm'}
-        placeholder={t(item.placeholder as any)}
-        resize
-        value={value}
-        onChange={(e) => {
-          update(e);
-        }}
-        variables={variables}
-      />
-    );
-  }, [item.placeholder, t, update, value, variables]);
-
-  return Render;
+  return (
+    <JSONEditor
+      className="nowheel"
+      bg={'white'}
+      borderRadius={'sm'}
+      placeholder={t(item.placeholder as any)}
+      resize
+      value={value}
+      onChange={(e) => {
+        update(e);
+      }}
+      variables={variables}
+    />
+  );
 };
 
 export default React.memo(JsonEditor);

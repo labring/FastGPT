@@ -6,16 +6,19 @@ import { useTranslation } from 'next-i18next';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import QuoteItem from '@/components/core/dataset/QuoteItem';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const QuoteModal = ({
   rawSearch = [],
   onClose,
-  showDetail,
+  canEditDataset,
+  showRawSource,
   metadata
 }: {
   rawSearch: SearchDataResponseItemType[];
   onClose: () => void;
-  showDetail: boolean;
+  canEditDataset: boolean;
+  showRawSource: boolean;
   metadata?: {
     collectionId: string;
     sourceId?: string;
@@ -42,13 +45,13 @@ const QuoteModal = ({
         h={['90vh', '80vh']}
         isCentered
         minW={['90vw', '600px']}
-        iconSrc={!!metadata ? undefined : '/imgs/modal/quote.svg'}
+        iconSrc={!!metadata ? undefined : getWebReqUrl('/imgs/modal/quote.svg')}
         title={
           <Box>
             {metadata ? (
-              <RawSourceBox {...metadata} canView={showDetail} />
+              <RawSourceBox {...metadata} canView={showRawSource} />
             ) : (
-              <>{t('core.chat.Quote Amount', { amount: rawSearch.length })}</>
+              <>{t('common:core.chat.Quote Amount', { amount: rawSearch.length })}</>
             )}
             <Box fontSize={'xs'} color={'myGray.500'} fontWeight={'normal'}>
               {t('common:core.chat.quote.Quote Tip')}
@@ -57,7 +60,11 @@ const QuoteModal = ({
         }
       >
         <ModalBody>
-          <QuoteList rawSearch={filterResults} showDetail={showDetail} />
+          <QuoteList
+            rawSearch={filterResults}
+            canEditDataset={canEditDataset}
+            canViewSource={showRawSource}
+          />
         </ModalBody>
       </MyModal>
     </>
@@ -68,10 +75,12 @@ export default QuoteModal;
 
 export const QuoteList = React.memo(function QuoteList({
   rawSearch = [],
-  showDetail
+  canEditDataset,
+  canViewSource
 }: {
   rawSearch: SearchDataResponseItemType[];
-  showDetail: boolean;
+  canEditDataset: boolean;
+  canViewSource: boolean;
 }) {
   const theme = useTheme();
 
@@ -88,7 +97,11 @@ export const QuoteList = React.memo(function QuoteList({
           _hover={{ '& .hover-data': { display: 'flex' } }}
           bg={i % 2 === 0 ? 'white' : 'myWhite.500'}
         >
-          <QuoteItem quoteItem={item} canViewSource={showDetail} linkToDataset={showDetail} />
+          <QuoteItem
+            quoteItem={item}
+            canViewSource={canViewSource}
+            canEditDataset={canEditDataset}
+          />
         </Box>
       ))}
     </>

@@ -25,7 +25,7 @@ export const getOneQuoteInputTemplate = ({
 }): FlowNodeInputItemType => ({
   key,
   renderTypeList: [FlowNodeInputTypeEnum.reference],
-  label: `${i18nT('workflow:quote_num')},{ num: ${index} }`,
+  label: `${i18nT('workflow:quote_num')}-${index}`,
   debugLabel: i18nT('workflow:knowledge_base_reference'),
   canEdit: true,
   valueType: WorkflowIOValueTypeEnum.datasetQuote
@@ -43,6 +43,7 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
 
   showStatus: false,
   version: '486',
+  courseUrl: '/docs/guide/workbench/workflow/knowledge_base_search_merge/',
   inputs: [
     {
       key: NodeInputKeyEnum.datasetMaxTokens,

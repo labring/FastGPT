@@ -64,7 +64,8 @@ export const useSendCode = ({ type }: { type: `${UserAuthTypeEnum}` }) => {
           position={'absolute'}
           right={3}
           zIndex={1}
-          fontSize={'sm'}
+          fontSize={'mini'}
+          fontWeight={'medium'}
           {...styles}
           {...(codeCountDown > 0
             ? {

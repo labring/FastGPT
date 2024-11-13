@@ -4,18 +4,18 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { WorkflowContext } from './context';
 import { filterSensitiveNodesData } from '@/web/core/workflow/utils';
 import dynamic from 'next/dynamic';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { publishStatusStyle } from '../constants';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { fileDownload } from '@/web/common/file/utils';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const ImportSettings = dynamic(() => import('./Flow/ImportSettings'));
 
@@ -31,83 +31,115 @@ const AppCard = ({
 
   const { appDetail, onOpenInfoEdit, onOpenTeamTagModal, onDelApp, currentTab } =
     useContextSelector(AppContext, (v) => v);
-  const { showHistoryModal } = useContextSelector(WorkflowContext, (v) => v);
 
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
 
   const InfoMenu = useCallback(
     ({ children }: { children: React.ReactNode }) => {
       return (
-        <MyMenu
-          width={150}
-          Button={children}
-          menuList={[
-            {
-              children: [
-                {
-                  icon: 'edit',
-                  label: t('app:edit_info'),
-                  onClick: onOpenInfoEdit
-                },
-                {
-                  icon: 'support/team/key',
-                  label: t('common:common.Role'),
-                  onClick: onOpenInfoEdit
-                }
-              ]
-            },
-            ...(!showHistoryModal && currentTab === TabEnum.appEdit
-              ? [
-                  {
-                    children: [
-                      {
-                        label: t('app:import_configs'),
-                        icon: 'common/importLight',
-                        onClick: onOpenImport
-                      },
-                      {
-                        label: ExportPopover({
-                          chatConfig: appDetail.chatConfig,
-                          appName: appDetail.name
-                        }),
-                        menuItemStyles: {
-                          p: 0,
-                          cursor: 'default'
-                        }
-                      }
-                    ]
-                  }
-                ]
-              : []),
-            ...(appDetail.permission.hasWritePer && feConfigs?.show_team_chat
-              ? [
-                  {
-                    children: [
-                      {
-                        icon: 'support/team/memberLight',
-                        label: t('common:common.Team Tags Set'),
-                        onClick: onOpenTeamTagModal
-                      }
-                    ]
-                  }
-                ]
-              : []),
-            ...(appDetail.permission.isOwner
-              ? [
-                  {
-                    children: [
-                      {
-                        type: 'danger' as 'danger',
-                        icon: 'delete',
-                        label: t('common:common.Delete'),
-                        onClick: onDelApp
-                      }
-                    ]
-                  }
-                ]
-              : [])
-          ]}
-        />
+        <MyPopover
+          placement={'bottom-end'}
+          hasArrow={false}
+          offset={[2, 4]}
+          w={'116px'}
+          trigger={'hover'}
+          Trigger={children}
+        >
+          {({ onClose }) => (
+            <Box p={1.5}>
+              <MyBox
+                display={'flex'}
+                size={'md'}
+                px={1}
+                py={1.5}
+                rounded={'4px'}
+                _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
+                cursor={'pointer'}
+                onClick={onOpenInfoEdit}
+              >
+                <MyIcon name={'edit'} w={'16px'} mr={2} />
+                <Box fontSize={'sm'}>{t('app:edit_info')}</Box>
+              </MyBox>
+              <MyBox
+                display={'flex'}
+                size={'md'}
+                px={1}
+                py={1.5}
+                rounded={'4px'}
+                _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
+                cursor={'pointer'}
+                onClick={onOpenInfoEdit}
+              >
+                <MyIcon name={'support/team/key'} w={'16px'} mr={2} />
+                <Box fontSize={'sm'}>{t('app:Role_setting')}</Box>
+              </MyBox>
+              <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
+              <MyBox
+                display={'flex'}
+                size={'md'}
+                px={1}
+                py={1.5}
+                rounded={'4px'}
+                _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
+                cursor={'pointer'}
+                onClick={onOpenImport}
+              >
+                <MyIcon name={'common/importLight'} w={'16px'} mr={2} />
+                <Box fontSize={'sm'}>{t('app:import_configs')}</Box>
+              </MyBox>
+              <MyBox
+                display={'flex'}
+                size={'md'}
+                px={1}
+                py={1.5}
+                rounded={'4px'}
+                _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
+                cursor={'pointer'}
+              >
+                {ExportPopover({
+                  chatConfig: appDetail.chatConfig,
+                  appName: appDetail.name
+                })}
+              </MyBox>
+              <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
+              {appDetail.permission.hasWritePer && feConfigs?.show_team_chat && (
+                <>
+                  <MyBox
+                    display={'flex'}
+                    size={'md'}
+                    px={1}
+                    py={1.5}
+                    rounded={'4px'}
+                    _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
+                    cursor={'pointer'}
+                    onClick={onOpenTeamTagModal}
+                  >
+                    <MyIcon name={'core/dataset/tag'} w={'16px'} mr={2} />
+                    <Box fontSize={'sm'}>{t('app:Team_Tags')}</Box>
+                  </MyBox>
+                  <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
+                </>
+              )}
+
+              {appDetail.permission.isOwner && (
+                <MyBox
+                  display={'flex'}
+                  size={'md'}
+                  px={1}
+                  py={1.5}
+                  rounded={'4px'}
+                  color={'red.600'}
+                  _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
+                  cursor={'pointer'}
+                  onClick={onDelApp}
+                >
+                  <MyIcon name={'delete'} w={'16px'} mr={2} />
+                  <Box fontSize={'sm'}>{t('common:common.Delete')}</Box>
+                </MyBox>
+              )}
+            </Box>
+          )}
+        </MyPopover>
       );
     },
     [
@@ -117,7 +149,6 @@ const AppCard = ({
       appDetail.permission.isOwner,
       currentTab,
       feConfigs?.show_team_chat,
-      showHistoryModal,
       onDelApp,
       onOpenImport,
       onOpenInfoEdit,
@@ -129,21 +160,26 @@ const AppCard = ({
   const Render = useMemo(() => {
     return (
       <HStack>
-        <InfoMenu>
-          <Avatar src={appDetail.avatar} w={'1.75rem'} borderRadius={'md'} />
-        </InfoMenu>
+        <Avatar src={appDetail.avatar} w={'1.75rem'} borderRadius={'md'} />
         <Box>
           <InfoMenu>
-            <HStack spacing={1} cursor={'pointer'}>
+            <HStack
+              spacing={1}
+              cursor={'pointer'}
+              pl={1}
+              ml={-1}
+              borderRadius={'xs'}
+              _hover={{ bg: 'myGray.150' }}
+            >
               <Box color={'myGray.900'}>{appDetail.name}</Box>
-              <MyIcon name={'common/select'} w={'1rem'} />
+              <MyIcon name={'common/select'} w={'1rem'} color={'myGray.500'} />
             </HStack>
           </InfoMenu>
           {showSaveStatus && (
-            <Flex alignItems={'center'} h={'20px'} fontSize={'mini'} lineHeight={1}>
+            <Flex alignItems={'center'} fontSize={'mini'} lineHeight={1}>
               <MyTag
                 py={0}
-                px={0}
+                px={1}
                 showDot
                 bg={'transparent'}
                 colorSchema={
@@ -211,15 +247,19 @@ function ExportPopover({
   return (
     <MyPopover
       placement={'right-start'}
-      offset={[0, 0]}
+      offset={[0, 20]}
       hasArrow
       trigger={'hover'}
       w={'8.6rem'}
       Trigger={
-        <Flex align={'center'} w={'100%'} py={2} px={3}>
-          <Avatar src={'export'} borderRadius={'sm'} w={'1rem'} mr={3} />
-          {t('app:export_configs')}
-        </Flex>
+        // <Flex align={'center'} w={'100%'} py={2} px={3}>
+        //   <Avatar src={'export'} borderRadius={'sm'} w={'1rem'} mr={3} />
+        //   {t('app:export_configs')}
+        // </Flex>
+        <MyBox display={'flex'} size={'md'} rounded={'4px'} cursor={'pointer'}>
+          <MyIcon name={'export'} w={'16px'} mr={2} />
+          <Box fontSize={'sm'}>{t('app:export_configs')}</Box>
+        </MyBox>
       }
     >
       {({ onClose }) => (

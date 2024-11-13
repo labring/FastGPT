@@ -6,6 +6,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 
 const RenderFilePreview = ({
   fileList,
@@ -18,13 +19,12 @@ const RenderFilePreview = ({
 
   return fileList.length > 0 ? (
     <Flex
-      maxH={'250px'}
-      overflowY={'auto'}
+      overflow={'visible'}
       wrap={'wrap'}
       pt={3}
       userSelect={'none'}
       mb={fileList.length > 0 ? 2 : 0}
-      pr={0.5}
+      gap={'6px'}
     >
       {fileList.map((item, index) => {
         const isFile = item.type === ChatFileTypeEnum.file;
@@ -33,11 +33,8 @@ const RenderFilePreview = ({
           <MyBox
             key={index}
             maxW={isFile ? 56 : 14}
-            w={isFile ? '50%' : '12.5%'}
+            w={isFile ? 'calc(50% - 3px)' : '12.5%'}
             aspectRatio={isFile ? 4 : 1}
-            pr={1.5}
-            pb={1.5}
-            mb={0.5}
           >
             <Box
               border={'sm'}
@@ -74,7 +71,7 @@ const RenderFilePreview = ({
                 />
               )}
               {isImage && (
-                <Image
+                <MyImage
                   alt={'img'}
                   src={item.icon}
                   w={'full'}

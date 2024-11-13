@@ -26,7 +26,7 @@ export const ContextExtractModule: FlowNodeTemplateType = {
   intro: i18nT('workflow:intro_text_content_extraction'),
   showStatus: true,
   isTool: true,
-  courseUrl: '/docs/workflow/modules/content_extract/',
+  courseUrl: '/docs/guide/workbench/workflow/content_extract/',
   version: '481',
   inputs: [
     {

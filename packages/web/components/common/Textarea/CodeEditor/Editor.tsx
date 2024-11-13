@@ -2,9 +2,10 @@ import React, { useCallback, useRef, useState } from 'react';
 import Editor, { Monaco, loader } from '@monaco-editor/react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import MyIcon from '../../Icon';
+import { getWebReqUrl } from '../../../../common/system/utils';
 
 loader.config({
-  paths: { vs: '/js/monaco-editor.0.45.0/vs' }
+  paths: { vs: getWebReqUrl('/js/monaco-editor.0.45.0/vs') }
 });
 
 type EditorVariablePickerType = {

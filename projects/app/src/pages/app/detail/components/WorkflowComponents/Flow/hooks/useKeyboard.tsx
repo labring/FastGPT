@@ -5,14 +5,18 @@ import { useTranslation } from 'next-i18next';
 import { Node, useKeyPress } from 'reactflow';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext, getWorkflowStore } from '../../context';
 import { useWorkflowUtils } from './useUtils';
 import { useKeyPress as useKeyPressEffect } from 'ahooks';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
+import { WorkflowEventContext } from '../../context/workflowEventContext';
 
 export const useKeyboard = () => {
   const { t } = useTranslation();
-  const { setNodes, mouseInCanvas } = useContextSelector(WorkflowContext, (v) => v);
+  const getNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.getNodes);
+  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
+  const mouseInCanvas = useContextSelector(WorkflowEventContext, (v) => v.mouseInCanvas);
+
   const { copyData } = useCopyData();
   const { computedNewNodeName } = useWorkflowUtils();
 
@@ -33,14 +37,14 @@ export const useKeyboard = () => {
 
   const onCopy = useCallback(async () => {
     if (hasInputtingElement()) return;
-    const { nodes } = await getWorkflowStore();
+    const nodes = getNodes();
 
     const selectedNodes = nodes.filter(
       (node) => node.selected && !node.data?.isError && node.data?.unique !== true
     );
     if (selectedNodes.length === 0) return;
     copyData(JSON.stringify(selectedNodes), t('common:core.workflow.Copy node'));
-  }, [copyData, hasInputtingElement, t]);
+  }, [copyData, getNodes, hasInputtingElement, t]);
 
   const onParse = useCallback(async () => {
     if (hasInputtingElement()) return;

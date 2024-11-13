@@ -7,9 +7,11 @@ import {
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopStartInput]: any;
+  [NodeInputKeyEnum.loopStartIndex]: number;
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.loopStartInput]: any;
+  [NodeOutputKeyEnum.loopStartIndex]: number;
 }>;
 
 export const dispatchLoopStart = async (props: Props): Promise<Response> => {
@@ -18,6 +20,7 @@ export const dispatchLoopStart = async (props: Props): Promise<Response> => {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       loopInputValue: params.loopStartInput
     },
-    [NodeOutputKeyEnum.loopStartInput]: params.loopStartInput
+    [NodeOutputKeyEnum.loopStartInput]: params.loopStartInput,
+    [NodeOutputKeyEnum.loopStartIndex]: params.loopStartIndex
   };
 };

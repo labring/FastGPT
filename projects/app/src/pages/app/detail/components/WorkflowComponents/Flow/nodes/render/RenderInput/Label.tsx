@@ -42,58 +42,41 @@ const InputLabel = ({ nodeId, input }: Props) => {
     },
     [input, nodeId, onChangeNode, renderTypeList]
   );
+  const renderType = renderTypeList?.[selectedTypeIndex || 0];
 
-  const RenderLabel = useMemo(() => {
-    const renderType = renderTypeList?.[selectedTypeIndex || 0];
-
-    return (
-      <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
-        <Flex alignItems={'center'} position={'relative'} fontWeight={'medium'}>
-          <FormLabel required={required} color={'myGray.600'}>
-            {t(label as any)}
-          </FormLabel>
-          {description && <QuestionTip ml={1} label={t(description as any)}></QuestionTip>}
-        </Flex>
-        {/* value type */}
-        {renderType === FlowNodeInputTypeEnum.reference && (
-          <ValueTypeLabel valueType={valueType} valueDesc={valueDesc} />
-        )}
-
-        {/* input type select */}
-        {renderTypeList && renderTypeList.length > 1 && (
-          <Box ml={2}>
-            <NodeInputSelect
-              renderTypeList={renderTypeList}
-              renderTypeIndex={selectedTypeIndex}
-              onChange={onChangeRenderType}
-            />
-          </Box>
-        )}
-
-        {/* Variable picker tip */}
-        {input.renderTypeList[input.selectedTypeIndex ?? 0] === FlowNodeInputTypeEnum.textarea && (
-          <>
-            <Box flex={1} />
-            <VariableTip transform={'translateY(2px)'} />
-          </>
-        )}
+  return (
+    <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
+      <Flex alignItems={'center'} position={'relative'} fontWeight={'medium'}>
+        <FormLabel required={required} color={'myGray.600'}>
+          {t(label as any)}
+        </FormLabel>
+        {description && <QuestionTip ml={1} label={t(description as any)}></QuestionTip>}
       </Flex>
-    );
-  }, [
-    description,
-    input.renderTypeList,
-    input.selectedTypeIndex,
-    label,
-    onChangeRenderType,
-    renderTypeList,
-    required,
-    selectedTypeIndex,
-    t,
-    valueDesc,
-    valueType
-  ]);
+      {/* value type */}
+      {[FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.fileSelect].includes(renderType) && (
+        <ValueTypeLabel valueType={valueType} valueDesc={valueDesc} />
+      )}
 
-  return RenderLabel;
+      {/* input type select */}
+      {renderTypeList && renderTypeList.length > 1 && (
+        <Box ml={2}>
+          <NodeInputSelect
+            renderTypeList={renderTypeList}
+            renderTypeIndex={selectedTypeIndex}
+            onChange={onChangeRenderType}
+          />
+        </Box>
+      )}
+
+      {/* Variable picker tip */}
+      {input.renderTypeList[input.selectedTypeIndex ?? 0] === FlowNodeInputTypeEnum.textarea && (
+        <>
+          <Box flex={1} />
+          <VariableTip transform={'translateY(2px)'} />
+        </>
+      )}
+    </Flex>
+  );
 };
 
 export default React.memo(InputLabel);

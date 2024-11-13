@@ -129,15 +129,16 @@ const Logs = () => {
                   onClick={() => setDetailLogsId(item.id)}
                 >
                   <Td>
-                    <Box>{t(ChatSourceMap[item.source]?.name || ('UnKnow' as any))}</Box>
+                    {/* @ts-ignore */}
+                    <Box>{t(ChatSourceMap[item.source]?.name) || item.source}</Box>
                     <Box color={'myGray.500'}>{dayjs(item.time).format('YYYY/MM/DD HH:mm')}</Box>
                   </Td>
                   <Td>
                     <Box>
-                      {item.source === 'share' ? (
+                      {!!item.outLinkUid ? (
                         item.outLinkUid
                       ) : (
-                        <Tag key={item._id} type={'fill'} colorSchema="white">
+                        <HStack>
                           <Avatar
                             src={teamMembers.find((v) => v.tmbId === item.tmbId)?.avatar}
                             w="1.25rem"
@@ -145,7 +146,7 @@ const Logs = () => {
                           <Box fontSize={'sm'} ml={1}>
                             {teamMembers.find((v) => v.tmbId === item.tmbId)?.memberName}
                           </Box>
-                        </Tag>
+                        </HStack>
                       )}
                     </Box>
                   </Td>
