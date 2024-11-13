@@ -45,6 +45,7 @@ import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const StandDetailModal = dynamic(() => import('./standardDetailModal'));
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
@@ -494,7 +495,7 @@ const PlanUsage = () => {
             </Box>
           </Flex>
           <Link
-            href={EXTRA_PLAN_CARD_ROUTE}
+            href={getWebReqUrl(EXTRA_PLAN_CARD_ROUTE)}
             transform={'translateX(15px)'}
             display={'flex'}
             alignItems={'center'}
