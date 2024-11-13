@@ -48,7 +48,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard selected={selected} maxW={'1000px'} {...data}>
-      <Box px={4} cursor={'default'}>
+      <Flex flexDirection={'column'} cursor={'default'}>
         <DndDrag<IfElseListItemType>
           onDragEndCb={(list: IfElseListItemType[]) => onUpdateIfElseList(list)}
           dataList={ifElseList}
@@ -98,12 +98,12 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               nodeId={nodeId}
               handleId={elseHandleId}
               position={Position.Right}
-              translate={[26, 0]}
+              translate={[18, 0]}
             />
           </Flex>
         </Container>
-      </Box>
-      <Box py={3} px={6}>
+      </Flex>
+      <Box py={3} px={4}>
         <Button
           variant={'whiteBase'}
           w={'full'}

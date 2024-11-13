@@ -6,7 +6,7 @@ import {
   countGptMessagesTokens
 } from '../../../../common/string/tiktoken/index';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { getAIApi } from '../../../ai/config';
+import { createChatCompletion } from '../../../ai/config';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -222,13 +222,8 @@ const toolChoice = async (props: ActionProps) => {
     }
   ];
 
-  const ai = getAIApi({
-    userKey: user.openaiAccount,
-    timeout: 480000
-  });
-
-  const response = await ai.chat.completions.create(
-    llmCompletionsBodyFormat(
+  const { response } = await createChatCompletion({
+    body: llmCompletionsBodyFormat(
       {
         model: extractModel.model,
         temperature: 0.01,
@@ -237,8 +232,9 @@ const toolChoice = async (props: ActionProps) => {
         tool_choice: { type: 'function', function: { name: agentFunName } }
       },
       extractModel
-    )
-  );
+    ),
+    userKey: user.openaiAccount
+  });
 
   const arg: Record<string, any> = (() => {
     try {
@@ -272,13 +268,8 @@ const functionCall = async (props: ActionProps) => {
   const { agentFunction, filterMessages } = await getFunctionCallSchema(props);
   const functions: ChatCompletionCreateParams.Function[] = [agentFunction];
 
-  const ai = getAIApi({
-    userKey: user.openaiAccount,
-    timeout: 480000
-  });
-
-  const response = await ai.chat.completions.create(
-    llmCompletionsBodyFormat(
+  const { response } = await createChatCompletion({
+    body: llmCompletionsBodyFormat(
       {
         model: extractModel.model,
         temperature: 0.01,
@@ -289,8 +280,9 @@ const functionCall = async (props: ActionProps) => {
         functions
       },
       extractModel
-    )
-  );
+    ),
+    userKey: user.openaiAccount
+  });
 
   try {
     const arg = JSON.parse(response?.choices?.[0]?.message?.function_call?.arguments || '');
@@ -358,12 +350,8 @@ Human: ${content}`
     useVision: false
   });
 
-  const ai = getAIApi({
-    userKey: user.openaiAccount,
-    timeout: 480000
-  });
-  const data = await ai.chat.completions.create(
-    llmCompletionsBodyFormat(
+  const { response: data } = await createChatCompletion({
+    body: llmCompletionsBodyFormat(
       {
         model: extractModel.model,
         temperature: 0.01,
@@ -371,8 +359,9 @@ Human: ${content}`
         stream: false
       },
       extractModel
-    )
-  );
+    ),
+    userKey: user.openaiAccount
+  });
   const answer = data.choices?.[0].message?.content || '';
 
   // parse response

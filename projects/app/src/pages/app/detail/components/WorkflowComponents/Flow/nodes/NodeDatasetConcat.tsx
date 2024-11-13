@@ -7,14 +7,13 @@ import RenderInput from './render/RenderInput';
 import { Box, Button, Flex, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getOneQuoteInputTemplate } from '@fastgpt/global/core/workflow/template/system/datasetConcat';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MySlider from '@/components/Slider';
 import {
   FlowNodeInputItemType,
-  ReferenceValueProps
+  ReferenceItemValueType
 } from '@fastgpt/global/core/workflow/type/io.d';
 import RenderOutput from './render/RenderOutput';
 import IOTitle from '../components/IOTitle';
@@ -24,93 +23,12 @@ import { ReferSelector, useReference } from './render/RenderInput/templates/Refe
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from './render/ValueTypeLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { isWorkflowStartOutput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import { getWebLLMModel } from '@/web/common/system/utils';
-import { useMemoizedFn } from 'ahooks';
 
 const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { llmModelList } = useSystemStore();
   const { nodeId, inputs, outputs } = data;
   const { nodeList, onChangeNode } = useContextSelector(WorkflowContext, (v) => v);
-
-  const Reference = useMemoizedFn(
-    ({ nodeId, inputChildren }: { nodeId: string; inputChildren: FlowNodeInputItemType }) => {
-      const { t } = useTranslation();
-      const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-
-      const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-
-      const { referenceList, formatValue } = useReference({
-        nodeId,
-        valueType: inputChildren.valueType,
-        value: inputChildren.value
-      });
-
-      const onSelect = useCallback(
-        (e: ReferenceValueProps) => {
-          const workflowStartNode = nodeList.find(
-            (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
-          );
-
-          onChangeNode({
-            nodeId,
-            type: 'replaceInput',
-            key: inputChildren.key,
-            value: {
-              ...inputChildren,
-              value:
-                e[0] === workflowStartNode?.id && !isWorkflowStartOutput(e[1])
-                  ? [VARIABLE_NODE_ID, e[1]]
-                  : e
-            }
-          });
-        },
-        [inputChildren, nodeId, nodeList, onChangeNode]
-      );
-
-      const onDel = useCallback(() => {
-        onChangeNode({
-          nodeId,
-          type: 'delInput',
-          key: inputChildren.key
-        });
-      }, [inputChildren.key, nodeId, onChangeNode]);
-
-      return (
-        <>
-          <Flex alignItems={'center'} mb={1}>
-            <FormLabel required={inputChildren.required}>{t(inputChildren.label as any)}</FormLabel>
-            {/* value */}
-            <ValueTypeLabel
-              valueType={inputChildren.valueType}
-              valueDesc={inputChildren.valueDesc}
-            />
-
-            <MyIcon
-              className="delete"
-              name={'delete'}
-              w={'14px'}
-              color={'myGray.500'}
-              cursor={'pointer'}
-              ml={2}
-              _hover={{ color: 'red.600' }}
-              onClick={onDel}
-            />
-          </Flex>
-          <ReferSelector
-            placeholder={t(
-              (inputChildren.referencePlaceholder as any) ||
-                t('common:core.module.Dataset quote.select')
-            )}
-            list={referenceList}
-            value={formatValue}
-            onSelect={onSelect}
-          />
-        </>
-      );
-    }
-  );
 
   const CustomComponent = useMemo(() => {
     const quoteList = inputs.filter((item) => item.canEdit);
@@ -184,7 +102,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             <Box mt={2}>
               {quoteList.map((children) => (
                 <Box key={children.key} _notLast={{ mb: 3 }}>
-                  <Reference nodeId={nodeId} inputChildren={children} />
+                  <VariableSelector nodeId={nodeId} inputChildren={children} />
                 </Box>
               ))}
             </Box>
@@ -192,7 +110,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     };
-  }, [Reference, inputs, nodeId, nodeList, onChangeNode, t, llmModelList]);
+  }, [inputs, nodeId, nodeList, onChangeNode, t]);
 
   const Render = useMemo(() => {
     return (
@@ -212,3 +130,75 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   return Render;
 };
 export default React.memo(NodeDatasetConcat);
+
+const VariableSelector = ({
+  nodeId,
+  inputChildren
+}: {
+  nodeId: string;
+  inputChildren: FlowNodeInputItemType;
+}) => {
+  const { t } = useTranslation();
+  const { onChangeNode } = useContextSelector(WorkflowContext, (v) => v);
+
+  const { referenceList } = useReference({
+    nodeId,
+    valueType: inputChildren.valueType
+  });
+
+  const onSelect = useCallback(
+    (e?: ReferenceItemValueType) => {
+      if (!e) return;
+
+      onChangeNode({
+        nodeId,
+        type: 'replaceInput',
+        key: inputChildren.key,
+        value: {
+          ...inputChildren,
+          value: e
+        }
+      });
+    },
+    [inputChildren, nodeId, onChangeNode]
+  );
+
+  const onDel = useCallback(() => {
+    onChangeNode({
+      nodeId,
+      type: 'delInput',
+      key: inputChildren.key
+    });
+  }, [inputChildren.key, nodeId, onChangeNode]);
+
+  return (
+    <>
+      <Flex alignItems={'center'} mb={1}>
+        <FormLabel required={inputChildren.required}>{t(inputChildren.label as any)}</FormLabel>
+        {/* value */}
+        <ValueTypeLabel valueType={inputChildren.valueType} valueDesc={inputChildren.valueDesc} />
+
+        <MyIcon
+          className="delete"
+          name={'delete'}
+          w={'14px'}
+          color={'myGray.500'}
+          cursor={'pointer'}
+          ml={2}
+          _hover={{ color: 'red.600' }}
+          onClick={onDel}
+        />
+      </Flex>
+      <ReferSelector
+        placeholder={t(
+          (inputChildren.referencePlaceholder as any) ||
+            t('common:core.module.Dataset quote.select')
+        )}
+        list={referenceList}
+        value={inputChildren.value}
+        onSelect={onSelect}
+        isArray={false}
+      />
+    </>
+  );
+};

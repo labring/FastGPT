@@ -5,6 +5,7 @@ import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../../context';
+import { WorkflowNodeEdgeContext } from '../../../../context/workflowInitContext';
 
 export const ConnectionSourceHandle = ({
   nodeId,
@@ -13,7 +14,8 @@ export const ConnectionSourceHandle = ({
   nodeId: string;
   isFoldNode?: boolean;
 }) => {
-  const { connectingEdge, nodeList, edges } = useContextSelector(WorkflowContext, (ctx) => ctx);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
+  const { connectingEdge, nodeList } = useContextSelector(WorkflowContext, (ctx) => ctx);
 
   const { showSourceHandle, RightHandle, LeftHandlee, TopHandlee, BottomHandlee } = useMemo(() => {
     const node = nodeList.find((node) => node.nodeId === nodeId);
@@ -50,7 +52,7 @@ export const ConnectionSourceHandle = ({
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Right}
-          translate={[2, 0]}
+          translate={[4, 0]}
         />
       );
     })();
@@ -67,7 +69,7 @@ export const ConnectionSourceHandle = ({
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Left}
-          translate={[-6, 0]}
+          translate={[-8, 0]}
         />
       );
     })();
@@ -90,7 +92,7 @@ export const ConnectionSourceHandle = ({
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Top}
-          translate={[0, -2]}
+          translate={[0, -5]}
         />
       );
     })();
@@ -106,7 +108,7 @@ export const ConnectionSourceHandle = ({
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Bottom}
-          translate={[0, 2]}
+          translate={[0, 5]}
         />
       );
     })();
@@ -135,7 +137,8 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
 }: {
   nodeId: string;
 }) {
-  const { connectingEdge, nodeList, edges } = useContextSelector(WorkflowContext, (ctx) => ctx);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
+  const { connectingEdge, nodeList } = useContextSelector(WorkflowContext, (ctx) => ctx);
 
   const { LeftHandle, rightHandle, topHandle, bottomHandle } = useMemo(() => {
     const node = nodeList.find((node) => node.nodeId === nodeId);
@@ -191,7 +194,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Left}
-          translate={[-2, 0]}
+          translate={[-4, 0]}
           showHandle={showHandle}
         />
       );
@@ -206,7 +209,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Right}
-          translate={[2, 0]}
+          translate={[4, 0]}
           showHandle={showHandle}
         />
       );
@@ -221,7 +224,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Top}
-          translate={[0, -2]}
+          translate={[0, -5]}
           showHandle={showHandle}
         />
       );
@@ -236,7 +239,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Bottom}
-          translate={[0, 2]}
+          translate={[0, 5]}
           showHandle={showHandle}
         />
       );

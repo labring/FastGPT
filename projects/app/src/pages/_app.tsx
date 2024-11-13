@@ -13,6 +13,7 @@ import '@/web/styles/reset.scss';
 import NextHead from '@/components/common/NextHead';
 import { ReactElement, useEffect } from 'react';
 import { NextPage } from 'next';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 type NextPageWithLayout = NextPage & {
   setLayout?: (page: ReactElement) => JSX.Element;
@@ -49,7 +50,7 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
           process.env.SYSTEM_DESCRIPTION ||
           `${title}${t('app:intro')}`
         }
-        icon={feConfigs?.favicon || process.env.SYSTEM_FAVICON}
+        icon={getWebReqUrl(feConfigs?.favicon || process.env.SYSTEM_FAVICON)}
       />
       {scripts?.map((item, i) => <Script key={i} strategy="lazyOnload" {...item}></Script>)}
 

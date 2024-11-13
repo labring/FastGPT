@@ -11,7 +11,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { useBoolean } from 'ahooks';
 import InputTypeConfig from './InputTypeConfig';
 
 export const defaultInput: FlowNodeInputItemType = {
@@ -23,7 +22,10 @@ export const defaultInput: FlowNodeInputItemType = {
   label: '',
   description: '',
   defaultValue: '',
-  list: [{ label: '', value: '' }]
+  list: [{ label: '', value: '' }],
+  maxFiles: 5,
+  canSelectFile: true,
+  canSelectImg: true
 };
 
 const FieldEditModal = ({
@@ -109,6 +111,13 @@ const FieldEditModal = ({
         ],
         [
           {
+            icon: 'core/workflow/inputType/file',
+            label: t('app:file_upload'),
+            value: [FlowNodeInputTypeEnum.fileSelect],
+            defaultValueType: WorkflowIOValueTypeEnum.arrayString,
+            description: t('app:file_upload_tip')
+          },
+          {
             icon: 'core/workflow/inputType/customVariable',
             label: t('common:core.workflow.inputType.custom'),
             value: [FlowNodeInputTypeEnum.customVariable],
@@ -130,19 +139,10 @@ const FieldEditModal = ({
   const form = useForm({
     defaultValues: defaultValue
   });
-  const { getValues, setValue, watch, reset } = form;
+  const { setValue, watch, reset } = form;
 
   const renderTypeList = watch('renderTypeList');
   const inputType = renderTypeList[0] || FlowNodeInputTypeEnum.reference;
-  const valueType = watch('valueType');
-
-  const [isToolInput, { toggle: setIsToolInput }] = useBoolean(!!getValues('toolDescription'));
-
-  const maxLength = watch('maxLength');
-  const max = watch('max');
-  const min = watch('min');
-  const selectValueTypeList = watch('customInputConfig.selectValueTypeList');
-  const defaultInputValue = watch('defaultValue');
 
   const defaultValueType = useMemo(
     () =>
@@ -190,8 +190,8 @@ const FieldEditModal = ({
         }
       }
 
-      // Focus remove toolDescription
-      if (isToolInput && data.renderTypeList.includes(FlowNodeInputTypeEnum.reference)) {
+      // Get toolDescription and removes the types of some unusable tools
+      if (data.toolDescription && data.renderTypeList.includes(FlowNodeInputTypeEnum.reference)) {
         data.toolDescription = data.description;
       } else {
         data.toolDescription = undefined;
@@ -211,18 +211,7 @@ const FieldEditModal = ({
         reset(defaultInput);
       }
     },
-    [
-      defaultValue.key,
-      defaultValueType,
-      isEdit,
-      isToolInput,
-      keys,
-      onSubmit,
-      t,
-      toast,
-      onClose,
-      reset
-    ]
+    [defaultValue.key, defaultValueType, isEdit, keys, onSubmit, t, toast, onClose, reset]
   );
   const onSubmitError = useCallback(
     (e: Object) => {
@@ -241,7 +230,7 @@ const FieldEditModal = ({
 
   return (
     <MyModal
-      isOpen={true}
+      isOpen
       onClose={onClose}
       iconSrc="/imgs/workflow/extract.png"
       title={isEdit ? t('workflow:edit_input') : t('workflow:add_new_input')}
@@ -321,14 +310,6 @@ const FieldEditModal = ({
           isEdit={isEdit}
           onClose={onClose}
           inputType={inputType}
-          maxLength={maxLength}
-          max={max}
-          min={min}
-          selectValueTypeList={selectValueTypeList}
-          defaultValue={defaultInputValue}
-          isToolInput={isToolInput}
-          setIsToolInput={setIsToolInput}
-          valueType={valueType}
           defaultValueType={defaultValueType}
           onSubmitSuccess={onSubmitSuccess}
           onSubmitError={onSubmitError}

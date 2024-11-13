@@ -3,7 +3,6 @@ import {
   Button,
   Flex,
   FormControl,
-  FormLabel,
   HStack,
   Input,
   NumberDecrementStepper,
@@ -23,8 +22,6 @@ import {
   FlowNodeInputTypeEnum,
   FlowValueTypeMap
 } from '@fastgpt/global/core/workflow/node/constant';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -35,8 +32,12 @@ import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 
-type ListValueType = { id: string; value: string; label: string }[];
+import ChatFunctionTip from '@/components/core/app/Tip';
+import MySlider from '@/components/Slider';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const InputTypeConfig = ({
   form,
@@ -44,36 +45,18 @@ const InputTypeConfig = ({
   onClose,
   type,
   inputType,
-  maxLength,
-  max,
-  min,
-  selectValueTypeList,
-  defaultValue,
-  isToolInput,
-  setIsToolInput,
-  valueType,
   defaultValueType,
   onSubmitSuccess,
   onSubmitError
 }: {
   // Common fields
-  form: UseFormReturn<any>;
+  form: UseFormReturn<any, any>;
   isEdit: boolean;
   onClose: () => void;
   type: 'plugin' | 'formInput' | 'variable';
   inputType: FlowNodeInputTypeEnum | VariableInputEnum;
 
-  maxLength?: number;
-  max?: number;
-  min?: number;
-
-  selectValueTypeList?: WorkflowIOValueTypeEnum[];
-  defaultValue?: string;
-
   // Plugin-specific fields
-  isToolInput?: boolean;
-  setIsToolInput?: () => void;
-  valueType?: WorkflowIOValueTypeEnum;
   defaultValueType?: WorkflowIOValueTypeEnum;
 
   // Update methods
@@ -82,9 +65,7 @@ const InputTypeConfig = ({
 }) => {
   const { t } = useTranslation();
   const defaultListValue = { label: t('common:None'), value: '' };
-
-  const { register, setValue, handleSubmit, control, watch } = form;
-  const listValue: ListValueType = watch('list');
+  const { feConfigs } = useSystemStore();
 
   const typeLabels = {
     name: {
@@ -99,6 +80,18 @@ const InputTypeConfig = ({
     }
   };
 
+  const { register, setValue, handleSubmit, control, watch } = form;
+  const maxLength = watch('maxLength');
+  const max = watch('max');
+  const min = watch('min');
+  const selectValueTypeList = watch('customInputConfig.selectValueTypeList');
+  const defaultValue = watch('defaultValue');
+  const valueType = watch('valueType');
+
+  const toolDescription = watch('toolDescription');
+  const isToolInput = !!toolDescription;
+
+  const listValue = watch('list') ?? [];
   const {
     fields: selectEnums,
     append: appendEnums,
@@ -166,6 +159,10 @@ const InputTypeConfig = ({
     return type === 'plugin' && list.includes(inputType as FlowNodeInputTypeEnum);
   }, [inputType, type]);
 
+  // File select
+  const maxFiles = watch('maxFiles');
+  const maxSelectFiles = Math.min(feConfigs?.uploadFileMaxAmount ?? 20, 50);
+
   return (
     <Stack flex={1} borderLeft={'1px solid #F0F1F6'} justifyContent={'space-between'}>
       <Flex flexDirection={'column'} p={8} pb={2} gap={4} flex={'1 0 0'} overflow={'auto'}>
@@ -175,6 +172,7 @@ const InputTypeConfig = ({
           </FormLabel>
           <Input
             bg={'myGray.50'}
+            maxLength={30}
             placeholder="appointment/sql"
             {...register('label', {
               required: true
@@ -189,7 +187,9 @@ const InputTypeConfig = ({
             bg={'myGray.50'}
             placeholder={t('workflow:field_description_placeholder')}
             rows={3}
-            {...register('description', { required: isToolInput ? true : false })}
+            {...register('description', {
+              required: showIsToolInput && isToolInput ? true : false
+            })}
           />
         </Flex>
 
@@ -213,7 +213,7 @@ const InputTypeConfig = ({
               </Box>
             ) : (
               <Box fontSize={'14px'} mb={2}>
-                {defaultValueType}
+                {defaultValueType ? t(FlowValueTypeMap[defaultValueType]?.label as any) : ''}
               </Box>
             )}
           </Flex>
@@ -236,7 +236,7 @@ const InputTypeConfig = ({
               <Switch
                 isChecked={isToolInput}
                 onChange={(e) => {
-                  setIsToolInput && setIsToolInput();
+                  setValue('toolDescription', e.target.checked ? 'sign' : '');
                 }}
               />
             </Flex>
@@ -249,8 +249,6 @@ const InputTypeConfig = ({
               {t('common:core.module.Max Length')}
             </FormLabel>
             <MyNumberInput
-              flex={'1 0 0'}
-              bg={'myGray.50'}
               placeholder={t('common:core.module.Max Length placeholder')}
               value={maxLength}
               max={50000}
@@ -269,8 +267,6 @@ const InputTypeConfig = ({
                 {t('common:core.module.Max Value')}
               </FormLabel>
               <MyNumberInput
-                flex={'1 0 0'}
-                bg={'myGray.50'}
                 value={max}
                 onChange={(e) => {
                   // @ts-ignore
@@ -283,8 +279,6 @@ const InputTypeConfig = ({
                 {t('common:core.module.Min Value')}
               </FormLabel>
               <MyNumberInput
-                flex={'1 0 0'}
-                bg={'myGray.50'}
                 value={min}
                 onChange={(e) => {
                   // @ts-ignore
@@ -302,18 +296,15 @@ const InputTypeConfig = ({
             </FormLabel>
             <Flex alignItems={'start'} flex={1} h={10}>
               {inputType === FlowNodeInputTypeEnum.numberInput && (
-                <NumberInput flex={1} step={1} min={min} max={max} position={'relative'}>
-                  <NumberInputField
-                    {...register('defaultValue', {
-                      min: min,
-                      max: max
-                    })}
-                  />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
+                <MyNumberInput
+                  value={defaultValue}
+                  min={min}
+                  max={max}
+                  onChange={(e) => {
+                    // @ts-ignore
+                    setValue('defaultValue', e || '');
+                  }}
+                />
               )}
               {inputType === FlowNodeInputTypeEnum.input && (
                 <MyTextarea
@@ -347,7 +338,7 @@ const InputTypeConfig = ({
                       value: item.value
                     }))}
                   value={
-                    defaultValue && listValue.map((item) => item.value).includes(defaultValue)
+                    defaultValue && listValue.map((item: any) => item.value).includes(defaultValue)
                       ? defaultValue
                       : ''
                   }
@@ -363,12 +354,12 @@ const InputTypeConfig = ({
 
         {inputType === FlowNodeInputTypeEnum.addInputParam && (
           <>
-            <Flex alignItems={'center'}>
+            {/* <Flex alignItems={'center'}>
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
                 {t('common:core.module.Input Type')}
               </FormLabel>
               <Box fontSize={'14px'}>{t('workflow:only_the_reference_type_is_supported')}</Box>
-            </Flex>
+            </Flex> */}
             <Box>
               <HStack mb={1}>
                 <FormLabel fontWeight={'medium'}>{t('workflow:optional_value_type')}</FormLabel>
@@ -395,7 +386,9 @@ const InputTypeConfig = ({
                   .map((id) => mergedSelectEnums.find((item) => item.id === id))
                   .filter(Boolean) as { id: string; value: string }[];
                 removeEnums();
-                newSelectEnums.forEach((item) => appendEnums(item));
+                newSelectEnums.forEach((item) =>
+                  appendEnums({ label: item.value, value: item.value })
+                );
 
                 // 防止最后一个元素被focus
                 setTimeout(() => {
@@ -511,6 +504,60 @@ const InputTypeConfig = ({
             </Button>
           </>
         )}
+
+        {inputType === FlowNodeInputTypeEnum.fileSelect && (
+          <>
+            <Flex alignItems={'center'} minH={'40px'}>
+              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+                {t('app:document_upload')}
+              </FormLabel>
+              <Switch
+                {...register('canSelectFile', {
+                  required: true
+                })}
+              />
+            </Flex>
+            <Box w={'full'} minH={'40px'}>
+              <Flex alignItems={'center'}>
+                <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+                  {t('app:image_upload')}
+                </FormLabel>
+                <Switch
+                  {...register('canSelectImg', {
+                    required: true
+                  })}
+                />
+              </Flex>
+              <Flex color={'myGray.500'}>
+                <Box fontSize={'xs'}>{t('app:image_upload_tip')}</Box>
+                <ChatFunctionTip type="visionModel" />
+              </Flex>
+            </Box>
+            <Box>
+              <HStack>
+                <FormLabel fontWeight={'medium'}>{t('app:upload_file_max_amount')}</FormLabel>
+                <QuestionTip label={t('app:upload_file_max_amount_tip')} />
+              </HStack>
+
+              <Box mt={5}>
+                <MySlider
+                  markList={[
+                    { label: '1', value: 1 },
+                    { label: `${maxSelectFiles}`, value: maxSelectFiles }
+                  ]}
+                  width={'100%'}
+                  min={1}
+                  max={maxSelectFiles}
+                  step={1}
+                  value={maxFiles ?? 5}
+                  onChange={(e) => {
+                    setValue('maxFiles', e);
+                  }}
+                />
+              </Box>
+            </Box>
+          </>
+        )}
       </Flex>
 
       <Flex justify={'flex-end'} gap={3} pb={8} pr={8}>
@@ -520,10 +567,7 @@ const InputTypeConfig = ({
         <Button
           variant={'primaryOutline'}
           fontWeight={'medium'}
-          onClick={handleSubmit(
-            (data: FlowNodeInputItemType) => onSubmitSuccess(data, 'confirm'),
-            onSubmitError
-          )}
+          onClick={handleSubmit((data) => onSubmitSuccess(data, 'confirm'), onSubmitError)}
           w={20}
         >
           {t('common:common.Confirm')}
@@ -531,10 +575,7 @@ const InputTypeConfig = ({
         {!isEdit && (
           <Button
             fontWeight={'medium'}
-            onClick={handleSubmit(
-              (data: FlowNodeInputItemType) => onSubmitSuccess(data, 'continue'),
-              onSubmitError
-            )}
+            onClick={handleSubmit((data) => onSubmitSuccess(data, 'continue'), onSubmitError)}
             w={20}
           >
             {t('common:common.Continue_Adding')}
@@ -545,4 +586,4 @@ const InputTypeConfig = ({
   );
 };
 
-export default React.memo(InputTypeConfig);
+export default InputTypeConfig;

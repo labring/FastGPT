@@ -25,7 +25,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     user,
     node: { name }
   } = props;
-  const { loopInputArray = [], childrenNodeIdList } = params;
+  const { loopInputArray = [], childrenNodeIdList = [] } = params;
 
   if (!Array.isArray(loopInputArray)) {
     return Promise.reject('Input value is not an array');
@@ -43,23 +43,24 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   let totalPoints = 0;
   let newVariables: Record<string, any> = props.variables;
 
-  for await (const item of loopInputArray) {
+  let index = 0;
+  for await (const item of loopInputArray.filter(Boolean)) {
     runtimeNodes.forEach((node) => {
       if (
         childrenNodeIdList.includes(node.nodeId) &&
         node.flowNodeType === FlowNodeTypeEnum.loopStart
       ) {
         node.isEntry = true;
-        node.inputs = node.inputs.map((input) =>
-          input.key === NodeInputKeyEnum.loopStartInput
-            ? {
-                ...input,
-                value: item
-              }
-            : input
-        );
+        node.inputs.forEach((input) => {
+          if (input.key === NodeInputKeyEnum.loopStartInput) {
+            input.value = item;
+          } else if (input.key === NodeInputKeyEnum.loopStartIndex) {
+            input.value = index++;
+          }
+        });
       }
     });
+
     const response = await dispatchWorkFlow({
       ...props,
       runtimeEdges: cloneDeep(runtimeEdges)
@@ -69,11 +70,13 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       (res) => res.moduleType === FlowNodeTypeEnum.loopEnd
     )?.loopOutputValue;
 
+    // Concat runtime response
     outputValueArr.push(loopOutputValue);
     loopDetail.push(...response.flowResponses);
     assistantResponses.push(...response.assistantResponses);
+    totalPoints += response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
 
-    totalPoints = response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
+    // Concat new variables
     newVariables = {
       ...newVariables,
       ...response.newVariables

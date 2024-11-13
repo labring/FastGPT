@@ -1,4 +1,4 @@
-import { Dispatch, ReactNode, SetStateAction, useCallback, useState } from 'react';
+import { Dispatch, ReactNode, SetStateAction, useCallback, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { defaultApp } from '@/web/core/app/constants';
 import { delAppById, getAppDetailById, putAppById } from '@/web/core/app/api';
@@ -186,22 +186,39 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     [appDetail.name, deleteApp, openConfirmDel, t]
   );
 
-  const contextValue: AppContextType = {
-    appId,
-    currentTab,
-    route2Tab,
-    appDetail,
-    setAppDetail,
-    loadingApp,
-    updateAppDetail,
-    onOpenInfoEdit,
-    onOpenTeamTagModal,
-    onDelApp,
-    onSaveApp,
-    appLatestVersion,
-    reloadAppLatestVersion,
-    reloadApp
-  };
+  const contextValue: AppContextType = useMemo(
+    () => ({
+      appId,
+      currentTab,
+      route2Tab,
+      appDetail,
+      setAppDetail,
+      loadingApp,
+      updateAppDetail,
+      onOpenInfoEdit,
+      onOpenTeamTagModal,
+      onDelApp,
+      onSaveApp,
+      appLatestVersion,
+      reloadAppLatestVersion,
+      reloadApp
+    }),
+    [
+      appDetail,
+      appId,
+      appLatestVersion,
+      currentTab,
+      loadingApp,
+      onDelApp,
+      onOpenInfoEdit,
+      onOpenTeamTagModal,
+      onSaveApp,
+      reloadApp,
+      reloadAppLatestVersion,
+      route2Tab,
+      updateAppDetail
+    ]
+  );
 
   return (
     <AppContext.Provider value={contextValue}>

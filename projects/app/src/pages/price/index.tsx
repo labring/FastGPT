@@ -11,6 +11,7 @@ import PointsCard from './components/Points';
 import FAQ from './components/FAQ';
 import { getToken } from '@/web/support/user/auth';
 import Script from 'next/script';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 const PriceBox = () => {
   const { userInfo } = useUserStore();
@@ -25,7 +26,7 @@ const PriceBox = () => {
 
   return (
     <>
-      <Script src="/js/qrcode.min.js" strategy="lazyOnload"></Script>
+      <Script src={getWebReqUrl('/js/qrcode.min.js')} strategy="lazyOnload"></Script>
       <Flex
         h={'100%'}
         flexDir={'column'}

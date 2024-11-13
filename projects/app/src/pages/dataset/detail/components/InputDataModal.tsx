@@ -26,11 +26,9 @@ import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { getDefaultIndex, getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
-import SideTabs from '@/components/SideTabs';
 import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
 import { defaultCollectionDetail } from '@/web/core/dataset/constants';
 import { getDocPath } from '@/web/common/system/doc';
-import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -101,7 +99,9 @@ const InputDataModal = ({
               mr={'0.38rem'}
               color={'myGray.500'}
               ml={1}
-              onClick={() => window.open(getDocPath('/docs/course/dataset_engine'), '_blank')}
+              onClick={() =>
+                window.open(getDocPath('/docs/guide/knowledge_base/dataset_engine/'), '_blank')
+              }
               _hover={{
                 color: 'primary.600',
                 cursor: 'pointer'

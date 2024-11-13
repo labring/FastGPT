@@ -48,14 +48,17 @@ export const computedTemperature = ({
 type CompletionsBodyType =
   | ChatCompletionCreateParamsNonStreaming
   | ChatCompletionCreateParamsStreaming;
+type InferCompletionsBody<T> = T extends { stream: true }
+  ? ChatCompletionCreateParamsStreaming
+  : ChatCompletionCreateParamsNonStreaming;
 
 export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
   body: T,
   model: string | LLMModelItemType
-) => {
+): InferCompletionsBody<T> => {
   const modelData = typeof model === 'string' ? getLLMModel(model) : model;
   if (!modelData) {
-    return body;
+    return body as InferCompletionsBody<T>;
   }
 
   const requestBody: T = {
@@ -81,5 +84,5 @@ export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
 
   // console.log(requestBody);
 
-  return requestBody;
+  return requestBody as InferCompletionsBody<T>;
 };

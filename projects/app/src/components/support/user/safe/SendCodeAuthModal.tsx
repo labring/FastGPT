@@ -1,5 +1,6 @@
 import { getCaptchaPic } from '@/web/support/user/api';
 import { Button, Input, Image, ModalBody, ModalFooter, Skeleton } from '@chakra-ui/react';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
@@ -42,7 +43,7 @@ const SendCodeAuthModal = ({
           justifyContent={'center'}
           my={1}
         >
-          <Image
+          <MyImage
             borderRadius={'md'}
             w={'100%'}
             h={'200px'}

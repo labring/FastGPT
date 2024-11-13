@@ -1,10 +1,15 @@
 import React, { useMemo } from 'react';
 import { Handle, Position } from 'reactflow';
-import { SmallAddIcon } from '@chakra-ui/icons';
 import { handleHighLightStyle, sourceCommonStyle, handleConnectedStyle, handleSize } from './style';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../../context';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import {
+  WorkflowNodeEdgeContext,
+  WorkflowInitContext
+} from '../../../../context/workflowInitContext';
+import { WorkflowEventContext } from '../../../../context/workflowEventContext';
 
 type Props = {
   nodeId: string;
@@ -24,11 +29,10 @@ const MySourceHandle = React.memo(function MySourceHandle({
   highlightStyle: Record<string, any>;
   connectedStyle: Record<string, any>;
 }) {
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
-  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
-
-  const nodes = useContextSelector(WorkflowContext, (v) => v.nodes);
-  const hoverNodeId = useContextSelector(WorkflowContext, (v) => v.hoverNodeId);
+  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
+  const hoverNodeId = useContextSelector(WorkflowEventContext, (v) => v.hoverNodeId);
 
   const node = useMemo(() => nodes.find((node) => node.data.nodeId === nodeId), [nodes, nodeId]);
   const connected = edges.some((edge) => edge.sourceHandle === handleId);
@@ -109,7 +113,13 @@ const MySourceHandle = React.memo(function MySourceHandle({
         isConnectableEnd={false}
       >
         {showAddIcon && (
-          <SmallAddIcon pointerEvents={'none'} color={'primary.600'} fontWeight={'bold'} />
+          <MyIcon
+            name={'edgeAdd'}
+            color={'primary.500'}
+            pointerEvents={'none'}
+            w={'14px'}
+            h={'14px'}
+          />
         )}
       </Handle>
     );
@@ -144,7 +154,8 @@ const MyTargetHandle = React.memo(function MyTargetHandle({
   highlightStyle: Record<string, any>;
   connectedStyle: Record<string, any>;
 }) {
-  const { connectingEdge, edges } = useContextSelector(WorkflowContext, (ctx) => ctx);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
+  const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
 
   const connected = edges.some((edge) => edge.targetHandle === handleId);
 

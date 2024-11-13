@@ -1,4 +1,4 @@
-import { getAIApi } from '../../../../ai/config';
+import { createChatCompletion } from '../../../../ai/config';
 import { filterGPTMessageByMaxTokens, loadRequestMessages } from '../../../../chat/utils';
 import {
   ChatCompletion,
@@ -29,6 +29,7 @@ import { WorkflowResponseType } from '../../type';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { i18nT } from '../../../../../../web/i18n/utils';
 
 type FunctionCallCompletion = {
   id: string;
@@ -51,7 +52,7 @@ export const runToolWithPromptCall = async (
     requestOrigin,
     runtimeNodes,
     runtimeEdges,
-    node,
+    user,
     stream,
     workflowStreamResponse,
     params: { temperature = 0, maxToken = 4000, aiChatVision }
@@ -224,18 +225,15 @@ export const runToolWithPromptCall = async (
 
   // console.log(JSON.stringify(requestMessages, null, 2));
   /* Run llm */
-  const ai = getAIApi({
-    timeout: 480000
-  });
-  const aiResponse = await ai.chat.completions.create(requestBody, {
-    headers: {
-      Accept: 'application/json, text/plain, */*'
+  const { response: aiResponse, isStreamResponse } = await createChatCompletion({
+    body: requestBody,
+    userKey: user.openaiAccount,
+    options: {
+      headers: {
+        Accept: 'application/json, text/plain, */*'
+      }
     }
   });
-  const isStreamResponse =
-    typeof aiResponse === 'object' &&
-    aiResponse !== null &&
-    ('iterator' in aiResponse || 'controller' in aiResponse);
 
   const answer = await (async () => {
     if (res && isStreamResponse) {
@@ -537,7 +535,7 @@ async function streamResponse({
   }
 
   if (!textAnswer) {
-    return Promise.reject('LLM api response empty');
+    return Promise.reject(i18nT('chat:LLM_model_response_empty'));
   }
   return { answer: textAnswer.trim() };
 }

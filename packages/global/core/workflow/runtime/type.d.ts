@@ -135,6 +135,9 @@ export type DispatchNodeResponseType = {
   extensionResult?: string;
   extensionTokens?: number;
 
+  // dataset concat
+  concatLength?: number;
+
   // cq
   cqList?: ClassifyQuestionAgentItemType[];
   cqResult?: string;
@@ -216,5 +219,7 @@ export type AIChatNodeProps = {
   [NodeInputKeyEnum.aiChatQuoteTemplate]?: string;
   [NodeInputKeyEnum.aiChatQuotePrompt]?: string;
   [NodeInputKeyEnum.aiChatVision]?: boolean;
+
   [NodeInputKeyEnum.stringQuoteText]?: string;
+  [NodeInputKeyEnum.fileUrlList]?: string[];
 };

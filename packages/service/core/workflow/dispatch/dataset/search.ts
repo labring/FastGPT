@@ -16,6 +16,7 @@ import { datasetSearchQueryExtension } from '../../../dataset/search/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { checkTeamReRankPermission } from '../../../../support/permission/teamLimit';
 import { MongoDataset } from '../../../dataset/schema';
+import { i18nT } from '../../../../../web/i18n/utils';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -56,15 +57,15 @@ export async function dispatchDatasetSearch(
   } = props as DatasetSearchProps;
 
   if (!Array.isArray(datasets)) {
-    return Promise.reject('Quote type error');
+    return Promise.reject(i18nT('chat:dataset_quote_type error'));
   }
 
   if (datasets.length === 0) {
-    return Promise.reject('core.chat.error.Select dataset empty');
+    return Promise.reject(i18nT('common:core.chat.error.Select dataset empty'));
   }
 
   if (!userChatInput) {
-    return Promise.reject('core.chat.error.User input empty');
+    return Promise.reject(i18nT('common:core.chat.error.User input empty'));
   }
 
   // query extension

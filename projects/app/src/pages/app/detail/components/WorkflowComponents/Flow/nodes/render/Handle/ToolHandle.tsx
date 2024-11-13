@@ -6,6 +6,7 @@ import { Connection, Handle, Position } from 'reactflow';
 import { useCallback, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
+import { WorkflowNodeEdgeContext } from '../../../../context/workflowInitContext';
 
 const handleSize = '16px';
 
@@ -16,7 +17,7 @@ type ToolHandleProps = BoxProps & {
 export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
   const { t } = useTranslation();
   const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
-  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
 
   const handleId = NodeOutputKeyEnum.selectedTools;
 
@@ -64,7 +65,7 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
 
 export const ToolSourceHandle = () => {
   const { t } = useTranslation();
-  const setEdges = useContextSelector(WorkflowContext, (v) => v.setEdges);
+  const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
 
   /* onConnect edge, delete tool input and switch */
   const onConnect = useCallback(

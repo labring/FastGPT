@@ -1,8 +1,7 @@
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { getAIApi } from '../config';
+import { createChatCompletion } from '../config';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
-import { ChatCompletion, ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getLLMModel } from '../model';
 import { llmCompletionsBodyFormat } from '../utils';
@@ -138,10 +137,6 @@ A: ${chatBg}
 
   const modelData = getLLMModel(model);
 
-  const ai = getAIApi({
-    timeout: 480000
-  });
-
   const messages = [
     {
       role: 'user',
@@ -150,20 +145,19 @@ A: ${chatBg}
         histories: concatFewShot
       })
     }
-  ] as ChatCompletionMessageParam[];
+  ] as any;
 
-  const result = (await ai.chat.completions.create(
-    llmCompletionsBodyFormat(
+  const { response: result } = await createChatCompletion({
+    body: llmCompletionsBodyFormat(
       {
         stream: false,
         model: modelData.model,
         temperature: 0.01,
-        // @ts-ignore
         messages
       },
       modelData
     )
-  )) as ChatCompletion;
+  });
 
   let answer = result.choices?.[0]?.message?.content || '';
   if (!answer) {

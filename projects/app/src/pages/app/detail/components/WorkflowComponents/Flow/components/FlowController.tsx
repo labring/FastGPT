@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Background,
   ControlButton,
@@ -15,8 +15,9 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import styles from './index.module.scss';
-import { maxZoom, minZoom } from '../index';
+import { maxZoom, minZoom } from '../../constants';
 import { useKeyPress } from 'ahooks';
+import { WorkflowEventContext } from '../../context/workflowEventContext';
 
 const buttonStyle = {
   border: 'none',
@@ -27,31 +28,41 @@ const buttonStyle = {
 const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { zoom } = useViewport();
-  const {
-    undo,
-    redo,
-    canRedo,
-    canUndo,
-    workflowControlMode,
-    setWorkflowControlMode,
-    mouseInCanvas,
-    nodeList
-  } = useContextSelector(WorkflowContext, (v) => v);
+  const undo = useContextSelector(WorkflowContext, (v) => v.undo);
+  const redo = useContextSelector(WorkflowContext, (v) => v.redo);
+  const canRedo = useContextSelector(WorkflowContext, (v) => v.canRedo);
+  const canUndo = useContextSelector(WorkflowContext, (v) => v.canUndo);
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const workflowControlMode = useContextSelector(
+    WorkflowEventContext,
+    (v) => v.workflowControlMode
+  );
+  const setWorkflowControlMode = useContextSelector(
+    WorkflowEventContext,
+    (v) => v.setWorkflowControlMode
+  );
+  const mouseInCanvas = useContextSelector(WorkflowEventContext, (v) => v.mouseInCanvas);
   const { t } = useTranslation();
 
   const isMac = !window ? false : window.navigator.userAgent.toLocaleLowerCase().includes('mac');
 
-  // Controller shortcut key
-  useKeyPress(['ctrl.z', 'meta.z'], (e) => {
+  useKeyPress(['ctrl.z', 'meta.z', 'ctrl.shift.z', 'meta.shift.z', 'ctrl.y', 'meta.y'], (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!mouseInCanvas) return;
-    undo();
+
+    const isRedo = (e.key.toLowerCase() === 'z' && e.shiftKey) || e.key.toLowerCase() === 'y';
+
+    if (isRedo) {
+      redo();
+    } else {
+      undo();
+    }
   });
-  useKeyPress(['ctrl.shift.z', 'meta.shift.z', 'ctrl.y', 'meta.y'], (e) => {
-    if (!mouseInCanvas) return;
-    redo();
-  });
+
   useKeyPress(['ctrl.add', 'meta.add', 'ctrl.equalsign', 'meta.equalsign'], (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!mouseInCanvas) return;
     zoomIn();
   });

@@ -20,6 +20,7 @@ export const VariableUpdateNode: FlowNodeTemplateType = {
   showStatus: false,
   isTool: true,
   version: '481',
+  courseUrl: '/docs/guide/workbench/workflow/variable_update/',
   inputs: [
     {
       key: NodeInputKeyEnum.updateList,

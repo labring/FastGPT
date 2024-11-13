@@ -1,5 +1,5 @@
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
-import { getAIApi } from '../config';
+import { createChatCompletion } from '../config';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
 import { loadRequestMessages } from '../../chat/utils';
 import { llmCompletionsBodyFormat } from '../utils';
@@ -29,11 +29,8 @@ export async function createQuestionGuide({
     }
   ];
 
-  const ai = getAIApi({
-    timeout: 480000
-  });
-  const data = await ai.chat.completions.create(
-    llmCompletionsBodyFormat(
+  const { response: data } = await createChatCompletion({
+    body: llmCompletionsBodyFormat(
       {
         model,
         temperature: 0.1,
@@ -46,7 +43,7 @@ export async function createQuestionGuide({
       },
       model
     )
-  );
+  });
 
   const answer = data.choices?.[0]?.message?.content || '';
 

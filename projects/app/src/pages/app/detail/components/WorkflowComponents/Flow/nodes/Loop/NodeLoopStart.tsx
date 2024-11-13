@@ -8,24 +8,27 @@ import { WorkflowContext } from '../../../context';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
+  toolValueTypeList,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { Box, Flex, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import React, { useEffect, useMemo } from 'react';
-import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowValueTypeMap
+} from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const typeMap = {
   [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.string,
   [WorkflowIOValueTypeEnum.arrayNumber]: WorkflowIOValueTypeEnum.number,
   [WorkflowIOValueTypeEnum.arrayBoolean]: WorkflowIOValueTypeEnum.boolean,
-  [WorkflowIOValueTypeEnum.arrayObject]: WorkflowIOValueTypeEnum.object,
-  [WorkflowIOValueTypeEnum.arrayAny]: WorkflowIOValueTypeEnum.any
+  [WorkflowIOValueTypeEnum.arrayObject]: WorkflowIOValueTypeEnum.object
 };
 
 const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId } = data;
+  const { nodeId, outputs } = data;
   const { nodeList, onChangeNode } = useContextSelector(WorkflowContext, (v) => v);
 
   const loopStartNode = useMemo(
@@ -39,12 +42,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     const parentArrayInput = parentNode?.inputs.find(
       (input) => input.key === NodeInputKeyEnum.loopInputArray
     );
-    return parentArrayInput?.value
-      ? (nodeList
-          .find((node) => node.nodeId === parentArrayInput?.value[0])
-          ?.outputs.find((output) => output.id === parentArrayInput?.value[1])
-          ?.valueType as keyof typeof typeMap)
-      : undefined;
+    return typeMap[parentArrayInput?.valueType as keyof typeof typeMap];
   }, [loopStartNode?.parentNodeId, nodeList]);
 
   // Auth update loopStartInput output
@@ -71,7 +69,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           key: NodeOutputKeyEnum.loopStartInput,
           label: t('workflow:Array_element'),
           type: FlowNodeOutputTypeEnum.static,
-          valueType: typeMap[loopItemInputType as keyof typeof typeMap]
+          valueType: loopItemInputType
         }
       });
     }
@@ -83,7 +81,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         key: NodeOutputKeyEnum.loopStartInput,
         value: {
           ...loopArrayOutput,
-          valueType: typeMap[loopItemInputType as keyof typeof typeMap]
+          valueType: loopItemInputType
         }
       });
     }
@@ -100,23 +98,21 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           debug: true
         }}
       >
-        <Box px={4} w={'420px'} h={'116px'}>
-          {!loopItemInputType ? (
-            <EmptyTip text={t('workflow:loop_start_tip')} py={0} mt={4} iconSize={'32px'} />
-          ) : (
-            <Box bg={'white'} borderRadius={'md'} overflow={'hidden'} border={'base'}>
-              <TableContainer>
-                <Table bg={'white'}>
-                  <Thead>
-                    <Tr>
-                      <Th borderBottomLeftRadius={'none !important'}>
-                        {t('workflow:Variable_name')}
-                      </Th>
-                      <Th>{t('common:core.workflow.Value type')}</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                    <Tr>
+        <Box px={4} pt={2} w={'420px'}>
+          <Box bg={'white'} borderRadius={'md'} overflow={'hidden'} border={'base'}>
+            <TableContainer>
+              <Table bg={'white'}>
+                <Thead>
+                  <Tr>
+                    <Th borderBottomLeftRadius={'none !important'}>
+                      {t('workflow:Variable_name')}
+                    </Th>
+                    <Th>{t('common:core.workflow.Value type')}</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {outputs.map((output) => (
+                    <Tr key={output.id}>
                       <Td>
                         <Flex alignItems={'center'}>
                           <MyIcon
@@ -125,20 +121,20 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                             mr={1}
                             color={'primary.600'}
                           />
-                          {t('workflow:Array_element')}
+                          {t(output.label as any)}
                         </Flex>
                       </Td>
-                      <Td>{typeMap[loopItemInputType]}</Td>
+                      {output.valueType && <Td>{FlowValueTypeMap[output.valueType]?.label}</Td>}
                     </Tr>
-                  </Tbody>
-                </Table>
-              </TableContainer>
-            </Box>
-          )}
+                  ))}
+                </Tbody>
+              </Table>
+            </TableContainer>
+          </Box>
         </Box>
       </NodeCard>
     );
-  }, [data, loopItemInputType, selected, t]);
+  }, [data, outputs, selected, t]);
 
   return Render;
 };

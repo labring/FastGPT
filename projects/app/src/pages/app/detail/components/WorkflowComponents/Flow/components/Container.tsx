@@ -6,10 +6,8 @@ const Container = ({ children, ...props }: BoxProps) => {
   return (
     <Flex
       flexDirection={'column'}
-      px={4}
-      mx={2}
-      mb={2}
-      py={'10px'}
+      mx={3}
+      p={4}
       position={'relative'}
       bg={'myGray.50'}
       border={'1px solid #F0F1F6'}

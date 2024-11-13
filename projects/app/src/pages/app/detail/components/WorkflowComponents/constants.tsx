@@ -2,6 +2,9 @@ import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React from 'react';
 import { DefaultEdgeOptions } from 'reactflow';
 
+export const minZoom = 0.1;
+export const maxZoom = 1.5;
+
 export const connectionLineStyle: React.CSSProperties = {
   strokeWidth: 2,
   stroke: '#487FFF'

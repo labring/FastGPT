@@ -1,4 +1,9 @@
-import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type {
+  AIChatItemType,
+  ChatItemType,
+  UserChatItemType
+} from '@fastgpt/global/core/chat/type.d';
+import axios from 'axios';
 import { MongoApp } from '../app/schema';
 import {
   ChatItemValueTypeEnum,
@@ -13,6 +18,7 @@ import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
+import { pushChatLog } from './pushChatLog';
 
 type Props = {
   chatId: string;
@@ -24,7 +30,7 @@ type Props = {
   variables?: Record<string, any>;
   isUpdateUseTime: boolean;
   newTitle: string;
-  source: `${ChatSourceEnum}`;
+  source: string;
   shareId?: string;
   outLinkUid?: string;
   content: [UserChatItemType & { dataId?: string }, AIChatItemType & { dataId?: string }];
@@ -67,7 +73,7 @@ export async function saveChat({
     });
 
     await mongoSessionRun(async (session) => {
-      await MongoChatItem.insertMany(
+      const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi }] = await MongoChatItem.insertMany(
         content.map((item) => ({
           chatId,
           teamId,
@@ -105,6 +111,13 @@ export async function saveChat({
           upsert: true
         }
       );
+
+      pushChatLog({
+        chatId,
+        chatItemIdHuman: String(chatItemIdHuman),
+        chatItemIdAi: String(chatItemIdAi),
+        appId
+      });
     });
 
     if (isUpdateUseTime) {
