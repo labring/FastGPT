@@ -81,26 +81,21 @@ export const readCsvRawText = async ({ file }: { file: File }) => {
   return csvArr;
 };
 
-interface EncodingDetectionResult {
-  encoding: string | null;
-}
-
-function detectEncoding(buffer: ArrayBuffer): EncodingDetectionResult {
-  const encodings = ['utf-8', 'iso-8859-1', 'windows-1252'];
-  for (let encoding of encodings) {
-    try {
-      const decoder = new TextDecoder(encoding, { fatal: true });
-      decoder.decode(buffer);
-      return { encoding }; // 如果解码成功，返回当前编码
-    } catch (e) {
-      // continue to try next encoding
-    }
-  }
-  return { encoding: null }; // 如果没有编码匹配，返回null
-}
-
 async function detectFileEncoding(file: File): Promise<string> {
   const buffer = await loadFile2Buffer({ file });
-  const { encoding } = detectEncoding(buffer);
-  return encoding || 'unknown';
+  const encoding = (() => {
+    const encodings = ['utf-8', 'iso-8859-1', 'windows-1252'];
+    for (let encoding of encodings) {
+      try {
+        const decoder = new TextDecoder(encoding, { fatal: true });
+        decoder.decode(buffer);
+        return encoding; // 如果解码成功，返回当前编码
+      } catch (e) {
+        // continue to try next encoding
+      }
+    }
+    return null; // 如果没有编码匹配，返回null
+  })();
+
+  return encoding || 'utf-8';
 }
