@@ -199,8 +199,10 @@ export enum NodeInputKeyEnum {
   childrenNodeIdList = 'childrenNodeIdList',
   nodeWidth = 'nodeWidth',
   nodeHeight = 'nodeHeight',
+  loopNodeInputHeight = 'loopNodeInputHeight',
   // loop start
   loopStartInput = 'loopStartInput',
+  loopStartIndex = 'loopStartIndex',
   // loop end
   loopEndInput = 'loopEndInput',
 
@@ -256,9 +258,9 @@ export enum NodeOutputKeyEnum {
 
   // loop
   loopArray = 'loopArray',
-
   // loop start
   loopStartInput = 'loopStartInput',
+  loopStartIndex = 'loopStartIndex',
 
   // form input
   formInputResult = 'formInputResult'
@@ -334,3 +336,21 @@ export enum ContentTypes {
   xml = 'xml',
   raw = 'raw-text'
 }
+
+export const ArrayTypeMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEnum> = {
+  [WorkflowIOValueTypeEnum.string]: WorkflowIOValueTypeEnum.arrayString,
+  [WorkflowIOValueTypeEnum.number]: WorkflowIOValueTypeEnum.arrayNumber,
+  [WorkflowIOValueTypeEnum.boolean]: WorkflowIOValueTypeEnum.arrayBoolean,
+  [WorkflowIOValueTypeEnum.object]: WorkflowIOValueTypeEnum.arrayObject,
+  [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.arrayString,
+  [WorkflowIOValueTypeEnum.arrayNumber]: WorkflowIOValueTypeEnum.arrayNumber,
+  [WorkflowIOValueTypeEnum.arrayBoolean]: WorkflowIOValueTypeEnum.arrayBoolean,
+  [WorkflowIOValueTypeEnum.arrayObject]: WorkflowIOValueTypeEnum.arrayObject,
+  [WorkflowIOValueTypeEnum.chatHistory]: WorkflowIOValueTypeEnum.arrayObject,
+  [WorkflowIOValueTypeEnum.datasetQuote]: WorkflowIOValueTypeEnum.arrayObject,
+  [WorkflowIOValueTypeEnum.dynamic]: WorkflowIOValueTypeEnum.arrayObject,
+  [WorkflowIOValueTypeEnum.selectDataset]: WorkflowIOValueTypeEnum.arrayObject,
+  [WorkflowIOValueTypeEnum.selectApp]: WorkflowIOValueTypeEnum.arrayObject,
+  [WorkflowIOValueTypeEnum.arrayAny]: WorkflowIOValueTypeEnum.arrayAny,
+  [WorkflowIOValueTypeEnum.any]: WorkflowIOValueTypeEnum.arrayAny
+};

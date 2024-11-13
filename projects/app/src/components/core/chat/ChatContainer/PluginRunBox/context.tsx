@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import React, { ReactNode, useCallback, useMemo, useRef } from 'react';
 import { createContext } from 'use-context-selector';
 import { PluginRunBoxProps } from './type';
 import {
@@ -8,7 +8,6 @@ import {
 } from '@fastgpt/global/core/chat/type';
 import { FieldValues, useForm } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './constants';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -16,17 +15,16 @@ import { generatingMessageProps } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useTranslation } from 'next-i18next';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { ChatBoxInputFormType, UserInputFileItemType } from '../ChatBox/type';
+import { ChatBoxInputFormType } from '../ChatBox/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
+import { cloneDeep } from 'lodash';
 
 type PluginRunContextType = OutLinkChatAuthProps &
   PluginRunBoxProps & {
     isChatting: boolean;
-    onSubmit: (e: ChatBoxInputFormType, files?: UserInputFileItemType[]) => Promise<any>;
+    onSubmit: (e: ChatBoxInputFormType) => Promise<any>;
     outLinkAuthData: OutLinkChatAuthProps;
-    restartInputStore?: ChatBoxInputFormType;
-    setRestartInputStore: React.Dispatch<React.SetStateAction<ChatBoxInputFormType | undefined>>;
   };
 
 export const PluginRunContext = createContext<PluginRunContextType>({
@@ -59,8 +57,6 @@ const PluginRunContextProvider = ({
 }: PluginRunBoxProps & { children: ReactNode }) => {
   const { pluginInputs, onStartChat, setHistories, histories, setTab } = props;
 
-  const [restartInputStore, setRestartInputStore] = useState<ChatBoxInputFormType>();
-
   const { toast } = useToast();
   const chatController = useRef(new AbortController());
   const { t } = useTranslation();
@@ -80,9 +76,7 @@ const PluginRunContextProvider = ({
   );
 
   const variablesForm = useForm<ChatBoxInputFormType>({
-    defaultValues: {
-      files: []
-    }
+    defaultValues: {}
   });
 
   const generatingMessage = useCallback(
@@ -179,8 +173,8 @@ const PluginRunContextProvider = ({
     [histories]
   );
 
-  const { runAsync: onSubmit } = useRequest2(
-    async (e: ChatBoxInputFormType, files?: UserInputFileItemType[]) => {
+  const onSubmit = useCallback(
+    async ({ variables, files }: ChatBoxInputFormType) => {
       if (!onStartChat) return;
       if (isChatting) {
         toast({
@@ -199,7 +193,7 @@ const PluginRunContextProvider = ({
         {
           ...getPluginRunUserQuery({
             pluginInputs,
-            variables: e,
+            variables,
             files: files as RuntimeUserPromptType['files']
           }),
           status: 'finish'
@@ -233,12 +227,33 @@ const PluginRunContextProvider = ({
       });
 
       try {
+        // Remove files icon
+        const formatVariables = cloneDeep(variables);
+        for (const key in formatVariables) {
+          if (Array.isArray(formatVariables[key])) {
+            formatVariables[key].forEach((item) => {
+              if (item.url && item.icon) {
+                delete item.icon;
+              }
+            });
+          }
+        }
+
         const { responseData } = await onStartChat({
-          messages: messages,
+          messages,
           controller: chatController.current,
           generatingMessage,
-          variables: e
+          variables: {
+            files,
+            ...formatVariables
+          }
         });
+        if (responseData?.[responseData.length - 1]?.error) {
+          toast({
+            title: responseData[responseData.length - 1].error?.message,
+            status: 'error'
+          });
+        }
 
         setHistories((state) =>
           state.map((item, index) => {
@@ -262,7 +277,18 @@ const PluginRunContextProvider = ({
           })
         );
       }
-    }
+    },
+    [
+      abortRequest,
+      generatingMessage,
+      isChatting,
+      onStartChat,
+      pluginInputs,
+      setHistories,
+      setTab,
+      t,
+      toast
+    ]
   );
 
   const contextValue: PluginRunContextType = {
@@ -270,9 +296,7 @@ const PluginRunContextProvider = ({
     isChatting,
     onSubmit,
     outLinkAuthData,
-    variablesForm,
-    restartInputStore,
-    setRestartInputStore
+    variablesForm
   };
   return <PluginRunContext.Provider value={contextValue}>{children}</PluginRunContext.Provider>;
 };

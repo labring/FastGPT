@@ -5,20 +5,17 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { FlowNodeInputItemType, ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
+import { FlowNodeInputItemType, ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
 import { defaultInput } from '../../FieldEditModal';
 import { getInputComponentProps } from '@fastgpt/global/core/workflow/node/io/utils';
-import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { ReferSelector, useReference } from '../Reference';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from '../../../ValueTypeLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useI18n } from '@/web/context/I18n';
-import { isWorkflowStartOutput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 
 const FieldEditModal = dynamic(() => import('../../FieldEditModal'));
 
@@ -126,15 +123,37 @@ function Reference({
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
   const onSelect = useCallback(
-    (e: ReferenceValueProps) => {
-      const workflowStartNode = nodeList.find(
-        (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
-      );
+    (e?: ReferenceValueType) => {
+      if (!e) return;
+      onChangeNode({
+        nodeId,
+        type: 'replaceInput',
+        key: inputChildren.key,
+        value: {
+          ...inputChildren,
+          value: e
+        }
+      });
+    },
+    [inputChildren, nodeId, onChangeNode]
+  );
 
-      const newValue =
-        e[0] === workflowStartNode?.id && !isWorkflowStartOutput(e[1])
-          ? [VARIABLE_NODE_ID, e[1]]
-          : e;
+  const { referenceList } = useReference({
+    nodeId,
+    valueType: inputChildren.valueType
+  });
+
+  const onUpdateField = useCallback(
+    ({ data }: { data: FlowNodeInputItemType }) => {
+      if (!data.key) return;
+      const oldType = inputChildren.valueType;
+      const newType = data.valueType;
+      let newValue = data.value;
+      if (oldType?.includes('array') && !newType?.includes('array')) {
+        newValue = data.value[0];
+      } else if (!oldType?.includes('array') && newType?.includes('array')) {
+        newValue = [data.value];
+      }
 
       onChangeNode({
         nodeId,
@@ -142,31 +161,14 @@ function Reference({
         key: inputChildren.key,
         value: {
           ...inputChildren,
-          value: newValue
+          value: newValue,
+          key: data.key,
+          label: data.label,
+          valueType: data.valueType
         }
       });
     },
-    [inputChildren, nodeId, nodeList, onChangeNode]
-  );
-
-  const { referenceList, formatValue } = useReference({
-    nodeId,
-    valueType: inputChildren.valueType,
-    value: inputChildren.value
-  });
-
-  const onUpdateField = useCallback(
-    ({ data }: { data: FlowNodeInputItemType }) => {
-      if (!data.key) return;
-
-      onChangeNode({
-        nodeId,
-        type: 'replaceInput',
-        key: inputChildren.key,
-        value: data
-      });
-    },
-    [inputChildren.key, nodeId, onChangeNode]
+    [inputChildren, nodeId, onChangeNode]
   );
   const onDel = useCallback(() => {
     onChangeNode({
@@ -210,8 +212,9 @@ function Reference({
       <ReferSelector
         placeholder={t((inputChildren.referencePlaceholder as any) || 'select_reference_variable')}
         list={referenceList}
-        value={formatValue}
+        value={inputChildren.value}
         onSelect={onSelect}
+        isArray={inputChildren.valueType?.includes('array')}
       />
 
       {!!editField && !!item.customInputConfig && (

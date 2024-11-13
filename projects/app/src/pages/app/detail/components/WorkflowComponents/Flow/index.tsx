@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactFlow, { NodeProps, ReactFlowProvider, SelectionMode } from 'reactflow';
+import ReactFlow, { NodeProps, SelectionMode } from 'reactflow';
 import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -11,16 +11,14 @@ import NodeTemplatesModal from './NodeTemplatesModal';
 
 import 'reactflow/dist/style.css';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
-import { connectionLineStyle, defaultEdgeOptions } from '../constants';
+import { connectionLineStyle, defaultEdgeOptions, maxZoom, minZoom } from '../constants';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../context';
 import { useWorkflow } from './hooks/useWorkflow';
 import HelperLines from './components/HelperLines';
 import FlowController from './components/FlowController';
 import ContextMenu from './components/ContextMenu';
-
-export const minZoom = 0.1;
-export const maxZoom = 1.5;
+import { WorkflowNodeEdgeContext, WorkflowInitContext } from '../context/workflowInitContext';
+import { WorkflowEventContext } from '../context/workflowEventContext';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const nodeTypes: Record<FlowNodeTypeEnum, any> = {
@@ -66,9 +64,12 @@ const edgeTypes = {
 };
 
 const Workflow = () => {
-  const { nodes, edges, menu, reactFlowWrapper, workflowControlMode } = useContextSelector(
-    WorkflowContext,
-    (v) => v
+  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
+  const reactFlowWrapper = useContextSelector(WorkflowEventContext, (v) => v.reactFlowWrapper);
+  const workflowControlMode = useContextSelector(
+    WorkflowEventContext,
+    (v) => v.workflowControlMode
   );
 
   const {
@@ -125,7 +126,7 @@ const Workflow = () => {
           <NodeTemplatesModal isOpen={isOpenTemplate} onClose={onCloseTemplate} />
         </>
 
-        {menu && <ContextMenu {...menu} />}
+        <ContextMenu />
         <ReactFlow
           ref={reactFlowWrapper}
           fitView
@@ -169,12 +170,4 @@ const Workflow = () => {
   );
 };
 
-const Render = () => {
-  return (
-    <ReactFlowProvider>
-      <Workflow />
-    </ReactFlowProvider>
-  );
-};
-
-export default React.memo(Render);
+export default React.memo(Workflow);

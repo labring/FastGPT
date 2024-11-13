@@ -30,7 +30,7 @@ export const WorkflowStart: FlowNodeTemplateType = {
   intro: '',
   forbidDelete: true,
   unique: true,
-  courseUrl: '/docs/workflow/modules/input/',
+  courseUrl: '/docs/guide/workbench/workflow/input/',
   version: '481',
   inputs: [{ ...Input_Template_UserChatInput, toolDescription: i18nT('workflow:user_question') }],
   outputs: [
@@ -43,6 +43,3 @@ export const WorkflowStart: FlowNodeTemplateType = {
     }
   ]
 };
-
-export const isWorkflowStartOutput = (key?: string) =>
-  !!WorkflowStart.outputs.find((output) => output.key === key);

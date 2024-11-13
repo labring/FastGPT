@@ -4,9 +4,9 @@ type ListItemType = {
   value: any;
   children?: ListItemType[];
 };
-export type MultipleSelectProps<T = any> = {
+export type MultipleSelectProps = {
   label?: string | React.ReactNode;
-  value: any[];
+  value?: any[];
   placeholder?: string;
   list: ListItemType[];
   emptyTip?: string;
@@ -14,4 +14,8 @@ export type MultipleSelectProps<T = any> = {
   onSelect: (val: any[]) => void;
   styles?: ButtonProps;
   popDirection?: 'top' | 'bottom';
+};
+export type MultipleArraySelectProps = Omit<MultipleSelectProps, 'value'> & {
+  value?: any[][];
+  onSelect: (val: any[][]) => void;
 };

@@ -11,7 +11,7 @@ export async function authOpenApiKey({ apikey }: { apikey: string }) {
     return Promise.reject(ERROR_ENUM.unAuthApiKey);
   }
   try {
-    const openApi = await MongoOpenApi.findOne({ apiKey: apikey.trim() });
+    const openApi = await MongoOpenApi.findOne({ apiKey: apikey.trim() }).lean();
     if (!openApi) {
       return Promise.reject(ERROR_ENUM.unAuthApiKey);
     }
@@ -20,7 +20,7 @@ export async function authOpenApiKey({ apikey }: { apikey: string }) {
     // @ts-ignore
     if (global.feConfigs?.isPlus) {
       await POST('/support/openapi/authLimit', {
-        openApi: openApi.toObject()
+        openApi
       } as AuthOpenApiLimitProps);
     }
 
@@ -30,7 +30,8 @@ export async function authOpenApiKey({ apikey }: { apikey: string }) {
       apikey,
       teamId: String(openApi.teamId),
       tmbId: String(openApi.tmbId),
-      appId: openApi.appId || ''
+      appId: openApi.appId || '',
+      sourceName: openApi.name
     };
   } catch (error) {
     return Promise.reject(error);

@@ -30,7 +30,8 @@ export const getChatTitleFromChatMessage = (message?: ChatItemType, defaultValue
 // Keep the first n and last n characters
 export const getHistoryPreview = (
   completeMessages: ChatItemType[],
-  size = 100
+  size = 100,
+  useVision = false
 ): {
   obj: `${ChatRoleEnum}`;
   value: string;
@@ -48,7 +49,8 @@ export const getHistoryPreview = (
           item.value
             ?.map((item) => {
               if (item?.text?.content) return item?.text?.content;
-              if (item.file?.type === 'image') return 'Input an image';
+              if (item.file?.type === 'image' && useVision)
+                return `![Input an image](${item.file.url.slice(0, 100)}...)`;
               return '';
             })
             .filter(Boolean)
@@ -80,7 +82,7 @@ export const filterPublicNodeResponseData = ({
 }: {
   flowResponses?: ChatHistoryItemResType[];
 }) => {
-  const filedList = ['quoteList', 'moduleType', 'pluginOutput'];
+  const filedList = ['quoteList', 'moduleType', 'pluginOutput', 'runningTime'];
   const filterModuleTypeList: any[] = [
     FlowNodeTypeEnum.pluginModule,
     FlowNodeTypeEnum.datasetSearchNode,

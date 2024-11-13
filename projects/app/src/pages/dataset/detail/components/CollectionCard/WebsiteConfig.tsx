@@ -54,7 +54,7 @@ const WebsiteConfigModal = ({
           {t('common:core.dataset.website.Config Description')}
           {feConfigs?.docUrl && (
             <Link
-              href={getDocPath('/docs/course/websync')}
+              href={getDocPath('/docs/guide/knowledge_base/websync/')}
               target="_blank"
               textDecoration={'underline'}
               fontWeight={'bold'}

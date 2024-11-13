@@ -5,8 +5,8 @@ import { StoreNodeItemType } from '../type/node';
 import { StoreEdgeItemType } from '../type/edge';
 import { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
 import { VARIABLE_NODE_ID } from '../constants';
-import { isReferenceValue } from '../utils';
-import { FlowNodeOutputItemType, ReferenceValueProps } from '../type/io';
+import { isValidReferenceValueFormat } from '../utils';
+import { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
 
@@ -34,7 +34,7 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
   2. Check that the workflow starts at the interaction node
 */
 export const getLastInteractiveValue = (histories: ChatItemType[]) => {
-  const lastAIMessage = histories.findLast((item) => item.obj === ChatRoleEnum.AI);
+  const lastAIMessage = [...histories].reverse().find((item) => item.obj === ChatRoleEnum.AI);
 
   if (lastAIMessage) {
     const lastValue = lastAIMessage.value[lastAIMessage.value.length - 1];
@@ -225,36 +225,128 @@ export const checkNodeRunStatus = ({
   return 'wait';
 };
 
+/* 
+  Get the value of the reference variable/node output
+  1. [string,string]
+  2. [string,string][]
+*/
 export const getReferenceVariableValue = ({
   value,
   nodes,
   variables
 }: {
-  value: ReferenceValueProps;
+  value?: ReferenceValueType;
   nodes: RuntimeNodeItemType[];
   variables: Record<string, any>;
 }) => {
-  const nodeIds = nodes.map((node) => node.nodeId);
-  if (!isReferenceValue(value, nodeIds)) {
-    return value;
+  if (!value) return value;
+
+  // handle single reference value
+  if (isValidReferenceValueFormat(value)) {
+    const sourceNodeId = value[0];
+    const outputId = value[1];
+
+    if (sourceNodeId === VARIABLE_NODE_ID) {
+      if (!outputId) return undefined;
+      return variables[outputId];
+    }
+
+    const node = nodes.find((node) => node.nodeId === sourceNodeId);
+    if (!node) {
+      return value;
+    }
+
+    return node.outputs.find((output) => output.id === outputId)?.value;
   }
-  const sourceNodeId = value[0];
-  const outputId = value[1];
 
-  if (sourceNodeId === VARIABLE_NODE_ID && outputId) {
-    return variables[outputId];
+  // handle reference array
+  if (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((item) => isValidReferenceValueFormat(item))
+  ) {
+    const result = value.map<any>((val) => {
+      return getReferenceVariableValue({
+        value: val,
+        nodes,
+        variables
+      });
+    });
+
+    return result.flat().filter((item) => item !== undefined);
   }
 
-  const node = nodes.find((node) => node.nodeId === sourceNodeId);
-
-  if (!node) {
-    return undefined;
-  }
-
-  const outputValue = node.outputs.find((output) => output.id === outputId)?.value;
-
-  return outputValue;
+  return value;
 };
+
+// replace {{$xx.xx$}} variables for text
+export function replaceEditorVariable({
+  text,
+  nodes,
+  variables,
+  runningNode
+}: {
+  text: any;
+  nodes: RuntimeNodeItemType[];
+  variables: Record<string, any>; // global variables
+  runningNode: RuntimeNodeItemType;
+}) {
+  if (typeof text !== 'string') return text;
+
+  const globalVariables = Object.keys(variables).map((key) => {
+    return {
+      nodeId: VARIABLE_NODE_ID,
+      id: key,
+      value: variables[key]
+    };
+  });
+
+  // Upstream node outputs
+  const nodeVariables = nodes
+    .map((node) => {
+      return node.outputs.map((output) => {
+        return {
+          nodeId: node.nodeId,
+          id: output.id,
+          value: output.value
+        };
+      });
+    })
+    .flat();
+
+  // Get runningNode inputs(Will be replaced with reference)
+  const customInputs = runningNode.inputs.flatMap((item) => {
+    return [
+      {
+        id: item.key,
+        value: getReferenceVariableValue({
+          value: item.value,
+          nodes,
+          variables
+        }),
+        nodeId: runningNode.nodeId
+      }
+    ];
+  });
+
+  const allVariables = [...globalVariables, ...nodeVariables, ...customInputs];
+
+  // Replace {{$xxx.xxx$}} to value
+  for (const key in allVariables) {
+    const variable = allVariables[key];
+    const val = variable.value;
+    const formatVal = (() => {
+      if (val === undefined) return '';
+      if (val === null) return 'null';
+
+      return typeof val === 'object' ? JSON.stringify(val) : String(val);
+    })();
+
+    const regex = new RegExp(`\\{\\{\\$(${variable.nodeId}\\.${variable.id})\\$\\}\\}`, 'g');
+    text = text.replace(regex, formatVal);
+  }
+  return text || '';
+}
 
 export const textAdaptGptResponse = ({
   text,

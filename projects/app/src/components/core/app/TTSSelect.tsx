@@ -13,6 +13,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { defaultTTSConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 
 const TTSSelect = ({
   value = defaultTTSConfig,
@@ -82,7 +83,7 @@ const TTSSelect = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/tts'} mr={2} w={'20px'} />
-      <FormLabel>{t('common:core.app.TTS')}</FormLabel>
+      <FormLabel color={'myGray.600'}>{t('common:core.app.TTS')}</FormLabel>
       <ChatFunctionTip type={'tts'} />
       <Box flex={1} />
       <MyTooltip label={t('common:core.app.Select TTS')}>
@@ -92,6 +93,7 @@ const TTSSelect = ({
           size={'sm'}
           mr={'-5px'}
           onClick={onOpen}
+          color={'myGray.600'}
         >
           {formLabel}
         </Button>
@@ -132,7 +134,7 @@ const TTSSelect = ({
             <Flex mt={10} justifyContent={'end'}>
               {audioPlaying ? (
                 <Flex>
-                  <Image src="/icon/speaking.gif" w={'24px'} alt={''} />
+                  <MyImage src="/icon/speaking.gif" w={'24px'} alt={''} />
                   <Button
                     ml={2}
                     variant={'grayBase'}

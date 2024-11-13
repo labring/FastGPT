@@ -59,7 +59,9 @@ const FileSelect = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/file'} mr={2} w={'20px'} />
-      <FormLabel {...labelStyle}>{t('app:file_upload')}</FormLabel>
+      <FormLabel color={'myGray.600'} {...labelStyle}>
+        {t('app:file_upload')}
+      </FormLabel>
       <ChatFunctionTip type={'file'} />
       <Box flex={1} />
       <MyTooltip label={t('app:config_file_upload')}>
@@ -68,6 +70,7 @@ const FileSelect = ({
           iconSpacing={1}
           size={'sm'}
           mr={'-5px'}
+          color={'myGray.600'}
           onClick={onOpen}
         >
           {formLabel}

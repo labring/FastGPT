@@ -31,7 +31,7 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
   intro: i18nT('workflow:intro_question_classification'),
   showStatus: true,
   version: '481',
-  courseUrl: '/docs/workflow/modules/question_classify/',
+  courseUrl: '/docs/guide/workbench/workflow/question_classify/',
   inputs: [
     {
       ...Input_Template_SelectAIModel,

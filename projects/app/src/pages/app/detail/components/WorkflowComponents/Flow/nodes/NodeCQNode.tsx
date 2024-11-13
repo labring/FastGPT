@@ -99,7 +99,7 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     nodeId={nodeId}
                     handleId={getHandleId(nodeId, 'source', item.key)}
                     position={Position.Right}
-                    translate={[26, 0]}
+                    translate={[34, 0]}
                   />
                 </Box>
               </Box>

@@ -1,7 +1,7 @@
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { useCallback, useState, useMemo, useEffect } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { checkWorkflowNodeAndConnection } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -27,13 +27,14 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { checkInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext, getWorkflowStore } from '../../context';
+import { WorkflowContext } from '../../context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '../../../context';
 import { VariableInputItem } from '@/components/core/chat/ChatContainer/ChatBox/components/VariableInput';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
+import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
 
 const MyRightDrawer = dynamic(
   () => import('@fastgpt/web/components/common/MyDrawer/MyRightDrawer')
@@ -49,9 +50,10 @@ export const useDebug = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
+  const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
+  const getNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.getNodes);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
-  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
   const onStartNodeDebug = useContextSelector(WorkflowContext, (v) => v.onStartNodeDebug);
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
@@ -76,7 +78,7 @@ export const useDebug = () => {
   const [runtimeEdges, setRuntimeEdges] = useState<RuntimeEdgeItemType[]>();
 
   const flowData2StoreDataAndCheck = useCallback(async () => {
-    const { nodes } = await getWorkflowStore();
+    const nodes = getNodes();
 
     const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
     if (!checkResults) {

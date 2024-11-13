@@ -16,7 +16,7 @@ const NodeAnswer = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
 
     return (
-      <NodeCard minW={'400px'} selected={selected} {...data}>
+      <NodeCard selected={selected} {...data}>
         <Container>
           {isTool && (
             <>

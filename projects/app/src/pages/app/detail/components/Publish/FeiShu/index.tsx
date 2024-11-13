@@ -73,7 +73,10 @@ const FeiShu = ({ appId }: { appId: string }) => {
           </Box>
           {feConfigs?.docUrl && (
             <Link
-              href={feConfigs.openAPIDocUrl || getDocPath('/docs/course/feishu')}
+              href={
+                feConfigs.openAPIDocUrl ||
+                getDocPath('/docs/use-cases/external-integration/feishu/')
+              }
               target={'_blank'}
               color={'primary.500'}
               fontSize={'sm'}
@@ -147,7 +150,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
                 )}
                 <Td>
                   {item.lastTime
-                    ? t(formatTimeToChatTime(item.lastTime) as any)
+                    ? t(formatTimeToChatTime(item.lastTime) as any).replace('#', ':')
                     : t('common:common.Un used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>

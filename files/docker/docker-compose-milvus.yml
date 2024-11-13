@@ -139,6 +139,8 @@ services:
       - OPENAI_BASE_URL=http://oneapi:3000/v1
       # AI模型的API Key。（这里默认填写了OneAPI的快速默认key，测试通后，务必及时修改）
       - CHAT_API_KEY=sk-fastgpt
+      # 是否将图片转成 base64 传递给模型，本地开发和内网环境使用共有模型时候需要设置为 true
+      - MULTIPLE_DATA_TO_BASE64=false
       # 数据库最大连接数
       - DB_MAX_LINK=30
       # 登录凭证密钥

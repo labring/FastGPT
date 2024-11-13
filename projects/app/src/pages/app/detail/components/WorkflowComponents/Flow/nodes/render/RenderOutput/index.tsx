@@ -139,7 +139,7 @@ const RenderOutput = ({
             <FormLabel
               key={output.key}
               required={output.required}
-              mb={i === renderOutputs.length - 1 ? 0 : 5}
+              mb={i === renderOutputs.length - 1 ? 0 : 4}
               position={'relative'}
             >
               <OutputLabel nodeId={nodeId} output={output} />

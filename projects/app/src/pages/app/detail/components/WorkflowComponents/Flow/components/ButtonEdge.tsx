@@ -6,12 +6,15 @@ import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/w
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { useThrottleEffect } from 'ahooks';
+import { WorkflowNodeEdgeContext, WorkflowInitContext } from '../../context/workflowInitContext';
+import { WorkflowEventContext } from '../../context/workflowEventContext';
 
 const ButtonEdge = (props: EdgeProps) => {
-  const { nodes, nodeList, onEdgesChange, workflowDebugData, hoverEdgeId } = useContextSelector(
-    WorkflowContext,
-    (v) => v
-  );
+  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
+  const onEdgesChange = useContextSelector(WorkflowNodeEdgeContext, (v) => v.onEdgesChange);
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const workflowDebugData = useContextSelector(WorkflowContext, (v) => v.workflowDebugData);
+  const hoverEdgeId = useContextSelector(WorkflowEventContext, (v) => v.hoverEdgeId);
 
   const {
     id,
@@ -31,9 +34,12 @@ const ButtonEdge = (props: EdgeProps) => {
 
   // If parentNode is folded, the edge will not be displayed
   const parentNode = useMemo(() => {
-    return nodeList.find(
-      (node) => (node.nodeId === source || node.nodeId === target) && node.parentNodeId
-    );
+    for (const node of nodeList) {
+      if ((node.nodeId === source || node.nodeId === target) && node.parentNodeId) {
+        return nodeList.find((parent) => parent.nodeId === node.parentNodeId);
+      }
+    }
+    return undefined;
   }, [nodeList, source, target]);
 
   const defaultZIndex = useMemo(
@@ -116,13 +122,13 @@ const ButtonEdge = (props: EdgeProps) => {
       (edge) => edge.sourceHandle === sourceHandleId && edge.targetHandle === targetHandleId
     );
     if (!targetEdge) {
-      if (highlightEdge) return '#3370ff';
+      if (highlightEdge) return '#487FFF';
       return '#94B5FF';
     }
 
     // debug mode
     const colorMap = {
-      [RuntimeEdgeStatusEnum.active]: '#39CC83',
+      [RuntimeEdgeStatusEnum.active]: '#487FFF',
       [RuntimeEdgeStatusEnum.waiting]: '#5E8FFF',
       [RuntimeEdgeStatusEnum.skipped]: '#8A95A7'
     };
@@ -154,10 +160,10 @@ const ButtonEdge = (props: EdgeProps) => {
             position={'absolute'}
             transform={`translate(-55%, -50%) translate(${labelX}px,${labelY}px)`}
             pointerEvents={'all'}
-            w={'17px'}
-            h={'17px'}
+            w={'18px'}
+            h={'18px'}
             bg={'white'}
-            borderRadius={'17px'}
+            borderRadius={'18px'}
             cursor={'pointer'}
             zIndex={defaultZIndex + 1000}
             onClick={() => onDelConnect(id)}

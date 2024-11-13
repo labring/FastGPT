@@ -59,10 +59,11 @@ const MySelect = <T = any,>(
     display: 'flex',
     alignItems: 'center',
     _hover: {
-      backgroundColor: 'myWhite.600'
+      backgroundColor: 'myGray.100',
+      color: 'primary.700'
     },
     _notLast: {
-      mb: 2
+      mb: 1
     }
   };
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -107,16 +108,19 @@ const MySelect = <T = any,>(
           ref={ButtonRef}
           width={width}
           px={3}
-          rightIcon={<ChevronDownIcon />}
-          variant={'whitePrimary'}
+          rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
+          variant={'whitePrimaryOutline'}
+          size={'lg'}
+          fontSize={'sm'}
           textAlign={'left'}
           _active={{
             transform: 'none'
           }}
           {...(isOpen
             ? {
-                boxShadow: '0px 0px 4px #A8DBFF',
-                borderColor: 'primary.500'
+                boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+                borderColor: 'primary.600',
+                color: 'primary.700'
               }
             : {})}
           {...props}
@@ -157,7 +161,7 @@ const MySelect = <T = any,>(
               {...(value === item.value
                 ? {
                     ref: SelectedItemRef,
-                    color: 'primary.600',
+                    color: 'primary.700',
                     bg: 'myGray.100'
                   }
                 : {

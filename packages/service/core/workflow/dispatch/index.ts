@@ -23,7 +23,6 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid, replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
-import { replaceEditorVariable } from '@fastgpt/global/core/workflow/utils';
 
 import { dispatchWorkflowStart } from './init/workflowStart';
 import { dispatchChatCompletion } from './chat/oneapi';
@@ -38,11 +37,12 @@ import { dispatchQueryExtension } from './tools/queryExternsion';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
-import { removeSystemVariable, valueTypeFormat } from './utils';
+import { formatHttpError, removeSystemVariable, valueTypeFormat } from './utils';
 import {
   filterWorkflowEdges,
   checkNodeRunStatus,
-  textAdaptGptResponse
+  textAdaptGptResponse,
+  replaceEditorVariable
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
@@ -72,6 +72,7 @@ import { dispatchLoopEnd } from './loop/runLoopEnd';
 import { dispatchLoopStart } from './loop/runLoopStart';
 import { dispatchFormInput } from './interactive/formInput';
 import { dispatchToolParams } from './agent/runTool/toolParams';
+import { responseWrite } from '../../../common/response';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -386,6 +387,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       node,
       runtimeEdges
     });
+
     const nodeRunResult = await (() => {
       if (status === 'run') {
         nodeRunBeforeHook(node);
@@ -481,7 +483,15 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       : {};
 
     node.inputs.forEach((input) => {
+      // Special input, not format
       if (input.key === dynamicInput?.key) return;
+
+      // Skip some special key
+      if (input.key === NodeInputKeyEnum.childrenNodeIdList) {
+        params[input.key] = input.value;
+
+        return;
+      }
 
       // replace {{xx}} variables
       let value = replaceVariable(input.value, variables);
@@ -505,7 +515,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
         params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
       }
-
       params[input.key] = valueTypeFormat(value, input.valueType);
     });
 
@@ -548,7 +557,21 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     // run module
     const dispatchRes: Record<string, any> = await (async () => {
       if (callbackMap[node.flowNodeType]) {
-        return callbackMap[node.flowNodeType](dispatchData);
+        try {
+          return await callbackMap[node.flowNodeType](dispatchData);
+        } catch (error) {
+          // Get source handles of outgoing edges
+          const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);
+          const skipHandleIds = targetEdges.map((item) => item.sourceHandle);
+
+          // Skip all edges and return error
+          return {
+            [DispatchNodeResponseKeyEnum.nodeResponse]: {
+              error: formatHttpError(error)
+            },
+            [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleIds
+          };
+        }
       }
       return {};
     })();

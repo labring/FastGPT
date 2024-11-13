@@ -52,7 +52,6 @@ const ChatSchema = new Schema({
   },
   source: {
     type: String,
-    enum: Object.keys(ChatSourceMap),
     required: true
   },
   shareId: {
@@ -90,7 +89,7 @@ try {
   // get chat logs;
   ChatSchema.index({ teamId: 1, appId: 1, updateTime: -1 }, { background: true });
   // get share chat history
-  ChatSchema.index({ shareId: 1, outLinkUid: 1, updateTime: -1, source: 1 }, { background: true });
+  ChatSchema.index({ shareId: 1, outLinkUid: 1, updateTime: -1 }, { background: true });
 
   // timer, clear history
   ChatSchema.index({ teamId: 1, updateTime: -1 }, { background: true });

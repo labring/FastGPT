@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import type { InitChatResponse, InitOutLinkChatProps } from '@/global/core/chat/api.d';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
-import { getChatModelNameListByModules } from '@/service/core/app/workflow';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -54,7 +53,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           storeWelcomeText: chat?.welcomeText,
           isPublicFetch: false
         }),
-        chatModels: getChatModelNameListByModules(nodes),
         name: app.name,
         avatar: app.avatar,
         intro: app.intro,

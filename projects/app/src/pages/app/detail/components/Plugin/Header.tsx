@@ -29,6 +29,11 @@ import { useDebounceEffect } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SaveButton from '../Workflow/components/SaveButton';
 import PublishHistories from '../PublishHistoriesSlider';
+import {
+  WorkflowNodeEdgeContext,
+  WorkflowInitContext
+} from '../WorkflowComponents/context/workflowInitContext';
+import { WorkflowEventContext } from '../WorkflowComponents/context/workflowEventContext';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -44,27 +49,31 @@ const Header = () => {
     onClose: onCloseBackConfirm
   } = useDisclosure();
 
+  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
+  const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const {
     flowData2StoreData,
     flowData2StoreDataAndCheck,
     setWorkflowTestData,
-    setShowHistoryModal,
-    showHistoryModal,
-    nodes,
-    edges,
     past,
     future,
     setPast,
     onSwitchTmpVersion,
     onSwitchCloudVersion
   } = useContextSelector(WorkflowContext, (v) => v);
+  const showHistoryModal = useContextSelector(WorkflowEventContext, (v) => v.showHistoryModal);
+  const setShowHistoryModal = useContextSelector(
+    WorkflowEventContext,
+    (v) => v.setShowHistoryModal
+  );
+
   const { lastAppListRouteType } = useSystemStore();
 
   const [isPublished, setIsPublished] = useState(false);
   useDebounceEffect(
     () => {
       const savedSnapshot =
-        future.findLast((snapshot) => snapshot.isSaved) ||
+        [...future].reverse().find((snapshot) => snapshot.isSaved) ||
         past.find((snapshot) => snapshot.isSaved);
 
       const val = compareSnapshot(
@@ -145,7 +154,6 @@ const Header = () => {
         )}
         <Flex
           mt={[2, 0]}
-          py={3}
           pl={[2, 4]}
           pr={[2, 6]}
           borderBottom={'base'}
@@ -163,12 +171,20 @@ const Header = () => {
               })}
         >
           {/* back */}
-          <MyIcon
-            name={'common/leftArrowLight'}
-            w={'1.75rem'}
-            cursor={'pointer'}
-            onClick={isPublished ? onBack : onOpenBackConfirm}
-          />
+          <Box
+            _hover={{
+              bg: 'myGray.200'
+            }}
+            p={0.5}
+            borderRadius={'sm'}
+          >
+            <MyIcon
+              name={'common/leftArrowLight'}
+              w={6}
+              cursor={'pointer'}
+              onClick={isPublished ? onBack : onOpenBackConfirm}
+            />
+          </Box>
 
           {/* app info */}
           <Box ml={1}>

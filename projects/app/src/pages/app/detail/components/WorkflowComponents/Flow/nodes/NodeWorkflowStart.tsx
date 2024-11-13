@@ -24,8 +24,8 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, outputs } = data;
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const customGlobalVariables = useCreation(() => {
     const globalVariables = formatEditorVariablePickerIcon(
@@ -62,34 +62,36 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       })),
     [t]
   );
+  const Render = useMemo(() => {
+    return (
+      <NodeCard
+        selected={selected}
+        menuForbid={{
+          copy: true,
+          delete: true
+        }}
+        {...data}
+      >
+        <Container>
+          <IOTitle text={t('common:common.Output')} />
+          <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+        </Container>
+        <Container>
+          <IOTitle text={t('common:core.module.Variable')} />
+          {customGlobalVariables.length > 0 && (
+            <>
+              <RenderOutput nodeId={nodeId} flowOutputList={customGlobalVariables} />
+              <MyDivider />
+            </>
+          )}
 
-  return (
-    <NodeCard
-      minW={'240px'}
-      selected={selected}
-      menuForbid={{
-        copy: true,
-        delete: true
-      }}
-      {...data}
-    >
-      <Container>
-        <IOTitle text={t('common:common.Output')} />
-        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
-      </Container>
-      <Container>
-        <IOTitle text={t('common:core.module.Variable')} />
-        {customGlobalVariables.length > 0 && (
-          <>
-            <RenderOutput nodeId={nodeId} flowOutputList={customGlobalVariables} />
-            <MyDivider />
-          </>
-        )}
+          <RenderOutput nodeId={nodeId} flowOutputList={systemVariables} />
+        </Container>
+      </NodeCard>
+    );
+  }, [customGlobalVariables, data, nodeId, outputs, selected, systemVariables, t]);
 
-        <RenderOutput nodeId={nodeId} flowOutputList={systemVariables} />
-      </Container>
-    </NodeCard>
-  );
+  return Render;
 };
 
 export default React.memo(NodeStart);

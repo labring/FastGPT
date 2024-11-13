@@ -1,7 +1,7 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { pushQAUsage } from '@/service/support/wallet/usage/push';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getAIApi } from '@fastgpt/service/core/ai/config';
+import { createChatCompletion } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
@@ -109,11 +109,8 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       }
     ];
 
-    const ai = getAIApi({
-      timeout: 600000
-    });
-    const chatResponse = await ai.chat.completions.create(
-      llmCompletionsBodyFormat(
+    const { response: chatResponse } = await createChatCompletion({
+      body: llmCompletionsBodyFormat(
         {
           model: modelData.model,
           temperature: 0.3,
@@ -122,7 +119,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
         },
         modelData
       )
-    );
+    });
     const answer = chatResponse.choices?.[0].message?.content || '';
 
     const qaArr = formatSplitText(answer, text); // 格式化后的QA对
@@ -165,6 +162,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     reduceQueue();
     generateQA();
   } catch (err: any) {
+    addLog.error(`[QA Queue] Error`);
     reduceQueue();
 
     if (await checkInvalidChunkAndLock({ err, data, errText: 'QA模型调用失败' })) {

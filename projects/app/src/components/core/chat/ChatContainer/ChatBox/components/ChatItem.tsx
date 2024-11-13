@@ -1,5 +1,5 @@
 import { Box, BoxProps, Card, Flex } from '@chakra-ui/react';
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
@@ -22,6 +22,9 @@ import { useTranslation } from 'next-i18next';
 import { AIChatItemValueItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import { isEqual } from 'lodash';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { formatTimeToChatItemTime } from '@fastgpt/global/common/string/time';
+import dayjs from 'dayjs';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -110,8 +113,10 @@ const AIContentCard = React.memo(function AIContentCard({
 const ChatItem = (props: Props) => {
   const { type, avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
 
-  const styleMap: BoxProps =
-    type === ChatRoleEnum.Human
+  const { isPc } = useSystem();
+
+  const styleMap: BoxProps = {
+    ...(type === ChatRoleEnum.Human
       ? {
           order: 0,
           borderRadius: '8px 0 8px 8px',
@@ -125,10 +130,17 @@ const ChatItem = (props: Props) => {
           justifyContent: 'flex-start',
           textAlign: 'left',
           bg: 'myGray.50'
-        };
-
+        }),
+    fontSize: 'mini',
+    fontWeight: '400',
+    color: 'myGray.500'
+  };
   const { t } = useTranslation();
+
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
+  const showNodeStatus = useContextSelector(ChatBoxContext, (v) => v.showNodeStatus);
+  const isChatLog = chatType === 'log';
 
   const { copyData } = useCopyData();
 
@@ -196,18 +208,38 @@ const ChatItem = (props: Props) => {
   }, [chat.obj, chat.value, isChatting]);
 
   return (
-    <>
+    <Box
+      _hover={{
+        '& .time-label': {
+          display: 'block'
+        }
+      }}
+    >
       {/* control icon */}
-      <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
+      <Flex w={'100%'} alignItems={'flex-end'} gap={2} justifyContent={styleMap.justifyContent}>
         {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
-          <Box order={styleMap.order} ml={styleMap.ml}>
+          <Flex order={styleMap.order} ml={styleMap.ml} align={'center'} gap={'0.62rem'}>
+            {chat.time && (isPc || isChatLog) && (
+              <Box
+                order={type === ChatRoleEnum.AI ? 2 : 0}
+                className={'time-label'}
+                fontSize={styleMap.fontSize}
+                color={styleMap.color}
+                fontWeight={styleMap.fontWeight}
+                display={isChatLog ? 'block' : 'none'}
+              >
+                {t(formatTimeToChatItemTime(chat.time) as any, {
+                  time: dayjs(chat.time).format('HH:mm')
+                }).replace('#', ':')}
+              </Box>
+            )}
             <ChatController {...props} isLastChild={isLastChild} />
-          </Box>
+          </Flex>
         )}
         <ChatAvatar src={avatar} type={type} />
 
         {/* Workflow status */}
-        {!!chatStatusMap && statusBoxData && isLastChild && (
+        {!!chatStatusMap && statusBoxData && isLastChild && showNodeStatus && (
           <Flex
             alignItems={'center'}
             px={3}
@@ -290,7 +322,7 @@ const ChatItem = (props: Props) => {
           </Card>
         </Box>
       ))}
-    </>
+    </Box>
   );
 };
 

@@ -46,11 +46,6 @@ const InputFormEditModal = ({
 
   const inputType = watch('type') || FlowNodeInputTypeEnum.input;
 
-  const maxLength = watch('maxLength');
-  const max = watch('max');
-  const min = watch('min');
-  const defaultInputValue = watch('defaultValue');
-
   const inputTypeList = [
     {
       icon: 'core/workflow/inputType/input',
@@ -187,14 +182,9 @@ const InputFormEditModal = ({
           type={'formInput'}
           isEdit={isEdit}
           inputType={inputType}
-          maxLength={maxLength}
-          max={max}
-          min={min}
-          defaultValue={defaultInputValue}
           onClose={onClose}
           onSubmitSuccess={onSubmitSuccess}
           onSubmitError={onSubmitError}
-          valueType={defaultValueType}
         />
       </Flex>
     </MyModal>

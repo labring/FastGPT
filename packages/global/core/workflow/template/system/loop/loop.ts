@@ -14,6 +14,7 @@ import { getHandleConfig } from '../../utils';
 import { i18nT } from '../../../../../../web/i18n/utils';
 import {
   Input_Template_Children_Node_List,
+  Input_Template_LOOP_NODE_OFFSET,
   Input_Template_Node_Height,
   Input_Template_Node_Width
 } from '../../input';
@@ -29,6 +30,7 @@ export const LoopNode: FlowNodeTemplateType = {
   intro: i18nT('workflow:intro_loop'),
   showStatus: true,
   version: '4811',
+  courseUrl: '/docs/guide/workbench/workflow/loop/',
   inputs: [
     {
       key: NodeInputKeyEnum.loopInputArray,
@@ -40,7 +42,8 @@ export const LoopNode: FlowNodeTemplateType = {
     },
     Input_Template_Children_Node_List,
     Input_Template_Node_Width,
-    Input_Template_Node_Height
+    Input_Template_Node_Height,
+    Input_Template_LOOP_NODE_OFFSET
   ],
   outputs: [
     {
