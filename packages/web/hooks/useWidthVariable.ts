@@ -11,11 +11,14 @@ export const useWidthVariable = <T = any>({
 }) => {
   const value = useMemo(() => {
     // 根据 width 计算，找到第一个大于 width 的值
-    const index = widthList.findLastIndex((item) => width > item);
+    const reversedWidthList = [...widthList].reverse();
+    const reversedList = [...list].reverse();
+    const index = reversedWidthList.findIndex((item) => width > item);
+
     if (index === -1) {
-      return list[0];
+      return reversedList[0];
     }
-    return list[index];
+    return reversedList[index];
   }, [list, width, widthList]);
 
   return value;

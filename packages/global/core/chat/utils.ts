@@ -78,11 +78,15 @@ export const getHistoryPreview = (
 };
 
 export const filterPublicNodeResponseData = ({
-  flowResponses = []
+  flowResponses = [],
+  responseDetail = false
 }: {
   flowResponses?: ChatHistoryItemResType[];
+  responseDetail?: boolean;
 }) => {
-  const filedList = ['quoteList', 'moduleType', 'pluginOutput', 'runningTime'];
+  const filedList = responseDetail
+    ? ['quoteList', 'moduleType', 'pluginOutput', 'runningTime']
+    : ['moduleType', 'pluginOutput', 'runningTime'];
   const filterModuleTypeList: any[] = [
     FlowNodeTypeEnum.pluginModule,
     FlowNodeTypeEnum.datasetSearchNode,
