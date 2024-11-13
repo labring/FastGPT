@@ -6,11 +6,15 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 const isLLMNode = (item: ChatHistoryItemResType) =>
   item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.tools;
 
-export function transformPreviewHistories(histories: ChatItemType[]): ChatItemType[] {
+export function transformPreviewHistories(
+  histories: ChatItemType[],
+  responseDetail: boolean
+): ChatItemType[] {
   return histories.map((item) => {
     return {
       ...addStatisticalDataToHistoryItem(item),
-      responseData: undefined
+      responseData: undefined,
+      ...(responseDetail ? {} : { totalQuoteList: undefined })
     };
   });
 }
@@ -18,6 +22,7 @@ export function transformPreviewHistories(histories: ChatItemType[]): ChatItemTy
 export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   if (historyItem.obj !== ChatRoleEnum.AI) return historyItem;
   if (historyItem.totalQuoteList !== undefined) return historyItem;
+  if (!historyItem.responseData) return historyItem;
 
   // Flat children
   const flatResData: ChatHistoryItemResType[] =

@@ -1,4 +1,4 @@
-import { getAIApi } from '../../../../ai/config';
+import { createChatCompletion } from '../../../../ai/config';
 import { filterGPTMessageByMaxTokens, loadRequestMessages } from '../../../../chat/utils';
 import {
   ChatCompletion,
@@ -28,6 +28,7 @@ import { addLog } from '../../../../../common/system/log';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { i18nT } from '../../../../../../web/i18n/utils';
 
 type ToolRunResponseType = {
   toolRunResponse: DispatchFlowResponse;
@@ -91,6 +92,7 @@ export const runToolWithToolChoice = async (
     runtimeNodes,
     runtimeEdges,
     stream,
+    user,
     workflowStreamResponse,
     params: { temperature = 0, maxToken = 4000, aiChatVision }
   } = workflowProps;
@@ -268,279 +270,267 @@ export const runToolWithToolChoice = async (
     },
     toolModel
   );
-  // console.log(JSON.stringify(requestMessages, null, 2), '==requestBody');
+  // console.log(JSON.stringify(requestBody, null, 2), '==requestBody');
   /* Run llm */
-  const ai = getAIApi({
-    timeout: 480000
-  });
-
-  try {
-    const aiResponse = await ai.chat.completions.create(requestBody, {
+  const { response: aiResponse, isStreamResponse } = await createChatCompletion({
+    body: requestBody,
+    userKey: user.openaiAccount,
+    options: {
       headers: {
         Accept: 'application/json, text/plain, */*'
       }
-    });
-    const isStreamResponse =
-      typeof aiResponse === 'object' &&
-      aiResponse !== null &&
-      ('iterator' in aiResponse || 'controller' in aiResponse);
+    }
+  });
 
-    const { answer, toolCalls } = await (async () => {
-      if (res && isStreamResponse) {
-        return streamResponse({
-          res,
-          workflowStreamResponse,
-          toolNodes,
-          stream: aiResponse
-        });
-      } else {
-        const result = aiResponse as ChatCompletion;
-        const calls = result.choices?.[0]?.message?.tool_calls || [];
-        const answer = result.choices?.[0]?.message?.content || '';
+  const { answer, toolCalls } = await (async () => {
+    if (res && isStreamResponse) {
+      return streamResponse({
+        res,
+        workflowStreamResponse,
+        toolNodes,
+        stream: aiResponse
+      });
+    } else {
+      const result = aiResponse as ChatCompletion;
+      const calls = result.choices?.[0]?.message?.tool_calls || [];
+      const answer = result.choices?.[0]?.message?.content || '';
 
-        // 加上name和avatar
-        const toolCalls = calls.map((tool) => {
-          const toolNode = toolNodes.find((item) => item.nodeId === tool.function?.name);
-          return {
-            ...tool,
-            toolName: toolNode?.name || '',
-            toolAvatar: toolNode?.avatar || ''
-          };
-        });
+      // 加上name和avatar
+      const toolCalls = calls.map((tool) => {
+        const toolNode = toolNodes.find((item) => item.nodeId === tool.function?.name);
+        return {
+          ...tool,
+          toolName: toolNode?.name || '',
+          toolAvatar: toolNode?.avatar || ''
+        };
+      });
 
-        // 不支持 stream 模式的模型的流失响应
-        toolCalls.forEach((tool) => {
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.toolCall,
-            data: {
-              tool: {
-                id: tool.id,
-                toolName: tool.toolName,
-                toolAvatar: tool.toolAvatar,
-                functionName: tool.function.name,
-                params: tool.function?.arguments ?? '',
-                response: ''
-              }
+      // 不支持 stream 模式的模型的流失响应
+      toolCalls.forEach((tool) => {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.toolCall,
+          data: {
+            tool: {
+              id: tool.id,
+              toolName: tool.toolName,
+              toolAvatar: tool.toolAvatar,
+              functionName: tool.function.name,
+              params: tool.function?.arguments ?? '',
+              response: ''
             }
-          });
+          }
         });
-        if (answer) {
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.fastAnswer,
-            data: textAdaptGptResponse({
-              text: answer
-            })
-          });
-        }
+      });
+      if (answer) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            text: answer
+          })
+        });
+      }
+
+      return {
+        answer,
+        toolCalls: toolCalls
+      };
+    }
+  })();
+
+  // Run the selected tool by LLM.
+  const toolsRunResponse = (
+    await Promise.all(
+      toolCalls.map(async (tool) => {
+        const toolNode = toolNodes.find((item) => item.nodeId === tool.function?.name);
+
+        if (!toolNode) return;
+
+        const startParams = (() => {
+          try {
+            return json5.parse(tool.function.arguments);
+          } catch (error) {
+            return {};
+          }
+        })();
+
+        initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
+        const toolRunResponse = await dispatchWorkFlow({
+          ...workflowProps,
+          isToolCall: true
+        });
+
+        const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
+
+        const toolMsgParams: ChatCompletionToolMessageParam = {
+          tool_call_id: tool.id,
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          name: tool.function.name,
+          content: stringToolResponse
+        };
+
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.toolResponse,
+          data: {
+            tool: {
+              id: tool.id,
+              toolName: '',
+              toolAvatar: '',
+              params: '',
+              response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
+            }
+          }
+        });
 
         return {
-          answer,
-          toolCalls: toolCalls
+          toolRunResponse,
+          toolMsgParams
         };
+      })
+    )
+  ).filter(Boolean) as ToolRunResponseType;
+
+  const flatToolsResponseData = toolsRunResponse.map((item) => item.toolRunResponse).flat();
+  // concat tool responses
+  const dispatchFlowResponse = response
+    ? response.dispatchFlowResponse.concat(flatToolsResponseData)
+    : flatToolsResponseData;
+
+  if (toolCalls.length > 0 && !res?.closed) {
+    // Run the tool, combine its results, and perform another round of AI calls
+    const assistantToolMsgParams: ChatCompletionAssistantMessageParam[] = [
+      ...(answer
+        ? [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
+              content: answer
+            }
+          ]
+        : []),
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: toolCalls
       }
-    })();
+    ];
 
-    // Run the selected tool by LLM.
-    const toolsRunResponse = (
-      await Promise.all(
-        toolCalls.map(async (tool) => {
-          const toolNode = toolNodes.find((item) => item.nodeId === tool.function?.name);
-
-          if (!toolNode) return;
-
-          const startParams = (() => {
-            try {
-              return json5.parse(tool.function.arguments);
-            } catch (error) {
-              return {};
-            }
-          })();
-
-          initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
-          const toolRunResponse = await dispatchWorkFlow({
-            ...workflowProps,
-            isToolCall: true
-          });
-
-          const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
-
-          const toolMsgParams: ChatCompletionToolMessageParam = {
-            tool_call_id: tool.id,
-            role: ChatCompletionRequestMessageRoleEnum.Tool,
-            name: tool.function.name,
-            content: stringToolResponse
-          };
-
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.toolResponse,
-            data: {
-              tool: {
-                id: tool.id,
-                toolName: '',
-                toolAvatar: '',
-                params: '',
-                response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
-              }
-            }
-          });
-
-          return {
-            toolRunResponse,
-            toolMsgParams
-          };
-        })
-      )
-    ).filter(Boolean) as ToolRunResponseType;
-
-    const flatToolsResponseData = toolsRunResponse.map((item) => item.toolRunResponse).flat();
-    // concat tool responses
-    const dispatchFlowResponse = response
-      ? response.dispatchFlowResponse.concat(flatToolsResponseData)
-      : flatToolsResponseData;
-
-    if (toolCalls.length > 0 && !res?.closed) {
-      // Run the tool, combine its results, and perform another round of AI calls
-      const assistantToolMsgParams: ChatCompletionAssistantMessageParam[] = [
-        ...(answer
-          ? [
-              {
-                role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
-                content: answer
-              }
-            ]
-          : []),
-        {
-          role: ChatCompletionRequestMessageRoleEnum.Assistant,
-          tool_calls: toolCalls
-        }
-      ];
-
-      /* 
+    /* 
         ...
         user
         assistant: tool data
       */
-      const concatToolMessages = [
-        ...requestMessages,
-        ...assistantToolMsgParams
-      ] as ChatCompletionMessageParam[];
+    const concatToolMessages = [
+      ...requestMessages,
+      ...assistantToolMsgParams
+    ] as ChatCompletionMessageParam[];
 
-      // Only toolCall tokens are counted here, Tool response tokens count towards the next reply
-      const tokens = await countGptMessagesTokens(concatToolMessages, tools);
-      /* 
+    // Only toolCall tokens are counted here, Tool response tokens count towards the next reply
+    const tokens = await countGptMessagesTokens(concatToolMessages, tools);
+    /* 
         ...
         user
         assistant: tool data
         tool: tool response
       */
-      const completeMessages = [
-        ...concatToolMessages,
-        ...toolsRunResponse.map((item) => item?.toolMsgParams)
-      ];
+    const completeMessages = [
+      ...concatToolMessages,
+      ...toolsRunResponse.map((item) => item?.toolMsgParams)
+    ];
 
-      /* 
+    /* 
         Get tool node assistant response
         history assistant
         current tool assistant
         tool child assistant
       */
-      const toolNodeAssistant = GPTMessages2Chats([
-        ...assistantToolMsgParams,
-        ...toolsRunResponse.map((item) => item?.toolMsgParams)
-      ])[0] as AIChatItemType;
-      const toolChildAssistants = flatToolsResponseData
-        .map((item) => item.assistantResponses)
-        .flat()
-        .filter((item) => item.type !== ChatItemValueTypeEnum.interactive); // 交互节点留着下次记录
-      const toolNodeAssistants = [
-        ...assistantResponses,
-        ...toolNodeAssistant.value,
-        ...toolChildAssistants
-      ];
+    const toolNodeAssistant = GPTMessages2Chats([
+      ...assistantToolMsgParams,
+      ...toolsRunResponse.map((item) => item?.toolMsgParams)
+    ])[0] as AIChatItemType;
+    const toolChildAssistants = flatToolsResponseData
+      .map((item) => item.assistantResponses)
+      .flat()
+      .filter((item) => item.type !== ChatItemValueTypeEnum.interactive); // 交互节点留着下次记录
+    const toolNodeAssistants = [
+      ...assistantResponses,
+      ...toolNodeAssistant.value,
+      ...toolChildAssistants
+    ];
 
-      const runTimes =
-        (response?.runTimes || 0) +
-        flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0);
-      const toolNodeTokens = response ? response.toolNodeTokens + tokens : tokens;
+    const runTimes =
+      (response?.runTimes || 0) +
+      flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0);
+    const toolNodeTokens = response ? response.toolNodeTokens + tokens : tokens;
 
-      // Check stop signal
-      const hasStopSignal = flatToolsResponseData.some(
-        (item) => !!item.flowResponses?.find((item) => item.toolStop)
-      );
-      // Check interactive response(Only 1 interaction is reserved)
-      const workflowInteractiveResponseItem = toolsRunResponse.find(
-        (item) => item.toolRunResponse.workflowInteractiveResponse
-      );
-      if (hasStopSignal || workflowInteractiveResponseItem) {
-        // Get interactive tool data
-        const workflowInteractiveResponse =
-          workflowInteractiveResponseItem?.toolRunResponse.workflowInteractiveResponse;
+    // Check stop signal
+    const hasStopSignal = flatToolsResponseData.some(
+      (item) => !!item.flowResponses?.find((item) => item.toolStop)
+    );
+    // Check interactive response(Only 1 interaction is reserved)
+    const workflowInteractiveResponseItem = toolsRunResponse.find(
+      (item) => item.toolRunResponse.workflowInteractiveResponse
+    );
+    if (hasStopSignal || workflowInteractiveResponseItem) {
+      // Get interactive tool data
+      const workflowInteractiveResponse =
+        workflowInteractiveResponseItem?.toolRunResponse.workflowInteractiveResponse;
 
-        // Flashback traverses completeMessages, intercepting messages that know the first user
-        const firstUserIndex = completeMessages.findLastIndex((item) => item.role === 'user');
-        const newMessages = completeMessages.slice(firstUserIndex + 1);
+      // Flashback traverses completeMessages, intercepting messages that know the first user
+      const firstUserIndex = completeMessages.findLastIndex((item) => item.role === 'user');
+      const newMessages = completeMessages.slice(firstUserIndex + 1);
 
-        const toolWorkflowInteractiveResponse: WorkflowInteractiveResponseType | undefined =
-          workflowInteractiveResponse
-            ? {
-                ...workflowInteractiveResponse,
-                toolParams: {
-                  entryNodeIds: workflowInteractiveResponse.entryNodeIds,
-                  toolCallId: workflowInteractiveResponseItem?.toolMsgParams.tool_call_id,
-                  memoryMessages: newMessages
-                }
+      const toolWorkflowInteractiveResponse: WorkflowInteractiveResponseType | undefined =
+        workflowInteractiveResponse
+          ? {
+              ...workflowInteractiveResponse,
+              toolParams: {
+                entryNodeIds: workflowInteractiveResponse.entryNodeIds,
+                toolCallId: workflowInteractiveResponseItem?.toolMsgParams.tool_call_id,
+                memoryMessages: newMessages
               }
-            : undefined;
-
-        return {
-          dispatchFlowResponse,
-          toolNodeTokens,
-          completeMessages,
-          assistantResponses: toolNodeAssistants,
-          runTimes,
-          toolWorkflowInteractiveResponse
-        };
-      }
-
-      return runToolWithToolChoice(
-        {
-          ...props,
-          maxRunToolTimes: maxRunToolTimes - 1,
-          messages: completeMessages
-        },
-        {
-          dispatchFlowResponse,
-          toolNodeTokens,
-          assistantResponses: toolNodeAssistants,
-          runTimes
-        }
-      );
-    } else {
-      // No tool is invoked, indicating that the process is over
-      const gptAssistantResponse: ChatCompletionAssistantMessageParam = {
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        content: answer
-      };
-      const completeMessages = filterMessages.concat(gptAssistantResponse);
-      const tokens = await countGptMessagesTokens(completeMessages, tools);
-
-      // concat tool assistant
-      const toolNodeAssistant = GPTMessages2Chats([gptAssistantResponse])[0] as AIChatItemType;
+            }
+          : undefined;
 
       return {
-        dispatchFlowResponse: response?.dispatchFlowResponse || [],
-        toolNodeTokens: response ? response.toolNodeTokens + tokens : tokens,
+        dispatchFlowResponse,
+        toolNodeTokens,
         completeMessages,
-        assistantResponses: [...assistantResponses, ...toolNodeAssistant.value],
-        runTimes: (response?.runTimes || 0) + 1
+        assistantResponses: toolNodeAssistants,
+        runTimes,
+        toolWorkflowInteractiveResponse
       };
     }
-  } catch (error) {
-    console.log(error);
-    addLog.warn(`LLM response error`, {
-      requestBody
-    });
-    return Promise.reject(error);
+
+    return runToolWithToolChoice(
+      {
+        ...props,
+        maxRunToolTimes: maxRunToolTimes - 1,
+        messages: completeMessages
+      },
+      {
+        dispatchFlowResponse,
+        toolNodeTokens,
+        assistantResponses: toolNodeAssistants,
+        runTimes
+      }
+    );
+  } else {
+    // No tool is invoked, indicating that the process is over
+    const gptAssistantResponse: ChatCompletionAssistantMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      content: answer
+    };
+    const completeMessages = filterMessages.concat(gptAssistantResponse);
+    const tokens = await countGptMessagesTokens(completeMessages, tools);
+
+    // concat tool assistant
+    const toolNodeAssistant = GPTMessages2Chats([gptAssistantResponse])[0] as AIChatItemType;
+
+    return {
+      dispatchFlowResponse: response?.dispatchFlowResponse || [],
+      toolNodeTokens: response ? response.toolNodeTokens + tokens : tokens,
+      completeMessages,
+      assistantResponses: [...assistantResponses, ...toolNodeAssistant.value],
+      runTimes: (response?.runTimes || 0) + 1
+    };
   }
 };
 
@@ -656,7 +646,7 @@ async function streamResponse({
   }
 
   if (!textAnswer && toolCalls.length === 0) {
-    return Promise.reject('LLM api response empty');
+    return Promise.reject(i18nT('chat:LLM_model_response_empty'));
   }
 
   return { answer: textAnswer, toolCalls };

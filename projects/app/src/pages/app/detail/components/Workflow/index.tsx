@@ -11,15 +11,18 @@ import { Flex } from '@chakra-ui/react';
 import { workflowBoxStyles } from '../constants';
 import dynamic from 'next/dynamic';
 import { cloneDeep } from 'lodash';
+import { useTranslation } from 'next-i18next';
 
 import Flow from '../WorkflowComponents/Flow';
-import { t } from 'i18next';
+import { ReactFlowCustomProvider } from '../WorkflowComponents/context/index';
+
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
 
 const WorkflowEdit = () => {
   const { appDetail, currentTab } = useContextSelector(AppContext, (e) => e);
   const isV2Workflow = appDetail?.version === 'v2';
+  const { t } = useTranslation();
 
   const { openConfirm, ConfirmModal } = useConfirm({
     showCancel: false,
@@ -64,9 +67,9 @@ const WorkflowEdit = () => {
 
 const Render = () => {
   return (
-    <WorkflowContextProvider basicNodeTemplates={appSystemModuleTemplates}>
+    <ReactFlowCustomProvider templates={appSystemModuleTemplates}>
       <WorkflowEdit />
-    </WorkflowContextProvider>
+    </ReactFlowCustomProvider>
   );
 };
 

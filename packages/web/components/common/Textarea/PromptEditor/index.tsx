@@ -1,4 +1,4 @@
-import { Box, Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
+import { Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import React from 'react';
 import { editorStateToText } from './utils';
 import Editor from './Editor';

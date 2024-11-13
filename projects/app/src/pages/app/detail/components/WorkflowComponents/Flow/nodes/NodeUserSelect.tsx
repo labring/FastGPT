@@ -63,9 +63,8 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     {t('common:option') + (i + 1)}
                   </Box>
                 </HStack>
-                <Box position={'relative'}>
+                <Box position={'relative'} mt={1}>
                   <Input
-                    mt={1}
                     defaultValue={item.value}
                     bg={'white'}
                     fontSize={'sm'}
@@ -94,7 +93,7 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     nodeId={nodeId}
                     handleId={getHandleId(nodeId, 'source', item.key)}
                     position={Position.Right}
-                    translate={[26, 0]}
+                    translate={[34, 0]}
                   />
                 </Box>
               </Box>

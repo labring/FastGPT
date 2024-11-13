@@ -2,16 +2,15 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { documentFileType } from '@fastgpt/global/common/file/constants';
 import axios from 'axios';
 import { serverRequestBaseUrl } from '../../../../common/api/serverRequest';
 import { MongoRawTextBuffer } from '../../../../common/buffer/rawText/schema';
 import { readFromSecondary } from '../../../../common/mongo/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
+import { detectFileEncoding, parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { readRawContentByFileBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 
 type Props = ModuleDispatchProps<{
@@ -48,12 +47,41 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     runningAppInfo: { teamId },
     histories,
     chatConfig,
+    node: { version },
     params: { fileUrlList = [] }
   } = props;
   const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
 
   // Get files from histories
-  const filesFromHistories = histories
+  const filesFromHistories = version !== '489' ? [] : getHistoryFileLinks(histories);
+
+  const { text, readFilesResult } = await getFileContentFromLinks({
+    // Concat fileUrlList and filesFromHistories; remove not supported files
+    urls: [...fileUrlList, ...filesFromHistories],
+    requestOrigin,
+    maxFiles,
+    teamId
+  });
+
+  return {
+    [NodeOutputKeyEnum.text]: text,
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      readFiles: readFilesResult.map((item) => ({
+        name: item?.filename || '',
+        url: item?.url || ''
+      })),
+      readFilesResult: readFilesResult
+        .map((item) => item?.nodeResponsePreviewText ?? '')
+        .join('\n******\n')
+    },
+    [DispatchNodeResponseKeyEnum.toolResponses]: {
+      fileContent: text
+    }
+  };
+};
+
+export const getHistoryFileLinks = (histories: ChatItemType[]) => {
+  return histories
     .filter((item) => {
       if (item.obj === ChatRoleEnum.Human) {
         return item.value.filter((value) => value.type === 'file');
@@ -70,28 +98,38 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
       return files;
     })
     .flat();
+};
 
-  // Concat fileUrlList and filesFromHistories; remove not supported files
-  const parseUrlList = [...fileUrlList, ...filesFromHistories]
+export const getFileContentFromLinks = async ({
+  urls,
+  requestOrigin,
+  maxFiles,
+  teamId
+}: {
+  urls: string[];
+  requestOrigin?: string;
+  maxFiles: number;
+  teamId: string;
+}) => {
+  const parseUrlList = urls
+    // Remove invalid urls
+    .filter((url) => {
+      if (typeof url !== 'string') return false;
+
+      // 检查相对路径
+      const validPrefixList = ['/', 'http', 'ws'];
+      if (validPrefixList.some((prefix) => url.startsWith(prefix))) {
+        return true;
+      }
+
+      return false;
+    })
+    // Just get the document type file
+    .filter((url) => parseUrlToFileType(url)?.type === 'file')
     .map((url) => {
       try {
-        // Avoid "/api/xxx" file error.
-        const origin = requestOrigin ?? 'http://localhost:3000';
-
         // Check is system upload file
         if (url.startsWith('/') || (requestOrigin && url.startsWith(requestOrigin))) {
-          // Parse url, get filename query. Keep only documents that can be parsed
-          const parseUrl = new URL(url, origin);
-          const filenameQuery = parseUrl.searchParams.get('filename');
-
-          // Not document
-          if (filenameQuery) {
-            const extensionQuery = filenameQuery.split('.').pop()?.toLowerCase() || '';
-            if (!documentFileType.includes(extensionQuery)) {
-              return '';
-            }
-          }
-
           //  Remove the origin(Make intranet requests directly)
           if (requestOrigin && url.startsWith(requestOrigin)) {
             url = url.replace(requestOrigin, '');
@@ -123,7 +161,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
         }
 
         try {
-          // Get file buffer
+          // Get file buffer data
           const response = await axios.get(url, {
             baseURL: serverRequestBaseUrl,
             responseType: 'arraybuffer'
@@ -197,18 +235,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const text = readFilesResult.map((item) => item?.text ?? '').join('\n******\n');
 
   return {
-    [NodeOutputKeyEnum.text]: text,
-    [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      readFiles: readFilesResult.map((item) => ({
-        name: item?.filename || '',
-        url: item?.url || ''
-      })),
-      readFilesResult: readFilesResult
-        .map((item) => item?.nodeResponsePreviewText ?? '')
-        .join('\n******\n')
-    },
-    [DispatchNodeResponseKeyEnum.toolResponses]: {
-      fileContent: text
-    }
+    text,
+    readFilesResult
   };
 };

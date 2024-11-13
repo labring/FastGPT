@@ -26,7 +26,7 @@ export const CodeNode: FlowNodeTemplateType = {
   name: i18nT('workflow:code_execution'),
   intro: i18nT('workflow:execute_a_simple_script_code_usually_for_complex_data_processing'),
   showStatus: true,
-  courseUrl: '/docs/workflow/modules/sandbox/',
+  courseUrl: '/docs/guide/workbench/workflow/sandbox/',
   version: '482',
   inputs: [
     {

@@ -1,8 +1,8 @@
-export const primaryColor = '#3370FF';
+export const primaryColor = '#487FFF';
 export const lowPrimaryColor = '#94B5FF';
 export const handleSize = {
-  width: '18px',
-  height: '18px'
+  width: '20px',
+  height: '20px'
 };
 
 export const sourceCommonStyle = {
@@ -12,16 +12,16 @@ export const sourceCommonStyle = {
 };
 export const handleConnectedStyle = {
   borderColor: lowPrimaryColor,
-  width: '14px',
-  height: '14px'
+  width: '16px',
+  height: '16px'
 };
 export const handleHighLightStyle = {
   borderColor: primaryColor,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: '18px',
-  height: '18px'
+  width: '20px',
+  height: '20px'
 };
 
 export default function Dom() {

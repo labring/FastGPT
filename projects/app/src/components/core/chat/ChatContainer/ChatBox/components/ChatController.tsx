@@ -1,5 +1,5 @@
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import { Flex, FlexProps, Image, css, useTheme } from '@chakra-ui/react';
+import { Flex, FlexProps, css, useTheme } from '@chakra-ui/react';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import React, { useMemo } from 'react';
@@ -9,6 +9,7 @@ import { formatChatValue2InputType } from '../utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
+import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 
 export type ChatControllerProps = {
   isLastChild: boolean;
@@ -124,7 +125,7 @@ const ChatController = ({
                     onClick={cancelAudio}
                   />
                 </MyTooltip>
-                <Image
+                <MyImage
                   src="/icon/speaking.gif"
                   w={'23px'}
                   alt={''}

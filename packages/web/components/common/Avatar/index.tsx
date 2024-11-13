@@ -1,9 +1,10 @@
 import React from 'react';
-import { Box, Flex, Image } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import type { ImageProps } from '@chakra-ui/react';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import MyIcon from '../Icon';
 import { iconPaths } from '../Icon/constants';
+import MyImage from '../Image/MyImage';
 
 const Avatar = ({ w = '30px', src, ...props }: ImageProps) => {
   // @ts-ignore
@@ -14,7 +15,7 @@ const Avatar = ({ w = '30px', src, ...props }: ImageProps) => {
       <MyIcon name={src as any} w={w} borderRadius={props.borderRadius} />
     </Box>
   ) : (
-    <Image
+    <MyImage
       fallbackSrc={LOGO_ICON}
       fallbackStrategy={'onError'}
       objectFit={'contain'}

@@ -18,7 +18,10 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
     collectionId: string;
     datasetId: string;
   };
-  const readSource = getCollectionSourceAndOpen(collectionId);
+
+  const readSource = getCollectionSourceAndOpen({
+    collectionId
+  });
   const { data: collection, loading: isLoading } = useRequest2(
     () => getDatasetCollectionById(collectionId),
     {

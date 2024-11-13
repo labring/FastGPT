@@ -4,7 +4,7 @@ description: '常见知识库使用问题'
 icon: 'quiz'
 draft: false
 toc: true
-weight: 904
+weight: 910
 ---
 
 ## 上传的文件内容出现中文乱码

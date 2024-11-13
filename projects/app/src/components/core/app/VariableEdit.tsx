@@ -65,10 +65,6 @@ const VariableEdit = ({
   const { setValue, reset, watch, getValues } = form;
   const value = getValues();
   const type = watch('type');
-  const valueType = watch('valueType');
-  const max = watch('max');
-  const min = watch('min');
-  const defaultValue = watch('defaultValue');
 
   const inputTypeList = useMemo(
     () =>
@@ -173,7 +169,9 @@ const VariableEdit = ({
       {/* Row box */}
       <Flex alignItems={'center'}>
         <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />
-        <FormLabel ml={2}>{t('common:core.module.Variable')}</FormLabel>
+        <FormLabel ml={2} color={'myGray.600'}>
+          {t('common:core.module.Variable')}
+        </FormLabel>
         <ChatFunctionTip type={'variable'} />
         <Box flex={1} />
         <Button
@@ -181,6 +179,7 @@ const VariableEdit = ({
           leftIcon={<SmallAddIcon />}
           iconSpacing={1}
           size={'sm'}
+          color={'myGray.600'}
           mr={'-5px'}
           onClick={() => {
             reset(addVariable());
@@ -193,60 +192,83 @@ const VariableEdit = ({
       {formatVariables.length > 0 && (
         <Box mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'} borderBottom="none">
           <TableContainer>
-            <Table>
-              <Thead>
+            <Table bg={'white'}>
+              <Thead h={8}>
                 <Tr>
+                  <Th
+                    borderRadius={'none !important'}
+                    fontSize={'mini'}
+                    bg={'myGray.50'}
+                    p={0}
+                    px={4}
+                    fontWeight={'medium'}
+                  >
+                    {t('workflow:Variable_name')}
+                  </Th>
+                  <Th fontSize={'mini'} bg={'myGray.50'} p={0} px={4} fontWeight={'medium'}>
+                    {t('common:common.Require Input')}
+                  </Th>
                   <Th
                     fontSize={'mini'}
                     borderRadius={'none !important'}
-                    w={'18px !important'}
+                    bg={'myGray.50'}
                     p={0}
-                  />
-                  <Th fontSize={'mini'}>{t('workflow:Variable_name')}</Th>
-                  <Th fontSize={'mini'}>{t('app:global_variables_desc')}</Th>
-                  <Th fontSize={'mini'}>{t('common:common.Require Input')}</Th>
-                  <Th fontSize={'mini'} borderRadius={'none !important'}></Th>
+                    px={4}
+                    fontWeight={'medium'}
+                  >
+                    {t('common:common.Operation')}
+                  </Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {formatVariables.map((item) => (
                   <Tr key={item.id}>
-                    <Td p={0} pl={3}>
-                      <MyIcon name={item.icon as any} w={'16px'} color={'myGray.500'} />
-                    </Td>
-                    <Td>{item.key}</Td>
                     <Td
-                      maxW={'200px'}
-                      fontSize={'sm'}
-                      whiteSpace={'pre-wrap'}
-                      wordBreak={'break-all'}
-                      px={0}
+                      p={0}
+                      px={4}
+                      h={8}
+                      color={'myGray.900'}
+                      fontSize={'mini'}
+                      fontWeight={'medium'}
                     >
-                      {item.description || '-'}
+                      <Flex alignItems={'center'}>
+                        <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={2} />
+                        {item.key}
+                      </Flex>
                     </Td>
-                    <Td>{item.required ? '✔' : '-'}</Td>
-                    <Td>
-                      <MyIcon
-                        mr={3}
-                        name={'common/settingLight'}
-                        w={'16px'}
-                        cursor={'pointer'}
-                        onClick={() => {
-                          const formattedItem = {
-                            ...item,
-                            list: item.enums || []
-                          };
-                          reset(formattedItem);
-                        }}
-                      />
-                      <MyIcon
-                        name={'delete'}
-                        w={'16px'}
-                        cursor={'pointer'}
-                        onClick={() =>
-                          onChange(variables.filter((variable) => variable.id !== item.id))
-                        }
-                      />
+                    <Td p={0} px={4} h={8} color={'myGray.900'} fontSize={'mini'}>
+                      <Flex alignItems={'center'}>
+                        {item.required ? (
+                          <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} />
+                        ) : (
+                          ''
+                        )}
+                      </Flex>
+                    </Td>
+                    <Td p={0} px={4} h={8} color={'myGray.600'} fontSize={'mini'}>
+                      <Flex alignItems={'center'}>
+                        <MyIcon
+                          mr={3}
+                          name={'common/settingLight'}
+                          w={'16px'}
+                          cursor={'pointer'}
+                          onClick={() => {
+                            const formattedItem = {
+                              ...item,
+                              list: item.enums || []
+                            };
+                            reset(formattedItem);
+                          }}
+                        />
+                        <MyIcon
+                          name={'delete'}
+                          w={'16px'}
+                          cursor={'pointer'}
+                          onClick={() =>
+                            onChange(variables.filter((variable) => variable.id !== item.id))
+                          }
+                        />
+                      </Flex>
                     </Td>
                   </Tr>
                 ))}
@@ -337,11 +359,7 @@ const VariableEdit = ({
               type={'variable'}
               isEdit={!!value.key}
               inputType={type}
-              valueType={valueType}
-              defaultValue={defaultValue}
               defaultValueType={defaultValueType}
-              max={max}
-              min={min}
               onClose={() => reset({})}
               onSubmitSuccess={onSubmitSuccess}
               onSubmitError={onSubmitError}

@@ -34,7 +34,7 @@ import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { InitChatResponse } from '@/global/core/chat/api';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 
 const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
@@ -284,6 +284,9 @@ const Chat = ({
                   onDelMessage={({ contentId }) => delChatRecordById({ contentId, appId, chatId })}
                   appId={appId}
                   chatId={chatId}
+                  chatType={'chat'}
+                  showRawSource
+                  showNodeStatus
                 />
               )}
             </Box>
@@ -342,7 +345,7 @@ const Render = (props: Props) => {
     }
   });
 
-  const providerParams = useMemo(() => ({ appId }), [appId]);
+  const providerParams = useMemo(() => ({ appId, source: ChatSourceEnum.online }), [appId]);
   return (
     <ChatContextProvider params={providerParams}>
       <Chat {...props} myApps={myApps} />

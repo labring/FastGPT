@@ -41,21 +41,26 @@ type Props = {
   appAvatar: string;
   shareId: string;
   authToken: string;
+  customUid: string;
+  showRawSource: boolean;
+  showNodeStatus: boolean;
 };
 
-const OutLink = ({
-  outLinkUid
-}: Props & {
-  outLinkUid: string;
-}) => {
+const OutLink = (
+  props: Props & {
+    outLinkUid: string;
+  }
+) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const { outLinkUid, showRawSource, showNodeStatus } = props;
   const {
     shareId = '',
     chatId = '',
     showHistory = '1',
     showHead = '1',
     authToken,
+    customUid,
     ...customVariables
   } = router.query as {
     shareId: string;
@@ -295,6 +300,7 @@ const OutLink = ({
 
   return (
     <>
+      <NextHead title={props.appName || 'AI'} desc={props.appIntro} icon={props.appAvatar} />
       <PageContainer
         isLoading={loading}
         {...(isEmbed
@@ -360,6 +366,9 @@ const OutLink = ({
                   chatId={chatId}
                   shareId={shareId}
                   outLinkUid={outLinkUid}
+                  chatType="share"
+                  showRawSource={showRawSource}
+                  showNodeStatus={showNodeStatus}
                 />
               )}
             </Box>
@@ -371,13 +380,13 @@ const OutLink = ({
 };
 
 const Render = (props: Props) => {
-  const { shareId, authToken } = props;
+  const { shareId, authToken, customUid } = props;
   const { localUId, loaded } = useShareChatStore();
   const [isLoaded, setIsLoaded] = useState(false);
 
   const contextParams = useMemo(() => {
-    return { shareId, outLinkUid: authToken || localUId };
-  }, [authToken, localUId, shareId]);
+    return { shareId, outLinkUid: authToken || localUId || customUid };
+  }, [authToken, customUid, localUId, shareId]);
 
   useMount(() => {
     setIsLoaded(true);
@@ -386,11 +395,12 @@ const Render = (props: Props) => {
 
   return (
     <>
-      <NextHead title={props.appName || 'AI'} desc={props.appIntro} icon={props.appAvatar} />
-      {systemLoaded && (
+      {systemLoaded ? (
         <ChatContextProvider params={contextParams}>
           <OutLink {...props} outLinkUid={contextParams.outLinkUid} />;
         </ChatContextProvider>
+      ) : (
+        <NextHead title="Loading..." />
       )}
     </>
   );
@@ -401,6 +411,7 @@ export default React.memo(Render);
 export async function getServerSideProps(context: any) {
   const shareId = context?.query?.shareId || '';
   const authToken = context?.query?.authToken || '';
+  const customUid = context?.query?.customUid || '';
 
   const app = await (async () => {
     try {
@@ -409,7 +420,7 @@ export async function getServerSideProps(context: any) {
         {
           shareId
         },
-        'appId'
+        'appId showRawSource showNodeStatus'
       )
         .populate('appId', 'name avatar intro')
         .lean()) as OutLinkWithAppType;
@@ -422,11 +433,14 @@ export async function getServerSideProps(context: any) {
 
   return {
     props: {
-      appName: app?.appId?.name ?? 'name',
+      appName: app?.appId?.name ?? 'AI',
       appAvatar: app?.appId?.avatar ?? '',
-      appIntro: app?.appId?.intro ?? 'intro',
+      appIntro: app?.appId?.intro ?? 'AI',
+      showRawSource: app?.showRawSource ?? false,
+      showNodeStatus: app?.showNodeStatus ?? false,
       shareId: shareId ?? '',
       authToken: authToken ?? '',
+      customUid,
       ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow']))
     }
   };

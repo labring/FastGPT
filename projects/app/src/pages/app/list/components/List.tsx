@@ -249,7 +249,9 @@ const ListItem = () => {
                     {isPc && (
                       <HStack spacing={0.5} className="time">
                         <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
-                        <Box color={'myGray.500'}>{formatTimeToChatTime(app.updateTime)}</Box>
+                        <Box color={'myGray.500'}>
+                          {t(formatTimeToChatTime(app.updateTime) as any).replace('#', ':')}
+                        </Box>
                       </HStack>
                     )}
                     {(AppFolderTypeList.includes(app.type)

@@ -8,7 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { ChatBoxInputFormType, ChatBoxInputType, SendPromptFnType } from '../type';
 import { textareaMinH } from '../constants';
-import { UseFormReturn } from 'react-hook-form';
+import { useFieldArray, UseFormReturn } from 'react-hook-form';
 import { ChatBoxContext } from '../Provider';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
@@ -17,6 +17,7 @@ import { documentFileType } from '@fastgpt/global/common/file/constants';
 import FilePreview from '../../components/FilePreview';
 import { useFileUpload } from '../hooks/useFileUpload';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -44,6 +45,7 @@ const ChatInput = ({
 }) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
+  const { toast } = useToast();
 
   const { setValue, watch, control } = chatForm;
   const inputValue = watch('input');
@@ -58,6 +60,10 @@ const ChatInput = ({
     fileSelectConfig
   } = useContextSelector(ChatBoxContext, (v) => v);
 
+  const fileCtrl = useFieldArray({
+    control,
+    name: 'files'
+  });
   const {
     File,
     onOpenSelectFile,
@@ -69,15 +75,15 @@ const ChatInput = ({
     showSelectFile,
     showSelectImg,
     removeFiles,
-    replaceFiles
+    replaceFiles,
+    hasFileUploading
   } = useFileUpload({
     outLinkAuthData,
     chatId: chatId || '',
     fileSelectConfig,
-    control
+    fileCtrl
   });
   const havInput = !!inputValue || fileList.length > 0;
-  const hasFileUploading = fileList.some((item) => !item.url);
   const canSendMessage = havInput && !hasFileUploading;
 
   // Upload files
@@ -202,7 +208,7 @@ const ChatInput = ({
             <MyTooltip label={selectFileLabel}>
               <MyIcon name={selectFileIcon as any} w={'18px'} color={'myGray.600'} />
             </MyTooltip>
-            <File onSelect={(files) => onSelectFile({ files, fileList })} />
+            <File onSelect={(files) => onSelectFile({ files })} />
           </Flex>
         )}
 
@@ -278,9 +284,10 @@ const ChatInput = ({
                 .filter((file) => {
                   return file && fileTypeFilter(file);
                 }) as File[];
-              onSelectFile({ files, fileList });
+              onSelectFile({ files });
 
               if (files.length > 0) {
+                e.preventDefault();
                 e.stopPropagation();
               }
             }
@@ -431,7 +438,36 @@ const ChatInput = ({
   );
 
   return (
-    <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(800px, 100%)']} px={[0, 5]}>
+    <Box
+      m={['0 auto', '10px auto']}
+      w={'100%'}
+      maxW={['auto', 'min(800px, 100%)']}
+      px={[0, 5]}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+
+        if (!(showSelectFile || showSelectImg)) return;
+        const files = Array.from(e.dataTransfer.files);
+
+        const droppedFiles = files.filter((file) => fileTypeFilter(file));
+        if (droppedFiles.length > 0) {
+          onSelectFile({ files: droppedFiles });
+        }
+
+        const invalidFileName = files
+          .filter((file) => !fileTypeFilter(file))
+          .map((file) => file.name)
+          .join(', ');
+        if (invalidFileName) {
+          toast({
+            status: 'warning',
+            title: t('chat:unsupported_file_type'),
+            description: invalidFileName
+          });
+        }
+      }}
+    >
       <Box
         pt={fileList.length > 0 ? '0' : ['14px', '18px']}
         pb={['14px', '18px']}
@@ -468,7 +504,7 @@ const ChatInput = ({
         {RenderTranslateLoading}
 
         {/* file preview */}
-        <Box px={[2, 4]}>
+        <Box px={[1, 3]}>
           <FilePreview fileList={fileList} removeFiles={removeFiles} />
         </Box>
 

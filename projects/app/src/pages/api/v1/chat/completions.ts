@@ -63,6 +63,8 @@ import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/u
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
   appId?: string;
+  customUid?: string; // non-undefined: will be the priority provider for the logger.
+  metadata?: Record<string, any>;
 };
 
 export type Props = ChatCompletionCreateParams &
@@ -81,10 +83,12 @@ type AuthResponseType = {
   user: UserModelSchema;
   app: AppSchema;
   responseDetail?: boolean;
+  showNodeStatus?: boolean;
   authType: `${AuthUserTypeEnum}`;
   apikey?: string;
   canWrite: boolean;
   outLinkUserId?: string;
+  sourceName?: string;
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -99,6 +103,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   let {
     chatId,
     appId,
+    customUid,
     // share chat
     shareId,
     outLinkUid,
@@ -110,7 +115,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     detail = false,
     messages = [],
     variables = {},
-    responseChatItemId = getNanoid()
+    responseChatItemId = getNanoid(),
+    metadata
   } = req.body as Props;
 
   const originIp = requestIp.getClientIp(req);
@@ -122,7 +128,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new Error('messages is not array');
     }
 
-    /* 
+    /*
       Web params: chatId + [Human]
       API params: chatId + [Human]
       API params: [histories, Human]
@@ -139,41 +145,52 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return JSON.stringify(variables);
     })();
 
-    /* 
+    /*
       1. auth app permission
       2. auth balance
       3. get app
       4. parse outLink token
     */
-    const { teamId, tmbId, user, app, responseDetail, authType, apikey, canWrite, outLinkUserId } =
-      await (async () => {
-        // share chat
-        if (shareId && outLinkUid) {
-          return authShareChat({
-            shareId,
-            outLinkUid,
-            chatId,
-            ip: originIp,
-            question: startHookText
-          });
-        }
-        // team space chat
-        if (spaceTeamId && appId && teamToken) {
-          return authTeamSpaceChat({
-            teamId: spaceTeamId,
-            teamToken,
-            appId,
-            chatId
-          });
-        }
-
-        /* parse req: api or token */
-        return authHeaderRequest({
-          req,
+    const {
+      teamId,
+      tmbId,
+      user,
+      app,
+      responseDetail,
+      authType,
+      sourceName,
+      apikey,
+      canWrite,
+      outLinkUserId = customUid,
+      showNodeStatus
+    } = await (async () => {
+      // share chat
+      if (shareId && outLinkUid) {
+        return authShareChat({
+          shareId,
+          outLinkUid,
+          chatId,
+          ip: originIp,
+          question: startHookText
+        });
+      }
+      // team space chat
+      if (spaceTeamId && appId && teamToken) {
+        return authTeamSpaceChat({
+          teamId: spaceTeamId,
+          teamToken,
           appId,
           chatId
         });
-      })();
+      }
+
+      /* parse req: api or token */
+      return authHeaderRequest({
+        req,
+        appId,
+        chatId
+      });
+    })();
     const isPlugin = app.type === AppTypeEnum.plugin;
 
     // Check message type
@@ -241,7 +258,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       res,
       detail,
       streamResponse: stream,
-      id: chatId
+      id: chatId,
+      showNodeStatus
     });
 
     /* start flow controller */
@@ -330,10 +348,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           newTitle,
           shareId,
           outLinkUid: outLinkUserId,
-          source,
+          source: sourceName || source,
           content: [userQuestion, aiResponse],
           metadata: {
-            originIp
+            originIp,
+            ...metadata
           }
         });
       }
@@ -344,7 +363,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     /* select fe response field */
     const feResponseData = canWrite
       ? flowResponses
-      : filterPublicNodeResponseData({ flowResponses });
+      : filterPublicNodeResponseData({ flowResponses, responseDetail });
 
     if (stream) {
       workflowResponseWrite({
@@ -361,12 +380,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
 
       if (detail) {
-        if (responseDetail || isPlugin) {
-          workflowResponseWrite({
-            event: SseResponseEventEnum.flowResponses,
-            data: feResponseData
-          });
-        }
+        workflowResponseWrite({
+          event: SseResponseEventEnum.flowResponses,
+          data: feResponseData
+        });
       }
 
       res.end();
@@ -445,7 +462,7 @@ const authShareChat = async ({
   shareId: string;
   chatId?: string;
 }): Promise<AuthResponseType> => {
-  const { teamId, tmbId, user, appId, authType, responseDetail, uid } =
+  const { teamId, tmbId, user, appId, authType, responseDetail, showNodeStatus, uid, sourceName } =
     await authOutLinkChatStart(data);
   const app = await MongoApp.findById(appId).lean();
 
@@ -460,6 +477,7 @@ const authShareChat = async ({
   }
 
   return {
+    sourceName,
     teamId,
     tmbId,
     user,
@@ -468,7 +486,8 @@ const authShareChat = async ({
     apikey: '',
     authType,
     canWrite: false,
-    outLinkUserId: uid
+    outLinkUserId: uid,
+    showNodeStatus
   };
 };
 const authTeamSpaceChat = async ({
@@ -527,6 +546,7 @@ const authHeaderRequest = async ({
     teamId,
     tmbId,
     authType,
+    sourceName,
     apikey
   } = await authCert({
     req,
@@ -593,6 +613,7 @@ const authHeaderRequest = async ({
     responseDetail: true,
     apikey,
     authType,
+    sourceName,
     canWrite: true
   };
 };

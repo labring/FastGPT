@@ -9,7 +9,7 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
@@ -67,13 +67,11 @@ async function handler(
   })();
 
   const fieldMap = {
-    [GetChatTypeEnum.normal]: `dataId obj value adminFeedback userBadFeedback userGoodFeedback ${
+    [GetChatTypeEnum.normal]: `dataId obj value adminFeedback userBadFeedback userGoodFeedback time ${
       DispatchNodeResponseKeyEnum.nodeResponse
     } ${loadCustomFeedbacks ? 'customFeedbacks' : ''}`,
-    [GetChatTypeEnum.outLink]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback ${
-      shareChat?.responseDetail || isPlugin ? `${DispatchNodeResponseKeyEnum.nodeResponse}` : ''
-    } `,
-    [GetChatTypeEnum.team]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback ${DispatchNodeResponseKeyEnum.nodeResponse}`
+    [GetChatTypeEnum.outLink]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback time ${DispatchNodeResponseKeyEnum.nodeResponse}`,
+    [GetChatTypeEnum.team]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback time ${DispatchNodeResponseKeyEnum.nodeResponse}`
   };
 
   const { total, histories } = await getChatItems({
@@ -84,17 +82,26 @@ async function handler(
     limit: pageSize
   });
 
+  const responseDetail = !shareChat || shareChat.responseDetail;
+
   // Remove important information
-  if (type === 'outLink' && app.type !== AppTypeEnum.plugin) {
+  if (shareChat && app.type !== AppTypeEnum.plugin) {
     histories.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI) {
-        item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
+        item.responseData = filterPublicNodeResponseData({
+          flowResponses: item.responseData,
+          responseDetail
+        });
+
+        if (shareChat.showNodeStatus === false) {
+          item.value = item.value.filter((v) => v.type !== ChatItemValueTypeEnum.tool);
+        }
       }
     });
   }
 
   return {
-    list: isPlugin ? histories : transformPreviewHistories(histories),
+    list: isPlugin ? histories : transformPreviewHistories(histories, responseDetail),
     total
   };
 }

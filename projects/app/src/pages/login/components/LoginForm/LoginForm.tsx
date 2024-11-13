@@ -80,7 +80,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   return (
     <FormLayout setPageType={setPageType} pageType={LoginPageTypeEnum.passwordLogin}>
       <Box
-        mt={'42px'}
+        mt={9}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey && !requesting) {
             handleSubmit(onclickLogin)();
@@ -90,15 +90,17 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         <FormControl isInvalid={!!errors.username}>
           <Input
             bg={'myGray.50'}
+            size={'lg'}
             placeholder={placeholder}
             {...register('username', {
               required: true
             })}
           ></Input>
         </FormControl>
-        <FormControl mt={6} isInvalid={!!errors.password}>
+        <FormControl mt={7} isInvalid={!!errors.password}>
           <Input
             bg={'myGray.50'}
+            size={'lg'}
             type={'password'}
             placeholder={
               isCommunityVersion
@@ -115,13 +117,19 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           ></Input>
         </FormControl>
         {feConfigs?.docUrl && (
-          <Flex alignItems={'center'} mt={7} fontSize={'mini'}>
+          <Flex
+            alignItems={'center'}
+            mt={7}
+            fontSize={'mini'}
+            color={'myGray.700'}
+            fontWeight={'medium'}
+          >
             {t('login:policy_tip')}
             <Link
               ml={1}
               href={getDocPath('/docs/agreement/terms/')}
               target={'_blank'}
-              color={'primary.500'}
+              color={'primary.700'}
             >
               {t('login:terms')}
             </Link>
@@ -129,7 +137,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             <Link
               href={getDocPath('/docs/agreement/privacy/')}
               target={'_blank'}
-              color={'primary.500'}
+              color={'primary.700'}
             >
               {t('login:privacy')}
             </Link>
@@ -138,9 +146,11 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
 
         <Button
           type="submit"
-          my={6}
+          my={5}
           w={'100%'}
           size={['md', 'md']}
+          h={[10, 10]}
+          fontWeight={['medium', 'medium']}
           colorScheme="blue"
           isLoading={requesting}
           onClick={handleSubmit(onclickLogin)}
@@ -148,29 +158,34 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           {t('login:Login')}
         </Button>
 
-        <Flex align={'center'} justifyContent={'flex-end'} color={'primary.700'}>
+        <Flex
+          align={'center'}
+          justifyContent={'flex-end'}
+          color={'primary.700'}
+          fontWeight={'medium'}
+        >
           {feConfigs?.find_password_method && feConfigs.find_password_method.length > 0 && (
             <Box
               cursor={'pointer'}
               _hover={{ textDecoration: 'underline' }}
               onClick={() => setPageType('forgetPassword')}
-              fontSize="sm"
+              fontSize="mini"
             >
               {t('login:forget_password')}
             </Box>
           )}
           {feConfigs?.register_method && feConfigs.register_method.length > 0 && (
-            <>
-              <Box mx={3} h={'16px'} w={'1.5px'} bg={'myGray.250'}></Box>
+            <Flex alignItems={'center'}>
+              <Box mx={3} h={'12px'} w={'1px'} bg={'myGray.250'}></Box>
               <Box
                 cursor={'pointer'}
                 _hover={{ textDecoration: 'underline' }}
                 onClick={() => setPageType('register')}
-                fontSize="sm"
+                fontSize="mini"
               >
                 {t('login:register')}
               </Box>
-            </>
+            </Flex>
           )}
         </Flex>
       </Box>

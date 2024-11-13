@@ -12,7 +12,7 @@ import {
   DatasetDataWithCollectionType,
   SearchDataResponseItemType
 } from '@fastgpt/global/core/dataset/type';
-import { DatasetColCollectionName, MongoDatasetCollection } from '../collection/schema';
+import { MongoDatasetCollection } from '../collection/schema';
 import { reRankRecall } from '../../../core/ai/rerank';
 import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { datasetSearchResultConcat } from '@fastgpt/global/core/dataset/search/utils';
@@ -320,11 +320,13 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   const fullTextRecall = async ({
     query,
     limit,
-    filterCollectionIdList
+    filterCollectionIdList,
+    forbidCollectionIdList
   }: {
     query: string;
     limit: number;
     filterCollectionIdList?: string[];
+    forbidCollectionIdList: string[];
   }): Promise<{
     fullTextRecallResults: SearchDataResponseItemType[];
     tokenLen: number;
@@ -351,6 +353,13 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
                         $in: filterCollectionIdList.map((id) => new Types.ObjectId(id))
                       }
                     }
+                  : {}),
+                ...(forbidCollectionIdList && forbidCollectionIdList.length > 0
+                  ? {
+                      collectionId: {
+                        $nin: forbidCollectionIdList.map((id) => new Types.ObjectId(id))
+                      }
+                    }
                   : {})
               }
             },
@@ -366,31 +375,6 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
             },
             {
               $limit: limit
-            },
-            {
-              $lookup: {
-                from: DatasetColCollectionName,
-                let: { collectionId: '$collectionId' },
-                pipeline: [
-                  {
-                    $match: {
-                      $expr: { $eq: ['$_id', '$$collectionId'] },
-                      forbid: { $eq: true } // 匹配被禁用的数据
-                    }
-                  },
-                  {
-                    $project: {
-                      _id: 1 // 只需要_id字段来确认匹配
-                    }
-                  }
-                ],
-                as: 'collection'
-              }
-            },
-            {
-              $match: {
-                collection: { $eq: [] } // 没有 forbid=true 的数据
-              }
             },
             {
               $project: {
@@ -509,7 +493,8 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
           fullTextRecall({
             query,
             limit: fullTextLimit,
-            filterCollectionIdList
+            filterCollectionIdList,
+            forbidCollectionIdList
           })
         ]);
         totalTokens += tokens;

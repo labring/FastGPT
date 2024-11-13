@@ -2,18 +2,12 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
-import dynamic from 'next/dynamic';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
 import Container from '../../components/Container';
-import { FlowNodeInputItemType, ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
-import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputItemType, ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
-import RenderInput from '../render/RenderInput';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import IOTitle from '../../components/IOTitle';
@@ -24,7 +18,6 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useI18n } from '@/web/context/I18n';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { isWorkflowStartOutput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import PluginOutputEditModal, { defaultOutput } from './PluginOutputEditModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
@@ -113,38 +106,28 @@ function Reference({
     content: workflowT('confirm_delete_field_tip')
   });
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
   const onSelect = useCallback(
-    (e: ReferenceValueProps) => {
-      const workflowStartNode = nodeList.find(
-        (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
-      );
-
-      const value =
-        e[0] === workflowStartNode?.id && !isWorkflowStartOutput(e[1])
-          ? [VARIABLE_NODE_ID, e[1]]
-          : e;
-
+    (e?: ReferenceValueType) => {
+      if (!e) return;
       onChangeNode({
         nodeId,
         type: 'updateInput',
         key: input.key,
         value: {
           ...input,
-          value
+          value: e
         }
       });
     },
-    [input, nodeId, nodeList, onChangeNode]
+    [input, nodeId, onChangeNode]
   );
 
-  const { referenceList, formatValue } = useReference({
+  const { referenceList } = useReference({
     nodeId,
-    valueType: input.valueType,
-    value: input.value
+    valueType: input.valueType
   });
 
   const onUpdateField = useCallback(
@@ -217,8 +200,9 @@ function Reference({
       <ReferSelector
         placeholder={t((input.referencePlaceholder as any) || 'select_reference_variable')}
         list={referenceList}
-        value={formatValue}
+        value={input.value}
         onSelect={onSelect}
+        isArray={input.valueType?.includes('array')}
       />
 
       {!!editField && (

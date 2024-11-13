@@ -2,7 +2,7 @@ import React from 'react';
 import { pluginSystemModuleTemplates } from '@fastgpt/global/core/workflow/template/constants';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
-import WorkflowContextProvider, { WorkflowContext } from '../WorkflowComponents/context';
+import { ReactFlowCustomProvider, WorkflowContext } from '../WorkflowComponents/context';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import { useMount } from 'ahooks';
@@ -13,13 +13,15 @@ import dynamic from 'next/dynamic';
 import { cloneDeep } from 'lodash';
 
 import Flow from '../WorkflowComponents/Flow';
-import { t } from 'i18next';
+import { useTranslation } from 'next-i18next';
+
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
 
 const WorkflowEdit = () => {
   const { appDetail, currentTab } = useContextSelector(AppContext, (e) => e);
   const isV2Workflow = appDetail?.version === 'v2';
+  const { t } = useTranslation();
 
   const { openConfirm, ConfirmModal } = useConfirm({
     showCancel: false,
@@ -64,9 +66,9 @@ const WorkflowEdit = () => {
 
 const Render = () => {
   return (
-    <WorkflowContextProvider basicNodeTemplates={pluginSystemModuleTemplates}>
+    <ReactFlowCustomProvider templates={pluginSystemModuleTemplates}>
       <WorkflowEdit />
-    </WorkflowContextProvider>
+    </ReactFlowCustomProvider>
   );
 };
 

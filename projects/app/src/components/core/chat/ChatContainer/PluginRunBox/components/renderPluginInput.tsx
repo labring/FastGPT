@@ -1,36 +1,150 @@
-import {
-  Box,
-  Flex,
-  NumberDecrementStepper,
-  NumberIncrementStepper,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  Switch,
-  Textarea
-} from '@chakra-ui/react';
+import { Box, Button, Flex, Switch, Textarea } from '@chakra-ui/react';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
+import { useFileUpload } from '../../ChatBox/hooks/useFileUpload';
+import { useContextSelector } from 'use-context-selector';
+import { PluginRunContext } from '../context';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import FilePreview from '../../components/FilePreview';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useEffect, useMemo } from 'react';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { useFieldArray } from 'react-hook-form';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import { isEqual } from 'lodash';
 
 const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
+
+const FileSelector = ({
+  input,
+  setUploading,
+  onChange,
+  value
+}: {
+  input: FlowNodeInputItemType;
+  setUploading: React.Dispatch<React.SetStateAction<boolean>>;
+  onChange: (...event: any[]) => void;
+  value: any;
+}) => {
+  const { t } = useTranslation();
+  const { variablesForm, histories, chatId, outLinkAuthData } = useContextSelector(
+    PluginRunContext,
+    (v) => v
+  );
+
+  const fileCtrl = useFieldArray({
+    control: variablesForm.control,
+    name: `variables.${input.key}`
+  });
+  const {
+    File,
+    fileList,
+    selectFileIcon,
+    uploadFiles,
+    onOpenSelectFile,
+    onSelectFile,
+    removeFiles,
+    replaceFiles,
+    hasFileUploading
+  } = useFileUpload({
+    outLinkAuthData,
+    chatId: chatId || '',
+    fileSelectConfig: {
+      canSelectFile: input.canSelectFile ?? true,
+      canSelectImg: input.canSelectImg ?? false,
+      maxFiles: input.maxFiles ?? 5
+    },
+    // @ts-ignore
+    fileCtrl
+  });
+
+  useEffect(() => {
+    if (!Array.isArray(value)) {
+      replaceFiles([]);
+      return;
+    }
+
+    // compare file names and update if different
+    const valueFileNames = value.map((item) => item.name);
+    const currentFileNames = fileList.map((item) => item.name);
+    if (!isEqual(valueFileNames, currentFileNames)) {
+      replaceFiles(value);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  const isDisabledInput = histories.length > 0;
+  useRequest2(uploadFiles, {
+    manual: false,
+    errorToast: t('common:upload_file_error'),
+    refreshDeps: [fileList, outLinkAuthData, chatId]
+  });
+
+  useEffect(() => {
+    setUploading(hasFileUploading);
+    onChange(
+      fileList.map((item) => ({
+        type: item.type,
+        name: item.name,
+        url: item.url,
+        icon: item.icon
+      }))
+    );
+  }, [fileList, hasFileUploading, onChange, setUploading]);
+
+  return (
+    <>
+      <Flex alignItems={'center'}>
+        <Box position={'relative'}>
+          {input.required && (
+            <Box position={'absolute'} left={-2} top={'-1px'} color={'red.600'}>
+              *
+            </Box>
+          )}
+          <FormLabel fontWeight={'500'}>{t(input.label as any)}</FormLabel>
+        </Box>
+        {input.description && <QuestionTip ml={2} label={t(input.description as any)} />}
+        <Box flex={1} />
+        {/* 有历史记录，说明是已经跑过了，不能再新增了 */}
+        <Button
+          isDisabled={histories.length !== 0}
+          leftIcon={<MyIcon name={selectFileIcon as any} w={'16px'} />}
+          variant={'whiteBase'}
+          onClick={() => {
+            onOpenSelectFile();
+          }}
+        >
+          {t('chat:select')}
+        </Button>
+      </Flex>
+      <FilePreview fileList={fileList} removeFiles={isDisabledInput ? undefined : removeFiles} />
+      {fileList.length === 0 && <EmptyTip py={0} mt={3} text={t('chat:not_select_file')} />}
+
+      <File onSelect={(files) => onSelectFile({ files })} />
+    </>
+  );
+};
 
 const RenderPluginInput = ({
   value,
   onChange,
   isDisabled,
   isInvalid,
-  input
+  input,
+  setUploading
 }: {
   value: any;
-  onChange: () => void;
+  onChange: (...event: any[]) => void;
   isDisabled?: boolean;
   isInvalid: boolean;
   input: FlowNodeInputItemType;
+  setUploading: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
   const { t } = useTranslation();
   const inputType = input.renderTypeList[0];
@@ -44,6 +158,12 @@ const RenderPluginInput = ({
         <MySelect list={input.list} value={value} onchange={onChange} isDisabled={isDisabled} />
       );
     }
+    if (inputType === FlowNodeInputTypeEnum.fileSelect) {
+      return (
+        <FileSelector onChange={onChange} input={input} setUploading={setUploading} value={value} />
+      );
+    }
+
     if (input.valueType === WorkflowIOValueTypeEnum.string) {
       return (
         <Textarea
@@ -59,20 +179,17 @@ const RenderPluginInput = ({
     }
     if (input.valueType === WorkflowIOValueTypeEnum.number) {
       return (
-        <NumberInput
+        <MyNumberInput
           step={1}
           min={input.min}
           max={input.max}
           bg={'myGray.50'}
           isDisabled={isDisabled}
           isInvalid={isInvalid}
-        >
-          <NumberInputField value={value} onChange={onChange} defaultValue={input.defaultValue} />
-          <NumberInputStepper>
-            <NumberIncrementStepper />
-            <NumberDecrementStepper />
-          </NumberInputStepper>
-        </NumberInput>
+          value={value}
+          onChange={onChange}
+          defaultValue={input.defaultValue}
+        />
       );
     }
     if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
@@ -100,22 +217,26 @@ const RenderPluginInput = ({
     );
   })();
 
-  return !!render ? (
-    <Box _notLast={{ mb: 4 }} px={1}>
-      <Flex alignItems={'center'} mb={1}>
-        <Box position={'relative'}>
-          {input.required && (
-            <Box position={'absolute'} left={-2} top={'-1px'} color={'red.600'}>
-              *
-            </Box>
-          )}
-          {t(input.label as any)}
-        </Box>
-        {input.description && <QuestionTip ml={2} label={t(input.description as any)} />}
-      </Flex>
+  return (
+    <Box _notLast={{ mb: 4 }}>
+      {/* label */}
+      {inputType !== FlowNodeInputTypeEnum.fileSelect && (
+        <Flex alignItems={'center'} mb={1}>
+          <Box position={'relative'}>
+            {input.required && (
+              <Box position={'absolute'} left={-2} top={'-1px'} color={'red.600'}>
+                *
+              </Box>
+            )}
+            <FormLabel fontWeight={'500'}>{t(input.label as any)}</FormLabel>
+          </Box>
+          {input.description && <QuestionTip ml={2} label={t(input.description as any)} />}
+        </Flex>
+      )}
+
       {render}
     </Box>
-  ) : null;
+  );
 };
 
 export default RenderPluginInput;

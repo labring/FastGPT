@@ -2,6 +2,7 @@ import dayjs from 'dayjs';
 import cronParser from 'cron-parser';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import { i18nT } from '../../../web/i18n/utils';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -23,31 +24,51 @@ export const formatTimeToChatTime = (time: Date) => {
 
   // 如果传入时间小于60秒，返回刚刚
   if (now.diff(target, 'second') < 60) {
-    return '刚刚';
+    return i18nT('common:just_now');
   }
 
   // 如果时间是今天，展示几时:几分
+  //用#占位，i18n生效后replace成:
   if (now.isSame(target, 'day')) {
-    return target.format('HH : mm');
+    return target.format('HH#mm');
   }
 
   // 如果是昨天，展示昨天
   if (now.subtract(1, 'day').isSame(target, 'day')) {
-    return '昨天';
-  }
-
-  // 如果是前天，展示前天
-  if (now.subtract(2, 'day').isSame(target, 'day')) {
-    return '前天';
+    return i18nT('common:yesterday');
   }
 
   // 如果是今年，展示某月某日
   if (now.isSame(target, 'year')) {
-    return target.format('MM/DD');
+    return target.format('MM-DD');
   }
 
   // 如果是更久之前，展示某年某月某日
-  return target.format('YYYY/M/D');
+  return target.format('YYYY-M-D');
+};
+
+export const formatTimeToChatItemTime = (time: Date) => {
+  const now = dayjs();
+  const target = dayjs(time);
+  const detailTime = target.format('HH#mm');
+
+  // 如果时间是今天，展示几时:几分
+  if (now.isSame(target, 'day')) {
+    return detailTime;
+  }
+
+  // 如果是昨天，展示昨天+几时:几分
+  if (now.subtract(1, 'day').isSame(target, 'day')) {
+    return i18nT('common:yesterday_detail_time');
+  }
+
+  // 如果是今年，展示某月某日+几时:几分
+  if (now.isSame(target, 'year')) {
+    return target.format('MM-DD') + ' ' + detailTime;
+  }
+
+  // 如果是更久之前，展示某年某月某日+几时:几分
+  return target.format('YYYY-M-D') + ' ' + detailTime;
 };
 
 /* cron time parse */
