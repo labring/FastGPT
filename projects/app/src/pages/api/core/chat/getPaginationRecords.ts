@@ -82,11 +82,16 @@ async function handler(
     limit: pageSize
   });
 
+  const responseDetail = !shareChat || shareChat.responseDetail;
+
   // Remove important information
   if (shareChat && app.type !== AppTypeEnum.plugin) {
     histories.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI) {
-        item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
+        item.responseData = filterPublicNodeResponseData({
+          flowResponses: item.responseData,
+          responseDetail
+        });
 
         if (shareChat.showNodeStatus === false) {
           item.value = item.value.filter((v) => v.type !== ChatItemValueTypeEnum.tool);
@@ -96,7 +101,7 @@ async function handler(
   }
 
   return {
-    list: isPlugin ? histories : transformPreviewHistories(histories),
+    list: isPlugin ? histories : transformPreviewHistories(histories, responseDetail),
     total
   };
 }
