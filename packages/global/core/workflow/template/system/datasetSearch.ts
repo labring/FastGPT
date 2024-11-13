@@ -95,10 +95,10 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
     },
     {
       key: NodeInputKeyEnum.collectionFilterMatch,
-      renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
       label: i18nT('workflow:collection_metadata_filter'),
 
-      valueType: WorkflowIOValueTypeEnum.object,
+      valueType: WorkflowIOValueTypeEnum.string,
       isPro: true,
       description: i18nT('workflow:filter_description')
     }

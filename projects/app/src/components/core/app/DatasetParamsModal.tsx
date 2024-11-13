@@ -206,12 +206,7 @@ const DatasetParamsModal = ({
                   </Box>
                 </Box>
                 <Box position={'relative'} w={'18px'} h={'18px'}>
-                  <Checkbox
-                    colorScheme="primary"
-                    isChecked={getValues('usingReRank')}
-                    size="lg"
-                    icon={<MyIcon name={'common/check'} w={'12px'} />}
-                  />
+                  <Checkbox colorScheme="primary" isChecked={getValues('usingReRank')} size="lg" />
                   <Box position={'absolute'} top={0} right={0} bottom={0} left={0} zIndex={1}></Box>
                 </Box>
               </Flex>
