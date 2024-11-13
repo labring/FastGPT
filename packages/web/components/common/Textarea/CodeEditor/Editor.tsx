@@ -14,7 +14,6 @@ type EditorVariablePickerType = {
 };
 
 export type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
-  height?: number;
   resize?: boolean;
   defaultValue?: string;
   value?: string;
@@ -111,7 +110,7 @@ const MyEditor = ({
       borderWidth={'1px'}
       borderRadius={'md'}
       borderColor={'myGray.200'}
-      py={2}
+      py={1}
       height={height}
       position={'relative'}
       pl={2}
@@ -132,8 +131,8 @@ const MyEditor = ({
       {resize && (
         <Box
           position={'absolute'}
-          right={'-1'}
-          bottom={'-1'}
+          right={'-2.5'}
+          bottom={'-3.5'}
           zIndex={10}
           cursor={'ns-resize'}
           px={'4px'}
