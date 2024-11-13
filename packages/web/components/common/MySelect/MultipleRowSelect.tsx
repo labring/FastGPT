@@ -245,13 +245,7 @@ export const MultipleRowArraySelect = ({
                   onClick={() => handleSelect(item)}
                   {...(isSelected ? { color: 'primary.600' } : {})}
                 >
-                  {showCheckbox && (
-                    <Checkbox
-                      isChecked={isChecked}
-                      icon={<MyIcon name={'common/check'} w={'12px'} />}
-                      mr={1}
-                    />
-                  )}
+                  {showCheckbox && <Checkbox isChecked={isChecked} mr={1} />}
                   <Box>{item.label}</Box>
                 </Flex>
               );

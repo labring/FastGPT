@@ -117,11 +117,12 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
             <Flex flexDirection="column" mt="2" overflow={'auto'} maxH="400px">
               {filterGroups.map((group) => {
                 const onChange = () => {
-                  if (selectedGroupIdList.includes(group._id)) {
-                    setSelectedGroupIdList(selectedGroupIdList.filter((v) => v !== group._id));
-                  } else {
-                    setSelectedGroupIdList([...selectedGroupIdList, group._id]);
-                  }
+                  setSelectedGroupIdList((state) => {
+                    if (state.includes(group._id)) {
+                      return state.filter((v) => v !== group._id);
+                    }
+                    return [...state, group._id];
+                  });
                 };
                 const collaborator = collaboratorList.find((v) => v.groupId === group._id);
                 return (
@@ -141,10 +142,7 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
                     }}
                     onClick={onChange}
                   >
-                    <Checkbox
-                      isChecked={selectedGroupIdList.includes(group._id)}
-                      icon={<MyIcon name={'common/check'} w={'12px'} />}
-                    />
+                    <Checkbox isChecked={selectedGroupIdList.includes(group._id)} />
                     <MyAvatar src={group.avatar} w="1.5rem" borderRadius={'50%'} />
                     <Box ml="2" w="full">
                       {group.name === DefaultGroupName ? userInfo?.team.teamName : group.name}
@@ -157,11 +155,12 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
               })}
               {filterMembers.map((member) => {
                 const onChange = () => {
-                  if (selectedMemberIdList.includes(member.tmbId)) {
-                    setSelectedMembers(selectedMemberIdList.filter((v) => v !== member.tmbId));
-                  } else {
-                    setSelectedMembers([...selectedMemberIdList, member.tmbId]);
-                  }
+                  setSelectedMembers((state) => {
+                    if (state.includes(member.tmbId)) {
+                      return state.filter((v) => v !== member.tmbId);
+                    }
+                    return [...state, member.tmbId];
+                  });
                 };
                 const collaborator = collaboratorList.find((v) => v.tmbId === member.tmbId);
                 return (
@@ -205,11 +204,12 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
             <Flex flexDirection="column" mt="2" overflow={'auto'} maxH="400px">
               {selectedGroupIdList.map((groupId) => {
                 const onChange = () => {
-                  if (selectedGroupIdList.includes(groupId)) {
-                    setSelectedGroupIdList(selectedGroupIdList.filter((v) => v !== groupId));
-                  } else {
-                    setSelectedGroupIdList([...selectedGroupIdList, groupId]);
-                  }
+                  setSelectedGroupIdList((state) => {
+                    if (state.includes(groupId)) {
+                      return state.filter((v) => v !== groupId);
+                    }
+                    return [...state, groupId];
+                  });
                 };
                 const group = groups.find((v) => String(v._id) === groupId);
                 return (
