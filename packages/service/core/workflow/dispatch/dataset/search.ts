@@ -76,8 +76,6 @@ export async function dispatchDatasetSearch(
       nodeDispatchUsages: [],
       [DispatchNodeResponseKeyEnum.toolResponses]: []
     };
-
-    return Promise.reject(i18nT('common:core.chat.error.User input empty'));
   }
 
   // query extension

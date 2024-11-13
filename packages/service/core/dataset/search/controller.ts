@@ -118,7 +118,10 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     let createTimeCollectionIdList: string[] | undefined = undefined;
 
     try {
-      const jsonMatch = json5.parse(collectionFilterMatch);
+      const jsonMatch =
+        typeof collectionFilterMatch === 'object'
+          ? collectionFilterMatch
+          : json5.parse(collectionFilterMatch);
 
       // Tag
       let andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
@@ -347,7 +350,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
                 teamId: new Types.ObjectId(teamId),
                 datasetId: new Types.ObjectId(id),
                 $text: { $search: jiebaSplit({ text: query }) },
-                ...(filterCollectionIdList && filterCollectionIdList.length > 0
+                ...(filterCollectionIdList
                   ? {
                       collectionId: {
                         $in: filterCollectionIdList.map((id) => new Types.ObjectId(id))
