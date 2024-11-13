@@ -9,10 +9,7 @@ const staticPluginList = [
   'getTime',
   'fetchUrl',
   'Doc2X',
-  'Doc2X/URLPDF2text',
-  'Doc2X/URLImg2text',
-  `Doc2X/FilePDF2text`,
-  `Doc2X/FileImg2text`,
+  'Doc2X/PDF2text',
   'feishu',
   'google',
   'bing'

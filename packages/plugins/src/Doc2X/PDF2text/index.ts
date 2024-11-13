@@ -4,7 +4,7 @@ import { result } from 'lodash';
 
 type Props = {
   apikey: string;
-  files: Array<string>;
+  files: any;
   ocr: boolean;
 };
 
@@ -15,7 +15,7 @@ type Response = Promise<{
   success: boolean;
 }>;
 
-const main = async ({ apikey, files, ocr }: Props): Response => {
+const main = async ({ apikey, files }: Props): Response => {
   // Check the apikey
   if (!apikey) {
     return {
@@ -24,33 +24,34 @@ const main = async ({ apikey, files, ocr }: Props): Response => {
       success: false
     };
   }
-
-  let real_api_key = apikey;
-  if (!apikey.startsWith('sk-')) {
-    const response = await fetch('https://api.doc2x.noedgeai.com/api/token/refresh', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apikey}`
-      }
-    });
-    if (response.status !== 200) {
-      return {
-        result: '',
-        failreason: `Get token failed: ${await response.text()}`,
-        success: false
-      };
-    }
-    const data = await response.json();
-    real_api_key = data.data.token;
-  }
-
   let final_result = '';
   let fail_reason = '';
   let flag = false;
+  //Convert the String to Array<String> or String
+  let All_URL: Array<string>;
+  try {
+    const parsed = JSON.parse(files);
+    if (Array.isArray(parsed)) {
+      All_URL = parsed;
+    } else {
+      All_URL = [String(parsed)];
+    }
+  } catch (e) {
+    // Set it as String
+    All_URL = [String(files)];
+  }
+
   //Process each file one by one
-  for await (const url of files) {
+  for await (const url of All_URL) {
     //Fetch the pdf and check its contene type
-    const PDFResponse = await fetch(url);
+    let PDFResponse;
+    try {
+      PDFResponse = await fetch(url);
+    } catch (e) {
+      fail_reason += `\n---\nFile:${url} \n<Content>\nFailed to fetch image from URL: ${e}\n</Content>\n`;
+      flag = true;
+      continue;
+    }
     if (!PDFResponse.ok) {
       fail_reason += `\n---\nFile:${url} \n<Content>\nFailed to fetch PDF from URL\n</Content>\n`;
       flag = true;
@@ -68,12 +69,8 @@ const main = async ({ apikey, files, ocr }: Props): Response => {
     const blob = await PDFResponse.blob();
     const formData = new FormData();
     formData.append('file', blob, file_name);
-    formData.append('ocr', ocr ? '1' : '0');
 
     let upload_url = 'https://api.doc2x.noedgeai.com/api/platform/async/pdf';
-    if (real_api_key.startsWith('sk-')) {
-      upload_url = 'https://api.doc2x.noedgeai.com/api/v1/async/pdf';
-    }
 
     let uuid;
     let upload_flag = true;
@@ -82,7 +79,7 @@ const main = async ({ apikey, files, ocr }: Props): Response => {
       const upload_response = await fetch(upload_url, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${real_api_key}`
+          Authorization: `Bearer ${apikey}`
         },
         body: formData
       });
@@ -106,7 +103,7 @@ const main = async ({ apikey, files, ocr }: Props): Response => {
 
     // Get the result by uuid
     let result_url = 'https://api.doc2x.noedgeai.com/api/platform/async/status?uuid=' + uuid;
-    if (real_api_key.startsWith('sk-')) {
+    if (apikey.startsWith('sk-')) {
       result_url = 'https://api.doc2x.noedgeai.com/api/v1/async/status?uuid=' + uuid;
     }
 
@@ -117,7 +114,7 @@ const main = async ({ apikey, files, ocr }: Props): Response => {
     for await (const _ of Array(maxAttempts).keys()) {
       const result_response = await fetch(result_url, {
         headers: {
-          Authorization: `Bearer ${real_api_key}`
+          Authorization: `Bearer ${apikey}`
         }
       });
       if (!result_response.ok) {
