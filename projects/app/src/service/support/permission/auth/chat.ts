@@ -42,18 +42,19 @@ export async function authChatCrud({
   chat?: ChatSchema;
   isOutLink: boolean;
   uid?: string;
+  responseDetail: boolean;
 }> {
   const isOutLink = Boolean((shareId || spaceTeamId) && outLinkUid);
-  if (!chatId) return { isOutLink, uid: outLinkUid };
+  if (!chatId) return { isOutLink, uid: outLinkUid, responseDetail: true };
 
   const chat = await MongoChat.findOne({ appId, chatId }).lean();
 
-  const { uid } = await (async () => {
+  const { uid, responseDetail } = await (async () => {
     // outLink Auth
     if (shareId && outLinkUid) {
-      const { uid } = await authOutLink({ shareId, outLinkUid });
+      const { uid, shareChat } = await authOutLink({ shareId, outLinkUid });
       if (!chat || (chat.shareId === shareId && chat.outLinkUid === uid)) {
-        return { uid };
+        return { uid, responseDetail: shareChat.responseDetail };
       }
       return Promise.reject(ChatErrEnum.unAuthChat);
     }
@@ -62,12 +63,12 @@ export async function authChatCrud({
       const { uid } = await authTeamSpaceToken({ teamId: spaceTeamId, teamToken });
       addLog.debug('Auth team token', { uid, spaceTeamId, teamToken, chatUid: chat?.outLinkUid });
       if (!chat || (String(chat.teamId) === String(spaceTeamId) && chat.outLinkUid === uid)) {
-        return { uid };
+        return { uid, responseDetail: true };
       }
       return Promise.reject(ChatErrEnum.unAuthChat);
     }
 
-    if (!chat) return { id: outLinkUid };
+    if (!chat) return { id: outLinkUid, responseDetail: true };
 
     // auth req
     const { teamId, tmbId, permission } = await authApp({
@@ -80,18 +81,19 @@ export async function authChatCrud({
 
     if (String(teamId) !== String(chat.teamId)) return Promise.reject(ChatErrEnum.unAuthChat);
 
-    if (permission.hasManagePer) return { uid: outLinkUid };
-    if (String(tmbId) === String(chat.tmbId)) return { uid: outLinkUid };
+    if (permission.hasManagePer) return { uid: outLinkUid, responseDetail: true };
+    if (String(tmbId) === String(chat.tmbId)) return { uid: outLinkUid, responseDetail: true };
 
     return Promise.reject(ChatErrEnum.unAuthChat);
   })();
 
-  if (!chat) return { isOutLink, uid };
+  if (!chat) return { isOutLink, uid, responseDetail };
 
   return {
     chat,
     isOutLink,
-    uid
+    uid,
+    responseDetail
   };
 }
 

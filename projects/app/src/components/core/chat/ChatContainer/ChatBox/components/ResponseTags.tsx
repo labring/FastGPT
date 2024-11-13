@@ -30,6 +30,7 @@ const ResponseTags = ({
   const { t } = useTranslation();
   const quoteListRef = React.useRef<HTMLDivElement>(null);
   const dataId = historyItem.dataId;
+
   const {
     totalQuoteList: quoteList = [],
     llmModuleAccount = 0,

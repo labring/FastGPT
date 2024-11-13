@@ -363,7 +363,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     /* select fe response field */
     const feResponseData = canWrite
       ? flowResponses
-      : filterPublicNodeResponseData({ flowResponses });
+      : filterPublicNodeResponseData({ flowResponses, responseDetail });
 
     if (stream) {
       workflowResponseWrite({
@@ -380,12 +380,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
 
       if (detail) {
-        if (responseDetail || isPlugin) {
-          workflowResponseWrite({
-            event: SseResponseEventEnum.flowResponses,
-            data: feResponseData
-          });
-        }
+        workflowResponseWrite({
+          event: SseResponseEventEnum.flowResponses,
+          data: feResponseData
+        });
       }
 
       res.end();

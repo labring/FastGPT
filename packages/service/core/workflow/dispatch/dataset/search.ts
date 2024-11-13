@@ -65,6 +65,18 @@ export async function dispatchDatasetSearch(
   }
 
   if (!userChatInput) {
+    return {
+      quoteQA: [],
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        totalPoints: 0,
+        query: '',
+        limit,
+        searchMode
+      },
+      nodeDispatchUsages: [],
+      [DispatchNodeResponseKeyEnum.toolResponses]: []
+    };
+
     return Promise.reject(i18nT('common:core.chat.error.User input empty'));
   }
 

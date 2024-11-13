@@ -11,6 +11,7 @@ import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 
 export type getResDataQuery = OutLinkChatAuthProps & {
   chatId?: string;
@@ -26,44 +27,57 @@ async function handler(
   req: ApiRequestProps<getResDataBody, getResDataQuery>,
   res: ApiResponseType<any>
 ): Promise<getResDataResponse> {
-  const { appId, chatId, dataId } = req.query;
+  const { appId, chatId, dataId, shareId } = req.query;
   if (!appId || !chatId || !dataId) {
     return {};
   }
 
   // 1. Un login api: share chat, team chat
   // 2. Login api: account chat, chat log
-  try {
-    await authChatCrud({
-      req,
-      authToken: true,
-      authApiKey: true,
-      ...req.query,
-      per: ReadPermissionVal
-    });
-  } catch (error) {
-    await authApp({
-      req,
-      authToken: true,
-      authApiKey: true,
-      appId,
-      per: ManagePermissionVal
-    });
+  const authData = await (() => {
+    try {
+      return authChatCrud({
+        req,
+        authToken: true,
+        authApiKey: true,
+        ...req.query,
+        per: ReadPermissionVal
+      });
+    } catch (error) {
+      return authApp({
+        req,
+        authToken: true,
+        authApiKey: true,
+        appId,
+        per: ManagePermissionVal
+      });
+    }
+  })();
+
+  const [chatData] = await Promise.all([
+    MongoChatItem.findOne(
+      {
+        appId,
+        chatId,
+        dataId
+      },
+      'obj responseData'
+    ).lean(),
+    shareId ? MongoOutLink.findOne({ shareId }).lean() : Promise.resolve(null)
+  ]);
+
+  if (chatData?.obj !== ChatRoleEnum.AI) {
+    return {};
   }
 
-  const chatData = await MongoChatItem.findOne(
-    {
-      appId,
-      chatId,
-      dataId
-    },
-    'obj responseData'
-  ).lean();
-
-  if (chatData?.obj === ChatRoleEnum.AI) {
-    const data = chatData.responseData || {};
-    return req.query.shareId ? filterPublicNodeResponseData(data) : data;
-  } else return {};
+  const flowResponses = chatData.responseData ?? {};
+  return req.query.shareId
+    ? filterPublicNodeResponseData({
+        // @ts-ignore
+        responseDetail: authData.responseDetail,
+        flowResponses: chatData.responseData
+      })
+    : flowResponses;
 }
 
 export default NextAPI(handler);
