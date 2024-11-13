@@ -106,7 +106,7 @@ const EditForm = ({
       formatEditorVariablePickerIcon([
         ...workflowSystemVariables.filter(
           (variable) =>
-            !['userId', 'appId', 'chatId', 'responseChatItemId', 'histories'].includes(variable.key)
+            !['appId', 'chatId', 'responseChatItemId', 'histories'].includes(variable.key)
         ),
         ...(appForm.chatConfig.variables || [])
       ]).map((item) => ({

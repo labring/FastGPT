@@ -19,9 +19,11 @@ const CodeEditor = (props: Props) => {
         iconSrc="modal/edit"
         title={t('common:code_editor')}
         w={'full'}
+        h={'85vh'}
+        isCentered
       >
-        <ModalBody>
-          <MyEditor {...props} bg={'myGray.50'} defaultHeight={600} />
+        <ModalBody flex={'1 0 0'} overflow={'auto'}>
+          <MyEditor {...props} bg={'myGray.50'} height={'100%'} />
         </ModalBody>
         <ModalFooter>
           <Button mr={2} onClick={onClose} px={6}>
