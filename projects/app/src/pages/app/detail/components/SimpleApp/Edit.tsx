@@ -16,7 +16,7 @@ import { cardStyles } from '../constants';
 import styles from './styles.module.scss';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
-import { onSaveSnapshotFnType, SimpleAppSnapshotType, useSimpleAppSnapshots } from './useSnapshots';
+import { onSaveSnapshotFnType, SimpleAppSnapshotType } from './useSnapshots';
 import { create } from 'jsondiffpatch';
 
 const diffPatcher = create({
@@ -53,7 +53,7 @@ const Edit = ({
     // Get the latest snapshot
     if (past?.[0]?.diff) {
       const pastState = diffPatcher.patch(
-        structuredClone(appForm),
+        structuredClone(past[past.length - 1].state),
         past[0].diff
       ) as AppSimpleEditFormType;
 

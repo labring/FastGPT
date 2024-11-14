@@ -631,3 +631,21 @@ export const compareSnapshot = (
 
   return isEqual(node1, node2);
 };
+
+// Simplify nodes, remove system config node & node size
+export const simplifyNodes = (nodes: Node[]) => {
+  return nodes
+    .filter((node) => {
+      if (!node) return;
+      if (FlowNodeTypeEnum.systemConfig === node.type) return;
+
+      return true;
+    })
+    .map((node) => ({
+      id: node.id,
+      type: node.type,
+      position: node.position,
+      data: node.data,
+      zIndex: node.zIndex
+    }));
+};

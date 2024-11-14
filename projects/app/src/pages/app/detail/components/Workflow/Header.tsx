@@ -69,8 +69,7 @@ const Header = () => {
     future,
     setPast,
     onSwitchTmpVersion,
-    onSwitchCloudVersion,
-    initialState
+    onSwitchCloudVersion
   } = useContextSelector(WorkflowContext, (v) => v);
   const showHistoryModal = useContextSelector(WorkflowEventContext, (v) => v.showHistoryModal);
   const setShowHistoryModal = useContextSelector(
@@ -88,6 +87,7 @@ const Header = () => {
         [...future].reverse().find((snapshot) => snapshot.isSaved) ||
         past.find((snapshot) => snapshot.isSaved);
 
+      const initialState = past[past.length - 1]?.state;
       const savedSnapshotState = diffPatcher.patch(
         structuredClone(initialState),
         savedSnapshot?.diff

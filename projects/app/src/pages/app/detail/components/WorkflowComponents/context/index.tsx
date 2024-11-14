@@ -2,6 +2,7 @@ import { postWorkflowDebug } from '@/web/core/workflow/api';
 import {
   checkWorkflowNodeAndConnection,
   compareSnapshot,
+  simplifyNodes,
   storeEdgesRenderEdge,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
@@ -77,6 +78,7 @@ export type WorkflowSnapshotsType = {
   diff?: any;
   title: string;
   isSaved?: boolean;
+  state?: WorkflowStateType;
 };
 
 export type WorkflowStateType = {
@@ -89,7 +91,6 @@ type WorkflowContextType = {
   appId?: string;
   basicNodeTemplates: FlowNodeTemplateType[];
   filterAppIds?: string[];
-  initialState?: WorkflowStateType;
 
   // nodes
   nodeList: FlowNodeItemType[];
@@ -219,11 +220,6 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   },
   onResetNode: function (e: { id: string; node: FlowNodeTemplateType }): void {
     throw new Error('Function not implemented.');
-  },
-  initialState: {
-    nodes: [],
-    edges: [],
-    chatConfig: {}
   },
 
   onDelEdge: function (e: {
@@ -776,7 +772,7 @@ const WorkflowContextProvider = ({
 
   const pushPastSnapshot = useMemoizedFn(
     ({ pastNodes, pastEdges, chatConfig, customTitle, isSaved }) => {
-      if (!pastNodes || !pastEdges || !chatConfig || !initialState.current) return false;
+      if (!pastNodes || !pastEdges || !chatConfig) return false;
 
       if (forbiddenSaveSnapshot.current) {
         forbiddenSaveSnapshot.current = false;
@@ -784,13 +780,16 @@ const WorkflowContextProvider = ({
       }
 
       const newState = {
-        nodes: pastNodes,
+        nodes: simplifyNodes(pastNodes),
         edges: pastEdges,
         chatConfig
       };
 
+      const initialState = past[past.length - 1]?.state;
+      if (!initialState) return false;
+
       const pastState = diffPatcher.patch(
-        structuredClone(initialState.current),
+        structuredClone(initialState),
         past[0].diff
       ) as WorkflowStateType;
 
@@ -809,7 +808,7 @@ const WorkflowContextProvider = ({
 
       if (isPastEqual) return false;
 
-      const diff = diffPatcher.diff(initialState.current, newState);
+      const diff = diffPatcher.diff(initialState, newState);
 
       setFuture([]);
       setPast((past) => [
@@ -832,7 +831,7 @@ const WorkflowContextProvider = ({
     const title = customTitle.replace(regex, `$1`);
 
     const pastState = diffPatcher.patch(
-      structuredClone(initialState.current),
+      structuredClone(past[past.length - 1].state),
       params.diff
     ) as WorkflowStateType;
 
@@ -869,7 +868,7 @@ const WorkflowContextProvider = ({
       setPast((past) => past.slice(1));
 
       const pastState = diffPatcher.patch(
-        structuredClone(initialState.current),
+        structuredClone(past[past.length - 1].state),
         past[1].diff
       ) as WorkflowStateType;
       resetSnapshot(pastState);
@@ -879,7 +878,7 @@ const WorkflowContextProvider = ({
     if (!future[0]) return;
 
     const futureState = diffPatcher.patch(
-      structuredClone(initialState.current),
+      structuredClone(past[past.length - 1].state),
       future[0].diff
     ) as WorkflowStateType;
 
@@ -903,12 +902,6 @@ const WorkflowContextProvider = ({
     });
   }, [appId]);
 
-  const initialState = useRef<{
-    nodes: Node[];
-    edges: Edge[];
-    chatConfig: AppChatConfigType;
-  }>();
-
   const initData = useCallback(
     async (
       e: {
@@ -921,16 +914,16 @@ const WorkflowContextProvider = ({
       const nodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
       const edges = e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [];
 
-      initialState.current = {
-        nodes,
+      const initialState = {
+        nodes: simplifyNodes(nodes),
         edges,
         chatConfig: e.chatConfig || appDetail.chatConfig
       };
 
       // If initializing and has past snapshots, restore from latest snapshot
-      if (isInit && past.length > 0 && past[0].diff && initialState.current) {
+      if (isInit && past.length > 0 && past[0].diff) {
         const targetState = diffPatcher.patch(
-          structuredClone(initialState.current),
+          structuredClone(past[past.length - 1].state),
           past[0].diff
         ) as WorkflowStateType;
 
@@ -953,7 +946,8 @@ const WorkflowContextProvider = ({
         setPast([
           {
             title: t(`app:app.version_initial`),
-            isSaved: true
+            isSaved: true,
+            state: initialState
           }
         ]);
         forbiddenSaveSnapshot.current = true;
@@ -966,7 +960,6 @@ const WorkflowContextProvider = ({
     () => ({
       appId,
       basicNodeTemplates,
-      initialState: initialState.current,
 
       // node
       nodeList,

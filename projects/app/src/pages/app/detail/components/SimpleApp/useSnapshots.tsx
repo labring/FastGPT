@@ -4,9 +4,6 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { isEqual } from 'lodash';
 import { create } from 'jsondiffpatch';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../context';
-import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
 
 const diffPatcher = create({
   objectHash: (obj: any) => obj.id || obj.nodeId || obj._id,
@@ -17,6 +14,7 @@ export type SimpleAppSnapshotType = {
   diff?: any;
   title: string;
   isSaved?: boolean;
+  state?: AppSimpleEditFormType;
 };
 export type onSaveSnapshotFnType = (props: {
   appForm: AppSimpleEditFormType;
@@ -68,7 +66,6 @@ export const useSimpleAppSnapshots = (appId: string) => {
   const [past, setPast] = useLocalStorageState<SimpleAppSnapshotType[]>(`${appId}-past-simple`, {
     defaultValue: []
   }) as [SimpleAppSnapshotType[], (value: SetStateAction<SimpleAppSnapshotType[]>) => void];
-  const { appLatestVersion } = useContextSelector(AppContext, (v) => v);
 
   const saveSnapshot: onSaveSnapshotFnType = useMemoizedFn(async ({ appForm, title, isSaved }) => {
     if (forbiddenSaveSnapshot.current) {
@@ -76,14 +73,23 @@ export const useSimpleAppSnapshots = (appId: string) => {
       return false;
     }
 
-    const initialAppForm = appWorkflow2Form({
-      nodes: appLatestVersion?.nodes || [],
-      chatConfig: appLatestVersion?.chatConfig || {}
-    });
+    if (past.length === 0) {
+      setPast([
+        {
+          title: title || formatTime2YMDHMS(new Date()),
+          isSaved,
+          state: appForm
+        }
+      ]);
+      return true;
+    }
+
+    const initialState = past[past.length - 1].state;
+    if (!initialState) return false;
 
     if (past.length > 0) {
       const pastState = diffPatcher.patch(
-        structuredClone(initialAppForm),
+        structuredClone(initialState),
         past[0].diff
       ) as AppSimpleEditFormType;
 
@@ -91,7 +97,7 @@ export const useSimpleAppSnapshots = (appId: string) => {
       if (isPastEqual) return false;
     }
 
-    const diff = diffPatcher.diff(structuredClone(initialAppForm), appForm);
+    const diff = diffPatcher.diff(structuredClone(initialState), appForm);
 
     setPast((past) => [
       {
