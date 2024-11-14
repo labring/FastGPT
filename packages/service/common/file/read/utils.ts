@@ -14,6 +14,7 @@ import { addHours } from 'date-fns';
 export type readRawTextByLocalFileParams = {
   teamId: string;
   path: string;
+  encoding: string;
   metadata?: Record<string, any>;
 };
 export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParams) => {
@@ -22,13 +23,12 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
   const extension = path?.split('.')?.pop()?.toLowerCase() || '';
 
   const buffer = fs.readFileSync(path);
-  const encoding = detectFileEncoding(buffer);
 
   const { rawText } = await readRawContentByFileBuffer({
     extension,
     isQAImport: false,
     teamId: params.teamId,
-    encoding,
+    encoding: params.encoding,
     buffer,
     metadata: params.metadata
   });
@@ -53,6 +53,7 @@ export const readRawContentByFileBuffer = async ({
   encoding: string;
   metadata?: Record<string, any>;
 }) => {
+  // Custom read file service
   const customReadfileUrl = process.env.CUSTOM_READ_FILE_URL;
   const customReadFileExtension = process.env.CUSTOM_READ_FILE_EXTENSION || '';
   const ocrParse = process.env.CUSTOM_READ_FILE_OCR || 'false';
