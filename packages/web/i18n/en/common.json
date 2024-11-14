@@ -997,6 +997,7 @@
   "support.user.login.Email": "Email",
   "support.user.login.Github": "GitHub Login",
   "support.user.login.Google": "Google Login",
+  "support.user.login.Microsoft": "Microsoft Login",
   "support.user.login.Password": "Password",
   "support.user.login.Password login": "Password Login",
   "support.user.login.Phone": "Phone Login",
