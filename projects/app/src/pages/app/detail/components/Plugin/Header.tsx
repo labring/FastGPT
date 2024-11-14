@@ -13,7 +13,11 @@ import { useTranslation } from 'next-i18next';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext, WorkflowSnapshotsType } from '../WorkflowComponents/context';
+import {
+  WorkflowContext,
+  WorkflowSnapshotsType,
+  WorkflowStateType
+} from '../WorkflowComponents/context';
 import { AppContext, TabEnum } from '../context';
 import RouteTab from '../RouteTab';
 import { useRouter } from 'next/router';
@@ -34,6 +38,12 @@ import {
   WorkflowInitContext
 } from '../WorkflowComponents/context/workflowInitContext';
 import { WorkflowEventContext } from '../WorkflowComponents/context/workflowEventContext';
+import { create } from 'jsondiffpatch';
+
+const diffPatcher = create({
+  objectHash: (obj: any) => obj.id || obj.nodeId || obj._id,
+  propertyFilter: (name: string) => name !== 'selected'
+});
 
 const Header = () => {
   const { t } = useTranslation();
@@ -59,7 +69,8 @@ const Header = () => {
     future,
     setPast,
     onSwitchTmpVersion,
-    onSwitchCloudVersion
+    onSwitchCloudVersion,
+    initialState
   } = useContextSelector(WorkflowContext, (v) => v);
   const showHistoryModal = useContextSelector(WorkflowEventContext, (v) => v.showHistoryModal);
   const setShowHistoryModal = useContextSelector(
@@ -76,11 +87,16 @@ const Header = () => {
         [...future].reverse().find((snapshot) => snapshot.isSaved) ||
         past.find((snapshot) => snapshot.isSaved);
 
+      const savedSnapshotState = diffPatcher.patch(
+        structuredClone(initialState),
+        savedSnapshot?.diff
+      ) as WorkflowStateType;
+
       const val = compareSnapshot(
         {
-          nodes: savedSnapshot?.nodes,
-          edges: savedSnapshot?.edges,
-          chatConfig: savedSnapshot?.chatConfig
+          nodes: savedSnapshotState?.nodes,
+          edges: savedSnapshotState?.edges,
+          chatConfig: savedSnapshotState?.chatConfig
         },
         {
           nodes: nodes,

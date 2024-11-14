@@ -41,6 +41,12 @@ import { cloneDeep } from 'lodash';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import WorkflowInitContextProvider, { WorkflowNodeEdgeContext } from './workflowInitContext';
 import WorkflowEventContextProvider from './workflowEventContext';
+import { create } from 'jsondiffpatch';
+
+const diffPatcher = create({
+  objectHash: (obj: any) => obj.id || obj.nodeId || obj._id,
+  propertyFilter: (name: string) => name !== 'selected'
+});
 
 /* 
   Context
@@ -67,20 +73,23 @@ export const ReactFlowCustomProvider = ({
   );
 };
 
-type OnChange<ChangesType> = (changes: ChangesType[]) => void;
-
 export type WorkflowSnapshotsType = {
+  diff?: any;
+  title: string;
+  isSaved?: boolean;
+};
+
+export type WorkflowStateType = {
   nodes: Node[];
   edges: Edge[];
-  title: string;
   chatConfig: AppChatConfigType;
-  isSaved?: boolean;
 };
 
 type WorkflowContextType = {
   appId?: string;
   basicNodeTemplates: FlowNodeTemplateType[];
   filterAppIds?: string[];
+  initialState?: WorkflowStateType;
 
   // nodes
   nodeList: FlowNodeItemType[];
@@ -210,6 +219,11 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   },
   onResetNode: function (e: { id: string; node: FlowNodeTemplateType }): void {
     throw new Error('Function not implemented.');
+  },
+  initialState: {
+    nodes: [],
+    edges: [],
+    chatConfig: {}
   },
 
   onDelEdge: function (e: {
@@ -751,7 +765,7 @@ const WorkflowContextProvider = ({
     defaultValue: []
   }) as [WorkflowSnapshotsType[], (value: SetStateAction<WorkflowSnapshotsType[]>) => void];
 
-  const resetSnapshot = useMemoizedFn((state: Omit<WorkflowSnapshotsType, 'title' | 'isSaved'>) => {
+  const resetSnapshot = useMemoizedFn((state: WorkflowStateType) => {
     setNodes(state.nodes);
     setEdges(state.edges);
     setAppDetail((detail) => ({
@@ -759,28 +773,27 @@ const WorkflowContextProvider = ({
       chatConfig: state.chatConfig
     }));
   });
+
   const pushPastSnapshot = useMemoizedFn(
-    ({
-      pastNodes,
-      pastEdges,
-      customTitle,
-      chatConfig,
-      isSaved
-    }: {
-      pastNodes: Node[];
-      pastEdges: Edge[];
-      customTitle?: string;
-      chatConfig: AppChatConfigType;
-      isSaved?: boolean;
-    }) => {
-      if (!pastNodes || !pastEdges || !chatConfig) return false;
+    ({ pastNodes, pastEdges, chatConfig, customTitle, isSaved }) => {
+      if (!pastNodes || !pastEdges || !chatConfig || !initialState.current) return false;
 
       if (forbiddenSaveSnapshot.current) {
         forbiddenSaveSnapshot.current = false;
         return false;
       }
 
-      const pastState = past[0];
+      const newState = {
+        nodes: pastNodes,
+        edges: pastEdges,
+        chatConfig
+      };
+
+      const pastState = diffPatcher.patch(
+        structuredClone(initialState.current),
+        past[0].diff
+      ) as WorkflowStateType;
+
       const isPastEqual = compareSnapshot(
         {
           nodes: pastNodes,
@@ -796,33 +809,39 @@ const WorkflowContextProvider = ({
 
       if (isPastEqual) return false;
 
+      const diff = diffPatcher.diff(initialState.current, newState);
+
       setFuture([]);
       setPast((past) => [
         {
-          nodes: pastNodes,
-          edges: pastEdges,
+          diff,
           title: customTitle || formatTime2YMDHMS(new Date()),
-          chatConfig,
           isSaved
         },
-        ...past.slice(0, 199)
+        ...past
       ]);
 
       return true;
     }
   );
+
   const onSwitchTmpVersion = useMemoizedFn((params: WorkflowSnapshotsType, customTitle: string) => {
     // Remove multiple "copy-"
     const copyText = t('app:version_copy');
     const regex = new RegExp(`(${copyText}-)\\1+`, 'g');
     const title = customTitle.replace(regex, `$1`);
 
-    resetSnapshot(params);
+    const pastState = diffPatcher.patch(
+      structuredClone(initialState.current),
+      params.diff
+    ) as WorkflowStateType;
+
+    resetSnapshot(pastState);
 
     return pushPastSnapshot({
-      pastNodes: params.nodes,
-      pastEdges: params.edges,
-      chatConfig: params.chatConfig,
+      pastNodes: pastState.nodes,
+      pastEdges: pastState.edges,
+      chatConfig: pastState.chatConfig,
       customTitle: title
     });
   });
@@ -848,15 +867,26 @@ const WorkflowContextProvider = ({
     if (past[1]) {
       setFuture((future) => [past[0], ...future]);
       setPast((past) => past.slice(1));
-      resetSnapshot(past[1]);
+
+      const pastState = diffPatcher.patch(
+        structuredClone(initialState.current),
+        past[1].diff
+      ) as WorkflowStateType;
+      resetSnapshot(pastState);
     }
   });
   const redo = useMemoizedFn(() => {
-    const futureState = future[0];
+    if (!future[0]) return;
+
+    const futureState = diffPatcher.patch(
+      structuredClone(initialState.current),
+      future[0].diff
+    ) as WorkflowStateType;
 
     if (futureState) {
       setPast((past) => [future[0], ...past]);
       setFuture((future) => future.slice(1));
+
       resetSnapshot(futureState);
     }
   });
@@ -873,51 +903,70 @@ const WorkflowContextProvider = ({
     });
   }, [appId]);
 
+  const initialState = useRef<{
+    nodes: Node[];
+    edges: Edge[];
+    chatConfig: AppChatConfigType;
+  }>();
+
   const initData = useCallback(
-    async (e: Parameters<WorkflowContextType['initData']>[0], isInit?: boolean) => {
-      // Refresh web page, load init
-      if (isInit && past.length > 0) {
-        return resetSnapshot(past[0]);
-      }
-      // If it is the initial data, save the initial snapshot
-      if (isInit && past.length === 0) {
-        pushPastSnapshot({
-          pastNodes: e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [],
-          pastEdges: e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [],
-          customTitle: t(`app:app.version_initial`),
-          chatConfig: appDetail.chatConfig,
-          isSaved: true
-        });
-        forbiddenSaveSnapshot.current = true;
-      }
+    async (
+      e: {
+        nodes: StoreNodeItemType[];
+        edges: StoreEdgeItemType[];
+        chatConfig?: AppChatConfigType;
+      },
+      isInit?: boolean
+    ) => {
+      const nodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
+      const edges = e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [];
 
-      setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || []);
-      setEdges(e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || []);
+      initialState.current = {
+        nodes,
+        edges,
+        chatConfig: e.chatConfig || appDetail.chatConfig
+      };
 
-      const chatConfig = e.chatConfig;
-      if (chatConfig) {
+      // If initializing and has past snapshots, restore from latest snapshot
+      if (isInit && past.length > 0 && past[0].diff && initialState.current) {
+        const targetState = diffPatcher.patch(
+          structuredClone(initialState.current),
+          past[0].diff
+        ) as WorkflowStateType;
+
+        setNodes(targetState.nodes);
+        setEdges(targetState.edges);
         setAppDetail((state) => ({
           ...state,
-          chatConfig
+          chatConfig: targetState.chatConfig
         }));
+        return;
+      }
+
+      setNodes(nodes);
+      setEdges(edges);
+      if (e.chatConfig) {
+        setAppDetail((state) => ({ ...state, chatConfig: e.chatConfig as AppChatConfigType }));
+      }
+
+      if (isInit && past.length === 0) {
+        setPast([
+          {
+            title: t(`app:app.version_initial`),
+            isSaved: true
+          }
+        ]);
+        forbiddenSaveSnapshot.current = true;
       }
     },
-    [
-      appDetail.chatConfig,
-      past,
-      resetSnapshot,
-      pushPastSnapshot,
-      setAppDetail,
-      setEdges,
-      setNodes,
-      t
-    ]
+    [appDetail.chatConfig, past, setAppDetail, setEdges, setNodes, setPast, t]
   );
 
   const value = useMemo(
     () => ({
       appId,
       basicNodeTemplates,
+      initialState: initialState.current,
 
       // node
       nodeList,

@@ -16,7 +16,13 @@ import { cardStyles } from '../constants';
 import styles from './styles.module.scss';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
-import { onSaveSnapshotFnType, SimpleAppSnapshotType } from './useSnapshots';
+import { onSaveSnapshotFnType, SimpleAppSnapshotType, useSimpleAppSnapshots } from './useSnapshots';
+import { create } from 'jsondiffpatch';
+
+const diffPatcher = create({
+  objectHash: (obj: any) => obj.id || obj.nodeId || obj._id,
+  propertyFilter: (name: string) => name !== 'selected'
+});
 
 const Edit = ({
   appForm,
@@ -39,16 +45,22 @@ const Edit = ({
     // show selected dataset
     loadAllDatasets();
 
-    // Get the latest snapshot
-    if (past?.[0]?.appForm) {
-      return setAppForm(past[0].appForm);
-    }
-
     const appForm = appWorkflow2Form({
       nodes: appDetail.modules,
       chatConfig: appDetail.chatConfig
     });
 
+    // Get the latest snapshot
+    if (past?.[0]?.diff) {
+      const pastState = diffPatcher.patch(
+        structuredClone(appForm),
+        past[0].diff
+      ) as AppSimpleEditFormType;
+
+      return setAppForm(pastState);
+    }
+
+    setAppForm(appForm);
     // Set the first snapshot
     if (past.length === 0) {
       saveSnapshot({
@@ -57,8 +69,6 @@ const Edit = ({
         isSaved: true
       });
     }
-
-    setAppForm(appForm);
 
     if (appDetail.version !== 'v2') {
       setAppForm(

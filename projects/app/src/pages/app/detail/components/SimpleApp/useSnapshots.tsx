@@ -1,11 +1,20 @@
 import { useLocalStorageState, useMemoizedFn } from 'ahooks';
-import { SetStateAction, useEffect, useRef } from 'react';
+import { SetStateAction, useEffect, useRef, useState } from 'react';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { isEqual } from 'lodash';
+import { create } from 'jsondiffpatch';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '../context';
+import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
+
+const diffPatcher = create({
+  objectHash: (obj: any) => obj.id || obj.nodeId || obj._id,
+  propertyFilter: (name: string) => name !== 'selected'
+});
 
 export type SimpleAppSnapshotType = {
-  appForm: AppSimpleEditFormType;
+  diff?: any;
   title: string;
   isSaved?: boolean;
 };
@@ -59,6 +68,7 @@ export const useSimpleAppSnapshots = (appId: string) => {
   const [past, setPast] = useLocalStorageState<SimpleAppSnapshotType[]>(`${appId}-past-simple`, {
     defaultValue: []
   }) as [SimpleAppSnapshotType[], (value: SetStateAction<SimpleAppSnapshotType[]>) => void];
+  const { appLatestVersion } = useContextSelector(AppContext, (v) => v);
 
   const saveSnapshot: onSaveSnapshotFnType = useMemoizedFn(async ({ appForm, title, isSaved }) => {
     if (forbiddenSaveSnapshot.current) {
@@ -66,14 +76,26 @@ export const useSimpleAppSnapshots = (appId: string) => {
       return false;
     }
 
-    const pastState = past[0];
+    const initialAppForm = appWorkflow2Form({
+      nodes: appLatestVersion?.nodes || [],
+      chatConfig: appLatestVersion?.chatConfig || {}
+    });
 
-    const isPastEqual = compareSimpleAppSnapshot(pastState?.appForm, appForm);
-    if (isPastEqual) return false;
+    if (past.length > 0) {
+      const pastState = diffPatcher.patch(
+        structuredClone(initialAppForm),
+        past[0].diff
+      ) as AppSimpleEditFormType;
+
+      const isPastEqual = compareSimpleAppSnapshot(pastState, appForm);
+      if (isPastEqual) return false;
+    }
+
+    const diff = diffPatcher.diff(structuredClone(initialAppForm), appForm);
 
     setPast((past) => [
       {
-        appForm,
+        diff,
         title: title || formatTime2YMDHMS(new Date()),
         isSaved
       },

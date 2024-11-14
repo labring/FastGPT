@@ -29,6 +29,12 @@ import {
 } from './useSnapshots';
 import PublishHistories from '../PublishHistoriesSlider';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
+import { create } from 'jsondiffpatch';
+
+const diffPatcher = create({
+  objectHash: (obj: any) => obj.id || obj.nodeId || obj._id,
+  propertyFilter: (name: string) => name !== 'selected'
+});
 
 const Header = ({
   forbiddenSaveSnapshot,
@@ -48,9 +54,16 @@ const Header = ({
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const router = useRouter();
-  const { appId, onSaveApp, currentTab } = useContextSelector(AppContext, (v) => v);
+  const { appId, onSaveApp, currentTab, appLatestVersion } = useContextSelector(
+    AppContext,
+    (v) => v
+  );
   const { lastAppListRouteType } = useSystemStore();
   const { allDatasets } = useDatasetStore();
+  const initialAppForm = appWorkflow2Form({
+    nodes: appLatestVersion?.nodes || [],
+    chatConfig: appLatestVersion?.chatConfig || {}
+  });
 
   const { data: paths = [] } = useRequest2(() => getAppFolderPath(appId), {
     manual: false,
@@ -104,7 +117,11 @@ const Header = ({
 
   const onSwitchTmpVersion = useCallback(
     (data: SimpleAppSnapshotType, customTitle: string) => {
-      setAppForm(data.appForm);
+      const pastState = diffPatcher.patch(
+        structuredClone(initialAppForm),
+        data.diff
+      ) as AppSimpleEditFormType;
+      setAppForm(pastState);
 
       // Remove multiple "copy-"
       const copyText = t('app:version_copy');
@@ -112,11 +129,11 @@ const Header = ({
       const title = customTitle.replace(regex, `$1`);
 
       return saveSnapshot({
-        appForm: data.appForm,
+        appForm: pastState,
         title
       });
     },
-    [saveSnapshot, setAppForm, t]
+    [initialAppForm, saveSnapshot, setAppForm, t]
   );
   const onSwitchCloudVersion = useCallback(
     (appVersion: AppVersionSchemaType) => {
@@ -143,7 +160,11 @@ const Header = ({
   useDebounceEffect(
     () => {
       const savedSnapshot = past.find((snapshot) => snapshot.isSaved);
-      const val = compareSimpleAppSnapshot(savedSnapshot?.appForm, appForm);
+      const pastState = diffPatcher.patch(
+        structuredClone(initialAppForm),
+        savedSnapshot?.diff
+      ) as AppSimpleEditFormType;
+      const val = compareSimpleAppSnapshot(pastState, appForm);
       setIsPublished(val);
     },
     [past, allDatasets],
