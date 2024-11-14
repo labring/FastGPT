@@ -87,7 +87,3 @@ export const getCommunityCb = async () => {
     {}
   );
 };
-
-export const getSystemPluginCb = async () => {
-  return global.systemPluginCb;
-};

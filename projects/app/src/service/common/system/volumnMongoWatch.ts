@@ -1,4 +1,4 @@
-import { getSystemPlugins } from '@/service/core/app/plugin';
+import { getSystemPluginCb, getSystemPlugins } from '@/service/core/app/plugin';
 import { initSystemConfig } from '.';
 import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training/utils';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
