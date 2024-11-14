@@ -323,7 +323,7 @@ const ChatBox = (
               })
             };
           } else if (event === SseResponseEventEnum.updateVariables && variables) {
-            variablesForm.reset(variables);
+            variablesForm.setValue('variables', variables);
           } else if (event === SseResponseEventEnum.interactive) {
             const val: AIChatItemValueItemType = {
               type: ChatItemValueTypeEnum.interactive,
@@ -408,7 +408,7 @@ const ChatBox = (
       isInteractivePrompt = false
     }) => {
       variablesForm.handleSubmit(
-        async ({ variables }) => {
+        async ({ variables = {} }) => {
           if (!onStartChat) return;
           if (isChatting) {
             toast({
@@ -435,7 +435,7 @@ const ChatBox = (
           // Only declared variables are kept
           const requestVariables: Record<string, any> = {};
           allVariableList?.forEach((item) => {
-            requestVariables[item.key] = variables[item.key] || '';
+            requestVariables[item.key] = variables[item.key];
           });
 
           const responseChatId = getNanoid(24);
