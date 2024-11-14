@@ -41,13 +41,16 @@ const main = async ({ apikey, files }: Props): Response => {
     // Set it as String
     All_URL = [String(files)];
   }
+  const axiosInstance = axios.create({
+    timeout: 30000 // 30 seconds timeout
+  });
 
   //Process each file one by one
   for await (const url of All_URL) {
     //Fetch the pdf and check its content type
     let PDFResponse;
     try {
-      PDFResponse = await axios.get(url, { responseType: 'arraybuffer' });
+      PDFResponse = await axiosInstance.get(url, { responseType: 'arraybuffer' });
     } catch (e) {
       fail_reason += `\n---\nFile:${url} \n<Content>\nFailed to fetch image from URL: ${e}\n</Content>\n`;
       flag = true;
@@ -72,7 +75,7 @@ const main = async ({ apikey, files }: Props): Response => {
     let preupload_url = 'https://v2.doc2x.noedgeai.com/api/v2/parse/preupload';
     let preupload_response;
     try {
-      preupload_response = await axios.post(preupload_url, null, {
+      preupload_response = await axiosInstance.post(preupload_url, null, {
         headers: {
           Authorization: `Bearer ${apikey}`
         }
@@ -100,7 +103,7 @@ const main = async ({ apikey, files }: Props): Response => {
     const uid = preupload_data.data.uid;
     // Upload file to pre-signed URL with binary stream
     try {
-      const response = await axios.put(upload_url, blob, {
+      const response = await axiosInstance.put(upload_url, blob, {
         headers: {
           'Content-Type': 'application/pdf'
         }
@@ -124,7 +127,7 @@ const main = async ({ apikey, files }: Props): Response => {
     for await (const _ of Array(maxAttempts).keys()) {
       let result_response;
       try {
-        result_response = await axios.get(result_url, {
+        result_response = await axiosInstance.get(result_url, {
           headers: {
             Authorization: `Bearer ${apikey}`
           }
