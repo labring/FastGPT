@@ -1,10 +1,10 @@
 {
   "author": "Menghuan1918",
   "version": "488",
-  "name": "Doc2X 图像(文件)识别",
+  "name": "Doc2X PDF识别",
   "avatar": "plugins/doc2x",
-  "intro": "将上传的图片文件发送至Doc2X进行解析，返回带LaTeX公式的markdown格式的文本",
-  "courseUrl": "https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview",
+  "intro": "将PDF文件发送至Doc2X进行解析，返回结构化的LaTeX公式的文本(markdown)，支持传入String类型的URL或者流程输出中的文件链接变量",
+  "inputExplanationUrl": "https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview",
   "showStatus": true,
   "weight": 10,
 
@@ -14,29 +14,15 @@
   "workflow": {
     "nodes": [
       {
-        "nodeId": "pluginConfig",
-        "name": "common:core.module.template.system_config",
-        "intro": "",
-        "avatar": "core/workflow/template/systemConfig",
-        "flowNodeType": "pluginConfig",
-        "position": {
-          "x": -90.53591960393504,
-          "y": -17.580286776561252
-        },
-        "version": "4811",
-        "inputs": [],
-        "outputs": []
-      },
-      {
         "nodeId": "pluginInput",
-        "name": "插件开始",
+        "name": "自定义插件输入",
         "intro": "可以配置插件需要哪些输入，利用这些输入来运行插件",
         "avatar": "core/workflow/template/workflowStart",
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 368.6800424053505,
-          "y": -17.580286776561252
+          "x": -139.66495007440972,
+          "y": -90.99689735553712
         },
         "version": "481",
         "inputs": [
@@ -47,45 +33,22 @@
             "canEdit": true,
             "key": "apikey",
             "label": "apikey",
-            "description": "Doc2X的验证密匙，对于个人用户可以从Doc2X官网 - 个人信息 - 身份令牌获得",
+            "description": "Doc2X的API密匙，可以从Doc2X开放平台获得",
             "required": true,
-            "toolDescription": "",
-            "defaultValue": ""
+            "defaultValue": "",
+            "list": []
           },
           {
             "renderTypeList": ["reference"],
             "selectedTypeIndex": 0,
-            "valueType": "arrayString",
+            "valueType": "any",
             "canEdit": true,
             "key": "files",
             "label": "files",
-            "description": "待处理图片文件",
+            "description": "待处理的PDF文件变量或URL地址",
             "required": true,
-            "toolDescription": "待处理图片文件"
-          },
-          {
-            "renderTypeList": ["switch"],
-            "selectedTypeIndex": 0,
-            "valueType": "boolean",
-            "canEdit": true,
-            "key": "img_correction",
-            "label": "img_correction",
-            "description": "是否启用图形矫正功能",
-            "required": true,
-            "toolDescription": "",
-            "defaultValue": false
-          },
-          {
-            "renderTypeList": ["switch"],
-            "selectedTypeIndex": 0,
-            "valueType": "boolean",
-            "canEdit": true,
-            "key": "formula",
-            "label": "formula",
-            "description": "是否开启纯公式识别(仅适用于图片内容仅有公式时)",
-            "required": true,
-            "toolDescription": "",
-            "defaultValue": false
+            "toolDescription": "待处理的PDF文件变量或URL地址",
+            "list": []
           }
         ],
         "outputs": [
@@ -98,37 +61,23 @@
           },
           {
             "id": "url",
-            "valueType": "arrayString",
+            "valueType": "any",
             "key": "files",
             "label": "files",
-            "type": "hidden"
-          },
-          {
-            "id": "img_correction",
-            "valueType": "boolean",
-            "key": "img_correction",
-            "label": "img_correction",
-            "type": "hidden"
-          },
-          {
-            "id": "formula",
-            "valueType": "boolean",
-            "key": "formula",
-            "label": "formula",
             "type": "hidden"
           }
         ]
       },
       {
         "nodeId": "pluginOutput",
-        "name": "插件输出",
+        "name": "自定义插件输出",
         "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
         "avatar": "core/workflow/template/pluginOutput",
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1796.2235867744578,
-          "y": 6.419713223438748
+          "x": 1808.5347800638815,
+          "y": -105.67504356429907
         },
         "version": "481",
         "inputs": [
@@ -138,7 +87,7 @@
             "canEdit": true,
             "key": "result",
             "label": "result",
-            "description": "处理结果(或者是报错信息)",
+            "description": "处理结果，由文件名以及文档内容组成，多个文件之间由横线分隔开",
             "value": ["zHG5jJBkXmjB", "xWQuEf50F3mr"]
           },
           {
@@ -147,8 +96,8 @@
             "canEdit": true,
             "key": "failreason",
             "label": "failreason",
-            "description": "文件处理失败原因，由文件名以及报错组成，多个文件之间由横线分隔开",
-            "value": ["zHG5jJBkXmjB", "jbv4nVZvmFXm"]
+            "description": "文件处理失败原因，由文件名以及报错组成，多个文件之间由横线分隔开，如所有文件处理成功则为空",
+            "value": ["zHG5jJBkXmjB", "yDxzW5CFalGw"]
           },
           {
             "renderTypeList": ["reference"],
@@ -157,7 +106,7 @@
             "key": "success",
             "label": "success",
             "description": "是否全部文件都处理成功，如有没有处理成功的文件，失败原因将会输出在failreason中",
-            "value": ["zHG5jJBkXmjB", "k46cjNulVk5Y"]
+            "value": ["zHG5jJBkXmjB", "m6CJJj7GFud5"]
           }
         ],
         "outputs": []
@@ -170,8 +119,8 @@
         "flowNodeType": "httpRequest468",
         "showStatus": true,
         "position": {
-          "x": 1081.967607938733,
-          "y": -426.08028677656125
+          "x": 1077.7986740892777,
+          "y": -496.9521622173004
         },
         "version": "481",
         "inputs": [
@@ -236,7 +185,7 @@
             "description": "common:core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "Doc2X/FileImg2text",
+            "value": "Doc2X/PDF2text",
             "debugLabel": "",
             "toolDescription": ""
           },
@@ -266,7 +215,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"files\": {{files}},\n  \"img_correction\": {{img_correction}},\n  \"formula\": {{formula}}\n}",
+            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"files\": \"{{files}}\"}",
             "label": "",
             "required": false,
             "debugLabel": "",
@@ -324,7 +273,7 @@
           },
           {
             "renderTypeList": ["reference"],
-            "valueType": "arrayString",
+            "valueType": "string",
             "canEdit": true,
             "key": "files",
             "label": "files",
@@ -350,67 +299,7 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": ["pluginInput", "url"]
-          },
-          {
-            "renderTypeList": ["reference"],
-            "valueType": "boolean",
-            "canEdit": true,
-            "key": "img_correction",
-            "label": "img_correction",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "arrayAny",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": ["pluginInput", "img_correction"]
-          },
-          {
-            "renderTypeList": ["reference"],
-            "valueType": "boolean",
-            "canEdit": true,
-            "key": "formula",
-            "label": "formula",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "arrayAny",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": ["pluginInput", "formula"]
+            "value": ["pMBi7J7vcsqB", "system_text"]
           }
         ],
         "outputs": [
@@ -466,35 +355,156 @@
             "label": "result"
           },
           {
-            "id": "jbv4nVZvmFXm",
-            "valueType": "string",
-            "type": "dynamic",
-            "key": "failreason",
-            "label": "failreason"
-          },
-          {
-            "id": "k46cjNulVk5Y",
+            "id": "m6CJJj7GFud5",
             "valueType": "boolean",
             "type": "dynamic",
             "key": "success",
             "label": "success"
+          },
+          {
+            "id": "yDxzW5CFalGw",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "failreason",
+            "label": "failreason"
+          }
+        ]
+      },
+      {
+        "nodeId": "pMBi7J7vcsqB",
+        "name": "文本拼接",
+        "intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。",
+        "avatar": "core/workflow/template/textConcat",
+        "flowNodeType": "textEditor",
+        "position": {
+          "x": 469.8489508985863,
+          "y": -177.67504356429907
+        },
+        "version": "486",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "workflow:dynamic_input_description_concat",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_textareaInput",
+            "renderTypeList": ["textarea"],
+            "valueType": "string",
+            "required": true,
+            "label": "拼接文本",
+            "placeholder": "workflow:input_variable_list",
+            "value": "{{files}}",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "any",
+            "canEdit": true,
+            "key": "files",
+            "label": "files",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "required": true,
+            "value": ["pluginInput", "url"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_text",
+            "key": "system_text",
+            "label": "workflow:concatenation_result",
+            "type": "static",
+            "valueType": "string",
+            "description": ""
           }
         ]
       }
     ],
     "edges": [
       {
-        "source": "pluginInput",
-        "target": "zHG5jJBkXmjB",
-        "sourceHandle": "pluginInput-source-right",
-        "targetHandle": "zHG5jJBkXmjB-target-left"
-      },
-      {
         "source": "zHG5jJBkXmjB",
         "target": "pluginOutput",
         "sourceHandle": "zHG5jJBkXmjB-source-right",
         "targetHandle": "pluginOutput-target-left"
+      },
+      {
+        "source": "pluginInput",
+        "target": "pMBi7J7vcsqB",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "pMBi7J7vcsqB-target-left"
+      },
+      {
+        "source": "pMBi7J7vcsqB",
+        "target": "zHG5jJBkXmjB",
+        "sourceHandle": "pMBi7J7vcsqB-source-right",
+        "targetHandle": "zHG5jJBkXmjB-target-left"
       }
-    ]
+    ],
+    "chatConfig": {
+      "questionGuide": false,
+      "ttsConfig": {
+        "type": "web"
+      },
+      "whisperConfig": {
+        "open": false,
+        "autoSend": false,
+        "autoTTSResponse": false
+      },
+      "chatInputGuide": {
+        "open": false,
+        "textList": [],
+        "customUrl": ""
+      },
+      "instruction": "",
+      "variables": [],
+      "welcomeText": ""
+    }
   }
 }
