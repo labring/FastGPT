@@ -22,6 +22,8 @@ export const getSystemPlugins = async (refresh = false) => {
 
     addLog.info(`Load system plugin successfully: ${global.systemPlugins.length}`);
 
+    getSystemPluginCb();
+
     return cloneDeep(global.systemPlugins);
   } catch (error) {
     //@ts-ignore

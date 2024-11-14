@@ -511,22 +511,14 @@ const InputTypeConfig = ({
               <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
                 {t('app:document_upload')}
               </FormLabel>
-              <Switch
-                {...register('canSelectFile', {
-                  required: true
-                })}
-              />
+              <Switch {...register('canSelectFile')} />
             </Flex>
             <Box w={'full'} minH={'40px'}>
               <Flex alignItems={'center'}>
                 <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
                   {t('app:image_upload')}
                 </FormLabel>
-                <Switch
-                  {...register('canSelectImg', {
-                    required: true
-                  })}
-                />
+                <Switch {...register('canSelectImg')} />
               </Flex>
               <Flex color={'myGray.500'}>
                 <Box fontSize={'xs'}>{t('app:image_upload_tip')}</Box>

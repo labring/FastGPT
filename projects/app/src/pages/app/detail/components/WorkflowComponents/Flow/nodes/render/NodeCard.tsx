@@ -115,6 +115,16 @@ const NodeCard = (props: Props) => {
       }
     },
     {
+      onSuccess(res) {
+        if (!res) return;
+        // Execute forcibly updates the courseUrl field
+        onChangeNode({
+          nodeId,
+          type: 'attr',
+          key: 'courseUrl',
+          value: res?.courseUrl
+        });
+      },
       manual: false
     }
   );
