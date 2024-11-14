@@ -215,6 +215,7 @@ const FieldEditModal = ({
   );
   const onSubmitError = useCallback(
     (e: Object) => {
+      console.log('e', e);
       for (const item of Object.values(e)) {
         if (item.message) {
           toast({
