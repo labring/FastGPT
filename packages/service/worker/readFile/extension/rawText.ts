@@ -18,9 +18,17 @@ const rawEncodingList = [
 
 // 加载源文件内容
 export const readFileRawText = ({ buffer, encoding }: ReadRawTextByBuffer): ReadFileResponse => {
-  const content = rawEncodingList.includes(encoding)
-    ? buffer.toString(encoding as BufferEncoding)
-    : iconv.decode(buffer, 'gbk');
+  const content = (() => {
+    try {
+      if (rawEncodingList.includes(encoding)) {
+        return buffer.toString(encoding as BufferEncoding);
+      }
+
+      return iconv.decode(buffer, encoding);
+    } catch (error) {
+      return buffer.toString('utf-8');
+    }
+  })();
 
   return {
     rawText: content

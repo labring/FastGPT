@@ -254,8 +254,6 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
               icon={<MyIcon name={'common/backFill'} w={'14px'} />}
               aria-label={''}
               size={'smSquare'}
-              w={'26px'}
-              h={'26px'}
               borderRadius={'50%'}
               variant={'whiteBase'}
               mr={2}
