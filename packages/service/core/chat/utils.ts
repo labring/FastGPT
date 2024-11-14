@@ -109,7 +109,7 @@ export const loadRequestMessages = async ({
     }
     return Promise.all(
       messages.map(async (item) => {
-        if (item.type === 'image_url' && process.env.MULTIPLE_DATA_TO_BASE64 === 'true') {
+        if (item.type === 'image_url') {
           // Remove url origin
           const imgUrl = (() => {
             if (origin && item.image_url.url.startsWith(origin)) {
