@@ -256,11 +256,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       history: chatCompleteMessages
     };
   } catch (error) {
-    addLog.warn(`LLM response error`, {
-      baseUrl: user.openaiAccount?.baseUrl,
-      requestBody
-    });
-
     if (user.openaiAccount?.baseUrl) {
       return Promise.reject(`您的 OpenAI key 出错了: ${getErrText(error)}`);
     }
