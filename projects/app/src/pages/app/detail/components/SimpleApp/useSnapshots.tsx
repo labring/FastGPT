@@ -24,28 +24,28 @@ export const compareSimpleAppSnapshot = (
     appForm2?.chatConfig &&
     !isEqual(
       {
-        welcomeText: appForm1.chatConfig?.welcomeText,
-        variables: appForm1.chatConfig?.variables,
-        questionGuide: appForm1.chatConfig?.questionGuide,
-        ttsConfig: appForm1.chatConfig?.ttsConfig,
-        whisperConfig: appForm1.chatConfig?.whisperConfig,
-        scheduledTriggerConfig: appForm1.chatConfig?.scheduledTriggerConfig,
-        chatInputGuide: appForm1.chatConfig?.chatInputGuide,
-        fileSelectConfig: appForm1.chatConfig?.fileSelectConfig,
-        instruction: appForm1.chatConfig?.instruction,
-        autoExecute: appForm1.chatConfig?.autoExecute
+        welcomeText: appForm1.chatConfig?.welcomeText || '',
+        variables: appForm1.chatConfig?.variables || [],
+        questionGuide: appForm1.chatConfig?.questionGuide || false,
+        ttsConfig: appForm1.chatConfig?.ttsConfig || undefined,
+        whisperConfig: appForm1.chatConfig?.whisperConfig || undefined,
+        scheduledTriggerConfig: appForm1.chatConfig?.scheduledTriggerConfig || undefined,
+        chatInputGuide: appForm1.chatConfig?.chatInputGuide || undefined,
+        fileSelectConfig: appForm1.chatConfig?.fileSelectConfig || undefined,
+        instruction: appForm1.chatConfig?.instruction || '',
+        autoExecute: appForm1.chatConfig?.autoExecute || undefined
       },
       {
-        welcomeText: appForm2.chatConfig?.welcomeText,
-        variables: appForm2.chatConfig?.variables,
-        questionGuide: appForm2.chatConfig?.questionGuide,
-        ttsConfig: appForm2.chatConfig?.ttsConfig,
-        whisperConfig: appForm2.chatConfig?.whisperConfig,
-        scheduledTriggerConfig: appForm2.chatConfig?.scheduledTriggerConfig,
-        chatInputGuide: appForm2.chatConfig?.chatInputGuide,
-        fileSelectConfig: appForm2.chatConfig?.fileSelectConfig,
-        instruction: appForm2.chatConfig?.instruction,
-        autoExecute: appForm2.chatConfig?.autoExecute
+        welcomeText: appForm2.chatConfig?.welcomeText || '',
+        variables: appForm2.chatConfig?.variables || [],
+        questionGuide: appForm2.chatConfig?.questionGuide || false,
+        ttsConfig: appForm2.chatConfig?.ttsConfig || undefined,
+        whisperConfig: appForm2.chatConfig?.whisperConfig || undefined,
+        scheduledTriggerConfig: appForm2.chatConfig?.scheduledTriggerConfig || undefined,
+        chatInputGuide: appForm2.chatConfig?.chatInputGuide || undefined,
+        fileSelectConfig: appForm2.chatConfig?.fileSelectConfig || undefined,
+        instruction: appForm2.chatConfig?.instruction || '',
+        autoExecute: appForm2.chatConfig?.autoExecute || undefined
       }
     )
   ) {
