@@ -1,5 +1,6 @@
 import { batchRun } from '../fn/utils';
-import { simpleText } from './tools';
+import { getNanoid, simpleText } from './tools';
+import type { ImageType } from '../../../service/worker/readFile/type';
 
 /* Delete redundant text in markdown */
 export const simpleMarkdownText = (rawText: string) => {
@@ -91,4 +92,26 @@ export const markdownProcess = async ({
   });
 
   return simpleMarkdownText(imageProcess);
+};
+
+export const matchMdImgTextAndUpload = (text: string) => {
+  const base64Regex = /"(data:image\/[^;]+;base64[^"]+)"/g;
+  const imageList: ImageType[] = [];
+  const images = Array.from(text.match(base64Regex) || []);
+  for (const image of images) {
+    const uuid = `IMAGE_${getNanoid(12)}_IMAGE`;
+    const mime = image.split(';')[0].split(':')[1];
+    const base64 = image.split(',')[1];
+    text = text.replace(image, uuid);
+    imageList.push({
+      uuid,
+      base64,
+      mime
+    });
+  }
+
+  return {
+    text,
+    imageList
+  };
 };

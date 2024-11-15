@@ -1,5 +1,6 @@
 import TurndownService from 'turndown';
 import { ImageType } from '../readFile/type';
+import { matchMdImgTextAndUpload } from '@fastgpt/global/common/string/markdown';
 // @ts-ignore
 const turndownPluginGfm = require('joplin-turndown-plugin-gfm');
 
@@ -24,23 +25,10 @@ export const html2md = (
     turndownService.remove(['i', 'script', 'iframe', 'style']);
     turndownService.use(turndownPluginGfm.gfm);
 
-    const base64Regex = /"(data:image\/[^;]+;base64[^"]+)"/g;
-    const imageList: ImageType[] = [];
-    const images = Array.from(html.match(base64Regex) || []);
-    for (const image of images) {
-      const uuid = crypto.randomUUID();
-      const mime = image.split(';')[0].split(':')[1];
-      const base64 = image.split(',')[1];
-      html = html.replace(image, uuid);
-      imageList.push({
-        uuid,
-        base64,
-        mime
-      });
-    }
+    const { text, imageList } = matchMdImgTextAndUpload(html);
 
     return {
-      rawText: turndownService.turndown(html),
+      rawText: turndownService.turndown(text),
       imageList
     };
   } catch (error) {
