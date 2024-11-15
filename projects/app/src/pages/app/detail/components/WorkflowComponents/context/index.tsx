@@ -79,6 +79,11 @@ export type WorkflowSnapshotsType = {
   title: string;
   isSaved?: boolean;
   state?: WorkflowStateType;
+
+  // old format
+  nodes?: Node[];
+  edges?: Edge[];
+  chatConfig?: AppChatConfigType;
 };
 
 export type WorkflowStateType = {
@@ -902,6 +907,38 @@ const WorkflowContextProvider = ({
     });
   }, [appId]);
 
+  const convertOldFormatHistory = (past: WorkflowSnapshotsType[]) => {
+    const baseState = {
+      nodes: past[past.length - 1].state?.nodes || [],
+      edges: past[past.length - 1].state?.edges || [],
+      chatConfig: past[past.length - 1].state?.chatConfig || {}
+    };
+
+    return past.map((item, index) => {
+      if (index === past.length - 1) {
+        return {
+          title: item.title,
+          isSaved: item.isSaved,
+          state: baseState
+        };
+      }
+
+      const currentState = {
+        nodes: item.nodes || [],
+        edges: item.edges || [],
+        chatConfig: item.chatConfig || {}
+      };
+
+      const diff = diffPatcher.diff(baseState, currentState);
+
+      return {
+        title: item.title || formatTime2YMDHMS(new Date()),
+        isSaved: item.isSaved,
+        diff
+      };
+    });
+  };
+
   const initData = useCallback(
     async (
       e: {
@@ -920,20 +957,42 @@ const WorkflowContextProvider = ({
         chatConfig: e.chatConfig || appDetail.chatConfig
       };
 
-      // If initializing and has past snapshots, restore from latest snapshot
-      if (isInit && past.length > 0 && past[0].diff) {
-        const targetState = diffPatcher.patch(
-          structuredClone(past[past.length - 1].state),
-          past[0].diff
-        ) as WorkflowStateType;
+      if (isInit && past.length > 0) {
+        // new format
+        if (past[0].diff) {
+          const targetState = diffPatcher.patch(
+            structuredClone(past[past.length - 1].state),
+            past[0].diff
+          ) as WorkflowStateType;
 
-        setNodes(targetState.nodes);
-        setEdges(targetState.edges);
-        setAppDetail((state) => ({
-          ...state,
-          chatConfig: targetState.chatConfig
-        }));
-        return;
+          setNodes(targetState.nodes);
+          setEdges(targetState.edges);
+          setAppDetail((state) => ({
+            ...state,
+            chatConfig: targetState.chatConfig
+          }));
+          return;
+        }
+
+        // old format
+        if (past.some((item) => !item.state && (item.nodes || item.edges))) {
+          const newPast = convertOldFormatHistory(past);
+
+          setPast(newPast);
+
+          const latestState = diffPatcher.patch(
+            structuredClone(newPast[newPast.length - 1].state),
+            newPast[0].diff
+          ) as WorkflowStateType;
+
+          setNodes(latestState.nodes);
+          setEdges(latestState.edges);
+          setAppDetail((state) => ({
+            ...state,
+            chatConfig: latestState.chatConfig
+          }));
+          return;
+        }
       }
 
       setNodes(nodes);
