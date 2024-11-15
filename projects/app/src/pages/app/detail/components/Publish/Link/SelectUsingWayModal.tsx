@@ -75,7 +75,7 @@ const SelectUsingWayModal = ({ share, onClose }: { share: OutLinkSchema; onClose
   });
 
   const baseUrl = feConfigs?.customSharePageDomain || location?.origin;
-  const linkUrl = `${baseUrl}${subRoute ? `${subRoute}/` : ''}chat/share?shareId=${share?.shareId}${
+  const linkUrl = `${baseUrl}${subRoute ? `${subRoute}/` : '/'}chat/share?shareId=${share?.shareId}${
     getValues('showHistory') ? '' : '&showHistory=0'
   }`;
 
