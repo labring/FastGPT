@@ -4,12 +4,12 @@ import FormData from 'form-data';
 
 import { WorkerNameEnum, runWorker } from '../../../worker/utils';
 import fs from 'fs';
-import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
 import axios from 'axios';
 import { addLog } from '../../system/log';
 import { batchRun } from '@fastgpt/global/common/fn/utils';
 import { addHours } from 'date-fns';
+import { matchMdImgTextAndUpload } from '@fastgpt/global/common/string/markdown';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -79,6 +79,7 @@ export const readRawContentByFileBuffer = async ({
       data: {
         page: number;
         markdown: string;
+        duration: number;
       };
     }>(customReadfileUrl, data, {
       timeout: 600000,
@@ -90,10 +91,12 @@ export const readRawContentByFileBuffer = async ({
     addLog.info(`Use custom read file service, time: ${Date.now() - start}ms`);
 
     const rawText = response.data.markdown;
+    const { text, imageList } = matchMdImgTextAndUpload(rawText);
 
     return {
-      rawText,
-      formatText: rawText
+      rawText: text,
+      formatText: rawText,
+      imageList
     };
   };
 
@@ -120,6 +123,9 @@ export const readRawContentByFileBuffer = async ({
         }
       });
       rawText = rawText.replace(item.uuid, src);
+      if (formatText) {
+        formatText = formatText.replace(item.uuid, src);
+      }
     });
   }
 
@@ -128,7 +134,7 @@ export const readRawContentByFileBuffer = async ({
     if (isQAImport) {
       rawText = rawText || '';
     } else {
-      rawText = formatText || '';
+      rawText = formatText || rawText;
     }
   }
 

@@ -46,6 +46,8 @@ export const getCommunityPlugins = () => {
 };
 
 export const getSystemPluginTemplates = () => {
+  if (!global.systemPlugins) return [];
+
   const oldPlugins = global.communityPlugins ?? [];
   return [...oldPlugins, ...cloneDeep(global.systemPlugins)];
 };
