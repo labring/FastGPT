@@ -11,8 +11,8 @@
   },
   "llmModels": [
     {
-      "model": "gpt-4o-mini", // 模型名(对应OneAPI中渠道的模型名)
-      "name": "gpt-4o-mini", // 模型别名
+      "model": "Qwen/Qwen2.5-7B-Instruct", // 模型名(对应OneAPI中渠道的模型名)
+      "name": "Qwen/Qwen2.5-7B-Instruct", // 模型别名
       "avatar": "/imgs/model/openai.svg", // 模型的logo
       "maxContext": 125000, // 最大上下文
       "maxResponse": 16000, // 最大回复
