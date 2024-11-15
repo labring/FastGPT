@@ -1,4 +1,4 @@
-import { getSystemPluginCb, getSystemPlugins } from '@/service/core/app/plugin';
+import { getSystemPluginCb } from '@/service/core/app/plugin';
 import { initSystemConfig } from '.';
 import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training/utils';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
@@ -29,7 +29,7 @@ const refetchSystemPlugins = () => {
   changeStream.on('change', async (change) => {
     setTimeout(() => {
       try {
-        getSystemPlugins(true);
+        getSystemPluginCb(true);
       } catch (error) {}
     }, 5000);
   });
