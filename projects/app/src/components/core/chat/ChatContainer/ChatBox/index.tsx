@@ -409,7 +409,7 @@ const ChatBox = (
       history = chatHistories,
       autoTTSResponse = false,
       isInteractivePrompt = false,
-      isAutoExecutePrompt = false
+      hideInUI = false
     }) => {
       variablesForm.handleSubmit(
         async ({ variables }) => {
@@ -456,7 +456,7 @@ const ChatBox = (
               dataId: getNanoid(24),
               obj: ChatRoleEnum.Human,
               time: new Date(),
-              isAutoExecutePrompt,
+              hideInUI,
               value: [
                 ...files.map((file) => ({
                   type: ChatItemValueTypeEnum.file,
@@ -909,7 +909,7 @@ const ChatBox = (
           <Box id={'history'}>
             {chatHistories.map(
               (item, index) =>
-                !item.isAutoExecutePrompt && (
+                !item.hideInUI && (
                   <Box key={item.dataId}>
                     {/* 并且时间和上一条的time相差超过十分钟 */}
                     {index !== 0 &&
@@ -1041,7 +1041,7 @@ const ChatBox = (
     if (isAutoExecute && chatStarted && autoExecute.open) {
       sendPrompt({
         text: autoExecute.defaultPrompt || 'AUTO_EXECUTE',
-        isAutoExecutePrompt: true
+        hideInUI: true
       });
     }
   }, [isAutoExecute, sendPrompt, chatStarted, autoExecute, chatHistories.length]);

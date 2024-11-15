@@ -455,22 +455,6 @@ const EditForm = ({
           />
         </Box>
 
-        {/* timer trigger */}
-        <Box {...BoxStyles}>
-          <ScheduledTriggerConfig
-            value={appForm.chatConfig.scheduledTriggerConfig}
-            onChange={(e) => {
-              setAppForm((state) => ({
-                ...state,
-                chatConfig: {
-                  ...state.chatConfig,
-                  scheduledTriggerConfig: e
-                }
-              }));
-            }}
-          />
-        </Box>
-
         {/* auto execute */}
         <Box {...BoxStyles} borderBottom={'none'}>
           <AutoExecConfig

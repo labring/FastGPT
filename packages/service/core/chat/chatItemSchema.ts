@@ -46,7 +46,7 @@ const ChatItemSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
-  isAutoExecutePrompt: {
+  hideInUI: {
     type: Boolean,
     default: false
   },

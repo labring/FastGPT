@@ -71,37 +71,36 @@ export const getGuideModule = (modules: StoreNodeItemType[]) =>
   );
 export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
   const welcomeText: string =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.welcomeText)?.value || '';
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.welcomeText)?.value ?? '';
 
   const variables: VariableItemType[] =
-    guideModules?.inputs.find((item) => item.key === NodeInputKeyEnum.variables)?.value || [];
+    guideModules?.inputs.find((item) => item.key === NodeInputKeyEnum.variables)?.value ?? [];
 
   const questionGuide: boolean =
-    !!guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.questionGuide)?.value ||
+    !!guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.questionGuide)?.value ??
     false;
 
   const ttsConfig: AppTTSConfigType =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.tts)?.value ||
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.tts)?.value ??
     defaultTTSConfig;
 
   const whisperConfig: AppWhisperConfigType =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.whisper)?.value ||
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.whisper)?.value ??
     defaultWhisperConfig;
 
-  const scheduledTriggerConfig: AppScheduledTriggerConfigType = guideModules?.inputs?.find(
-    (item) => item.key === NodeInputKeyEnum.scheduleTrigger
-  )?.value;
+  const scheduledTriggerConfig: AppScheduledTriggerConfigType =
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.scheduleTrigger)?.value ??
+    undefined;
 
   const chatInputGuide: ChatInputGuideConfigType =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.chatInputGuide)?.value ||
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.chatInputGuide)?.value ??
     defaultChatInputGuideConfig;
 
-  // plugin
   const instruction: string =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.instruction)?.value || '';
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.instruction)?.value ?? '';
 
   const autoExecute: AppAutoExecuteConfigType =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.autoExecute)?.value ||
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.autoExecute)?.value ??
     defaultAutoExecuteConfig;
 
   return {

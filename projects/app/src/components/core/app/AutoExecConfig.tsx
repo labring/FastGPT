@@ -6,7 +6,6 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useTranslation } from 'react-i18next';
 import ChatFunctionTip from './Tip';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useMemo } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 
 const AutoExecConfig = ({
@@ -21,12 +20,9 @@ const AutoExecConfig = ({
   const isOpenAutoExec = value.open;
   const defaultPrompt = value.defaultPrompt;
 
-  const formLabel = useMemo(() => {
-    if (!isOpenAutoExec) {
-      return t('common:core.app.whisper.Close');
-    }
-    return t('common:core.app.whisper.Open');
-  }, [t, isOpenAutoExec]);
+  const formLabel = isOpenAutoExec
+    ? t('common:core.app.whisper.Open')
+    : t('common:core.app.whisper.Close');
 
   return (
     <Flex alignItems={'center'}>
