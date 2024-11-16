@@ -1,0 +1,18 @@
+{
+  "bucket_chat": "對話檔案",
+  "bucket_file": "知識庫檔案",
+  "click_to_view_raw_source": "點選檢視原始來源",
+  "file_name": "檔案名稱",
+  "file_size": "檔案大小",
+  "release_the_mouse_to_upload_the_file": "放開滑鼠以上傳檔案",
+  "select_and_drag_file_tip": "點選或拖曳檔案至此處上傳",
+  "select_file_amount_limit": "最多可選擇 {{max}} 個檔案",
+  "some_file_count_exceeds_limit": "已超過 {{maxCount}} 個檔案上限，系統已自動截斷",
+  "some_file_size_exceeds_limit": "部分檔案超過 {{maxSize}} 大小限制，已自動過濾",
+  "support_file_type": "支援 {{fileType}} 格式的檔案",
+  "support_max_count": "最多可支援 {{maxCount}} 個檔案",
+  "support_max_size": "單一檔案大小上限為 {{maxSize}}",
+  "upload_failed": "上傳失敗",
+  "reached_max_file_count": "已達檔案數量上限",
+  "upload_error_description": "單次僅支援上傳多個檔案或一個資料夾" 
+}
