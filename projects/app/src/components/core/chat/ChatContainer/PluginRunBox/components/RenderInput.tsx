@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useFieldArray } from 'react-hook-form';
 import RenderPluginInput from './renderPluginInput';
 import { Box, Button, Flex } from '@chakra-ui/react';
@@ -16,34 +16,36 @@ import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { ChatBoxInputFormType } from '../../ChatBox/type';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import { useChatStore } from '@/web/core/chat/context/storeChat';
 
 const RenderInput = () => {
   const { t } = useTranslation();
+  const { chatId, outLinkAuthData } = useChatStore();
 
-  const {
-    pluginInputs,
-    variablesForm,
-    histories,
-    onStartChat,
-    onNewChat,
-    onSubmit,
-    isChatting,
-    chatConfig,
-    chatId,
-    outLinkAuthData
-  } = useContextSelector(PluginRunContext, (v) => v);
+  const pluginInputs = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.pluginInputs);
+  const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
+
+  const histories = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+
+  const onStartChat = useContextSelector(PluginRunContext, (v) => v.onStartChat);
+  const onNewChat = useContextSelector(PluginRunContext, (v) => v.onNewChat);
+  const onSubmit = useContextSelector(PluginRunContext, (v) => v.onSubmit);
+  const isChatting = useContextSelector(PluginRunContext, (v) => v.isChatting);
+  const fileSelectConfig = useContextSelector(PluginRunContext, (v) => v.fileSelectConfig);
+  const instruction = useContextSelector(PluginRunContext, (v) => v.instruction);
 
   const {
     control,
     handleSubmit,
     reset,
-    getValues,
     formState: { errors }
   } = variablesForm;
 
   /* ===> Global files(abandon) */
   const fileCtrl = useFieldArray({
-    control: variablesForm.control,
+    control,
     name: 'files'
   });
   const {
@@ -58,9 +60,7 @@ const RenderInput = () => {
     removeFiles,
     hasFileUploading
   } = useFileUpload({
-    outLinkAuthData,
-    chatId: chatId || '',
-    fileSelectConfig: chatConfig?.fileSelectConfig,
+    fileSelectConfig,
     fileCtrl
   });
   const isDisabledInput = histories.length > 0;
@@ -169,7 +169,7 @@ const RenderInput = () => {
   return (
     <Box>
       {/* instruction */}
-      {chatConfig?.instruction && (
+      {instruction && (
         <Box
           border={'1px solid'}
           borderColor={'myGray.250'}
@@ -179,7 +179,7 @@ const RenderInput = () => {
           color={'myGray.600'}
           mb={4}
         >
-          <Markdown source={chatConfig.instruction} />
+          <Markdown source={instruction} />
         </Box>
       )}
       {/* file select(Abandoned) */}

@@ -18,6 +18,7 @@ import FilePreview from '../../components/FilePreview';
 import { useFileUpload } from '../hooks/useFileUpload';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useChatStore } from '@/web/core/chat/context/storeChat';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -43,15 +44,16 @@ const ChatInput = ({
   chatForm: UseFormReturn<ChatBoxInputFormType>;
   appId: string;
 }) => {
-  const { isPc } = useSystem();
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { isPc } = useSystem();
+
+  const { chatId } = useChatStore();
 
   const { setValue, watch, control } = chatForm;
   const inputValue = watch('input');
 
   const {
-    chatId,
     isChatting,
     whisperConfig,
     autoTTSResponse,
@@ -78,8 +80,6 @@ const ChatInput = ({
     replaceFiles,
     hasFileUploading
   } = useFileUpload({
-    outLinkAuthData,
-    chatId: chatId || '',
     fileSelectConfig,
     fileCtrl
   });

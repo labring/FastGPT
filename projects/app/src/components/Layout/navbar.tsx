@@ -23,14 +23,14 @@ const Navbar = ({ unread }: { unread: number }) => {
   const router = useRouter();
   const { userInfo } = useUserStore();
   const { gitStar, feConfigs } = useSystemStore();
-  const { lastChatAppId, lastChatId } = useChatStore();
+  const { lastChatAppId } = useChatStore();
   const navbarList = useMemo(
     () => [
       {
         label: t('common:navbar.Chat'),
         icon: 'core/chat/chatLight',
         activeIcon: 'core/chat/chatFill',
-        link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
+        link: `/chat?appId=${lastChatAppId}`,
         activeLink: ['/chat']
       },
       {
@@ -55,7 +55,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/account']
       }
     ],
-    [lastChatAppId, lastChatId, t]
+    [lastChatAppId, t]
   );
 
   const itemStyles: BoxProps & LinkProps = {

@@ -12,5 +12,7 @@ export const fileImgs = [
 ];
 
 export function getFileIcon(name = '', defaultImg = 'file/fill/file') {
-  return fileImgs.find((item) => new RegExp(item.suffix, 'gi').test(name))?.src || defaultImg;
+  return (
+    fileImgs.find((item) => new RegExp(`\.${item.suffix}`, 'gi').test(name))?.src || defaultImg
+  );
 }

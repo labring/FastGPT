@@ -1,30 +1,23 @@
 import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
+import type { CreateQuestionGuideParams } from '@/global/core/ai/api.d';
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
-import { authChatCert } from '@/service/support/permission/auth/chat';
+import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 
-async function handler(
-  req: ApiRequestProps<
-    OutLinkChatAuthProps & {
-      messages: ChatCompletionMessageParam[];
-    }
-  >,
-  res: NextApiResponse<any>
-) {
+async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
     const { messages } = req.body;
 
-    const { tmbId, teamId } = await authChatCert({
+    const { tmbId, teamId } = await authChatCrud({
       req,
       authToken: true,
-      authApiKey: true
+      authApiKey: true,
+      ...req.body
     });
 
     const qgModel = global.llmModels[0];
