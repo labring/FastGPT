@@ -1,17 +1,7 @@
 import React, { useMemo } from 'react';
 import { Controller, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import {
-  Box,
-  Button,
-  Card,
-  NumberDecrementStepper,
-  NumberIncrementStepper,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  Textarea
-} from '@chakra-ui/react';
+import { Box, Button, Card, Textarea } from '@chakra-ui/react';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
@@ -47,13 +37,7 @@ export const VariableInputItem = ({
       >
         {item.label}
         {item.required && (
-          <Box
-            position={'absolute'}
-            top={'-2px'}
-            left={'-8px'}
-            color={'red.500'}
-            fontWeight={'bold'}
-          >
+          <Box position={'absolute'} top={'-2px'} left={'-8px'} color={'red.500'}>
             *
           </Box>
         )}

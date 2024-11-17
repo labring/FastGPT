@@ -16,51 +16,119 @@ const VariableTable = ({
   const showToolColumn = variables.some((item) => item.isTool);
 
   return (
-    <Box bg={'white'} borderRadius={'md'} overflow={'hidden'} border={'base'}>
+    <Box
+      bg={'white'}
+      borderRadius={'md'}
+      overflow={'hidden'}
+      border={'1px solid'}
+      borderColor={'myGray.200'}
+    >
       <TableContainer>
         <Table bg={'white'}>
           <Thead>
-            <Tr>
-              <Th borderBottomLeftRadius={'none !important'}>{t('workflow:Variable_name')}</Th>
-              <Th>{t('common:core.workflow.Value type')}</Th>
-              {showToolColumn && <Th>{t('workflow:tool_input')}</Th>}
-              <Th borderBottomRightRadius={'none !important'}></Th>
+            <Tr h={8}>
+              <Th
+                p={0}
+                px={4}
+                fontSize={'mini'}
+                borderBottomLeftRadius={'none !important'}
+                bg={'myGray.50'}
+              >
+                {t('workflow:Variable_name')}
+              </Th>
+              <Th p={0} px={4} fontSize={'mini'} bg={'myGray.50'}>
+                {t('common:core.workflow.Value type')}
+              </Th>
+              {showToolColumn && (
+                <Th p={0} px={4} fontSize={'mini'} bg={'myGray.50'}>
+                  {t('workflow:tool_input')}
+                </Th>
+              )}
+              <Th
+                p={0}
+                px={4}
+                fontSize={'mini'}
+                bg={'myGray.50'}
+                borderBottomRightRadius={'none !important'}
+              >
+                {t('user:operations')}
+              </Th>
             </Tr>
           </Thead>
           <Tbody>
-            {variables.map((item) => (
-              <Tr key={item.key}>
-                <Td>
-                  <Flex alignItems={'center'}>
-                    {!!item.icon && (
-                      <MyIcon name={item.icon as any} w={'14px'} mr={1} color={'primary.600'} />
+            {variables.map((item, index) => (
+              <Tr key={item.key} h={10}>
+                <Td p={0} px={4} borderBottom={index === variables.length - 1 ? 'none' : undefined}>
+                  <Flex alignItems={'center'} fontSize={'xs'}>
+                    {!!item.icon ? (
+                      <MyIcon name={item.icon as any} w={'14px'} mr={1} color={'myGray.600'} />
+                    ) : (
+                      <MyIcon name={'checkCircle'} w={'14px'} mr={1} color={'myGray.600'} />
                     )}
                     {item.label || item.key}
                   </Flex>
                 </Td>
-                <Td>{item.type}</Td>
-                {showToolColumn && <Th>{item.isTool ? '✅' : '-'}</Th>}
-                <Td>
-                  <MyIcon
-                    mr={3}
-                    name={'common/settingLight'}
-                    w={'16px'}
-                    cursor={'pointer'}
-                    _hover={{ color: 'primary.600' }}
-                    onClick={() => onEdit(item.key)}
-                  />
-                  <MyIcon
-                    className="delete"
-                    name={'delete'}
-                    w={'16px'}
-                    color={'myGray.600'}
-                    cursor={'pointer'}
-                    ml={2}
-                    _hover={{ color: 'red.500' }}
-                    onClick={() => {
-                      onDelete(item.key);
-                    }}
-                  />
+                <Td
+                  p={0}
+                  px={4}
+                  fontSize={'xs'}
+                  borderBottom={index === variables.length - 1 ? 'none' : undefined}
+                >
+                  {item.type}
+                </Td>
+                {showToolColumn && (
+                  <Td
+                    p={0}
+                    px={4}
+                    borderBottom={index === variables.length - 1 ? 'none' : undefined}
+                  >
+                    {item.isTool ? (
+                      <Flex alignItems={'center'}>
+                        <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} />
+                      </Flex>
+                    ) : (
+                      ''
+                    )}
+                  </Td>
+                )}
+                <Td p={0} px={4} borderBottom={index === variables.length - 1 ? 'none' : undefined}>
+                  <Flex>
+                    <Flex
+                      mr={1}
+                      p={1}
+                      color={'myGray.500'}
+                      rounded={'sm'}
+                      alignItems={'center'}
+                      bg={'transparent'}
+                      transition={'background 0.1s'}
+                      cursor={'pointer'}
+                      _hover={{
+                        bg: 'myGray.05',
+                        color: 'primary.600'
+                      }}
+                      onClick={() => onEdit(item.key)}
+                    >
+                      <MyIcon name={'common/settingLight'} w={'16px'} />
+                    </Flex>
+                    <Flex
+                      p={1}
+                      color={'myGray.500'}
+                      rounded={'sm'}
+                      alignItems={'center'}
+                      bg={'transparent'}
+                      transition={'background 0.1s'}
+                      cursor={'pointer'}
+                      _hover={{
+                        bg: 'myGray.05',
+                        color: 'red.500'
+                      }}
+                      onClick={() => {
+                        onDelete(item.key);
+                      }}
+                    >
+                      <MyIcon name={'delete'} w={'16px'} />
+                    </Flex>
+                  </Flex>
                 </Td>
               </Tr>
             ))}

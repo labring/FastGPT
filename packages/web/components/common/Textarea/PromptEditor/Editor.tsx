@@ -43,7 +43,9 @@ export default function Editor({
   onBlur,
   value,
   placeholder = '',
-  bg = 'white'
+  bg = 'white',
+  placeholderPaddingX = 3.5,
+  placeholderPaddingY = 2
 }: {
   minH?: number;
   maxH?: number;
@@ -57,6 +59,8 @@ export default function Editor({
   value?: string;
   placeholder?: string;
   bg?: string;
+  placeholderPaddingX?: number;
+  placeholderPaddingY?: number;
 }) {
   const [key, setKey] = useState(getNanoid(6));
   const [_, startSts] = useTransition();
@@ -105,8 +109,8 @@ export default function Editor({
               left={0}
               right={0}
               bottom={0}
-              py={2}
-              px={3}
+              py={placeholderPaddingY}
+              px={placeholderPaddingX}
               pointerEvents={'none'}
               overflow={'hidden'}
             >

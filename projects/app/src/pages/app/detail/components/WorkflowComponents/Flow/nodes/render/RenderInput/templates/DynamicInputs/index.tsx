@@ -115,7 +115,6 @@ function Reference({
     content: workflowT('confirm_delete_field_tip')
   });
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const keys = useMemo(() => {
     return inputs.map((input) => input.key);
@@ -199,7 +198,7 @@ function Reference({
         />
 
         <MyIcon
-          className="delete"
+          className={'delete'}
           name={'delete'}
           w={'14px'}
           color={'myGray.500'}

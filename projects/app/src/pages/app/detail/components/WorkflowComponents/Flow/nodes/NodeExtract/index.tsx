@@ -53,14 +53,15 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
       }: Omit<FlowNodeInputItemType, 'value'> & {
         value?: ContextExtractAgentItemType[];
       }) => (
-        <Box>
+        <Box mt={-2}>
           <Flex alignItems={'center'}>
-            <Box flex={'1 0 0'} fontWeight={'medium'} color={'myGray.600'}>
+            <Box flex={'1 0 0'} fontSize={'sm'} fontWeight={'medium'} color={'myGray.600'}>
               {t('common:core.module.extract.Target field')}
             </Box>
             <Button
               size={'sm'}
-              variant={'ghost'}
+              variant={'grayGhost'}
+              px={2}
               color={'myGray.600'}
               leftIcon={<AddIcon fontSize={'10px'} />}
               onClick={() => setEditExtractField(defaultField)}
@@ -68,48 +69,104 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
               {t('common:core.module.extract.Add field')}
             </Button>
           </Flex>
-          <Box
-            mt={2}
-            borderRadius={'md'}
-            overflow={'hidden'}
-            borderWidth={'1px'}
-            borderBottom="none"
-          >
-            <TableContainer>
-              <Table bg={'white'}>
-                <Thead>
-                  <Tr>
-                    <Th borderRadius={'none !important'}>{t('common:item_name')}</Th>
-                    <Th>{t('common:item_description')}</Th>
-                    <Th>{t('common:required')}</Th>
-                    <Th borderRadius={'none !important'}></Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {extractKeys.map((item, index) => (
-                    <Tr
-                      key={index}
-                      position={'relative'}
-                      whiteSpace={'pre-wrap'}
-                      wordBreak={'break-all'}
+
+          <TableContainer borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'}>
+            <Table bg={'white'}>
+              <Thead>
+                <Tr h={8}>
+                  <Th p={0} px={4} bg={'myGray.50'} borderRadius={'none !important'}>
+                    {t('common:item_name')}
+                  </Th>
+                  <Th p={0} px={4} bg={'myGray.50'}>
+                    {t('common:item_description')}
+                  </Th>
+                  <Th p={0} px={4} bg={'myGray.50'}>
+                    {t('common:required')}
+                  </Th>
+                  <Th p={0} px={4} bg={'myGray.50'} borderRadius={'none !important'}></Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {extractKeys.map((item, index) => (
+                  <Tr
+                    key={index}
+                    position={'relative'}
+                    whiteSpace={'pre-wrap'}
+                    wordBreak={'break-all'}
+                    h={10}
+                  >
+                    <Td
+                      p={0}
+                      px={4}
+                      borderBottom={index === extractKeys.length - 1 ? 'none' : 'base'}
+                      fontSize={'xs'}
+                      fontWeight={'medium'}
                     >
-                      <Td>{item.key}</Td>
-                      <Td>{item.desc}</Td>
-                      <Td>{item.required ? '✔' : ''}</Td>
-                      <Td whiteSpace={'nowrap'}>
-                        <MyIcon
-                          mr={3}
-                          name={'common/settingLight'}
-                          w={'16px'}
+                      <Flex alignItems={'center'}>
+                        <MyIcon name={'checkCircle'} w={'14px'} mr={1} color={'myGray.600'} />
+                        {item.key}
+                      </Flex>
+                    </Td>
+                    <Td
+                      p={0}
+                      px={4}
+                      borderBottom={index === extractKeys.length - 1 ? 'none' : 'base'}
+                      fontSize={'xs'}
+                    >
+                      {item.desc}
+                    </Td>
+                    <Td
+                      p={0}
+                      px={4}
+                      borderBottom={index === extractKeys.length - 1 ? 'none' : 'base'}
+                    >
+                      {item.required ? (
+                        <Flex alignItems={'center'}>
+                          <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} />
+                        </Flex>
+                      ) : (
+                        ''
+                      )}
+                    </Td>
+                    <Td
+                      p={0}
+                      px={4}
+                      borderBottom={index === extractKeys.length - 1 ? 'none' : 'base'}
+                      whiteSpace={'nowrap'}
+                    >
+                      <Flex>
+                        <Flex
+                          mr={1}
+                          p={1}
+                          color={'myGray.500'}
+                          rounded={'sm'}
+                          alignItems={'center'}
+                          bg={'transparent'}
+                          transition={'background 0.1s'}
                           cursor={'pointer'}
+                          _hover={{
+                            bg: 'myGray.05',
+                            color: 'primary.600'
+                          }}
                           onClick={() => {
                             setEditExtractField(item);
                           }}
-                        />
-                        <MyIcon
-                          name={'delete'}
-                          w={'16px'}
+                        >
+                          <MyIcon name={'common/settingLight'} w={'16px'} />
+                        </Flex>
+                        <Flex
+                          mr={1}
+                          p={1}
+                          color={'myGray.500'}
+                          rounded={'sm'}
+                          alignItems={'center'}
+                          bg={'transparent'}
+                          transition={'background 0.1s'}
                           cursor={'pointer'}
+                          _hover={{
+                            bg: 'myGray.05',
+                            color: 'red.500'
+                          }}
                           onClick={() => {
                             onChangeNode({
                               nodeId,
@@ -127,14 +184,16 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
                               key: item.key
                             });
                           }}
-                        />
-                      </Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </TableContainer>
-          </Box>
+                        >
+                          <MyIcon name={'delete'} w={'16px'} />
+                        </Flex>
+                      </Flex>
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </TableContainer>
         </Box>
       )
     }),

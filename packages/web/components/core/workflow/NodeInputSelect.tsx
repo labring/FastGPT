@@ -7,7 +7,6 @@ import {
 import { Box, Button, useTheme } from '@chakra-ui/react';
 import MyIcon from '../../common/Icon';
 import { useTranslation } from 'next-i18next';
-import { useConfirm } from '../../../hooks/useConfirm';
 
 const NodeInputSelect = ({
   renderTypeList,
@@ -19,9 +18,6 @@ const NodeInputSelect = ({
   onChange: (e: string) => void;
 }) => {
   const { t } = useTranslation();
-  const { openConfirm, ConfirmModal } = useConfirm({
-    title: t('common:core.workflow.Change input type tip')
-  });
   const renderType = renderTypeList[renderTypeIndex];
   const theme = useTheme();
 
@@ -136,7 +132,21 @@ const NodeInputSelect = ({
   );
 
   const filterMenuList = useMemo(
-    () => renderList.filter((item) => renderTypeList.includes(item.renderType)),
+    () =>
+      renderList
+        .filter((item) => renderTypeList.includes(item.renderType))
+        .map((item) => ({
+          ...item,
+          menuItemStyles: {
+            fontWeight: 'medium',
+            minH: 7,
+            h: 7,
+            px: 1,
+            py: 0,
+            mb: 0,
+            borderRadius: 'xs'
+          }
+        })),
     [renderTypeList, renderList]
   );
   const renderTypeData = useMemo(
@@ -153,22 +163,38 @@ const NodeInputSelect = ({
           leftIcon={
             <MyIcon name={renderTypeData.icon as any} w={'14px'} color={'primary.600'} mr={-0.5} />
           }
-          rightIcon={<MyIcon name={'common/select'} w={'0.8rem'} color={'myGray.500'} ml={-1} />}
+          rightIcon={
+            <MyIcon
+              name={'common/select'}
+              w={'0.8rem'}
+              color={'myGray.500'}
+              mx={-1}
+              sx={{
+                'button:hover &': {
+                  color: 'primary.600'
+                }
+              }}
+            />
+          }
           variant={'grayBase'}
           border={theme.borders.base}
           borderColor={'myGray.200'}
           borderRadius={'sm'}
-          px={'10px'}
-          py={'6px'}
+          px={'8px'}
           fontSize={'mini'}
           color={'myGray.600'}
-          h={'28px'}
           bg={'myGray.100'}
+          minH={'28px'}
+          h={'28px'}
         >
-          <Box fontWeight={'medium'}>{renderTypeData.title}</Box>
+          {renderTypeData.title}
         </Button>
       }
       menuList={[{ children: filterMenuList }]}
+      primaryBg={'myGray.05'}
+      showCheckIcon
+      labelSize={'mini'}
+      iconColor="myGray.400"
     />
   );
 };

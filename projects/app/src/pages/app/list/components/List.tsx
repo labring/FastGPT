@@ -36,6 +36,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useChatStore } from '@/web/core/chat/context/storeChat';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
@@ -258,133 +259,195 @@ const ListItem = () => {
                       ? app.permission.hasManagePer
                       : app.permission.hasWritePer) && (
                       <Box className="more" display={['', 'none']}>
-                        <MyMenu
-                          Button={
+                        <MyPopover
+                          placement={'bottom-start'}
+                          hasArrow={false}
+                          offset={[2, 4]}
+                          w={'116px'}
+                          trigger={'hover'}
+                          Trigger={
                             <IconButton
                               size={'xsSquare'}
                               variant={'transparentBase'}
                               icon={<MyIcon name={'more'} w={'0.875rem'} color={'myGray.500'} />}
                               aria-label={''}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
                             />
                           }
-                          menuList={[
-                            ...([AppTypeEnum.simple, AppTypeEnum.workflow].includes(app.type)
-                              ? [
-                                  {
-                                    children: [
-                                      {
-                                        icon: 'core/chat/chatLight',
-                                        label: t('app:go_to_chat'),
-                                        onClick: () => {
-                                          router.push(`/chat?appId=${app._id}`);
-                                        }
+                        >
+                          {({ onClose }) => (
+                            <Box p={1.5} onClick={(e) => e.stopPropagation()}>
+                              {[AppTypeEnum.simple, AppTypeEnum.workflow].includes(app.type) && (
+                                <>
+                                  <MyBox
+                                    display={'flex'}
+                                    size={'md'}
+                                    px={1}
+                                    py={1.5}
+                                    rounded={'4px'}
+                                    color={'myGray.600'}
+                                    _hover={{ color: 'primary.600', bg: 'myGray.05' }}
+                                    cursor={'pointer'}
+                                    onClick={() => {
+                                      router.push(`/chat?appId=${app._id}`);
+                                    }}
+                                  >
+                                    <MyIcon name={'core/chat/chatLight'} w={'16px'} mr={2} />
+                                    <Box fontSize={'sm'}>{t('app:go_to_chat')}</Box>
+                                  </MyBox>
+                                  <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
+                                </>
+                              )}
+
+                              {[AppTypeEnum.plugin].includes(app.type) && (
+                                <>
+                                  <MyBox
+                                    display={'flex'}
+                                    size={'md'}
+                                    px={1}
+                                    py={1.5}
+                                    rounded={'4px'}
+                                    color={'myGray.600'}
+                                    _hover={{ color: 'primary.600', bg: 'myGray.05' }}
+                                    cursor={'pointer'}
+                                    onClick={() => {
+                                      router.push(`/chat?appId=${app._id}`);
+                                    }}
+                                  >
+                                    <MyIcon name={'core/chat/chatLight'} w={'16px'} mr={2} />
+                                    <Box fontSize={'sm'}>{t('app:go_to_run')}</Box>
+                                  </MyBox>
+                                  <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
+                                </>
+                              )}
+
+                              {app.permission.hasManagePer && (
+                                <>
+                                  <MyBox
+                                    display={'flex'}
+                                    size={'md'}
+                                    px={1}
+                                    py={1.5}
+                                    rounded={'4px'}
+                                    color={'myGray.600'}
+                                    _hover={{ color: 'primary.600', bg: 'myGray.05' }}
+                                    cursor={'pointer'}
+                                    onClick={() => {
+                                      if (app.type === AppTypeEnum.httpPlugin) {
+                                        setEditHttpPlugin({
+                                          id: app._id,
+                                          name: app.name,
+                                          avatar: app.avatar,
+                                          intro: app.intro,
+                                          pluginData: app.pluginData
+                                        });
+                                      } else {
+                                        setEditedApp({
+                                          id: app._id,
+                                          avatar: app.avatar,
+                                          name: app.name,
+                                          intro: app.intro
+                                        });
                                       }
-                                    ]
-                                  }
-                                ]
-                              : []),
-                            ...([AppTypeEnum.plugin].includes(app.type)
-                              ? [
-                                  {
-                                    children: [
-                                      {
-                                        icon: 'core/chat/chatLight',
-                                        label: t('app:go_to_run'),
-                                        onClick: () => {
-                                          router.push(`/chat?appId=${app._id}`);
-                                        }
-                                      }
-                                    ]
-                                  }
-                                ]
-                              : []),
-                            ...(app.permission.hasManagePer
-                              ? [
-                                  {
-                                    children: [
-                                      {
-                                        icon: 'edit',
-                                        label: t('common:dataset.Edit Info'),
-                                        onClick: () => {
-                                          if (app.type === AppTypeEnum.httpPlugin) {
-                                            setEditHttpPlugin({
-                                              id: app._id,
-                                              name: app.name,
-                                              avatar: app.avatar,
-                                              intro: app.intro,
-                                              pluginData: app.pluginData
-                                            });
-                                          } else {
-                                            setEditedApp({
-                                              id: app._id,
-                                              avatar: app.avatar,
-                                              name: app.name,
-                                              intro: app.intro
-                                            });
-                                          }
-                                        }
-                                      },
-                                      ...(folderDetail?.type === AppTypeEnum.httpPlugin &&
-                                      !(parentApp ? parentApp.permission : app.permission)
-                                        .hasManagePer
-                                        ? []
-                                        : [
-                                            {
-                                              icon: 'common/file/move',
-                                              label: t('common:common.folder.Move to'),
-                                              onClick: () => setMoveAppId(app._id)
-                                            }
-                                          ]),
-                                      ...(app.permission.hasManagePer
-                                        ? [
-                                            {
-                                              icon: 'support/team/key',
-                                              label: t('common:permission.Permission'),
-                                              onClick: () => setEditPerAppIndex(index)
-                                            }
-                                          ]
-                                        : [])
-                                    ]
-                                  }
-                                ]
-                              : []),
-                            ...(AppFolderTypeList.includes(app.type)
-                              ? []
-                              : [
-                                  {
-                                    children: [
-                                      {
-                                        icon: 'copy',
-                                        label: t('app:copy_one_app'),
-                                        onClick: () =>
-                                          openConfirmCopy(() => onclickCopy({ appId: app._id }))()
-                                      }
-                                    ]
-                                  }
-                                ]),
-                            ...(app.permission.isOwner
-                              ? [
-                                  {
-                                    children: [
-                                      {
-                                        type: 'danger' as 'danger',
-                                        icon: 'delete',
-                                        label: t('common:common.Delete'),
-                                        onClick: () =>
-                                          openConfirmDel(
-                                            () => onclickDelApp(app._id),
-                                            undefined,
-                                            app.type === AppTypeEnum.folder
-                                              ? t('app:confirm_delete_folder_tip')
-                                              : t('app:confirm_del_app_tip', { name: app.name })
-                                          )()
-                                      }
-                                    ]
-                                  }
-                                ]
-                              : [])
-                          ]}
-                        />
+                                    }}
+                                  >
+                                    <MyIcon name={'edit'} w={'16px'} mr={2} />
+                                    <Box fontSize={'sm'}>{t('common:dataset.Edit Info')}</Box>
+                                  </MyBox>
+
+                                  {!(
+                                    folderDetail?.type === AppTypeEnum.httpPlugin &&
+                                    !(parentApp ? parentApp.permission : app.permission)
+                                      .hasManagePer
+                                  ) && (
+                                    <MyBox
+                                      display={'flex'}
+                                      size={'md'}
+                                      px={1}
+                                      py={1.5}
+                                      rounded={'4px'}
+                                      color={'myGray.600'}
+                                      _hover={{
+                                        color: 'primary.600',
+                                        bg: 'myGray.05'
+                                      }}
+                                      cursor={'pointer'}
+                                      onClick={() => setMoveAppId(app._id)}
+                                    >
+                                      <MyIcon name={'common/file/move'} w={'16px'} mr={2} />
+                                      <Box fontSize={'sm'}>{t('common:common.folder.Move to')}</Box>
+                                    </MyBox>
+                                  )}
+
+                                  {app.permission.hasManagePer && (
+                                    <MyBox
+                                      display={'flex'}
+                                      size={'md'}
+                                      px={1}
+                                      py={1.5}
+                                      rounded={'4px'}
+                                      color={'myGray.600'}
+                                      _hover={{
+                                        color: 'primary.600',
+                                        bg: 'myGray.05'
+                                      }}
+                                      cursor={'pointer'}
+                                      onClick={() => setEditPerAppIndex(index)}
+                                    >
+                                      <MyIcon name={'support/team/key'} w={'16px'} mr={2} />
+                                      <Box fontSize={'sm'}>{t('common:permission.Permission')}</Box>
+                                    </MyBox>
+                                  )}
+                                </>
+                              )}
+                              <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
+
+                              {!AppFolderTypeList.includes(app.type) && (
+                                <MyBox
+                                  display={'flex'}
+                                  size={'md'}
+                                  px={1}
+                                  py={1.5}
+                                  rounded={'4px'}
+                                  color={'myGray.600'}
+                                  _hover={{ color: 'primary.600', bg: 'myGray.05' }}
+                                  cursor={'pointer'}
+                                  onClick={openConfirmCopy(() => onclickCopy({ appId: app._id }))}
+                                >
+                                  <MyIcon name={'copy'} w={'16px'} mr={2} />
+                                  <Box fontSize={'sm'}>{t('app:copy_one_app')}</Box>
+                                </MyBox>
+                              )}
+
+                              <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
+
+                              {app.permission.isOwner && (
+                                <MyBox
+                                  display={'flex'}
+                                  size={'md'}
+                                  px={1}
+                                  py={1.5}
+                                  rounded={'4px'}
+                                  color={'red.600'}
+                                  _hover={{ bg: 'myGray.05' }}
+                                  cursor={'pointer'}
+                                  onClick={openConfirmDel(
+                                    () => onclickDelApp(app._id),
+                                    undefined,
+                                    app.type === AppTypeEnum.folder
+                                      ? t('app:confirm_delete_folder_tip')
+                                      : t('app:confirm_del_app_tip', { name: app.name })
+                                  )}
+                                >
+                                  <MyIcon name={'delete'} w={'16px'} mr={2} />
+                                  <Box fontSize={'sm'}>{t('common:common.Delete')}</Box>
+                                </MyBox>
+                              )}
+                            </Box>
+                          )}
+                        </MyPopover>
                       </Box>
                     )}
                   </HStack>

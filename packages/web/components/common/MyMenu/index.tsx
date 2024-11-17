@@ -13,6 +13,7 @@ import MyDivider from '../MyDivider';
 import type { IconNameType } from '../Icon/type';
 import { useSystem } from '../../../hooks/useSystem';
 import Avatar from '../Avatar';
+import MyIcon from '../Icon';
 
 export type MenuItemType = 'primary' | 'danger';
 
@@ -23,6 +24,7 @@ export type Props = {
   trigger?: 'hover' | 'click';
   iconSize?: string;
   iconRadius?: string;
+  iconColor?: string;
 
   placement?: PlacementWithLogical;
   menuList: {
@@ -37,6 +39,10 @@ export type Props = {
       menuItemStyles?: MenuItemProps;
     }[];
   }[];
+
+  showCheckIcon?: boolean;
+  primaryBg?: string;
+  labelSize?: string;
 };
 
 const MyMenu = ({
@@ -46,21 +52,25 @@ const MyMenu = ({
   iconSize = '1rem',
   Button,
   menuList,
+  iconColor,
   iconRadius,
-  placement = 'bottom-start'
+  placement = 'bottom-start',
+  showCheckIcon = false,
+  primaryBg = 'primary.50',
+  labelSize = 'sm'
 }: Props) => {
   const typeMapStyle: Record<MenuItemType, MenuItemProps> = {
     primary: {
       _hover: {
-        backgroundColor: 'primary.50',
+        backgroundColor: primaryBg,
         color: 'primary.600'
       },
       _focus: {
-        backgroundColor: 'primary.50',
+        backgroundColor: primaryBg,
         color: 'primary.600'
       },
       _active: {
-        backgroundColor: 'primary.50',
+        backgroundColor: primaryBg,
         color: 'primary.600'
       }
     },
@@ -192,14 +202,24 @@ const MyMenu = ({
                         src={child.icon as any}
                         borderRadius={iconRadius}
                         w={iconSize}
-                        mr={3}
+                        mr={2}
+                        {...(iconColor
+                          ? {
+                              color: child.isActive ? 'inherit' : iconColor,
+                              sx: {
+                                '[role="menuitem"]:hover &': {
+                                  color: 'inherit'
+                                }
+                              }
+                            }
+                          : {})}
                       />
                     )}
                     <Box w={'100%'}>
                       <Box
                         w={'100%'}
                         color={child.description ? 'myGray.900' : 'inherit'}
-                        fontSize={'sm'}
+                        fontSize={labelSize}
                       >
                         {child.label}
                       </Box>
@@ -209,6 +229,9 @@ const MyMenu = ({
                         </Box>
                       )}
                     </Box>
+                    {child.isActive && showCheckIcon && (
+                      <MyIcon name={'check'} w={'16px'} color={'primary.700'} ml={2} />
+                    )}
                   </MenuItem>
                 ))}
               </Box>

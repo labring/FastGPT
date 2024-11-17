@@ -95,15 +95,16 @@ const MyApps = () => {
 
   const RenderSearchInput = useMemo(
     () => (
-      <InputGroup maxW={['auto', '250px']}>
-        <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
-          <MyIcon name={'common/searchLight'} w={'1rem'} />
-        </InputLeftElement>
+      <InputGroup maxW={['auto', '250px']} position={'relative'}>
+        <Box position={'absolute'} left={2.5} top={'11px'} zIndex={10}>
+          <MyIcon name={'common/searchLight'} w={'1rem'} color={'myGray.600'} />
+        </Box>
         <Input
           value={searchKey}
           onChange={(e) => setSearchKey(e.target.value)}
           placeholder={appT('search_app')}
           maxLength={30}
+          pl={8}
           bg={'white'}
         />
       </InputGroup>

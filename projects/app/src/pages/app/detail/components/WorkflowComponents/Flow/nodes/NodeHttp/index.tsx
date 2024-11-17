@@ -240,6 +240,8 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
             onChange={onChangeUrl}
             minH={40}
             showOpenModal={false}
+            placeholderPaddingX={3.5}
+            placeholderPaddingY={3}
           />
         </Box>
       </Flex>
