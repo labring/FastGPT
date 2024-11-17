@@ -14,7 +14,6 @@ import { BoxProps, useDisclosure } from '@chakra-ui/react';
 import { useChatStore } from './storeChat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type UpdateHistoryParams = {
   chatId: UpdateHistoryProps['chatId'];

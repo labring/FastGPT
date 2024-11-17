@@ -66,6 +66,7 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useChatStore } from '@/web/core/chat/context/storeChat';
 import TimeBox from './components/TimeBox';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -112,7 +113,7 @@ const ChatBox = ({
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { setLoading, feConfigs } = useSystemStore();
+  const { feConfigs } = useSystemStore();
   const { isPc } = useSystem();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
@@ -120,6 +121,7 @@ const ChatBox = ({
   const pluginController = useRef(new AbortController());
   const isNewChatReplace = useRef(false);
 
+  const [isLoading, setIsLoading] = useState(false);
   const [feedbackId, setFeedbackId] = useState<string>();
   const [readFeedbackData, setReadFeedbackData] = useState<{
     dataId: string;
@@ -584,7 +586,7 @@ const ChatBox = ({
     if (!dataId || !onDelMessage) return;
 
     return async () => {
-      setLoading(true);
+      setIsLoading(true);
       const index = chatRecords.findIndex((item) => item.dataId === dataId);
       const delHistory = chatRecords.slice(index);
       try {
@@ -607,7 +609,7 @@ const ChatBox = ({
           title: getErrText(error, 'Retry failed')
         });
       }
-      setLoading(false);
+      setIsLoading(false);
     };
   });
   // delete one message(One human and the ai response)
@@ -1007,7 +1009,13 @@ const ChatBox = ({
   // }, [isAutoExecute, sendPrompt, chatStarted, autoExecute, chatHistories.length]);
 
   return (
-    <Flex flexDirection={'column'} h={'100%'} position={'relative'}>
+    <MyBox
+      isLoading={isLoading}
+      display={'flex'}
+      flexDirection={'column'}
+      h={'100%'}
+      position={'relative'}
+    >
       <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
       {/* chat box container */}
       {RenderRecords}
@@ -1114,7 +1122,7 @@ const ChatBox = ({
           }}
         />
       )}
-    </Flex>
+    </MyBox>
   );
 };
 
