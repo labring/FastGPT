@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
@@ -75,6 +75,7 @@ const OutLink = (
   const [isEmbed, setIdEmbed] = useState(true);
 
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
+  const chatConfig = chatData.app?.chatConfig;
 
   const {
     onUpdateHistoryTitle,
@@ -105,7 +106,8 @@ const OutLink = (
     chatRecords,
     ScrollData,
     setChatRecords,
-    totalRecordsCount
+    totalRecordsCount,
+    isRecordsLoading
   } = useChat(params);
 
   const startChat = useCallback(
@@ -224,6 +226,23 @@ const OutLink = (
       }
     }
   );
+
+  const loadingCountRef = useRef(0);
+  const isAutoExecute = useMemo(() => {
+    // 记录非加载状态的次数,用于判断是否真正加载完成
+    if (!isRecordsLoading) {
+      loadingCountRef.current++;
+    }
+
+    // 非加载状态计数超过3次,确保完全加载
+    return (
+      loadingCountRef.current > 3 &&
+      !isRecordsLoading &&
+      chatRecords.length === 0 &&
+      !isLoading &&
+      chatConfig?.autoExecute?.open
+    );
+  }, [chatConfig?.autoExecute?.open, chatRecords.length, isLoading, isRecordsLoading]);
 
   // window init
   useMount(() => {
@@ -366,9 +385,10 @@ const OutLink = (
                   chatId={chatId}
                   shareId={shareId}
                   outLinkUid={outLinkUid}
-                  chatType="share"
                   showRawSource={showRawSource}
                   showNodeStatus={showNodeStatus}
+                  chatType={'share'}
+                  isAutoExecute={isAutoExecute}
                 />
               )}
             </Box>

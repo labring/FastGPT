@@ -56,6 +56,7 @@ export type UserChatItemValueItemType = {
 export type UserChatItemType = {
   obj: ChatRoleEnum.Human;
   value: UserChatItemValueItemType[];
+  hideInUI?: boolean;
 };
 export type SystemChatItemValueItemType = {
   type: ChatItemValueTypeEnum.text;

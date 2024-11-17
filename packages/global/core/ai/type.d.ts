@@ -49,6 +49,7 @@ export type ChatCompletionMessageParam = (
   | CustomChatCompletionAssistantMessageParam
 ) & {
   dataId?: string;
+  hideInUI?: boolean;
 };
 export type SdkChatCompletionMessageParam = SdkChatCompletionMessageParam;
 

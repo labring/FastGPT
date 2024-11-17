@@ -11,6 +11,7 @@ import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { fileToBase64 } from '@/web/common/file/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import { subRoute } from '@fastgpt/web/common/system/utils';
 
 enum UsingWayEnum {
   link = 'link',
@@ -74,7 +75,7 @@ const SelectUsingWayModal = ({ share, onClose }: { share: OutLinkSchema; onClose
   });
 
   const baseUrl = feConfigs?.customSharePageDomain || location?.origin;
-  const linkUrl = `${baseUrl}/chat/share?shareId=${share?.shareId}${
+  const linkUrl = `${baseUrl}${subRoute ? `${subRoute}/` : '/'}chat/share?shareId=${share?.shareId}${
     getValues('showHistory') ? '' : '&showHistory=0'
   }`;
 

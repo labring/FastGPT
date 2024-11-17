@@ -51,6 +51,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const { isPc } = useSystem();
 
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
+  const chatConfig = chatData.app?.chatConfig;
 
   const {
     onUpdateHistoryTitle,
@@ -81,7 +82,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     chatRecords,
     ScrollData,
     setChatRecords,
-    totalRecordsCount
+    totalRecordsCount,
+    isRecordsLoading
   } = useChat(params);
 
   const startChat = useCallback(
@@ -170,6 +172,12 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       }
     }
   );
+
+  const isAutoExecute = useMemo(() => {
+    return (
+      !isRecordsLoading && chatRecords.length === 0 && !isLoading && chatConfig?.autoExecute?.open
+    );
+  }, [chatConfig?.autoExecute?.open, chatRecords.length, isLoading, isRecordsLoading]);
 
   const RenderHistoryList = useMemo(() => {
     const Children = (
@@ -296,9 +304,10 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                   chatId={chatId}
                   teamId={teamId}
                   teamToken={teamToken}
-                  chatType="team"
                   showRawSource
                   showNodeStatus
+                  chatType={'team'}
+                  isAutoExecute={isAutoExecute}
                 />
               )}
             </Box>

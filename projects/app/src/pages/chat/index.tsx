@@ -81,12 +81,14 @@ const Chat = ({
     chatRecords,
     ScrollData,
     setChatRecords,
-    totalRecordsCount
+    totalRecordsCount,
+    isRecordsLoading
   } = useChat(params);
 
   // get chat app info
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
   const isPlugin = chatData.app.type === AppTypeEnum.plugin;
+  const chatConfig = chatData.app?.chatConfig;
 
   // Load chat init data
   const { loading: isLoading } = useRequest2(
@@ -126,6 +128,12 @@ const Chat = ({
         forbidLoadChat.current = false;
       }
     }
+  );
+
+  const isAutoExecute = useMemo(
+    () =>
+      !isRecordsLoading && chatRecords.length === 0 && !isLoading && chatConfig?.autoExecute?.open,
+    [isRecordsLoading, chatRecords.length, isLoading, chatConfig?.autoExecute?.open]
   );
 
   const onStartChat = useCallback(
@@ -262,7 +270,7 @@ const Chat = ({
                   histories={chatRecords}
                   setHistories={setChatRecords}
                   appId={chatData.appId}
-                  chatConfig={chatData.app.chatConfig}
+                  chatConfig={chatConfig}
                   tab={pluginRunTab}
                   setTab={setPluginRunTab}
                   onNewChat={() => onChangeChatId(getNanoid())}
@@ -278,7 +286,7 @@ const Chat = ({
                   showEmptyIntro
                   appAvatar={chatData.app.avatar}
                   userAvatar={userInfo?.avatar}
-                  chatConfig={chatData.app?.chatConfig}
+                  chatConfig={chatConfig}
                   feedbackType={'user'}
                   onStartChat={onStartChat}
                   onDelMessage={({ contentId }) => delChatRecordById({ contentId, appId, chatId })}
@@ -287,6 +295,7 @@ const Chat = ({
                   chatType={'chat'}
                   showRawSource
                   showNodeStatus
+                  isAutoExecute={isAutoExecute}
                 />
               )}
             </Box>

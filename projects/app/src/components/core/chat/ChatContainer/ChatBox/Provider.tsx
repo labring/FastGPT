@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import {
+  AppAutoExecuteConfigType,
   AppChatConfigType,
   AppFileSelectConfigType,
   AppTTSConfigType,
@@ -12,6 +13,7 @@ import {
 import { ChatHistoryItemResType, ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import {
   defaultAppSelectFileConfig,
+  defaultAutoExecuteConfig,
   defaultChatInputGuideConfig,
   defaultTTSConfig,
   defaultWhisperConfig
@@ -48,6 +50,7 @@ type useChatStoreType = OutLinkChatAuthProps &
     ttsConfig: AppTTSConfigType;
     whisperConfig: AppWhisperConfigType;
     autoTTSResponse: boolean;
+    autoExecute: AppAutoExecuteConfigType;
     startSegmentedAudio: () => Promise<any>;
     splitText2Audio: (text: string, done?: boolean | undefined) => void;
     finishSegmentedAudio: () => void;
@@ -156,7 +159,8 @@ const Provider = ({
     ttsConfig = defaultTTSConfig,
     whisperConfig = defaultWhisperConfig,
     chatInputGuide = defaultChatInputGuideConfig,
-    fileSelectConfig = defaultAppSelectFileConfig
+    fileSelectConfig = defaultAppSelectFileConfig,
+    autoExecute = defaultAutoExecuteConfig
   } = useMemo(() => chatConfig, [chatConfig]);
 
   const outLinkAuthData = useMemo(
@@ -221,6 +225,7 @@ const Provider = ({
     teamId,
     teamToken,
     welcomeText,
+    autoExecute,
     variableList: variables.filter((item) => item.type !== VariableInputEnum.custom),
     allVariableList: variables,
     questionGuide,
