@@ -1,6 +1,6 @@
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
@@ -12,8 +12,13 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { useChatTest } from '../useChatTest';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
+import ChatItemContextProvider from '@/web/core/chat/context/chatItemContext';
+import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
+import { useChatStore } from '@/web/core/chat/context/storeChat';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
-const ChatTest = ({ appForm }: { appForm: AppSimpleEditFormType }) => {
+type Props = { appForm: AppSimpleEditFormType };
+const ChatTest = ({ appForm }: Props) => {
   const { t } = useTranslation();
   const { appT } = useI18n();
 
@@ -32,13 +37,20 @@ const ChatTest = ({ appForm }: { appForm: AppSimpleEditFormType }) => {
     setWorkflowData({ nodes, edges });
   }, [appForm, setWorkflowData, allDatasets, t]);
 
-  const { restartChat, ChatContainer } = useChatTest({
+  const { ChatContainer, restartChat, loading } = useChatTest({
     ...workflowData,
     chatConfig: appForm.chatConfig
   });
 
   return (
-    <Flex position={'relative'} flexDirection={'column'} h={'100%'} py={4}>
+    <MyBox
+      isLoading={loading}
+      display={'flex'}
+      position={'relative'}
+      flexDirection={'column'}
+      h={'100%'}
+      py={4}
+    >
       <Flex px={[2, 5]}>
         <Box fontSize={['md', 'lg']} fontWeight={'bold'} flex={1} color={'myGray.900'}>
           {appT('chat_debug')}
@@ -61,8 +73,29 @@ const ChatTest = ({ appForm }: { appForm: AppSimpleEditFormType }) => {
       <Box flex={1}>
         <ChatContainer />
       </Box>
-    </Flex>
+    </MyBox>
   );
 };
 
-export default React.memo(ChatTest);
+const Render = ({ appForm }: Props) => {
+  const { chatId } = useChatStore();
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
+
+  const chatRecordProviderParams = useMemo(
+    () => ({
+      chatId: chatId,
+      appId: appDetail._id
+    }),
+    [appDetail._id, chatId]
+  );
+
+  return (
+    <ChatItemContextProvider>
+      <ChatRecordContextProvider params={chatRecordProviderParams}>
+        <ChatTest appForm={appForm} />
+      </ChatRecordContextProvider>
+    </ChatItemContextProvider>
+  );
+};
+
+export default React.memo(Render);

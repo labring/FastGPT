@@ -77,7 +77,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCo
     // 2. upload file
     const fileId = await uploadFile({
       teamId,
-      tmbId,
+      uid: tmbId,
       bucketName,
       path: file.path,
       filename: file.originalname,

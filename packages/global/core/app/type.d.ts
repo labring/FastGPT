@@ -96,6 +96,7 @@ export type AppSimpleEditFormType = {
 export type AppChatConfigType = {
   welcomeText?: string;
   variables?: VariableItemType[];
+  autoExecute?: AppAutoExecuteConfigType;
   questionGuide?: boolean;
   ttsConfig?: AppTTSConfigType;
   whisperConfig?: AppWhisperConfigType;
@@ -156,6 +157,11 @@ export type ChatInputGuideConfigType = {
 export type AppScheduledTriggerConfigType = {
   cronString: string;
   timezone: string;
+  defaultPrompt: string;
+};
+// auto execute
+export type AppAutoExecuteConfigType = {
+  open: boolean;
   defaultPrompt: string;
 };
 // File

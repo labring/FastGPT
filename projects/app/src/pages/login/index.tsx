@@ -44,7 +44,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
   const { feConfigs } = useSystemStore();
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}`>();
   const { setUserInfo } = useUserStore();
-  const { setLastChatId, setLastChatAppId } = useChatStore();
+  const { setLastChatAppId } = useChatStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isPc } = useSystem();
 
@@ -60,7 +60,6 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
   const loginSuccess = useCallback(
     (res: ResLogin) => {
       // init store
-      setLastChatId('');
       setLastChatAppId('');
 
       setUserInfo(res.user);
@@ -69,7 +68,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
         router.push(lastRoute ? decodeURIComponent(lastRoute) : '/app/list');
       }, 300);
     },
-    [lastRoute, router, setLastChatId, setLastChatAppId, setUserInfo]
+    [lastRoute, router, setLastChatAppId, setUserInfo]
   );
 
   function DynamicComponent({ type }: { type: `${LoginPageTypeEnum}` }) {

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
@@ -27,15 +27,20 @@ import { defaultChatData, GetChatTypeEnum } from '@/global/core/chat/constants';
 import { useMount } from 'ahooks';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import dynamic from 'next/dynamic';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useShareChatStore } from '@/web/core/chat/storeShareChat';
+import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import ChatRecordContextProvider, {
+  ChatRecordContext
+} from '@/web/core/chat/context/chatRecordContext';
+import { useChatStore } from '@/web/core/chat/context/storeChat';
 const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
 type Props = {
+  appId: string;
   appName: string;
   appIntro: string;
   appAvatar: string;
@@ -46,17 +51,12 @@ type Props = {
   showNodeStatus: boolean;
 };
 
-const OutLink = (
-  props: Props & {
-    outLinkUid: string;
-  }
-) => {
+const OutLink = (props: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { outLinkUid, showRawSource, showNodeStatus } = props;
+  const { showRawSource, showNodeStatus } = props;
   const {
     shareId = '',
-    chatId = '',
     showHistory = '1',
     showHead = '1',
     authToken,
@@ -64,49 +64,69 @@ const OutLink = (
     ...customVariables
   } = router.query as {
     shareId: string;
-    chatId: string;
     showHistory: '0' | '1';
     showHead: '0' | '1';
     authToken: string;
     [key: string]: string;
   };
   const { isPc } = useSystem();
+  const { outLinkAuthData, chatId } = useChatStore();
+
+  const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
+  const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
+  const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
+  const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
+  const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
+
+  const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
+  const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
+  const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
+
+  const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+  const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
+
   const initSign = useRef(false);
-  const [isEmbed, setIdEmbed] = useState(true);
-
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
+  const { loading: isLoading } = useRequest2(
+    async () => {
+      const shareId = outLinkAuthData.shareId;
+      const outLinkUid = outLinkAuthData.outLinkUid;
+      if (!outLinkUid || !shareId || forbidLoadChat.current) return;
 
-  const {
-    onUpdateHistoryTitle,
-    onUpdateHistory,
-    onClearHistories,
-    onDelHistory,
-    isOpenSlider,
-    onCloseSlider,
-    forbidLoadChat,
-    onChangeChatId
-  } = useContextSelector(ChatContext, (v) => v);
+      const res = await getInitOutLinkChatInfo({
+        chatId,
+        shareId,
+        outLinkUid
+      });
 
-  const params = useMemo(() => {
-    return {
-      chatId,
-      shareId,
-      outLinkUid,
-      appId: chatData.appId,
-      type: GetChatTypeEnum.outLink
-    };
-  }, [chatData.appId, chatId, outLinkUid, shareId]);
-  const {
-    ChatBoxRef,
-    variablesForm,
-    pluginRunTab,
-    setPluginRunTab,
-    resetVariables,
-    chatRecords,
-    ScrollData,
-    setChatRecords,
-    totalRecordsCount
-  } = useChat(params);
+      setChatData(res);
+      setChatBoxData(res);
+      resetVariables({
+        variables: res.variables
+      });
+    },
+    {
+      manual: false,
+      refreshDeps: [shareId, outLinkAuthData, chatId],
+      onSuccess() {
+        // send init message
+        if (!initSign.current) {
+          initSign.current = true;
+          if (window !== top) {
+            window.top?.postMessage({ type: 'shareChatReady' }, '*');
+          }
+        }
+      },
+      onError(e: any) {
+        if (chatId) {
+          onChangeChatId('');
+        }
+      },
+      onFinally() {
+        forbidLoadChat.current = false;
+      }
+    }
+  );
 
   const startChat = useCallback(
     async ({
@@ -138,10 +158,8 @@ const OutLink = (
             ...customVariables
           },
           responseChatItemId,
-          shareId,
           chatId: completionChatId,
-          appType: chatData.app.type,
-          outLinkUid
+          ...outLinkAuthData
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -175,57 +193,28 @@ const OutLink = (
 
       return { responseText, responseData, isNewChat: forbidLoadChat.current };
     },
-    [
-      chatId,
-      customVariables,
-      shareId,
-      chatData.app.type,
-      outLinkUid,
-      onUpdateHistoryTitle,
-      forbidLoadChat,
-      onChangeChatId
-    ]
+    [chatId, customVariables, outLinkAuthData, onUpdateHistoryTitle, forbidLoadChat, onChangeChatId]
   );
 
-  const { loading: isLoading } = useRequest2(
-    async () => {
-      if (!shareId || !outLinkUid || forbidLoadChat.current) return;
+  const loadingCountRef = useRef(0);
+  // const isAutoExecute = useMemo(() => {
+  //   // 记录非加载状态的次数,用于判断是否真正加载完成
+  //   if (!isRecordsLoading) {
+  //     loadingCountRef.current++;
+  //   }
 
-      const res = await getInitOutLinkChatInfo({
-        chatId,
-        shareId,
-        outLinkUid
-      });
-      setChatData(res);
-
-      resetVariables({
-        variables: res.variables
-      });
-    },
-    {
-      manual: false,
-      refreshDeps: [shareId, outLinkUid, chatId],
-      onSuccess() {
-        // send init message
-        if (!initSign.current) {
-          initSign.current = true;
-          if (window !== top) {
-            window.top?.postMessage({ type: 'shareChatReady' }, '*');
-          }
-        }
-      },
-      onError(e: any) {
-        if (chatId) {
-          onChangeChatId('');
-        }
-      },
-      onFinally() {
-        forbidLoadChat.current = false;
-      }
-    }
-  );
+  //   // 非加载状态计数超过3次,确保完全加载
+  //   return (
+  //     loadingCountRef.current > 3 &&
+  //     !isRecordsLoading &&
+  //     chatRecords.length === 0 &&
+  //     !isLoading &&
+  //     chatConfig?.autoExecute?.open
+  //   );
+  // }, [chatConfig?.autoExecute?.open, chatRecords.length, isLoading, isRecordsLoading]);
 
   // window init
+  const [isEmbed, setIdEmbed] = useState(true);
   useMount(() => {
     setIdEmbed(window !== top);
   });
@@ -233,32 +222,7 @@ const OutLink = (
   const RenderHistoryList = useMemo(() => {
     const Children = (
       <ChatHistorySlider
-        appName={chatData.app.name}
-        appAvatar={chatData.app.avatar}
         confirmClearText={t('common:core.chat.Confirm to clear share chat history')}
-        onDelHistory={({ chatId }) =>
-          onDelHistory({ appId: chatData.appId, chatId, shareId, outLinkUid })
-        }
-        onClearHistory={() => {
-          onClearHistories({ shareId, outLinkUid });
-        }}
-        onSetHistoryTop={(e) => {
-          onUpdateHistory({
-            ...e,
-            appId: chatData.appId,
-            shareId,
-            outLinkUid
-          });
-        }}
-        onSetCustomTitle={(e) => {
-          onUpdateHistory({
-            appId: chatData.appId,
-            chatId: e.chatId,
-            customTitle: e.title,
-            shareId,
-            outLinkUid
-          });
-        }}
       />
     );
 
@@ -280,21 +244,7 @@ const OutLink = (
         </DrawerContent>
       </Drawer>
     );
-  }, [
-    chatData.app.avatar,
-    chatData.app.name,
-    chatData.appId,
-    isOpenSlider,
-    isPc,
-    onClearHistories,
-    onCloseSlider,
-    onDelHistory,
-    onUpdateHistory,
-    outLinkUid,
-    shareId,
-    showHistory,
-    t
-  ]);
+  }, [isOpenSlider, isPc, onCloseSlider, showHistory, t]);
 
   const loading = isLoading;
 
@@ -329,46 +279,19 @@ const OutLink = (
             ) : null}
             {/* chat box */}
             <Box flex={1} bg={'white'}>
-              {chatData.app.type === AppTypeEnum.plugin ? (
+              {isPlugin ? (
                 <CustomPluginRunBox
-                  pluginInputs={chatData.app.pluginInputs}
-                  variablesForm={variablesForm}
-                  histories={chatRecords}
-                  setHistories={setChatRecords}
-                  appId={chatData.appId}
-                  tab={pluginRunTab}
-                  setTab={setPluginRunTab}
                   onNewChat={() => onChangeChatId(getNanoid())}
                   onStartChat={startChat}
                 />
               ) : (
                 <ChatBox
-                  ScrollData={ScrollData}
-                  ref={ChatBoxRef}
-                  chatHistories={chatRecords}
-                  setChatHistories={setChatRecords}
-                  variablesForm={variablesForm}
-                  appAvatar={chatData.app.avatar}
-                  userAvatar={chatData.userAvatar}
-                  chatConfig={chatData.app?.chatConfig}
                   feedbackType={'user'}
                   onStartChat={startChat}
-                  onDelMessage={({ contentId }) =>
-                    delChatRecordById({
-                      contentId,
-                      appId: chatData.appId,
-                      chatId,
-                      shareId,
-                      outLinkUid
-                    })
-                  }
-                  appId={chatData.appId}
-                  chatId={chatId}
-                  shareId={shareId}
-                  outLinkUid={outLinkUid}
                   chatType="share"
                   showRawSource={showRawSource}
                   showNodeStatus={showNodeStatus}
+                  // isAutoExecute={isAutoExecute}
                 />
               )}
             </Box>
@@ -380,24 +303,55 @@ const OutLink = (
 };
 
 const Render = (props: Props) => {
-  const { shareId, authToken, customUid } = props;
+  const { shareId, authToken, customUid, appId } = props;
   const { localUId, loaded } = useShareChatStore();
+  const { chatId, setAppId, setChatId, setOutLinkAuthData } = useChatStore();
+
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const contextParams = useMemo(() => {
+  const chatHistoryProviderParams = useMemo(() => {
     return { shareId, outLinkUid: authToken || customUid || localUId };
   }, [authToken, customUid, localUId, shareId]);
+  const chatRecordProviderParams = useMemo(() => {
+    return {
+      appId,
+      shareId,
+      outLinkUid: chatHistoryProviderParams.outLinkUid,
+      chatId,
+      type: GetChatTypeEnum.outLink
+    };
+  }, [appId, chatHistoryProviderParams.outLinkUid, chatId, shareId]);
 
   useMount(() => {
     setIsLoaded(true);
+
+    if (!chatId) {
+      setChatId();
+    }
   });
-  const systemLoaded = isLoaded && loaded && contextParams.outLinkUid;
+  const systemLoaded = isLoaded && loaded && chatHistoryProviderParams.outLinkUid;
+
+  // Set outLinkAuthData
+  useEffect(() => {
+    setOutLinkAuthData({
+      shareId,
+      outLinkUid: chatHistoryProviderParams.outLinkUid
+    });
+  }, [chatHistoryProviderParams.outLinkUid, setOutLinkAuthData, shareId]);
+  // Watch appId
+  useEffect(() => {
+    setAppId(appId);
+  }, [appId, setAppId]);
 
   return (
     <>
       {systemLoaded ? (
-        <ChatContextProvider params={contextParams}>
-          <OutLink {...props} outLinkUid={contextParams.outLinkUid} />;
+        <ChatContextProvider params={chatHistoryProviderParams}>
+          <ChatItemContextProvider>
+            <ChatRecordContextProvider params={chatRecordProviderParams}>
+              <OutLink {...props} />
+            </ChatRecordContextProvider>
+          </ChatItemContextProvider>
         </ChatContextProvider>
       ) : (
         <NextHead title="Loading..." />
@@ -433,6 +387,7 @@ export async function getServerSideProps(context: any) {
 
   return {
     props: {
+      appId: app?.appId?._id ?? '',
       appName: app?.appId?.name ?? 'AI',
       appAvatar: app?.appId?.avatar ?? '',
       appIntro: app?.appId?.intro ?? 'AI',
