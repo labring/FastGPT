@@ -41,7 +41,6 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
       router.replace({
         query: {
           ...router.query,
-          chatId: '',
           appId
         }
       });

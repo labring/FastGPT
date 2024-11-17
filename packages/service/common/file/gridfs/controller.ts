@@ -32,7 +32,7 @@ export function getGridBucket(bucket: `${BucketNameEnum}`) {
 export async function uploadFile({
   bucketName,
   teamId,
-  tmbId,
+  uid,
   path,
   filename,
   contentType,
@@ -41,7 +41,7 @@ export async function uploadFile({
 }: {
   bucketName: `${BucketNameEnum}`;
   teamId: string;
-  tmbId: string;
+  uid: string; // tmbId / outLinkUId
   path: string;
   filename: string;
   contentType?: string;
@@ -58,7 +58,7 @@ export async function uploadFile({
 
   // Add default metadata
   metadata.teamId = teamId;
-  metadata.tmbId = tmbId;
+  metadata.uid = uid;
   metadata.encoding = encoding;
 
   // create a gridfs bucket

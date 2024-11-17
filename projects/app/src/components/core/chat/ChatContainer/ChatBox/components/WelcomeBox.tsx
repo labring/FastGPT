@@ -4,10 +4,10 @@ import { MessageCardStyle } from '../constants';
 import Markdown from '@/components/Markdown';
 import ChatAvatar from './ChatAvatar';
 import { useContextSelector } from 'use-context-selector';
-import { ChatBoxContext } from '../Provider';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
 const WelcomeBox = ({ welcomeText }: { welcomeText: string }) => {
-  const appAvatar = useContextSelector(ChatBoxContext, (v) => v.appAvatar);
+  const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
 
   return (
     <Box py={3}>

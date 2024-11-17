@@ -7,7 +7,6 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { deleteChatFiles } from '@fastgpt/service/core/chat/controller';
 
 /* clear chat history */
@@ -18,8 +17,7 @@ async function handler(req: ApiRequestProps<{}, DelHistoryProps>, res: NextApiRe
     req,
     authToken: true,
     authApiKey: true,
-    ...req.query,
-    per: WritePermissionVal
+    ...req.query
   });
 
   await deleteChatFiles({ chatIdList: [chatId] });

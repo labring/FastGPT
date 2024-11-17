@@ -106,6 +106,7 @@ export enum NodeInputKeyEnum {
   variables = 'variables',
   scheduleTrigger = 'scheduleTrigger',
   chatInputGuide = 'chatInputGuide',
+  autoExecute = 'autoExecute',
 
   // plugin config
   instruction = 'instruction',

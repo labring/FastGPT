@@ -14,6 +14,8 @@ import { uploadFile2DB } from '@/web/common/file/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { ImportSourceItemType } from '@/web/core/dataset/type';
 import { useI18n } from '@/web/context/I18n';
+import { useContextSelector } from 'use-context-selector';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 
 export type SelectFileItemType = {
   fileId: string;
@@ -41,6 +43,7 @@ const FileSelector = ({
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
 
+  const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
   const maxCount = feConfigs?.uploadFileMaxAmount || 1000;
   const maxSize = (feConfigs?.uploadFileMaxSize || 1024) * 1024 * 1024;
 
@@ -92,6 +95,9 @@ const FileSelector = ({
               const { fileId: uploadFileId } = await uploadFile2DB({
                 file,
                 bucketName: BucketNameEnum.dataset,
+                data: {
+                  datasetId
+                },
                 percentListen: (e) => {
                   setSelectFiles((state) =>
                     state.map((item) =>

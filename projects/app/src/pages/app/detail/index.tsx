@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
@@ -7,6 +7,7 @@ import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
 import AppContextProvider, { AppContext } from './components/context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { useChatStore } from '@/web/core/chat/context/storeChat';
 
 const SimpleEdit = dynamic(() => import('./components/SimpleApp'), {
   ssr: false,
@@ -22,7 +23,12 @@ const Plugin = dynamic(() => import('./components/Plugin'), {
 });
 
 const AppDetail = () => {
-  const { appDetail } = useContextSelector(AppContext, (e) => e);
+  const { setAppId, setChatId } = useChatStore();
+  const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
+
+  useEffect(() => {
+    setAppId(appDetail._id);
+  }, [appDetail._id, setChatId, setAppId]);
 
   return (
     <>
