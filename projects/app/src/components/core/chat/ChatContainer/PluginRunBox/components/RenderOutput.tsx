@@ -7,9 +7,13 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import AIResponseBox from '../../../components/AIResponseBox';
 import { useTranslation } from 'next-i18next';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
+import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 const RenderOutput = () => {
-  const { histories, isChatting } = useContextSelector(PluginRunContext, (v) => v);
   const { t } = useTranslation();
+
+  const histories = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+  const isChatting = useContextSelector(PluginRunContext, (v) => v.isChatting);
+
   const pluginOutputs = useMemo(() => {
     const pluginOutputs = histories?.[1]?.responseData?.find(
       (item) => item.moduleType === FlowNodeTypeEnum.pluginOutput

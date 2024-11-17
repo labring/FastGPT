@@ -86,7 +86,7 @@ type AuthResponseType = {
   showNodeStatus?: boolean;
   authType: `${AuthUserTypeEnum}`;
   apikey?: string;
-  canWrite: boolean;
+  responseAllData: boolean;
   outLinkUserId?: string;
   sourceName?: string;
 };
@@ -160,7 +160,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       authType,
       sourceName,
       apikey,
-      canWrite,
+      responseAllData,
       outLinkUserId = customUid,
       showNodeStatus
     } = await (async () => {
@@ -361,7 +361,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
     /* select fe response field */
-    const feResponseData = canWrite
+    const feResponseData = responseAllData
       ? flowResponses
       : filterPublicNodeResponseData({ flowResponses, responseDetail });
 
@@ -482,10 +482,10 @@ const authShareChat = async ({
     tmbId,
     user,
     app,
-    responseDetail,
     apikey: '',
     authType,
-    canWrite: false,
+    responseAllData: false,
+    responseDetail,
     outLinkUserId: uid,
     showNodeStatus
   };
@@ -525,10 +525,10 @@ const authTeamSpaceChat = async ({
     tmbId: app.tmbId,
     user,
     app,
-    responseDetail: true,
     authType: AuthUserTypeEnum.outLink,
     apikey: '',
-    canWrite: false,
+    responseAllData: false,
+    responseDetail: true,
     outLinkUserId: uid
   };
 };
@@ -610,11 +610,11 @@ const authHeaderRequest = async ({
     tmbId,
     user,
     app,
-    responseDetail: true,
     apikey,
     authType,
     sourceName,
-    canWrite: true
+    responseAllData: true,
+    responseDetail: true
   };
 };
 

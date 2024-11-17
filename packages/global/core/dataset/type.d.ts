@@ -204,7 +204,8 @@ export type DatasetFileSchema = {
   contentType: string;
   metadata: {
     teamId: string;
-    tmbId: string;
+    tmbId?: string;
+    uid: string;
     encoding?: string;
   };
 };

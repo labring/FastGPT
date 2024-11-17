@@ -16,7 +16,7 @@ import {
   Thead,
   Tr
 } from '@chakra-ui/react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { defaultEditFormData } from '../render/RenderToolInput/EditFieldModal';

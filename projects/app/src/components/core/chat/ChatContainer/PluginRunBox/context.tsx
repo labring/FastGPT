@@ -1,12 +1,8 @@
 import React, { ReactNode, useCallback, useMemo, useRef } from 'react';
-import { createContext } from 'use-context-selector';
+import { createContext, useContextSelector } from 'use-context-selector';
 import { PluginRunBoxProps } from './type';
-import {
-  AIChatItemValueItemType,
-  ChatSiteItemType,
-  RuntimeUserPromptType
-} from '@fastgpt/global/core/chat/type';
-import { FieldValues, useForm } from 'react-hook-form';
+import { AIChatItemValueItemType, RuntimeUserPromptType } from '@fastgpt/global/core/chat/type';
+import { FieldValues } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -14,48 +10,49 @@ import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/c
 import { generatingMessageProps } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useTranslation } from 'next-i18next';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ChatBoxInputFormType } from '../ChatBox/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import { cloneDeep } from 'lodash';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import { useChatStore } from '@/web/core/chat/context/storeChat';
+import { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
+import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 
-type PluginRunContextType = OutLinkChatAuthProps &
-  PluginRunBoxProps & {
-    isChatting: boolean;
-    onSubmit: (e: ChatBoxInputFormType) => Promise<any>;
-    outLinkAuthData: OutLinkChatAuthProps;
-  };
+type PluginRunContextType = PluginRunBoxProps & {
+  isChatting: boolean;
+  onSubmit: (e: ChatBoxInputFormType) => Promise<any>;
+  instruction: string;
+  fileSelectConfig: AppFileSelectConfigType;
+};
 
 export const PluginRunContext = createContext<PluginRunContextType>({
-  pluginInputs: [],
-  histories: [],
-  setHistories: function (value: React.SetStateAction<ChatSiteItemType[]>): void {
-    throw new Error('Function not implemented.');
-  },
-  appId: '',
-  tab: PluginRunBoxTabEnum.input,
-  setTab: function (value: React.SetStateAction<PluginRunBoxTabEnum>): void {
-    throw new Error('Function not implemented.');
-  },
   isChatting: false,
   onSubmit: function (e: FieldValues): Promise<any> {
     throw new Error('Function not implemented.');
   },
-  outLinkAuthData: {},
-  //@ts-ignore
-  variablesForm: undefined
+  instruction: '',
+  fileSelectConfig: defaultAppSelectFileConfig
 });
 
 const PluginRunContextProvider = ({
-  shareId,
-  outLinkUid,
-  teamId,
-  teamToken,
   children,
   ...props
 }: PluginRunBoxProps & { children: ReactNode }) => {
-  const { pluginInputs, onStartChat, setHistories, histories, setTab } = props;
+  const { onStartChat } = props;
+
+  const pluginInputs = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.pluginInputs);
+  const setTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
+  const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
+  const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+
+  const chatConfig = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.chatConfig);
+
+  const { instruction = '', fileSelectConfig = defaultAppSelectFileConfig } = useMemo(
+    () => chatConfig || {},
+    [chatConfig]
+  );
 
   const { toast } = useToast();
   const chatController = useRef(new AbortController());
@@ -65,23 +62,9 @@ const PluginRunContextProvider = ({
     chatController.current?.abort('stop');
   }, []);
 
-  const outLinkAuthData = useMemo(
-    () => ({
-      shareId,
-      outLinkUid,
-      teamId,
-      teamToken
-    }),
-    [shareId, outLinkUid, teamId, teamToken]
-  );
-
-  const variablesForm = useForm<ChatBoxInputFormType>({
-    defaultValues: {}
-  });
-
   const generatingMessage = useCallback(
     ({ event, text = '', status, name, tool }: generatingMessageProps) => {
-      setHistories((state) =>
+      setChatRecords((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1 || item.obj !== ChatRoleEnum.AI) return item;
 
@@ -165,12 +148,14 @@ const PluginRunContextProvider = ({
         })
       );
     },
-    [setHistories]
+    [setChatRecords]
   );
 
   const isChatting = useMemo(
-    () => histories[histories.length - 1] && histories[histories.length - 1]?.status !== 'finish',
-    [histories]
+    () =>
+      chatRecords[chatRecords.length - 1] &&
+      chatRecords[chatRecords.length - 1]?.status !== 'finish',
+    [chatRecords]
   );
 
   const onSubmit = useCallback(
@@ -189,7 +174,7 @@ const PluginRunContextProvider = ({
       const abortSignal = new AbortController();
       chatController.current = abortSignal;
 
-      setHistories([
+      setChatRecords([
         {
           ...getPluginRunUserQuery({
             pluginInputs,
@@ -255,7 +240,7 @@ const PluginRunContextProvider = ({
           });
         }
 
-        setHistories((state) =>
+        setChatRecords((state) =>
           state.map((item, index) => {
             if (index !== state.length - 1) return item;
             return {
@@ -267,7 +252,7 @@ const PluginRunContextProvider = ({
         );
       } catch (err: any) {
         toast({ title: err.message, status: 'error' });
-        setHistories((state) =>
+        setChatRecords((state) =>
           state.map((item, index) => {
             if (index !== state.length - 1) return item;
             return {
@@ -284,7 +269,7 @@ const PluginRunContextProvider = ({
       isChatting,
       onStartChat,
       pluginInputs,
-      setHistories,
+      setChatRecords,
       setTab,
       t,
       toast
@@ -295,8 +280,8 @@ const PluginRunContextProvider = ({
     ...props,
     isChatting,
     onSubmit,
-    outLinkAuthData,
-    variablesForm
+    instruction,
+    fileSelectConfig
   };
   return <PluginRunContext.Provider value={contextValue}>{children}</PluginRunContext.Provider>;
 };

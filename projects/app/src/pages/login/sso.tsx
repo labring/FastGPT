@@ -15,7 +15,7 @@ let isOauthLogging = false;
 
 const provider = () => {
   const { t } = useTranslation();
-  const { setLastChatId, setLastChatAppId } = useChatStore();
+  const { setLastChatAppId } = useChatStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();
   const { query } = router;
@@ -27,11 +27,10 @@ const provider = () => {
       setToken(res.token);
       setUserInfo(res.user);
       // init store
-      setLastChatId('');
       setLastChatAppId('');
       router.push('/app/list');
     },
-    [setLastChatId, setLastChatAppId, setUserInfo, router]
+    [setLastChatAppId, setUserInfo, router]
   );
 
   const handleSSO = useCallback(async () => {

@@ -17,7 +17,8 @@ export const chatConfigType = {
   scheduledTriggerConfig: Object,
   chatInputGuide: Object,
   fileSelectConfig: Object,
-  instruction: String
+  instruction: String,
+  autoExecute: Object
 };
 
 // schema

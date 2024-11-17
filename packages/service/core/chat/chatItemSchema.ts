@@ -46,6 +46,10 @@ const ChatItemSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
+  hideInUI: {
+    type: Boolean,
+    default: false
+  },
   obj: {
     // chat role
     type: String,

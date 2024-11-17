@@ -2,6 +2,7 @@ import { Permission } from '@fastgpt/global/support/permission/controller';
 import { ApiRequestProps } from '../../type/next';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { RequireAtLeastOne } from '@fastgpt/global/common/type/utils';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 
 export type ReqHeaderAuthType = {
   cookie?: string;

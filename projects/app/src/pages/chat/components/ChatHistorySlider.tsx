@@ -14,6 +14,8 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { useChatStore } from '@/web/core/chat/context/storeChat';
 
 type HistoryItemType = {
   id: string;
@@ -23,25 +25,7 @@ type HistoryItemType = {
   updateTime: Date;
 };
 
-const ChatHistorySlider = ({
-  appId,
-  appName,
-  appAvatar,
-  confirmClearText,
-  onDelHistory,
-  onClearHistory,
-  onSetHistoryTop,
-  onSetCustomTitle
-}: {
-  appId?: string;
-  appName: string;
-  appAvatar: string;
-  confirmClearText: string;
-  onDelHistory: (e: { chatId: string }) => void;
-  onClearHistory: () => void;
-  onSetHistoryTop?: (e: { chatId: string; top: boolean }) => void;
-  onSetCustomTitle?: (e: { chatId: string; title: string }) => void;
-}) => {
+const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) => {
   const theme = useTheme();
   const router = useRouter();
   const isUserChatPage = router.pathname === '/chat';
@@ -51,13 +35,17 @@ const ChatHistorySlider = ({
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
 
-  const {
-    onChangeChatId,
-    chatId: activeChatId,
-    isLoading,
-    ScrollData,
-    histories
-  } = useContextSelector(ChatContext, (v) => v);
+  const { appId, chatId: activeChatId } = useChatStore();
+  const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
+  const isLoading = useContextSelector(ChatContext, (v) => v.isLoading);
+  const ScrollData = useContextSelector(ChatContext, (v) => v.ScrollData);
+  const histories = useContextSelector(ChatContext, (v) => v.histories);
+  const onDelHistory = useContextSelector(ChatContext, (v) => v.onDelHistory);
+  const onClearHistory = useContextSelector(ChatContext, (v) => v.onClearHistories);
+  const onUpdateHistory = useContextSelector(ChatContext, (v) => v.onUpdateHistory);
+
+  const appName = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.name);
+  const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.avatar);
 
   const concatHistory = useMemo(() => {
     const formatHistories: HistoryItemType[] = histories.map((item) => {
@@ -249,45 +237,38 @@ const ChatHistorySlider = ({
                       menuList={[
                         {
                           children: [
-                            ...(onSetHistoryTop
-                              ? [
-                                  {
-                                    label: item.top
-                                      ? t('common:core.chat.Unpin')
-                                      : t('common:core.chat.Pin'),
-                                    icon: 'core/chat/setTopLight',
-                                    onClick: () => {
-                                      onSetHistoryTop({
-                                        chatId: item.id,
-                                        top: !item.top
-                                      });
-                                    }
-                                  }
-                                ]
-                              : []),
-                            ...(onSetCustomTitle
-                              ? [
-                                  {
-                                    label: t('common:common.Custom Title'),
-                                    icon: 'common/customTitleLight',
-                                    onClick: () => {
-                                      onOpenModal({
-                                        defaultVal: item.customTitle || item.title,
-                                        onSuccess: (e) =>
-                                          onSetCustomTitle({
-                                            chatId: item.id,
-                                            title: e
-                                          })
-                                      });
-                                    }
-                                  }
-                                ]
-                              : []),
+                            {
+                              label: item.top
+                                ? t('common:core.chat.Unpin')
+                                : t('common:core.chat.Pin'),
+                              icon: 'core/chat/setTopLight',
+                              onClick: () => {
+                                onUpdateHistory({
+                                  chatId: item.id,
+                                  top: !item.top
+                                });
+                              }
+                            },
+
+                            {
+                              label: t('common:common.Custom Title'),
+                              icon: 'common/customTitleLight',
+                              onClick: () => {
+                                onOpenModal({
+                                  defaultVal: item.customTitle || item.title,
+                                  onSuccess: (e) =>
+                                    onUpdateHistory({
+                                      chatId: item.id,
+                                      customTitle: e
+                                    })
+                                });
+                              }
+                            },
                             {
                               label: t('common:common.Delete'),
                               icon: 'delete',
                               onClick: () => {
-                                onDelHistory({ chatId: item.id });
+                                onDelHistory(item.id);
                                 if (item.id === activeChatId) {
                                   onChangeChatId();
                                 }

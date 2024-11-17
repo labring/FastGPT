@@ -1,7 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { GetChatRecordsProps } from '@/global/core/chat/api';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -48,8 +47,7 @@ async function handler(
       req,
       authToken: true,
       authApiKey: true,
-      ...req.body,
-      per: ReadPermissionVal
+      ...req.body
     })
   ]);
 
@@ -58,20 +56,20 @@ async function handler(
   }
   const isPlugin = app.type === AppTypeEnum.plugin;
 
-  const shareChat = await (async () => {
+  const outLinkConfig = await (async () => {
     if (type === GetChatTypeEnum.outLink)
       return await authOutLink({
         shareId: req.body.shareId,
         outLinkUid: req.body.outLinkUid
-      }).then((result) => result.shareChat);
+      }).then((result) => result.outLinkConfig);
   })();
 
   const fieldMap = {
-    [GetChatTypeEnum.normal]: `dataId obj value adminFeedback userBadFeedback userGoodFeedback time ${
+    [GetChatTypeEnum.normal]: `dataId obj value adminFeedback userBadFeedback userGoodFeedback time hideInUI ${
       DispatchNodeResponseKeyEnum.nodeResponse
     } ${loadCustomFeedbacks ? 'customFeedbacks' : ''}`,
-    [GetChatTypeEnum.outLink]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback time ${DispatchNodeResponseKeyEnum.nodeResponse}`,
-    [GetChatTypeEnum.team]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback time ${DispatchNodeResponseKeyEnum.nodeResponse}`
+    [GetChatTypeEnum.outLink]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback time hideInUI ${DispatchNodeResponseKeyEnum.nodeResponse}`,
+    [GetChatTypeEnum.team]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback time hideInUI ${DispatchNodeResponseKeyEnum.nodeResponse}`
   };
 
   const { total, histories } = await getChatItems({
@@ -82,10 +80,10 @@ async function handler(
     limit: pageSize
   });
 
-  const responseDetail = !shareChat || shareChat.responseDetail;
+  const responseDetail = !outLinkConfig || outLinkConfig.responseDetail;
 
   // Remove important information
-  if (shareChat && app.type !== AppTypeEnum.plugin) {
+  if (outLinkConfig && app.type !== AppTypeEnum.plugin) {
     histories.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI) {
         item.responseData = filterPublicNodeResponseData({
@@ -93,7 +91,7 @@ async function handler(
           responseDetail
         });
 
-        if (shareChat.showNodeStatus === false) {
+        if (outLinkConfig.showNodeStatus === false) {
           item.value = item.value.filter((v) => v.type !== ChatItemValueTypeEnum.tool);
         }
       }

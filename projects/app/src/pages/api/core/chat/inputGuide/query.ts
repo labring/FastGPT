@@ -3,7 +3,7 @@ import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schem
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { authChatCert } from '@/service/support/permission/auth/chat';
+import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -21,7 +21,7 @@ async function handler(
   const { appId, searchKey } = req.body;
 
   // tmp auth
-  const { teamId } = await authChatCert({ req, authToken: true });
+  const { teamId } = await authChatCrud({ req, authToken: true, ...req.body });
   const app = await MongoApp.findOne({ _id: appId, teamId });
   if (!app) {
     return Promise.reject(AppErrEnum.unAuthApp);

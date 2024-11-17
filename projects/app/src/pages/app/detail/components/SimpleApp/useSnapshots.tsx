@@ -37,7 +37,8 @@ export const compareSimpleAppSnapshot = (
         scheduledTriggerConfig: appForm1.chatConfig?.scheduledTriggerConfig || undefined,
         chatInputGuide: appForm1.chatConfig?.chatInputGuide || undefined,
         fileSelectConfig: appForm1.chatConfig?.fileSelectConfig || undefined,
-        instruction: appForm1.chatConfig?.instruction || ''
+        instruction: appForm1.chatConfig?.instruction || '',
+        autoExecute: appForm1.chatConfig?.autoExecute || undefined
       },
       {
         welcomeText: appForm2.chatConfig?.welcomeText || '',
@@ -48,7 +49,8 @@ export const compareSimpleAppSnapshot = (
         scheduledTriggerConfig: appForm2.chatConfig?.scheduledTriggerConfig || undefined,
         chatInputGuide: appForm2.chatConfig?.chatInputGuide || undefined,
         fileSelectConfig: appForm2.chatConfig?.fileSelectConfig || undefined,
-        instruction: appForm2.chatConfig?.instruction || ''
+        instruction: appForm2.chatConfig?.instruction || '',
+        autoExecute: appForm2.chatConfig?.autoExecute || undefined
       }
     )
   ) {
