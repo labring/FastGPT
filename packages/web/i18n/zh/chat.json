@@ -4,6 +4,7 @@
   "LLM_model_response_empty": "模型流响应为空，请检查模型流输出是否正常",
   "chat_history": "聊天记录",
   "chat_input_guide_lexicon_is_empty": "还没有配置词库",
+  "chat_test_app": "调试-{{name}}",
   "citations": "{{num}}条引用",
   "click_contextual_preview": "点击查看上下文预览",
   "config_input_guide": "配置输入引导",

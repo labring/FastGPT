@@ -1,5 +1,5 @@
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -14,27 +14,33 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
 import CloseIcon from '@fastgpt/web/components/common/Icon/close';
+import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import ChatRecordContextProvider, {
+  ChatRecordContext
+} from '@/web/core/chat/context/chatRecordContext';
+import { useChatStore } from '@/web/core/chat/context/storeChat';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
-const ChatTest = ({
-  isOpen,
-  nodes = [],
-  edges = [],
-  onClose
-}: {
+type Props = {
   isOpen: boolean;
   nodes?: StoreNodeItemType[];
   edges?: StoreEdgeItemType[];
   onClose: () => void;
-}) => {
+};
+
+const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const isPlugin = appDetail.type === AppTypeEnum.plugin;
 
-  const { restartChat, ChatContainer, pluginRunTab, setPluginRunTab, chatRecords } = useChatTest({
+  const { restartChat, ChatContainer, loading } = useChatTest({
     nodes,
     edges,
     chatConfig: appDetail.chatConfig
   });
+  const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
+  const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
+  const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
   return (
     <>
@@ -48,8 +54,10 @@ const ChatTest = ({
         right={0}
         onClick={onClose}
       />
-      <Flex
+      <MyBox
+        isLoading={loading}
         zIndex={300}
+        display={'flex'}
         flexDirection={'column'}
         position={'absolute'}
         top={5}
@@ -131,9 +139,30 @@ const ChatTest = ({
         <Box flex={'1 0 0'} overflow={'auto'}>
           <ChatContainer />
         </Box>
-      </Flex>
+      </MyBox>
     </>
   );
 };
 
-export default React.memo(ChatTest);
+const Render = (Props: Props) => {
+  const { chatId } = useChatStore();
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
+
+  const chatRecordProviderParams = useMemo(
+    () => ({
+      chatId: chatId,
+      appId: appDetail._id
+    }),
+    [appDetail._id, chatId]
+  );
+
+  return (
+    <ChatItemContextProvider>
+      <ChatRecordContextProvider params={chatRecordProviderParams}>
+        <ChatTest {...Props} />
+      </ChatRecordContextProvider>
+    </ChatItemContextProvider>
+  );
+};
+
+export default React.memo(Render);

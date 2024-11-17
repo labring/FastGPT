@@ -139,7 +139,7 @@ const InputGuideConfig = ({
                     onOpenLexiconConfig();
                   }}
                 >
-                  {chatT('config_input_guide_lexicon')}
+                  {t('chat:config_input_guide_lexicon')}
                 </Button>
               </Flex>
               <>
@@ -152,7 +152,7 @@ const InputGuideConfig = ({
                     cursor={'pointer'}
                   >
                     <MyIcon name={'book'} w={'17px'} ml={4} mr={1} color={'myGray.600'} />
-                    {commonT('common.Documents')}
+                    {t('common:common.Documents')}
                   </Flex>
                   <Box flex={'1 0 0'} />
                 </Flex>

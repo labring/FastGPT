@@ -4,7 +4,7 @@ import { getUploadModel } from '@fastgpt/service/common/file/multer';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import fs from 'fs';
 import { pushWhisperUsage } from '@/service/support/wallet/usage/push';
-import { authChatCert } from '@/service/support/permission/auth/chat';
+import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
@@ -27,6 +27,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       }
     >(req, res);
 
+    req.body.appId = appId;
     req.body.shareId = shareId;
     req.body.outLinkUid = outLinkUid;
     req.body.teamId = spaceTeamId;
@@ -43,7 +44,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     }
 
     // auth role
-    const { teamId, tmbId } = await authChatCert({ req, authToken: true });
+    const { teamId, tmbId } = await authChatCrud({ req, authToken: true, ...req.body });
 
     // auth app
     // const app = await MongoApp.findById(appId, 'modules').lean();

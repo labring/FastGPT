@@ -1,8 +1,7 @@
 import { useUserStore } from '@/web/support/user/useUserStore';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
-import { getMaxHistoryLimitFromNodes } from '@fastgpt/global/core/workflow/runtime/utils';
 import { useMemoizedFn } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
@@ -11,11 +10,15 @@ import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
-import { useChat } from '@/components/core/chat/ChatContainer/useChat';
-import { Box, BoxProps } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
-import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { useChatStore } from '@/web/core/chat/context/storeChat';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getInitChatInfo } from '@/web/core/chat/api';
+import { useTranslation } from 'next-i18next';
+import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
@@ -28,26 +31,34 @@ export const useChatTest = ({
   edges: StoreEdgeItemType[];
   chatConfig: AppChatConfigType;
 }) => {
+  const { t } = useTranslation();
   const { userInfo } = useUserStore();
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([]);
+  const { setChatId, chatId, appId } = useChatStore();
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const startChat = useMemoizedFn(
-    async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
-      /* get histories */
-      const historyMaxLen = getMaxHistoryLimitFromNodes(nodes);
+    async ({
+      messages,
+      responseChatItemId,
+      controller,
+      generatingMessage,
+      variables
+    }: StartChatFnProps) => {
+      const histories = messages.slice(-1);
 
       // 流请求，获取数据
       const { responseText, responseData } = await streamFetch({
         url: '/api/core/chat/chatTest',
         data: {
           // Send histories and user messages
-          messages: messages.slice(-historyMaxLen - 2),
+          messages: histories,
           nodes,
           edges,
           variables,
-          appId: appDetail._id,
-          appName: `调试-${appDetail.name}`,
+          responseChatItemId,
+          appId,
+          appName: t('chat:chat_test_app', { name: appDetail.name }),
+          chatId,
           chatConfig
         },
         onMessage: generatingMessage,
@@ -58,77 +69,76 @@ export const useChatTest = ({
     }
   );
 
+  const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
+  const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
+  const clearChatRecords = useContextSelector(ChatItemContext, (v) => v.clearChatRecords);
+
+  const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+
+  const isAutoExecute = useMemo(() => {
+    return chatRecords.length === 0 && chatConfig?.autoExecute?.open && nodes.length > 0;
+  }, [chatConfig?.autoExecute?.open, chatRecords.length, nodes.length]);
+
   const pluginInputs = useMemo(() => {
     return nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs || [];
   }, [nodes]);
 
-  const { ChatBoxRef, variablesForm, pluginRunTab, setPluginRunTab, clearChatRecords } = useChat();
+  // Set chat box data
+  useEffect(() => {
+    setChatBoxData({
+      userAvatar: userInfo?.avatar,
+      app: {
+        chatConfig,
+        name: appDetail.name,
+        avatar: appDetail.avatar,
+        type: appDetail.type,
+        pluginInputs
+      }
+    });
+  }, [
+    appDetail.avatar,
+    appDetail.name,
+    appDetail.type,
+    chatConfig,
+    pluginInputs,
+    setChatBoxData,
+    userInfo?.avatar
+  ]);
 
-  // Mock ScrollData
-  const ScrollData = useCallback(
-    ({
-      children,
-      ScrollContainerRef,
-      ...props
-    }: {
-      ScrollContainerRef?: React.RefObject<HTMLDivElement>;
-      children: React.ReactNode;
-    } & BoxProps) => {
-      return (
-        <Box ref={ScrollContainerRef} {...props} overflow={'overlay'}>
-          {children}
-        </Box>
-      );
+  // init chat data
+  const { loading } = useRequest2(
+    async () => {
+      if (!appId || !chatId) return;
+      const res = await getInitChatInfo({ appId, chatId });
+      resetVariables({
+        variables: res.variables
+      });
     },
-    []
+    {
+      manual: false,
+      refreshDeps: [appId, chatId]
+    }
   );
+
+  const restartChat = useCallback(() => {
+    clearChatRecords();
+    setChatId();
+  }, [clearChatRecords, setChatId]);
 
   const CustomChatContainer = useMemoizedFn(() =>
     appDetail.type === AppTypeEnum.plugin ? (
       <Box p={5}>
-        <PluginRunBox
-          pluginInputs={pluginInputs}
-          variablesForm={variablesForm}
-          histories={chatRecords}
-          setHistories={setChatRecords}
-          appId={appDetail._id}
-          chatConfig={appDetail.chatConfig}
-          tab={pluginRunTab}
-          setTab={setPluginRunTab}
-          onNewChat={() => {
-            clearChatRecords();
-            setChatRecords([]);
-          }}
-          onStartChat={startChat}
-        />
+        <PluginRunBox onNewChat={restartChat} onStartChat={startChat} />
       </Box>
     ) : (
-      <ChatBox
-        ref={ChatBoxRef}
-        ScrollData={ScrollData}
-        chatHistories={chatRecords}
-        setChatHistories={setChatRecords}
-        variablesForm={variablesForm}
-        appId={appDetail._id}
-        appAvatar={appDetail.avatar}
-        userAvatar={userInfo?.avatar}
-        showMarkIcon
-        chatType="chat"
-        showRawSource
-        showNodeStatus
-        chatConfig={chatConfig}
-        onStartChat={startChat}
-        onDelMessage={() => {}}
-      />
+      <ChatBox showMarkIcon chatType="chat" showRawSource showNodeStatus onStartChat={startChat} />
     )
   );
 
   return {
-    restartChat: clearChatRecords,
     ChatContainer: CustomChatContainer,
-    chatRecords,
-    pluginRunTab,
-    setPluginRunTab
+    restartChat,
+    loading
   };
 };
 

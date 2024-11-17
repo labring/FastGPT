@@ -9,14 +9,14 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 const NavbarPhone = ({ unread }: { unread: number }) => {
   const router = useRouter();
   const { t } = useTranslation();
-  const { lastChatAppId, lastChatId } = useChatStore();
+  const { lastChatAppId } = useChatStore();
   const navbarList = useMemo(
     () => [
       {
         label: t('common:navbar.Chat'),
         icon: 'core/chat/chatLight',
         activeIcon: 'core/chat/chatFill',
-        link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
+        link: `/chat?appId=${lastChatAppId}`,
         activeLink: ['/chat'],
         unread: 0
       },
@@ -45,7 +45,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread
       }
     ],
-    [t, lastChatAppId, lastChatId, unread]
+    [t, lastChatAppId, unread]
   );
 
   return (

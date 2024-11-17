@@ -1,12 +1,13 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { FieldArrayWithId } from 'react-hook-form';
 import { ChatBoxInputFormType } from '../ChatBox/type';
-import { Box, CircularProgress, Flex, HStack, Image } from '@chakra-ui/react';
+import { Box, CircularProgress, Flex, HStack } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import { getFileIcon } from '@fastgpt/global/common/file/icon';
 
 const RenderFilePreview = ({
   fileList,
@@ -29,6 +30,8 @@ const RenderFilePreview = ({
       {fileList.map((item, index) => {
         const isFile = item.type === ChatFileTypeEnum.file;
         const isImage = item.type === ChatFileTypeEnum.image;
+        const icon = getFileIcon(item.name);
+
         return (
           <MyBox
             key={index}
@@ -73,7 +76,7 @@ const RenderFilePreview = ({
               {isImage && (
                 <MyImage
                   alt={'img'}
-                  src={item.icon}
+                  src={item.icon || item.url}
                   w={'full'}
                   h={'full'}
                   borderRadius={'md'}
@@ -82,7 +85,7 @@ const RenderFilePreview = ({
               )}
               {isFile && (
                 <HStack alignItems={'center'} h={'full'}>
-                  <MyIcon name={item.icon as any} w={['1.5rem', '2rem']} h={['1.5rem', '2rem']} />
+                  <MyIcon name={icon as any} w={['1.5rem', '2rem']} h={['1.5rem', '2rem']} />
                   <Box flex={'1 0 0'} pr={2} className="textEllipsis" fontSize={'xs'}>
                     {item.name}
                   </Box>

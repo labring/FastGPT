@@ -35,6 +35,8 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
+import AutoExecConfig from '@/components/core/app/AutoExecConfig';
+import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -451,6 +453,19 @@ const EditForm = ({
                   ...state.chatConfig,
                   chatInputGuide: e
                 }
+              }));
+            }}
+          />
+        </Box>
+
+        {/* auto execute */}
+        <Box {...BoxStyles} borderBottom={'none'}>
+          <AutoExecConfig
+            value={appForm.chatConfig.autoExecute}
+            onChange={(e) => {
+              setAppForm((state) => ({
+                ...state,
+                chatConfig: { ...state.chatConfig, autoExecute: e }
               }));
             }}
           />

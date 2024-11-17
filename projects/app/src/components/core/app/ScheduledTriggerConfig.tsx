@@ -23,7 +23,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 const MultipleRowSelect = dynamic(
   () => import('@fastgpt/web/components/common/MySelect/MultipleRowSelect')
 );
-import { i18nT } from '@fastgpt/web/i18n/utils';
+
 // options type:
 enum CronJobTypeEnum {
   month = 'month',
@@ -233,24 +233,24 @@ const ScheduledTriggerConfig = ({
     }
 
     if (cronField[0] === 'month') {
-      return t('core.app.schedule.Every month', {
+      return t('common:core.app.schedule.Every month', {
         day: cronField[1],
         hour: cronField[2]
       });
     }
     if (cronField[0] === 'week') {
-      return t('core.app.schedule.Every week', {
+      return t('common:core.app.schedule.Every week', {
         day: cronField[1] === 0 ? t('app:day') : cronField[1],
         hour: cronField[2]
       });
     }
     if (cronField[0] === 'day') {
-      return t('core.app.schedule.Every day', {
+      return t('common:core.app.schedule.Every day', {
         hour: cronField[1]
       });
     }
     if (cronField[0] === 'interval') {
-      return t('core.app.schedule.Interval', {
+      return t('common:core.app.schedule.Interval', {
         interval: cronField[1]
       });
     }
