@@ -19,7 +19,7 @@ const FastLogin = ({
   token: string;
   callbackUrl: string;
 }) => {
-  const { setLastChatId, setLastChatAppId } = useChatStore();
+  const { setLastChatAppId } = useChatStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();
   const { toast } = useToast();
@@ -30,14 +30,13 @@ const FastLogin = ({
       setUserInfo(res.user);
 
       // init store
-      setLastChatId('');
       setLastChatAppId('');
 
       setTimeout(() => {
         router.push(decodeURIComponent(callbackUrl));
       }, 100);
     },
-    [setLastChatId, setLastChatAppId, setUserInfo, router, callbackUrl]
+    [setLastChatAppId, setUserInfo, router, callbackUrl]
   );
 
   const authCode = useCallback(

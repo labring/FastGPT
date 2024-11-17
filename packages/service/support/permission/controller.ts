@@ -435,14 +435,14 @@ export const authFileToken = (token?: string) =>
     const key = (process.env.FILE_TOKEN_KEY as string) ?? 'filetoken';
 
     jwt.verify(token, key, function (err, decoded: any) {
-      if (err || !decoded.bucketName || !decoded?.teamId || !decoded?.tmbId || !decoded?.fileId) {
+      if (err || !decoded.bucketName || !decoded?.teamId || !decoded?.fileId) {
         reject(ERROR_ENUM.unAuthFile);
         return;
       }
       resolve({
         bucketName: decoded.bucketName,
         teamId: decoded.teamId,
-        tmbId: decoded.tmbId,
+        uid: decoded.uid,
         fileId: decoded.fileId
       });
     });

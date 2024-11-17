@@ -6,11 +6,15 @@ import { Box, Grid, Stack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { useContextSelector } from 'use-context-selector';
 
 const CustomPluginRunBox = (props: PluginRunBoxProps) => {
-  const { tab, setTab } = props;
   const { isPc } = useSystem();
   const { t } = useTranslation();
+
+  const tab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
+  const setTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
 
   useEffect(() => {
     if (isPc && tab === PluginRunBoxTabEnum.input) {
@@ -24,7 +28,7 @@ const CustomPluginRunBox = (props: PluginRunBoxProps) => {
         <Box color={'myGray.900'} mb={5}>
           {t('common:common.Input')}
         </Box>
-        <PluginRunBox {...props} tab={PluginRunBoxTabEnum.input} />
+        <PluginRunBox {...props} showTab={PluginRunBoxTabEnum.input} />
       </Box>
       <Stack px={3} py={4} h={'100%'} alignItems={'flex-start'} w={'100%'} overflow={'auto'}>
         <Box display={'inline-block'}>

@@ -5,7 +5,8 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { RequestPaging } from '@/types';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-export type GetChatSpeechProps = {
+export type GetChatSpeechProps = OutLinkChatAuthProps & {
+  appId: string;
   ttsConfig: AppTTSConfigType;
   input: string;
   shareId?: string;
@@ -73,7 +74,7 @@ export type DelHistoryProps = OutLinkChatAuthProps & {
   chatId: string;
 };
 export type ClearHistoriesProps = OutLinkChatAuthProps & {
-  appId?: string;
+  appId: string;
 };
 
 /* -------- chat item ---------- */

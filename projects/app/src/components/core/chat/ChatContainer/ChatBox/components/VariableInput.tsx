@@ -1,17 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Controller, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import {
-  Box,
-  Button,
-  Card,
-  NumberDecrementStepper,
-  NumberIncrementStepper,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  Textarea
-} from '@chakra-ui/react';
+import { Box, Button, Card, Textarea } from '@chakra-ui/react';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
@@ -21,10 +11,10 @@ import { ChatBoxInputFormType } from '../type.d';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { useDeepCompareEffect } from 'ahooks';
 import { VariableItemType } from '@fastgpt/global/core/app/type';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
 export const VariableInputItem = ({
   item,
@@ -134,8 +124,11 @@ const VariableInput = ({
 }) => {
   const { t } = useTranslation();
 
-  const { appAvatar, variableList, variablesForm } = useContextSelector(ChatBoxContext, (v) => v);
-  const { reset, handleSubmit: handleSubmitChat } = variablesForm;
+  const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
+  const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
+  const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
+
+  const { setValue, handleSubmit: handleSubmitChat } = variablesForm;
 
   const defaultValues = useMemo(() => {
     return variableList.reduce((acc: Record<string, any>, item) => {
@@ -144,9 +137,12 @@ const VariableInput = ({
     }, {});
   }, [variableList]);
 
-  useDeepCompareEffect(() => {
-    reset(defaultValues);
-  }, [defaultValues]);
+  useEffect(() => {
+    const values = variablesForm.getValues('variables');
+    // If form is not empty, do not reset the variables
+    if (Object.values(values).filter(Boolean).length > 0) return;
+    setValue('variables', defaultValues);
+  }, [defaultValues, setValue, variablesForm]);
 
   return (
     <Box py={3}>

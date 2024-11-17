@@ -8,12 +8,6 @@ import {
   Box,
   Button,
   Flex,
-  Input,
-  NumberDecrementStepper,
-  NumberIncrementStepper,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
   Textarea
 } from '@chakra-ui/react';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -31,21 +25,24 @@ import {
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { isEqual } from 'lodash';
-import { onSendPrompt } from '../ChatContainer/useChat';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { Controller, useForm } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import { SendPromptFnType } from '../ChatContainer/ChatBox/type';
+import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 
 type props = {
   value: UserChatItemValueItemType | AIChatItemValueItemType;
   isLastResponseValue: boolean;
   isChatting: boolean;
 };
+
+const onSendPrompt: SendPromptFnType = (e) => eventBus.emit(EventNameEnum.sendQuestion, e);
 
 const RenderText = React.memo(function RenderText({
   showAnimation,

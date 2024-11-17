@@ -34,7 +34,7 @@ async function handler(
       const token = await createFileToken({
         bucketName: BucketNameEnum.dataset,
         teamId,
-        tmbId,
+        uid: tmbId,
         fileId: collection.fileId
       });
 

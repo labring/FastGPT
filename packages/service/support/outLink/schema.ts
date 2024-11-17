@@ -48,7 +48,8 @@ const OutLinkSchema = new Schema({
     default: false
   },
   showNodeStatus: {
-    type: Boolean
+    type: Boolean,
+    default: true
   },
   showRawSource: {
     type: Boolean

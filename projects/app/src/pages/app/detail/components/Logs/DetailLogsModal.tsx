@@ -1,12 +1,10 @@
 import React, { useMemo } from 'react';
-import { Flex, Box, useTheme } from '@chakra-ui/react';
+import { Flex, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 
 import dynamic from 'next/dynamic';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
@@ -17,50 +15,50 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useQuery } from '@tanstack/react-query';
 import { PcHeader } from '@/pages/chat/components/ChatHeader';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
+import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import ChatRecordContextProvider, {
+  ChatRecordContext
+} from '@/web/core/chat/context/chatRecordContext';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useContextSelector } from 'use-context-selector';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
-const DetailLogsModal = ({
-  appId,
-  chatId,
-  onClose
-}: {
+type Props = {
   appId: string;
   chatId: string;
   onClose: () => void;
-}) => {
+};
+
+const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
-  const theme = useTheme();
 
-  const params = useMemo(() => {
-    return {
-      chatId,
-      appId,
-      loadCustomFeedbacks: true,
-      type: GetChatTypeEnum.normal
-    };
-  }, [appId, chatId]);
-  const {
-    ChatBoxRef,
-    variablesForm,
-    pluginRunTab,
-    setPluginRunTab,
-    resetVariables,
-    chatRecords,
-    ScrollData,
-    setChatRecords,
-    totalRecordsCount
-  } = useChat(params);
+  const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
+  const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
+  const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
+  const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
 
-  const { data: chat, isFetching } = useQuery(
-    ['getChatDetail', chatId],
-    () => getInitChatInfo({ appId, chatId, loadCustomFeedbacks: true }),
+  const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+  const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
+
+  const { data: chat, loading: isFetching } = useRequest2(
+    async () => {
+      const res = await getInitChatInfo({ appId, chatId, loadCustomFeedbacks: true });
+      res.userAvatar = HUMAN_ICON;
+
+      setChatBoxData(res);
+      resetVariables({
+        variables: res.variables
+      });
+
+      return res;
+    },
     {
-      onSuccess(res) {
-        resetVariables({
-          variables: res.variables
-        });
+      manual: false,
+      refreshDeps: [chatId],
+      onError(e) {
+        onClose();
       }
     }
   );
@@ -68,12 +66,11 @@ const DetailLogsModal = ({
   const title = chat?.title;
   const chatModels = chat?.app?.chatModels;
   const isPlugin = chat?.app.type === AppTypeEnum.plugin;
-  const loading = isFetching;
 
   return (
     <>
       <MyBox
-        isLoading={loading}
+        isLoading={isFetching}
         display={'flex'}
         flexDirection={'column'}
         zIndex={3}
@@ -124,7 +121,7 @@ const DetailLogsModal = ({
             alignItems={'center'}
             px={[3, 5]}
             h={['46px', '60px']}
-            borderBottom={theme.borders.base}
+            borderBottom={'base'}
             borderBottomColor={'gray.200'}
             color={'myGray.900'}
           >
@@ -154,32 +151,13 @@ const DetailLogsModal = ({
         <Box pt={2} flex={'1 0 0'}>
           {isPlugin ? (
             <Box px={5} pt={2} h={'100%'}>
-              <PluginRunBox
-                chatConfig={chat?.app?.chatConfig}
-                pluginInputs={chat?.app.pluginInputs}
-                variablesForm={variablesForm}
-                histories={chatRecords}
-                setHistories={setChatRecords}
-                appId={chat.appId}
-                tab={pluginRunTab}
-                setTab={setPluginRunTab}
-              />
+              <PluginRunBox />
             </Box>
           ) : (
             <ChatBox
-              ScrollData={ScrollData}
-              ref={ChatBoxRef}
-              chatHistories={chatRecords}
-              setChatHistories={setChatRecords}
-              variablesForm={variablesForm}
-              appAvatar={chat?.app.avatar}
-              userAvatar={HUMAN_ICON}
               feedbackType={'admin'}
               showMarkIcon
               showVoiceIcon={false}
-              chatConfig={chat?.app?.chatConfig}
-              appId={appId}
-              chatId={chatId}
               chatType="log"
               showRawSource
               showNodeStatus
@@ -191,4 +169,24 @@ const DetailLogsModal = ({
     </>
   );
 };
-export default DetailLogsModal;
+
+const Render = (props: Props) => {
+  const { appId, chatId } = props;
+  const params = useMemo(() => {
+    return {
+      chatId,
+      appId,
+      loadCustomFeedbacks: true,
+      type: GetChatTypeEnum.normal
+    };
+  }, [appId, chatId]);
+
+  return (
+    <ChatItemContextProvider>
+      <ChatRecordContextProvider params={params}>
+        <DetailLogsModal {...props} />
+      </ChatRecordContextProvider>
+    </ChatItemContextProvider>
+  );
+};
+export default Render;

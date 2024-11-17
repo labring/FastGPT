@@ -17,7 +17,7 @@ let isOauthLogging = false;
 const provider = () => {
   const { t } = useTranslation();
   const { loginStore } = useSystemStore();
-  const { setLastChatId, setLastChatAppId } = useChatStore();
+  const { setLastChatAppId } = useChatStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();
   const { code, state, error } = router.query as { code: string; state: string; error?: string };
@@ -29,12 +29,11 @@ const provider = () => {
       setUserInfo(res.user);
 
       // init store
-      setLastChatId('');
       setLastChatAppId('');
 
       router.push(loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/app/list');
     },
-    [setLastChatId, setLastChatAppId, setUserInfo, router, loginStore?.lastRoute]
+    [setLastChatAppId, setUserInfo, router, loginStore?.lastRoute]
   );
 
   const authCode = useCallback(

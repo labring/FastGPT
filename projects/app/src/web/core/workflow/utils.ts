@@ -566,7 +566,8 @@ export const compareSnapshot = (
         scheduledTriggerConfig: clone1.chatConfig?.scheduledTriggerConfig || undefined,
         chatInputGuide: clone1.chatConfig?.chatInputGuide || undefined,
         fileSelectConfig: clone1.chatConfig?.fileSelectConfig || undefined,
-        instruction: clone1.chatConfig?.instruction || ''
+        instruction: clone1.chatConfig?.instruction || '',
+        autoExecute: clone1.chatConfig?.autoExecute || undefined
       },
       {
         welcomeText: clone2.chatConfig?.welcomeText || '',
@@ -577,7 +578,8 @@ export const compareSnapshot = (
         scheduledTriggerConfig: clone2.chatConfig?.scheduledTriggerConfig || undefined,
         chatInputGuide: clone2.chatConfig?.chatInputGuide || undefined,
         fileSelectConfig: clone2.chatConfig?.fileSelectConfig || undefined,
-        instruction: clone2.chatConfig?.instruction || ''
+        instruction: clone2.chatConfig?.instruction || '',
+        autoExecute: clone2.chatConfig?.autoExecute || undefined
       }
     )
   ) {

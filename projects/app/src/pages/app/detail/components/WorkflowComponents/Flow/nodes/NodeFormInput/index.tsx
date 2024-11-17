@@ -24,7 +24,7 @@ import {
   Tr
 } from '@chakra-ui/react';
 import { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import {
   FlowNodeInputMap,
   FlowNodeInputTypeEnum,
