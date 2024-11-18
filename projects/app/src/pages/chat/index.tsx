@@ -101,12 +101,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     }
   );
 
-  // const isAutoExecute = useMemo(
-  //   () =>
-  //     !isRecordsLoading && chatRecords.length === 0 && !isLoading && chatConfig?.autoExecute?.open,
-  //   [isRecordsLoading, chatRecords.length, isLoading, chatConfig?.autoExecute?.open]
-  // );
-
   const onStartChat = useCallback(
     async ({
       messages,
@@ -213,7 +207,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                   chatType={'chat'}
                   showRawSource
                   showNodeStatus
-                  // isAutoExecute={isAutoExecute}
                 />
               )}
             </Box>

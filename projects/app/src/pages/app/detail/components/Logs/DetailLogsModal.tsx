@@ -12,7 +12,6 @@ import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/Plugin
 import CloseIcon from '@fastgpt/web/components/common/Icon/close';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useQuery } from '@tanstack/react-query';
 import { PcHeader } from '@/pages/chat/components/ChatHeader';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
