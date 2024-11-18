@@ -51,6 +51,11 @@ const TrainingDataSchema = new Schema({
     type: Date,
     default: () => new Date('2000/1/1')
   },
+  retryCount: {
+    type: Number,
+    default: 5
+  },
+
   model: {
     // ai model
     type: String,
@@ -97,7 +102,7 @@ try {
   // lock training data(teamId); delete training data
   TrainingDataSchema.index({ teamId: 1, datasetId: 1 });
   // get training data and sort
-  TrainingDataSchema.index({ mode: 1, lockTime: 1, weight: -1 });
+  TrainingDataSchema.index({ mode: 1, retryCount: 1, lockTime: 1, weight: -1 });
   TrainingDataSchema.index({ expireAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 }); // 7 days
 } catch (error) {
   console.log(error);

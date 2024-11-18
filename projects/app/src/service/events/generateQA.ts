@@ -39,11 +39,13 @@ export async function generateQA(): Promise<any> {
     try {
       const data = await MongoDatasetTraining.findOneAndUpdate(
         {
-          lockTime: { $lte: addMinutes(new Date(), -6) },
-          mode: TrainingModeEnum.qa
+          mode: TrainingModeEnum.qa,
+          retryCount: { $gte: 0 },
+          lockTime: { $lte: addMinutes(new Date(), -6) }
         },
         {
-          lockTime: new Date()
+          lockTime: new Date(),
+          $inc: { retryCount: -1 }
         }
       )
         .select({
