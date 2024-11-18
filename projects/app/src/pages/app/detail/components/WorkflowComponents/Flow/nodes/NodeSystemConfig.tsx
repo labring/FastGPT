@@ -67,9 +67,6 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               <ChatStartVariable {...componentsProps} />
             </Box>
             <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-              <AutoExecute {...componentsProps} />
-            </Box>
-            <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
               <FileSelectConfig {...componentsProps} />
             </Box>
             <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
@@ -83,6 +80,9 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             </Box>
             <Box mt={4} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
               <ScheduledTrigger {...componentsProps} />
+            </Box>
+            <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
+              <AutoExecute {...componentsProps} />
             </Box>
             <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
               <QuestionInputGuide {...componentsProps} />

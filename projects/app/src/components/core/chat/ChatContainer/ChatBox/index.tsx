@@ -854,14 +854,24 @@ const ChatBox = ({
     restartChat() {
       abortRequest();
 
-      setIsChatRecordsLoaded(false);
       setChatRecords([]);
+      setIsChatRecordsLoaded(false);
       setValue('chatStarted', false);
     },
     scrollToBottom(behavior = 'auto') {
       scrollToBottom(behavior, 500);
     }
   }));
+
+  // Auto send prompt
+  useEffect(() => {
+    if (autoExecute.open && chatStarted && chatRecords.length === 0 && isChatRecordsLoaded) {
+      sendPrompt({
+        text: autoExecute.defaultPrompt || 'AUTO_EXECUTE',
+        hideInUI: true
+      });
+    }
+  }, [sendPrompt, chatStarted, autoExecute, chatRecords, isChatRecordsLoaded]);
 
   const RenderRecords = useMemo(() => {
     return (
@@ -1005,15 +1015,6 @@ const ChatBox = ({
     variableList?.length,
     welcomeText
   ]);
-
-  useEffect(() => {
-    if (autoExecute.open && chatStarted && chatRecords.length === 0 && isChatRecordsLoaded) {
-      sendPrompt({
-        text: autoExecute.defaultPrompt || 'AUTO_EXECUTE',
-        hideInUI: true
-      });
-    }
-  }, [sendPrompt, chatStarted, autoExecute, chatRecords, isChatRecordsLoaded]);
 
   return (
     <MyBox

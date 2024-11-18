@@ -79,6 +79,7 @@ const ChatRecordContextProvider = ({
       }
 
       setIsChatRecordsLoaded(true);
+
       return {
         ...res,
         list: res.list.map((item) => ({
