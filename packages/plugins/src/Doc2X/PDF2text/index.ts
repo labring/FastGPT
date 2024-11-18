@@ -32,17 +32,13 @@ const main = async ({ apikey, files }: Props): Response => {
       //Fetch the pdf and check its content type
       const PDFResponse = await axiosInstance.get(url, { responseType: 'arraybuffer' });
       if (PDFResponse.status !== 200) {
-        throw new Error(
-          `File:${url} \n<Content>\nFailed to fetch PDF from URL: ${PDFResponse.statusText}\n</Content>`
-        );
+        throw new Error(`Failed to fetch PDF from URL: ${PDFResponse.data}`);
       }
 
       const contentType = PDFResponse.headers['content-type'];
       const file_name = url.match(/read\/([^?]+)/)?.[1] || 'unknown.pdf';
       if (!contentType || !contentType.startsWith('application/pdf')) {
-        throw new Error(
-          `File:${file_name}\n<Content>\nThe provided file does not point to a PDF: ${contentType}\n</Content>`
-        );
+        throw new Error(`The provided file does not point to a PDF: ${contentType}`);
       }
 
       const blob = new Blob([PDFResponse.data], { type: 'application/pdf' });
@@ -58,16 +54,12 @@ const main = async ({ apikey, files }: Props): Response => {
       );
 
       if (preupload_response.status !== 200) {
-        throw new Error(
-          `File:${file_name}\n<Content>\nFailed to get pre-upload URL: ${preupload_response.statusText}\n</Content>`
-        );
+        throw new Error(`Failed to get pre-upload URL: ${preupload_response.data}`);
       }
 
       const preupload_data = preupload_response.data;
       if (preupload_data.code !== 'success') {
-        throw new Error(
-          `File:${file_name}\n<Content>\nFailed to get pre-upload URL: ${JSON.stringify(preupload_data)}\n</Content>`
-        );
+        throw new Error(`Failed to get pre-upload URL: ${JSON.stringify(preupload_data)}`);
       }
 
       const upload_url = preupload_data.data.url;
