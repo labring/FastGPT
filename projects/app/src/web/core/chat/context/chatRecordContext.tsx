@@ -92,7 +92,8 @@ const ChatRecordContextProvider = ({
       pageSize: 10,
       refreshDeps: [params],
       params,
-      scrollLoadType: 'top'
+      scrollLoadType: 'top',
+      showErrorToast: false
     }
   );
 

@@ -35,7 +35,8 @@ import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/contex
 import ChatRecordContextProvider, {
   ChatRecordContext
 } from '@/web/core/chat/context/chatRecordContext';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
 type Props = {
@@ -69,7 +70,7 @@ const OutLink = (props: Props) => {
     [key: string]: string;
   };
   const { isPc } = useSystem();
-  const { outLinkAuthData, chatId } = useChatStore();
+  const { outLinkAuthData, appId, chatId } = useChatStore();
 
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
@@ -263,11 +264,17 @@ const OutLink = (props: Props) => {
             <Box flex={1} bg={'white'}>
               {isPlugin ? (
                 <CustomPluginRunBox
+                  appId={appId}
+                  chatId={chatId}
+                  outLinkAuthData={outLinkAuthData}
                   onNewChat={() => onChangeChatId(getNanoid())}
                   onStartChat={startChat}
                 />
               ) : (
                 <ChatBox
+                  appId={appId}
+                  chatId={chatId}
+                  outLinkAuthData={outLinkAuthData}
                   feedbackType={'user'}
                   onStartChat={startChat}
                   chatType="share"
@@ -286,7 +293,7 @@ const OutLink = (props: Props) => {
 const Render = (props: Props) => {
   const { shareId, authToken, customUid, appId } = props;
   const { localUId, loaded } = useShareChatStore();
-  const { chatId, setAppId, setChatId, setOutLinkAuthData } = useChatStore();
+  const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
 
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -306,9 +313,7 @@ const Render = (props: Props) => {
   useMount(() => {
     setIsLoaded(true);
 
-    if (!chatId) {
-      setChatId();
-    }
+    setSource('share');
   });
   const systemLoaded = isLoaded && loaded && chatHistoryProviderParams.outLinkUid;
 
@@ -318,26 +323,25 @@ const Render = (props: Props) => {
       shareId,
       outLinkUid: chatHistoryProviderParams.outLinkUid
     });
+    return () => {
+      setOutLinkAuthData({});
+    };
   }, [chatHistoryProviderParams.outLinkUid, setOutLinkAuthData, shareId]);
   // Watch appId
   useEffect(() => {
     setAppId(appId);
   }, [appId, setAppId]);
 
-  return (
-    <>
-      {systemLoaded ? (
-        <ChatContextProvider params={chatHistoryProviderParams}>
-          <ChatItemContextProvider>
-            <ChatRecordContextProvider params={chatRecordProviderParams}>
-              <OutLink {...props} />
-            </ChatRecordContextProvider>
-          </ChatItemContextProvider>
-        </ChatContextProvider>
-      ) : (
-        <NextHead title="Loading..." />
-      )}
-    </>
+  return source === ChatSourceEnum.share ? (
+    <ChatContextProvider params={chatHistoryProviderParams}>
+      <ChatItemContextProvider>
+        <ChatRecordContextProvider params={chatRecordProviderParams}>
+          <OutLink {...props} />
+        </ChatRecordContextProvider>
+      </ChatItemContextProvider>
+    </ChatContextProvider>
+  ) : (
+    <NextHead title={props.appName} desc={props.appIntro} icon={props.appAvatar} />
   );
 };
 
@@ -368,7 +372,7 @@ export async function getServerSideProps(context: any) {
 
   return {
     props: {
-      appId: app?.appId?._id?.toString() ?? '',
+      appId: String(app?.appId?._id) ?? '',
       appName: app?.appId?.name ?? 'AI',
       appAvatar: app?.appId?.avatar ?? '',
       appIntro: app?.appId?.intro ?? 'AI',

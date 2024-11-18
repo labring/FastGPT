@@ -18,11 +18,9 @@ import { ChatBoxInputFormType } from '../../ChatBox/type';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
 
 const RenderInput = () => {
   const { t } = useTranslation();
-  const { chatId, outLinkAuthData } = useChatStore();
 
   const pluginInputs = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.pluginInputs);
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
@@ -35,6 +33,8 @@ const RenderInput = () => {
   const isChatting = useContextSelector(PluginRunContext, (v) => v.isChatting);
   const fileSelectConfig = useContextSelector(PluginRunContext, (v) => v.fileSelectConfig);
   const instruction = useContextSelector(PluginRunContext, (v) => v.instruction);
+  const chatId = useContextSelector(PluginRunContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(PluginRunContext, (v) => v.outLinkAuthData);
 
   const {
     control,

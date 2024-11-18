@@ -19,7 +19,6 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { isEqual } from 'lodash';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
 
 const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
 
@@ -35,7 +34,6 @@ const FileSelector = ({
   value: any;
 }) => {
   const { t } = useTranslation();
-  const { outLinkAuthData } = useChatStore();
 
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const histories = useContextSelector(ChatRecordContext, (v) => v.chatRecords);

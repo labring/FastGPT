@@ -14,7 +14,8 @@ import { ChatBoxInputFormType, UserInputFileItemType } from '../type';
 import { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
+import { useContextSelector } from 'use-context-selector';
+import { ChatBoxContext } from '../Provider';
 
 type UseFileUploadOptions = {
   fileSelectConfig: AppFileSelectConfigType;
@@ -22,11 +23,14 @@ type UseFileUploadOptions = {
 };
 
 export const useFileUpload = (props: UseFileUploadOptions) => {
-  const { outLinkAuthData, appId, chatId } = useChatStore();
   const { fileSelectConfig, fileCtrl } = props;
   const { toast } = useToast();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+
+  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
+  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
 
   const {
     update: updateFiles,

@@ -11,7 +11,7 @@ import {
 import { ChatHistoryItemType } from '@fastgpt/global/core/chat/type';
 import { UpdateHistoryProps } from '@/global/core/chat/api';
 import { BoxProps, useDisclosure } from '@chakra-ui/react';
-import { useChatStore } from './storeChat';
+import { useChatStore } from './useChatStore';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
@@ -116,7 +116,8 @@ const ChatContextProvider = ({
   } = useScrollPagination(getChatHistories, {
     pageSize: 20,
     params,
-    refreshDeps: [params]
+    refreshDeps: [params],
+    showErrorToast: false
   });
 
   const onChangeChatId = useCallback(
