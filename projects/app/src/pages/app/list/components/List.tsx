@@ -33,7 +33,7 @@ import type { EditHttpPluginProps } from './HttpPluginEditModal';
 import { postCopyApp } from '@/web/core/app/api/app';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
@@ -45,7 +45,6 @@ const ListItem = () => {
   const { isPc } = useSystem();
 
   const { loadAndGetTeamMembers } = useUserStore();
-  const { lastChatAppId, setLastChatAppId } = useChatStore();
 
   const { openConfirm: openMoveConfirm, ConfirmModal: MoveConfirmModal } = useConfirm({
     type: 'common',
@@ -87,6 +86,8 @@ const ListItem = () => {
   const { openConfirm: openConfirmDel, ConfirmModal: DelConfirmModal } = useConfirm({
     type: 'delete'
   });
+
+  const { lastChatAppId, setLastChatAppId } = useChatStore();
   const { runAsync: onclickDelApp } = useRequest2(
     (id: string) => {
       if (id === lastChatAppId) {

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import type { ResLogin } from '@/global/support/api/userRes.d';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken, setToken } from '@/web/support/user/auth';
 import { postFastLogin } from '@/web/support/user/api';
@@ -19,7 +18,6 @@ const FastLogin = ({
   token: string;
   callbackUrl: string;
 }) => {
-  const { setLastChatAppId } = useChatStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();
   const { toast } = useToast();
@@ -29,14 +27,11 @@ const FastLogin = ({
       setToken(res.token);
       setUserInfo(res.user);
 
-      // init store
-      setLastChatAppId('');
-
       setTimeout(() => {
         router.push(decodeURIComponent(callbackUrl));
       }, 100);
     },
-    [setLastChatAppId, setUserInfo, router, callbackUrl]
+    [setUserInfo, router, callbackUrl]
   );
 
   const authCode = useCallback(

@@ -7,7 +7,7 @@ import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
 import AppContextProvider, { AppContext } from './components/context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 
 const SimpleEdit = dynamic(() => import('./components/SimpleApp'), {
   ssr: false,
@@ -23,12 +23,13 @@ const Plugin = dynamic(() => import('./components/Plugin'), {
 });
 
 const AppDetail = () => {
-  const { setAppId, setChatId } = useChatStore();
+  const { setAppId, setSource } = useChatStore();
   const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
 
   useEffect(() => {
-    setAppId(appDetail._id);
-  }, [appDetail._id, setChatId, setAppId]);
+    setSource('test');
+    appDetail._id && setAppId(appDetail._id);
+  }, [appDetail._id, setSource, setAppId]);
 
   return (
     <>

@@ -64,7 +64,6 @@ import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
 import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
@@ -130,8 +129,6 @@ const ChatBox = ({
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { dataId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
 
-  const { appId, chatId, outLinkAuthData } = useChatStore();
-
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
   const userAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.userAvatar);
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
@@ -145,6 +142,9 @@ const ChatBox = ({
   );
   const ScrollData = useContextSelector(ChatRecordContext, (v) => v.ScrollData);
 
+  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
+  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
   const welcomeText = useContextSelector(ChatBoxContext, (v) => v.welcomeText);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const allVariableList = useContextSelector(ChatBoxContext, (v) => v.allVariableList);
@@ -854,14 +854,24 @@ const ChatBox = ({
     restartChat() {
       abortRequest();
 
-      setIsChatRecordsLoaded(false);
       setChatRecords([]);
+      setIsChatRecordsLoaded(false);
       setValue('chatStarted', false);
     },
     scrollToBottom(behavior = 'auto') {
       scrollToBottom(behavior, 500);
     }
   }));
+
+  // Auto send prompt
+  useEffect(() => {
+    if (autoExecute.open && chatStarted && chatRecords.length === 0 && isChatRecordsLoaded) {
+      sendPrompt({
+        text: autoExecute.defaultPrompt || 'AUTO_EXECUTE',
+        hideInUI: true
+      });
+    }
+  }, [sendPrompt, chatStarted, autoExecute, chatRecords, isChatRecordsLoaded]);
 
   const RenderRecords = useMemo(() => {
     return (
@@ -1006,15 +1016,6 @@ const ChatBox = ({
     welcomeText
   ]);
 
-  useEffect(() => {
-    if (autoExecute.open && chatStarted && chatRecords.length === 0 && isChatRecordsLoaded) {
-      sendPrompt({
-        text: autoExecute.defaultPrompt || 'AUTO_EXECUTE',
-        hideInUI: true
-      });
-    }
-  }, [sendPrompt, chatStarted, autoExecute, chatRecords, isChatRecordsLoaded]);
-
   return (
     <MyBox
       isLoading={isLoading}
@@ -1027,18 +1028,17 @@ const ChatBox = ({
       {/* chat box container */}
       {RenderRecords}
       {/* message input */}
-      {onStartChat && chatStarted && active && appId && !isInteractive && (
+      {onStartChat && chatStarted && active && !isInteractive && (
         <ChatInput
           onSendMessage={sendPrompt}
           onStop={() => chatController.current?.abort('stop')}
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
           chatForm={chatForm}
-          appId={appId}
         />
       )}
       {/* user feedback modal */}
-      {!!feedbackId && chatId && appId && (
+      {!!feedbackId && chatId && (
         <FeedbackModal
           appId={appId}
           teamId={teamId}

@@ -14,7 +14,7 @@ import { useChatTest } from '../useChatTest';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import ChatItemContextProvider from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
 type Props = { appForm: AppSimpleEditFormType };

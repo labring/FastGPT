@@ -15,7 +15,7 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 
 type HistoryItemType = {
   id: string;
