@@ -385,7 +385,7 @@ const Render = (props: Props) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   const contextParams = useMemo(() => {
-    return { shareId, outLinkUid: authToken || localUId || customUid };
+    return { shareId, outLinkUid: authToken || customUid || localUId };
   }, [authToken, customUid, localUId, shareId]);
 
   useMount(() => {
