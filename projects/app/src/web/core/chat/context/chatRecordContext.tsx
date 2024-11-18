@@ -2,7 +2,7 @@ import { getPaginationRecordsBody } from '@/pages/api/core/chat/getPaginationRec
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import React, { ReactNode, useMemo } from 'react';
+import React, { ReactNode, useMemo, useState } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from './chatItemContext';
 import { getChatRecords } from '../api';
@@ -13,6 +13,8 @@ import { BoxProps } from '@chakra-ui/react';
 type ChatRecordContextType = {
   chatRecords: ChatSiteItemType[];
   setChatRecords: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
+  isChatRecordsLoaded: boolean;
+  setIsChatRecordsLoaded: React.Dispatch<React.SetStateAction<boolean>>;
   totalRecordsCount: number;
   ScrollData: ({
     children,
@@ -26,6 +28,10 @@ type ChatRecordContextType = {
 export const ChatRecordContext = createContext<ChatRecordContextType>({
   chatRecords: [],
   setChatRecords: function (value: React.SetStateAction<ChatSiteItemType[]>): void {
+    throw new Error('Function not implemented.');
+  },
+  isChatRecordsLoaded: false,
+  setIsChatRecordsLoaded: function (value: React.SetStateAction<boolean>): void {
     throw new Error('Function not implemented.');
   },
   totalRecordsCount: 0,
@@ -51,6 +57,7 @@ const ChatRecordContextProvider = ({
   params: Record<string, any>;
 }) => {
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
+  const [isChatRecordsLoaded, setIsChatRecordsLoaded] = useState(false);
 
   const {
     data: chatRecords,
@@ -71,6 +78,7 @@ const ChatRecordContextProvider = ({
         scrollToBottom();
       }
 
+      setIsChatRecordsLoaded(true);
       return {
         ...res,
         list: res.list.map((item) => ({
@@ -93,9 +101,18 @@ const ChatRecordContextProvider = ({
       chatRecords,
       setChatRecords,
       totalRecordsCount,
-      ScrollData
+      ScrollData,
+      isChatRecordsLoaded,
+      setIsChatRecordsLoaded
     };
-  }, [ScrollData, chatRecords, setChatRecords, totalRecordsCount]);
+  }, [
+    ScrollData,
+    chatRecords,
+    setChatRecords,
+    totalRecordsCount,
+    isChatRecordsLoaded,
+    setIsChatRecordsLoaded
+  ]);
   return <ChatRecordContext.Provider value={contextValue}>{children}</ChatRecordContext.Provider>;
 };
 
