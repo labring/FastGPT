@@ -13,7 +13,7 @@ import ChatHeader from './components/ChatHeader';
 import ChatHistorySlider from './components/ChatHistorySlider';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
-import { delChatRecordById, getInitOutLinkChatInfo } from '@/web/core/chat/api';
+import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { OutLinkWithAppType } from '@fastgpt/global/support/outLink/type';
@@ -26,7 +26,6 @@ import { InitChatResponse } from '@/global/core/chat/api';
 import { defaultChatData, GetChatTypeEnum } from '@/global/core/chat/constants';
 import { useMount } from 'ahooks';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import dynamic from 'next/dynamic';
@@ -196,23 +195,6 @@ const OutLink = (props: Props) => {
     [chatId, customVariables, outLinkAuthData, onUpdateHistoryTitle, forbidLoadChat, onChangeChatId]
   );
 
-  const loadingCountRef = useRef(0);
-  // const isAutoExecute = useMemo(() => {
-  //   // 记录非加载状态的次数,用于判断是否真正加载完成
-  //   if (!isRecordsLoading) {
-  //     loadingCountRef.current++;
-  //   }
-
-  //   // 非加载状态计数超过3次,确保完全加载
-  //   return (
-  //     loadingCountRef.current > 3 &&
-  //     !isRecordsLoading &&
-  //     chatRecords.length === 0 &&
-  //     !isLoading &&
-  //     chatConfig?.autoExecute?.open
-  //   );
-  // }, [chatConfig?.autoExecute?.open, chatRecords.length, isLoading, isRecordsLoading]);
-
   // window init
   const [isEmbed, setIdEmbed] = useState(true);
   useMount(() => {
@@ -291,7 +273,6 @@ const OutLink = (props: Props) => {
                   chatType="share"
                   showRawSource={showRawSource}
                   showNodeStatus={showNodeStatus}
-                  // isAutoExecute={isAutoExecute}
                 />
               )}
             </Box>
@@ -387,7 +368,7 @@ export async function getServerSideProps(context: any) {
 
   return {
     props: {
-      appId: app?.appId?._id ?? '',
+      appId: app?.appId?._id?.toString() ?? '',
       appName: app?.appId?.name ?? 'AI',
       appAvatar: app?.appId?.avatar ?? '',
       appIntro: app?.appId?.intro ?? 'AI',
