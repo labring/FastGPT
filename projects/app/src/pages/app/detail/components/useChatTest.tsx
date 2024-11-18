@@ -18,7 +18,6 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useTranslation } from 'next-i18next';
-import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
@@ -72,12 +71,6 @@ export const useChatTest = ({
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const clearChatRecords = useContextSelector(ChatItemContext, (v) => v.clearChatRecords);
-
-  const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
-
-  const isAutoExecute = useMemo(() => {
-    return chatRecords.length === 0 && chatConfig?.autoExecute?.open && nodes.length > 0;
-  }, [chatConfig?.autoExecute?.open, chatRecords.length, nodes.length]);
 
   const pluginInputs = useMemo(() => {
     return nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs || [];
