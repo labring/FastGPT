@@ -14,7 +14,7 @@ import type {
 } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Flex, Checkbox } from '@chakra-ui/react';
+import { Box, Checkbox } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -144,6 +144,7 @@ const ChatBox = ({
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const allVariableList = useContextSelector(ChatBoxContext, (v) => v.allVariableList);
   const questionGuide = useContextSelector(ChatBoxContext, (v) => v.questionGuide);
+  const autoExecute = useContextSelector(ChatBoxContext, (v) => v.autoExecute);
   const startSegmentedAudio = useContextSelector(ChatBoxContext, (v) => v.startSegmentedAudio);
   const finishSegmentedAudio = useContextSelector(ChatBoxContext, (v) => v.finishSegmentedAudio);
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
@@ -885,8 +886,8 @@ const ChatBox = ({
                   new Date(item.time).getTime() - new Date(chatRecords[index - 1].time!).getTime() >
                     10 * 60 * 1000 && <TimeBox time={item.time} />}
 
-                <Box py={6}>
-                  {item.obj === ChatRoleEnum.Human && (
+                <Box py={item.hideInUI ? 0 : 6}>
+                  {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
                     <ChatItem
                       type={item.obj}
                       avatar={userAvatar}
@@ -999,14 +1000,14 @@ const ChatBox = ({
     welcomeText
   ]);
 
-  // useEffect(() => {
-  //   if (isAutoExecute && chatStarted && autoExecute.open) {
-  //     sendPrompt({
-  //       text: autoExecute.defaultPrompt || 'AUTO_EXECUTE',
-  //       hideInUI: true
-  //     });
-  //   }
-  // }, [isAutoExecute, sendPrompt, chatStarted, autoExecute, chatHistories.length]);
+  useEffect(() => {
+    if (autoExecute.open && chatStarted && chatRecords.length === 0) {
+      sendPrompt({
+        text: autoExecute.defaultPrompt || 'AUTO_EXECUTE',
+        hideInUI: true
+      });
+    }
+  }, [sendPrompt, chatStarted, autoExecute, chatRecords.length, chatRecords]);
 
   return (
     <MyBox

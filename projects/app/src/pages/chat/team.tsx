@@ -3,7 +3,6 @@ import NextHead from '@/components/common/NextHead';
 import { getTeamChatInfo } from '@/web/core/chat/api';
 import { useRouter } from 'next/router';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import SideBar from '@/components/SideBar';
 import PageContainer from '@/components/PageContainer';
 import { getMyTokensApps } from '@/web/core/chat/api';
@@ -51,7 +50,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     [key: string]: string;
   };
 
-  const { toast } = useToast();
   const theme = useTheme();
   const { isPc } = useSystem();
 
@@ -222,7 +220,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                   chatType="team"
                   showRawSource
                   showNodeStatus
-                  // isAutoExecute={isAutoExecute}
                 />
               )}
             </Box>
