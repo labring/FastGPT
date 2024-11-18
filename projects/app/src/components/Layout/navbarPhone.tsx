@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { Flex, Box } from '@chakra-ui/react';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useTranslation } from 'next-i18next';
 import Badge from '../Badge';
 import MyIcon from '@fastgpt/web/components/common/Icon';

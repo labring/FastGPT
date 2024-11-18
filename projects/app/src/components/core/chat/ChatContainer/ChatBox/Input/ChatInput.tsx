@@ -18,7 +18,6 @@ import FilePreview from '../../components/FilePreview';
 import { useFileUpload } from '../hooks/useFileUpload';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -34,33 +33,29 @@ const ChatInput = ({
   onStop,
   TextareaDom,
   resetInputVal,
-  chatForm,
-  appId
+  chatForm
 }: {
   onSendMessage: SendPromptFnType;
   onStop: () => void;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
-  appId: string;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { isPc } = useSystem();
 
-  const { chatId } = useChatStore();
-
   const { setValue, watch, control } = chatForm;
   const inputValue = watch('input');
 
-  const {
-    isChatting,
-    whisperConfig,
-    autoTTSResponse,
-    chatInputGuide,
-    outLinkAuthData,
-    fileSelectConfig
-  } = useContextSelector(ChatBoxContext, (v) => v);
+  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
+  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
+  const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
+  const autoTTSResponse = useContextSelector(ChatBoxContext, (v) => v.autoTTSResponse);
+  const chatInputGuide = useContextSelector(ChatBoxContext, (v) => v.chatInputGuide);
+  const fileSelectConfig = useContextSelector(ChatBoxContext, (v) => v.fileSelectConfig);
 
   const fileCtrl = useFieldArray({
     control,

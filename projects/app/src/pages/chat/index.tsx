@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 
@@ -46,7 +46,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
-  const { setLastChatAppId, chatId, appId } = useChatStore();
+  const { setLastChatAppId, chatId, appId, outLinkAuthData } = useChatStore();
 
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
@@ -89,8 +89,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           router.replace({
             query: {
               ...router.query,
-              appId: myApps[0]?._id,
-              chatId: ''
+              appId: myApps[0]?._id
             }
           });
         }
@@ -196,11 +195,17 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
             <Box flex={'1 0 0'} bg={'white'}>
               {isPlugin ? (
                 <CustomPluginRunBox
+                  appId={appId}
+                  chatId={chatId}
+                  outLinkAuthData={outLinkAuthData}
                   onNewChat={() => onChangeChatId(getNanoid())}
                   onStartChat={onStartChat}
                 />
               ) : (
                 <ChatBox
+                  appId={appId}
+                  chatId={chatId}
+                  outLinkAuthData={outLinkAuthData}
                   showEmptyIntro
                   feedbackType={'user'}
                   onStartChat={onStartChat}
@@ -222,7 +227,7 @@ const Render = (props: { appId: string }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
-  const { chatId, setLastChatAppId, setChatId, setAppId } = useChatStore();
+  const { source, chatId, lastChatAppId, setSource, setAppId } = useChatStore();
 
   const { data: myApps = [], runAsync: loadMyApps } = useRequest2(
     () => getMyApps({ getRecentlyChat: true }),
@@ -246,20 +251,17 @@ const Render = (props: { appId: string }) => {
         router.replace({
           query: {
             ...router.query,
-            appId: apps[0]._id
+            appId: lastChatAppId || apps[0]._id
           }
         });
       }
     }
-    if (!chatId) {
-      setChatId(getNanoid());
-    }
+    setSource('online');
   });
   // Watch appId
   useEffect(() => {
     setAppId(appId);
-    setLastChatAppId(appId);
-  }, [appId, setLastChatAppId, setAppId]);
+  }, [appId, setAppId]);
 
   const chatHistoryProviderParams = useMemo(
     () => ({ appId, source: ChatSourceEnum.online }),
@@ -273,7 +275,7 @@ const Render = (props: { appId: string }) => {
     };
   }, [appId, chatId]);
 
-  return (
+  return source === ChatSourceEnum.online ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider>
         <ChatRecordContextProvider params={chatRecordProviderParams}>
@@ -281,7 +283,7 @@ const Render = (props: { appId: string }) => {
         </ChatRecordContextProvider>
       </ChatItemContextProvider>
     </ChatContextProvider>
-  );
+  ) : null;
 };
 
 export async function getServerSideProps(context: any) {

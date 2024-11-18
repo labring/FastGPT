@@ -16,7 +16,6 @@ import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import { cloneDeep } from 'lodash';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
 import { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 
@@ -33,7 +32,10 @@ export const PluginRunContext = createContext<PluginRunContextType>({
     throw new Error('Function not implemented.');
   },
   instruction: '',
-  fileSelectConfig: defaultAppSelectFileConfig
+  fileSelectConfig: defaultAppSelectFileConfig,
+  appId: '',
+  chatId: '',
+  outLinkAuthData: {}
 });
 
 const PluginRunContextProvider = ({
