@@ -61,7 +61,7 @@ export async function generateQA(): Promise<any> {
           prompt: 1
         })
         .lean();
-      console.log(data?._id);
+
       // task preemption
       if (!data) {
         return {
