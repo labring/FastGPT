@@ -21,11 +21,13 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { getChatResData } from '@/web/core/chat/api';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 
 export type ChatProviderProps = {
-  // not chat test params
+  appId: string;
+  chatId: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+
   chatType: 'log' | 'chat' | 'share' | 'team';
   showRawSource: boolean;
   showNodeStatus: boolean;
@@ -60,9 +62,12 @@ type useChatStoreType = ChatProviderProps & {
   setAudioPlayingChatId: React.Dispatch<React.SetStateAction<string | undefined>>;
   isChatting: boolean;
   chatInputGuide: ChatInputGuideConfigType;
-  outLinkAuthData: OutLinkChatAuthProps;
   getHistoryResponseData: ({ dataId }: { dataId: string }) => Promise<ChatHistoryItemResType[]>;
   fileSelectConfig: AppFileSelectConfigType;
+
+  appId: string;
+  chatId: string;
+  outLinkAuthData: OutLinkChatAuthProps;
 };
 
 export const ChatBoxContext = createContext<useChatStoreType>({
@@ -120,6 +125,9 @@ export const ChatBoxContext = createContext<useChatStoreType>({
 });
 
 const Provider = ({
+  appId,
+  chatId,
+  outLinkAuthData = {},
   chatType = 'chat',
   showRawSource,
   showNodeStatus,
@@ -128,7 +136,6 @@ const Provider = ({
 }: ChatProviderProps & {
   children: React.ReactNode;
 }) => {
-  const { chatId, appId, outLinkAuthData } = useChatStore();
   const chatConfig = useContextSelector(
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig || {}
@@ -215,6 +222,8 @@ const Provider = ({
     setAudioPlayingChatId,
     isChatting,
     chatInputGuide,
+    appId,
+    chatId,
     outLinkAuthData,
     getHistoryResponseData,
     chatType,

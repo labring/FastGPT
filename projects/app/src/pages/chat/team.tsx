@@ -31,8 +31,9 @@ import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/contex
 import ChatRecordContextProvider, {
   ChatRecordContext
 } from '@/web/core/chat/context/chatRecordContext';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useMount } from 'ahooks';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
 type Props = { appId: string; chatId: string; teamId: string; teamToken: string };
@@ -42,8 +43,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const router = useRouter();
   const {
     teamId = '',
-    appId = '',
-    chatId = '',
+    appId: appIdQuery = '',
     teamToken,
     ...customVariables
   } = router.query as Props & {
@@ -52,6 +52,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
   const theme = useTheme();
   const { isPc } = useSystem();
+
+  const { outLinkAuthData, appId, chatId } = useChatStore();
 
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
@@ -210,11 +212,17 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
             <Box flex={1}>
               {chatData.app.type === AppTypeEnum.plugin ? (
                 <CustomPluginRunBox
+                  appId={appId}
+                  chatId={chatId}
+                  outLinkAuthData={outLinkAuthData}
                   onNewChat={() => onChangeChatId(getNanoid())}
                   onStartChat={startChat}
                 />
               ) : (
                 <ChatBox
+                  appId={appId}
+                  chatId={chatId}
+                  outLinkAuthData={outLinkAuthData}
                   feedbackType={'user'}
                   onStartChat={startChat}
                   chatType="team"
@@ -233,7 +241,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 const Render = (props: Props) => {
   const { teamId, appId, teamToken } = props;
   const router = useRouter();
-  const { chatId, setAppId, setOutLinkAuthData } = useChatStore();
+  const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
 
   const { data: myApps = [], runAsync: loadMyApps } = useRequest2(
     async () => {
@@ -243,18 +251,22 @@ const Render = (props: Props) => {
       return [];
     },
     {
-      manual: false
+      manual: true
     }
   );
 
   // 初始化聊天框
   useMount(async () => {
-    if (appId || myApps.length === 0) return;
+    setSource('team');
+
+    const apps = await loadMyApps();
+
+    if (appId || apps.length === 0) return;
 
     router.replace({
       query: {
         ...router.query,
-        appId: myApps[0]._id
+        appId: apps[0]._id
       }
     });
   });
@@ -267,6 +279,9 @@ const Render = (props: Props) => {
       teamId,
       teamToken
     });
+    return () => {
+      setOutLinkAuthData({});
+    };
   }, [teamId, teamToken, setOutLinkAuthData]);
 
   const contextParams = useMemo(() => {
@@ -282,7 +297,7 @@ const Render = (props: Props) => {
     };
   }, [appId, chatId, teamId, teamToken]);
 
-  return (
+  return source === ChatSourceEnum.team ? (
     <ChatContextProvider params={contextParams}>
       <ChatItemContextProvider>
         <ChatRecordContextProvider params={chatRecordProviderParams}>
@@ -290,7 +305,7 @@ const Render = (props: Props) => {
         </ChatRecordContextProvider>
       </ChatItemContextProvider>
     </ChatContextProvider>
-  );
+  ) : null;
 };
 
 export async function getServerSideProps(context: any) {

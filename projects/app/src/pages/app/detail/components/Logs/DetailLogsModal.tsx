@@ -150,10 +150,12 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
         <Box pt={2} flex={'1 0 0'}>
           {isPlugin ? (
             <Box px={5} pt={2} h={'100%'}>
-              <PluginRunBox />
+              <PluginRunBox appId={appId} chatId={chatId} />
             </Box>
           ) : (
             <ChatBox
+              appId={appId}
+              chatId={chatId}
               feedbackType={'admin'}
               showMarkIcon
               showVoiceIcon={false}
