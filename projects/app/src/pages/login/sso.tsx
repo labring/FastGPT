@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import type { ResLogin } from '@/global/support/api/userRes.d';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken, setToken } from '@/web/support/user/auth';
 import { ssoLogin } from '@/web/support/user/api';
@@ -15,7 +14,6 @@ let isOauthLogging = false;
 
 const provider = () => {
   const { t } = useTranslation();
-  const { setLastChatAppId } = useChatStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();
   const { query } = router;
@@ -27,10 +25,9 @@ const provider = () => {
       setToken(res.token);
       setUserInfo(res.user);
       // init store
-      setLastChatAppId('');
       router.push('/app/list');
     },
-    [setLastChatAppId, setUserInfo, router]
+    [setUserInfo, router]
   );
 
   const handleSSO = useCallback(async () => {

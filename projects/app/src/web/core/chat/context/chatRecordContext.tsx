@@ -79,6 +79,7 @@ const ChatRecordContextProvider = ({
       }
 
       setIsChatRecordsLoaded(true);
+
       return {
         ...res,
         list: res.list.map((item) => ({
@@ -92,7 +93,8 @@ const ChatRecordContextProvider = ({
       pageSize: 10,
       refreshDeps: [params],
       params,
-      scrollLoadType: 'top'
+      scrollLoadType: 'top',
+      showErrorToast: false
     }
   );
 

@@ -27,7 +27,7 @@ const AutoExecConfig = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/autoExec'} mr={2} w={'20px'} />
-      <FormLabel color={'myGray.600'}>{t('common:core.app.Auto execute')}</FormLabel>
+      <FormLabel color={'myGray.600'}>{t('app:auto_execute')}</FormLabel>
       <ChatFunctionTip type={'autoExec'} />
       <Box flex={1} />
       <MyTooltip label={t('common:core.app.Config_auto_execute')}>
@@ -50,7 +50,7 @@ const AutoExecConfig = ({
       >
         <ModalBody>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
-            <FormLabel flex={'0 0 80px'}>{t('common:core.app.Auto execute')}</FormLabel>
+            <FormLabel flex={'0 0 100px'}>{t('app:open_auto_execute')}</FormLabel>
             <Switch
               isChecked={isOpenAutoExec}
               onChange={(e) => {
@@ -68,7 +68,7 @@ const AutoExecConfig = ({
                 value={defaultPrompt}
                 rows={8}
                 bg={'myGray.50'}
-                placeholder={t('common:core.app.schedule.Default prompt placeholder')}
+                placeholder={t('app:auto_execute_default_prompt_placeholder')}
                 onChange={(e) => {
                   onChange({
                     ...value,

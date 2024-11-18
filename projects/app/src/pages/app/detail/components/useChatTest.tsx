@@ -13,7 +13,7 @@ import dynamic from 'next/dynamic';
 import { Box } from '@chakra-ui/react';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
-import { useChatStore } from '@/web/core/chat/context/storeChat';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
@@ -121,10 +121,23 @@ export const useChatTest = ({
   const CustomChatContainer = useMemoizedFn(() =>
     appDetail.type === AppTypeEnum.plugin ? (
       <Box p={5}>
-        <PluginRunBox onNewChat={restartChat} onStartChat={startChat} />
+        <PluginRunBox
+          appId={appId}
+          chatId={chatId}
+          onNewChat={restartChat}
+          onStartChat={startChat}
+        />
       </Box>
     ) : (
-      <ChatBox showMarkIcon chatType="chat" showRawSource showNodeStatus onStartChat={startChat} />
+      <ChatBox
+        appId={appId}
+        chatId={chatId}
+        showMarkIcon
+        chatType="chat"
+        showRawSource
+        showNodeStatus
+        onStartChat={startChat}
+      />
     )
   );
 
