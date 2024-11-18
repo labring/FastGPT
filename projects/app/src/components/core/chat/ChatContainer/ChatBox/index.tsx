@@ -138,6 +138,11 @@ const ChatBox = ({
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
+  const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
+  const setIsChatRecordsLoaded = useContextSelector(
+    ChatRecordContext,
+    (v) => v.setIsChatRecordsLoaded
+  );
   const ScrollData = useContextSelector(ChatRecordContext, (v) => v.ScrollData);
 
   const welcomeText = useContextSelector(ChatBoxContext, (v) => v.welcomeText);
@@ -849,6 +854,7 @@ const ChatBox = ({
     restartChat() {
       abortRequest();
 
+      setIsChatRecordsLoaded(false);
       setChatRecords([]);
       setValue('chatStarted', false);
     },
@@ -1001,13 +1007,13 @@ const ChatBox = ({
   ]);
 
   useEffect(() => {
-    if (autoExecute.open && chatStarted && chatRecords.length === 0) {
+    if (autoExecute.open && chatStarted && chatRecords.length === 0 && isChatRecordsLoaded) {
       sendPrompt({
         text: autoExecute.defaultPrompt || 'AUTO_EXECUTE',
         hideInUI: true
       });
     }
-  }, [sendPrompt, chatStarted, autoExecute, chatRecords.length, chatRecords]);
+  }, [sendPrompt, chatStarted, autoExecute, chatRecords, isChatRecordsLoaded]);
 
   return (
     <MyBox
