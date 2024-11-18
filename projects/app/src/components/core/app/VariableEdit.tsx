@@ -31,6 +31,7 @@ import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import InputTypeConfig from '@/pages/app/detail/components/WorkflowComponents/Flow/nodes/NodePluginIO/InputTypeConfig';
+import IconButton from '@fastgpt/web/components/common/MyBox/IconButton';
 
 export const defaultVariable: VariableItemType = {
   id: nanoid(),
@@ -191,55 +192,24 @@ const VariableEdit = ({
       {/* Form render */}
       {formatVariables.length > 0 && (
         <TableContainer mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'}>
-          <Table bg={'white'}>
-            <Thead h={8}>
+          <Table variant={'workflow'}>
+            <Thead>
               <Tr>
-                <Th
-                  borderRadius={'none !important'}
-                  fontSize={'mini'}
-                  bg={'myGray.50'}
-                  p={0}
-                  px={4}
-                  fontWeight={'medium'}
-                >
-                  {t('workflow:Variable_name')}
-                </Th>
-                <Th fontSize={'mini'} bg={'myGray.50'} p={0} px={4} fontWeight={'medium'}>
-                  {t('common:common.Require Input')}
-                </Th>
-                <Th
-                  fontSize={'mini'}
-                  borderRadius={'none !important'}
-                  bg={'myGray.50'}
-                  p={0}
-                  px={4}
-                  fontWeight={'medium'}
-                >
-                  {t('common:common.Operation')}
-                </Th>
+                <Th>{t('workflow:Variable_name')}</Th>
+                <Th>{t('common:common.Require Input')}</Th>
+                <Th>{t('common:common.Operation')}</Th>
               </Tr>
             </Thead>
             <Tbody>
               {formatVariables.map((item, index) => (
-                <Tr key={item.id} h={10}>
-                  <Td
-                    p={0}
-                    px={4}
-                    color={'myGray.900'}
-                    fontSize={'mini'}
-                    fontWeight={'medium'}
-                    borderBottom={index === formatVariables.length - 1 ? 'none' : undefined}
-                  >
+                <Tr key={item.id}>
+                  <Td fontWeight={'medium'}>
                     <Flex alignItems={'center'}>
                       <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={2} />
                       {item.key}
                     </Flex>
                   </Td>
-                  <Td
-                    p={0}
-                    px={4}
-                    borderBottom={index === formatVariables.length - 1 ? 'none' : undefined}
-                  >
+                  <Td>
                     <Flex alignItems={'center'}>
                       {item.required ? (
                         <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} />
@@ -248,25 +218,10 @@ const VariableEdit = ({
                       )}
                     </Flex>
                   </Td>
-                  <Td
-                    p={0}
-                    px={4}
-                    borderBottom={index === formatVariables.length - 1 ? 'none' : undefined}
-                  >
-                    <Flex alignItems={'center'}>
-                      <Flex
-                        mr={1}
-                        p={1}
-                        color={'myGray.500'}
-                        rounded={'sm'}
-                        alignItems={'center'}
-                        bg={'transparent'}
-                        transition={'background 0.1s'}
-                        cursor={'pointer'}
-                        _hover={{
-                          bg: 'myGray.05',
-                          color: 'primary.600'
-                        }}
+                  <Td>
+                    <Flex>
+                      <IconButton
+                        icon={'common/settingLight'}
                         onClick={() => {
                           const formattedItem = {
                             ...item,
@@ -274,28 +229,14 @@ const VariableEdit = ({
                           };
                           reset(formattedItem);
                         }}
-                      >
-                        <MyIcon name={'common/settingLight'} w={'16px'} />
-                      </Flex>
-                      <Flex
-                        mr={1}
-                        p={1}
-                        color={'myGray.500'}
-                        rounded={'sm'}
-                        alignItems={'center'}
-                        bg={'transparent'}
-                        transition={'background 0.1s'}
-                        cursor={'pointer'}
-                        _hover={{
-                          bg: 'myGray.05',
-                          color: 'red.500'
-                        }}
+                      />
+                      <IconButton
+                        icon={'delete'}
+                        hoverColor={'red.500'}
                         onClick={() =>
                           onChange(variables.filter((variable) => variable.id !== item.id))
                         }
-                      >
-                        <MyIcon name={'delete'} w={'16px'} />
-                      </Flex>
+                      />
                     </Flex>
                   </Td>
                 </Tr>

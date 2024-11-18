@@ -580,11 +580,10 @@ const NodeIntro = React.memo(function NodeIntro({
               rounded={'sm'}
               alignItems={'center'}
               _hover={{
-                bg: NodeIsTool ? 'myGray.100' : 'transparent'
+                bg: 'myGray.100'
               }}
-              cursor={NodeIsTool ? 'pointer' : 'default'}
+              cursor={'pointer'}
               onClick={() => {
-                if (!NodeIsTool) return;
                 onOpenIntroModal({
                   defaultVal: intro,
                   onSuccess(e) {

@@ -34,6 +34,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import IOTitle from '../../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
+import IconButton from '@fastgpt/web/components/common/MyBox/IconButton';
 
 const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
   const { inputs, outputs, nodeId } = data;
@@ -70,56 +71,27 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
             </Button>
           </Flex>
 
-          <TableContainer borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'}>
-            <Table bg={'white'}>
+          <TableContainer borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'} mt={2}>
+            <Table variant={'workflow'}>
               <Thead>
-                <Tr h={8}>
-                  <Th p={0} px={4} bg={'myGray.50'} borderRadius={'none !important'}>
-                    {t('common:item_name')}
-                  </Th>
-                  <Th p={0} px={4} bg={'myGray.50'}>
-                    {t('common:item_description')}
-                  </Th>
-                  <Th p={0} px={4} bg={'myGray.50'}>
-                    {t('common:required')}
-                  </Th>
-                  <Th p={0} px={4} bg={'myGray.50'} borderRadius={'none !important'}></Th>
+                <Tr>
+                  <Th>{t('common:item_name')}</Th>
+                  <Th>{t('common:item_description')}</Th>
+                  <Th>{t('common:required')}</Th>
+                  <Th></Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {extractKeys.map((item, index) => (
-                  <Tr
-                    key={index}
-                    position={'relative'}
-                    whiteSpace={'pre-wrap'}
-                    wordBreak={'break-all'}
-                    h={10}
-                  >
-                    <Td
-                      p={0}
-                      px={4}
-                      borderBottom={index === extractKeys.length - 1 ? 'none' : 'base'}
-                      fontSize={'xs'}
-                      fontWeight={'medium'}
-                    >
+                  <Tr key={index}>
+                    <Td>
                       <Flex alignItems={'center'}>
                         <MyIcon name={'checkCircle'} w={'14px'} mr={1} color={'myGray.600'} />
                         {item.key}
                       </Flex>
                     </Td>
-                    <Td
-                      p={0}
-                      px={4}
-                      borderBottom={index === extractKeys.length - 1 ? 'none' : 'base'}
-                      fontSize={'xs'}
-                    >
-                      {item.desc}
-                    </Td>
-                    <Td
-                      p={0}
-                      px={4}
-                      borderBottom={index === extractKeys.length - 1 ? 'none' : 'base'}
-                    >
+                    <Td>{item.desc}</Td>
+                    <Td>
                       {item.required ? (
                         <Flex alignItems={'center'}>
                           <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} />
@@ -128,45 +100,17 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
                         ''
                       )}
                     </Td>
-                    <Td
-                      p={0}
-                      px={4}
-                      borderBottom={index === extractKeys.length - 1 ? 'none' : 'base'}
-                      whiteSpace={'nowrap'}
-                    >
+                    <Td>
                       <Flex>
-                        <Flex
-                          mr={1}
-                          p={1}
-                          color={'myGray.500'}
-                          rounded={'sm'}
-                          alignItems={'center'}
-                          bg={'transparent'}
-                          transition={'background 0.1s'}
-                          cursor={'pointer'}
-                          _hover={{
-                            bg: 'myGray.05',
-                            color: 'primary.600'
-                          }}
+                        <IconButton
+                          icon={'common/settingLight'}
                           onClick={() => {
                             setEditExtractField(item);
                           }}
-                        >
-                          <MyIcon name={'common/settingLight'} w={'16px'} />
-                        </Flex>
-                        <Flex
-                          mr={1}
-                          p={1}
-                          color={'myGray.500'}
-                          rounded={'sm'}
-                          alignItems={'center'}
-                          bg={'transparent'}
-                          transition={'background 0.1s'}
-                          cursor={'pointer'}
-                          _hover={{
-                            bg: 'myGray.05',
-                            color: 'red.500'
-                          }}
+                        />
+                        <IconButton
+                          icon={'delete'}
+                          hoverColor={'red.500'}
                           onClick={() => {
                             onChangeNode({
                               nodeId,
@@ -184,9 +128,7 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
                               key: item.key
                             });
                           }}
-                        >
-                          <MyIcon name={'delete'} w={'16px'} />
-                        </Flex>
+                        />
                       </Flex>
                     </Td>
                   </Tr>

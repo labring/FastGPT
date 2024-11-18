@@ -1,10 +1,10 @@
 import React, { useMemo, useRef } from 'react';
-import MyMenu from '../../common/MyMenu';
+import MyMenu, { MenuItemType } from '../../common/MyMenu';
 import {
   FlowNodeInputMap,
   FlowNodeInputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { Box, Button, useTheme } from '@chakra-ui/react';
+import { Button, useTheme } from '@chakra-ui/react';
 import MyIcon from '../../common/Icon';
 import { useTranslation } from 'next-i18next';
 
@@ -137,6 +137,8 @@ const NodeInputSelect = ({
         .filter((item) => renderTypeList.includes(item.renderType))
         .map((item) => ({
           ...item,
+          type: 'gray' as MenuItemType,
+          iconColor: 'myGray.400',
           menuItemStyles: {
             fontWeight: 'medium',
             minH: 7,
@@ -158,6 +160,7 @@ const NodeInputSelect = ({
     <MyMenu
       offset={[-0.5, 0.5]}
       trigger="click"
+      size="mini"
       Button={
         <Button
           leftIcon={
@@ -191,10 +194,6 @@ const NodeInputSelect = ({
         </Button>
       }
       menuList={[{ children: filterMenuList }]}
-      primaryBg={'myGray.05'}
-      showCheckIcon
-      labelSize={'mini'}
-      iconColor="myGray.400"
     />
   );
 };

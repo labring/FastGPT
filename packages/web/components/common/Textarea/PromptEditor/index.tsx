@@ -20,9 +20,7 @@ const PromptEditor = ({
   maxLength,
   placeholder,
   title,
-  bg = 'white',
-  placeholderPaddingX,
-  placeholderPaddingY
+  bg = 'white'
 }: {
   showOpenModal?: boolean;
   variables?: EditorVariablePickerType[];
@@ -36,8 +34,6 @@ const PromptEditor = ({
   placeholder?: string;
   title?: string;
   bg?: string;
-  placeholderPaddingX?: number;
-  placeholderPaddingY?: number;
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
@@ -72,8 +68,6 @@ const PromptEditor = ({
         onBlur={onBlurInput}
         placeholder={placeholder}
         bg={bg}
-        placeholderPaddingX={placeholderPaddingX}
-        placeholderPaddingY={placeholderPaddingY}
       />
       <MyModal isOpen={isOpen} onClose={onClose} iconSrc="modal/edit" title={title} w={'full'}>
         <ModalBody>
@@ -88,8 +82,6 @@ const PromptEditor = ({
             onChange={onChangeInput}
             onBlur={onBlurInput}
             placeholder={placeholder}
-            placeholderPaddingX={placeholderPaddingX}
-            placeholderPaddingY={placeholderPaddingY}
           />
         </ModalBody>
         <ModalFooter>

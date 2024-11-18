@@ -37,6 +37,7 @@ import { WorkflowContext } from '../../../context';
 import InputFormEditModal, { defaultFormInput } from './InputFormEditModal';
 import RenderOutput from '../render/RenderOutput';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import IconButton from '@fastgpt/web/components/common/MyBox/IconButton';
 
 const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, outputs } = data;
@@ -149,45 +150,21 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               )}
             </HStack>
             <TableContainer borderWidth={'1px'} borderRadius={'md'}>
-              <Table bg={'white'}>
-                <Thead h={8}>
+              <Table variant={'workflow'}>
+                <Thead>
                   <Tr>
-                    <Th
-                      p={0}
-                      px={4}
-                      fontSize={'mini'}
-                      borderBottomLeftRadius={'none !important'}
-                      bg={'myGray.50'}
-                    >
-                      {t('workflow:user_form_input_name')}
-                    </Th>
-                    <Th p={0} px={4} fontSize={'mini'} bg={'myGray.50'}>
-                      {t('workflow:user_form_input_description')}
-                    </Th>
-                    <Th p={0} px={4} fontSize={'mini'} bg={'myGray.50'}>
-                      {t('common:common.Require Input')}
-                    </Th>
-                    <Th
-                      p={0}
-                      px={4}
-                      fontSize={'mini'}
-                      borderBottomRightRadius={'none !important'}
-                      bg={'myGray.50'}
-                    >
-                      {t('user:operations')}
-                    </Th>
+                    <Th>{t('workflow:user_form_input_name')}</Th>
+                    <Th>{t('workflow:user_form_input_description')}</Th>
+                    <Th>{t('common:common.Require Input')}</Th>
+                    <Th>{t('user:operations')}</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
                   {inputs.map((item, index) => {
                     const icon = FlowNodeInputMap[item.type as FlowNodeInputTypeEnum]?.icon;
                     return (
-                      <Tr key={index} h={10}>
-                        <Td
-                          p={0}
-                          px={4}
-                          borderBottom={index === inputs.length - 1 ? 'none' : undefined}
-                        >
+                      <Tr key={index}>
+                        <Td>
                           <Flex alignItems={'center'} fontSize={'mini'} fontWeight={'medium'}>
                             {!!icon && (
                               <MyIcon name={icon as any} w={'14px'} mr={1} color={'myGray.400'} />
@@ -195,20 +172,8 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                             {item.label}
                           </Flex>
                         </Td>
-                        <Td
-                          p={0}
-                          px={4}
-                          fontSize={'mini'}
-                          borderBottom={index === inputs.length - 1 ? 'none' : undefined}
-                        >
-                          {item.description}
-                        </Td>
-                        <Td
-                          p={0}
-                          px={4}
-                          fontSize={'mini'}
-                          borderBottom={index === inputs.length - 1 ? 'none' : undefined}
-                        >
+                        <Td>{item.description}</Td>
+                        <Td>
                           {item.required ? (
                             <Flex alignItems={'center'}>
                               <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} />
@@ -217,47 +182,17 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                             ''
                           )}
                         </Td>
-                        <Td
-                          p={0}
-                          px={4}
-                          borderBottom={index === inputs.length - 1 ? 'none' : undefined}
-                        >
+                        <Td>
                           <Flex>
-                            <Flex
-                              mr={1}
-                              p={1}
-                              color={'myGray.500'}
-                              rounded={'sm'}
-                              alignItems={'center'}
-                              bg={'transparent'}
-                              transition={'background 0.1s'}
-                              cursor={'pointer'}
-                              _hover={{
-                                bg: 'myGray.05',
-                                color: 'primary.600'
-                              }}
+                            <IconButton
+                              icon={'common/settingLight'}
                               onClick={() => setEditField(item)}
-                            >
-                              <MyIcon name={'common/settingLight'} w={'16px'} />
-                            </Flex>
-                            <Flex
-                              p={1}
-                              color={'myGray.500'}
-                              rounded={'sm'}
-                              alignItems={'center'}
-                              bg={'transparent'}
-                              transition={'background 0.1s'}
-                              cursor={'pointer'}
-                              _hover={{
-                                bg: 'myGray.05',
-                                color: 'red.500'
-                              }}
-                              onClick={() => {
-                                onDelete(item.key);
-                              }}
-                            >
-                              <MyIcon name={'delete'} w={'16px'} />
-                            </Flex>
+                            />
+                            <IconButton
+                              icon={'delete'}
+                              hoverColor={'red.500'}
+                              onClick={() => onDelete(item.key)}
+                            />
                           </Flex>
                         </Td>
                       </Tr>

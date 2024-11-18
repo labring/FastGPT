@@ -1,13 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Box,
-  Flex,
-  Button,
-  useDisclosure,
-  Input,
-  InputGroup,
-  InputLeftElement
-} from '@chakra-ui/react';
+import { Box, Flex, Button, useDisclosure, Input, InputGroup } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -96,9 +88,16 @@ const MyApps = () => {
   const RenderSearchInput = useMemo(
     () => (
       <InputGroup maxW={['auto', '250px']} position={'relative'}>
-        <Box position={'absolute'} left={2.5} top={'11px'} zIndex={10}>
-          <MyIcon name={'common/searchLight'} w={'1rem'} color={'myGray.600'} />
-        </Box>
+        <MyIcon
+          position={'absolute'}
+          zIndex={10}
+          name={'common/searchLight'}
+          w={'1rem'}
+          color={'myGray.600'}
+          left={2.5}
+          top={'50%'}
+          transform={'translateY(-50%)'}
+        />
         <Input
           value={searchKey}
           onChange={(e) => setSearchKey(e.target.value)}
@@ -183,7 +182,7 @@ const MyApps = () => {
             {userInfo?.team.permission.hasWritePer &&
               folderDetail?.type !== AppTypeEnum.httpPlugin && (
                 <MyMenu
-                  iconSize="2rem"
+                  size="md"
                   Button={
                     <Button variant={'primary'} leftIcon={<AddIcon />}>
                       <Box>{t('common:common.Create New')}</Box>

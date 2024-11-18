@@ -56,9 +56,6 @@ const AppCard = ({
                 _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
                 cursor={'pointer'}
                 onClick={onOpenInfoEdit}
-                whiteSpace={'nowrap'}
-                overflow={'hidden'}
-                textOverflow={'ellipsis'}
               >
                 <MyIcon name={'edit'} w={'16px'} mr={2} />
                 <Box fontSize={'sm'}>{t('app:edit_info')}</Box>
@@ -72,9 +69,6 @@ const AppCard = ({
                 _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
                 cursor={'pointer'}
                 onClick={onOpenInfoEdit}
-                whiteSpace={'nowrap'}
-                overflow={'hidden'}
-                textOverflow={'ellipsis'}
               >
                 <MyIcon name={'support/team/key'} w={'16px'} mr={2} />
                 <Box fontSize={'sm'}>{t('app:Role_setting')}</Box>
@@ -89,9 +83,6 @@ const AppCard = ({
                 _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
                 cursor={'pointer'}
                 onClick={onOpenImport}
-                whiteSpace={'nowrap'}
-                overflow={'hidden'}
-                textOverflow={'ellipsis'}
               >
                 <MyIcon name={'common/importLight'} w={'16px'} mr={2} />
                 <Box fontSize={'sm'}>{t('app:import_configs')}</Box>
@@ -104,9 +95,6 @@ const AppCard = ({
                 rounded={'4px'}
                 _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
                 cursor={'pointer'}
-                whiteSpace={'nowrap'}
-                overflow={'hidden'}
-                textOverflow={'ellipsis'}
               >
                 {ExportPopover({
                   chatConfig: appDetail.chatConfig,
@@ -125,9 +113,6 @@ const AppCard = ({
                     _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
                     cursor={'pointer'}
                     onClick={onOpenTeamTagModal}
-                    whiteSpace={'nowrap'}
-                    overflow={'hidden'}
-                    textOverflow={'ellipsis'}
                   >
                     <MyIcon name={'core/dataset/tag'} w={'16px'} mr={2} />
                     <Box fontSize={'sm'}>{t('app:Team_Tags')}</Box>
@@ -147,9 +132,6 @@ const AppCard = ({
                   _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
                   cursor={'pointer'}
                   onClick={onDelApp}
-                  whiteSpace={'nowrap'}
-                  overflow={'hidden'}
-                  textOverflow={'ellipsis'}
                 >
                   <MyIcon name={'delete'} w={'16px'} mr={2} />
                   <Box fontSize={'sm'}>{t('common:common.Delete')}</Box>

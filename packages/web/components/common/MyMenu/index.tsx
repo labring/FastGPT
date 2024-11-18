@@ -7,24 +7,25 @@ import {
   useOutsideClick,
   MenuButton,
   MenuItemProps,
-  PlacementWithLogical
+  PlacementWithLogical,
+  AvatarProps,
+  BoxProps
 } from '@chakra-ui/react';
 import MyDivider from '../MyDivider';
 import type { IconNameType } from '../Icon/type';
 import { useSystem } from '../../../hooks/useSystem';
 import Avatar from '../Avatar';
-import MyIcon from '../Icon';
 
-export type MenuItemType = 'primary' | 'danger';
+export type MenuItemType = 'primary' | 'danger' | 'gray';
+
+export type MenuSizeType = 'sm' | 'md' | 'mini';
 
 export type Props = {
   width?: number | string;
   offset?: [number, number];
   Button: React.ReactNode;
   trigger?: 'hover' | 'click';
-  iconSize?: string;
-  iconRadius?: string;
-  iconColor?: string;
+  size?: MenuSizeType;
 
   placement?: PlacementWithLogical;
   menuList: {
@@ -33,44 +34,50 @@ export type Props = {
       isActive?: boolean;
       type?: MenuItemType;
       icon?: IconNameType | string;
+      iconColor?: string;
       label: string | React.ReactNode;
       description?: string;
       onClick?: () => any;
       menuItemStyles?: MenuItemProps;
     }[];
   }[];
-
-  showCheckIcon?: boolean;
-  primaryBg?: string;
-  labelSize?: string;
 };
 
 const MyMenu = ({
   width = 'auto',
   trigger = 'hover',
+  size = 'sm',
   offset,
-  iconSize = '1rem',
   Button,
   menuList,
-  iconColor,
-  iconRadius,
-  placement = 'bottom-start',
-  showCheckIcon = false,
-  primaryBg = 'primary.50',
-  labelSize = 'sm'
+  placement = 'bottom-start'
 }: Props) => {
   const typeMapStyle: Record<MenuItemType, MenuItemProps> = {
     primary: {
       _hover: {
-        backgroundColor: primaryBg,
+        backgroundColor: 'primary.50',
         color: 'primary.600'
       },
       _focus: {
-        backgroundColor: primaryBg,
+        backgroundColor: 'primary.50',
         color: 'primary.600'
       },
       _active: {
-        backgroundColor: primaryBg,
+        backgroundColor: 'primary.50',
+        color: 'primary.600'
+      }
+    },
+    gray: {
+      _hover: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      },
+      _focus: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      },
+      _active: {
+        backgroundColor: 'myGray.05',
         color: 'primary.600'
       }
     },
@@ -84,6 +91,33 @@ const MyMenu = ({
       },
       _active: {
         background: 'red.1'
+      }
+    }
+  };
+  const sizeMapStyle: Record<MenuSizeType, { iconStyle: AvatarProps; labelStyle: BoxProps }> = {
+    mini: {
+      iconStyle: {
+        w: '14px'
+      },
+      labelStyle: {
+        fontSize: '12px'
+      }
+    },
+    sm: {
+      iconStyle: {
+        w: '1rem'
+      },
+      labelStyle: {
+        fontSize: 'sm'
+      }
+    },
+    md: {
+      iconStyle: {
+        w: '2rem',
+        borderRadius: '6px'
+      },
+      labelStyle: {
+        fontSize: 'sm'
       }
     }
   };
@@ -200,12 +234,11 @@ const MyMenu = ({
                     {!!child.icon && (
                       <Avatar
                         src={child.icon as any}
-                        borderRadius={iconRadius}
-                        w={iconSize}
                         mr={2}
-                        {...(iconColor
+                        {...sizeMapStyle[size].iconStyle}
+                        {...(child.iconColor
                           ? {
-                              color: child.isActive ? 'inherit' : iconColor,
+                              color: child.isActive ? 'inherit' : child.iconColor,
                               sx: {
                                 '[role="menuitem"]:hover &': {
                                   color: 'inherit'
@@ -219,7 +252,7 @@ const MyMenu = ({
                       <Box
                         w={'100%'}
                         color={child.description ? 'myGray.900' : 'inherit'}
-                        fontSize={labelSize}
+                        {...sizeMapStyle[size].labelStyle}
                       >
                         {child.label}
                       </Box>
@@ -229,9 +262,6 @@ const MyMenu = ({
                         </Box>
                       )}
                     </Box>
-                    {child.isActive && showCheckIcon && (
-                      <MyIcon name={'check'} w={'16px'} color={'primary.700'} ml={2} />
-                    )}
                   </MenuItem>
                 ))}
               </Box>
