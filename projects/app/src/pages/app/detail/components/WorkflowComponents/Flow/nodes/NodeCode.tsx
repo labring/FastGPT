@@ -36,8 +36,8 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     return {
       [NodeInputKeyEnum.code]: (item: FlowNodeInputItemType) => {
         return (
-          <Box>
-            <Flex mb={1} alignItems={'flex-end'}>
+          <Box mt={-3}>
+            <Flex mb={2} alignItems={'flex-end'}>
               <Box flex={'1'}>{'Javascript ' + workflowT('Code')}</Box>
               <Box
                 cursor={'pointer'}
@@ -88,7 +88,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           </>
         )}
         <Container>
-          <IOTitle text={t('common:common.Input')} />
+          <IOTitle text={t('common:common.Input')} mb={-1} />
           <RenderInput
             nodeId={nodeId}
             flowInputList={commonInputs}

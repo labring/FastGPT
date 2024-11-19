@@ -105,8 +105,8 @@ export default function Editor({
               left={0}
               right={0}
               bottom={0}
-              py={2}
-              px={3}
+              py={3}
+              px={3.5}
               pointerEvents={'none'}
               overflow={'hidden'}
             >

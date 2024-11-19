@@ -177,20 +177,15 @@ const ButtonEdge = (props: EdgeProps) => {
               position={'absolute'}
               transform={arrowTransform}
               pointerEvents={'all'}
-              w={highlightEdge ? '14px' : '10px'}
-              h={highlightEdge ? '14px' : '10px'}
+              w={highlightEdge ? '12px' : '10px'}
+              h={highlightEdge ? '12px' : '10px'}
               zIndex={highlightEdge ? defaultZIndex + 1000 : defaultZIndex}
             >
               <MyIcon
-                name={'core/workflow/edgeArrow'}
+                name={highlightEdge ? 'core/workflow/edgeArrowBold' : 'core/workflow/edgeArrow'}
                 w={'100%'}
                 color={edgeColor}
-                {...(highlightEdge
-                  ? {
-                      fontWeight: 'bold'
-                    }
-                  : {})}
-              ></MyIcon>
+              />
             </Flex>
           )}
         </Box>
@@ -223,7 +218,7 @@ const ButtonEdge = (props: EdgeProps) => {
           ...style,
           ...(highlightEdge
             ? {
-                strokeWidth: 5
+                strokeWidth: 4
               }
             : { strokeWidth: 3, zIndex: 2 })
         };

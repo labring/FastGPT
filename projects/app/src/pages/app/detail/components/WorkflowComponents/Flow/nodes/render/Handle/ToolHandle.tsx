@@ -53,6 +53,8 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
           w={handleSize}
           h={handleSize}
           border={'4px solid #8774EE'}
+          rounded={'xs'}
+          bg={'white'}
           transform={'translate(0,0) rotate(45deg)'}
           pointerEvents={'none'}
         />
@@ -105,6 +107,8 @@ export const ToolSourceHandle = () => {
             w={handleSize}
             h={handleSize}
             border={'4px solid #8774EE'}
+            rounded={'xs'}
+            bg={'white'}
             transform={'translate(0,0) rotate(45deg)'}
             pointerEvents={'none'}
           />

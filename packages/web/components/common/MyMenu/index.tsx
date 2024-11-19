@@ -7,22 +7,26 @@ import {
   useOutsideClick,
   MenuButton,
   MenuItemProps,
-  PlacementWithLogical
+  PlacementWithLogical,
+  AvatarProps,
+  BoxProps,
+  DividerProps
 } from '@chakra-ui/react';
 import MyDivider from '../MyDivider';
 import type { IconNameType } from '../Icon/type';
 import { useSystem } from '../../../hooks/useSystem';
 import Avatar from '../Avatar';
 
-export type MenuItemType = 'primary' | 'danger';
+export type MenuItemType = 'primary' | 'danger' | 'gray' | 'grayBg';
+
+export type MenuSizeType = 'sm' | 'md' | 'xs' | 'mini';
 
 export type Props = {
   width?: number | string;
   offset?: [number, number];
   Button: React.ReactNode;
   trigger?: 'hover' | 'click';
-  iconSize?: string;
-  iconRadius?: string;
+  size?: MenuSizeType;
 
   placement?: PlacementWithLogical;
   menuList: {
@@ -42,14 +46,13 @@ export type Props = {
 const MyMenu = ({
   width = 'auto',
   trigger = 'hover',
+  size = 'sm',
   offset,
-  iconSize = '1rem',
   Button,
   menuList,
-  iconRadius,
   placement = 'bottom-start'
 }: Props) => {
-  const typeMapStyle: Record<MenuItemType, MenuItemProps> = {
+  const typeMapStyle: Record<MenuItemType, MenuItemProps & { iconColor?: string }> = {
     primary: {
       _hover: {
         backgroundColor: 'primary.50',
@@ -62,7 +65,38 @@ const MyMenu = ({
       _active: {
         backgroundColor: 'primary.50',
         color: 'primary.600'
-      }
+      },
+      iconColor: 'myGray.600'
+    },
+    gray: {
+      _hover: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      },
+      _focus: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      },
+      _active: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      },
+      iconColor: 'myGray.400'
+    },
+    grayBg: {
+      _hover: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      },
+      _focus: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      },
+      _active: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      },
+      iconColor: 'myGray.600'
     },
     danger: {
       color: 'red.600',
@@ -74,6 +108,84 @@ const MyMenu = ({
       },
       _active: {
         background: 'red.1'
+      },
+      iconColor: 'red.600'
+    }
+  };
+  const sizeMapStyle: Record<
+    MenuSizeType,
+    {
+      iconStyle: AvatarProps;
+      labelStyle: BoxProps;
+      dividerStyle: DividerProps;
+      menuItemStyle: MenuItemProps;
+    }
+  > = {
+    mini: {
+      iconStyle: {
+        w: '14px'
+      },
+      labelStyle: {
+        fontSize: 'mini'
+      },
+      dividerStyle: {
+        my: 0.5
+      },
+      menuItemStyle: {
+        py: 1.5,
+        px: 2
+      }
+    },
+    xs: {
+      iconStyle: {
+        w: '14px'
+      },
+      labelStyle: {
+        fontSize: 'sm'
+      },
+      dividerStyle: {
+        my: 0.5
+      },
+      menuItemStyle: {
+        py: 1.5,
+        px: 2
+      }
+    },
+    sm: {
+      iconStyle: {
+        w: '1rem'
+      },
+      labelStyle: {
+        fontSize: 'sm'
+      },
+      dividerStyle: {
+        my: 1
+      },
+      menuItemStyle: {
+        py: 2,
+        px: 3,
+        _notLast: {
+          mb: 0.5
+        }
+      }
+    },
+    md: {
+      iconStyle: {
+        w: '2rem',
+        borderRadius: '6px'
+      },
+      labelStyle: {
+        fontSize: 'sm'
+      },
+      dividerStyle: {
+        my: 1
+      },
+      menuItemStyle: {
+        py: 2,
+        px: 3,
+        _notLast: {
+          mb: 0.5
+        }
       }
     }
   };
@@ -165,7 +277,7 @@ const MyMenu = ({
             return (
               <Box key={i}>
                 {item.label && <Box fontSize={'sm'}>{item.label}</Box>}
-                {i !== 0 && <MyDivider h={'1.5px'} my={1} />}
+                {i !== 0 && <MyDivider h={'1.5px'} {...sizeMapStyle[size].dividerStyle} />}
                 {item.children.map((child, index) => (
                   <MenuItem
                     key={index}
@@ -177,29 +289,36 @@ const MyMenu = ({
                         child.onClick();
                       }
                     }}
-                    py={2}
-                    px={3}
                     alignItems={'center'}
                     fontSize={'sm'}
                     color={child.isActive ? 'primary.700' : 'myGray.600'}
                     whiteSpace={'pre-wrap'}
-                    _notLast={{ mb: 0.5 }}
                     {...typeMapStyle[child.type || 'primary']}
+                    {...sizeMapStyle[size].menuItemStyle}
                     {...child.menuItemStyles}
                   >
                     {!!child.icon && (
                       <Avatar
                         src={child.icon as any}
-                        borderRadius={iconRadius}
-                        w={iconSize}
-                        mr={3}
+                        mr={2}
+                        {...sizeMapStyle[size].iconStyle}
+                        color={
+                          child.isActive
+                            ? 'inherit'
+                            : typeMapStyle[child.type || 'primary'].iconColor
+                        }
+                        sx={{
+                          '[role="menuitem"]:hover &': {
+                            color: 'inherit'
+                          }
+                        }}
                       />
                     )}
                     <Box w={'100%'}>
                       <Box
                         w={'100%'}
                         color={child.description ? 'myGray.900' : 'inherit'}
-                        fontSize={'sm'}
+                        {...sizeMapStyle[size].labelStyle}
                       >
                         {child.label}
                       </Box>

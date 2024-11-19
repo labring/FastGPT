@@ -240,7 +240,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         position={'absolute'}
         top={'10px'}
         left={0}
-        pt={'20px'}
+        pt={5}
         pb={4}
         h={isOpen ? 'calc(100% - 20px)' : '0'}
         w={isOpen ? ['100%', `${sliderWidth}px`] : '0'}
@@ -254,7 +254,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         {/* Header */}
         <Box px={'5'} mb={3} whiteSpace={'nowrap'} overflow={'hidden'}>
           {/* Tabs */}
-          <Flex flex={'1 0 0'} alignItems={'center'} gap={3}>
+          <Flex flex={'1 0 0'} alignItems={'center'} gap={2}>
             <Box flex={'1 0 0'}>
               <FillRowTabs
                 list={[
@@ -288,8 +288,14 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
             {/* close icon */}
             <IconButton
               size={'sm'}
-              icon={<MyIcon name={'common/backFill'} w={'14px'} color={'myGray.700'} />}
-              borderColor={'myGray.300'}
+              icon={<MyIcon name={'common/backFill'} w={'14px'} color={'myGray.600'} />}
+              bg={'myGray.100'}
+              _hover={{
+                bg: 'myGray.200',
+                '& svg': {
+                  color: 'primary.600'
+                }
+              }}
               variant={'grayBase'}
               aria-label={''}
               onClick={onClose}
