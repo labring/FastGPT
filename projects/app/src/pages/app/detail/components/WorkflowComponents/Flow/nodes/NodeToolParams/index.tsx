@@ -36,7 +36,7 @@ const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       <NodeCard selected={selected} {...data}>
         <Container>
           <Flex alignItems={'center'} justifyContent={'space-between'} mb={1.5}>
-            <FormLabel>{t('workflow:tool_custom_field')}</FormLabel>
+            <FormLabel fontSize={'sm'}>{t('workflow:tool_custom_field')}</FormLabel>
             <Button
               variant={'whiteBase'}
               leftIcon={<SmallAddIcon />}
@@ -54,38 +54,89 @@ const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               />
             )}
           </Flex>
-          <Box borderRadius={'md'} overflow={'hidden'} border={'base'}>
-            <TableContainer>
-              <Table bg={'white'}>
-                <Thead>
-                  <Tr>
-                    <Th>{t('workflow:tool_params.params_name')}</Th>
-                    <Th>{t('workflow:tool_params.params_description')}</Th>
-                    <Th>{t('common:common.Operation')}</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {inputs.map((item, index) => (
-                    <Tr
-                      key={index}
-                      position={'relative'}
-                      whiteSpace={'pre-wrap'}
-                      wordBreak={'break-all'}
+          <TableContainer
+            borderRadius={'md'}
+            overflow={'hidden'}
+            border={'1px solid'}
+            borderColor={'myGray.200'}
+          >
+            <Table bg={'white'}>
+              <Thead>
+                <Tr h={8}>
+                  <Th p={0} px={4} bg={'myGray.50'} borderBottomLeftRadius={'none !important'}>
+                    {t('workflow:tool_params.params_name')}
+                  </Th>
+                  <Th p={0} px={4} bg={'myGray.50'}>
+                    {t('workflow:tool_params.params_description')}
+                  </Th>
+                  <Th p={0} px={4} bg={'myGray.50'} borderBottomRightRadius={'none !important'}>
+                    {t('common:common.Operation')}
+                  </Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {inputs.map((item, index) => (
+                  <Tr
+                    key={index}
+                    position={'relative'}
+                    whiteSpace={'pre-wrap'}
+                    wordBreak={'break-all'}
+                    h={10}
+                  >
+                    <Td
+                      p={0}
+                      px={4}
+                      borderBottom={index === inputs.length - 1 ? 'none' : undefined}
                     >
-                      <Td>{item.key}</Td>
-                      <Td>{item.toolDescription}</Td>
-                      <Td whiteSpace={'nowrap'}>
-                        <MyIcon
+                      <Flex alignItems={'center'} fontSize={'xs'}>
+                        <MyIcon name={'checkCircle'} w={'14px'} mr={1} color={'myGray.600'} />
+                        {item.key}
+                      </Flex>
+                    </Td>
+                    <Td
+                      p={0}
+                      px={4}
+                      borderBottom={index === inputs.length - 1 ? 'none' : undefined}
+                      fontSize={'xs'}
+                    >
+                      {item.toolDescription}
+                    </Td>
+                    <Td
+                      p={0}
+                      px={4}
+                      borderBottom={index === inputs.length - 1 ? 'none' : undefined}
+                      whiteSpace={'nowrap'}
+                    >
+                      <Flex alignItems={'center'}>
+                        <Flex
                           mr={3}
-                          name={'common/settingLight'}
-                          w={'16px'}
+                          p={1}
+                          color={'myGray.500'}
+                          rounded={'sm'}
+                          alignItems={'center'}
+                          bg={'transparent'}
+                          transition={'background 0.1s'}
                           cursor={'pointer'}
+                          _hover={{
+                            bg: 'myGray.05',
+                            color: 'primary.600'
+                          }}
                           onClick={() => setEditField(item)}
-                        />
-                        <MyIcon
-                          name={'delete'}
-                          w={'16px'}
+                        >
+                          <MyIcon name={'common/settingLight'} w={'16px'} />
+                        </Flex>
+                        <Flex
+                          p={1}
+                          color={'myGray.500'}
+                          rounded={'sm'}
+                          alignItems={'center'}
+                          bg={'transparent'}
+                          transition={'background 0.1s'}
                           cursor={'pointer'}
+                          _hover={{
+                            bg: 'myGray.05',
+                            color: 'red.500'
+                          }}
                           onClick={() => {
                             onChangeNode({
                               nodeId,
@@ -98,14 +149,16 @@ const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                               key: item.key
                             });
                           }}
-                        />
-                      </Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </TableContainer>
-          </Box>
+                        >
+                          <MyIcon name={'delete'} w={'16px'} />
+                        </Flex>
+                      </Flex>
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </TableContainer>
         </Container>
       </NodeCard>
     );

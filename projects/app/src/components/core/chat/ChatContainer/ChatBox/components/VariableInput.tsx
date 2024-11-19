@@ -37,13 +37,7 @@ export const VariableInputItem = ({
       >
         {item.label}
         {item.required && (
-          <Box
-            position={'absolute'}
-            top={'-2px'}
-            left={'-8px'}
-            color={'red.500'}
-            fontWeight={'bold'}
-          >
+          <Box position={'absolute'} top={'-2px'} left={'-8px'} color={'red.500'}>
             *
           </Box>
         )}

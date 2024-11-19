@@ -6,7 +6,7 @@ export const minZoom = 0.1;
 export const maxZoom = 1.5;
 
 export const connectionLineStyle: React.CSSProperties = {
-  strokeWidth: 2,
+  strokeWidth: 3,
   stroke: '#487FFF'
 };
 
