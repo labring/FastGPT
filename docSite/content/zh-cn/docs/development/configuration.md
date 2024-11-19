@@ -23,6 +23,7 @@ weight: 708
   "systemEnv": {
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
+    "tokenWorkers": 50, // Token 计算线程保持数，会持续占用内存，不能设置太大。
     "pgHNSWEfSearch": 100 // 向量搜索参数。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
   },
   "llmModels": [
