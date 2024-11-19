@@ -34,12 +34,7 @@ import {
   WorkflowInitContext
 } from '../WorkflowComponents/context/workflowInitContext';
 import { WorkflowEventContext } from '../WorkflowComponents/context/workflowEventContext';
-import { create } from 'jsondiffpatch';
-
-const diffPatcher = create({
-  objectHash: (obj: any) => obj.id || obj.nodeId || obj._id,
-  propertyFilter: (name: string) => name !== 'selected'
-});
+import { applyDiff } from '@/web/core/app/diff';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -88,10 +83,7 @@ const Header = () => {
         past.find((snapshot) => snapshot.isSaved);
 
       const initialState = past[past.length - 1]?.state;
-      const savedSnapshotState = diffPatcher.patch(
-        structuredClone(initialState),
-        savedSnapshot?.diff
-      ) as WorkflowStateType;
+      const savedSnapshotState = applyDiff(initialState, savedSnapshot?.diff);
 
       const val = compareSnapshot(
         {

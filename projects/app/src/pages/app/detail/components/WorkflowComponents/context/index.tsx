@@ -42,12 +42,7 @@ import { cloneDeep } from 'lodash';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import WorkflowInitContextProvider, { WorkflowNodeEdgeContext } from './workflowInitContext';
 import WorkflowEventContextProvider from './workflowEventContext';
-import { create } from 'jsondiffpatch';
-
-const diffPatcher = create({
-  objectHash: (obj: any) => obj.id || obj.nodeId || obj._id,
-  propertyFilter: (name: string) => name !== 'selected'
-});
+import { applyDiff, createDiff } from '@/web/core/app/diff';
 
 /* 
   Context
@@ -784,19 +779,12 @@ const WorkflowContextProvider = ({
         return false;
       }
 
-      const newState = {
-        nodes: simplifyNodes(pastNodes),
-        edges: pastEdges,
-        chatConfig
-      };
-
+      // Get initial state
       const initialState = past[past.length - 1]?.state;
       if (!initialState) return false;
 
-      const pastState = diffPatcher.patch(
-        structuredClone(initialState),
-        past[0].diff
-      ) as WorkflowStateType;
+      // Apply latest diff to get past state
+      const pastState = applyDiff(initialState, past[0].diff);
 
       const isPastEqual = compareSnapshot(
         {
@@ -813,7 +801,15 @@ const WorkflowContextProvider = ({
 
       if (isPastEqual) return false;
 
-      const diff = diffPatcher.diff(initialState, newState);
+      // Create current state object
+      const newState = {
+        nodes: simplifyNodes(pastNodes),
+        edges: pastEdges,
+        chatConfig
+      };
+
+      // Calculate diff from initial state
+      const diff = createDiff(initialState, newState);
 
       setFuture([]);
       setPast((past) => [
@@ -822,7 +818,7 @@ const WorkflowContextProvider = ({
           title: customTitle || formatTime2YMDHMS(new Date()),
           isSaved
         },
-        ...past
+        ...past.slice(0, 199)
       ]);
 
       return true;
@@ -834,11 +830,7 @@ const WorkflowContextProvider = ({
     const copyText = t('app:version_copy');
     const regex = new RegExp(`(${copyText}-)\\1+`, 'g');
     const title = customTitle.replace(regex, `$1`);
-
-    const pastState = diffPatcher.patch(
-      structuredClone(past[past.length - 1].state),
-      params.diff
-    ) as WorkflowStateType;
+    const pastState = applyDiff(past[past.length - 1].state, params.diff);
 
     resetSnapshot(pastState);
 
@@ -871,21 +863,14 @@ const WorkflowContextProvider = ({
     if (past[1]) {
       setFuture((future) => [past[0], ...future]);
       setPast((past) => past.slice(1));
-
-      const pastState = diffPatcher.patch(
-        structuredClone(past[past.length - 1].state),
-        past[1].diff
-      ) as WorkflowStateType;
+      const pastState = applyDiff(past[past.length - 1].state, past[1].diff);
       resetSnapshot(pastState);
     }
   });
   const redo = useMemoizedFn(() => {
     if (!future[0]) return;
 
-    const futureState = diffPatcher.patch(
-      structuredClone(past[past.length - 1].state),
-      future[0].diff
-    ) as WorkflowStateType;
+    const futureState = applyDiff(past[past.length - 1].state, future[0].diff);
 
     if (futureState) {
       setPast((past) => [future[0], ...past]);
@@ -907,6 +892,7 @@ const WorkflowContextProvider = ({
     });
   }, [appId]);
 
+  // Convert old history format to new format
   const convertOldFormatHistory = (past: WorkflowSnapshotsType[]) => {
     const baseState = {
       nodes: past[past.length - 1].state?.nodes || [],
@@ -929,7 +915,7 @@ const WorkflowContextProvider = ({
         chatConfig: item.chatConfig || {}
       };
 
-      const diff = diffPatcher.diff(baseState, currentState);
+      const diff = createDiff(baseState, currentState);
 
       return {
         title: item.title || formatTime2YMDHMS(new Date()),
@@ -960,8 +946,8 @@ const WorkflowContextProvider = ({
       if (isInit && past.length > 0) {
         // new format
         if (past[0].diff) {
-          const targetState = diffPatcher.patch(
-            structuredClone(past[past.length - 1].state),
+          const targetState = applyDiff(
+            past[past.length - 1].state,
             past[0].diff
           ) as WorkflowStateType;
 
@@ -980,8 +966,8 @@ const WorkflowContextProvider = ({
 
           setPast(newPast);
 
-          const latestState = diffPatcher.patch(
-            structuredClone(newPast[newPast.length - 1].state),
+          const latestState = applyDiff(
+            newPast[newPast.length - 1].state,
             newPast[0].diff
           ) as WorkflowStateType;
 

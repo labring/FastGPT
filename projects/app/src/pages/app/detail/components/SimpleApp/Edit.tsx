@@ -17,12 +17,7 @@ import styles from './styles.module.scss';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
 import { onSaveSnapshotFnType, SimpleAppSnapshotType } from './useSnapshots';
-import { create } from 'jsondiffpatch';
-
-const diffPatcher = create({
-  objectHash: (obj: any) => obj.id || obj.nodeId || obj._id,
-  propertyFilter: (name: string) => name !== 'selected'
-});
+import { applyDiff } from '@/web/core/app/diff';
 
 const Edit = ({
   appForm,
@@ -52,10 +47,7 @@ const Edit = ({
 
     // Get the latest snapshot
     if (past?.[0]?.diff) {
-      const pastState = diffPatcher.patch(
-        structuredClone(past[past.length - 1].state),
-        past[0].diff
-      ) as AppSimpleEditFormType;
+      const pastState = applyDiff(past[past.length - 1].state, past[0].diff);
 
       return setAppForm(pastState);
     }

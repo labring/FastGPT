@@ -1,17 +1,12 @@
 import { useLocalStorageState, useMemoizedFn } from 'ahooks';
-import { SetStateAction, useEffect, useRef, useState } from 'react';
+import { SetStateAction, useEffect, useRef } from 'react';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { isEqual } from 'lodash';
-import { create } from 'jsondiffpatch';
-
-const diffPatcher = create({
-  objectHash: (obj: any) => obj.id || obj.nodeId || obj._id,
-  propertyFilter: (name: string) => name !== 'selected'
-});
+import { applyDiff, createDiff } from '@/web/core/app/diff';
 
 export type SimpleAppSnapshotType = {
-  diff?: any;
+  diff?: Record<string, any>;
   title: string;
   isSaved?: boolean;
   state?: AppSimpleEditFormType;
@@ -88,16 +83,13 @@ export const useSimpleAppSnapshots = (appId: string) => {
     if (!initialState) return false;
 
     if (past.length > 0) {
-      const pastState = diffPatcher.patch(
-        structuredClone(initialState),
-        past[0].diff
-      ) as AppSimpleEditFormType;
+      const pastState = applyDiff(initialState, past[0].diff);
 
       const isPastEqual = compareSimpleAppSnapshot(pastState, appForm);
       if (isPastEqual) return false;
     }
 
-    const diff = diffPatcher.diff(structuredClone(initialState), appForm);
+    const diff = createDiff(initialState, appForm);
 
     setPast((past) => [
       {

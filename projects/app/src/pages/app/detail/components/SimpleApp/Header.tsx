@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import FolderPath from '@/components/common/folder/Path';
@@ -29,12 +29,7 @@ import {
 } from './useSnapshots';
 import PublishHistories from '../PublishHistoriesSlider';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
-import { create } from 'jsondiffpatch';
-
-const diffPatcher = create({
-  objectHash: (obj: any) => obj.id || obj.nodeId || obj._id,
-  propertyFilter: (name: string) => name !== 'selected'
-});
+import { applyDiff } from '@/web/core/app/diff';
 
 const Header = ({
   forbiddenSaveSnapshot,
@@ -60,10 +55,14 @@ const Header = ({
   );
   const { lastAppListRouteType } = useSystemStore();
   const { allDatasets } = useDatasetStore();
-  const initialAppForm = appWorkflow2Form({
-    nodes: appLatestVersion?.nodes || [],
-    chatConfig: appLatestVersion?.chatConfig || {}
-  });
+  const initialAppForm = useMemo(
+    () =>
+      appWorkflow2Form({
+        nodes: appLatestVersion?.nodes || [],
+        chatConfig: appLatestVersion?.chatConfig || {}
+      }),
+    [appLatestVersion]
+  );
 
   const { data: paths = [] } = useRequest2(() => getAppFolderPath(appId), {
     manual: false,
@@ -117,10 +116,7 @@ const Header = ({
 
   const onSwitchTmpVersion = useCallback(
     (data: SimpleAppSnapshotType, customTitle: string) => {
-      const pastState = diffPatcher.patch(
-        structuredClone(initialAppForm),
-        data.diff
-      ) as AppSimpleEditFormType;
+      const pastState = applyDiff(initialAppForm, data.diff);
       setAppForm(pastState);
 
       // Remove multiple "copy-"
@@ -160,10 +156,7 @@ const Header = ({
   useDebounceEffect(
     () => {
       const savedSnapshot = past.find((snapshot) => snapshot.isSaved);
-      const pastState = diffPatcher.patch(
-        structuredClone(initialAppForm),
-        savedSnapshot?.diff
-      ) as AppSimpleEditFormType;
+      const pastState = applyDiff(initialAppForm, savedSnapshot?.diff);
       const val = compareSimpleAppSnapshot(pastState, appForm);
       setIsPublished(val);
     },
