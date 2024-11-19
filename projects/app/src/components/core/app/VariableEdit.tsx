@@ -31,7 +31,7 @@ import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import InputTypeConfig from '@/pages/app/detail/components/WorkflowComponents/Flow/nodes/NodePluginIO/InputTypeConfig';
-import IconButton from '@fastgpt/web/components/common/MyBox/IconButton';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 export const defaultVariable: VariableItemType = {
   id: nanoid(),
@@ -220,7 +220,7 @@ const VariableEdit = ({
                   </Td>
                   <Td>
                     <Flex>
-                      <IconButton
+                      <MyIconButton
                         icon={'common/settingLight'}
                         onClick={() => {
                           const formattedItem = {
@@ -230,7 +230,7 @@ const VariableEdit = ({
                           reset(formattedItem);
                         }}
                       />
-                      <IconButton
+                      <MyIconButton
                         icon={'delete'}
                         hoverColor={'red.500'}
                         onClick={() =>
