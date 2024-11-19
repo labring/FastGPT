@@ -34,7 +34,6 @@ export type Props = {
       isActive?: boolean;
       type?: MenuItemType;
       icon?: IconNameType | string;
-      iconColor?: string;
       label: string | React.ReactNode;
       description?: string;
       onClick?: () => any;
@@ -52,7 +51,7 @@ const MyMenu = ({
   menuList,
   placement = 'bottom-start'
 }: Props) => {
-  const typeMapStyle: Record<MenuItemType, MenuItemProps> = {
+  const typeMapStyle: Record<MenuItemType, MenuItemProps & { iconColor?: string }> = {
     primary: {
       _hover: {
         backgroundColor: 'primary.50',
@@ -65,7 +64,8 @@ const MyMenu = ({
       _active: {
         backgroundColor: 'primary.50',
         color: 'primary.600'
-      }
+      },
+      iconColor: 'myGray.600'
     },
     gray: {
       _hover: {
@@ -79,7 +79,8 @@ const MyMenu = ({
       _active: {
         backgroundColor: 'myGray.05',
         color: 'primary.600'
-      }
+      },
+      iconColor: 'myGray.400'
     },
     danger: {
       color: 'red.600',
@@ -91,7 +92,8 @@ const MyMenu = ({
       },
       _active: {
         background: 'red.1'
-      }
+      },
+      iconColor: 'red.600'
     }
   };
   const sizeMapStyle: Record<MenuSizeType, { iconStyle: AvatarProps; labelStyle: BoxProps }> = {
@@ -236,16 +238,16 @@ const MyMenu = ({
                         src={child.icon as any}
                         mr={2}
                         {...sizeMapStyle[size].iconStyle}
-                        {...(child.iconColor
-                          ? {
-                              color: child.isActive ? 'inherit' : child.iconColor,
-                              sx: {
-                                '[role="menuitem"]:hover &': {
-                                  color: 'inherit'
-                                }
-                              }
-                            }
-                          : {})}
+                        color={
+                          child.isActive
+                            ? 'inherit'
+                            : typeMapStyle[child.type || 'primary'].iconColor
+                        }
+                        sx={{
+                          '[role="menuitem"]:hover &': {
+                            color: 'inherit'
+                          }
+                        }}
                       />
                     )}
                     <Box w={'100%'}>

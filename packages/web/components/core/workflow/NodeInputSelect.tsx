@@ -138,7 +138,6 @@ const NodeInputSelect = ({
         .map((item) => ({
           ...item,
           type: 'gray' as MenuItemType,
-          iconColor: 'myGray.400',
           menuItemStyles: {
             fontWeight: 'medium',
             minH: 7,
