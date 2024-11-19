@@ -139,11 +139,8 @@ const Dataset = () => {
             {userInfo?.team?.permission.hasWritePer && (
               <Box pl={[0, 4]}>
                 <MyMenu
+                  size="md"
                   offset={[0, 10]}
-                  width={120}
-                  iconSize="2rem"
-                  iconRadius="6px"
-                  placement="bottom-end"
                   Button={
                     <Button variant={'primary'} px="0">
                       <Flex alignItems={'center'} px={5}>

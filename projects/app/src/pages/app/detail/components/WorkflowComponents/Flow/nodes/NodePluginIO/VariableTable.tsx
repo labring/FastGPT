@@ -1,7 +1,8 @@
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { Box, Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex } from '@chakra-ui/react';
+import { Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
+import IconButton from '@fastgpt/web/components/common/MyBox/IconButton';
 
 const VariableTable = ({
   variables = [],
@@ -16,58 +17,61 @@ const VariableTable = ({
   const showToolColumn = variables.some((item) => item.isTool);
 
   return (
-    <Box bg={'white'} borderRadius={'md'} overflow={'hidden'} border={'base'}>
-      <TableContainer>
-        <Table bg={'white'}>
-          <Thead>
-            <Tr>
-              <Th borderBottomLeftRadius={'none !important'}>{t('workflow:Variable_name')}</Th>
-              <Th>{t('common:core.workflow.Value type')}</Th>
-              {showToolColumn && <Th>{t('workflow:tool_input')}</Th>}
-              <Th borderBottomRightRadius={'none !important'}></Th>
+    <TableContainer
+      borderRadius={'md'}
+      overflow={'hidden'}
+      border={'1px solid'}
+      borderColor={'myGray.200'}
+    >
+      <Table variant={'workflow'}>
+        <Thead>
+          <Tr>
+            <Th>{t('workflow:Variable_name')}</Th>
+            <Th>{t('common:core.workflow.Value type')}</Th>
+            {showToolColumn && <Th>{t('workflow:tool_input')}</Th>}
+            <Th>{t('user:operations')}</Th>
+          </Tr>
+        </Thead>
+        <Tbody>
+          {variables.map((item, index) => (
+            <Tr key={item.key}>
+              <Td>
+                <Flex alignItems={'center'} fontSize={'xs'}>
+                  {!!item.icon ? (
+                    <MyIcon name={item.icon as any} w={'14px'} mr={1} color={'myGray.600'} />
+                  ) : (
+                    <MyIcon name={'checkCircle'} w={'14px'} mr={1} color={'myGray.600'} />
+                  )}
+                  {item.label || item.key}
+                </Flex>
+              </Td>
+              <Td>{item.type}</Td>
+              {showToolColumn && (
+                <Td>
+                  {item.isTool ? (
+                    <Flex alignItems={'center'}>
+                      <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} />
+                    </Flex>
+                  ) : (
+                    ''
+                  )}
+                </Td>
+              )}
+              <Td>
+                <Flex>
+                  <IconButton icon={'common/settingLight'} onClick={() => onEdit(item.key)} />
+                  <IconButton
+                    icon={'delete'}
+                    hoverColor={'red.500'}
+                    onClick={() => onDelete(item.key)}
+                  />
+                </Flex>
+              </Td>
             </Tr>
-          </Thead>
-          <Tbody>
-            {variables.map((item) => (
-              <Tr key={item.key}>
-                <Td>
-                  <Flex alignItems={'center'}>
-                    {!!item.icon && (
-                      <MyIcon name={item.icon as any} w={'14px'} mr={1} color={'primary.600'} />
-                    )}
-                    {item.label || item.key}
-                  </Flex>
-                </Td>
-                <Td>{item.type}</Td>
-                {showToolColumn && <Th>{item.isTool ? '✅' : '-'}</Th>}
-                <Td>
-                  <MyIcon
-                    mr={3}
-                    name={'common/settingLight'}
-                    w={'16px'}
-                    cursor={'pointer'}
-                    _hover={{ color: 'primary.600' }}
-                    onClick={() => onEdit(item.key)}
-                  />
-                  <MyIcon
-                    className="delete"
-                    name={'delete'}
-                    w={'16px'}
-                    color={'myGray.600'}
-                    cursor={'pointer'}
-                    ml={2}
-                    _hover={{ color: 'red.500' }}
-                    onClick={() => {
-                      onDelete(item.key);
-                    }}
-                  />
-                </Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </TableContainer>
-    </Box>
+          ))}
+        </Tbody>
+      </Table>
+    </TableContainer>
   );
 };
 
