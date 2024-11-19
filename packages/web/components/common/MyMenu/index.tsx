@@ -9,16 +9,17 @@ import {
   MenuItemProps,
   PlacementWithLogical,
   AvatarProps,
-  BoxProps
+  BoxProps,
+  DividerProps
 } from '@chakra-ui/react';
 import MyDivider from '../MyDivider';
 import type { IconNameType } from '../Icon/type';
 import { useSystem } from '../../../hooks/useSystem';
 import Avatar from '../Avatar';
 
-export type MenuItemType = 'primary' | 'danger' | 'gray';
+export type MenuItemType = 'primary' | 'danger' | 'gray' | 'grayBg';
 
-export type MenuSizeType = 'sm' | 'md' | 'mini';
+export type MenuSizeType = 'sm' | 'md' | 'xs' | 'mini';
 
 export type Props = {
   width?: number | string;
@@ -82,6 +83,21 @@ const MyMenu = ({
       },
       iconColor: 'myGray.400'
     },
+    grayBg: {
+      _hover: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      },
+      _focus: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      },
+      _active: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      },
+      iconColor: 'myGray.600'
+    },
     danger: {
       color: 'red.600',
       _hover: {
@@ -96,13 +112,43 @@ const MyMenu = ({
       iconColor: 'red.600'
     }
   };
-  const sizeMapStyle: Record<MenuSizeType, { iconStyle: AvatarProps; labelStyle: BoxProps }> = {
+  const sizeMapStyle: Record<
+    MenuSizeType,
+    {
+      iconStyle: AvatarProps;
+      labelStyle: BoxProps;
+      dividerStyle: DividerProps;
+      menuItemStyle: MenuItemProps;
+    }
+  > = {
     mini: {
       iconStyle: {
         w: '14px'
       },
       labelStyle: {
-        fontSize: '12px'
+        fontSize: 'mini'
+      },
+      dividerStyle: {
+        my: 0.5
+      },
+      menuItemStyle: {
+        py: 1.5,
+        px: 2
+      }
+    },
+    xs: {
+      iconStyle: {
+        w: '14px'
+      },
+      labelStyle: {
+        fontSize: 'sm'
+      },
+      dividerStyle: {
+        my: 0.5
+      },
+      menuItemStyle: {
+        py: 1.5,
+        px: 2
       }
     },
     sm: {
@@ -111,6 +157,16 @@ const MyMenu = ({
       },
       labelStyle: {
         fontSize: 'sm'
+      },
+      dividerStyle: {
+        my: 1
+      },
+      menuItemStyle: {
+        py: 2,
+        px: 3,
+        _notLast: {
+          mb: 0.5
+        }
       }
     },
     md: {
@@ -120,6 +176,16 @@ const MyMenu = ({
       },
       labelStyle: {
         fontSize: 'sm'
+      },
+      dividerStyle: {
+        my: 1
+      },
+      menuItemStyle: {
+        py: 2,
+        px: 3,
+        _notLast: {
+          mb: 0.5
+        }
       }
     }
   };
@@ -211,7 +277,7 @@ const MyMenu = ({
             return (
               <Box key={i}>
                 {item.label && <Box fontSize={'sm'}>{item.label}</Box>}
-                {i !== 0 && <MyDivider h={'1.5px'} my={1} />}
+                {i !== 0 && <MyDivider h={'1.5px'} {...sizeMapStyle[size].dividerStyle} />}
                 {item.children.map((child, index) => (
                   <MenuItem
                     key={index}
@@ -223,14 +289,12 @@ const MyMenu = ({
                         child.onClick();
                       }
                     }}
-                    py={2}
-                    px={3}
                     alignItems={'center'}
                     fontSize={'sm'}
                     color={child.isActive ? 'primary.700' : 'myGray.600'}
                     whiteSpace={'pre-wrap'}
-                    _notLast={{ mb: 0.5 }}
                     {...typeMapStyle[child.type || 'primary']}
+                    {...sizeMapStyle[size].menuItemStyle}
                     {...child.menuItemStyles}
                   >
                     {!!child.icon && (
