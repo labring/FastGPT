@@ -14,6 +14,69 @@ type Response = Promise<{
   error?: Record<string, any>;
 }>;
 
+function processContent(content: string): string {
+  return content.replace(/<table>[\s\S]*?<\/table>/g, (htmlTable) => {
+    // Clean up whitespace and newlines
+    const cleanHtml = htmlTable.replace(/\n\s*/g, '');
+    const rows = cleanHtml.match(/<tr>(.*?)<\/tr>/g);
+    if (!rows) return '';
+
+    // Parse table data
+    let tableData: string[][] = [];
+    let maxColumns = 0;
+
+    rows.forEach((row, rowIndex) => {
+      if (!tableData[rowIndex]) {
+        tableData[rowIndex] = [];
+      }
+      let colIndex = 0;
+      const cells = row.match(/<td.*?>(.*?)<\/td>/g) || [];
+
+      cells.forEach((cell) => {
+        while (tableData[rowIndex][colIndex]) {
+          colIndex++;
+        }
+        const colspan = parseInt(cell.match(/colspan="(\d+)"/)?.[1] || '1');
+        const rowspan = parseInt(cell.match(/rowspan="(\d+)"/)?.[1] || '1');
+        const content = cell.replace(/<td.*?>|<\/td>/g, '').trim();
+
+        // Handle rowspan and colspan
+        for (let i = 0; i < rowspan; i++) {
+          for (let j = 0; j < colspan; j++) {
+            if (!tableData[rowIndex + i]) {
+              tableData[rowIndex + i] = [];
+            }
+            tableData[rowIndex + i][colIndex + j] = i === 0 && j === 0 ? content : '^^';
+          }
+        }
+        colIndex += colspan;
+        maxColumns = Math.max(maxColumns, colIndex);
+      });
+    });
+
+    // Convert to markdown
+    let markdown = '';
+    // Header row
+    markdown += '| ' + tableData[0].map((cell) => (cell === '^^' ? ' ' : cell || ' ')).join(' | ');
+    while (tableData[0].length < maxColumns) {
+      markdown += ' | ';
+    }
+    markdown += ' |\n';
+    // Separator row
+    markdown += '| ' + Array(maxColumns).fill('---').join(' | ') + ' |\n';
+    // Data rows
+    tableData.slice(1).forEach((row) => {
+      markdown += '| ' + row.map((cell) => (cell === '^^' ? ' ' : cell || ' ')).join(' | ');
+      while (row.length < maxColumns) {
+        markdown += ' | ';
+      }
+      markdown += ' |\n';
+    });
+
+    return markdown;
+  });
+}
+
 const main = async ({ apikey, files }: Props): Response => {
   // Check the apikey
   if (!apikey) {
@@ -107,7 +170,7 @@ const main = async ({ apikey, files }: Props): Response => {
           }
 
           if (result_data.data.status === 'success') {
-            const result = (
+            const result = processContent(
               await Promise.all(
                 result_data.data.result.pages.map((page: { md: any }) => page.md)
               ).then((pages) => pages.join('\n'))
@@ -115,7 +178,8 @@ const main = async ({ apikey, files }: Props): Response => {
               // Do some post-processing
               .replace(/\\[\(\)]/g, '$')
               .replace(/\\[\[\]]/g, '$$')
-              .replace(/<img\s+src="([^"]+)"(?:\s*\?[^>]*)?(?:\s*\/>|>)/g, '![img]($1)');
+              .replace(/<img\s+src="([^"]+)"(?:\s*\?[^>]*)?(?:\s*\/>|>)/g, '![img]($1)')
+              .replace(/<!-- Media -->/g, '');
 
             return `File:${file_name}\n<Content>\n${result}\n</Content>`;
           }
@@ -132,7 +196,7 @@ const main = async ({ apikey, files }: Props): Response => {
       successResult.push(result);
     } catch (error) {
       failedResult.push(
-        `File:${url} \n<Content>\nFailed to fetch image from URL: ${getErrText(error)}\n</Content>`
+        `File:${url} \n<Content>\nFailed to fetch file from URL: ${getErrText(error)}\n</Content>`
       );
     }
   }
