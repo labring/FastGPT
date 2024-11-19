@@ -21,7 +21,8 @@ const ValueTypeLabel = ({
       <Box
         bg={'myGray.100'}
         color={'myGray.500'}
-        border={'base'}
+        border={'1px solid'}
+        borderColor={'myGray.200'}
         borderRadius={'sm'}
         ml={2}
         px={1}

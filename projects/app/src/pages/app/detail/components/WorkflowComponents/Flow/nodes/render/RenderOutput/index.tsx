@@ -4,7 +4,6 @@ import { Box, Button, Flex } from '@chakra-ui/react';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import OutputLabel from './Label';
-import { RenderOutputProps } from './type';
 import { useTranslation } from 'next-i18next';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import VariableTable from '../../NodePluginIO/VariableTable';
@@ -17,11 +16,6 @@ import dynamic from 'next/dynamic';
 import { defaultOutput } from './FieldEditModal';
 
 const FieldEditModal = dynamic(() => import('./FieldEditModal'));
-
-const RenderList: {
-  types: FlowNodeOutputTypeEnum[];
-  Component: React.ComponentType<RenderOutputProps>;
-}[] = [];
 
 const RenderOutput = ({
   nodeId,
@@ -77,7 +71,7 @@ const RenderOutput = ({
           alignItems={'center'}
           position={'relative'}
         >
-          <Box position={'relative'} fontWeight={'medium'}>
+          <Box position={'relative'} fontWeight={'medium'} fontSize={'sm'}>
             {t((addOutput.label || 'common:core.workflow.Custom outputs') as any)}
           </Box>
           {addOutput.description && <QuestionTip ml={1} label={addOutput.description} />}

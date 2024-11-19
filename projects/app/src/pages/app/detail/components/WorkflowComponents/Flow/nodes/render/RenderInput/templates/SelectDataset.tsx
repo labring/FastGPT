@@ -69,7 +69,7 @@ const SelectDatasetRender = ({ inputs = [], item, nodeId }: RenderInputProps) =>
           w={'100%'}
         >
           <Button
-            h={'36px'}
+            h={10}
             leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
             onClick={onOpenDatasetSelect}
           >
@@ -79,19 +79,20 @@ const SelectDatasetRender = ({ inputs = [], item, nodeId }: RenderInputProps) =>
             <Flex
               key={item._id}
               alignItems={'center'}
-              h={'36px'}
+              h={10}
               border={theme.borders.base}
+              borderColor={'myGray.200'}
               px={2}
               borderRadius={'md'}
             >
-              <Avatar src={item.avatar} w={'24px'}></Avatar>
+              <Avatar src={item.avatar} w={'18px'} borderRadius={'xs'} />
               <Box
-                ml={3}
+                ml={1.5}
                 flex={'1 0 0'}
                 w={0}
                 className="textEllipsis"
                 fontWeight={'bold'}
-                fontSize={['md', 'lg']}
+                fontSize={['sm', 'sm']}
               >
                 {item.name}
               </Box>

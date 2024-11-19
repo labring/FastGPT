@@ -147,7 +147,6 @@ const AppCard = ({
       appDetail.name,
       appDetail.permission.hasWritePer,
       appDetail.permission.isOwner,
-      currentTab,
       feConfigs?.show_team_chat,
       onDelApp,
       onOpenImport,
@@ -252,10 +251,6 @@ function ExportPopover({
       trigger={'hover'}
       w={'8.6rem'}
       Trigger={
-        // <Flex align={'center'} w={'100%'} py={2} px={3}>
-        //   <Avatar src={'export'} borderRadius={'sm'} w={'1rem'} mr={3} />
-        //   {t('app:export_configs')}
-        // </Flex>
         <MyBox display={'flex'} size={'md'} rounded={'4px'} cursor={'pointer'}>
           <MyIcon name={'export'} w={'16px'} mr={2} />
           <Box fontSize={'sm'}>{t('app:export_configs')}</Box>

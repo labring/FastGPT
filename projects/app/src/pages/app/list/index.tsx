@@ -1,13 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Box,
-  Flex,
-  Button,
-  useDisclosure,
-  Input,
-  InputGroup,
-  InputLeftElement
-} from '@chakra-ui/react';
+import { Box, Flex, Button, useDisclosure, Input, InputGroup } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -95,15 +87,23 @@ const MyApps = () => {
 
   const RenderSearchInput = useMemo(
     () => (
-      <InputGroup maxW={['auto', '250px']}>
-        <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
-          <MyIcon name={'common/searchLight'} w={'1rem'} />
-        </InputLeftElement>
+      <InputGroup maxW={['auto', '250px']} position={'relative'}>
+        <MyIcon
+          position={'absolute'}
+          zIndex={10}
+          name={'common/searchLight'}
+          w={'1rem'}
+          color={'myGray.600'}
+          left={2.5}
+          top={'50%'}
+          transform={'translateY(-50%)'}
+        />
         <Input
           value={searchKey}
           onChange={(e) => setSearchKey(e.target.value)}
           placeholder={appT('search_app')}
           maxLength={30}
+          pl={8}
           bg={'white'}
         />
       </InputGroup>
@@ -182,7 +182,7 @@ const MyApps = () => {
             {userInfo?.team.permission.hasWritePer &&
               folderDetail?.type !== AppTypeEnum.httpPlugin && (
                 <MyMenu
-                  iconSize="2rem"
+                  size="md"
                   Button={
                     <Button variant={'primary'} leftIcon={<AddIcon />}>
                       <Box>{t('common:common.Create New')}</Box>

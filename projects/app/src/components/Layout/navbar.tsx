@@ -84,6 +84,7 @@ const Navbar = ({ unread }: { unread: number }) => {
       h={'100%'}
       w={'100%'}
       userSelect={'none'}
+      pb={2}
     >
       {/* logo */}
       <Box
@@ -155,6 +156,7 @@ const Navbar = ({ unread }: { unread: number }) => {
             href={`/account?currentTab=inform`}
             mb={0}
             color={'myGray.500'}
+            height={'48px'}
           >
             <Badge count={unread}>
               <MyIcon name={'support/user/informLight'} width={'22px'} height={'22px'} />
@@ -171,6 +173,7 @@ const Navbar = ({ unread }: { unread: number }) => {
             target="_blank"
             mb={0}
             color={'myGray.500'}
+            height={'48px'}
           >
             <MyIcon name={'common/courseLight'} width={'24px'} height={'24px'} />
           </Link>
@@ -186,6 +189,7 @@ const Navbar = ({ unread }: { unread: number }) => {
             {...hoverStyle}
             mt={0}
             color={'myGray.500'}
+            height={'48px'}
           >
             <MyIcon name={'common/gitInlight'} width={'26px'} height={'26px'} />
           </Link>

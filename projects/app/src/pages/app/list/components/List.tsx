@@ -16,7 +16,7 @@ import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constan
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
-import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import MyMenu, { MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import { AppPermissionList } from '@fastgpt/global/support/permission/app/constant';
 import {
   deleteAppCollaborators,
@@ -260,6 +260,7 @@ const ListItem = () => {
                       : app.permission.hasWritePer) && (
                       <Box className="more" display={['', 'none']}>
                         <MyMenu
+                          size={'xs'}
                           Button={
                             <IconButton
                               size={'xsSquare'}
@@ -275,6 +276,7 @@ const ListItem = () => {
                                     children: [
                                       {
                                         icon: 'core/chat/chatLight',
+                                        type: 'grayBg' as MenuItemType,
                                         label: t('app:go_to_chat'),
                                         onClick: () => {
                                           router.push(`/chat?appId=${app._id}`);
@@ -290,6 +292,7 @@ const ListItem = () => {
                                     children: [
                                       {
                                         icon: 'core/chat/chatLight',
+                                        type: 'grayBg' as MenuItemType,
                                         label: t('app:go_to_run'),
                                         onClick: () => {
                                           router.push(`/chat?appId=${app._id}`);
@@ -305,6 +308,7 @@ const ListItem = () => {
                                     children: [
                                       {
                                         icon: 'edit',
+                                        type: 'grayBg' as MenuItemType,
                                         label: t('common:dataset.Edit Info'),
                                         onClick: () => {
                                           if (app.type === AppTypeEnum.httpPlugin) {
@@ -332,6 +336,7 @@ const ListItem = () => {
                                         : [
                                             {
                                               icon: 'common/file/move',
+                                              type: 'grayBg' as MenuItemType,
                                               label: t('common:common.folder.Move to'),
                                               onClick: () => setMoveAppId(app._id)
                                             }
@@ -340,6 +345,7 @@ const ListItem = () => {
                                         ? [
                                             {
                                               icon: 'support/team/key',
+                                              type: 'grayBg' as MenuItemType,
                                               label: t('common:permission.Permission'),
                                               onClick: () => setEditPerAppIndex(index)
                                             }
@@ -356,6 +362,7 @@ const ListItem = () => {
                                     children: [
                                       {
                                         icon: 'copy',
+                                        type: 'grayBg' as MenuItemType,
                                         label: t('app:copy_one_app'),
                                         onClick: () =>
                                           openConfirmCopy(() => onclickCopy({ appId: app._id }))()
@@ -395,9 +402,7 @@ const ListItem = () => {
           );
         })}
       </Grid>
-
       {myApps.length === 0 && <EmptyTip text={t('common:core.app.no_app')} pt={'30vh'} />}
-
       <DelConfirmModal />
       <ConfirmCopyModal />
       {!!editedApp && (
@@ -464,5 +469,4 @@ const ListItem = () => {
     </>
   );
 };
-
 export default ListItem;
