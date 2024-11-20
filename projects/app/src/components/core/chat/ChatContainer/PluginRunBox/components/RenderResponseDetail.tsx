@@ -17,7 +17,7 @@ const RenderResponseDetail = () => {
     <>{t('chat:in_progress')}</>
   ) : (
     <Box flex={'1 0 0'} h={'100%'} overflow={'auto'}>
-      <ResponseBox useMobile={true} response={responseData} />
+      <ResponseBox useMobile={true} response={responseData} dataId={chatRecords?.[1]?.dataId} />
     </Box>
   );
 };

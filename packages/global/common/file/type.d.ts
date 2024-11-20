@@ -5,4 +5,5 @@ export type FileTokenQuery = {
   teamId: string;
   uid: string; // tmbId/ share uid/ teamChat uid
   fileId: string;
+  customExpireMinutes?: number;
 };
