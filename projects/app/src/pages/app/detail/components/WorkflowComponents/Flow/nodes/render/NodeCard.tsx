@@ -28,6 +28,7 @@ import { getDocPath } from '@/web/common/system/doc';
 import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -272,15 +273,11 @@ const NodeCard = (props: Props) => {
               )}
               {node?.courseUrl && !hasNewVersion && (
                 <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
-                  <Button variant={'grayGhost'} size={'xs'} ml={1} color={'primary.600'}>
-                    <MyIcon
-                      cursor={'pointer'}
-                      name="book"
-                      color={'primary.600'}
-                      w={'18px'}
-                      onClick={() => window.open(getDocPath(node.courseUrl || ''), '_blank')}
-                    />
-                  </Button>
+                  <MyIconButton
+                    ml={1}
+                    icon="pointer"
+                    onClick={() => window.open(getDocPath(node.courseUrl || ''), '_blank')}
+                  />
                 </MyTooltip>
               )}
             </Flex>
