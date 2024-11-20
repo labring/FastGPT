@@ -179,8 +179,10 @@ const MyApps = () => {
 
             {isPc && RenderSearchInput}
 
-            {userInfo?.team.permission.hasWritePer &&
-              folderDetail?.type !== AppTypeEnum.httpPlugin && (
+            {(folderDetail?.permission
+              ? folderDetail?.permission.hasWritePer
+              : userInfo?.team.permission.hasWritePer &&
+                folderDetail?.type !== AppTypeEnum.httpPlugin) && (
                 <MyMenu
                   iconSize="2rem"
                   Button={
