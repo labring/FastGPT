@@ -13,7 +13,6 @@ type Response = Promise<{
   success: boolean;
   error?: Record<string, any>;
 }>;
-
 function processContent(content: string): string {
   return content.replace(/<table>[\s\S]*?<\/table>/g, (htmlTable) => {
     try {
@@ -43,52 +42,56 @@ function processContent(content: string): string {
             const rowspan = parseInt(cell.match(/rowspan="(\d+)"/)?.[1] || '1');
             const content = cell.replace(/<td.*?>|<\/td>/g, '').trim();
 
-            // Handle rowspan and colspan
             for (let i = 0; i < rowspan; i++) {
               for (let j = 0; j < colspan; j++) {
                 if (!tableData[rowIndex + i]) {
                   tableData[rowIndex + i] = [];
                 }
-                // Limit content length to avoid string length error
-                const truncatedContent = i === 0 && j === 0 ? content.slice(0, 500) : '^^';
-                tableData[rowIndex + i][colIndex + j] = truncatedContent;
+                tableData[rowIndex + i][colIndex + j] = i === 0 && j === 0 ? content : '^^';
               }
             }
             colIndex += colspan;
             maxColumns = Math.max(maxColumns, colIndex);
           });
-        });
 
-        // Convert to markdown
-        let markdown = '';
-        // Header row
-        markdown +=
-          '| ' + tableData[0].map((cell) => (cell === '^^' ? ' ' : cell || ' ')).join(' | ');
-        while (tableData[0].length < maxColumns) {
-          markdown += ' | ';
-        }
-        markdown += ' |\n';
-        // Separator row
-        markdown += '| ' + Array(maxColumns).fill('---').join(' | ') + ' |\n';
-        // Data rows
-        tableData.slice(1).forEach((row) => {
-          markdown += '| ' + row.map((cell) => (cell === '^^' ? ' ' : cell || ' ')).join(' | ');
-          while (row.length < maxColumns) {
-            markdown += ' | ';
+          for (let i = 0; i < maxColumns; i++) {
+            if (!tableData[rowIndex][i]) {
+              tableData[rowIndex][i] = ' ';
+            }
           }
-          markdown += ' |\n';
+        });
+        const chunks: string[] = [];
+
+        const headerCells = tableData[0]
+          .slice(0, maxColumns)
+          .map((cell) => (cell === '^^' ? ' ' : cell || ' '));
+        const headerRow = '| ' + headerCells.join(' | ') + ' |';
+        chunks.push(headerRow);
+
+        const separator = '| ' + Array(maxColumns).fill('---').join(' | ') + ' |';
+        chunks.push(separator);
+
+        tableData.slice(1).forEach((row) => {
+          const paddedRow = row
+            .slice(0, maxColumns)
+            .map((cell) => (cell === '^^' ? ' ' : cell || ' '));
+          while (paddedRow.length < maxColumns) {
+            paddedRow.push(' ');
+          }
+          chunks.push('| ' + paddedRow.join(' | ') + ' |');
         });
 
-        return markdown;
+        return chunks.join('\n');
       } catch (error) {
+        console.error('Table conversion error:', error);
         return htmlTable;
       }
     } catch (error) {
+      console.error('Table processing error:', error);
       return htmlTable;
     }
   });
 }
-
 const main = async ({ apikey, files }: Props): Response => {
   // Check the apikey
   if (!apikey) {
