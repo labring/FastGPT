@@ -112,14 +112,20 @@ const main = async ({ apikey, files, HTMLtable }: Props): Response => {
   for await (const url of files) {
     try {
       //Fetch the pdf and check its content type
-      const encodedUrl = encodeURI(url);
-      const PDFResponse = await axiosInstance.get(encodedUrl, {
-        responseType: 'arraybuffer',
-        proxy: false,
-        maxRedirects: 3
-      });
+      const PDFResponse = await axios
+        .get(url, {
+          responseType: 'arraybuffer',
+          proxy: false,
+          timeout: 20000
+        })
+        .catch((error) => {
+          throw new Error(`[Fetch PDF Error] Failed to fetch PDF: ${getErrText(error)}`);
+        });
+
       if (PDFResponse.status !== 200) {
-        throw new Error(`Failed to fetch PDF from URL: ${PDFResponse.data}`);
+        throw new Error(
+          `[Fetch PDF Error] Failed with status ${PDFResponse.status}: ${PDFResponse.data}`
+        );
       }
 
       const contentType = PDFResponse.headers['content-type'];
@@ -130,15 +136,15 @@ const main = async ({ apikey, files, HTMLtable }: Props): Response => {
 
       const blob = new Blob([PDFResponse.data], { type: 'application/pdf' });
       // Get pre-upload URL first
-      const preupload_response = await axiosInstance.post(
-        'https://v2.doc2x.noedgeai.com/api/v2/parse/preupload',
-        null,
-        {
+      const preupload_response = await axiosInstance
+        .post('https://v2.doc2x.noedgeai.com/api/v2/parse/preupload', null, {
           headers: {
             Authorization: `Bearer ${apikey}`
           }
-        }
-      );
+        })
+        .catch((error) => {
+          throw new Error(`[Pre-upload Error] Failed to get pre-upload URL: ${getErrText(error)}`);
+        });
 
       if (preupload_response.status !== 200) {
         throw new Error(`Failed to get pre-upload URL: ${preupload_response.data}`);
@@ -153,11 +159,16 @@ const main = async ({ apikey, files, HTMLtable }: Props): Response => {
       const uid = preupload_data.data.uid;
       // Upload file to pre-signed URL with binary stream
 
-      const response = await axiosInstance.put(upload_url, blob, {
-        headers: {
-          'Content-Type': 'application/pdf'
-        }
-      });
+      const response = await axiosInstance
+        .put(upload_url, blob, {
+          headers: {
+            'Content-Type': 'application/pdf'
+          }
+        })
+        .catch((error) => {
+          throw new Error(`[Upload Error] Failed to upload file: ${getErrText(error)}`);
+        });
+
       if (response.status !== 200) {
         throw new Error(`Upload failed with status ${response.status}: ${response.statusText}`);
       }
@@ -168,18 +179,21 @@ const main = async ({ apikey, files, HTMLtable }: Props): Response => {
       const checkResult = async (retry = 30) => {
         if (retry <= 0)
           return Promise.reject(
-            `File:${file_name}\n<Content>\nFailed to get result (uid: ${uid}): Get result timeout\n</Content>`
+            `File:${file_name}\n<Content>\n[Parse Timeout Error] Failed to get result (uid: ${uid}): Process timeout after 90s\n</Content>`
           );
 
         try {
-          const result_response = await axiosInstance.get(
-            `https://v2.doc2x.noedgeai.com/api/v2/parse/status?uid=${uid}`,
-            {
+          const result_response = await axiosInstance
+            .get(`https://v2.doc2x.noedgeai.com/api/v2/parse/status?uid=${uid}`, {
               headers: {
                 Authorization: `Bearer ${apikey}`
               }
-            }
-          );
+            })
+            .catch((error) => {
+              throw new Error(
+                `[Parse Status Error] Failed to get parse status: ${getErrText(error)}`
+              );
+            });
 
           const result_data = result_response.data;
           if (!['ok', 'success'].includes(result_data.code)) {
@@ -205,7 +219,9 @@ const main = async ({ apikey, files, HTMLtable }: Props): Response => {
               .replace(/\\[\[\]]/g, '$$')
               .replace(/<img\s+src="([^"]+)"(?:\s*\?[^>]*)?(?:\s*\/>|>)/g, '![img]($1)')
               .replace(/<!-- Media -->/g, '')
-              .replace(/<!-- Footnote -->/g, '');
+              .replace(/<!-- Footnote -->/g, '')
+              .replace(/\$(.+?)\s+\\tag\{(.+?)\}\$/g, '$$$1 \\qquad \\qquad ($2)$$')
+              .replace(/\\text\{([^}]*?)(\b\w+)_(\w+\b)([^}]*?)\}/g, '\\text{$1$2\\_$3$4}');
 
             return `File:${file_name}\n<Content>\n${result}\n</Content>`;
           }
@@ -213,8 +229,11 @@ const main = async ({ apikey, files, HTMLtable }: Props): Response => {
           await delay(100);
           return checkResult(retry - 1);
         } catch (error) {
-          await delay(100);
-          return checkResult(retry - 1);
+          if (retry > 1) {
+            await delay(100);
+            return checkResult(retry - 1);
+          }
+          throw error;
         }
       };
 
