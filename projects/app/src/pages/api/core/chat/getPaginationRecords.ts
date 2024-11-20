@@ -10,7 +10,6 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
-import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
@@ -41,7 +40,7 @@ async function handler(
     };
   }
 
-  const [app] = await Promise.all([
+  const [app, { responseDetail, showNodeStatus, authType }] = await Promise.all([
     MongoApp.findById(appId, 'type').lean(),
     authChatCrud({
       req,
@@ -55,14 +54,7 @@ async function handler(
     return Promise.reject(AppErrEnum.unExist);
   }
   const isPlugin = app.type === AppTypeEnum.plugin;
-
-  const outLinkConfig = await (async () => {
-    if (type === GetChatTypeEnum.outLink)
-      return await authOutLink({
-        shareId: req.body.shareId,
-        outLinkUid: req.body.outLinkUid
-      }).then((result) => result.outLinkConfig);
-  })();
+  const isOutLink = authType === GetChatTypeEnum.outLink;
 
   const fieldMap = {
     [GetChatTypeEnum.normal]: `dataId obj value adminFeedback userBadFeedback userGoodFeedback time hideInUI ${
@@ -80,10 +72,8 @@ async function handler(
     limit: pageSize
   });
 
-  const responseDetail = !outLinkConfig || outLinkConfig.responseDetail;
-
   // Remove important information
-  if (outLinkConfig && app.type !== AppTypeEnum.plugin) {
+  if (isOutLink && app.type !== AppTypeEnum.plugin) {
     histories.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI) {
         item.responseData = filterPublicNodeResponseData({
@@ -91,7 +81,7 @@ async function handler(
           responseDetail
         });
 
-        if (outLinkConfig.showNodeStatus === false) {
+        if (showNodeStatus === false) {
           item.value = item.value.filter((v) => v.type !== ChatItemValueTypeEnum.tool);
         }
       }
