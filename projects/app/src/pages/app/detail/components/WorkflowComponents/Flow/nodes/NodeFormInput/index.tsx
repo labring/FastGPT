@@ -37,7 +37,7 @@ import { WorkflowContext } from '../../../context';
 import InputFormEditModal, { defaultFormInput } from './InputFormEditModal';
 import RenderOutput from '../render/RenderOutput';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import IconButton from '@fastgpt/web/components/common/MyBox/IconButton';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, outputs } = data;
@@ -184,11 +184,11 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                         </Td>
                         <Td>
                           <Flex>
-                            <IconButton
+                            <MyIconButton
                               icon={'common/settingLight'}
                               onClick={() => setEditField(item)}
                             />
-                            <IconButton
+                            <MyIconButton
                               icon={'delete'}
                               hoverColor={'red.500'}
                               onClick={() => onDelete(item.key)}

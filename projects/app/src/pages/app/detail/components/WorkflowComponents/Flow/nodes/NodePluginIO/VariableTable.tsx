@@ -2,7 +2,7 @@ import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import IconButton from '@fastgpt/web/components/common/MyBox/IconButton';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 const VariableTable = ({
   variables = [],
@@ -59,8 +59,8 @@ const VariableTable = ({
               )}
               <Td>
                 <Flex>
-                  <IconButton icon={'common/settingLight'} onClick={() => onEdit(item.key)} />
-                  <IconButton
+                  <MyIconButton icon={'common/settingLight'} onClick={() => onEdit(item.key)} />
+                  <MyIconButton
                     icon={'delete'}
                     hoverColor={'red.500'}
                     onClick={() => onDelete(item.key)}
