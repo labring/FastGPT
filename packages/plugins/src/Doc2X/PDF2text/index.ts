@@ -67,7 +67,8 @@ function processContent(content: string): string {
           .map((cell) => (cell === '^^' ? ' ' : cell || ' '));
         const headerRow = '| ' + headerCells.join(' | ') + ' |';
         chunks.push(headerRow);
-        const separator = '|' + Array(maxColumns).fill(' --- ').join('|') + '|';
+
+        const separator = '| ' + Array(headerCells.length).fill('---').join(' | ') + ' |';
         chunks.push(separator);
 
         tableData.slice(1).forEach((row) => {
