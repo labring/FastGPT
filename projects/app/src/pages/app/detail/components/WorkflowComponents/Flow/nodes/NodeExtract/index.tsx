@@ -34,7 +34,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import IOTitle from '../../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
-import IconButton from '@fastgpt/web/components/common/MyBox/IconButton';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
   const { inputs, outputs, nodeId } = data;
@@ -102,13 +102,13 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
                     </Td>
                     <Td>
                       <Flex>
-                        <IconButton
+                        <MyIconButton
                           icon={'common/settingLight'}
                           onClick={() => {
                             setEditExtractField(item);
                           }}
                         />
-                        <IconButton
+                        <MyIconButton
                           icon={'delete'}
                           hoverColor={'red.500'}
                           onClick={() => {

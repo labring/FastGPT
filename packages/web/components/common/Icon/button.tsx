@@ -1,14 +1,21 @@
 import React from 'react';
 import { Flex, FlexProps } from '@chakra-ui/react';
-import MyIcon from '../Icon';
+import MyIcon from './index';
 
 type Props = FlexProps & {
   icon: string;
+  size?: string;
   onClick?: () => void;
   hoverColor?: string;
 };
 
-const IconButton = ({ icon, onClick, hoverColor = 'primary.600', ...props }: Props) => {
+const MyIconButton = ({
+  icon,
+  onClick,
+  hoverColor = 'primary.600',
+  size = '1rem',
+  ...props
+}: Props) => {
   return (
     <Flex
       mr={1}
@@ -26,9 +33,9 @@ const IconButton = ({ icon, onClick, hoverColor = 'primary.600', ...props }: Pro
       onClick={onClick}
       {...props}
     >
-      <MyIcon name={icon as any} w={'16px'} />
+      <MyIcon name={icon as any} w={size} />
     </Flex>
   );
 };
 
-export default IconButton;
+export default MyIconButton;
