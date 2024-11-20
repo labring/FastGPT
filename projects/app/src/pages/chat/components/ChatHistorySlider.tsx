@@ -157,14 +157,13 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
             size={'mdSquare'}
             aria-label={''}
             borderRadius={'50%'}
+            icon={<MyIcon name={'common/clearLight'} w={'16px'} />}
             onClick={() =>
               openConfirm(() => {
                 onClearHistory();
               })()
             }
-          >
-            <MyIcon name={'common/clearLight'} w={'16px'} />
-          </IconButton>
+          />
         )}
       </Flex>
 
