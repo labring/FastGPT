@@ -5,40 +5,142 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { createFileToken } from '@fastgpt/service/support/permission/controller';
 import { BucketNameEnum, ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { ShareChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { AIChatItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 
 export type readCollectionSourceQuery = {};
 
 export type readCollectionSourceBody = {
   collectionId: string;
-} & ShareChatAuthProps;
+
+  appId?: string;
+  chatId?: string;
+  chatItemId?: string;
+} & OutLinkChatAuthProps;
 
 export type readCollectionSourceResponse = {
   type: 'url';
   value: string;
 };
 
+const authCollectionInChat = async ({
+  collectionId,
+  appId,
+  chatId,
+  chatItemId
+}: {
+  collectionId: string;
+  appId: string;
+  chatId: string;
+  chatItemId: string;
+}) => {
+  try {
+    const chatItem = (await MongoChatItem.findOne(
+      {
+        appId,
+        chatId,
+        dataId: chatItemId
+      },
+      'responseData'
+    ).lean()) as AIChatItemType;
+
+    if (!chatItem) return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
+
+    // 找 responseData 里，是否有该文档 id
+    const responseData = chatItem.responseData || [];
+    const flatResData: ChatHistoryItemResType[] =
+      responseData
+        ?.map((item) => {
+          return [
+            item,
+            ...(item.pluginDetail || []),
+            ...(item.toolDetail || []),
+            ...(item.loopDetail || [])
+          ];
+        })
+        .flat() || [];
+
+    if (
+      flatResData.some((item) => {
+        if (item.quoteList) {
+          return item.quoteList.some((quote) => quote.collectionId === collectionId);
+        }
+        return false;
+      })
+    ) {
+      return true;
+    }
+  } catch (error) {}
+  return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
+};
+
 async function handler(
   req: ApiRequestProps<readCollectionSourceBody, readCollectionSourceQuery>
 ): Promise<readCollectionSourceResponse> {
-  const { collection, teamId, tmbId } = await authDatasetCollection({
-    req,
-    authToken: true,
-    authApiKey: true,
-    collectionId: req.body.collectionId,
-    per: ReadPermissionVal
-  });
+  const { collectionId, appId, chatId, chatItemId, shareId, outLinkUid, teamId, teamToken } =
+    req.body;
+
+  const {
+    collection,
+    teamId: userTeamId,
+    tmbId: uid,
+    authType
+  } = await (async () => {
+    if (!appId || !chatId || !chatItemId) {
+      return authDatasetCollection({
+        req,
+        authToken: true,
+        authApiKey: true,
+        collectionId: req.body.collectionId,
+        per: ReadPermissionVal
+      });
+    }
+
+    /* 
+      1. auth chat read permission
+      2. auth collection quote in chat
+      3. auth outlink open show quote
+    */
+    const [authRes, collection] = await Promise.all([
+      authChatCrud({
+        req,
+        authToken: true,
+        appId,
+        chatId,
+        shareId,
+        outLinkUid,
+        teamId,
+        teamToken
+      }),
+      getCollectionWithDataset(collectionId),
+      authCollectionInChat({ appId, chatId, chatItemId, collectionId })
+    ]);
+
+    if (!authRes.showRawSource) {
+      return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
+    }
+
+    return {
+      ...authRes,
+      collection
+    };
+  })();
 
   const sourceUrl = await (async () => {
     if (collection.type === DatasetCollectionTypeEnum.file && collection.fileId) {
       const token = await createFileToken({
         bucketName: BucketNameEnum.dataset,
-        teamId,
-        uid: tmbId,
-        fileId: collection.fileId
+        teamId: userTeamId,
+        uid,
+        fileId: collection.fileId,
+        customExpireMinutes: authType === 'outLink' ? 5 : undefined
       });
 
-      return `${ReadFileBaseUrl}?token=${token}`;
+      return `${ReadFileBaseUrl}/${collection.name}?token=${token}`;
     }
     if (collection.type === DatasetCollectionTypeEnum.link && collection.rawLink) {
       return collection.rawLink;

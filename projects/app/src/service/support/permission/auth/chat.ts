@@ -23,6 +23,11 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 
   Chat没有读写的权限之分，鉴权过了，都可以操作。
 */
+const defaultResponseShow = {
+  responseDetail: true,
+  showNodeStatus: true,
+  showRawSource: true
+};
 export async function authChatCrud({
   appId,
   chatId,
@@ -46,6 +51,8 @@ export async function authChatCrud({
   uid: string;
   chat?: ChatSchema;
   responseDetail: boolean;
+  showNodeStatus: boolean;
+  showRawSource: boolean;
   authType?: `${AuthUserTypeEnum}`;
 }> {
   if (!appId) return Promise.reject(ChatErrEnum.unAuthChat);
@@ -57,7 +64,7 @@ export async function authChatCrud({
         teamId: spaceTeamId,
         tmbId,
         uid,
-        responseDetail: true,
+        ...defaultResponseShow,
         authType: AuthUserTypeEnum.teamDomain
       };
 
@@ -67,7 +74,7 @@ export async function authChatCrud({
         teamId: spaceTeamId,
         tmbId,
         uid,
-        responseDetail: true,
+        ...defaultResponseShow,
         authType: AuthUserTypeEnum.teamDomain
       };
 
@@ -76,7 +83,7 @@ export async function authChatCrud({
       tmbId,
       uid,
       chat,
-      responseDetail: true,
+      ...defaultResponseShow,
       authType: AuthUserTypeEnum.teamDomain
     };
   }
@@ -96,6 +103,8 @@ export async function authChatCrud({
         tmbId: String(outLinkConfig.tmbId),
         uid,
         responseDetail: outLinkConfig.responseDetail,
+        showNodeStatus: outLinkConfig.showNodeStatus ?? true,
+        showRawSource: outLinkConfig.showRawSource ?? false,
         authType: AuthUserTypeEnum.outLink
       };
     }
@@ -107,6 +116,8 @@ export async function authChatCrud({
         tmbId: String(outLinkConfig.tmbId),
         uid,
         responseDetail: outLinkConfig.responseDetail,
+        showNodeStatus: outLinkConfig.showNodeStatus ?? true,
+        showRawSource: outLinkConfig.showRawSource ?? false,
         authType: AuthUserTypeEnum.outLink
       };
     }
@@ -116,6 +127,8 @@ export async function authChatCrud({
       chat,
       uid,
       responseDetail: outLinkConfig.responseDetail,
+      showNodeStatus: outLinkConfig.showNodeStatus ?? true,
+      showRawSource: outLinkConfig.showRawSource ?? false,
       authType: AuthUserTypeEnum.outLink
     };
   }
@@ -129,16 +142,45 @@ export async function authChatCrud({
     per: ReadPermissionVal
   });
 
-  if (!chatId) return { teamId, tmbId, uid: tmbId, responseDetail: true, authType };
+  if (!chatId)
+    return {
+      teamId,
+      tmbId,
+      uid: tmbId,
+      ...defaultResponseShow,
+
+      authType
+    };
 
   const chat = await MongoChat.findOne({ appId, chatId }).lean();
-  if (!chat) return { teamId, tmbId, uid: tmbId, responseDetail: true, authType };
+  if (!chat)
+    return {
+      teamId,
+      tmbId,
+      uid: tmbId,
+      ...defaultResponseShow,
+      authType
+    };
 
   if (String(teamId) !== String(chat.teamId)) return Promise.reject(ChatErrEnum.unAuthChat);
   if (permission.hasManagePer)
-    return { teamId, tmbId, chat, uid: tmbId, responseDetail: true, authType };
+    return {
+      teamId,
+      tmbId,
+      chat,
+      uid: tmbId,
+      ...defaultResponseShow,
+      authType
+    };
   if (String(tmbId) === String(chat.tmbId))
-    return { teamId, tmbId, chat, uid: tmbId, responseDetail: true, authType };
+    return {
+      teamId,
+      tmbId,
+      chat,
+      uid: tmbId,
+      ...defaultResponseShow,
+      authType
+    };
 
   return Promise.reject(ChatErrEnum.unAuthChat);
 }
