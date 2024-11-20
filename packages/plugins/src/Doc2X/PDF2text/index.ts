@@ -112,7 +112,12 @@ const main = async ({ apikey, files, HTMLtable }: Props): Response => {
   for await (const url of files) {
     try {
       //Fetch the pdf and check its content type
-      const PDFResponse = await axiosInstance.get(url, { responseType: 'arraybuffer' });
+      const encodedUrl = encodeURI(url);
+      const PDFResponse = await axiosInstance.get(encodedUrl, {
+        responseType: 'arraybuffer',
+        proxy: false,
+        maxRedirects: 3
+      });
       if (PDFResponse.status !== 200) {
         throw new Error(`Failed to fetch PDF from URL: ${PDFResponse.data}`);
       }
