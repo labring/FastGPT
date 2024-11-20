@@ -4,6 +4,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type Props = {
   apikey: string;
+  HTMLtable: boolean;
   files: string[];
 };
 
@@ -13,7 +14,11 @@ type Response = Promise<{
   success: boolean;
   error?: Record<string, any>;
 }>;
-function processContent(content: string): string {
+
+function processContent(content: string, HTMLtable: boolean): string {
+  if (!HTMLtable) {
+    return content;
+  }
   return content.replace(/<table>[\s\S]*?<\/table>/g, (htmlTable) => {
     try {
       // Clean up whitespace and newlines
@@ -90,7 +95,8 @@ function processContent(content: string): string {
     }
   });
 }
-const main = async ({ apikey, files }: Props): Response => {
+
+const main = async ({ apikey, files, HTMLtable }: Props): Response => {
   // Check the apikey
   if (!apikey) {
     return Promise.reject(`API key is required`);
@@ -186,7 +192,8 @@ const main = async ({ apikey, files }: Props): Response => {
             const result = processContent(
               await Promise.all(
                 result_data.data.result.pages.map((page: { md: any }) => page.md)
-              ).then((pages) => pages.join('\n'))
+              ).then((pages) => pages.join('\n')),
+              HTMLtable
             )
               // Do some post-processing
               .replace(/\\[\(\)]/g, '$')

@@ -7,10 +7,8 @@
   "courseUrl": "https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview",
   "showStatus": true,
   "weight": 10,
-
   "isTool": true,
   "templateType": "tools",
-
   "workflow": {
     "nodes": [
       {
@@ -27,7 +25,9 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": ["input"],
+            "renderTypeList": [
+              "input"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -39,7 +39,9 @@
             "list": []
           },
           {
-            "renderTypeList": ["fileSelect"],
+            "renderTypeList": [
+              "fileSelect"
+            ],
             "selectedTypeIndex": 0,
             "valueType": "arrayString",
             "canEdit": true,
@@ -52,6 +54,29 @@
             "canSelectImg": false,
             "maxFiles": 14,
             "defaultValue": ""
+          },
+          {
+            "renderTypeList": [
+              "switch",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "HTMLtable",
+            "label": "HTMLtable",
+            "description": "是否以HTML格式输出表格，关闭后将会转换表格为Markdown形式输出(这会损失一些表格格式，如合并单元格)",
+            "defaultValue": false,
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true
           }
         ],
         "outputs": [
@@ -67,6 +92,13 @@
             "valueType": "arrayString",
             "key": "files",
             "label": "files",
+            "type": "hidden"
+          },
+          {
+            "id": "htmltable",
+            "valueType": "boolean",
+            "key": "HTMLtable",
+            "label": "HTMLtable",
             "type": "hidden"
           }
         ]
@@ -85,32 +117,47 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "result",
             "label": "result",
             "description": "处理结果，由文件名以及文档内容组成，多个文件之间由横线分隔开",
-            "value": ["zHG5jJBkXmjB", "xWQuEf50F3mr"]
+            "value": [
+              "zHG5jJBkXmjB",
+              "xWQuEf50F3mr"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "object",
             "canEdit": true,
             "key": "error",
             "label": "error",
             "description": "",
-            "value": ["zHG5jJBkXmjB", "httpRawResponse"],
+            "value": [
+              "zHG5jJBkXmjB",
+              "httpRawResponse"
+            ],
             "isToolOutput": true
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "boolean",
             "canEdit": true,
             "key": "success",
             "label": "success",
             "description": "是否全部文件都处理成功，如有没有处理成功的文件，失败原因将会输出在failreason中",
-            "value": ["zHG5jJBkXmjB", "m6CJJj7GFud5"],
+            "value": [
+              "zHG5jJBkXmjB",
+              "m6CJJj7GFud5"
+            ],
             "isToolOutput": false
           }
         ],
@@ -131,7 +178,9 @@
         "inputs": [
           {
             "key": "system_addInputParam",
-            "renderTypeList": ["addInputParam"],
+            "renderTypeList": [
+              "addInputParam"
+            ],
             "valueType": "dynamic",
             "label": "",
             "required": false,
@@ -162,7 +211,9 @@
           },
           {
             "key": "system_httpMethod",
-            "renderTypeList": ["custom"],
+            "renderTypeList": [
+              "custom"
+            ],
             "valueType": "string",
             "label": "",
             "value": "POST",
@@ -172,7 +223,9 @@
           },
           {
             "key": "system_httpTimeout",
-            "renderTypeList": ["custom"],
+            "renderTypeList": [
+              "custom"
+            ],
             "valueType": "number",
             "label": "",
             "value": 300,
@@ -184,7 +237,9 @@
           },
           {
             "key": "system_httpReqUrl",
-            "renderTypeList": ["hidden"],
+            "renderTypeList": [
+              "hidden"
+            ],
             "valueType": "string",
             "label": "",
             "description": "common:core.module.input.description.Http Request Url",
@@ -196,7 +251,9 @@
           },
           {
             "key": "system_httpHeader",
-            "renderTypeList": ["custom"],
+            "renderTypeList": [
+              "custom"
+            ],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -208,7 +265,9 @@
           },
           {
             "key": "system_httpParams",
-            "renderTypeList": ["hidden"],
+            "renderTypeList": [
+              "hidden"
+            ],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -218,9 +277,11 @@
           },
           {
             "key": "system_httpJsonBody",
-            "renderTypeList": ["hidden"],
+            "renderTypeList": [
+              "hidden"
+            ],
             "valueType": "any",
-            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"files\": {{files}}\n}",
+            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"HTMLtable\": \"{{HTMLtable}}\",\n  \"files\": {{files}}\n}",
             "label": "",
             "required": false,
             "debugLabel": "",
@@ -228,7 +289,9 @@
           },
           {
             "key": "system_httpFormBody",
-            "renderTypeList": ["hidden"],
+            "renderTypeList": [
+              "hidden"
+            ],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -238,7 +301,9 @@
           },
           {
             "key": "system_httpContentType",
-            "renderTypeList": ["hidden"],
+            "renderTypeList": [
+              "hidden"
+            ],
             "valueType": "string",
             "value": "json",
             "label": "",
@@ -247,7 +312,9 @@
             "toolDescription": ""
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "string",
             "canEdit": true,
             "key": "apikey",
@@ -274,10 +341,15 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": ["pluginInput", "apikey"]
+            "value": [
+              "pluginInput",
+              "apikey"
+            ]
           },
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": [
+              "reference"
+            ],
             "valueType": "arrayString",
             "canEdit": true,
             "key": "files",
@@ -304,7 +376,47 @@
               "showDefaultValue": true
             },
             "required": true,
-            "value": [["pluginInput", "url"]]
+            "value": [
+              [
+                "pluginInput",
+                "url"
+              ]
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "HTMLtable",
+            "label": "HTMLtable",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "htmltable"
+            ]
           }
         ],
         "outputs": [
