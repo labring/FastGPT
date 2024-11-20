@@ -77,7 +77,8 @@ export async function getChildAppPreviewNode({
         templateType: FlowNodeTemplateTypeEnum.teamApp,
         version: version.versionId,
         originCost: 0,
-        currentCost: 0
+        currentCost: 0,
+        hasTokenFee: false
       };
     } else {
       return getSystemPluginTemplateById(pluginId);
@@ -161,7 +162,8 @@ export async function getChildAppRuntimeById(
         // 用不到
         version: item?.pluginData?.nodeVersion || defaultNodeVersion,
         originCost: 0,
-        currentCost: 0
+        currentCost: 0,
+        hasTokenFee: false
       };
     } else {
       return getSystemPluginTemplateById(pluginId);

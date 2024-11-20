@@ -1,8 +1,15 @@
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { getSystemPluginGroups, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
-import { Box, Flex, Grid, Input, InputGroup, InputLeftElement } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  Grid,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  useDisclosure
+} from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMemo, useState } from 'react';
 import PluginCard from './components/PluginCard';
@@ -11,6 +18,7 @@ import { i18nT } from '@fastgpt/web/i18n/utils';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 export const defaultGroup = {
   groupId: 'systemPlugin',
@@ -40,8 +48,17 @@ export const defaultGroup = {
   ]
 };
 
-const Store = () => {
+export const allTypes = [
+  {
+    typeId: 'all',
+    typeName: i18nT('common:common.All')
+  }
+];
+
+const Toolkit = () => {
   const router = useRouter();
+  const { isPc } = useSystem();
+
   const { group: selectedGroup = defaultGroup.groupName, type: selectedType = 'all' } =
     router.query;
 
@@ -54,6 +71,8 @@ const Store = () => {
   });
 
   const [search, setSearch] = useState('');
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   const allGroups = useMemo(() => {
     return [defaultGroup, ...pluginGroups].filter((group) => {
@@ -91,42 +110,102 @@ const Store = () => {
   }, [currentPluginGroupTypes, plugins, selectedType, search]);
 
   return (
-    <Flex flexDirection={'column'} h={'100%'}>
-      <Box pl={3} pr={8}>
-        <Flex alignItems={'center'} mt={6} ml={2} mb={2}>
-          <Flex flex={1}>
-            {allGroups?.map((group) => {
-              const selected = group.groupName === selectedGroup;
-              return (
+    <Flex flexDirection={'column'} h={'100%'} overflow={'auto'}>
+      {!isPc && isOpen && (
+        <Box
+          position="fixed"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          bg="blackAlpha.600"
+          onClick={onClose}
+          zIndex={999}
+        />
+      )}
+      {(isPc || isOpen) && (
+        <Box
+          position={'fixed'}
+          left={isPc ? 16 : 0}
+          top={0}
+          bg={'myGray.25'}
+          w={'200px'}
+          h={'full'}
+          borderLeft={'1px solid'}
+          borderRight={'1px solid'}
+          borderColor={'myGray.200'}
+          pt={4}
+          px={2.5}
+          pb={2.5}
+          zIndex={1000}
+        >
+          {allGroups?.map((group) => {
+            const selected = group.groupName === selectedGroup;
+            console.log(currentPluginGroupTypes);
+            return (
+              <Box key={group.groupName}>
                 <Flex
-                  key={group.groupName}
-                  rounded={'md'}
-                  bg={selected ? 'white' : ''}
-                  color={selected ? 'primary.700' : ''}
-                  boxShadow={
-                    selected
-                      ? '0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
-                      : ''
-                  }
-                  px={3}
-                  py={2}
-                  mr={3}
-                  fontSize={'16px'}
+                  p={2}
+                  mb={0.5}
+                  fontSize={'14px'}
                   fontWeight={'medium'}
                   cursor={'pointer'}
+                  rounded={'md'}
+                  color={'myGray.900'}
+                  _hover={{ bg: 'primary.50', color: 'primary.600' }}
                   onClick={() =>
                     router.push({
                       pathname: router.pathname,
                       query: { group: group.groupName, type: 'all' }
                     })
                   }
-                  _hover={{ bg: 'white' }}
                 >
-                  <Avatar src={group.groupAvatar} w={'24px'} mr={1} />
+                  <Avatar src={group.groupAvatar} w={'16px'} mr={1.5} color={'primary.600'} />
                   {t(group.groupName as any)}
+                  <Box flex={1} />
+                  <MyIcon
+                    color={'myGray.600'}
+                    name={selected ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
+                    w={'16px'}
+                  />
                 </Flex>
-              );
-            })}
+                {selected &&
+                  [...allTypes, ...(currentPluginGroupTypes || [])]?.map((type) => {
+                    const selected = type.typeId === selectedType;
+                    return (
+                      <Flex
+                        key={type.typeId}
+                        fontSize={'14px'}
+                        fontWeight={500}
+                        rounded={'md'}
+                        py={2}
+                        pl={'30px'}
+                        cursor={'pointer'}
+                        mb={0.5}
+                        _hover={{ bg: 'primary.50', color: 'primary.600' }}
+                        bg={selected ? 'primary.50' : 'transparent'}
+                        color={selected ? 'primary.600' : 'myGray.500'}
+                        onClick={() => {
+                          router.push({
+                            pathname: router.pathname,
+                            query: { ...router.query, type: type.typeId }
+                          });
+                        }}
+                      >
+                        {t(type.typeName as any)}
+                      </Flex>
+                    );
+                  })}
+              </Box>
+            );
+          })}
+        </Box>
+      )}
+      <Box ml={isPc ? '200px' : 0} p={6}>
+        <Flex alignItems={'center'}>
+          <Flex flex={1} fontSize={'xl'} fontWeight={'medium'} color={'myGray.900'}>
+            {!isPc && <MyIcon name="menu" w={'20px'} mr={1.5} onClick={onOpen} />}
+            {t(selectedGroup as any)}
           </Flex>
           <InputGroup w={'200px'}>
             <InputLeftElement alignItems={'center'}>
@@ -141,31 +220,7 @@ const Store = () => {
             />
           </InputGroup>
         </Flex>
-        <Flex flex={1}>
-          <LightRowTabs
-            list={[
-              {
-                label: t('common:common.All'),
-                value: 'all'
-              },
-              ...(currentPluginGroupTypes?.map((type) => ({
-                label: type.typeName,
-                value: type.typeId
-              })) || [])
-            ]}
-            value={selectedType as string}
-            onChange={(e) => {
-              router.push({
-                pathname: router.pathname,
-                query: { ...router.query, type: e }
-              });
-            }}
-            mb={4}
-            gap={4}
-            fontSize={'16px'}
-            fontWeight={'medium'}
-          />
-        </Flex>
+
         <Grid
           gridTemplateColumns={[
             '1fr',
@@ -176,7 +231,7 @@ const Store = () => {
           ]}
           gridGap={4}
           alignItems={'stretch'}
-          pb={5}
+          py={5}
         >
           {currentPlugins.map((item) => (
             <PluginCard key={item.id} item={item} groups={allGroups} />
@@ -187,7 +242,7 @@ const Store = () => {
   );
 };
 
-export default Store;
+export default Toolkit;
 
 export async function getServerSideProps(context: any) {
   return {

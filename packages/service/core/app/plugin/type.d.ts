@@ -10,6 +10,7 @@ export type SystemPluginConfigSchemaType = {
 
   originCost: number; // n points/one time
   currentCost: number;
+  hasTokenFee: boolean;
   isActive: boolean;
   inputConfig: SystemPluginTemplateItemType['inputConfig'];
 

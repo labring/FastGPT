@@ -25,6 +25,10 @@ const SystemPluginSchema = new Schema({
     type: Number,
     default: 0
   },
+  hasTokenFee: {
+    type: Boolean,
+    default: false
+  },
   customConfig: Object
 });
 

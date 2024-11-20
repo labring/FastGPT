@@ -51,7 +51,7 @@ import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loo
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowNodeEdgeContext } from '../context/workflowInitContext';
-import { defaultGroup } from '@/pages/store';
+import { defaultGroup } from '@/pages/toolkit';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;

@@ -38,6 +38,7 @@ async function handler(
         intro: plugin.intro,
         isTool: plugin.isTool,
         currentCost: plugin.currentCost,
+        hasTokenFee: plugin.hasTokenFee,
         author: plugin.author,
         instructions: plugin.userGuide
       }))

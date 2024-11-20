@@ -72,6 +72,7 @@ export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   // commercial plugin config
   originCost: number; // n points/one time
   currentCost: number;
+  hasTokenFee: boolean;
 
   isActive?: boolean;
   isOfficial?: boolean;
