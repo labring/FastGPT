@@ -250,6 +250,7 @@ const ResponseTags = ({
       {!!quoteModalData && (
         <QuoteModal
           {...quoteModalData}
+          chatItemId={historyItem.dataId}
           canEditDataset={notSharePage}
           showRawSource={showRawSource}
           onClose={() => setQuoteModalData(undefined)}

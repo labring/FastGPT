@@ -6,10 +6,10 @@ import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollect
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useI18n } from '@/web/context/I18n';
-import { ShareChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
 
 type Props = BoxProps &
-  ShareChatAuthProps & {
+  readCollectionSourceBody & {
     sourceName?: string;
     collectionId: string;
     sourceId?: string;
@@ -18,11 +18,18 @@ type Props = BoxProps &
 
 const RawSourceBox = ({
   sourceId,
-  collectionId,
   sourceName = '',
   canView = true,
+
+  collectionId,
+  appId,
+  chatId,
+  chatItemId,
   shareId,
   outLinkUid,
+  teamId,
+  teamToken,
+
   ...props
 }: Props) => {
   const { t } = useTranslation();
@@ -33,8 +40,13 @@ const RawSourceBox = ({
   const icon = useMemo(() => getSourceNameIcon({ sourceId, sourceName }), [sourceId, sourceName]);
   const read = getCollectionSourceAndOpen({
     collectionId,
+    appId,
+    chatId,
+    chatItemId,
     shareId,
-    outLinkUid
+    outLinkUid,
+    teamId,
+    teamToken
   });
 
   return (
@@ -56,7 +68,7 @@ const RawSourceBox = ({
           : {})}
         {...props}
       >
-        <MyIcon name={icon as any} w={['16px', '20px']} mr={2} />
+        <MyIcon name={icon as any} w={['1rem', '1.25rem']} mr={2} />
         <Box
           maxW={['200px', '300px']}
           className={props.className ?? 'textEllipsis'}
