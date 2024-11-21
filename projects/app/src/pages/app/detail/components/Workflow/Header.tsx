@@ -13,7 +13,7 @@ import { useTranslation } from 'next-i18next';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../WorkflowComponents/context';
+import { WorkflowContext, WorkflowStateType } from '../WorkflowComponents/context';
 import { AppContext, TabEnum } from '../context';
 import RouteTab from '../RouteTab';
 import { useRouter } from 'next/router';
@@ -34,6 +34,7 @@ import {
   WorkflowInitContext
 } from '../WorkflowComponents/context/workflowInitContext';
 import { WorkflowEventContext } from '../WorkflowComponents/context/workflowEventContext';
+import { applyDiff } from '@/web/core/app/diff';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -81,11 +82,14 @@ const Header = () => {
         [...future].reverse().find((snapshot) => snapshot.isSaved) ||
         past.find((snapshot) => snapshot.isSaved);
 
+      const initialState = past[past.length - 1]?.state;
+      const savedSnapshotState = applyDiff(initialState, savedSnapshot?.diff);
+
       const val = compareSnapshot(
         {
-          nodes: savedSnapshot?.nodes,
-          edges: savedSnapshot?.edges,
-          chatConfig: savedSnapshot?.chatConfig
+          nodes: savedSnapshotState?.nodes,
+          edges: savedSnapshotState?.edges,
+          chatConfig: savedSnapshotState?.chatConfig
         },
         {
           nodes: nodes,

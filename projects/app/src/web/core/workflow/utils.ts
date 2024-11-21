@@ -631,3 +631,14 @@ export const compareSnapshot = (
 
   return isEqual(node1, node2);
 };
+
+// remove node size
+export const simplifyNodes = (nodes: Node[]) => {
+  return nodes.map((node) => ({
+    id: node.id,
+    type: node.type,
+    position: node.position,
+    data: node.data,
+    zIndex: node.zIndex
+  }));
+};
