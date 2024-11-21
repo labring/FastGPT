@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import FolderPath from '@/components/common/folder/Path';
@@ -29,6 +29,7 @@ import {
 } from './useSnapshots';
 import PublishHistories from '../PublishHistoriesSlider';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
+import { applyDiff } from '@/web/core/app/diff';
 
 const Header = ({
   forbiddenSaveSnapshot,
@@ -48,9 +49,20 @@ const Header = ({
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const router = useRouter();
-  const { appId, onSaveApp, currentTab } = useContextSelector(AppContext, (v) => v);
+  const { appId, onSaveApp, currentTab, appLatestVersion } = useContextSelector(
+    AppContext,
+    (v) => v
+  );
   const { lastAppListRouteType } = useSystemStore();
   const { allDatasets } = useDatasetStore();
+  const initialAppForm = useMemo(
+    () =>
+      appWorkflow2Form({
+        nodes: appLatestVersion?.nodes || [],
+        chatConfig: appLatestVersion?.chatConfig || {}
+      }),
+    [appLatestVersion]
+  );
 
   const { data: paths = [] } = useRequest2(() => getAppFolderPath(appId), {
     manual: false,
@@ -104,7 +116,8 @@ const Header = ({
 
   const onSwitchTmpVersion = useCallback(
     (data: SimpleAppSnapshotType, customTitle: string) => {
-      setAppForm(data.appForm);
+      const pastState = applyDiff(initialAppForm, data.diff);
+      setAppForm(pastState);
 
       // Remove multiple "copy-"
       const copyText = t('app:version_copy');
@@ -112,11 +125,11 @@ const Header = ({
       const title = customTitle.replace(regex, `$1`);
 
       return saveSnapshot({
-        appForm: data.appForm,
+        appForm: pastState,
         title
       });
     },
-    [saveSnapshot, setAppForm, t]
+    [initialAppForm, saveSnapshot, setAppForm, t]
   );
   const onSwitchCloudVersion = useCallback(
     (appVersion: AppVersionSchemaType) => {
@@ -143,7 +156,8 @@ const Header = ({
   useDebounceEffect(
     () => {
       const savedSnapshot = past.find((snapshot) => snapshot.isSaved);
-      const val = compareSimpleAppSnapshot(savedSnapshot?.appForm, appForm);
+      const pastState = applyDiff(initialAppForm, savedSnapshot?.diff);
+      const val = compareSimpleAppSnapshot(pastState, appForm);
       setIsPublished(val);
     },
     [past, allDatasets],
