@@ -17,17 +17,44 @@ import styles from './styles.module.scss';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
 import { onSaveSnapshotFnType, SimpleAppSnapshotType } from './useSnapshots';
-import { applyDiff } from '@/web/core/app/diff';
+import { getAppConfigByDiff, getAppDiffConfig } from '@/web/core/app/diff';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+
+const convertOldFormatHistory = (past: SimpleAppSnapshotType[]) => {
+  const baseState = past[past.length - 1].appForm;
+
+  return past.map((item, index) => {
+    if (index === past.length - 1) {
+      return {
+        title: item.title,
+        isSaved: item.isSaved,
+        state: baseState
+      };
+    }
+
+    const currentState = item.appForm;
+
+    const diff = getAppDiffConfig(baseState, currentState);
+
+    return {
+      title: item.title || formatTime2YMDHMS(new Date()),
+      isSaved: item.isSaved,
+      diff
+    };
+  });
+};
 
 const Edit = ({
   appForm,
   setAppForm,
   past,
+  setPast,
   saveSnapshot
 }: {
   appForm: AppSimpleEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppSimpleEditFormType>>;
   past: SimpleAppSnapshotType[];
+  setPast: (value: React.SetStateAction<SimpleAppSnapshotType[]>) => void;
   saveSnapshot: onSaveSnapshotFnType;
 }) => {
   const { isPc } = useSystem();
@@ -40,19 +67,33 @@ const Edit = ({
     // show selected dataset
     loadAllDatasets();
 
+    if (appDetail.version !== 'v2') {
+      return setAppForm(
+        appWorkflow2Form({
+          nodes: v1Workflow2V2((appDetail.modules || []) as any)?.nodes,
+          chatConfig: appDetail.chatConfig
+        })
+      );
+    }
+
+    // Get the latest snapshot
+    if (past?.[0]?.diff) {
+      const pastState = getAppConfigByDiff(past[past.length - 1].state, past[0].diff);
+
+      return setAppForm(pastState);
+    } else if (past && past.length > 0 && past?.every((item) => item.appForm)) {
+      // 格式化成 diff
+      const newPast = convertOldFormatHistory(past);
+
+      setPast(newPast);
+      return setAppForm(getAppConfigByDiff(newPast[newPast.length - 1].state, newPast[0].diff));
+    }
+
     const appForm = appWorkflow2Form({
       nodes: appDetail.modules,
       chatConfig: appDetail.chatConfig
     });
 
-    // Get the latest snapshot
-    if (past?.[0]?.diff) {
-      const pastState = applyDiff(past[past.length - 1].state, past[0].diff);
-
-      return setAppForm(pastState);
-    }
-
-    setAppForm(appForm);
     // Set the first snapshot
     if (past.length === 0) {
       saveSnapshot({
@@ -62,14 +103,7 @@ const Edit = ({
       });
     }
 
-    if (appDetail.version !== 'v2') {
-      setAppForm(
-        appWorkflow2Form({
-          nodes: v1Workflow2V2((appDetail.modules || []) as any)?.nodes,
-          chatConfig: appDetail.chatConfig
-        })
-      );
-    }
+    setAppForm(appForm);
   });
 
   return (

@@ -633,12 +633,11 @@ export const compareSnapshot = (
 };
 
 // remove node size
-export const simplifyNodes = (nodes: Node[]) => {
+export const simplifyWorkflowNodes = (nodes: Node[]) => {
   return nodes.map((node) => ({
     id: node.id,
     type: node.type,
     position: node.position,
-    data: node.data,
-    zIndex: node.zIndex
+    data: node.data
   }));
 };

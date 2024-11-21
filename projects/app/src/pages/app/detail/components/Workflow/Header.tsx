@@ -13,7 +13,7 @@ import { useTranslation } from 'next-i18next';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext, WorkflowStateType } from '../WorkflowComponents/context';
+import { WorkflowContext } from '../WorkflowComponents/context';
 import { AppContext, TabEnum } from '../context';
 import RouteTab from '../RouteTab';
 import { useRouter } from 'next/router';
@@ -34,7 +34,7 @@ import {
   WorkflowInitContext
 } from '../WorkflowComponents/context/workflowInitContext';
 import { WorkflowEventContext } from '../WorkflowComponents/context/workflowEventContext';
-import { applyDiff } from '@/web/core/app/diff';
+import { getAppConfigByDiff } from '@/web/core/app/diff';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -56,16 +56,19 @@ const Header = () => {
 
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
-  const {
-    flowData2StoreData,
-    flowData2StoreDataAndCheck,
-    setWorkflowTestData,
-    past,
-    future,
-    setPast,
-    onSwitchTmpVersion,
-    onSwitchCloudVersion
-  } = useContextSelector(WorkflowContext, (v) => v);
+
+  const flowData2StoreData = useContextSelector(WorkflowContext, (v) => v.flowData2StoreData);
+  const flowData2StoreDataAndCheck = useContextSelector(
+    WorkflowContext,
+    (v) => v.flowData2StoreDataAndCheck
+  );
+  const setWorkflowTestData = useContextSelector(WorkflowContext, (v) => v.setWorkflowTestData);
+  const past = useContextSelector(WorkflowContext, (v) => v.past);
+  const future = useContextSelector(WorkflowContext, (v) => v.future);
+  const setPast = useContextSelector(WorkflowContext, (v) => v.setPast);
+  const onSwitchTmpVersion = useContextSelector(WorkflowContext, (v) => v.onSwitchTmpVersion);
+  const onSwitchCloudVersion = useContextSelector(WorkflowContext, (v) => v.onSwitchCloudVersion);
+
   const showHistoryModal = useContextSelector(WorkflowEventContext, (v) => v.showHistoryModal);
   const setShowHistoryModal = useContextSelector(
     WorkflowEventContext,
@@ -83,7 +86,7 @@ const Header = () => {
         past.find((snapshot) => snapshot.isSaved);
 
       const initialState = past[past.length - 1]?.state;
-      const savedSnapshotState = applyDiff(initialState, savedSnapshot?.diff);
+      const savedSnapshotState = getAppConfigByDiff(initialState, savedSnapshot?.diff);
 
       const val = compareSnapshot(
         {
@@ -141,8 +144,6 @@ const Header = () => {
 
   const onBack = useCallback(async () => {
     try {
-      localStorage.removeItem(`${appDetail._id}-past`);
-      localStorage.removeItem(`${appDetail._id}-future`);
       router.push({
         pathname: '/app/list',
         query: {
@@ -151,7 +152,7 @@ const Header = () => {
         }
       });
     } catch (error) {}
-  }, [appDetail._id, appDetail.parentId, lastAppListRouteType, router]);
+  }, [appDetail.parentId, lastAppListRouteType, router]);
 
   const Render = useMemo(() => {
     return (
