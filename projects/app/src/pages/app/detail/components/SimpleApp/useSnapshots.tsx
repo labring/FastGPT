@@ -3,16 +3,19 @@ import { SetStateAction, useEffect, useRef } from 'react';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { isEqual } from 'lodash';
-import { applyDiff, createDiff } from '@/web/core/app/diff';
+import { getAppDiffConfig } from '@/web/core/app/diff';
 
 export type SimpleAppSnapshotType = {
   diff?: Record<string, any>;
   title: string;
   isSaved?: boolean;
   state?: AppSimpleEditFormType;
+
+  // old format
+  appForm?: AppSimpleEditFormType;
 };
 export type onSaveSnapshotFnType = (props: {
-  appForm: AppSimpleEditFormType;
+  appForm: AppSimpleEditFormType; // Current edited app form data
   title?: string;
   isSaved?: boolean;
 }) => Promise<boolean>;
@@ -58,7 +61,7 @@ export const compareSimpleAppSnapshot = (
 
 export const useSimpleAppSnapshots = (appId: string) => {
   const forbiddenSaveSnapshot = useRef(false);
-  const [past, setPast] = useLocalStorageState<SimpleAppSnapshotType[]>(`${appId}-past-simple`, {
+  const [past, setPast] = useLocalStorageState<SimpleAppSnapshotType[]>(`${appId}-past`, {
     defaultValue: []
   }) as [SimpleAppSnapshotType[], (value: SetStateAction<SimpleAppSnapshotType[]>) => void];
 
@@ -79,33 +82,36 @@ export const useSimpleAppSnapshots = (appId: string) => {
       return true;
     }
 
-    const initialState = past[past.length - 1].state;
-    if (!initialState) return false;
+    const lastPast = past[past.length - 1];
+    if (!lastPast?.state) return false;
 
-    if (past.length > 0) {
-      const pastState = applyDiff(initialState, past[0].diff);
+    // Get the diff between the current app form data and the initial state
+    const diff = getAppDiffConfig(lastPast.state, appForm);
 
-      const isPastEqual = compareSimpleAppSnapshot(pastState, appForm);
-      if (isPastEqual) return false;
-    }
+    // If the diff is the same as the previous snapshot, do not save
+    if (past[0].diff && isEqual(past[0].diff, diff)) return false;
 
-    const diff = createDiff(initialState, appForm);
-
-    setPast((past) => [
-      {
+    setPast((past) => {
+      const newPast = {
         diff,
         title: title || formatTime2YMDHMS(new Date()),
         isSaved
-      },
-      ...past.slice(0, 199)
-    ]);
+      };
+
+      if (past.length >= 100) {
+        return [newPast, ...past.slice(0, 98), lastPast];
+      }
+      return [newPast, ...past];
+    });
     return true;
   });
 
   // remove other app's snapshot
   useEffect(() => {
     const keys = Object.keys(localStorage);
-    const snapshotKeys = keys.filter((key) => key.endsWith('-past-simple'));
+    const snapshotKeys = keys.filter(
+      (key) => key.endsWith('-past') || key.endsWith('-past-simple')
+    );
     snapshotKeys.forEach((key) => {
       const keyAppId = key.split('-')[0];
       if (keyAppId !== appId) {
@@ -113,6 +119,20 @@ export const useSimpleAppSnapshots = (appId: string) => {
       }
     });
   }, [appId]);
+
+  // 旧的编辑记录，直接重置到新的变量中
+  const [oldPast, setOldPast] = useLocalStorageState<SimpleAppSnapshotType[]>(
+    `${appId}-past-simple`,
+    {}
+  );
+  useEffect(() => {
+    if (oldPast && oldPast.length > 0) {
+      setPast(past);
+      setOldPast([]);
+      // refresh page
+      window.location.reload();
+    }
+  }, [oldPast]);
 
   return { forbiddenSaveSnapshot, past, setPast, saveSnapshot };
 };
