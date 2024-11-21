@@ -3,11 +3,13 @@ import { SetStateAction, useEffect, useRef } from 'react';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { isEqual } from 'lodash';
+import { applyDiff, createDiff } from '@/web/core/app/diff';
 
 export type SimpleAppSnapshotType = {
-  appForm: AppSimpleEditFormType;
+  diff?: Record<string, any>;
   title: string;
   isSaved?: boolean;
+  state?: AppSimpleEditFormType;
 };
 export type onSaveSnapshotFnType = (props: {
   appForm: AppSimpleEditFormType;
@@ -66,14 +68,32 @@ export const useSimpleAppSnapshots = (appId: string) => {
       return false;
     }
 
-    const pastState = past[0];
+    if (past.length === 0) {
+      setPast([
+        {
+          title: title || formatTime2YMDHMS(new Date()),
+          isSaved,
+          state: appForm
+        }
+      ]);
+      return true;
+    }
 
-    const isPastEqual = compareSimpleAppSnapshot(pastState?.appForm, appForm);
-    if (isPastEqual) return false;
+    const initialState = past[past.length - 1].state;
+    if (!initialState) return false;
+
+    if (past.length > 0) {
+      const pastState = applyDiff(initialState, past[0].diff);
+
+      const isPastEqual = compareSimpleAppSnapshot(pastState, appForm);
+      if (isPastEqual) return false;
+    }
+
+    const diff = createDiff(initialState, appForm);
 
     setPast((past) => [
       {
-        appForm,
+        diff,
         title: title || formatTime2YMDHMS(new Date()),
         isSaved
       },

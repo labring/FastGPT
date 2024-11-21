@@ -17,6 +17,7 @@ import styles from './styles.module.scss';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
 import { onSaveSnapshotFnType, SimpleAppSnapshotType } from './useSnapshots';
+import { applyDiff } from '@/web/core/app/diff';
 
 const Edit = ({
   appForm,
@@ -39,16 +40,19 @@ const Edit = ({
     // show selected dataset
     loadAllDatasets();
 
-    // Get the latest snapshot
-    if (past?.[0]?.appForm) {
-      return setAppForm(past[0].appForm);
-    }
-
     const appForm = appWorkflow2Form({
       nodes: appDetail.modules,
       chatConfig: appDetail.chatConfig
     });
 
+    // Get the latest snapshot
+    if (past?.[0]?.diff) {
+      const pastState = applyDiff(past[past.length - 1].state, past[0].diff);
+
+      return setAppForm(pastState);
+    }
+
+    setAppForm(appForm);
     // Set the first snapshot
     if (past.length === 0) {
       saveSnapshot({
@@ -57,8 +61,6 @@ const Edit = ({
         isSaved: true
       });
     }
-
-    setAppForm(appForm);
 
     if (appDetail.version !== 'v2') {
       setAppForm(
