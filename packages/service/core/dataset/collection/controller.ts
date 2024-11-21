@@ -67,7 +67,7 @@ export async function createOneCollection({
 
         fileId,
         rawLink,
-        externalFileId,
+        ...(externalFileId ? { externalFileId } : {}),
         externalFileUrl,
 
         rawTextLength,
