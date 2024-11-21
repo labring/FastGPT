@@ -18,8 +18,9 @@ const PublishChannel = dynamic(() => import('../Publish'));
 const SimpleEdit = () => {
   const { t } = useTranslation();
   const { currentTab, appDetail } = useContextSelector(AppContext, (v) => v);
-  const { forbiddenSaveSnapshot, past, setPast, saveSnapshot, oldPast, setOldPast } =
-    useSimpleAppSnapshots(appDetail._id);
+  const { forbiddenSaveSnapshot, past, setPast, saveSnapshot } = useSimpleAppSnapshots(
+    appDetail._id
+  );
 
   const [appForm, setAppForm] = useState(getDefaultAppForm());
   // Save snapshot to local
@@ -54,8 +55,6 @@ const SimpleEdit = () => {
           past={past}
           setPast={setPast}
           saveSnapshot={saveSnapshot}
-          oldPast={oldPast}
-          setOldPast={setOldPast}
         />
       ) : (
         <Box flex={'1 0 0'} h={0} mt={[4, 0]}>

@@ -120,13 +120,7 @@ export const useSimpleAppSnapshots = (appId: string) => {
     });
   }, [appId]);
 
-  // 旧的编辑记录，直接重置到新的变量中
-  const [oldPast, setOldPast] = useLocalStorageState<SimpleAppSnapshotType[]>(
-    `${appId}-past-simple`,
-    {}
-  );
-
-  return { forbiddenSaveSnapshot, past, setPast, saveSnapshot, oldPast, setOldPast };
+  return { forbiddenSaveSnapshot, past, setPast, saveSnapshot };
 };
 
 export default function Snapshots() {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box } from '@chakra-ui/react';
-import { useMount } from 'ahooks';
+import { useLocalStorageState, useMount } from 'ahooks';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
 
@@ -19,7 +19,6 @@ import { useTranslation } from 'next-i18next';
 import { onSaveSnapshotFnType, SimpleAppSnapshotType } from './useSnapshots';
 import { getAppConfigByDiff, getAppDiffConfig } from '@/web/core/app/diff';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
-import { SetState } from 'ahooks/lib/createUseStorageState';
 
 const convertOldFormatHistory = (past: SimpleAppSnapshotType[]) => {
   const baseState = past[past.length - 1].appForm;
@@ -50,22 +49,24 @@ const Edit = ({
   setAppForm,
   past,
   setPast,
-  saveSnapshot,
-  oldPast,
-  setOldPast
+  saveSnapshot
 }: {
   appForm: AppSimpleEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppSimpleEditFormType>>;
   past: SimpleAppSnapshotType[];
   setPast: (value: React.SetStateAction<SimpleAppSnapshotType[]>) => void;
   saveSnapshot: onSaveSnapshotFnType;
-  oldPast?: SimpleAppSnapshotType[];
-  setOldPast?: (value?: SetState<SimpleAppSnapshotType[]> | undefined) => void;
 }) => {
   const { isPc } = useSystem();
   const { loadAllDatasets } = useDatasetStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { t } = useTranslation();
+
+  // 旧的编辑记录，直接重置到新的变量中
+  const [oldPast, setOldPast] = useLocalStorageState<SimpleAppSnapshotType[]>(
+    `${appDetail._id}-past-simple`,
+    {}
+  );
 
   // Init app form
   useMount(() => {
