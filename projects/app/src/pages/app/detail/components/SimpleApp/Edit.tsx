@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box } from '@chakra-ui/react';
-import { useMount } from 'ahooks';
+import { useLocalStorageState, useMount } from 'ahooks';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
 
@@ -62,6 +62,12 @@ const Edit = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { t } = useTranslation();
 
+  // 旧的编辑记录，直接重置到新的变量中
+  const [oldPast, setOldPast] = useLocalStorageState<SimpleAppSnapshotType[]>(
+    `${appDetail._id}-past-simple`,
+    {}
+  );
+
   // Init app form
   useMount(() => {
     // show selected dataset
@@ -81,11 +87,13 @@ const Edit = ({
       const pastState = getAppConfigByDiff(past[past.length - 1].state, past[0].diff);
 
       return setAppForm(pastState);
-    } else if (past && past.length > 0 && past?.every((item) => item.appForm)) {
+    } else if (oldPast && oldPast.length > 0 && oldPast?.every((item) => item.appForm)) {
       // 格式化成 diff
-      const newPast = convertOldFormatHistory(past);
+      const newPast = convertOldFormatHistory(oldPast);
 
       setPast(newPast);
+      setOldPast && setOldPast([]);
+
       return setAppForm(getAppConfigByDiff(newPast[newPast.length - 1].state, newPast[0].diff));
     }
 
