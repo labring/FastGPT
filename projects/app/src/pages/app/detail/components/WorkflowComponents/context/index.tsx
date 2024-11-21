@@ -799,8 +799,8 @@ const WorkflowContextProvider = ({
           title: customTitle || formatTime2YMDHMS(new Date()),
           isSaved
         };
-        if (past.length >= 200) {
-          return [newPast, ...past.slice(0, 198), lastSnapshot];
+        if (past.length >= 100) {
+          return [newPast, ...past.slice(0, 98), lastSnapshot];
         }
         return [newPast, ...past];
       });
