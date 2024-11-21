@@ -175,11 +175,11 @@ const main = async ({ apikey, files, HTMLtable }: Props): Response => {
 
       // Get the result by uid
 
-      // Wait for the result, at most 90s
-      const checkResult = async (retry = 30) => {
+      // Wait for the result
+      const checkResult = async (retry = 20) => {
         if (retry <= 0)
           return Promise.reject(
-            `File:${file_name}\n<Content>\n[Parse Timeout Error] Failed to get result (uid: ${uid}): Process timeout after 90s\n</Content>`
+            `File:${file_name}\n<Content>\n[Parse Timeout Error] Failed to get result (uid: ${uid}): Process timeout\n</Content>`
           );
 
         try {
@@ -203,7 +203,7 @@ const main = async ({ apikey, files, HTMLtable }: Props): Response => {
           }
 
           if (['ready', 'processing'].includes(result_data.data.status)) {
-            await delay(3000);
+            await delay(4000);
             return checkResult(retry - 1);
           }
 
@@ -225,8 +225,6 @@ const main = async ({ apikey, files, HTMLtable }: Props): Response => {
 
             return `File:${file_name}\n<Content>\n${result}\n</Content>`;
           }
-
-          await delay(100);
           return checkResult(retry - 1);
         } catch (error) {
           if (retry > 1) {
