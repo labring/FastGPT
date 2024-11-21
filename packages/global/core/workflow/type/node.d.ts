@@ -85,6 +85,7 @@ export type NodeTemplateListItemType = {
   author?: string;
   unique?: boolean; // 唯一的
   currentCost?: number; // 当前积分消耗
+  hasTokenFee?: boolean; // 是否配置积分
   instructions?: string; // 使用说明
 };
 

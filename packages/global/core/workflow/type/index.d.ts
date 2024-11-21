@@ -63,7 +63,7 @@ export type TemplateMarketListItemType = {
 // system plugin
 export type SystemPluginTemplateItemType = WorkflowTemplateType & {
   customWorkflow?: string;
-  associatedPlugin?: Omit<SystemPluginListItemType, 'workflow'>;
+  associatedPlugin?: SystemPluginListItemType;
   userGuide?: string;
 
   templateType: string;

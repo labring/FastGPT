@@ -78,7 +78,8 @@ export async function getChildAppPreviewNode({
         version: version.versionId,
         originCost: 0,
         currentCost: 0,
-        hasTokenFee: false
+        hasTokenFee: false,
+        pluginOrder: 0
       };
     } else {
       return getSystemPluginTemplateById(pluginId);
@@ -163,7 +164,8 @@ export async function getChildAppRuntimeById(
         version: item?.pluginData?.nodeVersion || defaultNodeVersion,
         originCost: 0,
         currentCost: 0,
-        hasTokenFee: false
+        hasTokenFee: false,
+        pluginOrder: 0
       };
     } else {
       return getSystemPluginTemplateById(pluginId);

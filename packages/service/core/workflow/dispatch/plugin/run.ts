@@ -123,7 +123,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   }
 
   const usagePoints = await computedPluginUsage({
-    plugin,
+    plugin: pluginTemplate,
     childrenUsage: flowUsages,
     error: !!output?.pluginOutput?.error
   });
