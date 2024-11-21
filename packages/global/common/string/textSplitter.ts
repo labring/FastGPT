@@ -127,8 +127,8 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     { reg: /^(#####\s[^\n]+\n)/gm, maxLen: chunkLen * 1.8 },
 
     { reg: /([\n]([`~]))/g, maxLen: chunkLen * 4 }, // code block
-    { reg: /([\n](?!\s*[\*\-|>0-9]))/g, maxLen: chunkLen * 2 }, // 增大块，尽可能保证它是一个完整的段落。 (?![\*\-|>`0-9]): markdown special char
-    { reg: /([\n\n])/g, maxLen: chunkLen * 1.6 },
+    { reg: /([\n](?=\s*[0-9]+\.))/g, maxLen: chunkLen * 2 }, // 增大块，尽可能保证它是一个完整的段落。 (?![\*\-|>`0-9]): markdown special char
+    { reg: /(\n{2,})/g, maxLen: chunkLen * 1.6 },
     { reg: /([\n])/g, maxLen: chunkLen * 1.2 },
     // ------ There's no overlap on the top
     { reg: /([。]|([a-zA-Z])\.\s)/g, maxLen: chunkLen * 1.2 },
