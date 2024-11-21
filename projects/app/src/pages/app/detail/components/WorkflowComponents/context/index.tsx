@@ -1,8 +1,7 @@
 import { postWorkflowDebug } from '@/web/core/workflow/api';
 import {
   checkWorkflowNodeAndConnection,
-  compareSnapshot,
-  simplifyNodes,
+  simplifyWorkflowNodes,
   storeEdgesRenderEdge,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
@@ -38,11 +37,11 @@ import { useDisclosure } from '@chakra-ui/react';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import { useTranslation } from 'next-i18next';
 import { formatTime2YMDHMS, formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isEqual } from 'lodash';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import WorkflowInitContextProvider, { WorkflowNodeEdgeContext } from './workflowInitContext';
 import WorkflowEventContextProvider from './workflowEventContext';
-import { applyDiff, createDiff } from '@/web/core/app/diff';
+import { getAppConfigByDiff, getAppDiffConfig } from '@/web/core/app/diff';
 
 /* 
   Context
@@ -773,53 +772,38 @@ const WorkflowContextProvider = ({
   const pushPastSnapshot = useMemoizedFn(
     ({ pastNodes, pastEdges, chatConfig, customTitle, isSaved }) => {
       if (!pastNodes || !pastEdges || !chatConfig) return false;
-
       if (forbiddenSaveSnapshot.current) {
         forbiddenSaveSnapshot.current = false;
         return false;
       }
 
       // Get initial state
-      const initialState = past[past.length - 1]?.state;
-      if (!initialState) return false;
-
-      // Apply latest diff to get past state
-      const pastState = applyDiff(initialState, past[0].diff);
-
-      const isPastEqual = compareSnapshot(
-        {
-          nodes: pastNodes,
-          edges: pastEdges,
-          chatConfig: chatConfig
-        },
-        {
-          nodes: pastState?.nodes,
-          edges: pastState?.edges,
-          chatConfig: pastState?.chatConfig
-        }
-      );
-
-      if (isPastEqual) return false;
+      const lastSnapshot = past[past.length - 1];
+      if (!lastSnapshot?.state) return false;
 
       // Create current state object
       const newState = {
-        nodes: simplifyNodes(pastNodes),
+        nodes: simplifyWorkflowNodes(pastNodes),
         edges: pastEdges,
         chatConfig
       };
 
       // Calculate diff from initial state
-      const diff = createDiff(initialState, newState);
+      const diff = getAppDiffConfig(lastSnapshot.state, newState);
+      if (past[0].diff && isEqual(past[0].diff, diff)) return false;
 
       setFuture([]);
-      setPast((past) => [
-        {
+      setPast((past) => {
+        const newPast = {
           diff,
           title: customTitle || formatTime2YMDHMS(new Date()),
           isSaved
-        },
-        ...past.slice(0, 199)
-      ]);
+        };
+        if (past.length >= 100) {
+          return [newPast, ...past.slice(0, 98), lastSnapshot];
+        }
+        return [newPast, ...past];
+      });
 
       return true;
     }
@@ -830,7 +814,7 @@ const WorkflowContextProvider = ({
     const copyText = t('app:version_copy');
     const regex = new RegExp(`(${copyText}-)\\1+`, 'g');
     const title = customTitle.replace(regex, `$1`);
-    const pastState = applyDiff(past[past.length - 1].state, params.diff);
+    const pastState = getAppConfigByDiff(past[past.length - 1].state, params.diff);
 
     resetSnapshot(pastState);
 
@@ -863,14 +847,14 @@ const WorkflowContextProvider = ({
     if (past[1]) {
       setFuture((future) => [past[0], ...future]);
       setPast((past) => past.slice(1));
-      const pastState = applyDiff(past[past.length - 1].state, past[1].diff);
+      const pastState = getAppConfigByDiff(past[past.length - 1].state, past[1].diff);
       resetSnapshot(pastState);
     }
   });
   const redo = useMemoizedFn(() => {
     if (!future[0]) return;
 
-    const futureState = applyDiff(past[past.length - 1].state, future[0].diff);
+    const futureState = getAppConfigByDiff(past[past.length - 1].state, future[0].diff);
 
     if (futureState) {
       setPast((past) => [future[0], ...past]);
@@ -892,39 +876,6 @@ const WorkflowContextProvider = ({
     });
   }, [appId]);
 
-  // Convert old history format to new format
-  const convertOldFormatHistory = (past: WorkflowSnapshotsType[]) => {
-    const baseState = {
-      nodes: past[past.length - 1].state?.nodes || [],
-      edges: past[past.length - 1].state?.edges || [],
-      chatConfig: past[past.length - 1].state?.chatConfig || {}
-    };
-
-    return past.map((item, index) => {
-      if (index === past.length - 1) {
-        return {
-          title: item.title,
-          isSaved: item.isSaved,
-          state: baseState
-        };
-      }
-
-      const currentState = {
-        nodes: item.nodes || [],
-        edges: item.edges || [],
-        chatConfig: item.chatConfig || {}
-      };
-
-      const diff = createDiff(baseState, currentState);
-
-      return {
-        title: item.title || formatTime2YMDHMS(new Date()),
-        isSaved: item.isSaved,
-        diff
-      };
-    });
-  };
-
   const initData = useCallback(
     async (
       e: {
@@ -938,15 +889,15 @@ const WorkflowContextProvider = ({
       const edges = e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [];
 
       const initialState = {
-        nodes: simplifyNodes(nodes),
+        nodes: simplifyWorkflowNodes(nodes),
         edges,
         chatConfig: e.chatConfig || appDetail.chatConfig
       };
 
       if (isInit && past.length > 0) {
         // new format
-        if (past[0].diff) {
-          const targetState = applyDiff(
+        if (past[0].diff && past[past.length - 1].state) {
+          const targetState = getAppConfigByDiff(
             past[past.length - 1].state,
             past[0].diff
           ) as WorkflowStateType;
@@ -960,13 +911,13 @@ const WorkflowContextProvider = ({
           return;
         }
 
-        // old format
-        if (past.some((item) => !item.state && (item.nodes || item.edges))) {
+        // 适配旧的编辑记录（4.8.15去除）
+        if (past.every((item) => item.nodes)) {
           const newPast = convertOldFormatHistory(past);
 
           setPast(newPast);
 
-          const latestState = applyDiff(
+          const latestState = getAppConfigByDiff(
             newPast[newPast.length - 1].state,
             newPast[0].diff
           ) as WorkflowStateType;
@@ -1084,3 +1035,36 @@ const WorkflowContextProvider = ({
   );
 };
 export default React.memo(WorkflowContextProvider);
+
+// Convert old history format to new format
+const convertOldFormatHistory = (past: WorkflowSnapshotsType[]) => {
+  const baseState = {
+    nodes: past[past.length - 1].state?.nodes || [],
+    edges: past[past.length - 1].state?.edges || [],
+    chatConfig: past[past.length - 1].state?.chatConfig || {}
+  };
+
+  return past.map((item, index) => {
+    if (index === past.length - 1) {
+      return {
+        title: item.title,
+        isSaved: item.isSaved,
+        state: baseState
+      };
+    }
+
+    const currentState = {
+      nodes: item.nodes || [],
+      edges: item.edges || [],
+      chatConfig: item.chatConfig || {}
+    };
+
+    const diff = getAppDiffConfig(baseState, currentState);
+
+    return {
+      title: item.title || formatTime2YMDHMS(new Date()),
+      isSaved: item.isSaved,
+      diff
+    };
+  });
+};

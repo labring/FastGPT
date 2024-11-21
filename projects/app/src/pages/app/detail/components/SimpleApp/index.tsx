@@ -49,7 +49,13 @@ const SimpleEdit = () => {
         saveSnapshot={saveSnapshot}
       />
       {currentTab === TabEnum.appEdit ? (
-        <Edit appForm={appForm} setAppForm={setAppForm} past={past} saveSnapshot={saveSnapshot} />
+        <Edit
+          appForm={appForm}
+          setAppForm={setAppForm}
+          past={past}
+          setPast={setPast}
+          saveSnapshot={saveSnapshot}
+        />
       ) : (
         <Box flex={'1 0 0'} h={0} mt={[4, 0]}>
           {currentTab === TabEnum.publish && <PublishChannel />}
