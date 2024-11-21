@@ -16,6 +16,10 @@ const PluginGroupSchema = new Schema({
   groupTypes: {
     type: Array<TGroupType>,
     default: []
+  },
+  groupOrder: {
+    type: Number,
+    default: 0
   }
 });
 

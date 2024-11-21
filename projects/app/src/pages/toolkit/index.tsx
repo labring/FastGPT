@@ -24,6 +24,7 @@ export const defaultGroup = {
   groupId: 'systemPlugin',
   groupAvatar: 'common/navbar/pluginLight',
   groupName: i18nT('common:core.module.template.System Plugin'),
+  groupOrder: 0,
   groupTypes: [
     {
       typeId: FlowNodeTemplateTypeEnum.tools as string,
@@ -59,9 +60,6 @@ const Toolkit = () => {
   const router = useRouter();
   const { isPc } = useSystem();
 
-  const { group: selectedGroup = defaultGroup.groupName, type: selectedType = 'all' } =
-    router.query;
-
   const { data: plugins = [] } = useRequest2(getSystemPlugTemplates, {
     manual: false
   });
@@ -75,13 +73,18 @@ const Toolkit = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const allGroups = useMemo(() => {
-    return [defaultGroup, ...pluginGroups].filter((group) => {
-      const groupTypes = group.groupTypes.filter((type) =>
-        plugins.find((plugin) => plugin.templateType === type.typeId)
-      );
-      return groupTypes.length > 0;
-    });
+    return [defaultGroup, ...pluginGroups]
+      .filter((group) => {
+        const groupTypes = group.groupTypes.filter((type) =>
+          plugins.find((plugin) => plugin.templateType === type.typeId)
+        );
+        return groupTypes.length > 0;
+      })
+      .sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0));
   }, [pluginGroups, plugins]);
+
+  const { group: selectedGroup = allGroups?.[0]?.groupName, type: selectedType = 'all' } =
+    router.query;
 
   const { t } = useTranslation();
 
