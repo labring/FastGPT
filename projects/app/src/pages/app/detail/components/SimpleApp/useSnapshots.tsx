@@ -125,16 +125,8 @@ export const useSimpleAppSnapshots = (appId: string) => {
     `${appId}-past-simple`,
     {}
   );
-  useEffect(() => {
-    if (oldPast && oldPast.length > 0) {
-      setPast(past);
-      setOldPast([]);
-      // refresh page
-      window.location.reload();
-    }
-  }, [oldPast]);
 
-  return { forbiddenSaveSnapshot, past, setPast, saveSnapshot };
+  return { forbiddenSaveSnapshot, past, setPast, saveSnapshot, oldPast, setOldPast };
 };
 
 export default function Snapshots() {

@@ -19,6 +19,7 @@ import { useTranslation } from 'next-i18next';
 import { onSaveSnapshotFnType, SimpleAppSnapshotType } from './useSnapshots';
 import { getAppConfigByDiff, getAppDiffConfig } from '@/web/core/app/diff';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import { SetState } from 'ahooks/lib/createUseStorageState';
 
 const convertOldFormatHistory = (past: SimpleAppSnapshotType[]) => {
   const baseState = past[past.length - 1].appForm;
@@ -49,13 +50,17 @@ const Edit = ({
   setAppForm,
   past,
   setPast,
-  saveSnapshot
+  saveSnapshot,
+  oldPast,
+  setOldPast
 }: {
   appForm: AppSimpleEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppSimpleEditFormType>>;
   past: SimpleAppSnapshotType[];
   setPast: (value: React.SetStateAction<SimpleAppSnapshotType[]>) => void;
   saveSnapshot: onSaveSnapshotFnType;
+  oldPast?: SimpleAppSnapshotType[];
+  setOldPast?: (value?: SetState<SimpleAppSnapshotType[]> | undefined) => void;
 }) => {
   const { isPc } = useSystem();
   const { loadAllDatasets } = useDatasetStore();
@@ -81,11 +86,13 @@ const Edit = ({
       const pastState = getAppConfigByDiff(past[past.length - 1].state, past[0].diff);
 
       return setAppForm(pastState);
-    } else if (past && past.length > 0 && past?.every((item) => item.appForm)) {
+    } else if (oldPast && oldPast.length > 0 && oldPast?.every((item) => item.appForm)) {
       // 格式化成 diff
-      const newPast = convertOldFormatHistory(past);
+      const newPast = convertOldFormatHistory(oldPast);
 
       setPast(newPast);
+      setOldPast && setOldPast([]);
+
       return setAppForm(getAppConfigByDiff(newPast[newPast.length - 1].state, newPast[0].diff));
     }
 
