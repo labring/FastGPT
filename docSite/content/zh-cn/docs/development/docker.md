@@ -35,9 +35,7 @@ weight: 707
 
 ### Milvus版本
 
-暂不推荐，部分系统存在精度丢失，等待修复。
-
-对于千万级以上向量性能更优秀。
+生产部署首选，对于千万级以上向量性能更优秀。
 
 [点击查看 Milvus 官方推荐配置](https://milvus.io/docs/prerequisite-docker.md)
 
@@ -51,9 +49,7 @@ weight: 707
 
 ### zilliz cloud版本
 
-暂不推荐，部分系统存在精度丢失，等待修复。
-
-亿级以上向量首选。
+Milvus 的全托管服务，性能优于 Milvus 并提供 SLA，点击使用 [Zilliz Cloud](https://zilliz.com.cn/)。
 
 由于向量库使用了 Cloud，无需占用本地资源，无需太关注。
 
