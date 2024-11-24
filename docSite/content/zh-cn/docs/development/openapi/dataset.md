@@ -31,17 +31,6 @@ curl --location --request POST 'http://localhost:3000/api/support/wallet/usage/c
 }'
 ```
 
-**x例子**
-
-```bash
-curl --location --request POST 'http://localhost:3000/api/support/wallet/bill/createTrainingBill' \
---header 'Authorization: Bearer {{apikey}}' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "name": "可选，自定义订单名称，例如：文档训练-fastgpt.docx"
-}'
-```
-
 {{< /markdownify >}}
 {{< /tab >}}
 
