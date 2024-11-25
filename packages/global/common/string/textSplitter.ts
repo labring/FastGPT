@@ -140,9 +140,10 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
   const customRegLen = customReg.length;
   const checkIsCustomStep = (step: number) => step < customRegLen;
-  const checkIsMarkdownSplit = (step: number) => step >= customRegLen && step <= markdownIndex;
+  const checkIsMarkdownSplit = (step: number) =>
+    step >= customRegLen && step <= markdownIndex + customRegLen;
   +customReg.length;
-  const checkForbidOverlap = (step: number) => step <= forbidOverlapIndex + customReg.length;
+  const checkForbidOverlap = (step: number) => step <= forbidOverlapIndex + customRegLen;
 
   // if use markdown title split, Separate record title
   const getSplitTexts = ({ text, step }: { text: string; step: number }) => {
