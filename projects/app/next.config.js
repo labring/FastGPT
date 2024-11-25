@@ -85,7 +85,8 @@ const nextConfig = {
   experimental: {
     // 优化 Server Components 的构建和运行，避免不必要的客户端打包。
     serverComponentsExternalPackages: ['mongoose', 'pg', '@node-rs/jieba', 'duck-duck-scrape'],
-    outputFileTracingRoot: path.join(__dirname, '../../')
+    outputFileTracingRoot: path.join(__dirname, '../../'),
+    instrumentationHook: true
   }
 };
 
