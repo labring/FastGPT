@@ -245,7 +245,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"HTMLtable\": \"{{HTMLtable}}\",\n  \"files\": {{files}}\n}",
+            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"HTMLtable\": {{HTMLtable}},\n  \"files\": {{files}}\n}",
             "label": "",
             "required": false,
             "debugLabel": "",

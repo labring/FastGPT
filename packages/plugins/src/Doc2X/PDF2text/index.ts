@@ -16,7 +16,7 @@ type Response = Promise<{
 }>;
 
 function processContent(content: string, HTMLtable: boolean): string {
-  if (!HTMLtable) {
+  if (HTMLtable) {
     return content;
   }
   return content.replace(/<table>[\s\S]*?<\/table>/g, (htmlTable) => {
