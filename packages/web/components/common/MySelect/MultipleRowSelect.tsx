@@ -60,8 +60,11 @@ export const MultipleRowSelect = ({
                   const newValue = [...cloneValue];
 
                   if (item.value === selectedValue) {
-                    setCloneValue([undefined]);
-                    onSelect(undefined);
+                    for (let i = index; i < newValue.length; i++) {
+                      newValue[i] = undefined;
+                    }
+                    setCloneValue(newValue);
+                    onSelect(newValue);
                   } else {
                     newValue[index] = item.value;
                     setCloneValue(newValue);

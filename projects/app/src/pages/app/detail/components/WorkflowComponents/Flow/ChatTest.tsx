@@ -36,7 +36,8 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
   const { restartChat, ChatContainer, loading } = useChatTest({
     nodes,
     edges,
-    chatConfig: appDetail.chatConfig
+    chatConfig: appDetail.chatConfig,
+    isReady: isOpen
   });
   const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
   const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);

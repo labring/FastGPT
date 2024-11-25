@@ -11,7 +11,7 @@ export type MultipleSelectProps = {
   list: ListItemType[];
   emptyTip?: string;
   maxH?: number;
-  onSelect: (val: any[] | undefined) => void;
+  onSelect: (val: any[]) => void;
   styles?: ButtonProps;
   popDirection?: 'top' | 'bottom';
 };

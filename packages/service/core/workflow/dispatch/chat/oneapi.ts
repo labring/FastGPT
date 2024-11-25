@@ -33,7 +33,7 @@ import { getLLMModel, ModelTypeEnum } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getHistories } from '../utils';
+import { checkQuoteQAValue, getHistories } from '../utils';
 import { filterSearchResultsByMaxChars } from '../../utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { computedMaxToken, llmCompletionsBodyFormat } from '../../../ai/utils';
@@ -91,6 +91,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   stream = stream && isResponseAnswerText;
 
   const chatHistories = getHistories(history, histories);
+  quoteQA = checkQuoteQAValue(quoteQA);
 
   const modelConstantsData = getLLMModel(model);
   if (!modelConstantsData) {
