@@ -1,13 +1,13 @@
 import 'i18next';
-import common from '../i18n/zh/common.json';
-import dataset from '../i18n/zh/dataset.json';
-import app from '../i18n/zh/app.json';
-import file from '../i18n/zh/file.json';
-import publish from '../i18n/zh/publish.json';
-import workflow from '../i18n/zh/workflow.json';
-import user from '../i18n/zh/user.json';
-import chat from '../i18n/zh/chat.json';
-import login from '../i18n/zh/login.json';
+import common from '../i18n/zh-CN/common.json';
+import dataset from '../i18n/zh-CN/dataset.json';
+import app from '../i18n/zh-CN/app.json';
+import file from '../i18n/zh-CN/file.json';
+import publish from '../i18n/zh-CN/publish.json';
+import workflow from '../i18n/zh-CN/workflow.json';
+import user from '../i18n/zh-CN/user.json';
+import chat from '../i18n/zh-CN/chat.json';
+import login from '../i18n/zh-CN/login.json';
 
 export interface I18nNamespaces {
   common: typeof common;
