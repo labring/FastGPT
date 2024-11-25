@@ -118,7 +118,6 @@ const ChatBox = ({
   const chatController = useRef(new AbortController());
   const questionGuideController = useRef(new AbortController());
   const pluginController = useRef(new AbortController());
-  const isNewChatReplace = useRef(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [feedbackId, setFeedbackId] = useState<string>();
@@ -362,10 +361,10 @@ const ChatBox = ({
   );
 
   /* Abort chat completions, questionGuide */
-  const abortRequest = useMemoizedFn(() => {
-    chatController.current?.abort('stop');
-    questionGuideController.current?.abort('stop');
-    pluginController.current?.abort('stop');
+  const abortRequest = useMemoizedFn((signal: string = 'stop') => {
+    chatController.current?.abort(signal);
+    questionGuideController.current?.abort(signal);
+    pluginController.current?.abort(signal);
   });
 
   /**
@@ -506,8 +505,6 @@ const ChatBox = ({
                 status: 'error'
               });
             }
-
-            isNewChatReplace.current = isNewChat;
 
             // Set last chat finish status
             let newChatHistories: ChatSiteItemType[] = [];
@@ -811,16 +808,10 @@ const ChatBox = ({
 
   // page change and abort request
   useEffect(() => {
-    isNewChatReplace.current = false;
     setQuestionGuide([]);
     setValue('chatStarted', false);
-    return () => {
-      chatController.current?.abort('leave');
-      if (!isNewChatReplace.current) {
-        questionGuideController.current?.abort('leave');
-      }
-    };
-  }, [router.query, setValue]);
+    abortRequest('leave');
+  }, [router.query, setValue, chatId, abortRequest]);
 
   // add listener
   useEffect(() => {

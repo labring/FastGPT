@@ -212,6 +212,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
 
   return (
     <Flex flexDirection={'column'} gap={2} w={'250px'}>
+      {interactive.params.description && <Markdown source={interactive.params.description} />}
       {interactive.params.inputForm?.map((input) => (
         <Box key={input.label}>
           <Flex mb={1} alignItems={'center'}>
