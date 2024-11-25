@@ -431,7 +431,16 @@ function EditLinkModal({
                 label={t('common:support.outlink.share.show_complete_quote_tips' || '')}
               ></QuestionTip>
             </Flex>
-            <Switch {...register('showRawSource')} isChecked={showRawSource} />
+            <Switch
+              {...register('showRawSource', {
+                onChange(e) {
+                  if (e.target.checked) {
+                    setValue('responseDetail', true);
+                  }
+                }
+              })}
+              isChecked={showRawSource}
+            />
           </Flex>
         </Box>
       </ModalBody>

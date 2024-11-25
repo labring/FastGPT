@@ -272,7 +272,11 @@ export const runToolWithToolChoice = async (
   );
   // console.log(JSON.stringify(requestBody, null, 2), '==requestBody');
   /* Run llm */
-  const { response: aiResponse, isStreamResponse } = await createChatCompletion({
+  const {
+    response: aiResponse,
+    isStreamResponse,
+    getEmptyResponseTip
+  } = await createChatCompletion({
     body: requestBody,
     userKey: user.openaiAccount,
     options: {
@@ -336,6 +340,9 @@ export const runToolWithToolChoice = async (
       };
     }
   })();
+  if (!answer && toolCalls.length === 0) {
+    return Promise.reject(getEmptyResponseTip());
+  }
 
   // Run the selected tool by LLM.
   const toolsRunResponse = (
@@ -643,10 +650,6 @@ async function streamResponse({
         }
       }
     }
-  }
-
-  if (!textAnswer && toolCalls.length === 0) {
-    return Promise.reject(i18nT('chat:LLM_model_response_empty'));
   }
 
   return { answer: textAnswer, toolCalls };
