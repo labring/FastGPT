@@ -83,6 +83,7 @@ enum FeedbackTypeEnum {
 
 type Props = OutLinkChatAuthProps &
   ChatProviderProps & {
+    isReady?: boolean;
     feedbackType?: `${FeedbackTypeEnum}`;
     showMarkIcon?: boolean; // admin mark dataset
     showVoiceIcon?: boolean;
@@ -97,6 +98,7 @@ type Props = OutLinkChatAuthProps &
   };
 
 const ChatBox = ({
+  isReady = true,
   feedbackType = FeedbackTypeEnum.hidden,
   showMarkIcon = false,
   showVoiceIcon = true,
@@ -811,7 +813,7 @@ const ChatBox = ({
     setQuestionGuide([]);
     setValue('chatStarted', false);
     abortRequest('leave');
-  }, [router.query, setValue, chatId, abortRequest]);
+  }, [router.query, setValue, chatId]);
 
   // add listener
   useEffect(() => {
@@ -840,6 +842,22 @@ const ChatBox = ({
     };
   }, [resetInputVal, sendPrompt]);
 
+  // Auto send prompt
+  useEffect(() => {
+    if (
+      isReady &&
+      autoExecute.open &&
+      chatStarted &&
+      chatRecords.length === 0 &&
+      isChatRecordsLoaded
+    ) {
+      sendPrompt({
+        text: autoExecute.defaultPrompt || 'AUTO_EXECUTE',
+        hideInUI: true
+      });
+    }
+  }, [isReady, chatStarted, autoExecute?.open, chatRecords, isChatRecordsLoaded]);
+
   // output data
   useImperativeHandle(ChatBoxRef, () => ({
     restartChat() {
@@ -853,16 +871,6 @@ const ChatBox = ({
       scrollToBottom(behavior, 500);
     }
   }));
-
-  // Auto send prompt
-  useEffect(() => {
-    if (autoExecute.open && chatStarted && chatRecords.length === 0 && isChatRecordsLoaded) {
-      sendPrompt({
-        text: autoExecute.defaultPrompt || 'AUTO_EXECUTE',
-        hideInUI: true
-      });
-    }
-  }, [sendPrompt, chatStarted, autoExecute, chatRecords, isChatRecordsLoaded]);
 
   const RenderRecords = useMemo(() => {
     return (

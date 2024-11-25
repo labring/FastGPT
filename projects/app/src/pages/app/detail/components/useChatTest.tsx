@@ -24,11 +24,13 @@ const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/
 export const useChatTest = ({
   nodes,
   edges,
-  chatConfig
+  chatConfig,
+  isReady
 }: {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
   chatConfig: AppChatConfigType;
+  isReady: boolean;
 }) => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
@@ -130,6 +132,7 @@ export const useChatTest = ({
       </Box>
     ) : (
       <ChatBox
+        isReady={isReady}
         appId={appId}
         chatId={chatId}
         showMarkIcon

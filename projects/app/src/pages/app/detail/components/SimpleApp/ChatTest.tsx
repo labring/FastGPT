@@ -39,7 +39,8 @@ const ChatTest = ({ appForm }: Props) => {
 
   const { ChatContainer, restartChat, loading } = useChatTest({
     ...workflowData,
-    chatConfig: appForm.chatConfig
+    chatConfig: appForm.chatConfig,
+    isReady: true
   });
 
   return (
