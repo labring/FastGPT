@@ -814,13 +814,13 @@ const ChatBox = ({
     isNewChatReplace.current = false;
     setQuestionGuide([]);
     setValue('chatStarted', false);
+    chatController.current?.abort('leave');
     return () => {
-      chatController.current?.abort('leave');
       if (!isNewChatReplace.current) {
         questionGuideController.current?.abort('leave');
       }
     };
-  }, [router.query, setValue]);
+  }, [router.query, setValue, chatId]);
 
   // add listener
   useEffect(() => {
