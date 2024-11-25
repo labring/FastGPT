@@ -840,7 +840,7 @@ const ChatBox = ({
       eventBus.off(EventNameEnum.sendQuestion);
       eventBus.off(EventNameEnum.editQuestion);
     };
-  }, [resetInputVal, sendPrompt]);
+  }, [isReady, resetInputVal, sendPrompt]);
 
   // Auto send prompt
   useEffect(() => {

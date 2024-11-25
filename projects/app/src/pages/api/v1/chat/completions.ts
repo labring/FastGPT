@@ -328,12 +328,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         await updateInteractiveChat({
           chatId,
           appId: app._id,
-          teamId,
-          tmbId: tmbId,
           userInteractiveVal,
           aiResponse,
-          newVariables,
-          newTitle
+          newVariables
         });
       } else {
         await saveChat({
