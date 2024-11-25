@@ -22,9 +22,7 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { postTransition2Workflow } from '@/web/core/app/api/app';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { form2AppWorkflow } from '@/web/core/app/utils';
-import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { SimpleAppSnapshotType } from './useSnapshots';
 
 const AppCard = ({
@@ -38,7 +36,6 @@ const AppCard = ({
   const { t } = useTranslation();
   const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
   const onOpenInfoEdit = useContextSelector(AppContext, (v) => v.onOpenInfoEdit);
   const onDelApp = useContextSelector(AppContext, (v) => v.onDelApp);
 
@@ -55,22 +52,11 @@ const AppCard = ({
         nodes,
         edges,
         chatConfig: appForm.chatConfig,
-        type: AppTypeEnum.simple,
-        isPublish: true,
-        versionName: formatTime2YMDHMS(new Date())
+        isPublish: false,
+        versionName: t('app:transition_to_workflow')
       });
-      setPast((prevPast) =>
-        prevPast.map((item, index) =>
-          index === 0
-            ? {
-                ...item,
-                isSaved: true
-              }
-            : item
-        )
-      );
 
-      return await postTransition2Workflow({ appId, createNew: transitionCreateNew });
+      return postTransition2Workflow({ appId, createNew: transitionCreateNew });
     },
     {
       onSuccess: ({ id }) => {
@@ -81,10 +67,8 @@ const AppCard = ({
             }
           });
         } else {
-          setAppDetail((state) => ({
-            ...state,
-            type: AppTypeEnum.workflow
-          }));
+          setPast([]);
+          router.reload();
         }
       },
       successToast: t('common:common.Success')
