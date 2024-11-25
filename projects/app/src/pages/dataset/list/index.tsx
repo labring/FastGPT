@@ -136,7 +136,9 @@ const Dataset = () => {
 
             {isPc && RenderSearchInput}
 
-            {userInfo?.team?.permission.hasWritePer && (
+            {(folderDetail
+              ? folderDetail.permission.hasWritePer
+              : userInfo?.team?.permission.hasWritePer) && (
               <Box pl={[0, 4]}>
                 <MyMenu
                   size="md"
