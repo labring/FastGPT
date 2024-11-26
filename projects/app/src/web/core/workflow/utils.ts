@@ -16,7 +16,7 @@ import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNo
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getGlobalVariableNode } from './adapt';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import {
@@ -424,6 +424,10 @@ export const checkWorkflowNodeAndConnection = ({
             const outputId = value?.[1];
 
             if (!nodeId || !outputId) return false;
+
+            if (nodeId === VARIABLE_NODE_ID) {
+              return true;
+            }
 
             return !!nodes
               .find((node) => node.data.nodeId === nodeId)
