@@ -43,62 +43,70 @@ export type Props = {
   }[];
 };
 
-const typeMapStyle: Record<MenuItemType, MenuItemProps & { iconColor?: string }> = {
+const typeMapStyle: Record<MenuItemType, { styles: MenuItemProps; iconColor?: string }> = {
   primary: {
-    _hover: {
-      backgroundColor: 'primary.50',
-      color: 'primary.600'
-    },
-    _focus: {
-      backgroundColor: 'primary.50',
-      color: 'primary.600'
-    },
-    _active: {
-      backgroundColor: 'primary.50',
-      color: 'primary.600'
+    styles: {
+      _hover: {
+        backgroundColor: 'primary.50',
+        color: 'primary.600'
+      },
+      _focus: {
+        backgroundColor: 'primary.50',
+        color: 'primary.600'
+      },
+      _active: {
+        backgroundColor: 'primary.50',
+        color: 'primary.600'
+      }
     },
     iconColor: 'myGray.600'
   },
   gray: {
-    _hover: {
-      backgroundColor: 'myGray.05',
-      color: 'primary.600'
-    },
-    _focus: {
-      backgroundColor: 'myGray.05',
-      color: 'primary.600'
-    },
-    _active: {
-      backgroundColor: 'myGray.05',
-      color: 'primary.600'
+    styles: {
+      _hover: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      },
+      _focus: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      },
+      _active: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      }
     },
     iconColor: 'myGray.400'
   },
   grayBg: {
-    _hover: {
-      backgroundColor: 'myGray.05',
-      color: 'primary.600'
-    },
-    _focus: {
-      backgroundColor: 'myGray.05',
-      color: 'primary.600'
-    },
-    _active: {
-      backgroundColor: 'myGray.05',
-      color: 'primary.600'
+    styles: {
+      _hover: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      },
+      _focus: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      },
+      _active: {
+        backgroundColor: 'myGray.05',
+        color: 'primary.600'
+      }
     },
     iconColor: 'myGray.600'
   },
   danger: {
-    color: 'red.600',
-    _hover: {
-      background: 'red.1'
-    },
-    _focus: {
-      background: 'red.1'
-    },
-    _active: {
-      background: 'red.1'
+    styles: {
+      color: 'red.600',
+      _hover: {
+        background: 'red.1'
+      },
+      _focus: {
+        background: 'red.1'
+      },
+      _active: {
+        background: 'red.1'
+      }
     },
     iconColor: 'red.600'
   }
@@ -293,7 +301,7 @@ const MyMenu = ({
                     fontSize={'sm'}
                     color={child.isActive ? 'primary.700' : 'myGray.600'}
                     whiteSpace={'pre-wrap'}
-                    {...typeMapStyle[child.type || 'primary']}
+                    {...typeMapStyle[child.type || 'primary'].styles}
                     {...sizeMapStyle[size].menuItemStyle}
                     {...child.menuItemStyles}
                   >
