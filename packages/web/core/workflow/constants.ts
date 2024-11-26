@@ -48,3 +48,26 @@ export const workflowNodeTemplateList = [
     list: []
   }
 ];
+
+export const systemPluginTemplateList = [
+  {
+    typeId: FlowNodeTemplateTypeEnum.tools as string,
+    typeName: i18nT('common:navbar.Tools')
+  },
+  {
+    typeId: FlowNodeTemplateTypeEnum.search as string,
+    typeName: i18nT('common:common.Search')
+  },
+  {
+    typeId: FlowNodeTemplateTypeEnum.multimodal as string,
+    typeName: i18nT('common:core.workflow.template.Multimodal')
+  },
+  {
+    typeId: FlowNodeTemplateTypeEnum.communication as string,
+    typeName: i18nT('app:workflow.template.communication')
+  },
+  {
+    typeId: FlowNodeTemplateTypeEnum.other as string,
+    typeName: i18nT('common:common.Other')
+  }
+];
