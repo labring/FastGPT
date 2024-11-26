@@ -129,7 +129,11 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
   return value;
 };
 
-export const checkQuoteQAValue = (quoteQA: SearchDataResponseItemType[] = []) => {
+export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
+  if (!quoteQA) return undefined;
+  if (quoteQA.length === 0) {
+    return [];
+  }
   if (quoteQA.some((item) => !item.q || !item.datasetId)) {
     return undefined;
   }
