@@ -48,6 +48,13 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/dataset/list', '/dataset/detail']
       },
       {
+        label: t('common:navbar.Toolkit'),
+        icon: 'phoneTabbar/tool',
+        activeIcon: 'phoneTabbar/toolFill',
+        link: `/toolkit`,
+        activeLink: ['/toolkit']
+      },
+      {
         label: t('common:navbar.Account'),
         icon: 'support/user/userLight',
         activeIcon: 'support/user/userFill',
@@ -85,6 +92,7 @@ const Navbar = ({ unread }: { unread: number }) => {
       w={'100%'}
       userSelect={'none'}
       pb={2}
+      bg={['/toolkit'].includes(router.pathname) ? 'myGray.25' : 'transparent'}
     >
       {/* logo */}
       <Box
