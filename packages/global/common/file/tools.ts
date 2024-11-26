@@ -23,6 +23,11 @@ export const parseUrlToFileType = (url: string): UserChatItemValueItemType['file
   const parseUrl = new URL(url, 'https://locaohost:3000');
 
   const filename = (() => {
+    // Check base64 image
+    if (url.startsWith('data:image/')) {
+      const mime = url.split(',')[0].split(':')[1].split(';')[0];
+      return `image.${mime.split('/')[1]}`;
+    }
     // Old version file url: https://xxx.com/file/read?filename=xxx.pdf
     const filenameQuery = parseUrl.searchParams.get('filename');
     if (filenameQuery) return filenameQuery;
