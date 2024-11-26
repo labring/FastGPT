@@ -123,7 +123,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
       return (
         <Container key={index} w={'full'} mx={0}>
           <Flex alignItems={'center'}>
-            <Flex w={'60px'}>{t('common:core.workflow.variable')}</Flex>
+            <Flex w={'80px'}>{t('common:core.workflow.variable')}</Flex>
             <VariableSelector
               nodeId={nodeId}
               variable={updateItem.variable}
@@ -162,7 +162,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
             )}
           </Flex>
           <Flex mt={2} w={'full'} alignItems={'center'} className="nodrag">
-            <Flex w={'60px'}>
+            <Flex w={'80px'}>
               <Box>{t('common:core.workflow.value')}</Box>
               <MyTooltip
                 label={

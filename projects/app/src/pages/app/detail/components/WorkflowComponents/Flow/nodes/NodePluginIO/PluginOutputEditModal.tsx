@@ -100,6 +100,7 @@ const PluginOutputEditModal = ({
 
       data.key = data?.key?.trim();
       data.label = data.key;
+      data.required = true;
 
       onSubmit({
         data,

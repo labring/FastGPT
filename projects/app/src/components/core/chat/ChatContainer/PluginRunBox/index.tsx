@@ -2,29 +2,23 @@ import React from 'react';
 import { PluginRunBoxTabEnum } from './constants';
 import { PluginRunBoxProps } from './type';
 import RenderInput from './components/RenderInput';
-import PluginRunContextProvider, { PluginRunContext } from './context';
+import PluginRunContextProvider from './context';
 import { useContextSelector } from 'use-context-selector';
 import RenderOutput from './components/RenderOutput';
 import RenderResponseDetail from './components/RenderResponseDetail';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
-const PluginRunBox = () => {
-  const { tab } = useContextSelector(PluginRunContext, (v) => v);
+const PluginRunBox = (props: PluginRunBoxProps) => {
+  const tab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
+  const formatTab = props.showTab || tab;
 
-  return (
-    <>
-      {tab === PluginRunBoxTabEnum.input && <RenderInput />}
-      {tab === PluginRunBoxTabEnum.output && <RenderOutput />}
-      {tab === PluginRunBoxTabEnum.detail && <RenderResponseDetail />}
-    </>
-  );
-};
-
-const Render = (props: PluginRunBoxProps) => {
   return (
     <PluginRunContextProvider {...props}>
-      <PluginRunBox />
+      {formatTab === PluginRunBoxTabEnum.input && <RenderInput />}
+      {formatTab === PluginRunBoxTabEnum.output && <RenderOutput />}
+      {formatTab === PluginRunBoxTabEnum.detail && <RenderResponseDetail />}
     </PluginRunContextProvider>
   );
 };
 
-export default Render;
+export default PluginRunBox;

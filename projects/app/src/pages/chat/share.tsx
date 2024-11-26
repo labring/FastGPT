@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
@@ -13,7 +13,7 @@ import ChatHeader from './components/ChatHeader';
 import ChatHistorySlider from './components/ChatHistorySlider';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
-import { delChatRecordById, getInitOutLinkChatInfo } from '@/web/core/chat/api';
+import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { OutLinkWithAppType } from '@fastgpt/global/support/outLink/type';
@@ -26,16 +26,21 @@ import { InitChatResponse } from '@/global/core/chat/api';
 import { defaultChatData, GetChatTypeEnum } from '@/global/core/chat/constants';
 import { useMount } from 'ahooks';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import dynamic from 'next/dynamic';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useShareChatStore } from '@/web/core/chat/storeShareChat';
+import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import ChatRecordContextProvider, {
+  ChatRecordContext
+} from '@/web/core/chat/context/chatRecordContext';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
 type Props = {
+  appId: string;
   appName: string;
   appIntro: string;
   appAvatar: string;
@@ -46,17 +51,12 @@ type Props = {
   showNodeStatus: boolean;
 };
 
-const OutLink = (
-  props: Props & {
-    outLinkUid: string;
-  }
-) => {
+const OutLink = (props: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { outLinkUid, showRawSource, showNodeStatus } = props;
+  const { showRawSource, showNodeStatus } = props;
   const {
     shareId = '',
-    chatId = '',
     showHistory = '1',
     showHead = '1',
     authToken,
@@ -64,49 +64,69 @@ const OutLink = (
     ...customVariables
   } = router.query as {
     shareId: string;
-    chatId: string;
     showHistory: '0' | '1';
     showHead: '0' | '1';
     authToken: string;
     [key: string]: string;
   };
   const { isPc } = useSystem();
+  const { outLinkAuthData, appId, chatId } = useChatStore();
+
+  const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
+  const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
+  const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
+  const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
+  const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
+
+  const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
+  const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
+  const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
+
+  const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+  const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
+
   const initSign = useRef(false);
-  const [isEmbed, setIdEmbed] = useState(true);
-
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
+  const { loading: isLoading } = useRequest2(
+    async () => {
+      const shareId = outLinkAuthData.shareId;
+      const outLinkUid = outLinkAuthData.outLinkUid;
+      if (!outLinkUid || !shareId || forbidLoadChat.current) return;
 
-  const {
-    onUpdateHistoryTitle,
-    onUpdateHistory,
-    onClearHistories,
-    onDelHistory,
-    isOpenSlider,
-    onCloseSlider,
-    forbidLoadChat,
-    onChangeChatId
-  } = useContextSelector(ChatContext, (v) => v);
+      const res = await getInitOutLinkChatInfo({
+        chatId,
+        shareId,
+        outLinkUid
+      });
 
-  const params = useMemo(() => {
-    return {
-      chatId,
-      shareId,
-      outLinkUid,
-      appId: chatData.appId,
-      type: GetChatTypeEnum.outLink
-    };
-  }, [chatData.appId, chatId, outLinkUid, shareId]);
-  const {
-    ChatBoxRef,
-    variablesForm,
-    pluginRunTab,
-    setPluginRunTab,
-    resetVariables,
-    chatRecords,
-    ScrollData,
-    setChatRecords,
-    totalRecordsCount
-  } = useChat(params);
+      setChatData(res);
+      setChatBoxData(res);
+      resetVariables({
+        variables: res.variables
+      });
+    },
+    {
+      manual: false,
+      refreshDeps: [shareId, outLinkAuthData, chatId],
+      onSuccess() {
+        // send init message
+        if (!initSign.current) {
+          initSign.current = true;
+          if (window !== top) {
+            window.top?.postMessage({ type: 'shareChatReady' }, '*');
+          }
+        }
+      },
+      onError(e: any) {
+        if (chatId) {
+          onChangeChatId('');
+        }
+      },
+      onFinally() {
+        forbidLoadChat.current = false;
+      }
+    }
+  );
 
   const startChat = useCallback(
     async ({
@@ -138,10 +158,8 @@ const OutLink = (
             ...customVariables
           },
           responseChatItemId,
-          shareId,
           chatId: completionChatId,
-          appType: chatData.app.type,
-          outLinkUid
+          ...outLinkAuthData
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -175,57 +193,11 @@ const OutLink = (
 
       return { responseText, responseData, isNewChat: forbidLoadChat.current };
     },
-    [
-      chatId,
-      customVariables,
-      shareId,
-      chatData.app.type,
-      outLinkUid,
-      onUpdateHistoryTitle,
-      forbidLoadChat,
-      onChangeChatId
-    ]
-  );
-
-  const { loading: isLoading } = useRequest2(
-    async () => {
-      if (!shareId || !outLinkUid || forbidLoadChat.current) return;
-
-      const res = await getInitOutLinkChatInfo({
-        chatId,
-        shareId,
-        outLinkUid
-      });
-      setChatData(res);
-
-      resetVariables({
-        variables: res.variables
-      });
-    },
-    {
-      manual: false,
-      refreshDeps: [shareId, outLinkUid, chatId],
-      onSuccess() {
-        // send init message
-        if (!initSign.current) {
-          initSign.current = true;
-          if (window !== top) {
-            window.top?.postMessage({ type: 'shareChatReady' }, '*');
-          }
-        }
-      },
-      onError(e: any) {
-        if (chatId) {
-          onChangeChatId('');
-        }
-      },
-      onFinally() {
-        forbidLoadChat.current = false;
-      }
-    }
+    [chatId, customVariables, outLinkAuthData, onUpdateHistoryTitle, forbidLoadChat, onChangeChatId]
   );
 
   // window init
+  const [isEmbed, setIdEmbed] = useState(true);
   useMount(() => {
     setIdEmbed(window !== top);
   });
@@ -233,32 +205,7 @@ const OutLink = (
   const RenderHistoryList = useMemo(() => {
     const Children = (
       <ChatHistorySlider
-        appName={chatData.app.name}
-        appAvatar={chatData.app.avatar}
         confirmClearText={t('common:core.chat.Confirm to clear share chat history')}
-        onDelHistory={({ chatId }) =>
-          onDelHistory({ appId: chatData.appId, chatId, shareId, outLinkUid })
-        }
-        onClearHistory={() => {
-          onClearHistories({ shareId, outLinkUid });
-        }}
-        onSetHistoryTop={(e) => {
-          onUpdateHistory({
-            ...e,
-            appId: chatData.appId,
-            shareId,
-            outLinkUid
-          });
-        }}
-        onSetCustomTitle={(e) => {
-          onUpdateHistory({
-            appId: chatData.appId,
-            chatId: e.chatId,
-            customTitle: e.title,
-            shareId,
-            outLinkUid
-          });
-        }}
       />
     );
 
@@ -280,21 +227,7 @@ const OutLink = (
         </DrawerContent>
       </Drawer>
     );
-  }, [
-    chatData.app.avatar,
-    chatData.app.name,
-    chatData.appId,
-    isOpenSlider,
-    isPc,
-    onClearHistories,
-    onCloseSlider,
-    onDelHistory,
-    onUpdateHistory,
-    outLinkUid,
-    shareId,
-    showHistory,
-    t
-  ]);
+  }, [isOpenSlider, isPc, onCloseSlider, showHistory, t]);
 
   const loading = isLoading;
 
@@ -329,43 +262,21 @@ const OutLink = (
             ) : null}
             {/* chat box */}
             <Box flex={1} bg={'white'}>
-              {chatData.app.type === AppTypeEnum.plugin ? (
+              {isPlugin ? (
                 <CustomPluginRunBox
-                  pluginInputs={chatData.app.pluginInputs}
-                  variablesForm={variablesForm}
-                  histories={chatRecords}
-                  setHistories={setChatRecords}
-                  appId={chatData.appId}
-                  tab={pluginRunTab}
-                  setTab={setPluginRunTab}
+                  appId={appId}
+                  chatId={chatId}
+                  outLinkAuthData={outLinkAuthData}
                   onNewChat={() => onChangeChatId(getNanoid())}
                   onStartChat={startChat}
                 />
               ) : (
                 <ChatBox
-                  ScrollData={ScrollData}
-                  ref={ChatBoxRef}
-                  chatHistories={chatRecords}
-                  setChatHistories={setChatRecords}
-                  variablesForm={variablesForm}
-                  appAvatar={chatData.app.avatar}
-                  userAvatar={chatData.userAvatar}
-                  chatConfig={chatData.app?.chatConfig}
+                  appId={appId}
+                  chatId={chatId}
+                  outLinkAuthData={outLinkAuthData}
                   feedbackType={'user'}
                   onStartChat={startChat}
-                  onDelMessage={({ contentId }) =>
-                    delChatRecordById({
-                      contentId,
-                      appId: chatData.appId,
-                      chatId,
-                      shareId,
-                      outLinkUid
-                    })
-                  }
-                  appId={chatData.appId}
-                  chatId={chatId}
-                  shareId={shareId}
-                  outLinkUid={outLinkUid}
                   chatType="share"
                   showRawSource={showRawSource}
                   showNodeStatus={showNodeStatus}
@@ -380,29 +291,57 @@ const OutLink = (
 };
 
 const Render = (props: Props) => {
-  const { shareId, authToken, customUid } = props;
+  const { shareId, authToken, customUid, appId } = props;
   const { localUId, loaded } = useShareChatStore();
+  const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
+
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const contextParams = useMemo(() => {
+  const chatHistoryProviderParams = useMemo(() => {
     return { shareId, outLinkUid: authToken || customUid || localUId };
   }, [authToken, customUid, localUId, shareId]);
+  const chatRecordProviderParams = useMemo(() => {
+    return {
+      appId,
+      shareId,
+      outLinkUid: chatHistoryProviderParams.outLinkUid,
+      chatId,
+      type: GetChatTypeEnum.outLink
+    };
+  }, [appId, chatHistoryProviderParams.outLinkUid, chatId, shareId]);
 
   useMount(() => {
     setIsLoaded(true);
-  });
-  const systemLoaded = isLoaded && loaded && contextParams.outLinkUid;
 
-  return (
-    <>
-      {systemLoaded ? (
-        <ChatContextProvider params={contextParams}>
-          <OutLink {...props} outLinkUid={contextParams.outLinkUid} />;
-        </ChatContextProvider>
-      ) : (
-        <NextHead title="Loading..." />
-      )}
-    </>
+    setSource('share');
+  });
+  const systemLoaded = isLoaded && loaded && chatHistoryProviderParams.outLinkUid;
+
+  // Set outLinkAuthData
+  useEffect(() => {
+    setOutLinkAuthData({
+      shareId,
+      outLinkUid: chatHistoryProviderParams.outLinkUid
+    });
+    return () => {
+      setOutLinkAuthData({});
+    };
+  }, [chatHistoryProviderParams.outLinkUid, setOutLinkAuthData, shareId]);
+  // Watch appId
+  useEffect(() => {
+    setAppId(appId);
+  }, [appId, setAppId]);
+
+  return source === ChatSourceEnum.share ? (
+    <ChatContextProvider params={chatHistoryProviderParams}>
+      <ChatItemContextProvider>
+        <ChatRecordContextProvider params={chatRecordProviderParams}>
+          <OutLink {...props} />
+        </ChatRecordContextProvider>
+      </ChatItemContextProvider>
+    </ChatContextProvider>
+  ) : (
+    <NextHead title={props.appName} desc={props.appIntro} icon={props.appAvatar} />
   );
 };
 
@@ -433,6 +372,7 @@ export async function getServerSideProps(context: any) {
 
   return {
     props: {
+      appId: String(app?.appId?._id) ?? '',
       appName: app?.appId?.name ?? 'AI',
       appAvatar: app?.appId?.avatar ?? '',
       appIntro: app?.appId?.intro ?? 'AI',

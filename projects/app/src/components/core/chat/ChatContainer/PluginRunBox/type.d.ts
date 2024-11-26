@@ -7,18 +7,12 @@ import React from 'react';
 import { onStartChatType } from '../type';
 import { ChatBoxInputFormType } from '../ChatBox/type';
 
-export type PluginRunBoxProps = OutLinkChatAuthProps & {
-  pluginInputs: FlowNodeInputItemType[];
-  variablesForm: UseFormReturn<ChatBoxInputFormType, any>;
-  histories: ChatSiteItemType[]; // chatHistories[1] is the response
-  setHistories: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
+export type PluginRunBoxProps = {
+  appId: string;
+  chatId: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
 
   onStartChat?: onStartChatType;
   onNewChat?: () => void;
-
-  appId: string;
-  chatId?: string;
-  tab: PluginRunBoxTabEnum;
-  setTab: React.Dispatch<React.SetStateAction<PluginRunBoxTabEnum>>;
-  chatConfig?: AppChatConfigType;
+  showTab?: PluginRunBoxTabEnum; // 如何设置了该字段，全局都 tab 不生效
 };

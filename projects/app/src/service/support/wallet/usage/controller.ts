@@ -3,21 +3,25 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 
-export function createUsage(data: CreateUsageProps) {
+export async function createUsage(data: CreateUsageProps) {
   if (!FastGPTProUrl) return;
   if (data.totalPoints === 0) {
     addLog.info('0 totalPoints', data);
   }
   try {
-    POST('/support/wallet/usage/createUsage', data);
-  } catch (error) {}
+    await POST('/support/wallet/usage/createUsage', data);
+  } catch (error) {
+    addLog.error('createUsage error', error);
+  }
 }
-export function concatUsage(data: ConcatUsageProps) {
+export async function concatUsage(data: ConcatUsageProps) {
   if (!FastGPTProUrl) return;
   if (data.totalPoints === 0) {
     addLog.info('0 totalPoints', data);
   }
   try {
-    POST('/support/wallet/usage/concatUsage', data);
-  } catch (error) {}
+    await POST('/support/wallet/usage/concatUsage', data);
+  } catch (error) {
+    addLog.error('concatUsage error', error);
+  }
 }

@@ -4,6 +4,7 @@
   "LLM_model_response_empty": "The model flow response is empty, please check whether the model flow output is normal.",
   "chat_history": "Conversation History",
   "chat_input_guide_lexicon_is_empty": "Lexicon not configured yet",
+  "chat_test_app": "Debug-{{name}}",
   "citations": "{{num}} References",
   "click_contextual_preview": "Click to see contextual preview",
   "config_input_guide": "Set Up Input Guide",

@@ -62,14 +62,14 @@ export async function authOutLinkValid<T extends OutlinkAppType = undefined>({
   if (!shareId) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
   }
-  const shareChat = (await MongoOutLink.findOne({ shareId }).lean()) as OutLinkSchema<T>;
+  const outLinkConfig = (await MongoOutLink.findOne({ shareId }).lean()) as OutLinkSchema<T>;
 
-  if (!shareChat) {
+  if (!outLinkConfig) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
   }
 
   return {
-    appId: shareChat.appId,
-    shareChat
+    appId: outLinkConfig.appId,
+    outLinkConfig
   };
 }
