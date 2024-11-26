@@ -340,7 +340,6 @@ export const checkWorkflowNodeAndConnection = ({
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
 }): string[] | undefined => {
-  const nodeIds: string[] = nodes.map((node) => node.data.nodeId);
   // 1. reference check. Required value
   for (const node of nodes) {
     const data = node.data;
@@ -392,32 +391,37 @@ export const checkWorkflowNodeAndConnection = ({
         }
 
         if (input.required) {
-          if (Array.isArray(input.value) && input.value.length === 0) return true;
           if (input.value === undefined) return true;
+          if (Array.isArray(input.value) && input.value.length === 0) return true;
         }
-
-        // Check plugin output
-        // if (
-        //   node.data.flowNodeType === FlowNodeTypeEnum.pluginOutput &&
-        //   (input.value?.length === 0 ||
-        //     (isValidReferenceValue(input.value, nodeIds) && !input.value?.[1]))
-        // ) {
-        //   return true;
-        // }
 
         // check reference invalid
         const renderType = input.renderTypeList[input.selectedTypeIndex || 0];
         if (renderType === FlowNodeInputTypeEnum.reference) {
+          // 无效引用时，返回 true
+          const checkValueValid = (value: ReferenceItemValueType) => {
+            const nodeId = value?.[0];
+            const outputId = value?.[1];
+
+            if (!nodeId || !outputId) return false;
+
+            return !!nodes
+              .find((node) => node.data.nodeId === nodeId)
+              ?.data.outputs.find((output) => output.id === outputId);
+          };
+
           if (input.valueType?.startsWith('array')) {
-            if (input.required && (!input.value || input.value.length === 0)) {
+            input.value = input.value ?? [];
+            // 如果内容为空，则报错
+            if (input.required && input.value.length === 0) {
               return true;
             }
-
-            return !isValidArrayReferenceValue(input.value, nodeIds);
+          } else {
+            // Single reference
+            if (input.required) {
+              return !checkValueValid(input.value);
+            }
           }
-
-          // Single reference
-          return input.required && !isValidReferenceValue(input.value, nodeIds);
         }
         return false;
       })
