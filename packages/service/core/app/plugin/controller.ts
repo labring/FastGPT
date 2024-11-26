@@ -42,10 +42,28 @@ const getSystemPluginTemplateById = async (
   const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
   if (!item) return Promise.reject('plugin not found');
 
-  return cloneDeep(item);
+  const plugin = cloneDeep(item);
+
+  if (plugin.associatedPluginId) {
+    // TODO: check is system plugin
+
+    const app = await MongoApp.findById(plugin.associatedPluginId).lean();
+    if (!app) return Promise.reject('plugin not found');
+
+    const version = await getAppLatestVersion(plugin.associatedPluginId, app);
+    if (!version.versionId) return Promise.reject('App version not found');
+
+    plugin.workflow = {
+      nodes: version.nodes,
+      edges: version.edges,
+      chatConfig: version.chatConfig
+    };
+  }
+
+  return plugin;
 };
 
-/* format plugin modules to plugin preview module */
+/* Format plugin to workflow preview node data */
 export async function getChildAppPreviewNode({
   id
 }: {
@@ -85,20 +103,6 @@ export async function getChildAppPreviewNode({
       return getSystemPluginTemplateById(pluginId);
     }
   })();
-
-  if (app.associatedPluginId) {
-    const item = await MongoApp.findById(app.associatedPluginId).lean();
-    if (!item) return Promise.reject('plugin not found');
-
-    const version = await getAppLatestVersion(app.associatedPluginId, item);
-
-    if (!version.versionId) return Promise.reject('App version not found');
-    app.workflow = {
-      nodes: version.nodes,
-      edges: version.edges,
-      chatConfig: version.chatConfig
-    };
-  }
 
   const isPlugin = !!app.workflow.nodes.find(
     (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
@@ -167,38 +171,6 @@ export async function getChildAppRuntimeById(
         hasTokenFee: false,
         pluginOrder: 0
       };
-    } else if (source === PluginSourceEnum.commercial) {
-      const pluginTemplate = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
-      if (!pluginTemplate?.associatedPluginId) return Promise.reject('plugin not found');
-
-      const item = await MongoApp.findById(pluginTemplate.associatedPluginId).lean();
-      if (!item) return Promise.reject('plugin not found');
-
-      const version = await getAppVersionById({
-        appId: pluginTemplate.associatedPluginId,
-        versionId,
-        app: item
-      });
-
-      return {
-        id: String(item._id),
-        teamId: String(item.teamId),
-        name: item.name,
-        avatar: item.avatar,
-        intro: item.intro,
-        showStatus: true,
-        workflow: {
-          nodes: version.nodes,
-          edges: version.edges,
-          chatConfig: version.chatConfig
-        },
-        templateType: FlowNodeTemplateTypeEnum.teamApp,
-        version: pluginTemplate.version,
-        originCost: pluginTemplate.originCost,
-        currentCost: pluginTemplate.currentCost,
-        hasTokenFee: pluginTemplate.hasTokenFee,
-        pluginOrder: pluginTemplate.pluginOrder
-      };
     } else {
       return getSystemPluginTemplateById(pluginId);
     }
@@ -213,7 +185,6 @@ export async function getChildAppRuntimeById(
     currentCost: app.currentCost,
     nodes: app.workflow.nodes,
     edges: app.workflow.edges,
-    hasTokenFee: app.hasTokenFee,
-    pluginOrder: app.pluginOrder
+    hasTokenFee: app.hasTokenFee
   };
 }

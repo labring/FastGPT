@@ -471,8 +471,7 @@ const RenderList = React.memo(function RenderList({
         list: copy.filter((item) => item.list.length > 0)
       }
     ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templates, parentId]);
+  }, [type, templates, pluginGroups]);
 
   const onAddNode = useCallback(
     async ({

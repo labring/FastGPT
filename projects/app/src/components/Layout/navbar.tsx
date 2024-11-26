@@ -66,7 +66,7 @@ const Navbar = ({ unread }: { unread: number }) => {
   );
 
   const itemStyles: BoxProps & LinkProps = {
-    my: 3,
+    my: 2,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
