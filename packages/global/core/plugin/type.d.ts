@@ -49,5 +49,4 @@ export type PluginRuntimeType = {
   edges: StoreEdgeItemType[];
   currentCost?: number;
   hasTokenFee?: boolean;
-  pluginOrder?: number;
 };
