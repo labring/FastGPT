@@ -43,9 +43,9 @@ async function handler(
     });
 
     return { id: appId };
-  } else {
-    await MongoApp.findByIdAndUpdate(appId, { type: AppTypeEnum.workflow });
   }
+
+  await MongoApp.findByIdAndUpdate(appId, { type: AppTypeEnum.workflow });
 
   return {};
 }

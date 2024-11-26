@@ -118,7 +118,7 @@ try {
     {
       unique: true,
       partialFilterExpression: {
-        externalFileId: { $exists: true, $ne: '' }
+        externalFileId: { $exists: true }
       }
     }
   );

@@ -4,7 +4,7 @@ import path from 'path';
 import { BucketNameEnum, bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
-type FileType = {
+export type FileType = {
   fieldname: string;
   originalname: string;
   encoding: string;
@@ -41,7 +41,7 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
       })
     }).single('file');
 
-    async doUpload<T = Record<string, any>>(
+    async doUpload<T = any>(
       req: NextApiRequest,
       res: NextApiResponse,
       originBucketName?: `${BucketNameEnum}`

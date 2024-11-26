@@ -224,8 +224,8 @@ const JSONEditor = ({
       {resize && (
         <Box
           position={'absolute'}
-          right={'0'}
-          bottom={'0'}
+          right={'-2'}
+          bottom={'-3'}
           zIndex={10}
           cursor={'ns-resize'}
           px={'4px'}
@@ -269,6 +269,8 @@ const JSONEditor = ({
         fontSize={'xs'}
         color={'myGray.500'}
         display={placeholderDisplay}
+        pointerEvents={'none'}
+        userSelect={'none'}
       >
         {placeholder}
       </Box>

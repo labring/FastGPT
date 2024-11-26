@@ -9,7 +9,6 @@ import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import { useFileUpload } from '../../ChatBox/hooks/useFileUpload';
 import { useContextSelector } from 'use-context-selector';
-import { PluginRunContext } from '../context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FilePreview from '../../components/FilePreview';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -18,6 +17,8 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useFieldArray } from 'react-hook-form';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { isEqual } from 'lodash';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 
 const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
 
@@ -33,10 +34,9 @@ const FileSelector = ({
   value: any;
 }) => {
   const { t } = useTranslation();
-  const { variablesForm, histories, chatId, outLinkAuthData } = useContextSelector(
-    PluginRunContext,
-    (v) => v
-  );
+
+  const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
+  const histories = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
   const fileCtrl = useFieldArray({
     control: variablesForm.control,
@@ -53,8 +53,6 @@ const FileSelector = ({
     replaceFiles,
     hasFileUploading
   } = useFileUpload({
-    outLinkAuthData,
-    chatId: chatId || '',
     fileSelectConfig: {
       canSelectFile: input.canSelectFile ?? true,
       canSelectImg: input.canSelectImg ?? false,
@@ -83,7 +81,7 @@ const FileSelector = ({
   useRequest2(uploadFiles, {
     manual: false,
     errorToast: t('common:upload_file_error'),
-    refreshDeps: [fileList, outLinkAuthData, chatId]
+    refreshDeps: [fileList]
   });
 
   useEffect(() => {

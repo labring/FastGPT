@@ -132,7 +132,7 @@ const Edit = ({
         flex={'1'}
       >
         <Box {...cardStyles} boxShadow={'2'}>
-          <AppCard />
+          <AppCard appForm={appForm} setPast={setPast} />
         </Box>
 
         <Box mt={4} {...cardStyles} boxShadow={'3.5'}>

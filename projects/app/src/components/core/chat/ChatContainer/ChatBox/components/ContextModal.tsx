@@ -19,10 +19,12 @@ const ContextModal = ({ onClose, dataId }: { onClose: () => void; dataId: string
         const flatResData: ChatHistoryItemResType[] =
           res
             ?.map((item) => {
-              if (item.pluginDetail || item.toolDetail) {
-                return [item, ...(item.pluginDetail || []), ...(item.toolDetail || [])];
-              }
-              return item;
+              return [
+                item,
+                ...(item.pluginDetail || []),
+                ...(item.toolDetail || []),
+                ...(item.loopDetail || [])
+              ];
             })
             .flat() || [];
         return flatResData.find(isLLMNode)?.historyPreview || [];

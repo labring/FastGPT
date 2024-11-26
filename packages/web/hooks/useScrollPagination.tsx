@@ -188,7 +188,8 @@ export function useScrollPagination<
 
     pageSize = 10,
     params = {},
-    EmptyTip
+    EmptyTip,
+    showErrorToast = true
   }: {
     refreshDeps?: any[];
     scrollLoadType?: 'top' | 'bottom';
@@ -196,6 +197,7 @@ export function useScrollPagination<
     pageSize?: number;
     params?: Record<string, any>;
     EmptyTip?: React.JSX.Element;
+    showErrorToast?: boolean;
   }
 ) {
   const { t } = useTranslation();
@@ -249,10 +251,12 @@ export function useScrollPagination<
           setData((prevData) => (offset === 0 ? res.list : [...prevData, ...res.list]));
         }
       } catch (error: any) {
-        toast({
-          title: getErrText(error, t('common:core.chat.error.data_error')),
-          status: 'error'
-        });
+        if (showErrorToast) {
+          toast({
+            title: getErrText(error, t('common:core.chat.error.data_error')),
+            status: 'error'
+          });
+        }
         console.log(error);
       }
 

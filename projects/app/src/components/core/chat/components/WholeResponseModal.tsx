@@ -31,10 +31,12 @@ type sideTabItemType = {
 /* Per response value */
 export const WholeResponseContent = ({
   activeModule,
-  hideTabs
+  hideTabs,
+  dataId
 }: {
   activeModule: ChatHistoryItemResType;
   hideTabs?: boolean;
+  dataId?: string;
 }) => {
   const { t } = useTranslation();
 
@@ -231,7 +233,14 @@ export const WholeResponseContent = ({
         {activeModule.quoteList && activeModule.quoteList.length > 0 && (
           <Row
             label={t('common:core.chat.response.module quoteList')}
-            rawDom={<QuoteList canEditDataset canViewSource rawSearch={activeModule.quoteList} />}
+            rawDom={
+              <QuoteList
+                canEditDataset
+                canViewSource
+                chatItemId={dataId}
+                rawSearch={activeModule.quoteList}
+              />
+            }
           />
         )}
       </>
@@ -529,10 +538,12 @@ const SideTabItem = ({
 /* Modal main container */
 export const ResponseBox = React.memo(function ResponseBox({
   response,
+  dataId,
   hideTabs = false,
   useMobile = false
 }: {
   response: ChatHistoryItemResType[];
+  dataId?: string;
   hideTabs?: boolean;
   useMobile?: boolean;
 }) {
@@ -655,7 +666,7 @@ export const ResponseBox = React.memo(function ResponseBox({
             </Box>
           </Box>
           <Box flex={'5 0 0'} w={0} height={'100%'}>
-            <WholeResponseContent activeModule={activeModule} hideTabs={hideTabs} />
+            <WholeResponseContent dataId={dataId} activeModule={activeModule} hideTabs={hideTabs} />
           </Box>
         </Flex>
       ) : (
@@ -715,7 +726,11 @@ export const ResponseBox = React.memo(function ResponseBox({
                 </Box>
               </Flex>
               <Box flex={'1 0 0'}>
-                <WholeResponseContent activeModule={activeModule} hideTabs={hideTabs} />
+                <WholeResponseContent
+                  dataId={dataId}
+                  activeModule={activeModule}
+                  hideTabs={hideTabs}
+                />
               </Box>
             </Flex>
           )}
@@ -754,7 +769,7 @@ const WholeResponseModal = ({ onClose, dataId }: { onClose: () => void; dataId: 
       }
     >
       {!!response?.length ? (
-        <ResponseBox response={response} />
+        <ResponseBox response={response} dataId={dataId} />
       ) : (
         <EmptyTip text={t('chat:no_workflow_response')} />
       )}

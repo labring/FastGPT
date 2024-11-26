@@ -33,15 +33,13 @@ import { getLLMModel, ModelTypeEnum } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getHistories } from '../utils';
+import { checkQuoteQAValue, getHistories } from '../utils';
 import { filterSearchResultsByMaxChars } from '../../utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
-import { addLog } from '../../../../common/system/log';
 import { computedMaxToken, llmCompletionsBodyFormat } from '../../../ai/utils';
 import { WorkflowResponseType } from '../type';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { i18nT } from '../../../../../web/i18n/utils';
@@ -93,6 +91,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   stream = stream && isResponseAnswerText;
 
   const chatHistories = getHistories(history, histories);
+  quoteQA = checkQuoteQAValue(quoteQA);
 
   const modelConstantsData = getLLMModel(model);
   if (!modelConstantsData) {
@@ -169,99 +168,91 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     modelConstantsData
   );
   // console.log(JSON.stringify(requestBody, null, 2), '===');
-  try {
-    const { response, isStreamResponse } = await createChatCompletion({
-      body: requestBody,
-      userKey: user.openaiAccount,
-      options: {
-        headers: {
-          Accept: 'application/json, text/plain, */*'
-        }
+  const { response, isStreamResponse, getEmptyResponseTip } = await createChatCompletion({
+    body: requestBody,
+    userKey: user.openaiAccount,
+    options: {
+      headers: {
+        Accept: 'application/json, text/plain, */*'
       }
-    });
+    }
+  });
 
-    const { answerText } = await (async () => {
-      if (res && isStreamResponse) {
-        // sse response
-        const { answer } = await streamResponse({
-          res,
-          stream: response,
-          workflowStreamResponse
+  const { answerText } = await (async () => {
+    if (res && isStreamResponse) {
+      // sse response
+      const { answer } = await streamResponse({
+        res,
+        stream: response,
+        workflowStreamResponse
+      });
+
+      return {
+        answerText: answer
+      };
+    } else {
+      const unStreamResponse = response as ChatCompletion;
+      const answer = unStreamResponse.choices?.[0]?.message?.content || '';
+
+      if (stream) {
+        // Some models do not support streaming
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            text: answer
+          })
         });
-
-        if (!answer) {
-          return Promise.reject(i18nT('chat:LLM_model_response_empty'));
-        }
-
-        return {
-          answerText: answer
-        };
-      } else {
-        const unStreamResponse = response as ChatCompletion;
-        const answer = unStreamResponse.choices?.[0]?.message?.content || '';
-
-        if (stream) {
-          // Some models do not support streaming
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.fastAnswer,
-            data: textAdaptGptResponse({
-              text: answer
-            })
-          });
-        }
-
-        return {
-          answerText: answer
-        };
       }
-    })();
 
-    const completeMessages = requestMessages.concat({
-      role: ChatCompletionRequestMessageRoleEnum.Assistant,
-      content: answerText
-    });
-    const chatCompleteMessages = GPTMessages2Chats(completeMessages);
+      return {
+        answerText: answer
+      };
+    }
+  })();
 
-    const tokens = await countMessagesTokens(chatCompleteMessages);
-    const { totalPoints, modelName } = formatModelChars2Points({
-      model,
+  if (!answerText) {
+    return Promise.reject(getEmptyResponseTip());
+  }
+
+  const completeMessages = requestMessages.concat({
+    role: ChatCompletionRequestMessageRoleEnum.Assistant,
+    content: answerText
+  });
+  const chatCompleteMessages = GPTMessages2Chats(completeMessages);
+
+  const tokens = await countMessagesTokens(chatCompleteMessages);
+  const { totalPoints, modelName } = formatModelChars2Points({
+    model,
+    tokens,
+    modelType: ModelTypeEnum.llm
+  });
+
+  return {
+    answerText,
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+      model: modelName,
       tokens,
-      modelType: ModelTypeEnum.llm
-    });
-
-    return {
-      answerText,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      query: `${userChatInput}`,
+      maxToken: max_tokens,
+      historyPreview: getHistoryPreview(
+        chatCompleteMessages,
+        10000,
+        modelConstantsData.vision && aiChatVision
+      ),
+      contextTotalLen: completeMessages.length
+    },
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
+      {
+        moduleName: name,
         totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
-        tokens,
-        query: `${userChatInput}`,
-        maxToken: max_tokens,
-        historyPreview: getHistoryPreview(
-          chatCompleteMessages,
-          10000,
-          modelConstantsData.vision && aiChatVision
-        ),
-        contextTotalLen: completeMessages.length
-      },
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-        {
-          moduleName: name,
-          totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
-          model: modelName,
-          tokens
-        }
-      ],
-      [DispatchNodeResponseKeyEnum.toolResponses]: answerText,
-      history: chatCompleteMessages
-    };
-  } catch (error) {
-    if (user.openaiAccount?.baseUrl) {
-      return Promise.reject(`您的 OpenAI key 出错了: ${getErrText(error)}`);
-    }
-
-    return Promise.reject(error);
-  }
+        tokens
+      }
+    ],
+    [DispatchNodeResponseKeyEnum.toolResponses]: answerText,
+    history: chatCompleteMessages
+  };
 };
 
 async function filterDatasetQuote({

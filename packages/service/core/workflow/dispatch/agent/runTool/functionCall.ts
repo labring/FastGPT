@@ -27,7 +27,6 @@ import { computedMaxToken, llmCompletionsBodyFormat } from '../../../../ai/utils
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { i18nT } from '../../../../../../web/i18n/utils';
 
 type FunctionRunResponseType = {
   toolRunResponse: DispatchFlowResponse;
@@ -216,7 +215,11 @@ export const runToolWithFunctionCall = async (
 
   // console.log(JSON.stringify(requestMessages, null, 2));
   /* Run llm */
-  const { response: aiResponse, isStreamResponse } = await createChatCompletion({
+  const {
+    response: aiResponse,
+    isStreamResponse,
+    getEmptyResponseTip
+  } = await createChatCompletion({
     body: requestBody,
     userKey: user.openaiAccount,
     options: {
@@ -256,6 +259,9 @@ export const runToolWithFunctionCall = async (
       };
     }
   })();
+  if (!answer && functionCalls.length === 0) {
+    return Promise.reject(getEmptyResponseTip());
+  }
 
   // Run the selected tool.
   const toolsRunResponse = (
@@ -547,10 +553,6 @@ async function streamResponse({
         });
       }
     }
-  }
-
-  if (!textAnswer && functionCalls.length === 0) {
-    return Promise.reject(i18nT('chat:LLM_model_response_empty'));
   }
 
   return { answer: textAnswer, functionCalls };

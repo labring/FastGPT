@@ -4,7 +4,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authFile } from '@fastgpt/service/support/permission/auth/file';
+import { authCollectionFile } from '@fastgpt/service/support/permission/auth/file';
 
 export type PostPreviewFilesChunksProps = {
   type: DatasetSourceReadTypeEnum;
@@ -35,7 +35,7 @@ async function handler(
 
   const { teamId } = await (async () => {
     if (type === DatasetSourceReadTypeEnum.fileLocal) {
-      return authFile({
+      return authCollectionFile({
         req,
         authToken: true,
         authApiKey: true,

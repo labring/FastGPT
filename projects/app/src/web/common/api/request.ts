@@ -109,11 +109,10 @@ function responseError(err: any) {
   }
   // 有报错响应
   if (err?.code in TOKEN_ERROR_CODE) {
-    clearToken();
-
     if (
       !(window.location.pathname === '/chat/share' || window.location.pathname === '/chat/team')
     ) {
+      clearToken();
       window.location.replace(
         getWebReqUrl(`/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`)
       );

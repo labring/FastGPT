@@ -101,7 +101,7 @@ export const filterPublicNodeResponseData = ({
       for (let key in item) {
         if (key === 'toolDetail' || key === 'pluginDetail') {
           // @ts-ignore
-          obj[key] = filterPublicNodeResponseData({ flowResponses: item[key] });
+          obj[key] = filterPublicNodeResponseData({ flowResponses: item[key], responseDetail });
         } else if (filedList.includes(key)) {
           // @ts-ignore
           obj[key] = item[key];

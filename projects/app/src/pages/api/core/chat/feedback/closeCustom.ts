@@ -5,7 +5,6 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { CloseCustomFeedbackParams } from '@/global/core/chat/api.d';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 /* remove custom feedback */
@@ -21,9 +20,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await authChatCrud({
       req,
       authToken: true,
+      authApiKey: true,
       appId,
-      chatId,
-      per: ReadPermissionVal
+      chatId
     });
     await authCert({ req, authToken: true });
 
