@@ -29,11 +29,19 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread: 0
       },
       {
-        label: t('common:navbar.Tools'),
-        icon: 'phoneTabbar/tool',
-        activeIcon: 'phoneTabbar/toolFill',
-        link: '/tools',
-        activeLink: ['/tools'],
+        label: t('common:navbar.Datasets'),
+        icon: 'core/dataset/datasetLight',
+        activeIcon: 'core/dataset/datasetFill',
+        link: `/dataset/list`,
+        activeLink: ['/dataset/list', '/dataset/detail'],
+        unread: 0
+      },
+      {
+        label: t('common:common.More'),
+        icon: 'common/more',
+        activeIcon: 'common/moreFill',
+        link: '/more',
+        activeLink: ['/more'],
         unread: 0
       },
       {
