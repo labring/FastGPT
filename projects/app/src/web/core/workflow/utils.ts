@@ -381,6 +381,26 @@ export const checkWorkflowNodeAndConnection = ({
         continue;
       }
     }
+    if (data.flowNodeType === FlowNodeTypeEnum.userSelect) {
+      const configValue = data.inputs.find(
+        (input) => input.key === NodeInputKeyEnum.userSelectOptions
+      )?.value;
+      if (
+        !configValue ||
+        configValue.length === 0 ||
+        configValue.some((item: any) => !item.value)
+      ) {
+        return [data.nodeId];
+      }
+    }
+    if (data.flowNodeType === FlowNodeTypeEnum.formInput) {
+      const value = data.inputs.find(
+        (input) => input.key === NodeInputKeyEnum.userInputForms
+      )?.value;
+      if (!value || value.length === 0) {
+        return [data.nodeId];
+      }
+    }
 
     // check node input
     if (

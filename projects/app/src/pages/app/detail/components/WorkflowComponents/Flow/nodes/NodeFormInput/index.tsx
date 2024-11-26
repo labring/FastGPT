@@ -172,14 +172,14 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                             {item.label}
                           </Flex>
                         </Td>
-                        <Td>{item.description}</Td>
+                        <Td>{item.description || '-'}</Td>
                         <Td>
                           {item.required ? (
                             <Flex alignItems={'center'}>
                               <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} />
                             </Flex>
                           ) : (
-                            ''
+                            '-'
                           )}
                         </Td>
                         <Td>

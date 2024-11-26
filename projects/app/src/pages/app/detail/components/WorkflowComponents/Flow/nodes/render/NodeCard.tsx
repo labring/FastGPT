@@ -275,7 +275,8 @@ const NodeCard = (props: Props) => {
                 <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
                   <MyIconButton
                     ml={1}
-                    icon="pointer"
+                    icon="book"
+                    color={'primary.600'}
                     onClick={() => window.open(getDocPath(node.courseUrl || ''), '_blank')}
                   />
                 </MyTooltip>
