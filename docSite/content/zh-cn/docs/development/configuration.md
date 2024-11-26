@@ -95,9 +95,7 @@ weight: 708
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
       "defaultConfig": {
-        "temperature": 1,
-        "max_tokens": null,
-        "stream": false
+        "temperature": 1
       }
     },
     {
@@ -122,9 +120,7 @@ weight: 708
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
       "defaultConfig": {
-        "temperature": 1,
-        "max_tokens": null,
-        "stream": false
+        "temperature": 1
       }
     }
   ],
