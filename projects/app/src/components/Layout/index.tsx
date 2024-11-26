@@ -82,7 +82,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
                 <Box h={'100%'} position={'fixed'} left={0} top={0} w={'64px'}>
                   <Navbar unread={unread} />
                 </Box>
-                <Box h={'100%'} ml={'70px'} overflow={'overlay'}>
+                <Box h={'100%'} ml={'64px'} overflow={'overlay'}>
                   <Auth>{children}</Auth>
                 </Box>
               </>
