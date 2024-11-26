@@ -54,7 +54,7 @@ type HandleType = {
 // system template
 export type FlowNodeTemplateType = FlowNodeCommonType & {
   id: string; // node id, unique
-  templateType: FlowNodeTemplateTypeEnum;
+  templateType: string;
 
   // show handle
   sourceHandle?: HandleType;
@@ -76,7 +76,7 @@ export type NodeTemplateListItemType = {
   flowNodeType: FlowNodeTypeEnum; // render node card
   parentId?: ParentIdType;
   isFolder?: boolean;
-  templateType: FlowNodeTemplateTypeEnum;
+  templateType: string;
   avatar?: string;
   name: string;
   intro?: string; // template list intro
@@ -85,10 +85,12 @@ export type NodeTemplateListItemType = {
   author?: string;
   unique?: boolean; // 唯一的
   currentCost?: number; // 当前积分消耗
+  hasTokenFee?: boolean; // 是否配置积分
+  instructions?: string; // 使用说明
 };
 
 export type NodeTemplateListType = {
-  type: FlowNodeTemplateTypeEnum;
+  type: string;
   label: string;
   list: NodeTemplateListItemType[];
 }[];

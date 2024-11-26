@@ -24,6 +24,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getPreviewPluginNode,
   getSystemPlugTemplates,
+  getPluginGroups,
   getSystemPluginPaths
 } from '@/web/core/app/api/plugin';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -45,12 +46,13 @@ import { useWorkflowUtils } from './hooks/useUtils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { cloneDeep } from 'lodash';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import CostTooltip from '@/components/core/app/plugin/CostTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowNodeEdgeContext } from '../context/workflowInitContext';
+import { defaultGroup } from '@/pages/toolkit';
+import CostTooltip from '@/components/core/app/plugin/CostTooltip';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -264,8 +266,8 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                     value: TemplateTypeEnum.basic
                   },
                   {
-                    icon: 'core/modules/systemPlugin',
-                    label: t('common:core.module.template.System Plugin'),
+                    icon: 'phoneTabbar/tool',
+                    label: t('common:navbar.Toolkit'),
                     value: TemplateTypeEnum.systemPlugin
                   },
                   {
@@ -386,10 +388,10 @@ const RenderList = React.memo(function RenderList({
   setParentId
 }: RenderListProps) {
   const { t } = useTranslation();
-  const { feConfigs, setLoading } = useSystemStore();
+  const { setLoading } = useSystemStore();
+  const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
 
   const { isPc } = useSystem();
-  const isSystemPlugin = type === TemplateTypeEnum.systemPlugin;
 
   const { screenToFlowPosition } = useReactFlow();
   const { computedNewNodeName } = useWorkflowUtils();
@@ -398,14 +400,46 @@ const RenderList = React.memo(function RenderList({
   const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
-  const formatTemplates = useMemo<NodeTemplateListType>(() => {
+  const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
+    manual: false,
+    onSuccess(res) {
+      setCollapsedGroups(res.map((item) => item.groupName));
+    }
+  });
+
+  const formatTemplatesArray = useMemo<{ list: NodeTemplateListType; label: string }[]>(() => {
+    if (type === TemplateTypeEnum.systemPlugin) {
+      const result = pluginGroups.map((group) => {
+        const copy: NodeTemplateListType = group.groupTypes.map((type) => ({
+          list: [],
+          type: type.typeId,
+          label: type.typeName
+        }));
+        templates.forEach((item) => {
+          const index = copy.findIndex((template) => template.type === item.templateType);
+          if (index === -1) return;
+          copy[index].list.push(item);
+        });
+        return {
+          label: group.groupName,
+          list: copy
+        };
+      });
+
+      return result;
+    }
     const copy: NodeTemplateListType = cloneDeep(workflowNodeTemplateList);
     templates.forEach((item) => {
       const index = copy.findIndex((template) => template.type === item.templateType);
       if (index === -1) return;
       copy[index].list.push(item);
     });
-    return copy.filter((item) => item.list.length > 0);
+    return [
+      {
+        label: '',
+        list: copy.filter((item) => item.list.length > 0)
+      }
+    ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templates, parentId]);
 
@@ -556,112 +590,182 @@ const RenderList = React.memo(function RenderList({
   ) : (
     <Box flex={'1 0 0'} overflow={'overlay'} px={'5'}>
       <Box mx={'auto'}>
-        {formatTemplates.map((item, i) => (
-          <Box
-            key={item.type}
-            css={css({
-              span: {
-                display: 'block'
-              }
-            })}
-            _notLast={{ mb: 5 }}
-          >
-            {item.label && formatTemplates.length > 1 && (
-              <Flex>
-                <Box fontSize={'sm'} mb={3} fontWeight={'500'} flex={1} color={'myGray.900'}>
-                  {t(item.label as any)}
-                </Box>
-              </Flex>
-            )}
-
-            <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={2}>
-              {item.list.map((template) => (
-                <MyTooltip
-                  key={template.id}
-                  placement={'right'}
-                  label={
-                    <Box py={2}>
-                      <Flex alignItems={'center'}>
-                        <Avatar
-                          src={template.avatar}
-                          w={'1.75rem'}
-                          objectFit={'contain'}
-                          borderRadius={'sm'}
-                        />
-                        <Box fontWeight={'bold'} ml={3} color={'myGray.900'}>
-                          {t(template.name as any)}
-                        </Box>
-                      </Flex>
-                      <Box mt={2} color={'myGray.500'}>
-                        {t(template.intro as any) || t('common:core.workflow.Not intro')}
-                      </Box>
-                      {isSystemPlugin && <CostTooltip cost={template.currentCost} />}
-                    </Box>
-                  }
+        {formatTemplatesArray
+          .filter(({ list }) => list.length > 0)
+          .map(({ list, label }) => (
+            <Box key={label} _notLast={{ borderBottom: 'base', pb: 5, mb: 5 }}>
+              {!!label && (
+                <Flex
+                  fontSize={'sm'}
+                  mb={3}
+                  fontWeight={'500'}
+                  flex={1}
+                  color={'myGray.900'}
+                  justifyContent={'space-between'}
+                  alignItems={'center'}
                 >
+                  {t(label as any)}
                   <Flex
                     alignItems={'center'}
-                    py={gridStyle.py}
-                    px={3}
-                    cursor={'pointer'}
+                    p={'7px'}
                     _hover={{ bg: 'myWhite.600' }}
                     borderRadius={'sm'}
-                    draggable={!template.isFolder}
-                    onDragEnd={(e) => {
-                      if (e.clientX < sliderWidth) return;
-                      onAddNode({
-                        template,
-                        position: { x: e.clientX, y: e.clientY }
+                    cursor={'pointer'}
+                    onClick={() => {
+                      setCollapsedGroups((state) => {
+                        return state.includes(label)
+                          ? state.filter((item) => item !== label)
+                          : [...state, label];
                       });
-                    }}
-                    onClick={(e) => {
-                      if (template.isFolder) {
-                        return setParentId(template.id);
-                      }
-                      if (isPc) {
-                        return onAddNode({
-                          template,
-                          position: { x: sliderWidth * 1.5, y: 200 }
-                        });
-                      }
-                      onAddNode({
-                        template,
-                        position: { x: e.clientX, y: e.clientY }
-                      });
-                      onClose();
                     }}
                   >
-                    <Avatar
-                      src={template.avatar}
-                      w={gridStyle.avatarSize}
-                      objectFit={'contain'}
-                      borderRadius={'sm'}
+                    <MyIcon
+                      name={
+                        collapsedGroups.includes(label)
+                          ? 'core/chat/chevronDown'
+                          : 'core/chat/chevronUp'
+                      }
+                      w={'18px'}
                     />
-                    <Box ml={3} flex={'1'}>
-                      <Box color={'myGray.900'} fontWeight={'500'} fontSize={'sm'} flex={'1 0 0'}>
-                        {t(template.name as any)}
-                      </Box>
-                      {gridStyle.authorInName && template.author !== undefined && (
-                        <Box fontSize={'xs'} mt={0.5} color={'myGray.500'}>
-                          {`by ${template.author || feConfigs.systemTitle}`}
-                        </Box>
-                      )}
-                    </Box>
-
-                    {gridStyle.authorInRight && template.authorAvatar && template.author && (
-                      <HStack spacing={1} maxW={'120px'}>
-                        <Avatar src={template.authorAvatar} w={'1rem'} borderRadius={'50%'} />
-                        <Box fontSize={'xs'} className="textEllipsis">
-                          {template.author}
-                        </Box>
-                      </HStack>
-                    )}
                   </Flex>
-                </MyTooltip>
-              ))}
-            </Grid>
-          </Box>
-        ))}
+                </Flex>
+              )}
+              {!collapsedGroups.includes(label) && (
+                <Box pl={!!label ? 3 : 0}>
+                  {list.map((item, i) => {
+                    return (
+                      <Box
+                        key={item.type}
+                        css={css({
+                          span: {
+                            display: 'block'
+                          }
+                        })}
+                        _notLast={{ mb: 5 }}
+                      >
+                        {item.label && item.list.length > 0 && (
+                          <Flex>
+                            <Box
+                              fontSize={'sm'}
+                              mb={3}
+                              fontWeight={'500'}
+                              flex={1}
+                              color={'myGray.900'}
+                            >
+                              {t(item.label as any)}
+                            </Box>
+                          </Flex>
+                        )}
+                        {item.list.length > 0 && (
+                          <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={2}>
+                            {item.list.map((template) => {
+                              return (
+                                <MyTooltip
+                                  key={template.id}
+                                  placement={'right'}
+                                  label={
+                                    <Box py={2}>
+                                      <Flex alignItems={'center'}>
+                                        <Avatar
+                                          src={template.avatar}
+                                          w={'1.75rem'}
+                                          objectFit={'contain'}
+                                          borderRadius={'sm'}
+                                        />
+                                        <Box fontWeight={'bold'} ml={3} color={'myGray.900'}>
+                                          {t(template.name as any)}
+                                        </Box>
+                                      </Flex>
+                                      <Box mt={2} color={'myGray.500'}>
+                                        {t(template.intro as any) ||
+                                          t('common:core.workflow.Not intro')}
+                                      </Box>
+                                      {template.hasTokenFee && (
+                                        <CostTooltip cost={template.currentCost} />
+                                      )}
+                                    </Box>
+                                  }
+                                >
+                                  <Flex
+                                    alignItems={'center'}
+                                    py={gridStyle.py}
+                                    px={3}
+                                    cursor={'pointer'}
+                                    _hover={{ bg: 'myWhite.600' }}
+                                    borderRadius={'sm'}
+                                    draggable={!template.isFolder}
+                                    onDragEnd={(e) => {
+                                      if (e.clientX < sliderWidth) return;
+                                      onAddNode({
+                                        template,
+                                        position: { x: e.clientX, y: e.clientY }
+                                      });
+                                    }}
+                                    onClick={(e) => {
+                                      if (template.isFolder) {
+                                        return setParentId(template.id);
+                                      }
+                                      if (isPc) {
+                                        return onAddNode({
+                                          template,
+                                          position: { x: sliderWidth * 1.5, y: 200 }
+                                        });
+                                      }
+                                      onAddNode({
+                                        template,
+                                        position: { x: e.clientX, y: e.clientY }
+                                      });
+                                      onClose();
+                                    }}
+                                    whiteSpace={'nowrap'}
+                                    overflow={'hidden'}
+                                    textOverflow={'ellipsis'}
+                                  >
+                                    <Avatar
+                                      src={template.avatar}
+                                      w={gridStyle.avatarSize}
+                                      objectFit={'contain'}
+                                      borderRadius={'sm'}
+                                      flexShrink={0}
+                                    />
+                                    <Box
+                                      color={'myGray.900'}
+                                      fontWeight={'500'}
+                                      fontSize={'sm'}
+                                      flex={'1 0 0'}
+                                      ml={3}
+                                      className="textEllipsis"
+                                    >
+                                      {t(template.name as any)}
+                                    </Box>
+
+                                    {gridStyle.authorInRight &&
+                                      template.authorAvatar &&
+                                      template.author && (
+                                        <HStack spacing={1} maxW={'120px'} flexShrink={0}>
+                                          <Avatar
+                                            src={template.authorAvatar}
+                                            w={'1rem'}
+                                            borderRadius={'50%'}
+                                          />
+                                          <Box fontSize={'xs'} className="textEllipsis">
+                                            {template.author}
+                                          </Box>
+                                        </HStack>
+                                      )}
+                                  </Flex>
+                                </MyTooltip>
+                              );
+                            })}
+                          </Grid>
+                        )}
+                      </Box>
+                    );
+                  })}
+                </Box>
+              )}
+            </Box>
+          ))}
       </Box>
     </Box>
   );

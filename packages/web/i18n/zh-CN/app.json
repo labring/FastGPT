@@ -87,6 +87,7 @@
   "permission.des.manage": "写权限基础上，可配置发布渠道、查看对话日志、分配该应用权限",
   "permission.des.read": "可使用该应用进行对话",
   "permission.des.write": "可查看和编辑应用",
+  "plugin.Instructions": "使用说明",
   "plugin_cost_per_times": "{{cost}}/次",
   "plugin_dispatch": "插件调用",
   "plugin_dispatch_tip": "给模型附加获取外部数据的能力，具体调用哪些插件，将由模型自主决定，所有插件都将以非流模式运行。\n若选择了插件，知识库调用将自动作为一个特殊的插件。",
