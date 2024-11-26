@@ -48,7 +48,7 @@ function DndDrag<T>({ children, renderClone, onDragEndCb, dataList }: Props<T>) 
           return (
             <Box {...provided.droppableProps} ref={provided.innerRef}>
               {children(provided, snapshot)}
-              {snapshot.isDraggingOver && <Box height={draggingItemHeight} />}
+              {snapshot.isDraggingOver && <Box height={`${draggingItemHeight}px`} />}
             </Box>
           );
         }}
