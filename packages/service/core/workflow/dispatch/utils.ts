@@ -130,7 +130,7 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
 };
 
 export const checkQuoteQAValue = (quoteQA: SearchDataResponseItemType[] = []) => {
-  if (quoteQA.some((item) => !item.q || !item.datasetId)) {
+  if (quoteQA.length === 0 || quoteQA.some((item) => !item.q || !item.datasetId)) {
     return undefined;
   }
   return quoteQA;

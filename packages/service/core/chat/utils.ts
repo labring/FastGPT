@@ -118,6 +118,11 @@ export const loadRequestMessages = async ({
             return item.image_url.url;
           })();
 
+          // base64 image
+          if (imgUrl.startsWith('data:image/')) {
+            return item;
+          }
+
           try {
             // If imgUrl is a local path, load image from local, and set url to base64
             if (imgUrl.startsWith('/')) {
