@@ -18,13 +18,11 @@ import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/
 export const authPluginByTmbId = async ({
   tmbId,
   appId,
-  per,
-  isRoot
+  per
 }: {
   tmbId: string;
   appId: string;
   per: PermissionValueType;
-  isRoot?: boolean;
 }) => {
   const { source } = await splitCombinePluginId(appId);
   if (source === PluginSourceEnum.personal) {

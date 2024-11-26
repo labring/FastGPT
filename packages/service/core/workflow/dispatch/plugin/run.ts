@@ -30,7 +30,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     query,
     params: { system_forbid_stream = false, ...data } // Plugin input
   } = props;
-  console.log('pluginId', pluginId);
   if (!pluginId) {
     return Promise.reject('pluginId can not find');
   }

@@ -584,7 +584,6 @@ const RenderList = React.memo(function RenderList({
       authorInRight: false
     };
   }, [type]);
-  console.log(formatTemplatesArray);
 
   return templates.length === 0 ? (
     <EmptyTip text={t('app:module.No Modules')} />
