@@ -1,11 +1,11 @@
-import { PluginRuntimeType } from '@fastgpt/global/core/workflow/runtime/type';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { splitCombinePluginId } from './controller';
-import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
 
 /* 
-  1. Commercial plugin: n points per times
-  2. Other plugin: sum of children points
+  Plugin points calculation:
+  1. Return 0 if error
+  2. Add configured points if commercial plugin
+  3. Add sum of child nodes points
 */
 export const computedPluginUsage = async ({
   plugin,
@@ -16,13 +16,13 @@ export const computedPluginUsage = async ({
   childrenUsage: ChatNodeUsageType[];
   error?: boolean;
 }) => {
-  const { source } = await splitCombinePluginId(plugin.id);
-
-  // Commercial plugin: n points per times
-  if (source === PluginSourceEnum.commercial) {
-    if (error) return 0;
-    return plugin.currentCost ?? 0;
+  if (error) {
+    return 0;
   }
 
-  return childrenUsage.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
+  const childrenIUsages = childrenUsage.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
+
+  const pluginCurrentCose = plugin.currentCost ?? 0;
+
+  return plugin.hasTokenFee ? pluginCurrentCose + childrenIUsages : pluginCurrentCose;
 };
