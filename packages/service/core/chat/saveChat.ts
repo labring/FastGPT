@@ -1,15 +1,6 @@
-import type {
-  AIChatItemType,
-  ChatItemType,
-  UserChatItemType
-} from '@fastgpt/global/core/chat/type.d';
-import axios from 'axios';
+import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { MongoApp } from '../app/schema';
-import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatSourceEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { addLog } from '../../common/system/log';
@@ -133,21 +124,15 @@ export async function saveChat({
 export const updateInteractiveChat = async ({
   chatId,
   appId,
-  teamId,
-  tmbId,
   userInteractiveVal,
   aiResponse,
-  newVariables,
-  newTitle
+  newVariables
 }: {
   chatId: string;
   appId: string;
-  teamId: string;
-  tmbId: string;
   userInteractiveVal: string;
   aiResponse: AIChatItemType & { dataId?: string };
   newVariables?: Record<string, any>;
-  newTitle: string;
 }) => {
   if (!chatId) return;
 
@@ -232,7 +217,6 @@ export const updateInteractiveChat = async ({
       {
         $set: {
           variables: newVariables,
-          title: newTitle,
           updateTime: new Date()
         }
       },

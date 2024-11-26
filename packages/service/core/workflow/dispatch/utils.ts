@@ -13,6 +13,7 @@ import { responseWrite } from '../../../common/response';
 import { NextApiResponse } from 'next';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -87,27 +88,6 @@ export const filterToolNodeIdByEdges = ({
     .map((edge) => edge.target);
 };
 
-// export const checkTheModuleConnectedByTool = (
-//   modules: StoreNodeItemType[],
-//   node: StoreNodeItemType
-// ) => {
-//   let sign = false;
-//   const toolModules = modules.filter((item) => item.flowNodeType === FlowNodeTypeEnum.tools);
-
-//   toolModules.forEach((item) => {
-//     const toolOutput = item.outputs.find(
-//       (output) => output.key === NodeOutputKeyEnum.selectedTools
-//     );
-//     toolOutput?.targets.forEach((target) => {
-//       if (target.moduleId === node.moduleId) {
-//         sign = true;
-//       }
-//     });
-//   });
-
-//   return sign;
-// };
-
 export const getHistories = (history?: ChatItemType[] | number, histories: ChatItemType[] = []) => {
   if (!history) return [];
 
@@ -147,6 +127,13 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
   }
 
   return value;
+};
+
+export const checkQuoteQAValue = (quoteQA: SearchDataResponseItemType[] = []) => {
+  if (quoteQA.some((item) => !item.q || !item.datasetId)) {
+    return undefined;
+  }
+  return quoteQA;
 };
 
 /* remove system variable */

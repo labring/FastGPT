@@ -87,7 +87,6 @@ const Header = ({
         nodes,
         edges,
         chatConfig: appForm.chatConfig,
-        type: AppTypeEnum.simple,
         isPublish,
         versionName
       });

@@ -14,20 +14,23 @@ import { ChatBoxInputFormType, UserInputFileItemType } from '../type';
 import { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { useContextSelector } from 'use-context-selector';
+import { ChatBoxContext } from '../Provider';
 
 type UseFileUploadOptions = {
-  outLinkAuthData: OutLinkChatAuthProps;
-  chatId: string;
   fileSelectConfig: AppFileSelectConfigType;
   fileCtrl: UseFieldArrayReturn<ChatBoxInputFormType, 'files', 'id'>;
 };
 
 export const useFileUpload = (props: UseFileUploadOptions) => {
-  const { outLinkAuthData, chatId, fileSelectConfig, fileCtrl } = props;
+  const { fileSelectConfig, fileCtrl } = props;
   const { toast } = useToast();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+
+  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
+  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
+  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
 
   const {
     update: updateFiles,
@@ -137,7 +140,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     [maxSelectFiles, appendFiles, toast, t, maxSize]
   );
 
-  const uploadFiles = async () => {
+  const uploadFiles = useCallback(async () => {
     const filterFiles = fileList.filter((item) => item.status === 0);
 
     if (filterFiles.length === 0) return;
@@ -158,7 +161,10 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           const { previewUrl } = await uploadFile2DB({
             file: copyFile.rawFile,
             bucketName: 'chat',
-            outLinkAuthData,
+            data: {
+              appId,
+              ...outLinkAuthData
+            },
             metadata: {
               chatId
             },
@@ -186,7 +192,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     );
 
     removeFiles(errorFileIndex);
-  };
+  }, [appId, chatId, fileList, outLinkAuthData, removeFiles, replaceFiles, t, toast, updateFiles]);
 
   const sortFileList = useMemo(() => {
     // Sort: Document, image

@@ -45,6 +45,18 @@ const SearchParamsTip = ({
       borderRadius={'lg'}
       borderWidth={'1px'}
       borderColor={'primary.1'}
+      sx={{
+        '&::-webkit-scrollbar': {
+          height: '6px',
+          borderRadius: '4px'
+        },
+        '&::-webkit-scrollbar-thumb': {
+          backgroundColor: 'myGray.250 !important',
+          '&:hover': {
+            backgroundColor: 'myGray.300 !important'
+          }
+        }
+      }}
     >
       <Table fontSize={'xs'} overflow={'overlay'}>
         <Thead>

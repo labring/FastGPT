@@ -1,7 +1,7 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, Button, Flex, ModalBody, useDisclosure, Switch } from '@chakra-ui/react';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useTranslation } from 'next-i18next';
 import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type.d';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -24,12 +24,9 @@ const WhisperConfig = ({
   const isOpenWhisper = value.open;
   const isAutoSend = value.autoSend;
 
-  const formLabel = useMemo(() => {
-    if (!isOpenWhisper) {
-      return t('common:core.app.whisper.Close');
-    }
-    return t('common:core.app.whisper.Open');
-  }, [t, isOpenWhisper]);
+  const formLabel = isOpenWhisper
+    ? t('common:core.app.whisper.Open')
+    : t('common:core.app.whisper.Close');
 
   return (
     <Flex alignItems={'center'}>

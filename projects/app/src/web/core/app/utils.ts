@@ -532,12 +532,14 @@ export const workflowSystemVariables: EditorVariablePickerType[] = [
   {
     key: 'chatId',
     label: i18nT('common:core.module.http.ChatId'),
-    valueType: WorkflowIOValueTypeEnum.string
+    valueType: WorkflowIOValueTypeEnum.string,
+    required: true
   },
   {
     key: 'responseChatItemId',
     label: i18nT('common:core.module.http.ResponseChatItemId'),
-    valueType: WorkflowIOValueTypeEnum.string
+    valueType: WorkflowIOValueTypeEnum.string,
+    required: true
   },
   {
     key: 'histories',

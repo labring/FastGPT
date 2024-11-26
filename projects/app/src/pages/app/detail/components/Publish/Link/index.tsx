@@ -423,7 +423,7 @@ function EditLinkModal({
             </Flex>
             <Switch {...register('responseDetail')} isChecked={responseDetail} />
           </Flex>
-          {/* <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
+          <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
               <FormLabel>{t('common:support.outlink.share.show_complete_quote')}</FormLabel>
               <QuestionTip
@@ -431,8 +431,17 @@ function EditLinkModal({
                 label={t('common:support.outlink.share.show_complete_quote_tips' || '')}
               ></QuestionTip>
             </Flex>
-            <Switch {...register('showRawSource')} isChecked={showRawSource} />
-          </Flex> */}
+            <Switch
+              {...register('showRawSource', {
+                onChange(e) {
+                  if (e.target.checked) {
+                    setValue('responseDetail', true);
+                  }
+                }
+              })}
+              isChecked={showRawSource}
+            />
+          </Flex>
         </Box>
       </ModalBody>
 

@@ -22,6 +22,7 @@ import FileSelect from '@/components/core/app/FileSelect';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import Container from '../components/Container';
+import AutoExecConfig from '@/components/core/app/AutoExecConfig';
 
 type ComponentProps = {
   chatConfig: AppChatConfigType;
@@ -81,6 +82,9 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               <ScheduledTrigger {...componentsProps} />
             </Box>
             <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
+              <AutoExecute {...componentsProps} />
+            </Box>
+            <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
               <QuestionInputGuide {...componentsProps} />
             </Box>
           </Container>
@@ -126,6 +130,23 @@ function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: Com
   });
 
   return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} />;
+}
+
+function AutoExecute({ chatConfig: { autoExecute }, setAppDetail }: ComponentProps) {
+  return (
+    <AutoExecConfig
+      value={autoExecute}
+      onChange={(e) =>
+        setAppDetail((state) => ({
+          ...state,
+          chatConfig: {
+            ...state.chatConfig,
+            autoExecute: e
+          }
+        }))
+      }
+    />
+  );
 }
 
 function QuestionGuide({ chatConfig: { questionGuide = false }, setAppDetail }: ComponentProps) {

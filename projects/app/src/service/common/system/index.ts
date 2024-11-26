@@ -33,7 +33,7 @@ export const readConfigData = (name: string) => {
 };
 
 /* Init global variables */
-export function initGlobal() {
+export function initGlobalVariables() {
   if (global.communityPlugins) return;
 
   global.communityPlugins = [];

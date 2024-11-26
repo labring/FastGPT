@@ -7,6 +7,7 @@ import {
   AuthTeamTagTokenProps,
   AuthTokenFromTeamDomainResponse
 } from '@fastgpt/global/support/user/team/tag';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 
 export async function getUserChatInfoAndAuthTeamPoints(tmbId: string) {
   const tmb = (await MongoTeamMember.findById(tmbId, 'teamId userId').populate(
@@ -33,10 +34,13 @@ export async function authTeamSpaceToken({
   teamToken: string;
 }) {
   // get outLink and app
-  const data = await authTeamTagToken({ teamId, teamToken });
-  const uid = data.uid;
+  const [{ uid }, member] = await Promise.all([
+    authTeamTagToken({ teamId, teamToken }),
+    MongoTeamMember.findOne({ teamId, role: TeamMemberRoleEnum.owner }, 'tmbId').lean()
+  ]);
 
   return {
-    uid
+    uid,
+    tmbId: member?._id!
   };
 }

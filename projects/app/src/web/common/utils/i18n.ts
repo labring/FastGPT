@@ -2,18 +2,21 @@ import { I18nNsType } from '@fastgpt/web/types/i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 
 export enum LangEnum {
-  'zh' = 'zh',
+  'zh_CN' = 'zh-CN',
+  'zh_TW' = 'zh-TW',
   'en' = 'en'
 }
 export const langMap = {
   [LangEnum.en]: {
     label: 'English(US)',
-    icon: 'common/language/en',
     avatar: 'common/language/America'
   },
-  [LangEnum.zh]: {
+  [LangEnum.zh_CN]: {
     label: '简体中文',
-    icon: 'common/language/zh',
+    avatar: 'common/language/China'
+  },
+  [LangEnum.zh_TW]: {
+    label: '中文(台湾)',
     avatar: 'common/language/China'
   }
 };
