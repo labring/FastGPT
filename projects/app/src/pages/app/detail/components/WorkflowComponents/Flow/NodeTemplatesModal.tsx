@@ -51,7 +51,6 @@ import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loo
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowNodeEdgeContext } from '../context/workflowInitContext';
-import { defaultGroup } from '@/pages/toolkit';
 import CostTooltip from '@/components/core/app/plugin/CostTooltip';
 
 type ModuleTemplateListProps = {
@@ -306,7 +305,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
           {/* Search */}
           {(templateType === TemplateTypeEnum.teamPlugin ||
             templateType === TemplateTypeEnum.systemPlugin) && (
-            <Flex mt={2} alignItems={'center'} h={10}>
+            <Flex mt={2} alignItems={'center'} h={8}>
               <InputGroup mr={4} h={'full'}>
                 <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
                   <MyIcon name={'common/searchLight'} w={'16px'} color={'myGray.500'} ml={3} />
@@ -440,8 +439,7 @@ const RenderList = React.memo(function RenderList({
         list: copy.filter((item) => item.list.length > 0)
       }
     ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templates, parentId]);
+  }, [type, templates, pluginGroups]);
 
   const onAddNode = useCallback(
     async ({
