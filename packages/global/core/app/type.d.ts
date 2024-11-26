@@ -170,3 +170,9 @@ export type AppFileSelectConfigType = {
   canSelectImg: boolean;
   maxFiles: number;
 };
+
+export type SystemPluginListItemType = {
+  _id: string;
+  name: string;
+  avatar: string;
+};

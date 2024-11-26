@@ -8,15 +8,15 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import { getDocPath } from '@/web/common/system/doc';
 
-const Tools = () => {
+const More = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { feConfigs } = useSystemStore();
   const list = [
     {
-      icon: 'core/dataset/datasetLight',
-      label: t('common:core.dataset.My Dataset'),
-      link: '/dataset/list'
+      icon: 'phoneTabbar/tool',
+      label: t('common:navbar.Toolkit'),
+      link: '/toolkit'
     },
     ...(feConfigs?.show_git
       ? [
@@ -79,4 +79,4 @@ export async function getServerSideProps(content: any) {
   };
 }
 
-export default Tools;
+export default More;
