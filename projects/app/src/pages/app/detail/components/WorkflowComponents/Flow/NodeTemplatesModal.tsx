@@ -24,7 +24,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getPreviewPluginNode,
   getSystemPlugTemplates,
-  getSystemPluginGroups,
+  getPluginGroups,
   getSystemPluginPaths
 } from '@/web/core/app/api/plugin';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -400,24 +400,16 @@ const RenderList = React.memo(function RenderList({
   const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
-  const { data: pluginGroups = [] } = useRequest2(getSystemPluginGroups, {
+  const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
     manual: false,
     onSuccess(res) {
-      setCollapsedGroups([defaultGroup, ...res].map((item) => item.groupName));
+      setCollapsedGroups(res.map((item) => item.groupName));
     }
   });
-  const allGroups = useMemo(() => {
-    return [defaultGroup, ...pluginGroups].filter((group) => {
-      const groupTypes = group.groupTypes.filter((type) =>
-        templates.find((plugin) => plugin.templateType === type.typeId)
-      );
-      return groupTypes.length > 0;
-    });
-  }, [pluginGroups, templates]);
 
   const formatTemplatesArray = useMemo<{ list: NodeTemplateListType; label: string }[]>(() => {
     if (type === TemplateTypeEnum.systemPlugin) {
-      const result = allGroups.map((group) => {
+      const result = pluginGroups.map((group) => {
         const copy: NodeTemplateListType = group.groupTypes.map((type) => ({
           list: [],
           type: type.typeId,
@@ -592,6 +584,7 @@ const RenderList = React.memo(function RenderList({
       authorInRight: false
     };
   }, [type]);
+  console.log(formatTemplatesArray);
 
   return templates.length === 0 ? (
     <EmptyTip text={t('app:module.No Modules')} />
@@ -667,7 +660,6 @@ const RenderList = React.memo(function RenderList({
                         {item.list.length > 0 && (
                           <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={2}>
                             {item.list.map((template) => {
-                              console.log(template);
                               return (
                                 <MyTooltip
                                   key={template.id}
@@ -744,7 +736,6 @@ const RenderList = React.memo(function RenderList({
                                       flex={'1 0 0'}
                                       ml={3}
                                       className="textEllipsis"
-                                      maxW={'150px'}
                                     >
                                       {t(template.name as any)}
                                     </Box>

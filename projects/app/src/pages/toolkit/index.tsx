@@ -1,5 +1,5 @@
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { getSystemPluginGroups, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
+import { getPluginGroups, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
 import {
   Box,
   Flex,
@@ -13,40 +13,19 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMemo, useState } from 'react';
 import PluginCard from './components/PluginCard';
-import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { systemPluginTemplateList } from '@fastgpt/web/core/workflow/constants';
 
 export const defaultGroup = {
   groupId: 'systemPlugin',
   groupAvatar: 'common/navbar/pluginLight',
   groupName: i18nT('common:core.module.template.System Plugin'),
   groupOrder: 0,
-  groupTypes: [
-    {
-      typeId: FlowNodeTemplateTypeEnum.tools as string,
-      typeName: i18nT('common:navbar.Tools')
-    },
-    {
-      typeId: FlowNodeTemplateTypeEnum.search as string,
-      typeName: i18nT('common:common.Search')
-    },
-    {
-      typeId: FlowNodeTemplateTypeEnum.multimodal as string,
-      typeName: i18nT('common:core.workflow.template.Multimodal')
-    },
-    {
-      typeId: FlowNodeTemplateTypeEnum.communication as string,
-      typeName: i18nT('app:workflow.template.communication')
-    },
-    {
-      typeId: FlowNodeTemplateTypeEnum.other as string,
-      typeName: i18nT('common:common.Other')
-    }
-  ]
+  groupTypes: systemPluginTemplateList
 };
 
 export const allTypes = [
@@ -64,7 +43,7 @@ const Toolkit = () => {
     manual: false
   });
 
-  const { data: pluginGroups = [] } = useRequest2(getSystemPluginGroups, {
+  const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
     manual: false
   });
 
@@ -72,29 +51,20 @@ const Toolkit = () => {
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const allGroups = useMemo(() => {
-    return [defaultGroup, ...pluginGroups]
-      .filter((group) => {
-        const groupTypes = group.groupTypes.filter((type) =>
-          plugins.find((plugin) => plugin.templateType === type.typeId)
-        );
-        return groupTypes.length > 0;
-      })
-      .sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0));
-  }, [pluginGroups, plugins]);
-
-  const { group: selectedGroup = allGroups?.[0]?.groupName, type: selectedType = 'all' } =
+  const { group: selectedGroup = pluginGroups?.[0]?.groupName, type: selectedType = 'all' } =
     router.query;
 
   const { t } = useTranslation();
 
   const currentPluginGroupTypes = useMemo(() => {
-    const currentTypes = allGroups?.find((group) => group.groupName === selectedGroup)?.groupTypes;
+    const currentTypes = pluginGroups?.find(
+      (group) => group.groupName === selectedGroup
+    )?.groupTypes;
 
     return currentTypes?.filter((type) =>
       plugins.find((plugin) => plugin.templateType === type.typeId)
     );
-  }, [allGroups, plugins, selectedGroup]);
+  }, [pluginGroups, plugins, selectedGroup]);
 
   const currentPlugins = useMemo(() => {
     const typeArray = currentPluginGroupTypes?.map((type) => type.typeId);
@@ -142,7 +112,7 @@ const Toolkit = () => {
           pb={2.5}
           zIndex={1000}
         >
-          {allGroups?.map((group) => {
+          {pluginGroups?.map((group) => {
             const selected = group.groupName === selectedGroup;
             console.log(currentPluginGroupTypes);
             return (
@@ -237,7 +207,7 @@ const Toolkit = () => {
           py={5}
         >
           {currentPlugins.map((item) => (
-            <PluginCard key={item.id} item={item} groups={allGroups} />
+            <PluginCard key={item.id} item={item} groups={pluginGroups} />
           ))}
         </Grid>
       </Box>

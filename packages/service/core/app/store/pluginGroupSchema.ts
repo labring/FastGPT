@@ -2,7 +2,7 @@ import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
 import { PluginGroupSchemaType, TGroupType } from './type';
 const { Schema } = connectionMongo;
 
-export const collectionName = 'app_store_groups';
+export const collectionName = 'app_plugin_groups';
 
 const PluginGroupSchema = new Schema({
   groupAvatar: {

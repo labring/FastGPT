@@ -1,5 +1,5 @@
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
+import { PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
 
 /* 
   Plugin points calculation:
@@ -12,7 +12,7 @@ export const computedPluginUsage = async ({
   childrenUsage,
   error
 }: {
-  plugin?: SystemPluginTemplateItemType;
+  plugin: PluginRuntimeType;
   childrenUsage: ChatNodeUsageType[];
   error?: boolean;
 }) => {
@@ -20,10 +20,9 @@ export const computedPluginUsage = async ({
     return 0;
   }
 
-  let tokenFee = 0;
-  if (plugin && plugin.hasTokenFee) {
-    tokenFee = plugin.currentCost ?? 0;
-  }
+  const childrenIUsages = childrenUsage.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
-  return tokenFee + childrenUsage.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
+  const pluginCurrentCose = plugin.currentCost ?? 0;
+
+  return plugin.hasTokenFee ? pluginCurrentCose + childrenIUsages : pluginCurrentCose;
 };

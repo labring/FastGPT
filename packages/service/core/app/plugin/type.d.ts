@@ -23,7 +23,7 @@ export type SystemPluginConfigSchemaType = {
     weight?: number;
     workflow: WorkflowTemplateBasicType;
     templateType: string;
-    associatedPlugin: SystemPluginListItemType;
+    associatedPluginId: string;
     userGuide: string;
   };
 };

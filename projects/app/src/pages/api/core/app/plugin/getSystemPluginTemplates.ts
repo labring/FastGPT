@@ -7,6 +7,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 export type GetSystemPluginTemplatesBody = {
   searchKey?: string;
@@ -31,7 +32,7 @@ async function handler(
         id: plugin.id,
         isFolder: plugin.isFolder,
         parentId: plugin.parentId,
-        templateType: plugin.templateType,
+        templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
         flowNodeType: FlowNodeTypeEnum.pluginModule,
         avatar: plugin.avatar,
         name: plugin.name,

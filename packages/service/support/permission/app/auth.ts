@@ -31,8 +31,7 @@ export const authPluginByTmbId = async ({
     const { app } = await authAppByTmbId({
       appId,
       tmbId,
-      per,
-      isRoot
+      per
     });
 
     return app;

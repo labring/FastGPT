@@ -41,7 +41,7 @@ export const getTeamPlugTemplates = (data?: ListAppBody) =>
 export const getSystemPlugTemplates = (data: GetSystemPluginTemplatesBody) =>
   POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates', data);
 
-export const getSystemPluginGroups = () =>
+export const getPluginGroups = () =>
   GET<PluginGroupSchemaType[]>('/core/app/plugin/getPluginGroups');
 
 export const getSystemPluginPaths = (parentId: ParentIdType) => {
