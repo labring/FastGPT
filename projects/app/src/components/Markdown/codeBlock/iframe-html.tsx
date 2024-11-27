@@ -9,13 +9,15 @@ import {
   ModalContent,
   ModalBody,
   ModalHeader,
-  useDisclosure
+  useDisclosure,
+  useBreakpointValue
 } from '@chakra-ui/react';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
 import { useMarkdownWidth } from '../hooks';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type.d';
+import CloseIcon from '@fastgpt/web/components/common/Icon/close';
 import { codeLight } from '../CodeLight';
 
 const StyledButton = ({
@@ -30,40 +32,62 @@ const StyledButton = ({
   onClick: () => void;
   isActive?: boolean;
   viewMode: 'source' | 'iframe';
-}) => (
-  <Button
-    bg={
-      viewMode === 'iframe'
-        ? isActive
-          ? 'myGray.100'
-          : 'rgba(255, 255, 255, 0.9)'
-        : isActive
-          ? 'myGray.700'
-          : 'myGray.800'
-    }
-    color={viewMode === 'iframe' ? 'myGray.800' : 'rgba(255, 255, 255, 0.8)'}
-    px={4}
-    py={2}
-    borderRadius="5px"
-    _hover={{
-      bg:
+}) => {
+  const textColor =
+    viewMode === 'iframe'
+      ? isActive
+        ? 'myGray.900'
+        : 'myGray.500'
+      : isActive
+        ? '#FFF'
+        : 'rgba(255, 255, 255, 0.8)';
+
+  const iconColor =
+    viewMode === 'iframe'
+      ? isActive
+        ? 'myGray.900'
+        : 'myGray.500'
+      : isActive
+        ? '#FFF'
+        : 'rgba(255, 255, 255, 0.8)';
+  return (
+    <Button
+      bg={
         viewMode === 'iframe'
           ? isActive
             ? 'myGray.100'
-            : 'myGray.50'
+            : 'rgba(251, 251, 252)'
           : isActive
-            ? 'myGray.600'
-            : 'myGray.600'
-    }}
-    onClick={onClick}
-    ml={2}
-  >
-    <Icon name={iconName} width={'15px'} height={'15px'} />
-    <Box ml={2} fontSize="sm">
-      {label}
-    </Box>
-  </Button>
-);
+            ? 'myGray.700'
+            : 'myGray.800'
+      }
+      color={textColor}
+      borderRadius="5px"
+      boxShadow="none"
+      _hover={{
+        bg:
+          viewMode === 'iframe'
+            ? isActive
+              ? 'myGray.100'
+              : 'myGray.50'
+            : isActive
+              ? 'myGray.600'
+              : 'myGray.600'
+      }}
+      onClick={onClick}
+      p={useBreakpointValue({ base: '0.5rem', md: '1rem' })}
+      fontSize={useBreakpointValue({ base: 'xx-small', sm: 'sm' })}
+      minWidth="auto"
+      maxWidth="auto"
+      padding={4}
+    >
+      <Icon name={iconName} width="14px" height="14px" color={iconColor} />
+      <Box ml={2} fontSize="sm">
+        {label}
+      </Box>
+    </Button>
+  );
+};
 
 const IframeHtmlCodeBlock = ({
   children,
@@ -89,6 +113,14 @@ const IframeHtmlCodeBlock = ({
     const splitInput = input.split('#');
     return splitInput[1] || match?.[1]?.toUpperCase();
   }, [match]);
+  const isMobile = width <= 768;
+
+  const iframeWidth = isMobile ? '100%' : width;
+  const iframeHeight = isMobile ? '40vh' : '60vh';
+
+  const fontSize = isMobile ? 'xx-small' : 'sm';
+  const gapping = isMobile ? '2px' : '5px';
+  const iconSize = isMobile ? '12px' : '14px';
 
   if (codeBlock) {
     return (
@@ -103,11 +135,11 @@ const IframeHtmlCodeBlock = ({
         <Flex
           py={1}
           px={4}
-          bg={viewMode === 'iframe' ? 'rgba(255, 255, 255, 0.8)' : 'myGray.800'}
+          bg={viewMode === 'iframe' ? 'rgba(251, 251, 252)' : 'myGray.800'}
           color={'white'}
-          fontSize={'sm'}
+          fontSize={fontSize}
           userSelect={'none'}
-          gap="5px"
+          gap={gapping}
           alignItems="center"
         >
           <Box
@@ -123,7 +155,7 @@ const IframeHtmlCodeBlock = ({
               alignItems="center"
               ml={2}
             >
-              <Icon name="copy" width={15} height={15} />
+              <Icon name="copy" width={iconSize} height={iconSize} />
             </Flex>
           </Box>
           <StyledButton
@@ -152,7 +184,7 @@ const IframeHtmlCodeBlock = ({
             {String(children).replace(/&nbsp;/g, ' ')}
           </SyntaxHighlighter>
         ) : (
-          <Box w={width} ref={Ref} h="60vh">
+          <Box w={iframeWidth} ref={Ref} h={iframeHeight}>
             <iframe
               srcDoc={String(children)}
               sandbox=""
@@ -160,51 +192,48 @@ const IframeHtmlCodeBlock = ({
               style={{
                 width: '100%',
                 height: '100%',
-                border: 'none'
+                border: 'none',
+                background: 'myWhite'
               }}
             />
           </Box>
         )}
+        <Modal isOpen={isOpen} onClose={onClose} size="full">
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              p={4}
+              bg="white"
+              borderBottom="1px solid"
+              borderColor="gray.300"
+              height="60px"
+            >
+              <Box fontSize="18px" color="myGray.900">
+                {t('common:common.FullScreenLight')}
+              </Box>
+              <CloseIcon onClick={onClose} />
+            </ModalHeader>
 
-        {isOpen && (
-          <Modal isOpen onClose={onClose} size="full">
-            <ModalOverlay />
-            <ModalContent>
-              <ModalHeader
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                p={4}
-                bg="white"
-                borderBottom="1px solid myGray.200"
-                height="60px"
-              >
-                <Box fontSize="18px" color="myGray.900">
-                  {t('common:common.FullScreenLight')}
-                </Box>
-                <Box onClick={onClose} cursor="pointer" fontSize="lg" color="myGray.900">
-                  <Icon name="common/closeLight" width="20px" height="20px" />
-                </Box>
-              </ModalHeader>
-
-              <ModalBody p={0}>
-                <Flex direction="column" h="calc(100vh - 60px)">
-                  <iframe
-                    srcDoc={String(children)}
-                    sandbox=""
-                    referrerPolicy="no-referrer"
-                    style={{
-                      flex: 1,
-                      width: '100%',
-                      border: 'none',
-                      background: 'myWhite'
-                    }}
-                  />
-                </Flex>
-              </ModalBody>
-            </ModalContent>
-          </Modal>
-        )}
+            <ModalBody p={0}>
+              <Flex direction="column" h="calc(100vh - 62px)">
+                <iframe
+                  srcDoc={String(children)}
+                  sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
+                  style={{
+                    flex: 1,
+                    width: '100%',
+                    height: '100%',
+                    border: 'none',
+                    background: 'myWhite'
+                  }}
+                />
+              </Flex>
+            </ModalBody>
+          </ModalContent>
+        </Modal>
       </Box>
     );
   }
