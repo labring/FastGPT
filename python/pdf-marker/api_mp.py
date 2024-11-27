@@ -18,21 +18,15 @@ app = FastAPI()
 model_lst = None
 model_refs = None
 temp_dir = "./temp"
-# 设置环境变量
 os.environ['PROCESSES_PER_GPU'] = str(2)
 
 def worker_init(counter, lock):
     global model_lst
-
-    # 动态获取可用 GPU 数量
     num_gpus = torch.cuda.device_count()
     processes_per_gpu = int(os.environ.get('PROCESSES_PER_GPU', 1))
-
     with lock:
         worker_id = counter.value
         counter.value += 1
-
-    # 根据 worker_id 动态分配设备
     if num_gpus == 0:
         device = 'cpu'
     else:
@@ -40,12 +34,8 @@ def worker_init(counter, lock):
         if device_id >= num_gpus:
             raise ValueError(f"Worker ID {worker_id} exceeds available GPUs ({num_gpus}).")
         device = f'cuda:{device_id}'
-
-    # 加载模型到对应的设备
     model_lst = load_all_models(device=device, dtype=torch.float32)
     print(f"Worker {worker_id}: Models loaded successfully on {device}!")
-
-    # 设置模型共享内存
     for model in model_lst:
         if model is None:
             continue
@@ -62,29 +52,24 @@ def process_file_with_multiprocessing(temp_file_path):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        mp.set_start_method('spawn') # Required for CUDA, forkserver doesn't work
+        mp.set_start_method('spawn')
     except RuntimeError:
         raise RuntimeError("Set start method to spawn twice. This may be a temporary issue with the script. Please try running it again.")
-    # 创建 Manager 对象
     manager = multiprocessing.Manager()
     worker_counter = manager.Value('i', 0)
     worker_lock = manager.Lock()
     global my_pool
     gpu_count = torch.cuda.device_count()
-    # my_pool = ProcessPoolExecutor(max_workers=4, initializer=worker_init)
     my_pool = ProcessPoolExecutor(max_workers=gpu_count*int(os.environ.get('PROCESSES_PER_GPU', 1)), initializer=worker_init, initargs=(worker_counter, worker_lock))
 
-    # 将控制权交还给应用
     yield
     global temp_dir
-    # 应用关闭时执行清理工作
     if temp_dir and os.path.exists(temp_dir):
-        shutil.rmtree(temp_dir)  # Delete temp directory
+        shutil.rmtree(temp_dir)
     del model_lst
     del model_refs
     print("Application shutdown, cleaning up...")
 
-# Set up a lifespan context manager
 app.router.lifespan_context = lifespan
 
 @app.post("/v1/parse/file")
@@ -97,20 +82,14 @@ async def read_file(
         temp_file_path = os.path.join(temp_dir, file.filename)
         with open(temp_file_path, "wb") as temp_file:
             temp_file.write(await file.read())
-
-        # Use fitz to open the PDF and get the number of pages
         pdf_document = fitz.open(temp_file_path)
         total_pages = pdf_document.page_count
         pdf_document.close()
-
-        # print("Is deamon0:", multiprocessing.current_process().daemon)
         global my_pool
         loop = asyncio.get_event_loop()
         md_content_with_base64_images, out_meta = await loop.run_in_executor(my_pool, process_file_with_multiprocessing, temp_file_path)
-        # Record end time
-        end_time = time.time()
 
-        # Calculate duration (milliseconds)
+        end_time = time.time()
         duration = end_time - start_time
         print(file.filename+"Total time:", duration)
         return {
