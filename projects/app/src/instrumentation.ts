@@ -10,8 +10,7 @@ export async function register() {
       const [
         { connectMongo },
         { systemStartCb },
-        { initGlobalVariables },
-        { getInitConfig },
+        { initGlobalVariables, getInitConfig },
         { initVectorStore },
         { initRootUser },
         { getSystemPluginCb },
@@ -21,7 +20,6 @@ export async function register() {
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/system/tools'),
-        import('@/service/common/system'),
         import('@/service/common/system'),
         import('@fastgpt/service/common/vectorStore/controller'),
         import('@/service/mongo'),
