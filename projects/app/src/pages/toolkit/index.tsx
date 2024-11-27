@@ -46,20 +46,19 @@ const Toolkit = () => {
   const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
     manual: false
   });
+  const isOneGroup = pluginGroups.length === 1;
 
   const [search, setSearch] = useState('');
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const { group: selectedGroup = pluginGroups?.[0]?.groupName, type: selectedType = 'all' } =
+  const { group: selectedGroup = pluginGroups?.[0]?.groupId, type: selectedType = 'all' } =
     router.query;
 
   const { t } = useTranslation();
 
   const currentPluginGroupTypes = useMemo(() => {
-    const currentTypes = pluginGroups?.find(
-      (group) => group.groupName === selectedGroup
-    )?.groupTypes;
+    const currentTypes = pluginGroups?.find((group) => group.groupId === selectedGroup)?.groupTypes;
 
     return currentTypes?.filter((type) =>
       plugins.find((plugin) => plugin.templateType === type.typeId)
@@ -113,34 +112,37 @@ const Toolkit = () => {
           zIndex={1000}
         >
           {pluginGroups?.map((group) => {
-            const selected = group.groupName === selectedGroup;
-            console.log(currentPluginGroupTypes);
+            const selected = group.groupId === selectedGroup;
+
             return (
-              <Box key={group.groupName}>
+              <Box key={group.groupId}>
                 <Flex
                   p={2}
                   mb={0.5}
                   fontSize={'14px'}
                   fontWeight={'medium'}
-                  cursor={'pointer'}
                   rounded={'md'}
                   color={'myGray.900'}
-                  _hover={{ bg: 'primary.50', color: 'primary.600' }}
-                  onClick={() =>
+                  cursor={isOneGroup ? 'default' : 'pointer'}
+                  _hover={isOneGroup ? {} : { bg: 'primary.50', color: 'primary.600' }}
+                  onClick={() => {
+                    if (isOneGroup) return;
                     router.push({
                       pathname: router.pathname,
-                      query: { group: group.groupName, type: 'all' }
-                    })
-                  }
+                      query: { group: group.groupId, type: 'all' }
+                    });
+                  }}
                 >
                   <Avatar src={group.groupAvatar} w={'16px'} mr={1.5} color={'primary.600'} />
                   {t(group.groupName as any)}
                   <Box flex={1} />
-                  <MyIcon
-                    color={'myGray.600'}
-                    name={selected ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
-                    w={'16px'}
-                  />
+                  {!isOneGroup && (
+                    <MyIcon
+                      color={'myGray.600'}
+                      name={selected ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
+                      w={'16px'}
+                    />
+                  )}
                 </Flex>
                 {selected &&
                   [...allTypes, ...(currentPluginGroupTypes || [])]?.map((type) => {
@@ -178,9 +180,9 @@ const Toolkit = () => {
         <Flex alignItems={'center'}>
           <Flex flex={1} fontSize={'xl'} fontWeight={'medium'} color={'myGray.900'}>
             {!isPc && <MyIcon name="menu" w={'20px'} mr={1.5} onClick={onOpen} />}
-            {t(selectedGroup as any)}
+            {t(pluginGroups?.find((group) => group.groupId === selectedGroup)?.groupName as any)}
           </Flex>
-          <InputGroup w={'200px'}>
+          <InputGroup w={'260px'}>
             <InputLeftElement alignItems={'center'}>
               <MyIcon name="common/searchLight" w={'18px'} mt={1.5} />
             </InputLeftElement>

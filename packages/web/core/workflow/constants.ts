@@ -34,7 +34,7 @@ export const workflowNodeTemplateList = [
   },
   {
     type: FlowNodeTemplateTypeEnum.communication,
-    label: i18nT('app:workflow.template.communication'),
+    label: i18nT('common:workflow.template.communication'),
     list: []
   },
   {
@@ -64,7 +64,7 @@ export const systemPluginTemplateList = [
   },
   {
     typeId: FlowNodeTemplateTypeEnum.communication as string,
-    typeName: i18nT('app:workflow.template.communication')
+    typeName: i18nT('common:workflow.template.communication')
   },
   {
     typeId: FlowNodeTemplateTypeEnum.other as string,
