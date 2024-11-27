@@ -8,11 +8,13 @@ import {
   ModalOverlay,
   ModalContent,
   ModalBody,
+  ModalHeader,
   useDisclosure
 } from '@chakra-ui/react';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
+import { useMarkdownWidth } from '../hooks';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type.d';
 import { codeLight } from '../CodeLight';
 
@@ -24,7 +26,7 @@ const StyledButton = ({
   viewMode
 }: {
   label: string;
-  iconName: string;
+  iconName: IconNameType;
   onClick: () => void;
   isActive?: boolean;
   viewMode: 'source' | 'iframe';
@@ -33,18 +35,13 @@ const StyledButton = ({
     bg={
       viewMode === 'iframe'
         ? isActive
-          ? '#F0F1F6'
+          ? 'myGray.100'
           : 'rgba(255, 255, 255, 0.9)'
         : isActive
-          ? '#333A47'
-          : '#232833'
+          ? 'myGray.700'
+          : 'myGray.800'
     }
-    color={viewMode === 'iframe' ? '#2C2C2E' : 'rgba(255, 255, 255, 0.8)'}
-    fontFamily="PingFang SC"
-    fontSize="14px"
-    fontWeight="500"
-    lineHeight="16px"
-    letterSpacing="0.5px"
+    color={viewMode === 'iframe' ? 'myGray.800' : 'rgba(255, 255, 255, 0.8)'}
     px={4}
     py={2}
     borderRadius="5px"
@@ -52,18 +49,16 @@ const StyledButton = ({
       bg:
         viewMode === 'iframe'
           ? isActive
-            ? '#F0F1F6'
-            : '#F7F7F7'
+            ? 'myGray.100'
+            : 'myGray.50'
           : isActive
-            ? '#444B55'
-            : '#2C2F3A'
+            ? 'myGray.600'
+            : 'myGray.600'
     }}
-    alignItems="center"
-    justifyContent="center"
     onClick={onClick}
     ml={2}
   >
-    <Icon name={iconName as IconNameType} width={'15px'} height={'15px'} />
+    <Icon name={iconName} width={'15px'} height={'15px'} />
     <Box ml={2} fontSize="sm">
       {label}
     </Box>
@@ -85,6 +80,7 @@ const IframeHtmlCodeBlock = ({
   const { copyData } = useCopyData();
   const [viewMode, setViewMode] = useState<'source' | 'iframe'>('source');
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { width, Ref } = useMarkdownWidth();
 
   if (codeBlock) {
     const codeBoxName = useMemo(() => {
@@ -99,16 +95,15 @@ const IframeHtmlCodeBlock = ({
       <Box
         my={3}
         borderRadius={'md'}
-        overflow={'overlay'}
+        overflow={'hidden'}
         boxShadow={
           '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)'
         }
       >
         <Flex
-          className="code-header"
           py={1}
           px={4}
-          bg={viewMode === 'iframe' ? 'rgba(255, 255, 255, 0.8)' : '#232833'}
+          bg={viewMode === 'iframe' ? 'rgba(255, 255, 255, 0.8)' : 'myGray.800'}
           color={'white'}
           fontSize={'sm'}
           userSelect={'none'}
@@ -119,7 +114,7 @@ const IframeHtmlCodeBlock = ({
             flex={1}
             display="flex"
             alignItems="center"
-            color={viewMode === 'iframe' ? '#2C2C2E' : 'rgba(255, 255, 255, 0.9)'}
+            color={viewMode === 'iframe' ? 'myGray.800' : 'rgba(255, 255, 255, 0.9)'}
           >
             {codeBoxName}
             <Flex
@@ -157,7 +152,7 @@ const IframeHtmlCodeBlock = ({
             {String(children).replace(/&nbsp;/g, ' ')}
           </SyntaxHighlighter>
         ) : (
-          <Box w="100%" h="400px">
+          <Box w={width} ref={Ref} h="60vh">
             <iframe
               srcDoc={String(children)}
               sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
@@ -172,42 +167,36 @@ const IframeHtmlCodeBlock = ({
         <Modal isOpen={isOpen} onClose={onClose} size="full">
           <ModalOverlay />
           <ModalContent>
-            <Flex
+            <ModalHeader
+              display="flex"
+              justifyContent="space-between"
               alignItems="center"
-              px={5}
-              py={2}
-              bg="#white"
-              borderBottom="1px solid #E0E0E0"
-              position="fixed"
-              top="0"
-              left="0"
-              right="0"
-              zIndex="1000"
+              p={4}
+              bg="white"
+              borderBottom="1px solid myGray.200"
               height="60px"
             >
-              <Box flex={1} display="flex" alignItems="center">
-                <Box px={4} py={1} color="#24282C" fontSize="18px" display="inline-block">
-                  {t('common:common.FullScreenLight')}
-                </Box>
+              <Box fontSize="18px" color="myGray.900">
+                {t('common:common.FullScreenLight')}
               </Box>
-              <Box onClick={onClose} cursor="pointer" fontSize="lg" color="white">
-                <Icon name="common/closeLight" width="20px" height="20px" color="#24282C" />
+              <Box onClick={onClose} cursor="pointer" fontSize="lg" color="myGray.900">
+                <Icon name="common/closeLight" width="20px" height="20px" />
               </Box>
-            </Flex>
+            </ModalHeader>
 
             <ModalBody p={0}>
-              <iframe
-                srcDoc={String(children)}
-                sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
-                style={{
-                  width: '100%',
-                  height: '100vh',
-                  border: 'none',
-                  background: '#fff',
-                  paddingTop: '60px',
-                  overflowY: 'auto'
-                }}
-              />
+              <Flex direction="column" h="calc(100vh - 60px)">
+                <iframe
+                  srcDoc={String(children)}
+                  sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
+                  style={{
+                    flex: 1,
+                    width: '100%',
+                    border: 'none',
+                    background: 'myWhite'
+                  }}
+                />
+              </Flex>
             </ModalBody>
           </ModalContent>
         </Modal>
