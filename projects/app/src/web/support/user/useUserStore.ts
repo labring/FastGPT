@@ -11,6 +11,7 @@ import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { getGroupList } from './team/group/api';
+import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 
 type State = {
   systemMsgReadId: string;
@@ -73,6 +74,7 @@ export const useUserStore = create<State>()(
             };
           });
           try {
+            user.avatar = user.avatar?.replace(imageBaseUrl, '');
             await putUserInfo(user);
           } catch (error) {
             set((state) => {

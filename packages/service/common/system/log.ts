@@ -3,6 +3,8 @@ import chalk from 'chalk';
 import { LogLevelEnum } from './log/constant';
 import { connectionMongo } from '../mongo/index';
 import { getMongoLog } from './log/schema';
+import { LoginStatusEnum, LoginTypeEnum } from './loginLog/constant';
+import { getLoginLog } from './loginLog/schema';
 
 const logMap = {
   [LogLevelEnum.debug]: {
@@ -90,3 +92,58 @@ export const addLog = {
     });
   }
 };
+
+/* add login logger */
+export const addLoginLog = {
+  log(userName: string, type: LoginTypeEnum, status: LoginStatusEnum, message: string) {
+    console.log(`${userName} ${dayjs().format('YYYY-MM-DD HH:mm:ss')} ${type} ${status}`);
+    // store
+    getLoginLog().create({
+      userName: userName,
+      type: type,
+      status: status,
+      message: message
+    });
+  },
+  login(userName: string, status: LoginStatusEnum, message: string) {
+    this.log(userName, LoginTypeEnum.login, status, message);
+  },
+  logout(userName: string, status: LoginStatusEnum, message: string) {
+    this.log(userName, LoginTypeEnum.logout, status, message);
+  }
+};
+
+/* check15分钟内失败的登录记录，5条以上就锁定账号 */
+export default async function isLoginLocked(userName: string) {
+  try {
+    var fifteenMinutesAgo = new Date(new Date().getTime() - 15 * 60 * 1000);
+    const listParam: any = {
+      $and: [
+        { userName: userName },
+        { type: LoginTypeEnum.login },
+        { time: { $gt: fifteenMinutesAgo } }
+      ]
+    };
+    // 分页查询
+    const loginLogList = await getLoginLog()
+      .find(listParam)
+      .skip(0)
+      .limit(5)
+      .sort({
+        time: -1
+      })
+      .exec();
+    if (loginLogList.length < 5) {
+      return false;
+    }
+    for (let i = 0; i < loginLogList.length; i++) {
+      if (loginLogList[i].status === LoginStatusEnum.success) {
+        return false;
+      }
+    }
+    return true;
+  } catch (err) {
+    console.error(err);
+    return false;
+  }
+}

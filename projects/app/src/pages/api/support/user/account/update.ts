@@ -7,6 +7,7 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 /* update user info */
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
+import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 export type UserAccountUpdateQuery = {};
 export type UserAccountUpdateBody = UserUpdateParams;
 export type UserAccountUpdateResponse = {};
@@ -14,8 +15,17 @@ async function handler(
   req: ApiRequestProps<UserAccountUpdateBody, UserAccountUpdateQuery>,
   _res: ApiResponseType<any>
 ): Promise<UserAccountUpdateResponse> {
-  const { avatar, timezone, openaiAccount, lafAccount } = req.body;
+  let { avatar, timezone, openaiAccount, lafAccount } = req.body;
 
+  //校验头像路径格式
+  if (avatar) {
+    var regex = /\.(png|jpe?g|gif|svg)(\?.*)?$/;
+    var result = regex.test(avatar);
+    if (!result) {
+      throw new Error('头像路径格式不正确');
+    }
+    avatar = imageBaseUrl + avatar;
+  }
   const { tmbId } = await authCert({ req, authToken: true });
   const tmb = await MongoTeamMember.findById(tmbId);
   if (!tmb) {
