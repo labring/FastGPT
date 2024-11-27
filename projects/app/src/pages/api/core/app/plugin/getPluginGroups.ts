@@ -17,18 +17,16 @@ async function handler(
 
   const plugins = await getSystemPlugins();
 
-  const validGroups = allGroups.filter((group) => {
-    const groupTypes = group.groupTypes.filter((type) =>
-      plugins.find((plugin) => plugin.templateType === type.typeId)
-    );
-    return groupTypes.length > 0;
-  });
+  const result = allGroups
+    .filter((group) => {
+      const groupTypes = group.groupTypes.filter((type) =>
+        plugins.find((plugin) => plugin.templateType === type.typeId)
+      );
+      return groupTypes.length > 0;
+    })
+    .sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0));
 
-  const sortedGroups = [defaultGroup, ...validGroups].sort(
-    (a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0)
-  );
-
-  return sortedGroups;
+  return result;
 }
 
 export default NextAPI(handler);

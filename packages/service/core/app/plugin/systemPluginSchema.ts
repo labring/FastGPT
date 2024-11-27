@@ -38,7 +38,7 @@ const SystemPluginSchema = new Schema({
 
 SystemPluginSchema.index({ pluginId: 1 });
 
-export const MongoSystemPluginSchema = getMongoModel<SystemPluginConfigSchemaType>(
+export const MongoSystemPlugin = getMongoModel<SystemPluginConfigSchemaType>(
   collectionName,
   SystemPluginSchema
 );
