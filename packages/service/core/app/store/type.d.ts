@@ -1,4 +1,5 @@
 export type PluginGroupSchemaType = {
+  groupId: string;
   groupAvatar: string;
   groupName: string;
   groupTypes: TGroupType[];
