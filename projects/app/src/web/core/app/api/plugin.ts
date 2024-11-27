@@ -13,7 +13,7 @@ import type { GetPreviewNodeQuery } from '@/pages/api/core/app/plugin/getPreview
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ParentIdType, ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSystemPluginTemplates';
-import { PluginGroupSchemaType } from '@fastgpt/service/core/app/store/type';
+import { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = (data?: ListAppBody) =>
@@ -42,7 +42,7 @@ export const getSystemPlugTemplates = (data: GetSystemPluginTemplatesBody) =>
   POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates', data);
 
 export const getPluginGroups = () =>
-  GET<PluginGroupSchemaType[]>('/core/app/plugin/getPluginGroups');
+  GET<PluginGroupSchemaType[]>('/proApi/core/app/plugin/getPluginGroups');
 
 export const getSystemPluginPaths = (parentId: ParentIdType) => {
   if (!parentId) return Promise.resolve<ParentTreePathItemType[]>([]);

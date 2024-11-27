@@ -37,8 +37,7 @@ export async function register() {
       await connectMongo();
 
       //init system config；init vector database；init root user
-      await Promise.all([getInitConfig(), initVectorStore(), initRootUser()]);
-      initSystemPlugins();
+      await Promise.all([getInitConfig(), initVectorStore(), initRootUser(), initSystemPlugins()]);
 
       getSystemPluginCb();
       startMongoWatch();
