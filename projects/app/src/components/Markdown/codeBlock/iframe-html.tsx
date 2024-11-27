@@ -33,7 +33,7 @@ const StyledButton = ({
   isActive?: boolean;
   viewMode: 'source' | 'iframe';
 }) => {
-  const textColor =
+  const Color =
     viewMode === 'iframe'
       ? isActive
         ? 'myGray.900'
@@ -42,14 +42,6 @@ const StyledButton = ({
         ? '#FFF'
         : 'rgba(255, 255, 255, 0.8)';
 
-  const iconColor =
-    viewMode === 'iframe'
-      ? isActive
-        ? 'myGray.900'
-        : 'myGray.500'
-      : isActive
-        ? '#FFF'
-        : 'rgba(255, 255, 255, 0.8)';
   return (
     <Button
       bg={
@@ -61,7 +53,7 @@ const StyledButton = ({
             ? 'myGray.700'
             : 'myGray.800'
       }
-      color={textColor}
+      color={Color}
       borderRadius="5px"
       boxShadow="none"
       _hover={{
@@ -75,13 +67,9 @@ const StyledButton = ({
               : 'myGray.600'
       }}
       onClick={onClick}
-      p={useBreakpointValue({ base: '0.5rem', md: '1rem' })}
-      fontSize={useBreakpointValue({ base: 'xx-small', sm: 'sm' })}
-      minWidth="auto"
-      maxWidth="auto"
       padding={4}
     >
-      <Icon name={iconName} width="14px" height="14px" color={iconColor} />
+      <Icon name={iconName} width="14px" height="14px" color={Color} />
       <Box ml={2} fontSize="sm">
         {label}
       </Box>
@@ -115,10 +103,9 @@ const IframeHtmlCodeBlock = ({
   }, [match]);
   const isMobile = width <= 768;
 
-  const iframeWidth = isMobile ? '100%' : width;
   const iframeHeight = isMobile ? '40vh' : '60vh';
 
-  const fontSize = isMobile ? 'xx-small' : 'sm';
+  const fontSize = isMobile ? 'xs' : 'sm';
   const gapping = isMobile ? '2px' : '5px';
   const iconSize = isMobile ? '12px' : '14px';
 
@@ -184,7 +171,7 @@ const IframeHtmlCodeBlock = ({
             {String(children).replace(/&nbsp;/g, ' ')}
           </SyntaxHighlighter>
         ) : (
-          <Box w={iframeWidth} ref={Ref} h={iframeHeight}>
+          <Box w={width} ref={Ref} h={iframeHeight}>
             <iframe
               srcDoc={String(children)}
               sandbox=""
@@ -200,7 +187,7 @@ const IframeHtmlCodeBlock = ({
         )}
         <Modal isOpen={isOpen} onClose={onClose} size="full">
           <ModalOverlay />
-          <ModalContent>
+          <ModalContent h={'100vh'} display={'flex'} flexDirection={'column'}>
             <ModalHeader
               display="flex"
               justifyContent="space-between"
@@ -217,20 +204,17 @@ const IframeHtmlCodeBlock = ({
               <CloseIcon onClick={onClose} />
             </ModalHeader>
 
-            <ModalBody p={0}>
-              <Flex direction="column" h="calc(100vh - 62px)">
-                <iframe
-                  srcDoc={String(children)}
-                  sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
-                  style={{
-                    flex: 1,
-                    width: '100%',
-                    height: '100%',
-                    border: 'none',
-                    background: 'myWhite'
-                  }}
-                />
-              </Flex>
+            <ModalBody p={0} flex="1">
+              <iframe
+                srcDoc={String(children)}
+                sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                  background: 'myWhite'
+                }}
+              />
             </ModalBody>
           </ModalContent>
         </Modal>
