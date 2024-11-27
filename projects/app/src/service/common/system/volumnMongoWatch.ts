@@ -2,7 +2,7 @@ import { getSystemPluginCb } from '@/service/core/app/plugin';
 import { initSystemConfig } from '.';
 import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training/utils';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
-import { MongoSystemPluginSchema } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
+import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
 
 export const startMongoWatch = async () => {
   reloadConfigWatch();
@@ -24,7 +24,7 @@ const reloadConfigWatch = () => {
 };
 
 const refetchSystemPlugins = () => {
-  const changeStream = MongoSystemPluginSchema.watch();
+  const changeStream = MongoSystemPlugin.watch();
 
   changeStream.on('change', async (change) => {
     setTimeout(() => {
