@@ -92,15 +92,19 @@ sudo docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 model_pdf
 
 - windows访问方法
 
-  >curl --location --request POST "http://localhost:7231/v1/parse/file" ^
-  >--header "Authorization: Bearer your_access_token" ^
-  >--form "file=@./file/chinese_test.pdf"
+  ```
+  curl --location --request POST "http://localhost:7231/v1/parse/file" ^
+  --header "Authorization: Bearer your_access_token" ^
+  --form "file=@./file/chinese_test.pdf"
+  ```
 
 - linux访问方法
 
-  >curl --location --request POST "http://localhost:7231/v1/parse/file" \
-  >--header "Authorization: Bearer your_access_token" \
-  >--form "file=@./file/chinese_test.pdf"
+  ```
+  curl --location --request POST "http://localhost:7231/v1/parse/file" \
+  --header "Authorization: Bearer your_access_token" \
+  --form "file=@./file/chinese_test.pdf"
+  ```
 
 - 多文件测试数据
 
