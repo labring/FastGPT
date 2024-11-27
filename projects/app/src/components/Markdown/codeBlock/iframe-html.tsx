@@ -12,6 +12,7 @@ import {
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
+import type { IconNameType } from '@fastgpt/web/components/common/Icon/type.d';
 
 const iframeHtmlCodeBlock: { [key: string]: React.CSSProperties } = {
   'code[class*=language-]': {
@@ -341,7 +342,7 @@ const StyledButton = ({
     onClick={onClick}
     ml={2}
   >
-    <Icon name={iconName} width={'15px'} height={'15px'} />
+    <Icon name={iconName as IconNameType} width={'15px'} height={'15px'} />
     <Box ml={2} fontSize="sm">
       {label}
     </Box>
