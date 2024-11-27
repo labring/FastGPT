@@ -5,7 +5,7 @@ import Icon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
 
-const codeLight: { [key: string]: React.CSSProperties } = {
+export const codeLight: { [key: string]: React.CSSProperties } = {
   'code[class*=language-]': {
     color: '#d4d4d4',
     textShadow: 'none',
