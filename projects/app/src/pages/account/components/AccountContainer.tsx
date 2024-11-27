@@ -8,20 +8,14 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import PageContainer from '@/components/PageContainer';
 import SideTabs from '@/components/SideTabs';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import UserInfo from './components/Info/index';
+import UserInfo from '../info/index';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import Script from 'next/script';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
-const Promotion = dynamic(() => import('./components/Promotion'));
-const UsageTable = dynamic(() => import('./components/UsageTable'));
-const BillAndInvoice = dynamic(() => import('./components/bill/BillAndInvoice'));
-const InformTable = dynamic(() => import('./components/InformTable'));
-const ApiKeyTable = dynamic(() => import('./components/ApiKeyTable'));
-const Individuation = dynamic(() => import('./components/Individuation'));
-enum TabEnum {
+export enum TabEnum {
   'info' = 'info',
   'promotion' = 'promotion',
   'usage' = 'usage',
@@ -32,7 +26,13 @@ enum TabEnum {
   'loginout' = 'loginout'
 }
 
-const Account = ({ currentTab }: { currentTab: TabEnum }) => {
+const AccountContainer = ({
+  currentTab,
+  children
+}: {
+  currentTab: TabEnum;
+  children: React.ReactNode;
+}) => {
   const { t } = useTranslation();
   const { userInfo, setUserInfo } = useUserStore();
   const { feConfigs, systemVersion } = useSystemStore();
@@ -117,11 +117,7 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
           router.replace('/login');
         })();
       } else {
-        router.replace({
-          query: {
-            currentTab: tab
-          }
-        });
+        router.replace('/account/' + tab);
       }
     },
     [openConfirm, router, setUserInfo]
@@ -172,13 +168,7 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
           )}
 
           <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]} overflow={'auto'}>
-            {currentTab === TabEnum.info && <UserInfo />}
-            {currentTab === TabEnum.promotion && <Promotion />}
-            {currentTab === TabEnum.usage && <UsageTable />}
-            {currentTab === TabEnum.bill && <BillAndInvoice />}
-            {currentTab === TabEnum.individuation && <Individuation />}
-            {currentTab === TabEnum.inform && <InformTable />}
-            {currentTab === TabEnum.apikey && <ApiKeyTable />}
+            {children}
           </Box>
         </Flex>
         <ConfirmModal />
@@ -187,13 +177,4 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
   );
 };
 
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      currentTab: content?.query?.currentTab || TabEnum.info,
-      ...(await serviceSideProps(content, ['publish', 'user']))
-    }
-  };
-}
-
-export default Account;
+export default AccountContainer;

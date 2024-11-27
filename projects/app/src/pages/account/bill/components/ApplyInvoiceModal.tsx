@@ -100,6 +100,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
       emailAddress: ''
     }
   });
+
   const { loading: isLoadingHeader } = useRequest2(() => getTeamInvoiceHeader(), {
     manual: false,
     onSuccess: (res) => inputForm.reset(res)

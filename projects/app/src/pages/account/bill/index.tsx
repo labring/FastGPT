@@ -3,8 +3,10 @@ import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import ApplyInvoiceModal from './ApplyInvoiceModal';
+import ApplyInvoiceModal from './components/ApplyInvoiceModal';
 import { useRouter } from 'next/router';
+import AccountContainer, { TabEnum } from '../components/AccountContainer';
+import { serviceSideProps } from '@/web/common/utils/i18n';
 
 export enum InvoiceTabEnum {
   bill = 'bill',
@@ -12,9 +14,9 @@ export enum InvoiceTabEnum {
   invoiceHeader = 'invoiceHeader'
 }
 
-const BillTable = dynamic(() => import('./BillTable'));
-const InvoiceHeaderForm = dynamic(() => import('./InvoiceHeaderForm'));
-const InvoiceTable = dynamic(() => import('./InvoiceTable'));
+const BillTable = dynamic(() => import('./components/BillTable'));
+const InvoiceHeaderForm = dynamic(() => import('./components/InvoiceHeaderForm'));
+const InvoiceTable = dynamic(() => import('./components/InvoiceTable'));
 const BillAndInvoice = () => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -23,7 +25,7 @@ const BillAndInvoice = () => {
   const [isOpenInvoiceModal, setIsOpenInvoiceModal] = useState(false);
 
   return (
-    <>
+    <AccountContainer currentTab={TabEnum.bill}>
       <Box p={['1rem', '2rem']}>
         <Flex justifyContent={'space-between'} alignItems={'center'} pb={'0.75rem'}>
           <FillRowTabs
@@ -68,8 +70,17 @@ const BillAndInvoice = () => {
           />
         )}
       </Box>
-    </>
+    </AccountContainer>
   );
 };
+
+export async function getServerSideProps(content: any) {
+  return {
+    props: {
+      currentTab: content?.query?.currentTab || TabEnum.info,
+      ...(await serviceSideProps(content, ['publish', 'user']))
+    }
+  };
+}
 
 export default BillAndInvoice;

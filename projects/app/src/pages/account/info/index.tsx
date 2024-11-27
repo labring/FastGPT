@@ -46,17 +46,19 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import AccountContainer, { TabEnum } from '../components/AccountContainer';
+import { serviceSideProps } from '@/web/common/utils/i18n';
 
-const StandDetailModal = dynamic(() => import('./standardDetailModal'));
+const StandDetailModal = dynamic(() => import('./components/standardDetailModal'));
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
-const ConversionModal = dynamic(() => import('./ConversionModal'));
-const UpdatePswModal = dynamic(() => import('./UpdatePswModal'));
-const UpdateNotification = dynamic(() => import('./UpdateNotificationModal'));
-const OpenAIAccountModal = dynamic(() => import('./OpenAIAccountModal'));
+const ConversionModal = dynamic(() => import('./components/ConversionModal'));
+const UpdatePswModal = dynamic(() => import('./components/UpdatePswModal'));
+const UpdateNotification = dynamic(() => import('./components/UpdateNotificationModal'));
+const OpenAIAccountModal = dynamic(() => import('./components/OpenAIAccountModal'));
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
-const Account = () => {
+const Info = () => {
   const { isPc } = useSystem();
   const { teamPlanStatus } = useUserStore();
   const standardPlan = teamPlanStatus?.standardConstants;
@@ -67,7 +69,7 @@ const Account = () => {
   useQuery(['init'], initUserInfo);
 
   return (
-    <>
+    <AccountContainer currentTab={TabEnum.info}>
       <Box py={[3, '28px']} px={[5, 10]} mx={'auto'}>
         {isPc ? (
           <Flex justifyContent={'center'} maxW={'1080px'}>
@@ -92,11 +94,20 @@ const Account = () => {
         )}
       </Box>
       {isOpenContact && <CommunityModal onClose={onCloseContact} />}
-    </>
+    </AccountContainer>
   );
 };
 
-export default React.memo(Account);
+export async function getServerSideProps(content: any) {
+  return {
+    props: {
+      currentTab: content?.query?.currentTab || TabEnum.info,
+      ...(await serviceSideProps(content, ['publish', 'user']))
+    }
+  };
+}
+
+export default React.memo(Info);
 
 const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const theme = useTheme();
