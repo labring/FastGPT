@@ -56,8 +56,10 @@ export PROCESSES_PER_GPU="1"
 
 3. 创建Anaconda并安装requirement.txt文件
 
+   安装的Anaconda版本：**conda 24.7.1**
+
    ```
-   conda create -n pdf-marker python=3.10
+   conda create -n pdf-marker python=3.11
    pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
    conda activate pdf-marker
    ```
@@ -90,15 +92,7 @@ sudo docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 model_pdf
 
 参数：file-->本地文件的地址
 
-- windows访问方法
-
-  ```
-  curl --location --request POST "http://localhost:7231/v1/parse/file" ^
-  --header "Authorization: Bearer your_access_token" ^
-  --form "file=@./file/chinese_test.pdf"
-  ```
-
-- linux访问方法
+- 访问方法
 
   ```
   curl --location --request POST "http://localhost:7231/v1/parse/file" \
