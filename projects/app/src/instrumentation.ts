@@ -10,7 +10,7 @@ export async function register() {
       const [
         { connectMongo },
         { systemStartCb },
-        { initGlobalVariables, getInitConfig },
+        { initGlobalVariables, getInitConfig, initSystemPlugins },
         { initVectorStore },
         { initRootUser },
         { getSystemPluginCb },
@@ -38,6 +38,7 @@ export async function register() {
 
       //init system config；init vector database；init root user
       await Promise.all([getInitConfig(), initVectorStore(), initRootUser()]);
+      initSystemPlugins();
 
       getSystemPluginCb();
       startMongoWatch();

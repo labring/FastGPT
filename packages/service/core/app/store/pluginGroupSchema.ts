@@ -5,6 +5,10 @@ const { Schema } = connectionMongo;
 export const collectionName = 'app_plugin_groups';
 
 const PluginGroupSchema = new Schema({
+  groupId: {
+    type: String,
+    required: true
+  },
   groupAvatar: {
     type: String,
     default: ''
@@ -23,9 +27,9 @@ const PluginGroupSchema = new Schema({
   }
 });
 
-PluginGroupSchema.index({ groupName: 1 });
+PluginGroupSchema.index({ groupId: 1 });
 
-export const MongoPluginGroupsSchema = getMongoModel<PluginGroupSchemaType>(
+export const MongoPluginGroups = getMongoModel<PluginGroupSchemaType>(
   collectionName,
   PluginGroupSchema
 );

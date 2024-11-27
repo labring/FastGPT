@@ -92,7 +92,7 @@ const Navbar = ({ unread }: { unread: number }) => {
       w={'100%'}
       userSelect={'none'}
       pb={2}
-      bg={['/toolkit'].includes(router.pathname) ? 'myGray.25' : 'transparent'}
+      bg={['/toolkit'].includes(router.pathname) ? 'myGray.50' : 'transparent'}
     >
       {/* logo */}
       <Box
