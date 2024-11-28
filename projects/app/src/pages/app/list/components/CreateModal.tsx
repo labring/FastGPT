@@ -53,18 +53,18 @@ const CreateModal = ({
     [AppTypeEnum.simple]: {
       icon: 'core/app/simpleBot',
       title: t('app:type.Create simple bot'),
-      avatar: '/imgs/app/avatar/simple.svg',
+      avatar: 'core/app/type/simpleFill',
       emptyCreateText: t('app:create_empty_app')
     },
     [AppTypeEnum.workflow]: {
       icon: 'core/app/type/workflowFill',
-      avatar: '/imgs/app/avatar/workflow.svg',
+      avatar: 'core/app/type/workflowFill',
       title: t('app:type.Create workflow bot'),
       emptyCreateText: t('app:create_empty_workflow')
     },
     [AppTypeEnum.plugin]: {
       icon: 'core/app/type/pluginFill',
-      avatar: '/imgs/app/avatar/plugin.svg',
+      avatar: 'core/app/type/pluginFill',
       title: t('app:type.Create plugin bot'),
       emptyCreateText: t('app:create_empty_plugin')
     }
