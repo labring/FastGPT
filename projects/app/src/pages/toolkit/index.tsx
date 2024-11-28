@@ -1,14 +1,6 @@
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { getPluginGroups, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
-import {
-  Box,
-  Flex,
-  Grid,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  useDisclosure
-} from '@chakra-ui/react';
+import { Box, Flex, Grid, useDisclosure } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMemo, useState } from 'react';
@@ -18,71 +10,64 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { systemPluginTemplateList } from '@fastgpt/web/core/workflow/constants';
-
-export const defaultGroup = {
-  groupId: 'systemPlugin',
-  groupAvatar: 'common/navbar/pluginLight',
-  groupName: i18nT('common:core.module.template.System Plugin'),
-  groupOrder: 0,
-  groupTypes: systemPluginTemplateList
-};
-
-export const allTypes = [
-  {
-    typeId: 'all',
-    typeName: i18nT('common:common.All')
-  }
-];
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import { navbarWidth } from '@/components/Layout';
 
 const Toolkit = () => {
+  const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
 
   const { data: plugins = [] } = useRequest2(getSystemPlugTemplates, {
     manual: false
   });
-
   const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
     manual: false
   });
   const isOneGroup = pluginGroups.length === 1;
 
   const [search, setSearch] = useState('');
-
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const { group: selectedGroup = pluginGroups?.[0]?.groupId, type: selectedType = 'all' } =
     router.query;
 
-  const { t } = useTranslation();
+  const pluginGroupTypes = useMemo(() => {
+    const allTypes = [
+      {
+        typeId: 'all',
+        typeName: i18nT('common:common.All')
+      }
+    ];
+    const currentTypes =
+      pluginGroups?.find((group) => group.groupId === selectedGroup)?.groupTypes ?? [];
 
-  const currentPluginGroupTypes = useMemo(() => {
-    const currentTypes = pluginGroups?.find((group) => group.groupId === selectedGroup)?.groupTypes;
-
-    return currentTypes?.filter((type) =>
-      plugins.find((plugin) => plugin.templateType === type.typeId)
-    );
+    return [
+      ...allTypes,
+      ...currentTypes.filter((type) =>
+        plugins.find((plugin) => plugin.templateType === type.typeId)
+      )
+    ];
   }, [pluginGroups, plugins, selectedGroup]);
 
   const currentPlugins = useMemo(() => {
-    const typeArray = currentPluginGroupTypes?.map((type) => type.typeId);
+    const typeArray = pluginGroupTypes?.map((type) => type.typeId);
     return plugins
       .filter(
         (plugin) =>
           (selectedType === 'all' && typeArray?.includes(plugin.templateType)) ||
           selectedType === plugin.templateType
       )
-      .filter(
-        (plugin) =>
-          plugin.name.includes(search) ||
-          plugin.intro?.includes(search) ||
-          plugin.instructions?.includes(search)
-      );
-  }, [currentPluginGroupTypes, plugins, selectedType, search]);
+      .filter((plugin) => {
+        const str = `${plugin.name}${plugin.intro}${plugin.instructions}`;
+        const regx = new RegExp(search, 'gi');
+        return regx.test(str);
+      });
+  }, [pluginGroupTypes, plugins, selectedType, search]);
 
   return (
     <Flex flexDirection={'column'} h={'100%'} overflow={'auto'}>
+      {/* Mask */}
       {!isPc && isOpen && (
         <Box
           position="fixed"
@@ -92,16 +77,17 @@ const Toolkit = () => {
           bottom={0}
           bg="blackAlpha.600"
           onClick={onClose}
-          zIndex={999}
+          zIndex={99}
         />
       )}
+      {/* Sidebar */}
       {(isPc || isOpen) && (
         <Box
           position={'fixed'}
-          left={isPc ? 16 : 0}
+          left={isPc ? navbarWidth : 0}
           top={0}
           bg={'myGray.25'}
-          w={'200px'}
+          w={['60vw', '200px']}
           h={'full'}
           borderLeft={'1px solid'}
           borderRight={'1px solid'}
@@ -109,44 +95,46 @@ const Toolkit = () => {
           pt={4}
           px={2.5}
           pb={2.5}
-          zIndex={1000}
+          zIndex={100}
+          userSelect={'none'}
         >
-          {pluginGroups?.map((group) => {
+          {pluginGroups.map((group) => {
             const selected = group.groupId === selectedGroup;
-
             return (
               <Box key={group.groupId}>
                 <Flex
                   p={2}
                   mb={0.5}
-                  fontSize={'14px'}
-                  fontWeight={'medium'}
+                  fontSize={'sm'}
                   rounded={'md'}
                   color={'myGray.900'}
-                  cursor={isOneGroup ? 'default' : 'pointer'}
-                  _hover={isOneGroup ? {} : { bg: 'primary.50', color: 'primary.600' }}
-                  onClick={() => {
-                    if (isOneGroup) return;
-                    router.push({
-                      pathname: router.pathname,
-                      query: { group: group.groupId, type: 'all' }
-                    });
-                  }}
+                  {...(!isOneGroup && {
+                    cursor: 'pointer',
+                    _hover: {
+                      bg: 'primary.50'
+                    },
+                    onClick: () => {
+                      router.push({
+                        query: { group: group.groupId, type: 'all' }
+                      });
+                      onClose();
+                    }
+                  })}
                 >
-                  <Avatar src={group.groupAvatar} w={'16px'} mr={1.5} color={'primary.600'} />
-                  {t(group.groupName as any)}
+                  <Avatar src={group.groupAvatar} w={'1rem'} mr={1.5} color={'primary.600'} />
+                  <Box>{t(group.groupName as any)}</Box>
                   <Box flex={1} />
                   {!isOneGroup && (
                     <MyIcon
                       color={'myGray.600'}
                       name={selected ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
-                      w={'16px'}
+                      w={'1rem'}
                     />
                   )}
                 </Flex>
+                {/* group types */}
                 {selected &&
-                  [...allTypes, ...(currentPluginGroupTypes || [])]?.map((type) => {
-                    const selected = type.typeId === selectedType;
+                  pluginGroupTypes.map((type) => {
                     return (
                       <Flex
                         key={type.typeId}
@@ -158,13 +146,20 @@ const Toolkit = () => {
                         cursor={'pointer'}
                         mb={0.5}
                         _hover={{ bg: 'primary.50', color: 'primary.600' }}
-                        bg={selected ? 'primary.50' : 'transparent'}
-                        color={selected ? 'primary.600' : 'myGray.500'}
+                        {...(type.typeId === selectedType
+                          ? {
+                              bg: 'primary.50',
+                              color: 'primary.600'
+                            }
+                          : {
+                              bg: 'transparent',
+                              color: 'myGray.500'
+                            })}
                         onClick={() => {
                           router.push({
-                            pathname: router.pathname,
-                            query: { ...router.query, type: type.typeId }
+                            query: { group: selectedGroup, type: type.typeId }
                           });
+                          onClose();
                         }}
                       >
                         {t(type.typeName as any)}
@@ -176,31 +171,34 @@ const Toolkit = () => {
           })}
         </Box>
       )}
-      <Box ml={isPc ? '200px' : 0} p={6}>
+      <Box ml={[0, '200px']} p={[5, 6]}>
         <Flex alignItems={'center'}>
           <Flex flex={1} fontSize={'xl'} fontWeight={'medium'} color={'myGray.900'}>
-            {!isPc && <MyIcon name="menu" w={'20px'} mr={1.5} onClick={onOpen} />}
-            {t(pluginGroups?.find((group) => group.groupId === selectedGroup)?.groupName as any)}
+            {isPc ? (
+              <Box>
+                {t(
+                  pluginGroups?.find((group) => group.groupId === selectedGroup)?.groupName as any
+                )}
+              </Box>
+            ) : (
+              <MyIcon name="menu" w={'20px'} mr={1.5} onClick={onOpen} />
+            )}
           </Flex>
-          <InputGroup w={'260px'}>
-            <InputLeftElement alignItems={'center'}>
-              <MyIcon name="common/searchLight" w={'18px'} mt={1.5} />
-            </InputLeftElement>
-            <Input
-              mt={1.5}
-              placeholder={t('common:plugin.Search plugin')}
-              bg={'white'}
+          <Box w={['60vw', '260px']}>
+            <SearchInput
               value={search}
+              bg={'white'}
               onChange={(e) => setSearch(e.target.value)}
+              placeholder={t('common:plugin.Search plugin')}
             />
-          </InputGroup>
+          </Box>
         </Flex>
 
         <Grid
           gridTemplateColumns={[
             '1fr',
             'repeat(2,1fr)',
-            'repeat(3,1fr)',
+            'repeat(2,1fr)',
             'repeat(3,1fr)',
             'repeat(4,1fr)'
           ]}

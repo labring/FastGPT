@@ -5,34 +5,10 @@ import { GET, POST } from '@fastgpt/service/common/api/plusRequest';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { SystemPluginResponseType } from '@fastgpt/plugins/type';
-import { PluginGroupSchemaType } from '@fastgpt/service/core/app/store/type';
 
 /* Get plugins */
 const getCommercialPlugins = () => {
   return GET<SystemPluginTemplateItemType[]>('/core/app/plugin/getSystemPlugins');
-};
-
-export const getPluginGroups = async (refresh = false) => {
-  if (isProduction && global.pluginGroups && global.pluginGroups.length > 0 && !refresh)
-    return cloneDeep(global.pluginGroups);
-
-  try {
-    if (!global.pluginGroups) {
-      global.pluginGroups = [];
-    }
-
-    global.pluginGroups = FastGPTProUrl
-      ? await GET<PluginGroupSchemaType[]>('/core/app/plugin/getPluginGroups')
-      : [];
-
-    addLog.info(`Load plugin groups successfully: ${global.pluginGroups.length}`);
-
-    return cloneDeep(global.pluginGroups);
-  } catch (error) {
-    //@ts-ignore
-    global.pluginGroups = undefined;
-    return Promise.reject(error);
-  }
 };
 
 export const getSystemPlugins = async (refresh = false) => {
@@ -93,7 +69,6 @@ export const getSystemPluginCb = async (refresh = false) => {
   try {
     global.systemPluginCb = {};
     await getSystemPlugins(refresh);
-    await getPluginGroups(refresh);
     global.systemPluginCb = FastGPTProUrl ? await getCommercialCb() : await getCommunityCb();
     return global.systemPluginCb;
   } catch (error) {
