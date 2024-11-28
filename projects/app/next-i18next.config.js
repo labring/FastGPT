@@ -5,8 +5,13 @@
 
 module.exports = {
   i18n: {
+<<<<<<< Updated upstream
     defaultLocale: 'zh-CN',
     locales: ['en', 'zh-CN', 'zh-TW'],
+=======
+    defaultLocale: 'en',
+    locales: ['en', 'zh-CN', 'zh-Hant'],
+>>>>>>> Stashed changes
     localeDetection: false
   },
   localePath:

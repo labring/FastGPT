@@ -17,8 +17,9 @@ export const useI18nLng = () => {
     zh: LangEnum.zh_CN,
     'zh-CN': LangEnum.zh_CN,
     'zh-Hans': LangEnum.zh_CN,
-    'zh-HK': LangEnum.zh_CN,
-    'zh-TW': LangEnum.zh_TW,
+    'zh-HK': LangEnum.zh_Hant,
+    'zh-TW': LangEnum.zh_Hant,
+    'zh-Hant': LangEnum.zh_Hant,
     en: LangEnum.en,
     'en-US': LangEnum.en
   };
