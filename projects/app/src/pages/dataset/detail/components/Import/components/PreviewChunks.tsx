@@ -1,13 +1,10 @@
-import React, { useMemo } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import React from 'react';
+import { Box } from '@chakra-ui/react';
 import { ImportSourceItemType } from '@/web/core/dataset/type';
-import { useQuery } from '@tanstack/react-query';
 import MyRightDrawer from '@fastgpt/web/components/common/MyDrawer/MyRightDrawer';
 import { getPreviewChunks } from '@/web/core/dataset/api';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
 import { importType2ReadType } from '@fastgpt/global/core/dataset/read';
@@ -20,7 +17,6 @@ const PreviewChunks = ({
   previewSource: ImportSourceItemType;
   onClose: () => void;
 }) => {
-  const { toast } = useToast();
   const { importSource, chunkSize, chunkOverlapRatio, processParamsForm } = useContextSelector(
     DatasetImportContext,
     (v) => v
@@ -28,7 +24,10 @@ const PreviewChunks = ({
 
   const { data = [], loading: isLoading } = useRequest2(
     async () => {
-      if (importSource === ImportDataSourceEnum.fileCustom) {
+      if (
+        importSource === ImportDataSourceEnum.fileCustom ||
+        (importSource === ImportDataSourceEnum.apiDataset && previewSource.rawText)
+      ) {
         const customSplitChar = processParamsForm.getValues('customSplitChar');
         const { chunks } = splitText2Chunks({
           text: previewSource.rawText || '',

@@ -30,6 +30,11 @@ export type ImportSourceItemType = {
   // external file
   externalFileUrl?: string;
   externalFileId?: string;
+
+  // api dataset
+  createTime?: Date;
+  updateTime?: Date;
+  rawLink?: string;
 };
 
 export type ImportSourceParamsType = UseFormReturn<

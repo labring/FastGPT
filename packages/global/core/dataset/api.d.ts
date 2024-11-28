@@ -56,6 +56,12 @@ export type TextCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams
 export type LinkCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   link: string;
 };
+export type ApiDatasetCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
+  name: string;
+  text?: string;
+  link?: string;
+  rawLink?: string;
+};
 export type FileIdCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   fileId: string;
 };

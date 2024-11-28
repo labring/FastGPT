@@ -20,6 +20,10 @@ const SideTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps)
       [DatasetTypeEnum.externalFile]: {
         icon: 'core/dataset/externalDatasetOutline',
         label: t('dataset:external_file')
+      },
+      [DatasetTypeEnum.apiDataset]: {
+        icon: 'core/dataset/externalDatasetOutline',
+        label: t('dataset:api_file')
       }
     };
   }, [t]);

@@ -25,6 +25,10 @@ export type CreateDatasetParams = {
   avatar: string;
   vectorModel?: string;
   agentModel?: string;
+  apiServer?: {
+    baseUrl: string;
+    authorization: string;
+  };
 };
 
 export type RebuildEmbeddingProps = {

@@ -22,6 +22,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { TabEnum } from '../../../index';
 import {
+  postCreateDatasetApiDatasetCollection,
   postCreateDatasetCsvTableCollection,
   postCreateDatasetExternalFileCollection,
   postCreateDatasetFileCollection,
@@ -130,6 +131,13 @@ const Upload = () => {
             externalFileUrl: item.externalFileUrl,
             externalFileId: item.externalFileId,
             filename: item.sourceName
+          });
+        } else if (importSource === ImportDataSourceEnum.apiDataset) {
+          await postCreateDatasetApiDatasetCollection({
+            ...commonParams,
+            text: item.rawText,
+            link: item.link,
+            rawLink: item.rawLink
           });
         }
 

@@ -1,5 +1,8 @@
 {
   "Enable": "Enable",
+  "add_file": "Add File",
+  "api_file": "API File Library",
+  "api_url": "API Url",
   "collection.Create update time": "Creation/Update Time",
   "collection.Training type": "Training Mode",
   "collection_tags": "Collection Tags",
@@ -32,6 +35,7 @@
   "permission.des.write": "Ability to add and change knowledge base content",
   "rebuild_embedding_start_tip": "Index model switching task has started",
   "rebuilding_index_count": "Number of indexes being rebuilt: {{count}}",
+  "request_headers": "Request headers",
   "tag.Add New": "Add New",
   "tag.Add_new_tag": "Add New Tag",
   "tag.Edit_tag": "Edit Tag",

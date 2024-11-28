@@ -30,10 +30,14 @@ export type DatasetSchemaType = {
     url: string;
     selector: string;
   };
-  externalReadUrl?: string;
   inheritPermission: boolean;
+  apiServer?: {
+    baseUrl: string;
+    authorization: string;
+  };
 
   // abandon
+  externalReadUrl?: string;
   defaultPermission?: number;
 };
 

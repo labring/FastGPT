@@ -24,7 +24,10 @@ const PreviewRawText = ({
   const { data, isLoading } = useQuery(
     ['previewSource', previewSource.dbFileId, previewSource.link, previewSource.externalFileUrl],
     () => {
-      if (importSource === ImportDataSourceEnum.fileCustom && previewSource.rawText) {
+      if (
+        (importSource === ImportDataSourceEnum.fileCustom && previewSource.rawText) ||
+        (importSource === ImportDataSourceEnum.apiDataset && previewSource.rawText)
+      ) {
         return {
           previewContent: previewSource.rawText.slice(0, 3000)
         };

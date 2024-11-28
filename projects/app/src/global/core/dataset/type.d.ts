@@ -41,3 +41,13 @@ export type DatasetDataListItemType = {
   chunkIndex?: number;
   // indexes: DatasetDataSchemaType['indexes'];
 };
+
+/* =========== apiDataset =========== */
+export type APIFileItem = {
+  id: string;
+  parentId: string | null;
+  name: string;
+  type: 'file' | 'folder';
+  updateTime: Date;
+  createTime: Date;
+};

@@ -145,6 +145,9 @@ async function handler(
     if (collection.type === DatasetCollectionTypeEnum.link && collection.rawLink) {
       return collection.rawLink;
     }
+    if (collection.type === DatasetCollectionTypeEnum.apiFile && collection.rawLink) {
+      return collection.rawLink;
+    }
     if (collection.type === DatasetCollectionTypeEnum.externalFile) {
       if (collection.externalFileId && collection.datasetId.externalReadUrl) {
         return collection.datasetId.externalReadUrl.replace(
