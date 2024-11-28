@@ -19,6 +19,7 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { isEqual } from 'lodash';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import { PluginRunContext } from '../context';
 
 const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
 
@@ -37,6 +38,9 @@ const FileSelector = ({
 
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const histories = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+  const appId = useContextSelector(PluginRunContext, (v) => v.appId);
+  const chatId = useContextSelector(PluginRunContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(PluginRunContext, (v) => v.outLinkAuthData);
 
   const fileCtrl = useFieldArray({
     control: variablesForm.control,
@@ -58,8 +62,10 @@ const FileSelector = ({
       canSelectImg: input.canSelectImg ?? false,
       maxFiles: input.maxFiles ?? 5
     },
-    // @ts-ignore
-    fileCtrl
+    outLinkAuthData,
+    appId,
+    chatId,
+    fileCtrl: fileCtrl as any
   });
 
   useEffect(() => {

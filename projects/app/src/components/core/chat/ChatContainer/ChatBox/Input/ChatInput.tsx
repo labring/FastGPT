@@ -76,7 +76,10 @@ const ChatInput = ({
     hasFileUploading
   } = useFileUpload({
     fileSelectConfig,
-    fileCtrl
+    fileCtrl,
+    outLinkAuthData,
+    appId,
+    chatId
   });
   const havInput = !!inputValue || fileList.length > 0;
   const canSendMessage = havInput && !hasFileUploading;
