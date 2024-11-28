@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await connectToDatabase();
     const { id } = req.query as { id: string };
-    console.log(req.headers);
+
     const { binary, mime } = await readMongoImg({ id });
 
     res.setHeader('Content-Type', mime);
