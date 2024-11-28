@@ -9,10 +9,8 @@ import { FastGPTProUrl, isProduction } from '@fastgpt/service/common/system/cons
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 import json5 from 'json5';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
-import { systemPluginTemplateList } from '@fastgpt/web/core/workflow/constants';
-import { MongoPluginGroups } from '@fastgpt/service/core/app/store/pluginGroupSchema';
-import { delay } from '@fastgpt/global/common/system/utils';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { defaultGroup } from '@fastgpt/web/core/workflow/constants';
+import { MongoPluginGroups } from '@fastgpt/service/core/app/plugin/pluginGroupSchema';
 
 export const readConfigData = (name: string) => {
   const splitName = name.split('.');
@@ -191,28 +189,19 @@ function getSystemPluginV1() {
 }
 
 export async function initSystemPlugins() {
-  const defaultGroup = {
-    groupId: 'systemPlugin',
-    groupAvatar: 'common/navbar/pluginLight',
-    groupName: i18nT('common:core.module.template.System Plugin'),
-    groupOrder: 0,
-    groupTypes: systemPluginTemplateList
-  };
-
   try {
-    const existingGroup = await MongoPluginGroups.findOne({
-      groupId: { $exists: true, $eq: defaultGroup.groupId }
-    });
-
-    if (!existingGroup) {
-      await MongoPluginGroups.create(defaultGroup);
-      console.log('Default plugin group created');
-    } else {
-      console.log('Default plugin group already exists');
-    }
+    await MongoPluginGroups.updateOne(
+      {
+        groupId: defaultGroup.groupId
+      },
+      {
+        $set: defaultGroup
+      },
+      {
+        upsert: true
+      }
+    );
   } catch (error) {
     console.error('Error initializing system plugins:', error);
-    await delay(100);
-    initSystemPlugins();
   }
 }

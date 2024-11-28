@@ -37,11 +37,11 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread: 0
       },
       {
-        label: t('common:common.More'),
-        icon: 'common/more',
-        activeIcon: 'common/moreFill',
-        link: '/more',
-        activeLink: ['/more'],
+        label: t('common:navbar.Toolkit'),
+        icon: 'phoneTabbar/tool',
+        activeIcon: 'phoneTabbar/toolFill',
+        link: `/toolkit`,
+        activeLink: ['/toolkit'],
         unread: 0
       },
       {
@@ -64,7 +64,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         justifyContent={'space-between'}
         backgroundColor={'white'}
         position={'relative'}
-        px={10}
+        px={4}
       >
         {navbarList.map((item) => (
           <Flex

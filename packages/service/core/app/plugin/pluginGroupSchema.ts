@@ -27,7 +27,7 @@ const PluginGroupSchema = new Schema({
   }
 });
 
-PluginGroupSchema.index({ groupId: 1 });
+PluginGroupSchema.index({ groupId: 1 }, { unique: true });
 
 export const MongoPluginGroups = getMongoModel<PluginGroupSchemaType>(
   collectionName,
