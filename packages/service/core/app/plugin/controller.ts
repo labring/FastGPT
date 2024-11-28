@@ -48,7 +48,7 @@ const getSystemPluginTemplateById = async (
   const plugin = cloneDeep(item);
 
   if (plugin.associatedPluginId) {
-    // TODO: check is system plugin
+    // The verification plugin is set as a system plugin
     const systemPlugin = await MongoSystemPlugin.findOne(
       { pluginId: plugin.id, 'customConfig.associatedPluginId': plugin.associatedPluginId },
       'associatedPluginId'
