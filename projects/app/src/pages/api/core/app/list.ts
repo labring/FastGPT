@@ -28,33 +28,51 @@ export type ListAppBody = {
 async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemType[]> {
   const { parentId, type, getRecentlyChat, searchKey } = req.body;
 
-  // 凭证校验
-  const {
-    app: ParentApp,
-    tmbId,
-    teamId,
-    permission: myPer
-  } = await (async () => {
-    if (parentId) {
-      return await authApp({
-        req,
-        authToken: true,
-        authApiKey: true,
-        appId: parentId,
-        per: ReadPermissionVal
+  // Auth user permission
+  const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
+    authUserPer({
+      req,
+      authToken: true,
+      authApiKey: true,
+      per: ReadPermissionVal
+    }),
+    ...(parentId
+      ? [
+          authApp({
+            req,
+            authToken: true,
+            authApiKey: true,
+            appId: parentId,
+            per: ReadPermissionVal
+          })
+        ]
+      : [])
+  ]);
+
+  // Get team all app permissions
+  const [perList, myGroupMap] = await Promise.all([
+    MongoResourcePermission.find({
+      resourceType: PerResourceTypeEnum.app,
+      teamId,
+      resourceId: {
+        $exists: true
+      }
+    }).lean(),
+    getGroupsByTmbId({
+      tmbId,
+      teamId
+    }).then((item) => {
+      const map = new Map<string, 1>();
+      item.forEach((item) => {
+        map.set(String(item._id), 1);
       });
-    } else {
-      return {
-        ...(await authUserPer({
-          req,
-          authToken: true,
-          authApiKey: true,
-          per: ReadPermissionVal
-        })),
-        app: undefined
-      };
-    }
-  })();
+      return map;
+    })
+  ]);
+  // Get my permissions
+  const myPerList = perList.filter(
+    (item) => String(item.tmbId) === String(tmbId) || myGroupMap.has(String(item.groupId))
+  );
 
   const findAppsQuery = (() => {
     const searchMatch = searchKey
@@ -65,10 +83,15 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
           ]
         }
       : {};
+    // Filter apps by permission, if not owner, only get apps that I have permission to access
+    const appIdQuery = teamPer.isOwner
+      ? {}
+      : { _id: { $in: myPerList.map((item) => item.resourceId) } };
 
     if (getRecentlyChat) {
       return {
         // get all chat app
+        ...appIdQuery,
         teamId,
         type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple, AppTypeEnum.plugin] },
         ...searchMatch
@@ -77,63 +100,46 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
 
     if (searchKey) {
       return {
+        ...appIdQuery,
         teamId,
         ...searchMatch
       };
     }
 
     return {
+      ...appIdQuery,
       teamId,
       ...(type && (Array.isArray(type) ? { type: { $in: type } } : { type })),
       ...parseParentIdInMongo(parentId)
     };
   })();
+  const limit = (() => {
+    if (getRecentlyChat) return 15;
+    if (searchKey) return 20;
+    return 1000;
+  })();
 
-  /* temp: get all apps and per */
-  const myGroupIds = (
-    await getGroupsByTmbId({
-      tmbId,
-      teamId
+  const myApps = await MongoApp.find(
+    findAppsQuery,
+    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission'
+  )
+    .sort({
+      updateTime: -1
     })
-  ).map((item) => String(item._id));
+    .limit(limit)
+    .lean();
 
-  const [myApps, perList] = await Promise.all([
-    MongoApp.find(
-      findAppsQuery,
-      '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission'
-    )
-      .sort({
-        updateTime: -1
-      })
-      .limit(searchKey ? 20 : 1000)
-      .lean(),
-    MongoResourcePermission.find({
-      resourceType: PerResourceTypeEnum.app,
-      teamId,
-      resourceId: {
-        $exists: true
-      }
-    }).lean()
-  ]);
-
-  // Filter apps by permission
-  const filterApps = myApps
+  // Add app permission and filter apps by read permission
+  const formatApps = myApps
     .map((app) => {
       const { Per, privateApp } = (() => {
-        const myPerList = perList.filter(
-          (item) =>
-            String(item.tmbId) === String(tmbId) || myGroupIds.includes(String(item.groupId))
-        );
         const getPer = (appId: string) => {
           const tmbPer = myPerList.find(
             (item) => String(item.resourceId) === appId && !!item.tmbId
           )?.permission;
           const groupPer = getGroupPer(
             myPerList
-              .filter(
-                (item) =>
-                  String(item.resourceId) === appId && myGroupIds.includes(String(item.groupId))
-              )
+              .filter((item) => String(item.resourceId) === appId && !!item.groupId)
               .map((item) => item.permission)
           );
 
@@ -143,15 +149,15 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
           return {
             Per: new AppPermission({
               per: tmbPer ?? groupPer ?? AppDefaultPermissionVal,
-              isOwner: String(app.tmbId) === String(tmbId) || myPer.isOwner
+              isOwner: String(app.tmbId) === String(tmbId) || teamPer.isOwner
             }),
             privateApp: AppFolderTypeList.includes(app.type) ? clbCount <= 1 : clbCount === 0
           };
         };
 
         // Inherit app
-        if (app.inheritPermission && ParentApp && !AppFolderTypeList.includes(app.type)) {
-          return getPer(String(ParentApp._id));
+        if (app.inheritPermission && parentId && !AppFolderTypeList.includes(app.type)) {
+          return getPer(String(parentId));
         } else {
           return getPer(String(app._id));
         }
@@ -165,9 +171,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     })
     .filter((app) => app.permission.hasReadPer);
 
-  const sliceApps = getRecentlyChat ? filterApps.slice(0, 15) : filterApps;
-
-  return sliceApps.map((app) => ({
+  return formatApps.map((app) => ({
     _id: app._id,
     tmbId: app.tmbId,
     avatar: app.avatar,
