@@ -27,32 +27,51 @@ export type GetDatasetListBody = {
 
 async function handler(req: ApiRequestProps<GetDatasetListBody>) {
   const { parentId, type, searchKey } = req.body;
-  // 凭证校验
-  const {
-    dataset: parentDataset,
-    teamId,
-    tmbId,
-    permission: myPer
-  } = await (async () => {
-    if (parentId) {
-      return await authDataset({
-        req,
-        authToken: true,
-        authApiKey: true,
-        per: ReadPermissionVal,
-        datasetId: parentId
+
+  // Auth user permission
+  const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
+    authUserPer({
+      req,
+      authToken: true,
+      authApiKey: true,
+      per: ReadPermissionVal
+    }),
+    ...(parentId
+      ? [
+          authDataset({
+            req,
+            authToken: true,
+            authApiKey: true,
+            per: ReadPermissionVal,
+            datasetId: parentId
+          })
+        ]
+      : [])
+  ]);
+
+  // Get team all app permissions
+  const [perList, myGroupMap] = await Promise.all([
+    MongoResourcePermission.find({
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId,
+      resourceId: {
+        $exists: true
+      }
+    }).lean(),
+    getGroupsByTmbId({
+      tmbId,
+      teamId
+    }).then((item) => {
+      const map = new Map<string, 1>();
+      item.forEach((item) => {
+        map.set(String(item._id), 1);
       });
-    }
-    return {
-      ...(await authUserPer({
-        req,
-        authToken: true,
-        authApiKey: true,
-        per: ReadPermissionVal
-      })),
-      dataset: undefined
-    };
-  })();
+      return map;
+    })
+  ]);
+  const myPerList = perList.filter(
+    (item) => String(item.tmbId) === String(tmbId) || myGroupMap.has(String(item.groupId))
+  );
 
   const findDatasetQuery = (() => {
     const searchMatch = searchKey
@@ -63,61 +82,43 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
           ]
         }
       : {};
+    // Filter apps by permission, if not owner, only get apps that I have permission to access
+    const appIdQuery = teamPer.isOwner
+      ? {}
+      : { _id: { $in: myPerList.map((item) => item.resourceId) } };
 
     if (searchKey) {
       return {
+        ...appIdQuery,
         teamId,
         ...searchMatch
       };
     }
 
     return {
+      ...appIdQuery,
       teamId,
       ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
       ...parseParentIdInMongo(parentId)
     };
   })();
 
-  const myGroupIds = (
-    await getGroupsByTmbId({
-      tmbId,
-      teamId
+  const myDatasets = await MongoDataset.find(findDatasetQuery)
+    .sort({
+      updateTime: -1
     })
-  ).map((item) => String(item._id));
+    .lean();
 
-  const [myDatasets, perList] = await Promise.all([
-    MongoDataset.find(findDatasetQuery)
-      .sort({
-        updateTime: -1
-      })
-      .lean(),
-    MongoResourcePermission.find({
-      resourceType: PerResourceTypeEnum.dataset,
-      teamId,
-      resourceId: {
-        $exists: true
-      }
-    }).lean()
-  ]);
-
-  const filterDatasets = myDatasets
+  const formatDatasets = myDatasets
     .map((dataset) => {
       const { Per, privateDataset } = (() => {
-        const myPerList = perList.filter(
-          (item) =>
-            String(item.tmbId) === String(tmbId) || myGroupIds.includes(String(item.groupId))
-        );
-
         const getPer = (datasetId: string) => {
           const tmbPer = myPerList.find(
             (item) => String(item.resourceId) === datasetId && !!item.tmbId
           )?.permission;
           const groupPer = getGroupPer(
             myPerList
-              .filter(
-                (item) =>
-                  String(item.resourceId) === datasetId && myGroupIds.includes(String(item.groupId))
-              )
+              .filter((item) => String(item.resourceId) === datasetId && !!item.groupId)
               .map((item) => item.permission)
           );
 
@@ -126,14 +127,14 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
           return {
             Per: new DatasetPermission({
               per: tmbPer ?? groupPer ?? DatasetDefaultPermissionVal,
-              isOwner: String(dataset.tmbId) === String(tmbId) || myPer.isOwner
+              isOwner: String(dataset.tmbId) === String(tmbId) || teamPer.isOwner
             }),
             privateDataset: dataset.type === 'folder' ? clbCount <= 1 : clbCount === 0
           };
         };
         // inherit
-        if (dataset.inheritPermission && parentDataset && dataset.type !== DatasetTypeEnum.folder) {
-          return getPer(String(parentDataset._id));
+        if (dataset.inheritPermission && parentId && dataset.type !== DatasetTypeEnum.folder) {
+          return getPer(String(parentId));
         } else {
           return getPer(String(dataset._id));
         }
@@ -148,7 +149,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     .filter((app) => app.permission.hasReadPer);
 
   const data = await Promise.all(
-    filterDatasets.map<DatasetListItemType>((item) => ({
+    formatDatasets.map<DatasetListItemType>((item) => ({
       _id: item._id,
       avatar: item.avatar,
       name: item.name,
