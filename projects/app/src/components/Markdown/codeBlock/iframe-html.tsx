@@ -3,6 +3,8 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import {
   Box,
   Flex,
+  Tooltip,
+  IconButton,
   Button,
   Modal,
   ModalOverlay,
@@ -11,59 +13,87 @@ import {
   ModalHeader,
   useDisclosure
 } from '@chakra-ui/react';
+import CloseIcon from '@fastgpt/web/components/common/Icon/close';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
 import { useMarkdownWidth } from '../hooks';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type.d';
+import { SmallCloseIcon } from '@chakra-ui/icons';
 import { codeLight } from '../CodeLight';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const StyledButton = ({
   label,
   iconName,
   onClick,
   isActive,
-  viewMode
+  viewMode,
+  isMobile
 }: {
   label: string;
   iconName: IconNameType;
   onClick: () => void;
   isActive?: boolean;
   viewMode: 'source' | 'iframe';
-}) => (
-  <Button
-    bg={
-      viewMode === 'iframe'
-        ? isActive
-          ? 'myGray.100'
-          : 'rgba(255, 255, 255, 0.9)'
-        : isActive
-          ? 'myGray.700'
-          : 'myGray.800'
-    }
-    color={viewMode === 'iframe' ? 'myGray.800' : 'rgba(255, 255, 255, 0.8)'}
-    px={4}
-    py={2}
-    borderRadius="5px"
-    _hover={{
-      bg:
+  isMobile?: boolean;
+}) => {
+  const buttonPadding = isMobile ? 1 : 4;
+  const color =
+    viewMode === 'iframe'
+      ? isActive
+        ? 'myGray.900'
+        : 'myGray.500'
+      : isActive
+        ? '#FFF'
+        : 'rgba(255, 255, 255, 0.8)';
+
+  return (
+    <Box
+      as="button"
+      bg={
         viewMode === 'iframe'
           ? isActive
             ? 'myGray.100'
-            : 'myGray.50'
+            : 'rgba(251, 251, 252)'
           : isActive
-            ? 'myGray.600'
-            : 'myGray.600'
-    }}
-    onClick={onClick}
-    ml={2}
-  >
-    <Icon name={iconName} width={'15px'} height={'15px'} />
-    <Box ml={2} fontSize="sm">
-      {label}
+            ? '#333A47'
+            : 'myGray.800'
+      }
+      color={color}
+      borderRadius="5px"
+      boxShadow="none"
+      height={isMobile ? '22px' : '29px'}
+      _hover={{
+        bg:
+          viewMode === 'iframe'
+            ? isActive
+              ? 'myGray.100'
+              : 'myGray.50'
+            : isActive
+              ? 'myGray.600'
+              : '#424957'
+      }}
+      onClick={onClick}
+      padding="4px 8px"
+    >
+      {isMobile ? (
+        <MyTooltip label={label} placement="bottom" hasArrow>
+          <Flex alignItems="center" justifyContent="center">
+            <Icon name={iconName} width="14px" height="14px" color={color} />
+          </Flex>
+        </MyTooltip>
+      ) : (
+        <Flex alignItems="center" justifyContent="flex-start">
+          <Icon name={iconName} width="14px" height="14px" color={color} />
+          <Box ml={2} fontSize="sm">
+            {label}
+          </Box>
+        </Flex>
+      )}
     </Box>
-  </Button>
-);
+  );
+};
 
 const IframeHtmlCodeBlock = ({
   children,
@@ -89,6 +119,10 @@ const IframeHtmlCodeBlock = ({
     const splitInput = input.split('#');
     return splitInput[1] || match?.[1]?.toUpperCase();
   }, [match]);
+  const isMobile = width <= 410;
+
+  const fontSize = isMobile ? 'xs' : 'sm';
+  const gapping = isMobile ? '1px' : '5px';
 
   if (codeBlock) {
     return (
@@ -103,11 +137,11 @@ const IframeHtmlCodeBlock = ({
         <Flex
           py={1}
           px={4}
-          bg={viewMode === 'iframe' ? 'rgba(255, 255, 255, 0.8)' : 'myGray.800'}
+          bg={viewMode === 'iframe' ? 'rgba(251, 251, 252)' : 'myGray.800'}
           color={'white'}
-          fontSize={'sm'}
+          fontSize={fontSize}
           userSelect={'none'}
-          gap="5px"
+          gap={gapping}
           alignItems="center"
         >
           <Box
@@ -123,15 +157,16 @@ const IframeHtmlCodeBlock = ({
               alignItems="center"
               ml={2}
             >
-              <Icon name="copy" width={15} height={15} />
+              <Icon name="copy" width="14px" height="14px" />
             </Flex>
           </Box>
           <StyledButton
-            label={t('common:common.SourceCode')}
+            label={t('common:common.Code')}
             iconName="code"
             onClick={() => setViewMode('source')}
             isActive={viewMode === 'source'}
             viewMode={viewMode}
+            isMobile={isMobile}
           />
           <StyledButton
             label={t('common:common.Preview')}
@@ -139,12 +174,14 @@ const IframeHtmlCodeBlock = ({
             onClick={() => setViewMode('iframe')}
             isActive={viewMode === 'iframe'}
             viewMode={viewMode}
+            isMobile={isMobile}
           />
           <StyledButton
             label={t('common:common.FullScreen')}
             iconName="fullScreen"
             onClick={onOpen}
             viewMode={viewMode}
+            isMobile={isMobile}
           />
         </Flex>
         {viewMode === 'source' ? (
@@ -160,51 +197,55 @@ const IframeHtmlCodeBlock = ({
               style={{
                 width: '100%',
                 height: '100%',
-                border: 'none'
+                border: 'none',
+                background: 'myWhite'
               }}
             />
           </Box>
         )}
+        <Modal isOpen={isOpen} onClose={onClose} size="full">
+          <ModalOverlay />
+          <ModalContent h={'100vh'} display={'flex'} flexDirection={'column'}>
+            <ModalHeader
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              p={4}
+              bg="white"
+              borderBottom="1px solid"
+              borderColor="gray.300"
+              height="60px"
+            >
+              <Box fontSize="18px" color="myGray.900">
+                {t('common:common.FullScreenLight')}
+              </Box>
+              <MyTooltip label={t('common:common.Close')}>
+                <IconButton
+                  ml={4}
+                  icon={<SmallCloseIcon fontSize={'22px'} />}
+                  variant={'grayBase'}
+                  size={'smSquare'}
+                  aria-label={''}
+                  onClick={onClose}
+                  bg={'none'}
+                />
+              </MyTooltip>
+            </ModalHeader>
 
-        {isOpen && (
-          <Modal isOpen onClose={onClose} size="full">
-            <ModalOverlay />
-            <ModalContent>
-              <ModalHeader
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                p={4}
-                bg="white"
-                borderBottom="1px solid myGray.200"
-                height="60px"
-              >
-                <Box fontSize="18px" color="myGray.900">
-                  {t('common:common.FullScreenLight')}
-                </Box>
-                <Box onClick={onClose} cursor="pointer" fontSize="lg" color="myGray.900">
-                  <Icon name="common/closeLight" width="20px" height="20px" />
-                </Box>
-              </ModalHeader>
-
-              <ModalBody p={0}>
-                <Flex direction="column" h="calc(100vh - 60px)">
-                  <iframe
-                    srcDoc={String(children)}
-                    sandbox=""
-                    referrerPolicy="no-referrer"
-                    style={{
-                      flex: 1,
-                      width: '100%',
-                      border: 'none',
-                      background: 'myWhite'
-                    }}
-                  />
-                </Flex>
-              </ModalBody>
-            </ModalContent>
-          </Modal>
-        )}
+            <ModalBody p={0} flex="1">
+              <iframe
+                srcDoc={String(children)}
+                sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                  background: 'myWhite'
+                }}
+              />
+            </ModalBody>
+          </ModalContent>
+        </Modal>
       </Box>
     );
   }
