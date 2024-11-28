@@ -3,37 +3,43 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import {
   Box,
   Flex,
+  Tooltip,
+  IconButton,
   Button,
   Modal,
   ModalOverlay,
   ModalContent,
   ModalBody,
   ModalHeader,
-  useDisclosure,
-  useBreakpointValue
+  useDisclosure
 } from '@chakra-ui/react';
+import CloseIcon from '@fastgpt/web/components/common/Icon/close';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
 import { useMarkdownWidth } from '../hooks';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type.d';
-import CloseIcon from '@fastgpt/web/components/common/Icon/close';
+import { SmallCloseIcon } from '@chakra-ui/icons';
 import { codeLight } from '../CodeLight';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const StyledButton = ({
   label,
   iconName,
   onClick,
   isActive,
-  viewMode
+  viewMode,
+  isMobile
 }: {
   label: string;
   iconName: IconNameType;
   onClick: () => void;
   isActive?: boolean;
   viewMode: 'source' | 'iframe';
+  isMobile?: boolean;
 }) => {
-  const Color =
+  const buttonPadding = isMobile ? 1 : 4;
+  const color =
     viewMode === 'iframe'
       ? isActive
         ? 'myGray.900'
@@ -43,19 +49,21 @@ const StyledButton = ({
         : 'rgba(255, 255, 255, 0.8)';
 
   return (
-    <Button
+    <Box
+      as="button"
       bg={
         viewMode === 'iframe'
           ? isActive
             ? 'myGray.100'
             : 'rgba(251, 251, 252)'
           : isActive
-            ? 'myGray.700'
+            ? '#333A47'
             : 'myGray.800'
       }
-      color={Color}
+      color={color}
       borderRadius="5px"
       boxShadow="none"
+      height={isMobile ? '22px' : '29px'}
       _hover={{
         bg:
           viewMode === 'iframe'
@@ -64,16 +72,26 @@ const StyledButton = ({
               : 'myGray.50'
             : isActive
               ? 'myGray.600'
-              : 'myGray.600'
+              : '#424957'
       }}
       onClick={onClick}
-      padding={4}
+      padding="4px 8px"
     >
-      <Icon name={iconName} width="14px" height="14px" color={Color} />
-      <Box ml={2} fontSize="sm">
-        {label}
-      </Box>
-    </Button>
+      {isMobile ? (
+        <MyTooltip label={label} placement="bottom" hasArrow>
+          <Flex alignItems="center" justifyContent="center">
+            <Icon name={iconName} width="14px" height="14px" color={color} />
+          </Flex>
+        </MyTooltip>
+      ) : (
+        <Flex alignItems="center" justifyContent="flex-start">
+          <Icon name={iconName} width="14px" height="14px" color={color} />
+          <Box ml={2} fontSize="sm">
+            {label}
+          </Box>
+        </Flex>
+      )}
+    </Box>
   );
 };
 
@@ -101,13 +119,10 @@ const IframeHtmlCodeBlock = ({
     const splitInput = input.split('#');
     return splitInput[1] || match?.[1]?.toUpperCase();
   }, [match]);
-  const isMobile = width <= 768;
-
-  const iframeHeight = isMobile ? '40vh' : '60vh';
+  const isMobile = width <= 410;
 
   const fontSize = isMobile ? 'xs' : 'sm';
-  const gapping = isMobile ? '2px' : '5px';
-  const iconSize = isMobile ? '12px' : '14px';
+  const gapping = isMobile ? '1px' : '5px';
 
   if (codeBlock) {
     return (
@@ -142,15 +157,16 @@ const IframeHtmlCodeBlock = ({
               alignItems="center"
               ml={2}
             >
-              <Icon name="copy" width={iconSize} height={iconSize} />
+              <Icon name="copy" width="14px" height="14px" />
             </Flex>
           </Box>
           <StyledButton
-            label={t('common:common.SourceCode')}
+            label={t('common:common.Code')}
             iconName="code"
             onClick={() => setViewMode('source')}
             isActive={viewMode === 'source'}
             viewMode={viewMode}
+            isMobile={isMobile}
           />
           <StyledButton
             label={t('common:common.Preview')}
@@ -158,12 +174,14 @@ const IframeHtmlCodeBlock = ({
             onClick={() => setViewMode('iframe')}
             isActive={viewMode === 'iframe'}
             viewMode={viewMode}
+            isMobile={isMobile}
           />
           <StyledButton
             label={t('common:common.FullScreen')}
             iconName="fullScreen"
             onClick={onOpen}
             viewMode={viewMode}
+            isMobile={isMobile}
           />
         </Flex>
         {viewMode === 'source' ? (
@@ -171,7 +189,7 @@ const IframeHtmlCodeBlock = ({
             {String(children).replace(/&nbsp;/g, ' ')}
           </SyntaxHighlighter>
         ) : (
-          <Box w={width} ref={Ref} h={iframeHeight}>
+          <Box w={width} ref={Ref} h="60vh">
             <iframe
               srcDoc={String(children)}
               sandbox=""
@@ -201,7 +219,17 @@ const IframeHtmlCodeBlock = ({
               <Box fontSize="18px" color="myGray.900">
                 {t('common:common.FullScreenLight')}
               </Box>
-              <CloseIcon onClick={onClose} />
+              <MyTooltip label={t('common:common.Close')}>
+                <IconButton
+                  ml={4}
+                  icon={<SmallCloseIcon fontSize={'22px'} />}
+                  variant={'grayBase'}
+                  size={'smSquare'}
+                  aria-label={''}
+                  onClick={onClose}
+                  bg={'none'}
+                />
+              </MyTooltip>
             </ModalHeader>
 
             <ModalBody p={0} flex="1">
