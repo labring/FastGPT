@@ -33,6 +33,7 @@ const RenderInput = () => {
   const isChatting = useContextSelector(PluginRunContext, (v) => v.isChatting);
   const fileSelectConfig = useContextSelector(PluginRunContext, (v) => v.fileSelectConfig);
   const instruction = useContextSelector(PluginRunContext, (v) => v.instruction);
+  const appId = useContextSelector(PluginRunContext, (v) => v.appId);
   const chatId = useContextSelector(PluginRunContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(PluginRunContext, (v) => v.outLinkAuthData);
 
@@ -61,14 +62,17 @@ const RenderInput = () => {
     hasFileUploading
   } = useFileUpload({
     fileSelectConfig,
-    fileCtrl
+    fileCtrl,
+    outLinkAuthData,
+    appId,
+    chatId
   });
   const isDisabledInput = histories.length > 0;
 
   useRequest2(uploadFiles, {
     manual: false,
     errorToast: t('common:upload_file_error'),
-    refreshDeps: [fileList, outLinkAuthData, chatId]
+    refreshDeps: [fileList, outLinkAuthData]
   });
   /* Global files(abandon) <=== */
 
