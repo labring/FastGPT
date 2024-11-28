@@ -11,6 +11,8 @@ import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type
 import { getSystemPluginTemplates } from '../../../../plugins/register';
 import { getAppLatestVersion, getAppVersionById } from '../version/controller';
 import { PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
+import { MongoSystemPlugin } from './systemPluginSchema';
+import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 
 /* 
   plugin id rule:
@@ -37,20 +39,32 @@ export async function splitCombinePluginId(id: string) {
 
 type ChildAppType = SystemPluginTemplateItemType & { teamId?: string };
 const getSystemPluginTemplateById = async (
-  pluginId: string
+  pluginId: string,
+  versionId?: string
 ): Promise<SystemPluginTemplateItemType> => {
   const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
-  if (!item) return Promise.reject('plugin not found');
+  if (!item) return Promise.reject(PluginErrEnum.unAuth);
 
   const plugin = cloneDeep(item);
 
   if (plugin.associatedPluginId) {
     // TODO: check is system plugin
+    const systemPlugin = await MongoSystemPlugin.findOne(
+      { pluginId: plugin.id, 'customConfig.associatedPluginId': plugin.associatedPluginId },
+      'associatedPluginId'
+    ).lean();
+    if (!systemPlugin) return Promise.reject(PluginErrEnum.unAuth);
 
     const app = await MongoApp.findById(plugin.associatedPluginId).lean();
-    if (!app) return Promise.reject('plugin not found');
+    if (!app) return Promise.reject(PluginErrEnum.unAuth);
 
-    const version = await getAppLatestVersion(plugin.associatedPluginId, app);
+    const version = versionId
+      ? await getAppVersionById({
+          appId: plugin.associatedPluginId,
+          versionId,
+          app
+        })
+      : await getAppLatestVersion(plugin.associatedPluginId, app);
     if (!version.versionId) return Promise.reject('App version not found');
 
     plugin.workflow = {
@@ -58,8 +72,8 @@ const getSystemPluginTemplateById = async (
       edges: version.edges,
       chatConfig: version.chatConfig
     };
+    plugin.version = versionId || String(version.versionId);
   }
-
   return plugin;
 };
 
@@ -172,7 +186,7 @@ export async function getChildAppRuntimeById(
         pluginOrder: 0
       };
     } else {
-      return getSystemPluginTemplateById(pluginId);
+      return getSystemPluginTemplateById(pluginId, versionId);
     }
   })();
 
