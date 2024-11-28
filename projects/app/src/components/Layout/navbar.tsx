@@ -18,6 +18,24 @@ export enum NavbarTypeEnum {
   small = 'small'
 }
 
+const itemStyles: BoxProps & LinkProps = {
+  my: 2,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  w: '48px',
+  h: '58px',
+  borderRadius: 'md'
+};
+const hoverStyle: LinkProps = {
+  _hover: {
+    bg: 'myGray.05',
+    color: 'primary.600'
+  }
+};
+
 const Navbar = ({ unread }: { unread: number }) => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -65,23 +83,9 @@ const Navbar = ({ unread }: { unread: number }) => {
     [lastChatAppId, t]
   );
 
-  const itemStyles: BoxProps & LinkProps = {
-    my: 2,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    w: '48px',
-    h: '58px',
-    borderRadius: 'md'
-  };
-  const hoverStyle: LinkProps = {
-    _hover: {
-      bg: 'myGray.05',
-      color: 'primary.600'
-    }
-  };
+  const isSecondNavbarPage = useMemo(() => {
+    return ['/toolkit'].includes(router.pathname);
+  }, [router.pathname]);
 
   return (
     <Flex
@@ -92,7 +96,7 @@ const Navbar = ({ unread }: { unread: number }) => {
       w={'100%'}
       userSelect={'none'}
       pb={2}
-      bg={['/toolkit'].includes(router.pathname) ? 'myGray.50' : 'transparent'}
+      bg={isSecondNavbarPage ? 'myGray.50' : 'transparent'}
     >
       {/* logo */}
       <Box
@@ -105,8 +109,8 @@ const Navbar = ({ unread }: { unread: number }) => {
         onClick={() => router.push('/account')}
       >
         <Avatar
-          w={'36px'}
-          h={'36px'}
+          w={'2rem'}
+          h={'2rem'}
           src={userInfo?.avatar}
           fallbackSrc={HUMAN_ICON}
           borderRadius={'50%'}
@@ -129,7 +133,7 @@ const Navbar = ({ unread }: { unread: number }) => {
                   color: 'myGray.500',
                   bg: 'transparent',
                   _hover: {
-                    bg: 'rgba(255,255,255,0.9)'
+                    bg: isSecondNavbarPage ? 'white' : 'rgba(255,255,255,0.9)'
                   }
                 })}
             {...(item.link !== router.asPath

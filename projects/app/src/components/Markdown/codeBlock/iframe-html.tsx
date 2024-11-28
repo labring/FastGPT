@@ -82,15 +82,15 @@ const IframeHtmlCodeBlock = ({
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { width, Ref } = useMarkdownWidth();
 
+  const codeBoxName = useMemo(() => {
+    const input = match?.['input'] || '';
+    if (!input) return match?.[1]?.toUpperCase();
+
+    const splitInput = input.split('#');
+    return splitInput[1] || match?.[1]?.toUpperCase();
+  }, [match]);
+
   if (codeBlock) {
-    const codeBoxName = useMemo(() => {
-      const input = match?.['input'] || '';
-      if (!input) return match?.[1]?.toUpperCase();
-
-      const splitInput = input.split('#');
-      return splitInput[1] || match?.[1]?.toUpperCase();
-    }, [match]);
-
     return (
       <Box
         my={3}
@@ -155,7 +155,8 @@ const IframeHtmlCodeBlock = ({
           <Box w={width} ref={Ref} h="60vh">
             <iframe
               srcDoc={String(children)}
-              sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
+              sandbox=""
+              referrerPolicy="no-referrer"
               style={{
                 width: '100%',
                 height: '100%',
@@ -164,42 +165,46 @@ const IframeHtmlCodeBlock = ({
             />
           </Box>
         )}
-        <Modal isOpen={isOpen} onClose={onClose} size="full">
-          <ModalOverlay />
-          <ModalContent>
-            <ModalHeader
-              display="flex"
-              justifyContent="space-between"
-              alignItems="center"
-              p={4}
-              bg="white"
-              borderBottom="1px solid myGray.200"
-              height="60px"
-            >
-              <Box fontSize="18px" color="myGray.900">
-                {t('common:common.FullScreenLight')}
-              </Box>
-              <Box onClick={onClose} cursor="pointer" fontSize="lg" color="myGray.900">
-                <Icon name="common/closeLight" width="20px" height="20px" />
-              </Box>
-            </ModalHeader>
 
-            <ModalBody p={0}>
-              <Flex direction="column" h="calc(100vh - 60px)">
-                <iframe
-                  srcDoc={String(children)}
-                  sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
-                  style={{
-                    flex: 1,
-                    width: '100%',
-                    border: 'none',
-                    background: 'myWhite'
-                  }}
-                />
-              </Flex>
-            </ModalBody>
-          </ModalContent>
-        </Modal>
+        {isOpen && (
+          <Modal isOpen onClose={onClose} size="full">
+            <ModalOverlay />
+            <ModalContent>
+              <ModalHeader
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                p={4}
+                bg="white"
+                borderBottom="1px solid myGray.200"
+                height="60px"
+              >
+                <Box fontSize="18px" color="myGray.900">
+                  {t('common:common.FullScreenLight')}
+                </Box>
+                <Box onClick={onClose} cursor="pointer" fontSize="lg" color="myGray.900">
+                  <Icon name="common/closeLight" width="20px" height="20px" />
+                </Box>
+              </ModalHeader>
+
+              <ModalBody p={0}>
+                <Flex direction="column" h="calc(100vh - 60px)">
+                  <iframe
+                    srcDoc={String(children)}
+                    sandbox=""
+                    referrerPolicy="no-referrer"
+                    style={{
+                      flex: 1,
+                      width: '100%',
+                      border: 'none',
+                      background: 'myWhite'
+                    }}
+                  />
+                </Flex>
+              </ModalBody>
+            </ModalContent>
+          </Modal>
+        )}
       </Box>
     );
   }

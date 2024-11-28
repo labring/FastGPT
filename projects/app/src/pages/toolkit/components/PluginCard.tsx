@@ -8,7 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
 import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
-import { PluginGroupSchemaType } from '@fastgpt/service/core/app/store/type';
+import { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 
 const PluginCard = ({
   item,

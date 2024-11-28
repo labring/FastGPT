@@ -1,11 +1,12 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useChatBox } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatBox';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { Box, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRouter } from 'next/router';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import { useContextSelector } from 'use-context-selector';
+import { ChatContext } from '@/web/core/chat/context/chatContext';
 
 const ToolMenu = ({
   history,
@@ -16,7 +17,8 @@ const ToolMenu = ({
 }) => {
   const { t } = useTranslation();
   const { onExportChat } = useChatBox();
-  const router = useRouter();
+
+  const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
 
   return history.length > 0 ? (
     <MyMenu
@@ -35,12 +37,7 @@ const ToolMenu = ({
               icon: 'core/chat/chatLight',
               label: t('common:core.chat.New Chat'),
               onClick: () => {
-                router.replace({
-                  query: {
-                    ...router.query,
-                    chatId: ''
-                  }
-                });
+                onChangeChatId();
               }
             }
           ]
