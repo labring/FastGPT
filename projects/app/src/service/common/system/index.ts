@@ -190,12 +190,13 @@ function getSystemPluginV1() {
 
 export async function initSystemPlugins() {
   try {
+    const { groupOrder, ...restDefaultGroup } = defaultGroup;
     await MongoPluginGroups.updateOne(
       {
         groupId: defaultGroup.groupId
       },
       {
-        $set: defaultGroup
+        $set: restDefaultGroup
       },
       {
         upsert: true
