@@ -145,7 +145,7 @@ const Toolkit = () => {
                         pl={'30px'}
                         cursor={'pointer'}
                         mb={0.5}
-                        _hover={{ bg: 'primary.50', color: 'primary.600' }}
+                        _hover={{ bg: 'primary.50' }}
                         {...(type.typeId === selectedType
                           ? {
                               bg: 'primary.50',
