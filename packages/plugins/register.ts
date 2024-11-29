@@ -37,6 +37,7 @@ export const getCommunityPlugins = () => {
 
     return {
       ...config,
+      userGuide: config.intro,
       id: `${PluginSourceEnum.community}-${name}`,
       isFolder,
       parentId,
