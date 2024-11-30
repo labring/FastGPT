@@ -59,7 +59,7 @@ const InformTable = () => {
                       }
                     }}
                   >
-                    {t('common:support.inform.Read')}
+                    {t('account_inform:read')}
                   </Button>
                 )}
               </Flex>
@@ -82,7 +82,7 @@ const InformTable = () => {
             </Box>
           ))}
           {!isLoading && informs.length === 0 && (
-            <EmptyTip text={t('common:user.no_notice')}></EmptyTip>
+            <EmptyTip text={t('account_inform:no_notifications')}></EmptyTip>
           )}
         </Box>
 
@@ -101,7 +101,7 @@ export async function getServerSideProps(content: any) {
   return {
     props: {
       currentTab: content?.query?.currentTab || TabEnum.info,
-      ...(await serviceSideProps(content, ['publish', 'user']))
+      ...(await serviceSideProps(content, ['account_inform', 'account']))
     }
   };
 }

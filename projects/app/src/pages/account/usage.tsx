@@ -50,7 +50,7 @@ const UsageTable = () => {
   const sourceList = useMemo(
     () =>
       [
-        { label: t('common:common.All'), value: '' },
+        { label: t('account_usage:all'), value: '' },
         ...Object.entries(UsageSourceMap).map(([key, value]) => ({
           label: t(value.label as any),
           value: key
@@ -115,7 +115,7 @@ const UsageTable = () => {
           {tmbList.length > 1 && userInfo?.team?.permission.hasManagePer && (
             <Flex alignItems={'center'}>
               <Box mr={2} flexShrink={0}>
-                {t('common:support.user.team.member')}
+                {t('account_usage:member')}
               </Box>
               <MySelect
                 size={'sm'}
@@ -148,8 +148,8 @@ const UsageTable = () => {
           <Table>
             <Thead>
               <Tr>
-                {/* <Th>{t('common:user.team.Member Name')}</Th> */}
-                <Th>{t('common:user.Time')}</Th>
+                {/* <Th>{t('account_usage:user.team.Member Name')}</Th> */}
+                <Th>{t('account_usage:user_type')}</Th>
                 <Th>
                   <MySelect<UsageSourceEnum | ''>
                     list={sourceList}
@@ -161,8 +161,8 @@ const UsageTable = () => {
                     w={'130px'}
                   ></MySelect>
                 </Th>
-                <Th>{t('common:user.Application Name')}</Th>
-                <Th>{t('common:support.wallet.usage.Total points')}</Th>
+                <Th>{t('account_usage:project_name')}</Th>
+                <Th>{t('account_usage:total_points')}</Th>
                 <Th></Th>
               </Tr>
             </Thead>
@@ -180,7 +180,7 @@ const UsageTable = () => {
                       variant={'whitePrimary'}
                       onClick={() => setUsageDetail(item)}
                     >
-                      {t('common:common.Detail')}
+                      {t('account_usage:details')}
                     </Button>
                   </Td>
                 </Tr>
@@ -188,7 +188,7 @@ const UsageTable = () => {
             </Tbody>
           </Table>
           {!isLoading && usages.length === 0 && (
-            <EmptyTip text={t('common:user.no_usage_records')}></EmptyTip>
+            <EmptyTip text={t('account_usage:no_usage_records')}></EmptyTip>
           )}
         </TableContainer>
 
@@ -205,7 +205,7 @@ export async function getServerSideProps(content: any) {
   return {
     props: {
       currentTab: content?.query?.currentTab || TabEnum.info,
-      ...(await serviceSideProps(content, ['publish', 'user']))
+      ...(await serviceSideProps(content, ['account_usage', 'account']))
     }
   };
 }

@@ -28,7 +28,7 @@ const Individuation = () => {
       });
       reset(data);
       toast({
-        title: t('common:dataset.data.Update Success Tip'),
+        title: t('account_individuation:update_data_success'),
         status: 'success'
       });
     },
@@ -40,18 +40,18 @@ const Individuation = () => {
       <Box py={[3, '28px']} px={['5vw', '64px']}>
         <Flex alignItems={'center'} fontSize={'lg'} h={'30px'}>
           <MyIcon mr={2} name={'support/user/individuation'} w={'20px'} />
-          {t('common:support.account.Individuation')}
+          {t('account_individuation:personalization')}
         </Flex>
 
         <Card mt={6} px={[3, 10]} py={[3, 7]} fontSize={'sm'}>
           <Flex alignItems={'center'} w={['85%', '350px']}>
-            <Box flex={'0 0 80px'}>{t('common:user.Language')}:&nbsp;</Box>
+            <Box flex={'0 0 80px'}>{t('account_individuation:language')}:&nbsp;</Box>
             <Box flex={'1 0 0'}>
               <I18nLngSelector />
             </Box>
           </Flex>
           <Flex mt={6} alignItems={'center'} w={['85%', '350px']}>
-            <Box flex={'0 0 80px'}>{t('common:user.Timezone')}:&nbsp;</Box>
+            <Box flex={'0 0 80px'}>{t('account_individuation:timezone')}:&nbsp;</Box>
             <TimezoneSelect
               value={userInfo?.timezone}
               onChange={(e) => {
@@ -70,7 +70,7 @@ export async function getServerSideProps(content: any) {
   return {
     props: {
       currentTab: content?.query?.currentTab || TabEnum.info,
-      ...(await serviceSideProps(content, ['publish', 'user']))
+      ...(await serviceSideProps(content, ['account', 'account_individuation']))
     }
   };
 }

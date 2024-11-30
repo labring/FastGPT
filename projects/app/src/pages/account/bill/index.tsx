@@ -30,10 +30,13 @@ const BillAndInvoice = () => {
         <Flex justifyContent={'space-between'} alignItems={'center'} pb={'0.75rem'}>
           <FillRowTabs
             list={[
-              { label: t('common:support.wallet.bill_tag.bill'), value: InvoiceTabEnum.bill },
-              { label: t('common:support.wallet.bill_tag.invoice'), value: InvoiceTabEnum.invoice },
+              { label: t('account_bill:bill_record'), value: InvoiceTabEnum.bill },
               {
-                label: t('common:support.wallet.bill_tag.default_header'),
+                label: t('account_bill:support_wallet_bill_tag_invoice'),
+                value: InvoiceTabEnum.invoice
+              },
+              {
+                label: t('account_bill:default_header'),
                 value: InvoiceTabEnum.invoiceHeader
               }
             ]}
@@ -51,7 +54,7 @@ const BillAndInvoice = () => {
             <Button variant={'primary'} px="0" onClick={() => setIsOpenInvoiceModal(true)}>
               <Flex alignItems={'center'} px={'20px'}>
                 <Box px={'1.25rem'} py={'0.5rem'}>
-                  {t('common:support.wallet.invoicing')}
+                  {t('account_bill:support_wallet_invoicing')}
                 </Box>
               </Flex>
             </Button>
@@ -78,7 +81,7 @@ export async function getServerSideProps(content: any) {
   return {
     props: {
       currentTab: content?.query?.currentTab || TabEnum.info,
-      ...(await serviceSideProps(content, ['publish', 'user']))
+      ...(await serviceSideProps(content, ['account_bill', 'account']))
     }
   };
 }

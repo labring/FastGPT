@@ -79,8 +79,8 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
       }),
     {
       manual: true,
-      successToast: t('common:common.submit_success'),
-      errorToast: t('common:common.Submit failed'),
+      successToast: t('account_bill:submit_success'),
+      errorToast: t('account_bill:submit_failed'),
       onSuccess: () => {
         onClose();
         router.reload();
@@ -121,12 +121,12 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
       w={'43rem'}
       onClose={onClose}
       isLoading={isLoading}
-      title={t('common:support.wallet.apply_invoice')}
+      title={t('account_bill:support_wallet_apply_invoice')}
     >
       {!isOpenSettleModal ? (
         <Box px={['1.6rem', '3.25rem']} py={['1rem', '2rem']}>
           <Box fontWeight={500} fontSize={'1rem'} pb={'0.75rem'}>
-            {t('common:support.wallet.billable_invoice')}
+            {t('account_bill:support_wallet_apply_invoice')}
           </Box>
           <Box h={'27.9rem'} overflow={'auto'}>
             <TableContainer>
@@ -150,9 +150,9 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
                         }}
                       />
                     </Th>
-                    <Th>{t('common:user.type')}</Th>
-                    <Th>{t('common:user.Time')}</Th>
-                    <Th>{t('common:support.wallet.Amount')}</Th>
+                    <Th>{t('account_bill:type')}</Th>
+                    <Th>{t('account_bill:time')}</Th>
+                    <Th>{t('account_bill:support_wallet_amount')}</Th>
                   </Tr>
                 </Thead>
                 <Tbody fontSize={'0.875rem'}>
@@ -180,7 +180,9 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
                           ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss')
                           : '-'}
                       </Td>
-                      <Td>{t('common:pay.yuan', { amount: formatStorePrice2Read(item.price) })}</Td>
+                      <Td>
+                        {t('account_bill:yuan', { amount: formatStorePrice2Read(item.price) })}
+                      </Td>
                     </Tr>
                   ))}
                 </Tbody>
@@ -194,7 +196,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
                 >
                   <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
                   <Box mt={2} color={'myGray.500'}>
-                    {t('common:support.wallet.noBill')}
+                    {t('account_bill:no_invoice_record')}
                   </Box>
                 </Flex>
               )}
@@ -214,7 +216,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
             >
               <Flex alignItems={'center'}>
                 <Box px={'1.25rem'} py={'0.5rem'}>
-                  {t('common:common.Confirm')}
+                  {t('account_bill:confirm')}
                 </Box>
               </Flex>
             </Button>
@@ -224,8 +226,8 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
         <Box px={['1.6rem', '3.25rem']} py={['1rem', '2rem']}>
           <Box w={'100%'} fontSize={'0.875rem'}>
             <Flex w={'100%'} justifyContent={'space-between'}>
-              <Box>{t('common:support.wallet.invoice_amount')}</Box>
-              <Box>{t('common:pay.yuan', { amount: formatStorePrice2Read(totalPrice) })}</Box>
+              <Box>{t('account_bill:support_wallet_amount')}</Box>
+              <Box>{t('account_bill:yuan', { amount: formatStorePrice2Read(totalPrice) })}</Box>
             </Flex>
             <Box w={'100%'} py={4}>
               <Divider showBorderBottom={false} />
@@ -249,21 +251,21 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
           >
             <MyIcon name="infoRounded" w={'14px'} h={'14px'} />
             <Box ml={2} fontSize={'0.6875rem'}>
-              {t('common:support.wallet.invoice_info')}
+              {t('account_bill:invoice_sending_info')}
             </Box>
           </Flex>
           <Flex justify={'flex-end'} w={'100%'} pt={[3, 7]}>
             <Button variant={'outline'} mr={'0.75rem'} px="0" onClick={handleBack}>
               <Flex alignItems={'center'}>
                 <Box px={'1.25rem'} py={'0.5rem'}>
-                  {t('common:back')}
+                  {t('account_bill:back')}
                 </Box>
               </Flex>
             </Button>
             <Button isLoading={isSubmitting} px="0" onClick={inputForm.handleSubmit(onSubmitApply)}>
               <Flex alignItems={'center'}>
                 <Box px={'1.25rem'} py={'0.5rem'}>
-                  {t('common:common.Confirm')}
+                  {t('account_bill:confirm')}
                 </Box>
               </Flex>
             </Button>

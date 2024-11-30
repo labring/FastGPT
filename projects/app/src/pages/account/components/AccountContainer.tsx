@@ -41,14 +41,14 @@ const AccountContainer = ({
   const tabList = [
     {
       icon: 'support/user/userLight',
-      label: t('user:personal_information'),
+      label: t('account:personal_information'),
       value: TabEnum.info
     },
     ...(feConfigs?.isPlus
       ? [
           {
             icon: 'support/usage/usageRecordLight',
-            label: t('user:usage_record'),
+            label: t('account:usage_records'),
             value: TabEnum.usage
           }
         ]
@@ -57,7 +57,7 @@ const AccountContainer = ({
       ? [
           {
             icon: 'support/bill/payRecordLight',
-            label: t('user:bill_and_invoices'),
+            label: t('account:bills_and_invoices'),
             value: TabEnum.bill
           }
         ]
@@ -66,7 +66,7 @@ const AccountContainer = ({
       ? [
           {
             icon: 'support/account/promotionLight',
-            label: t('user:promotion_records'),
+            label: t('account:promotion_records'),
             value: TabEnum.promotion
           }
         ]
@@ -75,21 +75,21 @@ const AccountContainer = ({
       ? [
           {
             icon: 'support/outlink/apikeyLight',
-            label: t('common:user.apikey.key'),
+            label: t('account:api_key'),
             value: TabEnum.apikey
           }
         ]
       : []),
     {
       icon: 'support/user/individuation',
-      label: t('user:personalization'),
+      label: t('account:personalization'),
       value: TabEnum.individuation
     },
     ...(feConfigs.isPlus
       ? [
           {
             icon: 'support/user/informLight',
-            label: t('user:notice'),
+            label: t('account:notifications'),
             value: TabEnum.inform
           }
         ]
@@ -97,13 +97,13 @@ const AccountContainer = ({
 
     {
       icon: 'support/account/loginoutLight',
-      label: t('user:sign_out'),
+      label: t('account:logout'),
       value: TabEnum.loginout
     }
   ];
 
   const { openConfirm, ConfirmModal } = useConfirm({
-    content: t('common:support.user.logout.confirm')
+    content: t('account:confirm_logout')
   });
 
   const router = useRouter();
