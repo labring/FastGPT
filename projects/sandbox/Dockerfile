@@ -30,7 +30,7 @@ FROM node:20.14.0-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json pnpm-workspace.yaml /app
+COPY package.json pnpm-workspace.yaml /app/
 COPY --from=install /app/node_modules /app/node_modules
 COPY ./projects/sandbox /app/projects/sandbox
 COPY --from=install /app/projects/sandbox /app/projects/sandbox
