@@ -687,12 +687,9 @@ const ChatBox = ({
         updateChatUserFeedback({
           appId,
           chatId,
-          teamId,
-          teamToken,
           dataId: chat.dataId,
-          shareId,
-          outLinkUid,
-          userGoodFeedback: isGoodFeedback ? undefined : 'yes'
+          userGoodFeedback: isGoodFeedback ? undefined : 'yes',
+          ...outLinkAuthData
         });
       } catch (error) {}
     };
@@ -708,11 +705,10 @@ const ChatBox = ({
       );
       updateChatUserFeedback({
         appId,
-        teamId,
-        teamToken,
         chatId,
         dataId: chat.dataId,
-        userGoodFeedback: undefined
+        userGoodFeedback: undefined,
+        ...outLinkAuthData
       });
     };
   });
@@ -737,10 +733,7 @@ const ChatBox = ({
             appId,
             chatId,
             dataId: chat.dataId,
-            shareId,
-            teamId,
-            teamToken,
-            outLinkUid
+            ...outLinkAuthData
           });
         } catch (error) {}
       };
@@ -1040,12 +1033,8 @@ const ChatBox = ({
       {!!feedbackId && chatId && (
         <FeedbackModal
           appId={appId}
-          teamId={teamId}
-          teamToken={teamToken}
           chatId={chatId}
           dataId={feedbackId}
-          shareId={shareId}
-          outLinkUid={outLinkUid}
           onClose={() => setFeedbackId(undefined)}
           onSuccess={(content: string) => {
             setChatRecords((state) =>
