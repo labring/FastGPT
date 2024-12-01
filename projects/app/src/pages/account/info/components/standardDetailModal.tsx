@@ -65,7 +65,7 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
       isOpen
       maxW={['90vw', '1200px']}
       iconSrc="modal/teamPlans"
-      title={t('common:support.wallet.Standard Plan Detail')}
+      title={t('account_info:package_details')}
       isCentered
     >
       <ModalCloseButton onClick={onClose} />
@@ -74,11 +74,11 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
           <Table>
             <Thead>
               <Tr>
-                <Th>{t('common:support.standard.type')}</Th>
-                <Th>{t('common:support.standard.storage')}</Th>
-                <Th>{t('common:support.standard.AI Bonus Points')}</Th>
-                <Th>{t('user:bill.valid_time')}</Th>
-                <Th>{t('common:support.standard.due_date')}</Th>
+                <Th>{t('account_info:type')}</Th>
+                <Th>{t('account_info:storage_capacity')}</Th>
+                <Th>{t('account_info:ai_points')}</Th>
+                <Th>{t('account_info:effective_time')}</Th>
+                <Th>{t('account_info:expiration_time')}</Th>
               </Tr>
             </Thead>
             <Tbody fontSize={'sm'}>
@@ -121,12 +121,10 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
                           <StatusTag status={status as packageStatus} />
                         </Flex>
                       </Td>
-                      <Td>
-                        {datasetSize ? `${datasetSize + t('common:core.dataset.data.group')}` : '-'}
-                      </Td>
+                      <Td>{datasetSize ? `${datasetSize + t('account_info:group')}` : '-'}</Td>
                       <Td>
                         {totalPoints
-                          ? `${Math.round(totalPoints - surplusPoints)} / ${totalPoints} ${t('common:support.wallet.subscription.point')}`
+                          ? `${Math.round(totalPoints - surplusPoints)} / ${totalPoints} ${t('account_info:ai_points_calculation_standard')}`
                           : '-'}
                       </Td>
                       <Td color={'myGray.600'}>{formatTime2YMDHM(startTime)}</Td>
@@ -143,7 +141,7 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
         <HStack mt={4} color={'primary.700'}>
           <MyIcon name={'infoRounded'} w={'1rem'} />
           <Box fontSize={'mini'} fontWeight={'500'}>
-            {t('user:bill.standard_valid_tip')}
+            {t('account_info:package_usage_rules')}
           </Box>
         </HStack>
       </ModalBody>
@@ -155,9 +153,9 @@ function StatusTag({ status }: { status: packageStatus }) {
   const { t } = useTranslation();
   const statusText = useMemo(() => {
     return {
-      inactive: t('common:support.wallet.subscription.status.inactive'),
-      active: t('common:support.wallet.subscription.status.active'),
-      expired: t('common:support.wallet.subscription.status.expired')
+      inactive: t('account_info:pending_usage'),
+      active: t('account_info:active'),
+      expired: t('account_info:expired')
     };
   }, [t]);
   const styleMap = useMemo(() => {
