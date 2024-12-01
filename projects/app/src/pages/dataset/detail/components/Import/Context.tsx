@@ -1,6 +1,8 @@
 import { useRouter } from 'next/router';
-import { SetStateAction, useState } from 'react';
+import { useEffect, SetStateAction, useState } from 'react';
 import { useTranslation } from 'next-i18next';
+import { useQuery } from '@tanstack/react-query';
+import { getDatasetCollectionById } from '@/web/core/dataset/api';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { ImportDataSourceEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useMyStep } from '@fastgpt/web/hooks/useStep';
@@ -12,6 +14,8 @@ import { UseFormReturn, useForm } from 'react-hook-form';
 import { ImportSourceItemType } from '@/web/core/dataset/type';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { getFileIcon } from '@fastgpt/global/common/file/icon';
+import { getCollectionSourceAndReturn } from '@/web/core/dataset/hooks/readCollectionSource';
 
 type TrainingFiledType = {
   chunkOverlapRatio: number;
@@ -82,60 +86,86 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
     parentId?: string;
   };
 
+  const {
+    adjustTraining,
+    collectionId = '',
+    datasetId
+  } = router.query as {
+    adjustTraining: string;
+    collectionId: string;
+    datasetId: string;
+  };
+
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   // step
   const modeSteps: Record<ImportDataSourceEnum, { title: string }[]> = {
     [ImportDataSourceEnum.fileLocal]: [
+      ...(adjustTraining === 'true'
+        ? []
+        : [{ title: t('common:core.dataset.import.Select file') }]),
       {
-        title: t('common:core.dataset.import.Select file')
+        title:
+          adjustTraining === 'true'
+            ? t('common:core.dataset.import.Adjust parameters')
+            : t('common:core.dataset.import.Data Preprocessing')
       },
-      {
-        title: t('common:core.dataset.import.Data Preprocessing')
-      },
+
       {
         title: t('common:core.dataset.import.Upload data')
       }
     ],
     [ImportDataSourceEnum.fileLink]: [
+      ...(adjustTraining === 'true'
+        ? []
+        : [{ title: t('common:core.dataset.import.Select file') }]),
       {
-        title: t('common:core.dataset.import.Select file')
-      },
-      {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title:
+          adjustTraining === 'true'
+            ? t('common:core.dataset.import.Adjust parameters')
+            : t('common:core.dataset.import.Data Preprocessing')
       },
       {
         title: t('common:core.dataset.import.Upload data')
       }
     ],
     [ImportDataSourceEnum.fileCustom]: [
+      ...(adjustTraining === 'true'
+        ? []
+        : [{ title: t('common:core.dataset.import.Select file') }]),
       {
-        title: t('common:core.dataset.import.Select file')
-      },
-      {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title:
+          adjustTraining === 'true'
+            ? t('common:core.dataset.import.Adjust parameters')
+            : t('common:core.dataset.import.Data Preprocessing')
       },
       {
         title: t('common:core.dataset.import.Upload data')
       }
     ],
     [ImportDataSourceEnum.csvTable]: [
+      ...(adjustTraining === 'true'
+        ? []
+        : [{ title: t('common:core.dataset.import.Select file') }]),
       {
-        title: t('common:core.dataset.import.Select file')
-      },
-      {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title:
+          adjustTraining === 'true'
+            ? t('common:core.dataset.import.Adjust parameters')
+            : t('common:core.dataset.import.Data Preprocessing')
       },
       {
         title: t('common:core.dataset.import.Upload data')
       }
     ],
     [ImportDataSourceEnum.externalFile]: [
+      ...(adjustTraining === 'true'
+        ? []
+        : [{ title: t('common:core.dataset.import.Select file') }]),
       {
-        title: t('common:core.dataset.import.Select file')
-      },
-      {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title:
+          adjustTraining === 'true'
+            ? t('common:core.dataset.import.Adjust parameters')
+            : t('common:core.dataset.import.Data Preprocessing')
       },
       {
         title: t('common:core.dataset.import.Upload data')
@@ -154,9 +184,11 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
     ]
   };
   const steps = modeSteps[source];
+  const defaultStep = adjustTraining === 'true' ? 1 : 0;
   const { activeStep, goToNext, goToPrevious, MyStep } = useMyStep({
-    defaultStep: 0,
-    steps
+    defaultStep,
+    steps,
+    adjustTraining: adjustTraining
   });
 
   const vectorModel = datasetDetail.vectorModel;
@@ -175,6 +207,44 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
   });
 
   const [sources, setSources] = useState<ImportSourceItemType[]>([]);
+
+  const { data: collection, error } = useQuery(
+    ['getDatasetCollectionById', collectionId],
+    () => getDatasetCollectionById(collectionId),
+    {
+      enabled: adjustTraining === 'true',
+      onError: (error) => {
+        console.log('数据获取失败，跳转到备用路径');
+        router.replace({
+          query: { datasetId: collectionId }
+        });
+      }
+    }
+  );
+
+  useEffect(() => {
+    if (adjustTraining === 'true') {
+      console.log('collection为', collection);
+
+      if (collection) {
+        const fetchedSources: ImportSourceItemType[] = [
+          {
+            dbFileId: collection.fileId || undefined,
+            createStatus: 'waiting',
+            icon: getFileIcon(collection.name) || 'default-icon',
+            id: collection._id,
+            isUploading: false,
+            sourceName: collection.name,
+            sourceSize: collection.file?.length ? `${collection.file.length} B` : undefined, // 文件大小，使用 `file.length` 来推断
+            uploadedFileRate: 100,
+            link: collection.rawLink || undefined
+          }
+        ];
+
+        setSources(fetchedSources);
+      }
+    }
+  }, [adjustTraining, collectionId, collection]);
 
   // watch form
   const mode = processParamsForm.watch('mode');
@@ -259,7 +329,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
   return (
     <DatasetImportContext.Provider value={contextValue}>
       <Flex>
-        {activeStep === 0 ? (
+        {activeStep === 0 && !adjustTraining ? (
           <Flex alignItems={'center'}>
             <IconButton
               icon={<MyIcon name={'common/backFill'} w={'14px'} />}
@@ -280,13 +350,15 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
             {t('common:common.Exit')}
           </Flex>
         ) : (
-          <Button
-            variant={'whiteBase'}
-            leftIcon={<MyIcon name={'common/backFill'} w={'14px'} />}
-            onClick={goToPrevious}
-          >
-            {t('common:common.Last Step')}
-          </Button>
+          !adjustTraining && (
+            <Button
+              variant={'whiteBase'}
+              leftIcon={<MyIcon name={'common/backFill'} w={'14px'} />}
+              onClick={goToPrevious}
+            >
+              {t('common:common.Last Step')}
+            </Button>
+          )
         )}
         <Box flex={1} />
       </Flex>

@@ -21,15 +21,40 @@ import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import Preview from '../components/Preview';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
-import { DatasetImportContext } from '../Context';
+import { DatasetImportContext, type ImportFormType } from '../Context';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { useRouter } from 'next/router';
+import { TabEnum } from '../../NavBar';
+import {
+  delDatasetCollectionById,
+  postCreateDatasetCsvTableCollection,
+  postCreateDatasetExternalFileCollection,
+  postCreateDatasetFileCollection,
+  postCreateDatasetLinkCollection,
+  postCreateDatasetTextCollection
+} from '@/web/core/dataset/api';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
+import { useI18n } from '@/web/context/I18n';
 
 function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean }) {
   const { t } = useTranslation();
+  const { fileT } = useI18n();
+  const router = useRouter();
   const { feConfigs } = useSystemStore();
+  const { adjustTraining } = router.query as {
+    adjustTraining: string;
+  };
+
+  const { collectionId = '' } = router.query as {
+    collectionId: string;
+  };
+
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   const {
     goToNext,
@@ -40,9 +65,13 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
     showPromptInput,
     maxChunkSize,
     priceTip,
-    chunkSize
+    chunkSize,
+    importSource,
+    parentId,
+    sources,
+    setSources
   } = useContextSelector(DatasetImportContext, (v) => v);
-  const { getValues, setValue, register, watch } = processParamsForm;
+  const { getValues, setValue, register, watch, handleSubmit } = processParamsForm;
   const { toast } = useToast();
   const mode = watch('mode');
   const way = watch('way');
@@ -70,6 +99,123 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
     },
     [feConfigs?.isPlus, setValue, t, toast]
   );
+
+  const { mutate: startUpload, isLoading } = useRequest({
+    mutationFn: async ({ mode, customSplitChar, qaPrompt, webSelector }: ImportFormType) => {
+      if (sources.length === 0) return;
+      const filterWaitingSources = sources.filter((item) => item.createStatus === 'waiting');
+
+      // Batch create collection and upload chunks
+      for await (const item of filterWaitingSources) {
+        setSources((state) =>
+          state.map((source) =>
+            source.id === item.id
+              ? {
+                  ...source,
+                  createStatus: 'creating'
+                }
+              : source
+          )
+        );
+
+        // create collection
+        const commonParams = {
+          parentId,
+          trainingType: mode,
+          datasetId: datasetDetail._id,
+          chunkSize,
+          chunkSplitter: customSplitChar,
+          qaPrompt,
+
+          name: item.sourceName
+        };
+        if (importSource === ImportDataSourceEnum.fileLocal && item.dbFileId) {
+          await postCreateDatasetFileCollection({
+            ...commonParams,
+            fileId: item.dbFileId
+          });
+        } else if (importSource === ImportDataSourceEnum.fileLink && item.link) {
+          await postCreateDatasetLinkCollection({
+            ...commonParams,
+            link: item.link,
+            metadata: {
+              webPageSelector: webSelector
+            }
+          });
+        } else if (importSource === ImportDataSourceEnum.fileCustom && item.rawText) {
+          // manual collection
+          await postCreateDatasetTextCollection({
+            ...commonParams,
+            text: item.rawText
+          });
+        } else if (importSource === ImportDataSourceEnum.csvTable && item.dbFileId) {
+          await postCreateDatasetCsvTableCollection({
+            ...commonParams,
+            fileId: item.dbFileId
+          });
+        } else if (importSource === ImportDataSourceEnum.externalFile && item.externalFileUrl) {
+          await postCreateDatasetExternalFileCollection({
+            ...commonParams,
+            externalFileUrl: item.externalFileUrl,
+            externalFileId: item.externalFileId,
+            filename: item.sourceName
+          });
+        }
+
+        setSources((state) =>
+          state.map((source) =>
+            source.id === item.id
+              ? {
+                  ...source,
+                  createStatus: 'finish'
+                }
+              : source
+          )
+        );
+      }
+    },
+    onSuccess() {
+      if (!sources.some((file) => file.errorMsg !== undefined)) {
+        toast({
+          title: t('common:core.dataset.import.Import success'),
+          status: 'success'
+        });
+      }
+      // console.log(sources[0].dbFileId);
+
+      // delDatasetCollectionById({ id: collectionId })
+      //   .then(() => {
+      //     console.log('Original collection deleted successfully');
+      //   })
+      //   .catch((error) => {
+      //     console.error('Failed to delete original collection:', error);
+      //   });
+
+      // console.log(sources[0].dbFileId);
+
+      // close import page
+      router.replace({
+        query: {
+          ...router.query,
+          currentTab: TabEnum.collectionCard
+        }
+      });
+    },
+    onError(error) {
+      setSources((state) =>
+        state.map((source) =>
+          source.createStatus === 'creating'
+            ? {
+                ...source,
+                createStatus: 'waiting',
+                errorMsg: error.message || fileT('upload_failed')
+              }
+            : source
+        )
+      );
+    },
+    errorToast: fileT('upload_failed')
+  });
 
   return (
     <Box h={'100%'} display={['block', 'flex']} fontSize={'sm'}>
@@ -251,13 +397,37 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
         )}
 
         <Flex mt={5} gap={3} justifyContent={'flex-end'}>
-          <Button
-            onClick={() => {
-              goToNext();
-            }}
-          >
-            {t('common:common.Next Step')}
-          </Button>
+          {adjustTraining ? (
+            <>
+              <Button
+                variant={'whiteBase'}
+                onClick={() => {
+                  const newQuery = { ...router.query };
+                  delete newQuery.adjustTraining;
+                  delete newQuery.source;
+                  router.replace({
+                    query: {
+                      ...newQuery,
+                      currentTab: TabEnum.collectionCard
+                    }
+                  });
+                }}
+              >
+                {t('common:common.Last Step')}
+              </Button>
+              <Button isLoading={isLoading} onClick={handleSubmit((data) => startUpload(data))}>
+                {t('common:common.Confirm')}
+              </Button>
+            </>
+          ) : (
+            <Button
+              onClick={() => {
+                goToNext();
+              }}
+            >
+              {t('common:common.Next Step')}
+            </Button>
+          )}
         </Flex>
       </Box>
       <Box flex={'1 0 0'} w={['auto', '0']} h={['auto', '100%']} pl={[0, 3]}>

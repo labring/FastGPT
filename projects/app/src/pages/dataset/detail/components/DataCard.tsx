@@ -28,6 +28,10 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import Markdown from '@/components/Markdown';
 import { useMemoizedFn } from 'ahooks';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { DatasetImportContext } from './Import/Context';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getFileIcon } from '@fastgpt/global/common/file/icon';
+import { ImportSourceItemType } from '@/web/core/dataset/type';
 
 const DataCard = () => {
   const theme = useTheme();
@@ -43,6 +47,48 @@ const DataCard = () => {
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
   const { toast } = useToast();
+
+  const handleAdjustTraining = async () => {
+    try {
+      if (!collection) {
+        console.error('collection 未定义');
+        return;
+      }
+      console.log('请求 collectionId:', collectionId);
+
+      console.log('collection为', collection);
+
+      if (collection.type === 'file') {
+        router.push({
+          query: {
+            datasetId: router.query.datasetId,
+            currentTab: 'import',
+            source: 'fileLocal',
+            adjustTraining: 'true',
+            collectionId: collectionId
+          }
+        });
+      } else if (collection.type === 'link') {
+        router.push({
+          query: {
+            datasetId: router.query.datasetId,
+            currentTab: 'import',
+            source: 'fileLink',
+            adjustTraining: 'true',
+            collectionId: collectionId
+          }
+        });
+      } else {
+        console.error('不支持的操作：', collection.type, router.query.source);
+      }
+    } catch (error) {
+      toast({
+        title: t('common:error.fileNotFound'),
+        status: 'error'
+      });
+      console.error('Error fetching collection source:', error);
+    }
+  };
 
   const scrollParams = useMemo(
     () => ({
@@ -139,6 +185,14 @@ const DataCard = () => {
           </Box>
           {canWrite && (
             <Box>
+              <Button
+                ml={2}
+                variant={'whitePrimary'}
+                size={['sm', 'md']}
+                onClick={handleAdjustTraining}
+              >
+                {t('common:dataset.Adjust Training Parameters')}
+              </Button>
               <Button
                 ml={2}
                 variant={'whitePrimary'}

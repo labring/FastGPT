@@ -15,16 +15,19 @@ import {
   useSteps
 } from '@chakra-ui/react';
 import React, { useCallback, useState } from 'react';
-
 export const useMyStep = ({
   defaultStep = 0,
-  steps = []
+  steps = [],
+  adjustTraining = 'false'
 }: {
   defaultStep?: number;
   steps: { title?: string; description?: string }[];
+  adjustTraining?: string;
 }) => {
+  const effectiveStep = adjustTraining === 'true' ? 1 : defaultStep;
+
   const { activeStep, goToNext, goToPrevious } = useSteps({
-    index: defaultStep,
+    index: effectiveStep,
     count: steps.length
   });
 
