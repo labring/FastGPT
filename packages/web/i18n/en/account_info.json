@@ -6,7 +6,6 @@
   "ai_points_calculation_standard": "AI points calculation standard",
   "ai_points_usage": "AI points usage",
   "ai_points_usage_tip": "Each time the AI ​​model is called, a certain amount of AI points will be consumed. \nFor specific calculation standards, please refer to the \"Billing Standards\" above.",
-  "ai_points_usage_tip_duplicate": "Each time the AI ​​model is called, a certain amount of AI points will be consumed. \nFor specific calculation standards, please refer to the \"Billing Standards\" above",
   "avatar": "avatar",
   "avatar_selection_exception": "Abnormal avatar selection",
   "balance": "balance",

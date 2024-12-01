@@ -22,7 +22,6 @@ import DateRangePicker, {
 } from '@fastgpt/web/components/common/DateRangePicker';
 import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -31,9 +30,10 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import AccountContainer, { TabEnum } from './components/AccountContainer';
+import AccountContainer, { TabEnum } from '../components/AccountContainer';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-const UsageDetail = dynamic(() => import('./components/UsageDetail'));
+
+const UsageDetail = dynamic(() => import('./UsageDetail'));
 
 const UsageTable = () => {
   const { t } = useTranslation();
@@ -103,7 +103,7 @@ const UsageTable = () => {
   }, [usageSource, selectTmbId]);
 
   return (
-    <AccountContainer currentTab={TabEnum.usage}>
+    <AccountContainer>
       <Flex flexDirection={'column'} py={[0, 5]} h={'100%'} position={'relative'}>
         <Flex
           flexDir={['column', 'row']}
@@ -204,7 +204,6 @@ const UsageTable = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      currentTab: content?.query?.currentTab || TabEnum.info,
       ...(await serviceSideProps(content, ['account_usage', 'account']))
     }
   };
