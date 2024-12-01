@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   Box,
   Flex,
@@ -21,18 +21,60 @@ import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import Preview from '../components/Preview';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
-import { DatasetImportContext } from '../Context';
+import { DatasetImportContext, type ImportFormType } from '../Context';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { useRouter } from 'next/router';
+import { TabEnum } from '../../NavBar';
+import {
+  delDatasetCollectionById,
+  postCreateDatasetCsvTableCollection,
+  postCreateDatasetExternalFileCollection,
+  postCreateDatasetFileCollection,
+  postCreateDatasetLinkCollection,
+  postCreateDatasetTextCollection
+} from '@/web/core/dataset/api';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
+import { useI18n } from '@/web/context/I18n';
+import { getDatasetCollectionById } from '@/web/core/dataset/api';
+import { useQuery } from '@tanstack/react-query';
+import { AdjustTrainingStatus } from '../../DataCard';
+import { ImportSourceItemType } from '@/web/core/dataset/type';
+import { getFileIcon } from '@fastgpt/global/common/file/icon';
+import { reTraining } from '@/service/core/dataset/training/controller';
 
 function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean }) {
   const { t } = useTranslation();
+  const { fileT } = useI18n();
+  const router = useRouter();
   const { feConfigs } = useSystemStore();
 
+  const { collectionId = '', adjustTraining } = router.query as {
+    collectionId: string;
+    adjustTraining: AdjustTrainingStatus;
+  };
+
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+
+  const { data: collection, error } = useQuery(
+    ['getDatasetCollectionById', collectionId],
+    () => getDatasetCollectionById(collectionId),
+    {
+      enabled: adjustTraining === 'true',
+      onError: (error) => {
+        console.log('数据获取失败，跳转到备用路径');
+        router.replace({
+          query: { datasetId: collectionId }
+        });
+      }
+    }
+  );
+
   const {
-    goToNext,
     processParamsForm,
     chunkSizeField,
     minChunkSize,
@@ -40,12 +82,40 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
     showPromptInput,
     maxChunkSize,
     priceTip,
-    chunkSize
+    chunkSize,
+    importSource,
+    parentId,
+    sources,
+    setSources
   } = useContextSelector(DatasetImportContext, (v) => v);
-  const { getValues, setValue, register, watch } = processParamsForm;
+  const { getValues, setValue, register, watch, handleSubmit } = processParamsForm;
   const { toast } = useToast();
   const mode = watch('mode');
   const way = watch('way');
+
+  useEffect(() => {
+    if (adjustTraining === 'true') {
+      console.log('collection为', collection);
+
+      if (collection) {
+        const fetchedSources: ImportSourceItemType[] = [
+          {
+            dbFileId: collection.fileId || undefined,
+            createStatus: 'waiting',
+            icon: getFileIcon(collection.name) || 'default-icon',
+            id: collection._id,
+            isUploading: false,
+            sourceName: collection.name,
+            sourceSize: collection.file?.length ? `${collection.file.length} B` : undefined,
+            uploadedFileRate: 100,
+            link: collection.rawLink || undefined
+          }
+        ];
+
+        setSources(fetchedSources);
+      }
+    }
+  }, [adjustTraining, collectionId, collection, setSources]);
 
   const {
     isOpen: isOpenCustomPrompt,
@@ -70,6 +140,67 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
     },
     [feConfigs?.isPlus, setValue, t, toast]
   );
+
+  const { mutate: startUpload, isLoading } = useRequest({
+    mutationFn: async ({ mode, customSplitChar, qaPrompt, webSelector }: ImportFormType) => {
+      const { message, sources: updatedSources } = await reTraining({
+        collectionId,
+        adjustTraining,
+        mode,
+        customSplitChar,
+        qaPrompt,
+        webSelector,
+        chunkSize,
+        parentId,
+        datasetDetail,
+        setSources,
+        importSource
+      });
+
+      setSources(updatedSources);
+    },
+    onSuccess() {
+      if (!sources.some((file) => file.errorMsg !== undefined)) {
+        toast({
+          title: t('common:core.dataset.import.Import success'),
+          status: 'success'
+        });
+      }
+      console.log(sources[0].dbFileId);
+
+      // delDatasetCollectionById({ id: collectionId })
+      //   .then(() => {
+      //     console.log('Original collection deleted successfully.collectionId为', collectionId);
+      //   })
+      //   .catch((error) => {
+      //     console.error('Failed to delete original collection:', error);
+      //   });
+
+      console.log(sources[0].dbFileId);
+
+      // close import page
+      router.replace({
+        query: {
+          ...router.query,
+          currentTab: TabEnum.collectionCard
+        }
+      });
+    },
+    onError(error) {
+      setSources((state) =>
+        state.map((source) =>
+          source.createStatus === 'creating'
+            ? {
+                ...source,
+                createStatus: 'waiting',
+                errorMsg: error.message || fileT('upload_failed')
+              }
+            : source
+        )
+      );
+    },
+    errorToast: fileT('upload_failed')
+  });
 
   return (
     <Box h={'100%'} display={['block', 'flex']} fontSize={'sm'}>
@@ -252,15 +383,27 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
 
         <Flex mt={5} gap={3} justifyContent={'flex-end'}>
           <Button
+            variant={'whiteBase'}
             onClick={() => {
-              goToNext();
+              const newQuery = { ...router.query };
+              delete newQuery.adjustTraining;
+              delete newQuery.source;
+              router.replace({
+                query: {
+                  ...newQuery,
+                  currentTab: TabEnum.collectionCard
+                }
+              });
             }}
           >
-            {t('common:common.Next Step')}
+            {t('common:common.Last Step')}
+          </Button>
+          <Button isLoading={isLoading} onClick={handleSubmit((data) => startUpload(data))}>
+            {t('common:common.Confirm')}
           </Button>
         </Flex>
       </Box>
-      <Box flex={'1 0 0'} w={['auto', '0']} h={['auto', '100%']} pl={[0, 3]}>
+      <Box flex={'1 0 0'} w={['auto', '0']} h={['auto', '100%']} overflow={'auto'} pl={[0, 3]}>
         <Preview showPreviewChunks={showPreviewChunks} />
       </Box>
 

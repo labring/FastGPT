@@ -1,8 +1,6 @@
 import { useRouter } from 'next/router';
-import { useEffect, SetStateAction, useState } from 'react';
+import { SetStateAction, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { useQuery } from '@tanstack/react-query';
-import { getDatasetCollectionById } from '@/web/core/dataset/api';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { ImportDataSourceEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useMyStep } from '@fastgpt/web/hooks/useStep';
@@ -106,13 +104,10 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       {
         title:
           adjustTraining === 'true'
-            ? t('common:core.dataset.import.Adjust parameters')
+            ? t('dataset:core.dataset.import.Adjust parameters')
             : t('common:core.dataset.import.Data Preprocessing')
       },
-
-      {
-        title: t('common:core.dataset.import.Upload data')
-      }
+      ...(adjustTraining === 'true' ? [] : [{ title: t('common:core.dataset.import.Upload data') }])
     ],
     [ImportDataSourceEnum.fileLink]: [
       ...(adjustTraining === 'true'
@@ -121,12 +116,10 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       {
         title:
           adjustTraining === 'true'
-            ? t('common:core.dataset.import.Adjust parameters')
+            ? t('dataset:core.dataset.import.Adjust parameters')
             : t('common:core.dataset.import.Data Preprocessing')
       },
-      {
-        title: t('common:core.dataset.import.Upload data')
-      }
+      ...(adjustTraining === 'true' ? [] : [{ title: t('common:core.dataset.import.Upload data') }])
     ],
     [ImportDataSourceEnum.fileCustom]: [
       ...(adjustTraining === 'true'
@@ -135,12 +128,10 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       {
         title:
           adjustTraining === 'true'
-            ? t('common:core.dataset.import.Adjust parameters')
+            ? t('dataset:core.dataset.import.Adjust parameters')
             : t('common:core.dataset.import.Data Preprocessing')
       },
-      {
-        title: t('common:core.dataset.import.Upload data')
-      }
+      ...(adjustTraining === 'true' ? [] : [{ title: t('common:core.dataset.import.Upload data') }])
     ],
     [ImportDataSourceEnum.csvTable]: [
       ...(adjustTraining === 'true'
@@ -149,12 +140,10 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       {
         title:
           adjustTraining === 'true'
-            ? t('common:core.dataset.import.Adjust parameters')
+            ? t('dataset:core.dataset.import.Adjust parameters')
             : t('common:core.dataset.import.Data Preprocessing')
       },
-      {
-        title: t('common:core.dataset.import.Upload data')
-      }
+      ...(adjustTraining === 'true' ? [] : [{ title: t('common:core.dataset.import.Upload data') }])
     ],
     [ImportDataSourceEnum.externalFile]: [
       ...(adjustTraining === 'true'
@@ -163,23 +152,10 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       {
         title:
           adjustTraining === 'true'
-            ? t('common:core.dataset.import.Adjust parameters')
+            ? t('dataset:core.dataset.import.Adjust parameters')
             : t('common:core.dataset.import.Data Preprocessing')
       },
-      {
-        title: t('common:core.dataset.import.Upload data')
-      }
-    ],
-    [ImportDataSourceEnum.apiDataset]: [
-      {
-        title: t('common:core.dataset.import.Select file')
-      },
-      {
-        title: t('common:core.dataset.import.Data Preprocessing')
-      },
-      {
-        title: t('common:core.dataset.import.Upload data')
-      }
+      ...(adjustTraining === 'true' ? [] : [{ title: t('common:core.dataset.import.Upload data') }])
     ]
   };
   const steps = modeSteps[source];
@@ -206,44 +182,6 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
   });
 
   const [sources, setSources] = useState<ImportSourceItemType[]>([]);
-
-  const { data: collection, error } = useQuery(
-    ['getDatasetCollectionById', collectionId],
-    () => getDatasetCollectionById(collectionId),
-    {
-      enabled: adjustTraining === 'true',
-      onError: (error) => {
-        console.log('数据获取失败，跳转到备用路径');
-        router.replace({
-          query: { datasetId: collectionId }
-        });
-      }
-    }
-  );
-
-  useEffect(() => {
-    if (adjustTraining === 'true') {
-      console.log('collection为', collection);
-
-      if (collection) {
-        const fetchedSources: ImportSourceItemType[] = [
-          {
-            dbFileId: collection.fileId || undefined,
-            createStatus: 'waiting',
-            icon: getFileIcon(collection.name) || 'default-icon',
-            id: collection._id,
-            isUploading: false,
-            sourceName: collection.name,
-            sourceSize: collection.file?.length ? `${collection.file.length} B` : undefined, // 文件大小，使用 `file.length` 来推断
-            uploadedFileRate: 100,
-            link: collection.rawLink || undefined
-          }
-        ];
-
-        setSources(fetchedSources);
-      }
-    }
-  }, [adjustTraining, collectionId, collection]);
 
   // watch form
   const mode = processParamsForm.watch('mode');

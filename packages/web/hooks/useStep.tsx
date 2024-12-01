@@ -15,6 +15,7 @@ import {
   useSteps
 } from '@chakra-ui/react';
 import React, { useCallback, useState } from 'react';
+
 export const useMyStep = ({
   defaultStep = 0,
   steps = [],
@@ -24,24 +25,25 @@ export const useMyStep = ({
   steps: { title?: string; description?: string }[];
   adjustTraining?: string;
 }) => {
-  const effectiveStep = adjustTraining === 'true' ? 1 : defaultStep;
-
   const { activeStep, goToNext, goToPrevious } = useSteps({
-    index: effectiveStep,
+    index: defaultStep,
     count: steps.length
   });
+  const isAdjustTrainingFalse = adjustTraining === 'false';
+  const stepIndex = isAdjustTrainingFalse ? activeStep : activeStep - 1;
 
   const MyStep = useCallback(
     () => (
       <Stepper
         size={['xs', 'sm']}
-        index={activeStep}
+        index={stepIndex}
         colorScheme="primary"
         gap={5}
         css={css({
           '.chakra-step__indicator': {
             borderWidth: '0 !important'
-          }
+          },
+          justifyContent: 'center'
         })}
       >
         {steps.map((step, index) => (

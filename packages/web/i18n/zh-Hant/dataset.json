@@ -53,5 +53,8 @@
   "the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt": "資料集有索引正在訓練或重建中",
   "training_mode": "分段模式",
   "website_dataset": "網站同步",
-  "website_dataset_desc": "網站同步功能讓您可以直接使用網頁連結建立資料集"
+  "website_dataset_desc": "網站同步功能讓您可以直接使用網頁連結建立資料集",
+  "core.dataset.import.Adjust parameters": "調整參數",
+  "dataset.Adjust Training Parameters": "調整訓練參數",
+  "error.collectionNotFound": "找不到集合"
 }

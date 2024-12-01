@@ -9,8 +9,13 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { RenderUploadFiles } from '../components/RenderFiles';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
+import { useRouter } from 'next/router';
+import { AdjustTrainingStatus } from '../../DataCard';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
+  loading: () => <Loading fixed={false} />
+});
+const ReTraining = dynamic(() => import('../commonProgress/reTraining'), {
   loading: () => <Loading fixed={false} />
 });
 const Upload = dynamic(() => import('../commonProgress/Upload'));
@@ -18,12 +23,17 @@ const Upload = dynamic(() => import('../commonProgress/Upload'));
 const fileType = '.txt, .docx, .csv, .xlsx, .pdf, .md, .html, .pptx';
 
 const FileLocal = () => {
+  const router = useRouter();
+  const { adjustTraining } = router.query;
   const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
 
   return (
     <>
       {activeStep === 0 && <SelectFile />}
-      {activeStep === 1 && <DataProcess showPreviewChunks />}
+      {activeStep === 1 && adjustTraining == AdjustTrainingStatus.TRUE && (
+        <ReTraining showPreviewChunks />
+      )}
+      {activeStep === 1 && !adjustTraining && <DataProcess showPreviewChunks />}
       {activeStep === 2 && <Upload />}
     </>
   );

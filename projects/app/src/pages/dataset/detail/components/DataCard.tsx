@@ -28,10 +28,13 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import Markdown from '@/components/Markdown';
 import { useMemoizedFn } from 'ahooks';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { DatasetImportContext } from './Import/Context';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import { ImportSourceItemType } from '@/web/core/dataset/type';
+import { TabEnum } from './NavBar';
+import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
+
+export enum AdjustTrainingStatus {
+  TRUE = 'true',
+  FALSE = 'false'
+}
 
 const DataCard = () => {
   const theme = useTheme();
@@ -48,7 +51,7 @@ const DataCard = () => {
   const [searchText, setSearchText] = useState('');
   const { toast } = useToast();
 
-  const handleAdjustTraining = async () => {
+  const handlereTraining = async () => {
     try {
       if (!collection) {
         console.error('collection 未定义');
@@ -62,9 +65,9 @@ const DataCard = () => {
         router.push({
           query: {
             datasetId: router.query.datasetId,
-            currentTab: 'import',
-            source: 'fileLocal',
-            adjustTraining: 'true',
+            currentTab: TabEnum.import,
+            source: ImportDataSourceEnum.fileLocal,
+            adjustTraining: AdjustTrainingStatus.TRUE,
             collectionId: collectionId
           }
         });
@@ -72,9 +75,9 @@ const DataCard = () => {
         router.push({
           query: {
             datasetId: router.query.datasetId,
-            currentTab: 'import',
-            source: 'fileLink',
-            adjustTraining: 'true',
+            currentTab: TabEnum.import,
+            source: ImportDataSourceEnum.fileLink,
+            adjustTraining: AdjustTrainingStatus.TRUE,
             collectionId: collectionId
           }
         });
@@ -83,7 +86,7 @@ const DataCard = () => {
       }
     } catch (error) {
       toast({
-        title: t('common:error.fileNotFound'),
+        title: t('dataset:error.collectionNotFound'),
         status: 'error'
       });
       console.error('Error fetching collection source:', error);
@@ -189,9 +192,9 @@ const DataCard = () => {
                 ml={2}
                 variant={'whitePrimary'}
                 size={['sm', 'md']}
-                onClick={handleAdjustTraining}
+                onClick={handlereTraining}
               >
-                {t('common:dataset.Adjust Training Parameters')}
+                {t('dataset:dataset.Adjust Training Parameters')}
               </Button>
               <Button
                 ml={2}
