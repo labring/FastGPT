@@ -15,7 +15,6 @@ import { ImportSourceItemType } from '@/web/core/dataset/type';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import { getCollectionSourceAndReturn } from '@/web/core/dataset/hooks/readCollectionSource';
 
 type TrainingFiledType = {
   chunkOverlapRatio: number;
