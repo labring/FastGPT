@@ -10,7 +10,8 @@
     "postinstall": "sh ./scripts/postinstall.sh",
     "initIcon": "node ./scripts/icon/init.js",
     "previewIcon": "node ./scripts/icon/index.js",
-    "api:gen": "tsc ./scripts/openapi/index.ts && node ./scripts/openapi/index.js && npx @redocly/cli build-docs ./scripts/openapi/openapi.json -o ./projects/app/public/openapi/index.html"
+    "api:gen": "tsc ./scripts/openapi/index.ts && node ./scripts/openapi/index.js && npx @redocly/cli build-docs ./scripts/openapi/openapi.json -o ./projects/app/public/openapi/index.html",
+    "create:i18n": "node ./scripts/i18n/index.js"
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",

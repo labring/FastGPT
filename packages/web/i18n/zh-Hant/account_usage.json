@@ -1,0 +1,23 @@
+{
+  "ai_model": "AI 模型",
+  "all": "所有",
+  "app_name": "應用程式名",
+  "billing_module": "扣費模組",
+  "details": "詳情",
+  "duration_seconds": "時長（秒）",
+  "generation_time": "生成時間",
+  "member": "成員",
+  "member_name": "成員名",
+  "module_name": "模組名",
+  "month": "月",
+  "no_usage_records": "暫無使用紀錄",
+  "order_number": "訂單編號",
+  "project_name": "專案名",
+  "source": "來源",
+  "text_length": "文字長度",
+  "token_length": "token 長度",
+  "total_points": "AI 積分消耗",
+  "total_points_consumed": "AI 積分消耗",
+  "usage_detail": "使用詳情",
+  "user_type": "類型"
+}

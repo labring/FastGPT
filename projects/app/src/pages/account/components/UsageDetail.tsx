@@ -63,44 +63,44 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
       isOpen={true}
       onClose={onClose}
       iconSrc="/imgs/modal/bill.svg"
-      title={t('common:support.wallet.usage.Usage Detail')}
+      title={t('account_usage:usage_detail')}
       maxW={['90vw', '700px']}
     >
       <ModalBody>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 80px'}>{t('common:support.wallet.bill.Number')}:</FormLabel>
+          <FormLabel flex={'0 0 80px'}>{t('account_usage:order_number')}:</FormLabel>
           <Box>{usage.id}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 80px'}>{t('common:support.wallet.usage.Time')}:</FormLabel>
+          <FormLabel flex={'0 0 80px'}>{t('account_usage:generation_time')}:</FormLabel>
           <Box>{dayjs(usage.time).format('YYYY/MM/DD HH:mm:ss')}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 80px'}>{t('common:support.wallet.usage.App name')}:</FormLabel>
+          <FormLabel flex={'0 0 80px'}>{t('account_usage:app_name')}:</FormLabel>
           <Box>{t(usage.appName as any) || '-'}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 80px'}>{t('common:support.wallet.usage.Source')}:</FormLabel>
+          <FormLabel flex={'0 0 80px'}>{t('account_usage:source')}:</FormLabel>
           <Box>{t(UsageSourceMap[usage.source]?.label as any)}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 80px'}>{t('common:support.wallet.usage.Total points')}:</FormLabel>
+          <FormLabel flex={'0 0 80px'}>{t('account_usage:total_points_consumed')}:</FormLabel>
           <Box fontWeight={'bold'}>{formatNumber(usage.totalPoints)}</Box>
         </Flex>
         <Box pb={4}>
           <FormLabel flex={'0 0 80px'} mb={1}>
-            {t('common:support.wallet.usage.Bill Module')}
+            {t('account_usage:billing_module')}
           </FormLabel>
           <TableContainer fontSize={'sm'}>
             <Table>
               <Thead>
                 <Tr>
-                  <Th>{t('common:support.wallet.usage.Module name')}</Th>
-                  {hasModel && <Th>{t('common:support.wallet.usage.Ai model')}</Th>}
-                  {hasToken && <Th>{t('common:support.wallet.usage.Token Length')}</Th>}
-                  {hasCharsLen && <Th>{t('common:support.wallet.usage.Text Length')}</Th>}
-                  {hasDuration && <Th>{t('common:support.wallet.usage.Duration')}</Th>}
-                  <Th>{t('common:support.wallet.usage.Total points')}</Th>
+                  <Th>{t('account_usage:module_name')}</Th>
+                  {hasModel && <Th>{t('account_usage:ai_model')}</Th>}
+                  {hasToken && <Th>{t('account_usage:token_length')}</Th>}
+                  {hasCharsLen && <Th>{t('account_usage:text_length')}</Th>}
+                  {hasDuration && <Th>{t('account_usage:duration_seconds')}</Th>}
+                  <Th>{t('account_usage:total_points_consumed')}</Th>
                 </Tr>
               </Thead>
               <Tbody>

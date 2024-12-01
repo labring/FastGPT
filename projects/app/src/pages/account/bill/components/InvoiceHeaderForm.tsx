@@ -38,12 +38,10 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required>
-            {t('common:support.wallet.invoice_data.organization_name')}
-          </FormLabel>
+          <FormLabel required>{t('account_bill:organization_name')}</FormLabel>
           <Input
             {...styles}
-            placeholder={t('common:support.wallet.invoice_data.organization_name')}
+            placeholder={t('account_bill:organization_name')}
             {...register('teamName', { required: true })}
           />
         </Flex>
@@ -52,10 +50,10 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required>{t('common:support.wallet.invoice_data.unit_code')}</FormLabel>
+          <FormLabel required>{t('account_bill:unit_code')}</FormLabel>
           <Input
             {...styles}
-            placeholder={t('common:support.wallet.invoice_data.unit_code')}
+            placeholder={t('account_bill:unit_code')}
             {...register('unifiedCreditCode', { required: true })}
           />
         </Flex>
@@ -64,12 +62,10 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required={!!needSpecialInvoice}>
-            {t('common:support.wallet.invoice_data.company_address')}
-          </FormLabel>
+          <FormLabel required={!!needSpecialInvoice}>{t('account_bill:company_address')}</FormLabel>
           <Input
             {...styles}
-            placeholder={t('common:support.wallet.invoice_data.company_address')}
+            placeholder={t('account_bill:company_address')}
             {...register('companyAddress', { required: !!needSpecialInvoice })}
           />
         </Flex>
@@ -78,12 +74,10 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required={!!needSpecialInvoice}>
-            {t('common:support.wallet.invoice_data.company_phone')}
-          </FormLabel>
+          <FormLabel required={!!needSpecialInvoice}>{t('account_bill:company_phone')}</FormLabel>
           <Input
             {...styles}
-            placeholder={t('common:support.wallet.invoice_data.company_phone')}
+            placeholder={t('account_bill:company_phone')}
             {...register('companyPhone', { required: !!needSpecialInvoice })}
           />
         </Flex>
@@ -92,12 +86,10 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required={!!needSpecialInvoice}>
-            {t('common:support.wallet.invoice_data.bank')}
-          </FormLabel>
+          <FormLabel required={!!needSpecialInvoice}>{t('account_bill:bank_name')}</FormLabel>
           <Input
             {...styles}
-            placeholder={t('common:support.wallet.invoice_data.bank')}
+            placeholder={t('account_bill:bank_name')}
             {...register('bankName', { required: !!needSpecialInvoice })}
           />
         </Flex>
@@ -106,12 +98,10 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required={!!needSpecialInvoice}>
-            {t('common:support.wallet.invoice_data.bank_account')}
-          </FormLabel>
+          <FormLabel required={!!needSpecialInvoice}>{t('account_bill:bank_account')}</FormLabel>
           <Input
             {...styles}
-            placeholder={t('common:support.wallet.invoice_data.bank_account')}
+            placeholder={t('account_bill:bank_account')}
             {...register('bankAccount', { required: !!needSpecialInvoice })}
           />
         </Flex>
@@ -120,9 +110,7 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required>
-            {t('common:support.wallet.invoice_data.need_special_invoice')}
-          </FormLabel>
+          <FormLabel required>{t('account_bill:need_special_invoice')}</FormLabel>
           {/* @ts-ignore */}
           <RadioGroup
             value={`${needSpecialInvoice}`}
@@ -133,10 +121,10 @@ export const InvoiceHeaderSingleForm = ({
           >
             <HStack h={'2rem'}>
               <Radio value="true" pr={'1rem'}>
-                <Box fontSize={'14px'}>{t('common:yes')}</Box>
+                <Box fontSize={'14px'}>{t('account_bill:yes')}</Box>
               </Radio>
               <Radio value="false">
-                <Box fontSize={'14px'}>{t('common:no')}</Box>
+                <Box fontSize={'14px'}>{t('account_bill:no')}</Box>
               </Radio>
             </HStack>
           </RadioGroup>
@@ -149,10 +137,10 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required>{t('common:support.wallet.invoice_data.email')}</FormLabel>
+          <FormLabel required>{t('account_bill:email_address')}</FormLabel>
           <Input
             {...styles}
-            placeholder={t('common:support.wallet.invoice_data.email')}
+            placeholder={t('account_bill:email_address')}
             {...register('emailAddress', {
               required: true,
               pattern: {
@@ -195,8 +183,8 @@ const InvoiceHeaderForm = () => {
     (data: TeamInvoiceHeaderType) => updateTeamInvoiceHeader(data),
     {
       manual: true,
-      successToast: t('common:common.Save Success'),
-      errorToast: t('common:common.Save Failed')
+      successToast: t('account_bill:save_success'),
+      errorToast: t('account_bill:save_failed')
     }
   );
 
@@ -214,7 +202,7 @@ const InvoiceHeaderForm = () => {
             >
               <Flex alignItems={'center'} px={'20px'}>
                 <Box px={'1.25rem'} py={'0.5rem'}>
-                  {t('common:common.Save')}
+                  {t('account_bill:save')}
                 </Box>
               </Flex>
             </Button>

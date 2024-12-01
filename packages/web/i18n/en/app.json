@@ -16,6 +16,7 @@
   "app_detail": "Application Details",
   "auto_execute": "Automatic execution",
   "auto_execute_default_prompt_placeholder": "Default questions sent when executing automatically",
+  "auto_execute_tip": "After turning it on, the workflow will be automatically triggered when the user enters the conversation interface. \nExecution order: 1. Dialogue starter; 2. Global variables; 3. Automatic execution.",
   "chat_debug": "Chat Preview",
   "chat_logs": "Conversation Logs",
   "chat_logs_tips": "Logs will record the online, shared, and API (requires chatId) conversation records of this app.",
