@@ -44,7 +44,7 @@ const BillTable = () => {
   const billTypeList = useMemo(
     () =>
       [
-        { label: t('common:common.All'), value: '' },
+        { label: t('account_bill:all'), value: '' },
         ...Object.entries(billTypeMap).map(([key, value]) => ({
           label: t(value.label as any),
           value: key
@@ -120,9 +120,9 @@ const BillTable = () => {
                   w={'130px'}
                 ></MySelect>
               </Th>
-              <Th>{t('common:user.Time')}</Th>
-              <Th>{t('common:support.wallet.Amount')}</Th>
-              <Th>{t('common:support.wallet.bill.Status')}</Th>
+              <Th>{t('account_bill:time')}</Th>
+              <Th>{t('account_bill:support_wallet_amount')}</Th>
+              <Th>{t('account_bill:status')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -134,16 +134,16 @@ const BillTable = () => {
                 <Td>
                   {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                 </Td>
-                <Td>{commonT('common:pay.yuan', { amount: formatStorePrice2Read(item.price) })}</Td>
+                <Td>{t('account_bill:yuan', { amount: formatStorePrice2Read(item.price) })}</Td>
                 <Td>{t(billStatusMap[item.status]?.label as any)}</Td>
                 <Td>
                   {item.status === 'NOTPAY' && (
                     <Button mr={4} onClick={() => handleRefreshPayOrder(item._id)} size={'sm'}>
-                      {t('common:common.Update')}
+                      {t('account_bill:update')}
                     </Button>
                   )}
                   <Button variant={'whiteBase'} size={'sm'} onClick={() => setBillDetail(item)}>
-                    {t('common:common.Detail')}
+                    {t('account_bill:detail')}
                   </Button>
                 </Td>
               </Tr>
@@ -164,7 +164,7 @@ const BillTable = () => {
           >
             <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
-              {t('common:support.wallet.noBill')}
+              {t('account_bill:no_invoice_record')}
             </Box>
           </Flex>
         )}
@@ -187,85 +187,79 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
       isOpen={true}
       onClose={onClose}
       iconSrc="/imgs/modal/bill.svg"
-      title={t('common:support.wallet.bill_detail')}
+      title={t('account_bill:bill_detail')}
       maxW={['90vw', '700px']}
     >
       <ModalBody>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.Number')}:</FormLabel>
+          <FormLabel flex={'0 0 120px'}>{t('account_bill:order_number')}:</FormLabel>
           <Box>{bill.orderId}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.usage.Time')}:</FormLabel>
+          <FormLabel flex={'0 0 120px'}>{t('account_bill:generation_time')}:</FormLabel>
           <Box>{dayjs(bill.createTime).format('YYYY/MM/DD HH:mm:ss')}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.Type')}:</FormLabel>
+          <FormLabel flex={'0 0 120px'}>{t('account_bill:order_type')}:</FormLabel>
           <Box>{t(billTypeMap[bill.type]?.label as any)}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.Status')}:</FormLabel>
+          <FormLabel flex={'0 0 120px'}>{t('account_bill:status')}:</FormLabel>
           <Box>{t(billStatusMap[bill.status]?.label as any)}</Box>
         </Flex>
         {!!bill.metadata?.payWay && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.bill.payWay.Way')}:</FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('account_bill:payment_method')}:</FormLabel>
             <Box>{t(billPayWayMap[bill.metadata.payWay]?.label as any)}</Box>
           </Flex>
         )}
         <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.Amount')}:</FormLabel>
-          <Box>{commonT('common:pay.yuan', { amount: formatStorePrice2Read(bill.price) })}</Box>
+          <FormLabel flex={'0 0 120px'}>{t('account_bill:support_wallet_amount')}:</FormLabel>
+          <Box>{t('account_bill:yuan', { amount: formatStorePrice2Read(bill.price) })}</Box>
         </Flex>
         {bill.metadata && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('common:support.wallet.has_invoice')}:</FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('account_bill:has_invoice')}:</FormLabel>
             {bill.metadata.payWay === 'balance' ? (
               t('user:bill.not_need_invoice')
             ) : (
               <Box>
-                {(bill.metadata.payWay = bill.hasInvoice ? t('common:yes') : t('common:no'))}
+                {
+                  (bill.metadata.payWay = bill.hasInvoice
+                    ? t('account_bill:yes')
+                    : t('account_bill:no'))
+                }
               </Box>
             )}
           </Flex>
         )}
         {!!bill.metadata?.subMode && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>
-              {t('common:support.wallet.subscription.mode.Period')}:
-            </FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('account_bill:subscription_period')}:</FormLabel>
             <Box>{t(subModeMap[bill.metadata.subMode]?.label as any)}</Box>
           </Flex>
         )}
         {!!bill.metadata?.standSubLevel && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>
-              {t('common:support.wallet.subscription.Stand plan level')}:
-            </FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('account_bill:subscription_package')}:</FormLabel>
             <Box>{t(standardSubLevelMap[bill.metadata.standSubLevel]?.label as any)}</Box>
           </Flex>
         )}
         {bill.metadata?.month !== undefined && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>
-              {t('common:support.wallet.subscription.Month amount')}:
-            </FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('account_bill:subscription_mode_month')}:</FormLabel>
             <Box>{bill.metadata?.month}</Box>
           </Flex>
         )}
         {bill.metadata?.datasetSize !== undefined && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>
-              {t('common:support.wallet.subscription.Extra dataset size')}:
-            </FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('account_bill:extra_dataset_size')}:</FormLabel>
             <Box>{bill.metadata?.datasetSize}</Box>
           </Flex>
         )}
         {bill.metadata?.extraPoints !== undefined && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>
-              {t('common:support.wallet.subscription.Extra ai points')}:
-            </FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('account_bill:extra_ai_points')}:</FormLabel>
             <Box>{bill.metadata.extraPoints}</Box>
           </Flex>
         )}

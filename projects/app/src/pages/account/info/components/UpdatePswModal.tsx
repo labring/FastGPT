@@ -25,15 +25,15 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
   const { mutate: onSubmit, isLoading } = useRequest({
     mutationFn: (data: FormType) => {
       if (data.newPsw !== data.confirmPsw) {
-        return Promise.reject(t('common:common.Password inconsistency'));
+        return Promise.reject(t('account_info:password_mismatch'));
       }
       return updatePasswordByOld(data);
     },
     onSuccess() {
       onClose();
     },
-    successToast: t('common:user.Update password successful'),
-    errorToast: t('common:user.Update password failed')
+    successToast: t('account_info:password_update_success'),
+    errorToast: t('account_info:password_update_error')
   });
 
   return (
@@ -41,15 +41,15 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
       isOpen
       onClose={onClose}
       iconSrc="/imgs/modal/password.svg"
-      title={t('common:user.Update Password')}
+      title={t('account_info:update_password')}
     >
       <ModalBody>
         <Flex alignItems={'center'}>
-          <Box flex={'0 0 70px'}>{t('common:user.old_password') + ':'}</Box>
+          <Box flex={'0 0 70px'}>{t('account_info:old_password') + ':'}</Box>
           <Input flex={1} type={'password'} {...register('oldPsw', { required: true })}></Input>
         </Flex>
         <Flex alignItems={'center'} mt={5}>
-          <Box flex={'0 0 70px'}>{t('common:user.new_password') + ':'}</Box>
+          <Box flex={'0 0 70px'}>{t('account_info:new_password') + ':'}</Box>
           <Input
             flex={1}
             type={'password'}
@@ -57,13 +57,13 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
               required: true,
               maxLength: {
                 value: 60,
-                message: t('common:user.password_message')
+                message: t('account_info:password_length_error')
               }
             })}
           ></Input>
         </Flex>
         <Flex alignItems={'center'} mt={5}>
-          <Box flex={'0 0 70px'}>{t('common:user.confirm_password') + ':'}</Box>
+          <Box flex={'0 0 70px'}>{t('account_info:confirm_password') + ':'}</Box>
           <Input
             flex={1}
             type={'password'}
@@ -71,7 +71,7 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
               required: true,
               maxLength: {
                 value: 60,
-                message: t('common:user.password_message')
+                message: t('account_info:password_length_error')
               }
             })}
           ></Input>
@@ -79,10 +79,10 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
       </ModalBody>
       <ModalFooter>
         <Button mr={3} variant={'whiteBase'} onClick={onClose}>
-          {t('common:common.Cancel')}
+          {t('account_info:cancel')}
         </Button>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data))}>
-          {t('common:common.Confirm')}
+          {t('account_info:confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

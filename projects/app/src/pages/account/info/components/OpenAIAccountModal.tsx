@@ -25,7 +25,7 @@ const OpenAIAccountModal = ({
     onSuccess(res) {
       onClose();
     },
-    errorToast: t('common:user.Set OpenAI Account Failed')
+    errorToast: t('account_info:openai_account_setting_exception')
   });
 
   return (
@@ -33,11 +33,11 @@ const OpenAIAccountModal = ({
       isOpen
       onClose={onClose}
       iconSrc="common/openai"
-      title={t('common:user.OpenAI Account Setting')}
+      title={t('account_info:openai_account_configuration')}
     >
       <ModalBody>
         <Box fontSize={'sm'} color={'myGray.500'}>
-          {t('common:info.open_api_notice')}
+          {t('account_info:open_api_notice')}
         </Box>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 65px'}>API Key:</Box>
@@ -48,16 +48,16 @@ const OpenAIAccountModal = ({
           <Input
             flex={1}
             {...register('baseUrl')}
-            placeholder={t('common:info.open_api_placeholder')}
+            placeholder={t('account_info:request_address_notice')}
           ></Input>
         </Flex>
       </ModalBody>
       <ModalFooter>
         <Button mr={3} variant={'whiteBase'} onClick={onClose}>
-          {t('common:common.Cancel')}
+          {t('account_info:cancel')}
         </Button>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data))}>
-          {t('common:common.Confirm')}
+          {t('account_info:confirm')}
         </Button>
       </ModalFooter>
     </MyModal>
