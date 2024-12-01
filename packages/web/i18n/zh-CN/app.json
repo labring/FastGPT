@@ -48,7 +48,6 @@
   "file_recover": "文件将覆盖当前内容",
   "file_upload": "文件上传",
   "file_upload_tip": "开启后，可以上传文档/图片。文档保留7天，图片保留15天。使用该功能可能产生较多额外费用。为保证使用体验，使用该功能时，请选择上下文长度较大的AI模型。",
-  "global_variables_desc": "变量描述",
   "go_to_chat": "去对话",
   "go_to_run": "去运行",
   "image_upload": "图片上传",

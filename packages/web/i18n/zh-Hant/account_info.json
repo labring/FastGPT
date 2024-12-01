@@ -6,7 +6,6 @@
   "ai_points_calculation_standard": "AI 積分運算標準",
   "ai_points_usage": "AI 積分使用量",
   "ai_points_usage_tip": "每次呼叫 AI 模型時，都會消耗一定的 AI 積分。\n具體的計算標準可參考上方的「計費標準」。",
-  "ai_points_usage_tip_duplicate": "每次呼叫 AI 模型時，都會消耗一定的 AI 積分。\n具體的計算標準可參考上方的“計費標準”",
   "avatar": "頭像",
   "avatar_selection_exception": "頭像選擇異常",
   "balance": "餘額",

@@ -25,7 +25,7 @@ const BillAndInvoice = () => {
   const [isOpenInvoiceModal, setIsOpenInvoiceModal] = useState(false);
 
   return (
-    <AccountContainer currentTab={TabEnum.bill}>
+    <AccountContainer>
       <Box p={['1rem', '2rem']}>
         <Flex justifyContent={'space-between'} alignItems={'center'} pb={'0.75rem'}>
           <FillRowTabs
@@ -80,7 +80,6 @@ const BillAndInvoice = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      currentTab: content?.query?.currentTab || TabEnum.info,
       ...(await serviceSideProps(content, ['account_bill', 'account']))
     }
   };

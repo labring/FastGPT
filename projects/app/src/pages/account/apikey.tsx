@@ -8,7 +8,7 @@ import { serviceSideProps } from '../../web/common/utils/i18n';
 const ApiKey = () => {
   const { t } = useTranslation();
   return (
-    <AccountContainer currentTab={TabEnum.apikey}>
+    <AccountContainer>
       <Box px={[4, 8]} py={[4, 6]}>
         <ApiKeyTable tips={t('account_apikey:key_tips')}></ApiKeyTable>
       </Box>
@@ -19,7 +19,6 @@ const ApiKey = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      currentTab: content?.query?.currentTab || TabEnum.info,
       ...(await serviceSideProps(content, ['account_apikey', 'account']))
     }
   };
