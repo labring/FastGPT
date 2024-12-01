@@ -17,7 +17,6 @@ const Preview = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
   const { sources } = useContextSelector(DatasetImportContext, (v) => v);
   const [previewRawTextSource, setPreviewRawTextSource] = useState<ImportSourceItemType>();
   const [previewChunkSource, setPreviewChunkSource] = useState<ImportSourceItemType>();
-  console.log('Sources:', sources);
 
   return (
     <Box h={'100%'} w={'100%'} display={['block', 'flex']} flexDirection={'column'}>

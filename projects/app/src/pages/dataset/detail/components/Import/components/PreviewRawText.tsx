@@ -21,7 +21,6 @@ const PreviewRawText = ({
 }) => {
   const { toast } = useToast();
   const { importSource, processParamsForm } = useContextSelector(DatasetImportContext, (v) => v);
-  console.log('Preview source:', previewSource);
 
   const { data, isLoading } = useQuery(
     ['previewSource', previewSource.dbFileId, previewSource.link, previewSource.externalFileUrl],
