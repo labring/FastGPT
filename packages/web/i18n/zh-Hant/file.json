@@ -14,5 +14,5 @@
   "support_max_size": "單一檔案大小上限為 {{maxSize}}",
   "upload_failed": "上傳失敗",
   "reached_max_file_count": "已達檔案數量上限",
-  "upload_error_description": "單次僅支援上傳多個檔案或一個資料夾" 
+  "upload_error_description": "單次僅支援上傳多個檔案或一個資料夾"
 }

@@ -1,15 +1,12 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Box, Flex, useTheme } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
-import dynamic from 'next/dynamic';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import PageContainer from '@/components/PageContainer';
 import SideTabs from '@/components/SideTabs';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import UserInfo from '../info/index';
-import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import Script from 'next/script';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -26,17 +23,17 @@ export enum TabEnum {
   'loginout' = 'loginout'
 }
 
-const AccountContainer = ({
-  currentTab,
-  children
-}: {
-  currentTab: TabEnum;
-  children: React.ReactNode;
-}) => {
+const AccountContainer = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const { userInfo, setUserInfo } = useUserStore();
   const { feConfigs, systemVersion } = useSystemStore();
+  const router = useRouter();
   const { isPc } = useSystem();
+
+  const currentTab = useMemo(() => {
+    return router.pathname.split('/').pop() as TabEnum;
+  }, [router.pathname]);
 
   const tabList = [
     {
@@ -105,9 +102,6 @@ const AccountContainer = ({
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('account:confirm_logout')
   });
-
-  const router = useRouter();
-  const theme = useTheme();
 
   const setCurrentTab = useCallback(
     (tab: string) => {

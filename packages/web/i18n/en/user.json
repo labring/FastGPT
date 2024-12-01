@@ -17,9 +17,6 @@
   "bill.valid_time": "Effective Time",
   "bill.you_can_convert": "You can convert",
   "bill.yuan": "Yuan",
-  "bill_and_invoices": "Bill & Invoice",
-  "bind_inform_account_error": "Failed to Bind Notification Account",
-  "bind_inform_account_success": "Notification Account Bound Successfully",
   "delete.admin_failed": "Failed to Delete Admin",
   "delete.admin_success": "Admin Deleted Successfully",
   "delete.failed": "Delete failed",
@@ -30,7 +27,6 @@
   "login.password_condition": "Password can be up to 60 characters",
   "login.success": "Login Successful",
   "name": "Name",
-  "notice": "Notice",
   "notification.Bind Notification Pipe Hint": "Please bind a notification receiving account to ensure you receive notifications such as plan expiration reminders, ensuring your service runs smoothly.",
   "notification.remind_owner_bind": "Please remind the creator to bind a notification account",
   "operations": "Actions",
@@ -73,7 +69,6 @@
   "register.success": "Registration Successful",
   "register.to_login": "Already have an account? Login",
   "search_user": "Search Username",
-  "sign_out": "Sign out",
   "synchronization.button": "Sync Now",
   "synchronization.placeholder": "Enter Sync Tag",
   "synchronization.title": "Enter the sync tag link and click the sync button to synchronize",
@@ -111,6 +106,5 @@
   "usage.feishu": "Feishu",
   "usage.official_account": "Official Account",
   "usage.share": "Share Link",
-  "usage.wecom": "WeCom",
-  "usage_record": "Usages"
+  "usage.wecom": "WeCom"
 }

@@ -8,7 +8,7 @@
   "password_condition": "密碼最多 60 個字元",
   "policy_tip": "使用即代表您同意我們的",
   "privacy": "隱私權政策",
-  "redirect": "跳轉", 
+  "redirect": "跳轉",
   "register": "註冊帳號",
   "root_password_placeholder": "root 使用者密碼為環境變數 DEFAULT_ROOT_PSW 的值",
   "terms": "服務條款",
