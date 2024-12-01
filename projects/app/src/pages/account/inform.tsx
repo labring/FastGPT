@@ -7,7 +7,6 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useTranslation } from 'next-i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import AccountContainer, { TabEnum } from './components/AccountContainer';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 
@@ -30,7 +29,7 @@ const InformTable = () => {
   });
 
   return (
-    <AccountContainer currentTab={TabEnum.inform}>
+    <AccountContainer>
       <Flex flexDirection={'column'} py={[0, 5]} h={'100%'} position={'relative'}>
         <Box px={[3, 8]} position={'relative'} flex={'1 0 0'} h={0} overflowY={'auto'}>
           {informs.map((item) => (
@@ -100,7 +99,6 @@ const InformTable = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      currentTab: content?.query?.currentTab || TabEnum.info,
       ...(await serviceSideProps(content, ['account_inform', 'account']))
     }
   };

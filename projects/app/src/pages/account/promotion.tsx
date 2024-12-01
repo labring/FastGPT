@@ -65,7 +65,7 @@ const Promotion = () => {
   };
 
   return (
-    <AccountContainer currentTab={TabEnum.promotion}>
+    <AccountContainer>
       <Flex flexDirection={'column'} py={[0, 5]} px={5} h={'100%'} position={'relative'}>
         <Grid gridTemplateColumns={['1fr 1fr', 'repeat(2,1fr)', 'repeat(4,1fr)']} gridGap={5}>
           <Box {...statisticsStyles}>
@@ -145,7 +145,6 @@ const Promotion = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      currentTab: content?.query?.currentTab || TabEnum.info,
       ...(await serviceSideProps(content, ['account', 'account_promotion']))
     }
   };

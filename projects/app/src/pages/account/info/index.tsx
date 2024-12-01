@@ -69,7 +69,7 @@ const Info = () => {
   useQuery(['init'], initUserInfo);
 
   return (
-    <AccountContainer currentTab={TabEnum.info}>
+    <AccountContainer>
       <Box py={[3, '28px']} px={[5, 10]} mx={'auto'}>
         {isPc ? (
           <Flex justifyContent={'center'} maxW={'1080px'}>
@@ -101,7 +101,6 @@ const Info = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      currentTab: content?.query?.currentTab || TabEnum.info,
       ...(await serviceSideProps(content, ['account', 'account_info', 'user']))
     }
   };

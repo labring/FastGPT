@@ -17,9 +17,6 @@
   "bill.valid_time": "生效时间",
   "bill.you_can_convert": "您可兑换",
   "bill.yuan": "元",
-  "bill_and_invoices": "账单 & 发票",
-  "bind_inform_account_error": "绑定通知账号异常",
-  "bind_inform_account_success": "绑定通知账号成功",
   "delete.admin_failed": "删除管理员失败",
   "delete.admin_success": "删除管理员成功",
   "delete.failed": "删除失败",
@@ -30,7 +27,6 @@
   "login.password_condition": "密码最多 60 位",
   "login.success": "登录成功",
   "name": "名称",
-  "notice": "通知",
   "notification.Bind Notification Pipe Hint": "请绑定通知接收账号，以确保您能正常接收套餐过期提醒等通知，保障您的服务正常运行。",
   "notification.remind_owner_bind": "请提醒创建者绑定通知账号",
   "operations": "操作",
@@ -72,7 +68,6 @@
   "register.success": "注册成功",
   "register.to_login": "已有账号，去登录",
   "search_user": "搜索用户名",
-  "sign_out": "登出",
   "synchronization.button": "立即同步",
   "synchronization.placeholder": "请输入同步标签",
   "synchronization.title": "填写标签同步链接，点击同步按钮即可同步",
@@ -111,6 +106,5 @@
   "usage.official_account": "公众号",
   "usage.share": "分享链接",
   "usage.wecom": "企业微信",
-  "usage_record": "使用记录",
   "owner": "所有者"
 }
