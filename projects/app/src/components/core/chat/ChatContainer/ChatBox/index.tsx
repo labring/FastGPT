@@ -137,10 +137,6 @@ const ChatBox = ({
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
-  const setIsChatRecordsLoaded = useContextSelector(
-    ChatRecordContext,
-    (v) => v.setIsChatRecordsLoaded
-  );
   const ScrollData = useContextSelector(ChatRecordContext, (v) => v.ScrollData);
 
   const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
@@ -687,12 +683,9 @@ const ChatBox = ({
         updateChatUserFeedback({
           appId,
           chatId,
-          teamId,
-          teamToken,
           dataId: chat.dataId,
-          shareId,
-          outLinkUid,
-          userGoodFeedback: isGoodFeedback ? undefined : 'yes'
+          userGoodFeedback: isGoodFeedback ? undefined : 'yes',
+          ...outLinkAuthData
         });
       } catch (error) {}
     };
@@ -708,11 +701,10 @@ const ChatBox = ({
       );
       updateChatUserFeedback({
         appId,
-        teamId,
-        teamToken,
         chatId,
         dataId: chat.dataId,
-        userGoodFeedback: undefined
+        userGoodFeedback: undefined,
+        ...outLinkAuthData
       });
     };
   });
@@ -737,10 +729,7 @@ const ChatBox = ({
             appId,
             chatId,
             dataId: chat.dataId,
-            shareId,
-            teamId,
-            teamToken,
-            outLinkUid
+            ...outLinkAuthData
           });
         } catch (error) {}
       };
@@ -864,7 +853,6 @@ const ChatBox = ({
       abortRequest();
 
       setChatRecords([]);
-      setIsChatRecordsLoaded(false);
       setValue('chatStarted', false);
     },
     scrollToBottom(behavior = 'auto') {
@@ -1040,12 +1028,8 @@ const ChatBox = ({
       {!!feedbackId && chatId && (
         <FeedbackModal
           appId={appId}
-          teamId={teamId}
-          teamToken={teamToken}
           chatId={chatId}
           dataId={feedbackId}
-          shareId={shareId}
-          outLinkUid={outLinkUid}
           onClose={() => setFeedbackId(undefined)}
           onSuccess={(content: string) => {
             setChatRecords((state) =>
