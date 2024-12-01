@@ -36,7 +36,7 @@ const Individuation = () => {
   );
 
   return (
-    <AccountContainer currentTab={TabEnum.individuation}>
+    <AccountContainer>
       <Box py={[3, '28px']} px={['5vw', '64px']}>
         <Flex alignItems={'center'} fontSize={'lg'} h={'30px'}>
           <MyIcon mr={2} name={'support/user/individuation'} w={'20px'} />
@@ -69,7 +69,6 @@ const Individuation = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      currentTab: content?.query?.currentTab || TabEnum.info,
       ...(await serviceSideProps(content, ['account', 'account_individuation']))
     }
   };
