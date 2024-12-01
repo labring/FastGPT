@@ -47,8 +47,8 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
         initUserInfo();
         onClose();
       },
-      successToast: t('user:bind_inform_account_success'),
-      errorToast: t('user:bind_inform_account_error')
+      successToast: t('account_info:bind_notification_success'),
+      errorToast: t('account_info:bind_notification_error')
     }
   );
 
@@ -58,9 +58,9 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
     ?.map((item) => {
       switch (item) {
         case 'email':
-          return t('common:support.user.login.Email');
+          return t('account_info:email_label');
         case 'phone':
-          return t('common:support.user.login.Phone number');
+          return t('account_info:phone_label');
       }
     })
     .join('/');
@@ -71,16 +71,16 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
         isOpen
         iconSrc="common/settingLight"
         w={'32rem'}
-        title={t('common:user.Notification Receive')}
+        title={t('account_info:notification_receiving_hint')}
       >
         <ModalBody px={10}>
           <Flex flexDirection="column">
             <HStack px="6" py="3" color="primary.600" bgColor="primary.50" borderRadius="md">
               <Icon name="common/info" w="1rem" />
-              <Box fontSize={'sm'}>{t('user:notification.Bind Notification Pipe Hint')}</Box>
+              <Box fontSize={'sm'}>{t('account_info:bind_notification_hint')}</Box>
             </HStack>
             <Flex mt="4" alignItems="center">
-              <Box flex={'0 0 70px'}>{t('common:user.Account')}</Box>
+              <Box flex={'0 0 70px'}>{t('account_info:user_account')}</Box>
               <Input
                 flex={1}
                 bg={'myGray.50'}
@@ -89,12 +89,12 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
               ></Input>
             </Flex>
             <Flex mt="6" alignItems="center" position={'relative'}>
-              <Box flex={'0 0 70px'}>{t('user:password.verification_code')}</Box>
+              <Box flex={'0 0 70px'}>{t('account_info:verification_code_required')}</Box>
               <Input
                 flex={1}
                 bg={'myGray.50'}
                 {...register('verifyCode', { required: true })}
-                placeholder={t('user:password.code_required')}
+                placeholder={t('account_info:code_required')}
               ></Input>
               <SendCodeBox username={account} />
             </Flex>
@@ -102,14 +102,14 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
         </ModalBody>
         <ModalFooter>
           <Button mr={3} variant={'whiteBase'} onClick={onClose}>
-            {t('common:common.Cancel')}
+            {t('account_info:cancel')}
           </Button>
           <Button
             isLoading={isLoading}
             isDisabled={!account || !verifyCode}
             onClick={handleSubmit((data) => onSubmit(data))}
           >
-            {t('common:common.Confirm')}
+            {t('account_info:confirm')}
           </Button>
         </ModalFooter>
       </MyModal>

@@ -33,8 +33,8 @@ const ConversionModal = ({
     onSuccess() {
       router.reload();
     },
-    successToast: t('user:bill.convert_success'),
-    errorToast: t('user:bill.convert_error')
+    successToast: t('account_info:exchange_success'),
+    errorToast: t('account_info:exchange_failure')
   });
 
   return (
@@ -43,27 +43,27 @@ const ConversionModal = ({
       onClose={onClose}
       iconSrc="support/bill/wallet"
       iconColor="primary.600"
-      title={t('user:bill.use_balance')}
+      title={t('account_info:usage_balance')}
     >
       <ModalBody maxW={'450px'}>
         <VStack px="2.25" gap={2} pb="6">
           <HStack px="4" py="2" color="primary.600" bgColor="primary.50" borderRadius="md">
             <Icon name="common/info" w="1rem" mr="1" />
             <Box fontSize={'mini'} fontWeight={'500'}>
-              {t('user:bill.use_balance_hint')}
+              {t('account_info:usage_balance_notice')}
             </Box>
           </HStack>
           <VStack mt={6}>
             <Box fontSize={'sm'} color="myGray.600" fontWeight="500">
-              {t('user:bill.current_token_price')}
+              {t('account_info:current_token_price')}
             </Box>
             <Box fontSize={'xl'} fontWeight={'700'} color="myGray.900">
-              ￥15/1000 {t('user:bill.tokens')}/{t('common:common.month')}
+              ￥15/1000 {t('account_info:tokens')}/{t('account_info:month')}
             </Box>
           </VStack>
           <VStack mt={6}>
             <Box fontSize={'sm'} color="myGray.600" fontWeight="500">
-              {t('user:bill.balance')}
+              {t('account_info:balance')}
             </Box>
             <Box fontSize={'xl'} fontWeight={'700'} color="myGray.900">
               ￥{formatStorePrice2Read(userInfo?.team?.balance)?.toFixed(2)}
@@ -71,13 +71,13 @@ const ConversionModal = ({
           </VStack>
           <VStack mt={6}>
             <Box fontSize={'sm'} color="myGray.600" fontWeight="500">
-              {t('user:bill.you_can_convert')}
+              {t('account_info:you_can_convert')}
             </Box>
             <Box fontSize={'xl'} fontWeight={'700'} color="myGray.900">
-              {points} {t('user:bill.tokens')}
+              {points} {t('account_info:tokens')}
             </Box>
             <Tag fontSize={'xs'} fontWeight={'500'}>
-              {t('user:bill.token_expire_1year')}
+              {t('account_info:token_validity_period')}
             </Tag>
           </VStack>
 
@@ -90,10 +90,10 @@ const ConversionModal = ({
               onClick={onConvert}
               isLoading={loading}
             >
-              {t('user:bill.conversion')}
+              {t('account_info:exchange')}
             </Button>
             <Link fontSize={'sm'} color="primary" mt="2" onClick={onOpenContact}>
-              {t('user:bill.contact_customer_service')}
+              {t('account_info:contact_customer_service')}
             </Link>
           </VStack>
         </VStack>
