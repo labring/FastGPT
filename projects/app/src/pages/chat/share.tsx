@@ -84,10 +84,11 @@ const OutLink = (props: Props) => {
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
+  const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
 
   const initSign = useRef(false);
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
-  const { loading: isLoading } = useRequest2(
+  const { data, loading: isLoading } = useRequest2(
     async () => {
       const shareId = outLinkAuthData.shareId;
       const outLinkUid = outLinkAuthData.outLinkUid;
@@ -104,19 +105,12 @@ const OutLink = (props: Props) => {
       resetVariables({
         variables: res.variables
       });
+
+      return res;
     },
     {
       manual: false,
       refreshDeps: [shareId, outLinkAuthData, chatId],
-      onSuccess() {
-        // send init message
-        if (!initSign.current) {
-          initSign.current = true;
-          if (window !== top) {
-            window.top?.postMessage({ type: 'shareChatReady' }, '*');
-          }
-        }
-      },
       onError(e: any) {
         if (chatId) {
           onChangeChatId('');
@@ -127,6 +121,14 @@ const OutLink = (props: Props) => {
       }
     }
   );
+  useEffect(() => {
+    if (initSign.current === false && data && isChatRecordsLoaded) {
+      initSign.current = true;
+      if (window !== top) {
+        window.top?.postMessage({ type: 'shareChatReady' }, '*');
+      }
+    }
+  }, [data, isChatRecordsLoaded]);
 
   const startChat = useCallback(
     async ({
@@ -295,8 +297,6 @@ const Render = (props: Props) => {
   const { localUId, loaded } = useShareChatStore();
   const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
 
-  const [isLoaded, setIsLoaded] = useState(false);
-
   const chatHistoryProviderParams = useMemo(() => {
     return { shareId, outLinkUid: authToken || customUid || localUId };
   }, [authToken, customUid, localUId, shareId]);
@@ -311,11 +311,8 @@ const Render = (props: Props) => {
   }, [appId, chatHistoryProviderParams.outLinkUid, chatId, shareId]);
 
   useMount(() => {
-    setIsLoaded(true);
-
     setSource('share');
   });
-  const systemLoaded = isLoaded && loaded && chatHistoryProviderParams.outLinkUid;
 
   // Set outLinkAuthData
   useEffect(() => {

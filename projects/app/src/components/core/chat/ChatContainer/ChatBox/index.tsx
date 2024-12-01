@@ -137,10 +137,6 @@ const ChatBox = ({
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
-  const setIsChatRecordsLoaded = useContextSelector(
-    ChatRecordContext,
-    (v) => v.setIsChatRecordsLoaded
-  );
   const ScrollData = useContextSelector(ChatRecordContext, (v) => v.ScrollData);
 
   const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
@@ -857,7 +853,6 @@ const ChatBox = ({
       abortRequest();
 
       setChatRecords([]);
-      setIsChatRecordsLoaded(false);
       setValue('chatStarted', false);
     },
     scrollToBottom(behavior = 'auto') {
