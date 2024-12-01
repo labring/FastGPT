@@ -4,6 +4,7 @@
   "LLM_model_response_empty": "模型流程回應為空，請檢查模型流程輸出是否正常",
   "chat_history": "對話紀錄",
   "chat_input_guide_lexicon_is_empty": "尚未設定詞彙庫",
+  "chat_test_app": "調試-{{name}}",
   "citations": "{{num}} 筆引用",
   "click_contextual_preview": "點選檢視上下文預覽",
   "config_input_guide": "設定輸入導引",
