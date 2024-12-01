@@ -22,5 +22,6 @@ export const langMap = {
 };
 
 export const serviceSideProps = (content: any, ns: I18nNsType = []) => {
-  return serverSideTranslations(content.locale, ['common', 'error', ...ns], null, content.locales);
+  const lang = content.req?.cookies?.NEXT_LOCALE || content.locale;
+  return serverSideTranslations(lang, ['common', 'error', ...ns], null, content.locales);
 };
