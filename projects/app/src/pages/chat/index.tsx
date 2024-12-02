@@ -209,6 +209,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                   chatType={'chat'}
                   showRawSource
                   showNodeStatus
+                  isReady={!loading}
                 />
               )}
             </Box>

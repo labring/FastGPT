@@ -218,6 +218,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                 />
               ) : (
                 <ChatBox
+                  isReady={!loading}
                   appId={appId}
                   chatId={chatId}
                   outLinkAuthData={outLinkAuthData}
