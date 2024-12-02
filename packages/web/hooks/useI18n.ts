@@ -30,7 +30,7 @@ export const useI18nLng = () => {
     setCookie(LANG_KEY, lang, {
       expires: 30
     });
-    i18n?.changeLanguage(lang);
+    i18n?.changeLanguage?.(lang);
   };
 
   const setUserDefaultLng = () => {
