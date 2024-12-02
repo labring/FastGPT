@@ -56,10 +56,6 @@ const ChatRecordContextProvider = ({
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
   const [isChatRecordsLoaded, setIsChatRecordsLoaded] = useState(false);
 
-  useEffect(() => {
-    setIsChatRecordsLoaded(false);
-  }, [params]);
-
   const {
     data: chatRecords,
     ScrollData,
@@ -67,6 +63,8 @@ const ChatRecordContextProvider = ({
     total: totalRecordsCount
   } = useScrollPagination(
     async (data: getPaginationRecordsBody): Promise<PaginationResponse<ChatSiteItemType>> => {
+      setIsChatRecordsLoaded(false);
+
       const res = await getChatRecords(data);
 
       // First load scroll to bottom

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Flex, useTheme, Box, useDisclosure } from '@chakra-ui/react';
+import { Flex, Box, useDisclosure } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import ToolMenu from './ToolMenu';
@@ -10,7 +10,6 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { InitChatResponse } from '@/global/core/chat/api';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
@@ -22,9 +21,9 @@ import {
 } from '@fastgpt/global/common/parentFolder/type';
 import { getMyApps } from '@/web/core/app/api';
 import SelectOneResource from '@/components/common/folder/SelectOneResource';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
 const ChatHeader = ({
-  chatData,
   history,
   showHistory,
   apps,
@@ -33,14 +32,15 @@ const ChatHeader = ({
 }: {
   history: ChatItemType[];
   showHistory?: boolean;
-  chatData: InitChatResponse;
   apps?: AppListItemType[];
   onRouteToAppDetail?: () => void;
   totalRecordsCount: number;
 }) => {
   const { t } = useTranslation();
-  const isPlugin = chatData.app.type === AppTypeEnum.plugin;
   const { isPc } = useSystem();
+
+  const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
+  const isPlugin = chatData.app.type === AppTypeEnum.plugin;
 
   return isPc && isPlugin ? null : (
     <Flex

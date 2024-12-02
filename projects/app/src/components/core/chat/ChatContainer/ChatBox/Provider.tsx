@@ -41,7 +41,6 @@ type useChatStoreType = ChatProviderProps & {
   ttsConfig: AppTTSConfigType;
   whisperConfig: AppWhisperConfigType;
   autoTTSResponse: boolean;
-  autoExecute: AppAutoExecuteConfigType;
   startSegmentedAudio: () => Promise<any>;
   splitText2Audio: (text: string, done?: boolean | undefined) => void;
   finishSegmentedAudio: () => void;
@@ -136,23 +135,37 @@ const Provider = ({
 }: ChatProviderProps & {
   children: React.ReactNode;
 }) => {
-  const chatConfig = useContextSelector(
+  const welcomeText = useContextSelector(
     ChatItemContext,
-    (v) => v.chatBoxData?.app?.chatConfig || {}
+    (v) => v.chatBoxData?.app?.chatConfig?.welcomeText ?? ''
   );
+  const variables = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.chatConfig?.variables ?? []
+  );
+  const questionGuide = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.chatConfig?.questionGuide ?? false
+  );
+  const ttsConfig = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.chatConfig?.ttsConfig ?? defaultTTSConfig
+  );
+  const whisperConfig = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.chatConfig?.whisperConfig ?? defaultWhisperConfig
+  );
+  const chatInputGuide = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.chatConfig?.chatInputGuide ?? defaultChatInputGuideConfig
+  );
+  const fileSelectConfig = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.chatConfig?.fileSelectConfig ?? defaultAppSelectFileConfig
+  );
+
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
-
-  const {
-    welcomeText = '',
-    variables = [],
-    questionGuide = false,
-    ttsConfig = defaultTTSConfig,
-    whisperConfig = defaultWhisperConfig,
-    chatInputGuide = defaultChatInputGuideConfig,
-    fileSelectConfig = defaultAppSelectFileConfig,
-    autoExecute = defaultAutoExecuteConfig
-  } = useMemo(() => chatConfig, [chatConfig]);
 
   // segment audio
   const [audioPlayingChatId, setAudioPlayingChatId] = useState<string>();
@@ -202,7 +215,6 @@ const Provider = ({
   const value: useChatStoreType = {
     ...props,
     welcomeText,
-    autoExecute,
     variableList: variables.filter((item) => item.type !== VariableInputEnum.custom),
     allVariableList: variables,
     questionGuide,

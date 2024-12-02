@@ -87,7 +87,6 @@ const OutLink = (props: Props) => {
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
 
   const initSign = useRef(false);
-  const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
   const { data, loading } = useRequest2(
     async () => {
       const shareId = outLinkAuthData.shareId;
@@ -100,11 +99,7 @@ const OutLink = (props: Props) => {
         outLinkUid
       });
 
-      await new Promise((resolve) => {
-        setChatData(res);
-        setChatBoxData(res);
-        setTimeout(resolve, 0);
-      });
+      setChatBoxData(res);
 
       resetVariables({
         variables: res.variables
@@ -180,7 +175,7 @@ const OutLink = (props: Props) => {
       onUpdateHistoryTitle({ chatId: completionChatId, newTitle });
 
       // update chat window
-      setChatData((state) => ({
+      setChatBoxData((state) => ({
         ...state,
         title: newTitle
       }));
@@ -199,7 +194,15 @@ const OutLink = (props: Props) => {
 
       return { responseText, responseData, isNewChat: forbidLoadChat.current };
     },
-    [chatId, customVariables, outLinkAuthData, onUpdateHistoryTitle, forbidLoadChat, onChangeChatId]
+    [
+      chatId,
+      customVariables,
+      outLinkAuthData,
+      onUpdateHistoryTitle,
+      setChatBoxData,
+      forbidLoadChat,
+      onChangeChatId
+    ]
   );
 
   // window init
@@ -258,7 +261,6 @@ const OutLink = (props: Props) => {
             {/* header */}
             {showHead === '1' ? (
               <ChatHeader
-                chatData={chatData}
                 history={chatRecords}
                 totalRecordsCount={totalRecordsCount}
                 showHistory={showHistory === '1'}
@@ -282,7 +284,6 @@ const OutLink = (props: Props) => {
                   feedbackType={'user'}
                   onStartChat={startChat}
                   chatType="share"
-                  isReady={!loading}
                   showRawSource={showRawSource}
                   showNodeStatus={showNodeStatus}
                 />
