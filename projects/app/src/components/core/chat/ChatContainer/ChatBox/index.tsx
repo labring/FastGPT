@@ -83,6 +83,7 @@ enum FeedbackTypeEnum {
 
 type Props = OutLinkChatAuthProps &
   ChatProviderProps & {
+    isReady: boolean;
     feedbackType?: `${FeedbackTypeEnum}`;
     showMarkIcon?: boolean; // admin mark dataset
     showVoiceIcon?: boolean;
@@ -97,6 +98,7 @@ type Props = OutLinkChatAuthProps &
   };
 
 const ChatBox = ({
+  isReady = true,
   feedbackType = FeedbackTypeEnum.hidden,
   showMarkIcon = false,
   showVoiceIcon = true,
@@ -829,11 +831,12 @@ const ChatBox = ({
       eventBus.off(EventNameEnum.sendQuestion);
       eventBus.off(EventNameEnum.editQuestion);
     };
-  }, [chatBoxData, resetInputVal, sendPrompt]);
+  }, [isReady, resetInputVal, sendPrompt]);
 
   // Auto send prompt
   useEffect(() => {
     if (
+      isReady &&
       chatBoxData?.app?.chatConfig?.autoExecute?.open &&
       chatStarted &&
       chatRecords.length === 0 &&
@@ -845,6 +848,7 @@ const ChatBox = ({
       });
     }
   }, [
+    isReady,
     chatStarted,
     chatRecords.length,
     isChatRecordsLoaded,

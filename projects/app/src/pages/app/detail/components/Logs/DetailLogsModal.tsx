@@ -154,6 +154,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
             </Box>
           ) : (
             <ChatBox
+              isReady
               appId={appId}
               chatId={chatId}
               feedbackType={'admin'}
