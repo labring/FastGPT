@@ -80,7 +80,6 @@ export type NodeTemplateListItemType = {
   avatar?: string;
   name: string;
   intro?: string; // template list intro
-  userGuide?: string; // plugin guide
   isTool?: boolean;
   authorAvatar?: string;
   author?: string;
