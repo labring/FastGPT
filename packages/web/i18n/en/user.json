@@ -69,6 +69,7 @@
   "register.success": "Registration Successful",
   "register.to_login": "Already have an account? Login",
   "search_user": "Search Username",
+  "sso_auth_failed": "SSO authentication failed",
   "synchronization.button": "Sync Now",
   "synchronization.placeholder": "Enter Sync Tag",
   "synchronization.title": "Enter the sync tag link and click the sync button to synchronize",
