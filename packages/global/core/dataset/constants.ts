@@ -193,5 +193,6 @@ export const LinkCollectionIcon = 'common/linkBlue';
 export enum DatasetSourceReadTypeEnum {
   fileLocal = 'fileLocal',
   link = 'link',
-  externalFile = 'externalFile'
+  externalFile = 'externalFile',
+  apiFile = 'apiFile'
 }

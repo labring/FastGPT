@@ -1,6 +1,6 @@
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { Box, Button, Checkbox, Flex, Input, InputGroup } from '@chakra-ui/react';
@@ -14,8 +14,9 @@ import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type
 import FolderPath from '@/components/common/folder/Path';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { APIFileItem } from '@/global/core/dataset/apiDataset';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
@@ -43,32 +44,29 @@ const CustomAPIFileInput = () => {
 
   const setSources = useContextSelector(DatasetImportContext, (v) => v.setSources);
 
-  const [fileList, setFileList] = useState<APIFileItem[]>([]);
   const [selectFiles, setSelectFiles] = useState<APIFileItem[]>([]);
   const [parent, setParent] = useState<ParentTreePathItemType | null>(null);
   const [searchKey, setSearchKey] = useState('');
 
-  const { runAsync: getApiFileList, loading } = useRequest2(
-    async (data: GetApiDatasetFileListProps) => {
-      return await getApiDatasetFileList(data);
-    },
-    {}
+  const { data: fileList = [], runAsync: refetchFileList } = useRequest2(
+    (params?: { parentId?: string | null; searchKey?: string }) =>
+      getApiDatasetFileList({
+        datasetId: datasetDetail._id,
+        parentId: params?.parentId || null,
+        searchKey: params?.searchKey || ''
+      }),
+    {
+      refreshDeps: [datasetDetail._id, datasetDetail.apiServer],
+      manual: !datasetDetail._id || !datasetDetail.apiServer
+    }
   );
 
   useEffect(() => {
-    if (!datasetDetail._id || !datasetDetail.apiServer) {
-      return;
-    }
-
-    (async () => {
-      const res = await getApiFileList({
-        datasetId: datasetDetail._id,
-        parentId: parent?.parentId || null,
-        searchKey
-      });
-      setFileList(res);
-    })();
-  }, [datasetDetail._id, datasetDetail.apiServer, getApiFileList, parent, searchKey]);
+    refetchFileList({
+      parentId: parent?.parentId || null,
+      searchKey
+    });
+  }, [parent, refetchFileList, searchKey]);
 
   const getFilesRecursively = useCallback(
     async (files: APIFileItem[]): Promise<APIFileItem[]> => {
@@ -76,8 +74,7 @@ const CustomAPIFileInput = () => {
 
       for (const item of files) {
         if (item.type === 'folder') {
-          const folderFiles = await getApiFileList({
-            datasetId: datasetDetail._id,
+          const folderFiles = await refetchFileList({
             parentId: item.id,
             searchKey: ''
           });
@@ -90,7 +87,7 @@ const CustomAPIFileInput = () => {
 
       return allFiles;
     },
-    [datasetDetail._id, getApiFileList]
+    [refetchFileList]
   );
 
   const onclickNext = useCallback(async () => {
@@ -145,129 +142,120 @@ const CustomAPIFileInput = () => {
     }
   }, [fileList, selectFiles]);
 
+  const paths = useMemo(() => [parent || { parentId: '', parentName: '' }], [parent]);
+
   return (
-    <MyBox isLoading={loading} position="relative" h="full">
-      <Flex justifyContent={'space-between'}>
-        <FolderPath
-          paths={[parent || { parentId: '', parentName: '' }]}
-          hoverStyle={{ bg: 'myGray.200' }}
-          onClick={(parentId) => {
-            setParent({
-              parentId,
-              parentName: ''
-            });
-          }}
-        />
-        <InputGroup maxW={['auto', '250px']} position={'relative'}>
-          <MyIcon
-            position={'absolute'}
-            zIndex={10}
-            name={'common/searchLight'}
-            w={'1rem'}
-            color={'myGray.600'}
-            left={2.5}
-            top={'50%'}
-            transform={'translateY(-50%)'}
-          />
-          <Input
-            value={searchKey}
-            onChange={(e) => setSearchKey(e.target.value)}
-            placeholder={t('common:core.workflow.template.Search')}
-            maxLength={30}
-            pl={8}
-            bg={'myGray.50'}
-          />
-        </InputGroup>
-      </Flex>
-      <Box h="calc(100% - 100px)" overflowY="auto">
-        <Box ml={2} mt={3}>
-          <Flex
-            alignItems={'center'}
-            py={3}
-            cursor={'pointer'}
-            bg={'myGray.50'}
-            pl={7}
-            rounded={'8px'}
-            fontSize={'sm'}
-            fontWeight={'medium'}
-            color={'myGray.900'}
-            onClick={(e) => {
-              if (!(e.target as HTMLElement).closest('.checkbox')) {
-                handleSelectAll();
-              }
+    <MyBox isLoading={false} position="relative" h="full">
+      <Flex flexDirection={'column'} h="full">
+        <Flex justifyContent={'space-between'}>
+          <FolderPath
+            paths={paths}
+            hoverStyle={{ bg: 'myGray.200' }}
+            onClick={(parentId) => {
+              setParent({
+                parentId,
+                parentName: ''
+              });
             }}
-          >
-            <Checkbox
-              className="checkbox"
-              mr={2}
-              isChecked={fileList.length === selectFiles.length}
-              onChange={handleSelectAll}
+          />
+          <Box w={'240px'}>
+            <SearchInput
+              value={searchKey}
+              onChange={(e) => setSearchKey(e.target.value)}
+              placeholder={t('common:core.workflow.template.Search')}
             />
-            {t('common:Select_all')}
-          </Flex>
-          {fileList.map((item) => {
-            const isFolder = item.type === 'folder';
-            const isChecked = selectFiles.some((i) => i.id === item.id);
-            return (
-              <Flex
-                key={item.id}
-                py={3}
-                _hover={{ bg: 'primary.50' }}
-                pl={7}
-                cursor={'pointer'}
-                onClick={(e) => {
-                  if (!(e.target as HTMLElement).closest('.checkbox')) {
-                    handleItemClick(item);
-                  }
-                }}
-              >
-                <Checkbox
-                  className="checkbox"
-                  mr={2.5}
-                  isChecked={isChecked}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    if (isChecked) {
-                      setSelectFiles((state) => state.filter((i) => i.id !== item.id));
-                    } else {
-                      setSelectFiles((state) => [...state, item]);
+          </Box>
+        </Flex>
+        <Box flex={1} overflowY="auto" mb={16}>
+          <Box ml={2} mt={3}>
+            <Flex
+              alignItems={'center'}
+              py={3}
+              cursor={'pointer'}
+              bg={'myGray.50'}
+              pl={7}
+              rounded={'8px'}
+              fontSize={'sm'}
+              fontWeight={'medium'}
+              color={'myGray.900'}
+              onClick={(e) => {
+                if (!(e.target as HTMLElement).closest('.checkbox')) {
+                  handleSelectAll();
+                }
+              }}
+            >
+              <Checkbox
+                className="checkbox"
+                mr={2}
+                isChecked={fileList.length === selectFiles.length}
+                onChange={handleSelectAll}
+              />
+              {t('common:Select_all')}
+            </Flex>
+            {fileList.map((item) => {
+              const isFolder = item.type === 'folder';
+              const isChecked = selectFiles.some((i) => i.id === item.id);
+              return (
+                <Flex
+                  key={item.id}
+                  py={3}
+                  _hover={{ bg: 'primary.50' }}
+                  pl={7}
+                  cursor={'pointer'}
+                  onClick={(e) => {
+                    if (!(e.target as HTMLElement).closest('.checkbox')) {
+                      handleItemClick(item);
                     }
                   }}
-                />
-                <MyIcon
-                  name={
-                    !isFolder
-                      ? (getSourceNameIcon({ sourceName: item.name }) as any)
-                      : 'common/folderFill'
-                  }
-                  w={'18px'}
-                  mr={1.5}
-                />
-                <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
-                  {item.name}
-                </Box>
-              </Flex>
-            );
-          })}
+                >
+                  <Checkbox
+                    className="checkbox"
+                    mr={2.5}
+                    isChecked={isChecked}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      if (isChecked) {
+                        setSelectFiles((state) => state.filter((i) => i.id !== item.id));
+                      } else {
+                        setSelectFiles((state) => [...state, item]);
+                      }
+                    }}
+                  />
+                  <MyIcon
+                    name={
+                      !isFolder
+                        ? (getSourceNameIcon({ sourceName: item.name }) as any)
+                        : 'common/folderFill'
+                    }
+                    w={'18px'}
+                    mr={1.5}
+                  />
+                  <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
+                    {item.name}
+                  </Box>
+                </Flex>
+              );
+            })}
+          </Box>
         </Box>
-      </Box>
 
-      <Box
-        position="absolute"
-        display={'flex'}
-        justifyContent={'end'}
-        bottom={0}
-        left={0}
-        right={0}
-        p={4}
-      >
-        <Button isDisabled={selectFiles.length === 0} onClick={onclickNext}>
-          {selectFiles.length > 0
-            ? `${t('common:core.dataset.import.Total files', { total: selectFiles.length })} | `
-            : ''}
-          {t('common:common.Next Step')}
-        </Button>
-      </Box>
+        <Box
+          position="absolute"
+          display={'flex'}
+          justifyContent={'end'}
+          bottom={0}
+          left={0}
+          right={0}
+          p={4}
+        >
+          <Button isDisabled={selectFiles.length === 0} onClick={onclickNext}>
+            {selectFiles.length > 0
+              ? `${t('common:core.dataset.import.Total files', { total: selectFiles.length })} | `
+              : ''}
+            {t('common:common.Next Step')}
+          </Button>
+        </Box>
+      </Flex>
     </MyBox>
   );
 };

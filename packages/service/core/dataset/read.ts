@@ -6,7 +6,9 @@ import { parseCsvTable2Chunks } from './training/utils';
 import { TextSplitProps, splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import axios from 'axios';
 import { readRawContentByFileBuffer } from '../../common/file/read/utils';
-import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+import { getNanoid, parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+import { MongoDataset } from './schema';
+import { APIFileContentResponse } from '@fastgpt/global/core/dataset/apiDataset';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -50,7 +52,8 @@ export const readDatasetSourceRawText = async ({
   sourceId,
   isQAImport,
   selector,
-  relatedId
+  relatedId,
+  datasetId
 }: {
   teamId: string;
   type: DatasetSourceReadTypeEnum;
@@ -58,7 +61,10 @@ export const readDatasetSourceRawText = async ({
   isQAImport?: boolean;
   selector?: string;
   relatedId?: string;
+  datasetId?: string;
 }): Promise<string> => {
+  const dataset = await MongoDataset.findById(datasetId);
+
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
     const { rawText } = await readFileContentFromMongo({
       teamId,
@@ -81,9 +87,52 @@ export const readDatasetSourceRawText = async ({
       relatedId
     });
     return rawText;
+  } else if (type === DatasetSourceReadTypeEnum.apiFile) {
+    const apiServer = dataset?.apiServer;
+    if (!apiServer) return Promise.reject('apiServer not found');
+    const rawText = await readApiServerFileContent({
+      apiServer,
+      apiFileId: sourceId,
+      teamId
+    });
+    return rawText;
   }
 
   return '';
+};
+
+export const readApiServerFileContent = async ({
+  apiServer,
+  apiFileId,
+  teamId
+}: {
+  apiServer: {
+    baseUrl: string;
+    authorization: string;
+  };
+  apiFileId: string;
+  teamId: string;
+}) => {
+  const { baseUrl, authorization } = apiServer;
+  const { data } = await axios.get<APIFileContentResponse>(
+    `${baseUrl}/v1/file/content?id=${apiFileId}`,
+    {
+      headers: { Authorization: authorization }
+    }
+  );
+  const { content, previewUrl } = data.data;
+  if (content) {
+    return content;
+  } else if (previewUrl) {
+    const rawText = await readFileRawTextByUrl({
+      teamId,
+      url: previewUrl,
+      relatedId: getNanoid(24)
+    });
+    return rawText;
+  } else {
+    return Promise.reject('Invalid content type: content or previewUrl is required');
+  }
 };
 
 export const rawText2Chunks = ({

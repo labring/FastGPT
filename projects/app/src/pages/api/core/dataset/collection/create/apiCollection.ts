@@ -17,8 +17,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CreateCollectionResponse } from '@/global/core/dataset/api';
-import { reloadCollectionChunks } from '@fastgpt/service/core/dataset/collection/utils';
-import { fetchApiServerContent } from '@/service/core/dataset/data/utils';
+import { readApiServerFileContent } from '@fastgpt/service/core/dataset/read';
 
 async function handler(req: NextApiRequest): CreateCollectionResponse {
   const {
@@ -40,19 +39,25 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
   });
 
   const { apiServer } = dataset;
-  if (!apiServer || !apiFileId) {
-    throw new Error('Api server or apiFileId not found');
+  if (!apiServer) {
+    return Promise.reject('Api server not found');
   }
-  const { isTextMode, content } = await fetchApiServerContent(apiServer, apiFileId);
+  if (!apiFileId) {
+    return Promise.reject('ApiFileId not found');
+  }
 
-  const chunks = isTextMode
-    ? splitText2Chunks({
-        text: content,
-        chunkLen: chunkSize,
-        overlapRatio: trainingType === TrainingModeEnum.chunk ? 0.2 : 0,
-        customReg: chunkSplitter ? [chunkSplitter] : []
-      }).chunks
-    : new Array(10);
+  const content = await readApiServerFileContent({
+    apiServer,
+    apiFileId,
+    teamId
+  });
+
+  const { chunks } = splitText2Chunks({
+    text: content,
+    chunkLen: chunkSize,
+    overlapRatio: trainingType === TrainingModeEnum.chunk ? 0.2 : 0,
+    customReg: chunkSplitter ? [chunkSplitter] : []
+  });
 
   await checkDatasetLimit({
     teamId,
@@ -77,47 +82,30 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     const { billId } = await createTrainingUsage({
       teamId,
       tmbId,
-      appName: isTextMode ? name : 'core.dataset.collection.Sync Collection',
+      appName: name,
       billSource: UsageSourceEnum.training,
       vectorModel: getVectorModel(dataset.vectorModel)?.name,
       agentModel: getLLMModel(dataset.agentModel)?.name,
       session
     });
 
-    if (isTextMode) {
-      const insertResults = await pushDataListToTrainingQueue({
-        teamId,
-        tmbId,
-        datasetId: dataset._id,
-        collectionId: collection._id,
-        agentModel: dataset.agentModel,
-        vectorModel: dataset.vectorModel,
-        trainingMode: trainingType,
-        prompt: qaPrompt,
-        billId,
-        data: chunks.map((text, index) => ({
-          q: text,
-          chunkIndex: index
-        })),
-        session
-      });
-      return { collectionId: collection._id, results: insertResults };
-    }
-
-    const result = await reloadCollectionChunks({
-      collection: {
-        ...collection.toObject(),
-        datasetId: dataset
-      },
+    const insertResults = await pushDataListToTrainingQueue({
+      teamId,
       tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      agentModel: dataset.agentModel,
+      vectorModel: dataset.vectorModel,
+      trainingMode: trainingType,
+      prompt: qaPrompt,
       billId,
+      data: chunks.map((text, index) => ({
+        q: text,
+        chunkIndex: index
+      })),
       session
     });
-
-    return {
-      collectionId: collection._id,
-      results: { insertLen: result.insertLen }
-    };
+    return { collectionId: collection._id, results: insertResults };
   });
 }
 

@@ -11,7 +11,6 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
 import { importType2ReadType } from '@fastgpt/global/core/dataset/read';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import axios from 'axios';
 
 const PreviewRawText = ({
   previewSource,
@@ -22,7 +21,7 @@ const PreviewRawText = ({
 }) => {
   const { toast } = useToast();
   const { importSource, processParamsForm } = useContextSelector(DatasetImportContext, (v) => v);
-  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
 
   const { data, isLoading } = useQuery(
     ['previewSource', previewSource.dbFileId, previewSource.link, previewSource.externalFileUrl],
@@ -39,40 +38,18 @@ const PreviewRawText = ({
           isQAImport: true
         });
       }
-      if (importSource === ImportDataSourceEnum.apiDataset && previewSource.apiFileId) {
-        const { apiServer } = datasetDetail;
-        if (!apiServer) return Promise.reject('apiServer not found');
-
-        const { baseUrl, authorization } = apiServer;
-        const contentRes = await axios.get(
-          `${baseUrl}/v1/file/content?id=${previewSource.apiFileId}`,
-          {
-            headers: { Authorization: authorization }
-          }
-        );
-
-        const content = contentRes.data.data;
-
-        if (content.content) {
-          return {
-            previewContent: content.content.slice(0, 3000)
-          };
-        } else if (content.previewUrl) {
-          return getPreviewFileContent({
-            type: importType2ReadType(importSource),
-            sourceId: content.previewUrl,
-            isQAImport: false,
-            selector: processParamsForm.getValues('webSelector')
-          });
-        }
-      }
 
       return getPreviewFileContent({
         type: importType2ReadType(importSource),
         sourceId:
-          previewSource.dbFileId || previewSource.link || previewSource.externalFileUrl || '',
+          previewSource.dbFileId ||
+          previewSource.link ||
+          previewSource.externalFileUrl ||
+          previewSource.apiFileId ||
+          '',
         isQAImport: false,
-        selector: processParamsForm.getValues('webSelector')
+        selector: processParamsForm.getValues('webSelector'),
+        datasetId
       });
     },
     {

@@ -12,6 +12,7 @@ import { AIChatItemType, ChatHistoryItemResType } from '@fastgpt/global/core/cha
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import axios from 'axios';
+import { APIFileReadResponse } from '@fastgpt/global/core/dataset/apiDataset';
 
 export type readCollectionSourceQuery = {};
 
@@ -151,11 +152,14 @@ async function handler(
       const { apiServer } = datasetId;
       if (!apiServer) return Promise.reject('apiServer not found');
       const { baseUrl, authorization } = apiServer;
-      const readRes = await axios.get(`${baseUrl}/v1/file/read?id=${collection.apiFileId}`, {
-        headers: { Authorization: authorization }
-      });
+      const { data } = await axios.get<APIFileReadResponse>(
+        `${baseUrl}/v1/file/read?id=${collection.apiFileId}`,
+        {
+          headers: { Authorization: authorization }
+        }
+      );
 
-      const { url } = readRes.data.data;
+      const { url } = data.data;
       if (!url || typeof url !== 'string') {
         return Promise.reject('Invalid response url');
       }

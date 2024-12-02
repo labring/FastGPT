@@ -10,7 +10,6 @@ import { DatasetImportContext } from '../Context';
 import { importType2ReadType } from '@fastgpt/global/core/dataset/read';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import axios from 'axios';
 
 const PreviewChunks = ({
   previewSource,
@@ -23,7 +22,7 @@ const PreviewChunks = ({
     DatasetImportContext,
     (v) => v
   );
-  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
 
   const { data = [], loading: isLoading } = useRequest2(
     async () => {
@@ -52,54 +51,21 @@ const PreviewChunks = ({
           isQAImport: true
         });
       }
-      if (importSource === ImportDataSourceEnum.apiDataset && previewSource.apiFileId) {
-        const { apiServer } = datasetDetail;
-        if (!apiServer) return Promise.reject('apiServer not found');
-
-        const { baseUrl, authorization } = apiServer;
-        const contentRes = await axios.get(
-          `${baseUrl}/v1/file/content?id=${previewSource.apiFileId}`,
-          {
-            headers: { Authorization: authorization }
-          }
-        );
-
-        const content = contentRes.data.data;
-        const customSplitChar = processParamsForm.getValues('customSplitChar');
-
-        if (content.content) {
-          const { chunks } = splitText2Chunks({
-            text: content.content,
-            chunkLen: chunkSize,
-            overlapRatio: chunkOverlapRatio,
-            customReg: customSplitChar ? [customSplitChar] : []
-          });
-          return chunks.map((chunk) => ({
-            q: chunk,
-            a: ''
-          }));
-        } else if (content.previewUrl) {
-          return getPreviewChunks({
-            type: importType2ReadType(importSource),
-            sourceId: content.previewUrl,
-            chunkSize,
-            overlapRatio: chunkOverlapRatio,
-            customSplitChar: customSplitChar,
-            selector: processParamsForm.getValues('webSelector'),
-            isQAImport: false
-          });
-        }
-      }
 
       return getPreviewChunks({
         type: importType2ReadType(importSource),
         sourceId:
-          previewSource.dbFileId || previewSource.link || previewSource.externalFileUrl || '',
+          previewSource.dbFileId ||
+          previewSource.link ||
+          previewSource.externalFileUrl ||
+          previewSource.apiFileId ||
+          '',
         chunkSize,
         overlapRatio: chunkOverlapRatio,
         customSplitChar: processParamsForm.getValues('customSplitChar'),
         selector: processParamsForm.getValues('webSelector'),
-        isQAImport: false
+        isQAImport: false,
+        datasetId
       });
     },
     {
