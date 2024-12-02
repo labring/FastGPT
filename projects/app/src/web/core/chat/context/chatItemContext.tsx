@@ -10,13 +10,17 @@ import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 type ChatBoxDataType = {
+  appId: string;
+  title?: string;
   userAvatar?: string;
+
   app: {
     chatConfig?: AppChatConfigType;
     name: string;
     avatar: string;
     type: `${AppTypeEnum}`;
     pluginInputs: FlowNodeInputItemType[];
+    chatModels?: string[];
   };
 };
 
@@ -55,7 +59,9 @@ const ChatItemContextProvider = ({ children }: { children: ReactNode }) => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
   const variablesForm = useForm<ChatBoxInputFormType>();
 
-  const [chatBoxData, setChatBoxData] = useState<ChatBoxDataType>(defaultChatData);
+  const [chatBoxData, setChatBoxData] = useState<ChatBoxDataType>({
+    ...defaultChatData
+  });
 
   const isPlugin = chatBoxData.app.type === AppTypeEnum.plugin;
 
