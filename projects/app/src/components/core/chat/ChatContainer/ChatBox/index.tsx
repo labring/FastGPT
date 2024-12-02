@@ -83,7 +83,6 @@ enum FeedbackTypeEnum {
 
 type Props = OutLinkChatAuthProps &
   ChatProviderProps & {
-    isReady?: boolean;
     feedbackType?: `${FeedbackTypeEnum}`;
     showMarkIcon?: boolean; // admin mark dataset
     showVoiceIcon?: boolean;
@@ -98,7 +97,6 @@ type Props = OutLinkChatAuthProps &
   };
 
 const ChatBox = ({
-  isReady = true,
   feedbackType = FeedbackTypeEnum.hidden,
   showMarkIcon = false,
   showVoiceIcon = true,
@@ -132,6 +130,7 @@ const ChatBox = ({
 
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
   const userAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.userAvatar);
+  const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
@@ -146,7 +145,6 @@ const ChatBox = ({
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const allVariableList = useContextSelector(ChatBoxContext, (v) => v.allVariableList);
   const questionGuide = useContextSelector(ChatBoxContext, (v) => v.questionGuide);
-  const autoExecute = useContextSelector(ChatBoxContext, (v) => v.autoExecute);
   const startSegmentedAudio = useContextSelector(ChatBoxContext, (v) => v.startSegmentedAudio);
   const finishSegmentedAudio = useContextSelector(ChatBoxContext, (v) => v.finishSegmentedAudio);
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
@@ -166,7 +164,9 @@ const ChatBox = ({
   });
   const { setValue, watch } = chatForm;
   const chatStartedWatch = watch('chatStarted');
-  const chatStarted = chatStartedWatch || chatRecords.length > 0 || variableList.length === 0;
+  const chatStarted =
+    chatBoxData?.appId === appId &&
+    (chatStartedWatch || chatRecords.length > 0 || variableList.length === 0);
 
   // 滚动到底部
   const scrollToBottom = useMemoizedFn((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
@@ -802,9 +802,9 @@ const ChatBox = ({
     setQuestionGuide([]);
     setValue('chatStarted', false);
     abortRequest('leave');
-  }, [router.query, setValue, chatId]);
+  }, [abortRequest, setValue]);
 
-  // add listener
+  // Add listener
   useEffect(() => {
     const windowMessage = ({ data }: MessageEvent<{ type: 'sendPrompt'; text: string }>) => {
       if (data?.type === 'sendPrompt' && data?.text) {
@@ -829,30 +829,27 @@ const ChatBox = ({
       eventBus.off(EventNameEnum.sendQuestion);
       eventBus.off(EventNameEnum.editQuestion);
     };
-  }, [isReady, resetInputVal, sendPrompt]);
+  }, [chatBoxData, resetInputVal, sendPrompt]);
 
   // Auto send prompt
   useEffect(() => {
     if (
-      isReady &&
-      autoExecute.open &&
+      chatBoxData?.app?.chatConfig?.autoExecute?.open &&
       chatStarted &&
       chatRecords.length === 0 &&
       isChatRecordsLoaded
     ) {
       sendPrompt({
-        text: autoExecute.defaultPrompt || 'AUTO_EXECUTE',
+        text: chatBoxData?.app?.chatConfig?.autoExecute?.defaultPrompt || 'AUTO_EXECUTE',
         hideInUI: true
       });
     }
   }, [
     chatStarted,
-    chatRecords,
+    chatRecords.length,
     isChatRecordsLoaded,
     sendPrompt,
-    isReady,
-    autoExecute.open,
-    autoExecute.defaultPrompt
+    chatBoxData?.app?.chatConfig?.autoExecute
   ]);
 
   // output data
