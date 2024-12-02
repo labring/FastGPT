@@ -30,10 +30,7 @@ const LinkCollection = () => {
   return (
     <>
       {activeStep === 0 && <CustomLinkImport />}
-      {activeStep === 1 && adjustTraining == AdjustTrainingStatus.TRUE && (
-        <ReTraining showPreviewChunks />
-      )}
-      {activeStep === 1 && !adjustTraining && <DataProcess showPreviewChunks />}
+      {activeStep === 1 && <DataProcess showPreviewChunks />}
       {activeStep === 2 && <Upload />}
     </>
   );
