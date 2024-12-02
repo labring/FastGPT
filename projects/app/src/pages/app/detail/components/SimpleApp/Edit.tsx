@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box } from '@chakra-ui/react';
-import { useLocalStorageState, useMount } from 'ahooks';
+import { useDebounceEffect, useLocalStorageState, useMount } from 'ahooks';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
 
@@ -62,10 +62,21 @@ const Edit = ({
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { t } = useTranslation();
 
-  // 旧的编辑记录，直接重置到新的变量中
+  // Reset old edit history to new variables
   const [oldPast, setOldPast] = useLocalStorageState<SimpleAppSnapshotType[]>(
     `${appDetail._id}-past-simple`,
     {}
+  );
+
+  // Save snapshot to local
+  useDebounceEffect(
+    () => {
+      saveSnapshot({
+        appForm
+      });
+    },
+    [appForm],
+    { wait: 500 }
   );
 
   // Init app form
