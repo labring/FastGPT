@@ -62,24 +62,21 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
 
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
+  const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
   // get chat app info
-  const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
   const { loading } = useRequest2(
     async () => {
       if (!appId || forbidLoadChat.current) return;
 
       const res = await getTeamChatInfo({ teamId, appId, chatId, teamToken });
 
-      await new Promise((resolve) => {
-        setChatData(res);
-        setChatBoxData(res);
-        setTimeout(resolve, 0);
-      });
+      setChatBoxData(res);
+
       // reset chat records
       resetVariables({
         variables: res.variables
@@ -124,7 +121,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           teamId,
           teamToken,
           chatId: completionChatId,
-          appType: chatData.app.type
+          appType: chatBoxData.app.type
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -139,7 +136,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       onUpdateHistoryTitle({ chatId: completionChatId, newTitle });
 
       // update chat window
-      setChatData((state) => ({
+      setChatBoxData((state) => ({
         ...state,
         title: newTitle
       }));
@@ -152,8 +149,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       appId,
       teamId,
       teamToken,
-      chatData.app.type,
+      chatBoxData.app.type,
       onUpdateHistoryTitle,
+      setChatBoxData,
       forbidLoadChat,
       onChangeChatId
     ]
@@ -182,7 +180,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
   return (
     <Flex h={'100%'}>
-      <NextHead title={chatData.app.name} icon={chatData.app.avatar}></NextHead>
+      <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar}></NextHead>
       {/* pc show myself apps */}
       {isPc && (
         <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
@@ -205,13 +203,12 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
             <ChatHeader
               totalRecordsCount={totalRecordsCount}
               apps={myApps}
-              chatData={chatData}
               history={chatRecords}
               showHistory
             />
             {/* chat box */}
             <Box flex={1}>
-              {chatData.app.type === AppTypeEnum.plugin ? (
+              {chatBoxData.app.type === AppTypeEnum.plugin ? (
                 <CustomPluginRunBox
                   appId={appId}
                   chatId={chatId}
@@ -227,7 +224,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                   feedbackType={'user'}
                   onStartChat={startChat}
                   chatType="team"
-                  isReady={!loading}
                   showRawSource
                   showNodeStatus
                 />
