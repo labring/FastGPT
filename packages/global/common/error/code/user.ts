@@ -5,7 +5,8 @@ export enum UserErrEnum {
   unAuthUser = 'unAuthUser',
   unAuthRole = 'unAuthRole',
   binVisitor = 'binVisitor',
-  balanceNotEnough = 'balanceNotEnough'
+  balanceNotEnough = 'balanceNotEnough',
+  unAuthSso = 'unAuthSso'
 }
 const errList = [
   {
@@ -23,6 +24,10 @@ const errList = [
   {
     statusText: UserErrEnum.balanceNotEnough,
     message: i18nT('common:code_error.user_error.balance_not_enough')
+  },
+  {
+    statusText: UserErrEnum.unAuthSso,
+    message: i18nT('user:sso_auth_failed')
   }
 ];
 export default errList.reduce((acc, cur, index) => {
