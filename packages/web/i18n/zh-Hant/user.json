@@ -69,6 +69,7 @@
   "register.success": "註冊成功",
   "register.to_login": "已有帳號？前往登入",
   "search_user": "搜尋使用者名稱",
+  "sso_auth_failed": "SSO 鑑權失敗",
   "synchronization.button": "立即同步",
   "synchronization.placeholder": "請輸入同步標籤",
   "synchronization.title": "填寫標籤同步連結，點選同步按鈕即可同步",

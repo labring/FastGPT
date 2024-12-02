@@ -3,6 +3,7 @@ import { initSystemConfig } from '.';
 import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training/utils';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPluginSchema';
+import { throttle } from 'lodash';
 
 export const startMongoWatch = async () => {
   reloadConfigWatch();
@@ -26,11 +27,18 @@ const reloadConfigWatch = () => {
 const refetchSystemPlugins = () => {
   const changeStream = MongoSystemPlugin.watch();
 
-  changeStream.on('change', async (change) => {
-    setTimeout(() => {
-      try {
-        getSystemPluginCb(true);
-      } catch (error) {}
-    }, 5000);
-  });
+  changeStream.on(
+    'change',
+    throttle(
+      async (change) => {
+        setTimeout(() => {
+          try {
+            getSystemPluginCb(true);
+          } catch (error) {}
+        }, 5000);
+      },
+      1000,
+      { leading: true, trailing: false }
+    )
+  );
 };

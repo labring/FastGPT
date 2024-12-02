@@ -165,7 +165,7 @@ const Navbar = ({ unread }: { unread: number }) => {
             {...itemStyles}
             {...hoverStyle}
             prefetch
-            href={`/account?currentTab=inform`}
+            href={`/account/inform`}
             mb={0}
             color={'myGray.500'}
             height={'48px'}
