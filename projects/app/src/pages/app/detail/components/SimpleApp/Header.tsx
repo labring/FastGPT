@@ -9,7 +9,6 @@ import { useRouter } from 'next/router';
 import RouteTab from '../RouteTab';
 import { useTranslation } from 'next-i18next';
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import { TabEnum } from '../context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
