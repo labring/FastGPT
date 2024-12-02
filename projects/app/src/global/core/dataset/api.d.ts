@@ -15,6 +15,7 @@ import {
 } from '@fastgpt/global/core/dataset/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { APIFileServer } from './apiDataset';
 
 /* ================= dataset ===================== */
 export type CreateDatasetParams = {
@@ -25,10 +26,7 @@ export type CreateDatasetParams = {
   avatar: string;
   vectorModel?: string;
   agentModel?: string;
-  apiServer?: {
-    baseUrl: string;
-    authorization: string;
-  };
+  apiServer?: APIFileServer;
 };
 
 export type RebuildEmbeddingProps = {

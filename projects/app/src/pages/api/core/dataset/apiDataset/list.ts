@@ -1,4 +1,4 @@
-import { APIFileItem } from '@/global/core/dataset/type';
+import { APIFileItem } from '@/global/core/dataset/apiDataset';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -9,24 +9,26 @@ export type GetApiDatasetFileListProps = {
   searchKey?: string;
   parentId?: string | null;
   datasetId: string;
-  apiServer: {
-    baseUrl: string;
-    authorization: string;
-  };
 };
 
 export type GetApiDatasetFileListResponse = APIFileItem[];
 
 async function handler(req: NextApiRequest) {
-  let { searchKey = '', parentId = null, datasetId, apiServer } = req.body;
+  let { searchKey = '', parentId = null, datasetId } = req.body;
 
-  await authDataset({
+  const { dataset } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
     datasetId,
     per: ReadPermissionVal
   });
+
+  const { apiServer } = dataset;
+
+  if (!apiServer) {
+    throw new Error('apiServer is required');
+  }
 
   const { baseUrl, authorization } = apiServer;
 
@@ -43,7 +45,17 @@ async function handler(req: NextApiRequest) {
     }
   );
 
-  return res.data.data;
+  const files = res.data.data as APIFileItem[];
+  if (!Array.isArray(files)) {
+    throw new Error('Invalid file list format');
+  }
+  files.forEach((file) => {
+    if (!file.id || !file.name || typeof file.type === 'undefined') {
+      throw new Error('Invalid file data format');
+    }
+  });
+
+  return files;
 }
 
 export default NextAPI(handler);

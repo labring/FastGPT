@@ -61,10 +61,6 @@ import {
   GetApiDatasetFileListProps,
   GetApiDatasetFileListResponse
 } from '@/pages/api/core/dataset/apiDataset/list';
-import {
-  GetApiDatasetFileContentProps,
-  GetApiDatasetFileContentResponse
-} from '@/pages/api/core/dataset/apiDataset/content';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -132,7 +128,7 @@ export const postCreateDatasetExternalFileCollection = (
 export const postCreateDatasetApiDatasetCollection = (
   data: ApiDatasetCreateDatasetCollectionParams
 ) =>
-  POST<{ collectionId: string }>(`/core/dataset/collection/create/apiDataset`, data, {
+  POST<{ collectionId: string }>(`/core/dataset/collection/create/apiCollection`, data, {
     timeout: 360000
   });
 
@@ -218,6 +214,3 @@ export const getCollectionSource = (data: readCollectionSourceBody) =>
 /* ================== apiDataset ======================== */
 export const getApiDatasetFileList = (data: GetApiDatasetFileListProps) =>
   POST<GetApiDatasetFileListResponse>('/core/dataset/apiDataset/list', data);
-
-export const getApiDatasetFileContent = (data: GetApiDatasetFileContentProps) =>
-  POST<GetApiDatasetFileContentResponse>('/core/dataset/apiDataset/content', data);

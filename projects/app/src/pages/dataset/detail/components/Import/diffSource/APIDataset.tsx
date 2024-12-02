@@ -6,16 +6,16 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { Box, Button, Checkbox, Flex, Input, InputGroup } from '@chakra-ui/react';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getApiDatasetFileContent, getApiDatasetFileList } from '@/web/core/dataset/api';
+import { getApiDatasetFileList } from '@/web/core/dataset/api';
 import { GetApiDatasetFileListProps } from '@/pages/api/core/dataset/apiDataset/list';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'react-i18next';
-import { APIFileItem } from '@/global/core/dataset/type';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import FolderPath from '@/components/common/folder/Path';
-import { GetApiDatasetFileContentProps } from '@/pages/api/core/dataset/apiDataset/content';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { APIFileItem } from '@/global/core/dataset/apiDataset';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
@@ -55,27 +55,6 @@ const CustomAPIFileInput = () => {
     {}
   );
 
-  const { runAsync: getFileContent, loading: getFileContentLoading } = useRequest2(
-    async (data: GetApiDatasetFileContentProps) => await getApiDatasetFileContent(data),
-    {
-      onSuccess: (res) => {
-        setSources(
-          selectFiles.map((item) => ({
-            id: item.id,
-            createStatus: 'waiting',
-            sourceName: item.name,
-            icon: getSourceNameIcon({ sourceName: item.name }) as any,
-            createTime: item.createTime,
-            updateTime: item.updateTime,
-            rawText: res.find((i) => i.fileId === item.id)?.content,
-            link: res.find((i) => i.fileId === item.id)?.previewUrl,
-            rawLink: res.find((i) => i.fileId === item.id)?.rawLink
-          }))
-        );
-      }
-    }
-  );
-
   useEffect(() => {
     if (!datasetDetail._id || !datasetDetail.apiServer) {
       return;
@@ -84,7 +63,6 @@ const CustomAPIFileInput = () => {
     (async () => {
       const res = await getApiFileList({
         datasetId: datasetDetail._id,
-        apiServer: datasetDetail.apiServer!,
         parentId: parent?.parentId || null,
         searchKey
       });
@@ -100,7 +78,6 @@ const CustomAPIFileInput = () => {
         if (item.type === 'folder') {
           const folderFiles = await getApiFileList({
             datasetId: datasetDetail._id,
-            apiServer: datasetDetail.apiServer!,
             parentId: item.id,
             searchKey: ''
           });
@@ -113,7 +90,7 @@ const CustomAPIFileInput = () => {
 
       return allFiles;
     },
-    [datasetDetail._id, datasetDetail.apiServer, getApiFileList]
+    [datasetDetail._id, getApiFileList]
   );
 
   const onclickNext = useCallback(async () => {
@@ -123,18 +100,21 @@ const CustomAPIFileInput = () => {
 
     try {
       const allFiles = await getFilesRecursively(selectFiles);
-      setSelectFiles(allFiles);
-
-      await getFileContent({
-        fileIds: allFiles.map((item) => item.id),
-        apiServer: datasetDetail.apiServer
-      });
+      setSources(
+        allFiles.map((item) => ({
+          id: getNanoid(32),
+          apiFileId: item.id,
+          createStatus: 'waiting',
+          sourceName: item.name,
+          icon: getSourceNameIcon({ sourceName: item.name }) as any
+        }))
+      );
 
       goToNext();
     } catch (error) {
       console.error('Error processing files:', error);
     }
-  }, [datasetDetail.apiServer, getFileContent, getFilesRecursively, goToNext, selectFiles]);
+  }, [datasetDetail.apiServer, getFilesRecursively, goToNext, selectFiles, setSources]);
 
   const handleItemClick = useCallback(
     (item: APIFileItem) => {
@@ -166,7 +146,7 @@ const CustomAPIFileInput = () => {
   }, [fileList, selectFiles]);
 
   return (
-    <MyBox isLoading={loading || getFileContentLoading} position="relative" h="full">
+    <MyBox isLoading={loading} position="relative" h="full">
       <Flex justifyContent={'space-between'}>
         <FolderPath
           paths={[parent || { parentId: '', parentName: '' }]}
@@ -205,7 +185,7 @@ const CustomAPIFileInput = () => {
             alignItems={'center'}
             py={3}
             cursor={'pointer'}
-            _hover={{ bg: 'myGray.50' }}
+            bg={'myGray.50'}
             pl={7}
             rounded={'8px'}
             fontSize={'sm'}
@@ -232,10 +212,9 @@ const CustomAPIFileInput = () => {
               <Flex
                 key={item.id}
                 py={3}
-                _hover={{ bg: 'myGray.50' }}
+                _hover={{ bg: 'primary.50' }}
                 pl={7}
                 cursor={'pointer'}
-                rounded={'8px'}
                 onClick={(e) => {
                   if (!(e.target as HTMLElement).closest('.checkbox')) {
                     handleItemClick(item);

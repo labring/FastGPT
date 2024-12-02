@@ -84,6 +84,8 @@ const DatasetCollectionSchema = new Schema({
   rawLink: String,
   // external collection
   externalFileId: String,
+  // api collection
+  apiFileId: String,
 
   // metadata
   rawTextLength: Number,

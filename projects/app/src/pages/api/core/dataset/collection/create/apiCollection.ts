@@ -10,7 +10,6 @@ import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
-import { hashStr } from '@fastgpt/global/common/string/tools';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
@@ -19,22 +18,18 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CreateCollectionResponse } from '@/global/core/dataset/api';
 import { reloadCollectionChunks } from '@fastgpt/service/core/dataset/collection/utils';
+import { fetchApiServerContent } from '@/service/core/dataset/data/utils';
 
 async function handler(req: NextApiRequest): CreateCollectionResponse {
   const {
     name,
-    text,
-    link,
+    apiFileId,
     trainingType = TrainingModeEnum.chunk,
     chunkSize = 512,
     chunkSplitter,
     qaPrompt,
     ...body
   } = req.body as ApiDatasetCreateDatasetCollectionParams;
-
-  if (!text && !link) {
-    throw new Error('Text or link is required');
-  }
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,
@@ -44,10 +39,15 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     per: WritePermissionVal
   });
 
-  const isTextMode = !!text;
+  const { apiServer } = dataset;
+  if (!apiServer || !apiFileId) {
+    throw new Error('Api server or apiFileId not found');
+  }
+  const { isTextMode, content } = await fetchApiServerContent(apiServer, apiFileId);
+
   const chunks = isTextMode
     ? splitText2Chunks({
-        text,
+        text: content,
         chunkLen: chunkSize,
         overlapRatio: trainingType === TrainingModeEnum.chunk ? 0.2 : 0,
         customReg: chunkSplitter ? [chunkSplitter] : []
@@ -70,9 +70,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
       chunkSize,
       chunkSplitter,
       qaPrompt,
-      ...(isTextMode
-        ? { hashRawText: hashStr(text), rawTextLength: text.length }
-        : { rawLink: link }),
+      apiFileId,
       session
     });
 

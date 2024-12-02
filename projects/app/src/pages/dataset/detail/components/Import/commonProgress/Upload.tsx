@@ -135,9 +135,7 @@ const Upload = () => {
         } else if (importSource === ImportDataSourceEnum.apiDataset) {
           await postCreateDatasetApiDatasetCollection({
             ...commonParams,
-            text: item.rawText,
-            link: item.link,
-            rawLink: item.rawLink
+            apiFileId: item.apiFileId
           });
         }
 
