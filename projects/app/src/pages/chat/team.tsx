@@ -69,14 +69,17 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
   // get chat app info
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
-  const { loading: isLoading } = useRequest2(
+  const { loading } = useRequest2(
     async () => {
       if (!appId || forbidLoadChat.current) return;
 
       const res = await getTeamChatInfo({ teamId, appId, chatId, teamToken });
 
-      setChatData(res);
-      setChatBoxData(res);
+      await new Promise((resolve) => {
+        setChatData(res);
+        setChatBoxData(res);
+        setTimeout(resolve, 0);
+      });
       // reset chat records
       resetVariables({
         variables: res.variables
@@ -177,8 +180,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     );
   }, [appId, isOpenSlider, isPc, onCloseSlider, t]);
 
-  const loading = isLoading;
-
   return (
     <Flex h={'100%'}>
       <NextHead title={chatData.app.name} icon={chatData.app.avatar}></NextHead>
@@ -226,6 +227,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                   feedbackType={'user'}
                   onStartChat={startChat}
                   chatType="team"
+                  isReady={!loading}
                   showRawSource
                   showNodeStatus
                 />

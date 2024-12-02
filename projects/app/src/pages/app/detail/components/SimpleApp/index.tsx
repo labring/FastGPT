@@ -23,16 +23,6 @@ const SimpleEdit = () => {
   );
 
   const [appForm, setAppForm] = useState(getDefaultAppForm());
-  // Save snapshot to local
-  useDebounceEffect(
-    () => {
-      saveSnapshot({
-        appForm
-      });
-    },
-    [appForm],
-    { wait: 500 }
-  );
 
   useBeforeunload({
     tip: t('common:core.common.tip.leave page')

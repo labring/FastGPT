@@ -88,7 +88,7 @@ const OutLink = (props: Props) => {
 
   const initSign = useRef(false);
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
-  const { data, loading: isLoading } = useRequest2(
+  const { data, loading } = useRequest2(
     async () => {
       const shareId = outLinkAuthData.shareId;
       const outLinkUid = outLinkAuthData.outLinkUid;
@@ -100,8 +100,12 @@ const OutLink = (props: Props) => {
         outLinkUid
       });
 
-      setChatData(res);
-      setChatBoxData(res);
+      await new Promise((resolve) => {
+        setChatData(res);
+        setChatBoxData(res);
+        setTimeout(resolve, 0);
+      });
+
       resetVariables({
         variables: res.variables
       });
@@ -231,8 +235,6 @@ const OutLink = (props: Props) => {
     );
   }, [isOpenSlider, isPc, onCloseSlider, showHistory, t]);
 
-  const loading = isLoading;
-
   return (
     <>
       <NextHead title={props.appName || 'AI'} desc={props.appIntro} icon={props.appAvatar} />
@@ -280,6 +282,7 @@ const OutLink = (props: Props) => {
                   feedbackType={'user'}
                   onStartChat={startChat}
                   chatType="share"
+                  isReady={!loading}
                   showRawSource={showRawSource}
                   showNodeStatus={showNodeStatus}
                 />

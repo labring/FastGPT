@@ -845,7 +845,15 @@ const ChatBox = ({
         hideInUI: true
       });
     }
-  }, [isReady, chatStarted, autoExecute?.open, chatRecords, isChatRecordsLoaded]);
+  }, [
+    chatStarted,
+    chatRecords,
+    isChatRecordsLoaded,
+    sendPrompt,
+    isReady,
+    autoExecute.open,
+    autoExecute.defaultPrompt
+  ]);
 
   // output data
   useImperativeHandle(ChatBoxRef, () => ({
