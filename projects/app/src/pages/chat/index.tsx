@@ -63,15 +63,20 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
   // Load chat init data
   const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
-  const { loading: isLoading } = useRequest2(
+  const { loading } = useRequest2(
     async () => {
       if (!appId || forbidLoadChat.current) return;
 
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar;
 
-      setChatData(res);
-      setChatBoxData(res);
+      // Wait for state update to complete
+      await new Promise((resolve) => {
+        setChatData(res);
+        setChatBoxData(res);
+        setTimeout(resolve, 0);
+      });
+
       // reset chat variables
       resetVariables({
         variables: res.variables
@@ -136,8 +141,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     },
     [chatId, appId, onUpdateHistoryTitle, forbidLoadChat]
   );
-  const loading = isLoading;
-
   const RenderHistorySlider = useMemo(() => {
     const Children = (
       <ChatHistorySlider confirmClearText={t('common:core.chat.Confirm to clear history')} />
@@ -210,6 +213,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                   feedbackType={'user'}
                   onStartChat={onStartChat}
                   chatType={'chat'}
+                  isReady={!loading}
                   showRawSource
                   showNodeStatus
                 />
