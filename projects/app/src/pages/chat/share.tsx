@@ -278,6 +278,7 @@ const OutLink = (props: Props) => {
                 />
               ) : (
                 <ChatBox
+                  isReady={!loading}
                   appId={appId}
                   chatId={chatId}
                   outLinkAuthData={outLinkAuthData}
