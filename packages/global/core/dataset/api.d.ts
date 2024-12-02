@@ -67,6 +67,10 @@ export type ApiDatasetCreateDatasetCollectionParams = ApiCreateDatasetCollection
 export type FileIdCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   fileId: string;
 };
+type FileIdCreateDatasetCollectionParamsWithCollectionId = ApiCreateDatasetCollectionParams & {
+  collectionId?: string;
+  link?: string;
+};
 export type FileCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   fileMetadata?: Record<string, any>;
   collectionMetadata?: Record<string, any>;

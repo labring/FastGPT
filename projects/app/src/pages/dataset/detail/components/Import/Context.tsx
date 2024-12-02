@@ -83,14 +83,8 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
     parentId?: string;
   };
 
-  const {
-    adjustTraining,
-    collectionId = '',
-    datasetId
-  } = router.query as {
+  const { adjustTraining } = router.query as {
     adjustTraining: string;
-    collectionId: string;
-    datasetId: string;
   };
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
@@ -107,7 +101,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
             ? t('dataset:core.dataset.import.Adjust parameters')
             : t('common:core.dataset.import.Data Preprocessing')
       },
-      ...(adjustTraining === 'true' ? [] : [{ title: t('common:core.dataset.import.Upload data') }])
+      { title: t('common:core.dataset.import.Upload data') }
     ],
     [ImportDataSourceEnum.fileLink]: [
       ...(adjustTraining === 'true'
@@ -119,7 +113,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
             ? t('dataset:core.dataset.import.Adjust parameters')
             : t('common:core.dataset.import.Data Preprocessing')
       },
-      ...(adjustTraining === 'true' ? [] : [{ title: t('common:core.dataset.import.Upload data') }])
+      { title: t('common:core.dataset.import.Upload data') }
     ],
     [ImportDataSourceEnum.fileCustom]: [
       ...(adjustTraining === 'true'
@@ -131,7 +125,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
             ? t('dataset:core.dataset.import.Adjust parameters')
             : t('common:core.dataset.import.Data Preprocessing')
       },
-      ...(adjustTraining === 'true' ? [] : [{ title: t('common:core.dataset.import.Upload data') }])
+      { title: t('common:core.dataset.import.Upload data') }
     ],
     [ImportDataSourceEnum.csvTable]: [
       ...(adjustTraining === 'true'
@@ -143,7 +137,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
             ? t('dataset:core.dataset.import.Adjust parameters')
             : t('common:core.dataset.import.Data Preprocessing')
       },
-      ...(adjustTraining === 'true' ? [] : [{ title: t('common:core.dataset.import.Upload data') }])
+      { title: t('common:core.dataset.import.Upload data') }
     ],
     [ImportDataSourceEnum.externalFile]: [
       ...(adjustTraining === 'true'
@@ -155,15 +149,14 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
             ? t('dataset:core.dataset.import.Adjust parameters')
             : t('common:core.dataset.import.Data Preprocessing')
       },
-      ...(adjustTraining === 'true' ? [] : [{ title: t('common:core.dataset.import.Upload data') }])
+      { title: t('common:core.dataset.import.Upload data') }
     ]
   };
   const steps = modeSteps[source];
-  const defaultStep = adjustTraining === 'true' ? 1 : 0;
+  const defaultStep = 0;
   const { activeStep, goToNext, goToPrevious, MyStep } = useMyStep({
     defaultStep,
-    steps,
-    adjustTraining: adjustTraining
+    steps
   });
 
   const vectorModel = datasetDetail.vectorModel;
@@ -266,7 +259,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
   return (
     <DatasetImportContext.Provider value={contextValue}>
       <Flex>
-        {activeStep === 0 && !adjustTraining ? (
+        {activeStep === 0 ? (
           <Flex alignItems={'center'}>
             <IconButton
               icon={<MyIcon name={'common/backFill'} w={'14px'} />}
@@ -287,15 +280,13 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
             {t('common:common.Exit')}
           </Flex>
         ) : (
-          !adjustTraining && (
-            <Button
-              variant={'whiteBase'}
-              leftIcon={<MyIcon name={'common/backFill'} w={'14px'} />}
-              onClick={goToPrevious}
-            >
-              {t('common:common.Last Step')}
-            </Button>
-          )
+          <Button
+            variant={'whiteBase'}
+            leftIcon={<MyIcon name={'common/backFill'} w={'14px'} />}
+            onClick={goToPrevious}
+          >
+            {t('common:common.Last Step')}
+          </Button>
         )}
         <Box flex={1} />
       </Flex>

@@ -18,25 +18,21 @@ import React, { useCallback, useState } from 'react';
 
 export const useMyStep = ({
   defaultStep = 0,
-  steps = [],
-  adjustTraining = 'false'
+  steps = []
 }: {
   defaultStep?: number;
   steps: { title?: string; description?: string }[];
-  adjustTraining?: string;
 }) => {
   const { activeStep, goToNext, goToPrevious } = useSteps({
     index: defaultStep,
     count: steps.length
   });
-  const isAdjustTrainingFalse = adjustTraining === 'false';
-  const stepIndex = isAdjustTrainingFalse ? activeStep : activeStep - 1;
 
   const MyStep = useCallback(
     () => (
       <Stepper
         size={['xs', 'sm']}
-        index={stepIndex}
+        index={activeStep}
         colorScheme="primary"
         gap={5}
         css={css({

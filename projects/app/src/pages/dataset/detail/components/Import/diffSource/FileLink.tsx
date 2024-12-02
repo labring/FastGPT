@@ -17,7 +17,7 @@ import { AdjustTrainingStatus } from '../../DataCard';
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
 });
-const ReTraining = dynamic(() => import('../commonProgress/reTraining'), {
+const ReTraining = dynamic(() => import('./ReTraining'), {
   loading: () => <Loading fixed={false} />
 });
 const Upload = dynamic(() => import('../commonProgress/Upload'));
