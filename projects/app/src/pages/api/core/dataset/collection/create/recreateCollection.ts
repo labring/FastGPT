@@ -24,12 +24,8 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
 import { delOnlyCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
-import { getFileById } from '@fastgpt/service/common/file/gridfs/controller';
-import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import type { LinkCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { reloadCollectionChunks } from '@fastgpt/service/core/dataset/collection/utils';
 
@@ -42,7 +38,7 @@ async function handler(req: ApiRequestProps<FileIdCreateDatasetCollectionParamsW
   }
 
   // 凭证校验
-  const { collection, permission } = await authDatasetCollection({
+  const { collection } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,

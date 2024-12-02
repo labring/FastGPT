@@ -26,7 +26,6 @@ import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { DatasetImportContext, type ImportFormType } from '../Context';
-import { reTraining } from '@/service/core/dataset/training/controller';
 import { postreTrainingDatasetFileCollection } from '@/web/core/dataset/api';
 
 const Upload = () => {
