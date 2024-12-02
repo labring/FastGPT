@@ -82,6 +82,7 @@ export const useChatTest = ({
   useEffect(() => {
     setChatBoxData({
       userAvatar: userInfo?.avatar,
+      appId: appId,
       app: {
         chatConfig,
         name: appDetail.name,
@@ -94,6 +95,7 @@ export const useChatTest = ({
     appDetail.avatar,
     appDetail.name,
     appDetail.type,
+    appId,
     chatConfig,
     pluginInputs,
     setChatBoxData,
