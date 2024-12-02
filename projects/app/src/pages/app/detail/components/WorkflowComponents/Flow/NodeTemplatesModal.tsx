@@ -687,8 +687,7 @@ const RenderList = React.memo(function RenderList({
                                         maxH={'100px'}
                                         overflow={'hidden'}
                                       >
-                                        {t(template.userGuide as any) ||
-                                          t(template.intro as any) ||
+                                        {t(template.intro as any) ||
                                           t('common:core.workflow.Not intro')}
                                       </Box>
                                       <CostTooltip
