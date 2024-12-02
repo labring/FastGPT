@@ -37,7 +37,6 @@ async function handler(
         avatar: plugin.avatar,
         name: plugin.name,
         intro: plugin.intro,
-        userGuide: plugin.userGuide,
         isTool: plugin.isTool,
         currentCost: plugin.currentCost,
         hasTokenFee: plugin.hasTokenFee,

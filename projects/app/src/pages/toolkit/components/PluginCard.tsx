@@ -46,8 +46,6 @@ const PluginCard = ({
         borderColor: 'primary.300',
         boxShadow: '1.5'
       }}
-      onClick={() => setCurrentPlugin(item)}
-      cursor={'pointer'}
     >
       <HStack>
         <Avatar src={item.avatar} borderRadius={'sm'} w={'1.5rem'} h={'1.5rem'} />
@@ -79,12 +77,25 @@ const PluginCard = ({
         fontSize={'xs'}
         color={'myGray.500'}
       >
-        <Box className={'textEllipsis2'}>
-          {item.userGuide || item.intro || t('app:templateMarket.no_intro')}
-        </Box>
+        <Box className={'textEllipsis2'}>{item.intro || t('app:templateMarket.no_intro')}</Box>
       </Box>
 
-      <Flex w={'full'} fontSize={'mini'} justifyContent={'flex-end'}>
+      <Flex w={'full'} fontSize={'mini'}>
+        <Flex flex={1}>
+          {item.instructions && (
+            <Flex
+              color={'primary.700'}
+              alignItems={'center'}
+              gap={1}
+              cursor={'pointer'}
+              onClick={() => setCurrentPlugin(item)}
+              _hover={{ bg: 'myGray.100' }}
+            >
+              <MyIcon name={'book'} w={'14px'} />
+              {t('app:plugin.Instructions')}
+            </Flex>
+          )}
+        </Flex>
         <Box color={'myGray.500'}>{`by ${item.author || feConfigs.systemTitle}`}</Box>
       </Flex>
       {currentPlugin && (
