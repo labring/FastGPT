@@ -14,6 +14,7 @@ export type PostPreviewFilesChunksProps = {
   customSplitChar?: string;
   selector?: string;
   isQAImport?: boolean;
+  datasetId?: string;
 };
 export type PreviewChunksResponse = {
   q: string;
@@ -23,8 +24,16 @@ export type PreviewChunksResponse = {
 async function handler(
   req: ApiRequestProps<PostPreviewFilesChunksProps>
 ): Promise<PreviewChunksResponse> {
-  const { type, sourceId, chunkSize, customSplitChar, overlapRatio, selector, isQAImport } =
-    req.body;
+  const {
+    type,
+    sourceId,
+    chunkSize,
+    customSplitChar,
+    overlapRatio,
+    selector,
+    isQAImport,
+    datasetId
+  } = req.body;
 
   if (!sourceId) {
     throw new Error('sourceId is empty');
@@ -49,9 +58,10 @@ async function handler(
   const rawText = await readDatasetSourceRawText({
     teamId,
     type,
-    sourceId: sourceId,
+    sourceId,
     selector,
-    isQAImport
+    isQAImport,
+    datasetId
   });
 
   return rawText2Chunks({

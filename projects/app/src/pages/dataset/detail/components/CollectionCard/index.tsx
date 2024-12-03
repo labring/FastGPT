@@ -41,7 +41,6 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { CollectionPageContext } from './Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { useI18n } from '@/web/context/I18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import {
@@ -60,7 +59,6 @@ const CollectionCard = () => {
   const router = useRouter();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { datasetT } = useI18n();
   const { datasetDetail, loadDatasetDetail } = useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs } = useSystemStore();
 
@@ -195,11 +193,11 @@ const CollectionCard = () => {
             <Thead draggable={false}>
               <Tr>
                 <Th py={4}>{t('common:common.Name')}</Th>
-                <Th py={4}>{datasetT('collection.Training type')}</Th>
+                <Th py={4}>{t('dataset:collection.Training type')}</Th>
                 <Th py={4}>{t('common:dataset.collections.Data Amount')}</Th>
-                <Th py={4}>{datasetT('collection.Create update time')}</Th>
+                <Th py={4}>{t('dataset:collection.Create update time')}</Th>
                 <Th py={4}>{t('common:common.Status')}</Th>
-                <Th py={4}>{datasetT('Enable')}</Th>
+                <Th py={4}>{t('dataset:Enable')}</Th>
                 <Th py={4} />
               </Tr>
             </Thead>

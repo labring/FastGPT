@@ -1,5 +1,8 @@
 {
   "Enable": "启用",
+  "add_file": "添加文件",
+  "api_file": "API 文件库",
+  "api_url": "接口地址",
   "collection.Create update time": "创建/更新时间",
   "collection.Training type": "训练模式",
   "collection_tags": "集合标签",
@@ -32,6 +35,7 @@
   "permission.des.write": "可增加和变更知识库内容",
   "rebuild_embedding_start_tip": "切换索引模型任务已开始",
   "rebuilding_index_count": "重建中索引数量：{{count}}",
+  "request_headers": "请求头",
   "tag.Add New": "新建",
   "tag.Add_new_tag": "新建标签",
   "tag.Edit_tag": "编辑标签",

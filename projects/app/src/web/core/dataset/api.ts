@@ -13,6 +13,7 @@ import type {
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq.d';
 import type {
   AddTagsToCollectionsParams,
+  ApiDatasetCreateDatasetCollectionParams,
   CreateDatasetCollectionParams,
   CreateDatasetCollectionTagParams,
   CsvTableCreateDatasetCollectionParams,
@@ -56,6 +57,10 @@ import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/contro
 import type { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import type { GetScrollCollectionsProps } from '@/pages/api/core/dataset/collection/scrollList';
+import {
+  GetApiDatasetFileListProps,
+  GetApiDatasetFileListResponse
+} from '@/pages/api/core/dataset/apiDataset/list';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -118,6 +123,12 @@ export const postCreateDatasetExternalFileCollection = (
   data: ExternalFileCreateDatasetCollectionParams
 ) =>
   POST<{ collectionId: string }>(`/proApi/core/dataset/collection/create/externalFileUrl`, data, {
+    timeout: 360000
+  });
+export const postCreateDatasetApiDatasetCollection = (
+  data: ApiDatasetCreateDatasetCollectionParams
+) =>
+  POST<{ collectionId: string }>(`/core/dataset/collection/create/apiCollection`, data, {
     timeout: 360000
   });
 
@@ -199,3 +210,7 @@ export const getPreviewChunks = (data: PostPreviewFilesChunksProps) =>
 /* ================== read source ======================== */
 export const getCollectionSource = (data: readCollectionSourceBody) =>
   POST<readCollectionSourceResponse>('/core/dataset/collection/read', data);
+
+/* ================== apiDataset ======================== */
+export const getApiDatasetFileList = (data: GetApiDatasetFileListProps) =>
+  POST<GetApiDatasetFileListResponse>('/core/dataset/apiDataset/list', data);

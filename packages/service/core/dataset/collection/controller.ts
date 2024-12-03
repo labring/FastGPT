@@ -33,6 +33,8 @@ export async function createOneCollection({
   externalFileId,
   externalFileUrl,
 
+  apiFileId,
+
   hashRawText,
   rawTextLength,
   metadata = {},
@@ -69,6 +71,7 @@ export async function createOneCollection({
         rawLink,
         ...(externalFileId ? { externalFileId } : {}),
         externalFileUrl,
+        apiFileId,
 
         rawTextLength,
         hashRawText,

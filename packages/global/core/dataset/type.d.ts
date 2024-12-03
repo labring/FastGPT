@@ -30,10 +30,14 @@ export type DatasetSchemaType = {
     url: string;
     selector: string;
   };
-  externalReadUrl?: string;
   inheritPermission: boolean;
+  apiServer?: {
+    baseUrl: string;
+    authorization: string;
+  };
 
   // abandon
+  externalReadUrl?: string;
   defaultPermission?: number;
 };
 
@@ -64,6 +68,7 @@ export type DatasetCollectionSchemaType = {
   rawTextLength?: number;
   hashRawText?: string;
   externalFileUrl?: string; // external import url
+  apiFileId?: string; // api file id
   metadata?: {
     webPageSelector?: string;
     relatedImgId?: string; // The id of the associated image collections
