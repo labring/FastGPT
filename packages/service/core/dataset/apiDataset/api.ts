@@ -49,6 +49,9 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     if (typeof err.message === 'string') {
       return Promise.reject({ message: err.message });
     }
+    if (typeof err.data === 'string') {
+      return Promise.reject({ message: err.data });
+    }
     if (err?.response?.data) {
       return Promise.reject(err?.response?.data);
     }
@@ -67,8 +70,8 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       .request({
         url,
         method,
-        data: ['POST', 'PUT'].includes(method) ? data : null,
-        params: !['POST', 'PUT'].includes(method) ? data : null
+        data: ['POST', 'PUT'].includes(method) ? data : undefined,
+        params: !['POST', 'PUT'].includes(method) ? data : undefined
       })
       .then((res) => checkRes(res.data))
       .catch((err) => responseError(err));
@@ -101,8 +104,8 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
 
   const getFileContent = async ({ teamId, apiFileId }: { teamId: string; apiFileId: string }) => {
     const data = await request<APIFileContentResponse>(
-      `/v1/file/content?id=${apiFileId}`,
-      {},
+      `/v1/file/content`,
+      { id: apiFileId },
       'GET'
     );
     const content = data.content;
@@ -123,7 +126,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
   };
 
   const getFilePreviewUrl = async ({ apiFileId }: { apiFileId: string }) => {
-    const { url } = await request<APIFileReadResponse>(`/v1/file/read?id=${apiFileId}`, {}, 'GET');
+    const { url } = await request<APIFileReadResponse>(`/v1/file/read`, { id: apiFileId }, 'GET');
 
     if (!url || typeof url !== 'string') {
       return Promise.reject('Invalid response url');
