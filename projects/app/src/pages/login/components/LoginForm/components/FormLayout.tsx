@@ -62,10 +62,11 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     ...(feConfigs?.oauth?.microsoft
       ? [
           {
-            label: t('common:support.user.login.Microsoft'),
+            label:
+              feConfigs?.oauth?.microsoft?.customButton || t('common:support.user.login.Microsoft'),
             provider: OAuthEnum.microsoft,
             icon: 'common/microsoft',
-            redirectUrl: `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${feConfigs?.oauth?.microsoft}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=https%3A%2F%2Fgraph.microsoft.com%2Fuser.read&state=${state.current}`
+            redirectUrl: `https://login.microsoftonline.com/${feConfigs?.oauth?.microsoft?.tenantId || 'common'}/oauth2/v2.0/authorize?client_id=${feConfigs?.oauth?.microsoft?.clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=https%3A%2F%2Fgraph.microsoft.com%2Fuser.read&state=${state.current}`
           }
         ]
       : []),
