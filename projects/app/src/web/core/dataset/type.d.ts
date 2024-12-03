@@ -30,6 +30,9 @@ export type ImportSourceItemType = {
   // external file
   externalFileUrl?: string;
   externalFileId?: string;
+
+  // api dataset
+  apiFileId?: string;
 };
 
 export type ImportSourceParamsType = UseFormReturn<

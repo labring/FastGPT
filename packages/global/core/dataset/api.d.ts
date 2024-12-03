@@ -39,6 +39,7 @@ export type CreateDatasetCollectionParams = DatasetCollectionChunkMetadataType &
   fileId?: string;
   rawLink?: string;
   externalFileId?: string;
+  apiFileId?: string;
 
   externalFileUrl?: string;
   rawTextLength?: number;
@@ -55,6 +56,10 @@ export type TextCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams
 };
 export type LinkCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   link: string;
+};
+export type ApiDatasetCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
+  name: string;
+  apiFileId?: string;
 };
 export type FileIdCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   fileId: string;
