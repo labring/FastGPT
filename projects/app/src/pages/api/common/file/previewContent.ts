@@ -15,10 +15,11 @@ export type PreviewContextProps = {
   sourceId: string;
   isQAImport?: boolean;
   selector?: string;
+  datasetId?: string;
 };
 
 async function handler(req: ApiRequestProps<PreviewContextProps>, res: NextApiResponse<any>) {
-  const { type, sourceId, isQAImport, selector } = req.body;
+  const { type, sourceId, isQAImport, selector, datasetId } = req.body;
 
   if (!sourceId) {
     throw new Error('fileId is empty');
@@ -42,7 +43,8 @@ async function handler(req: ApiRequestProps<PreviewContextProps>, res: NextApiRe
     type,
     sourceId: sourceId,
     isQAImport,
-    selector
+    selector,
+    datasetId
   });
 
   return {

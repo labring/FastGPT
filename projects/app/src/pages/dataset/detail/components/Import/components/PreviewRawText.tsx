@@ -10,6 +10,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
 import { importType2ReadType } from '@fastgpt/global/core/dataset/read';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 
 const PreviewRawText = ({
   previewSource,
@@ -20,10 +21,11 @@ const PreviewRawText = ({
 }) => {
   const { toast } = useToast();
   const { importSource, processParamsForm } = useContextSelector(DatasetImportContext, (v) => v);
+  const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
 
   const { data, isLoading } = useQuery(
     ['previewSource', previewSource.dbFileId, previewSource.link, previewSource.externalFileUrl],
-    () => {
+    async () => {
       if (importSource === ImportDataSourceEnum.fileCustom && previewSource.rawText) {
         return {
           previewContent: previewSource.rawText.slice(0, 3000)
@@ -40,9 +42,14 @@ const PreviewRawText = ({
       return getPreviewFileContent({
         type: importType2ReadType(importSource),
         sourceId:
-          previewSource.dbFileId || previewSource.link || previewSource.externalFileUrl || '',
+          previewSource.dbFileId ||
+          previewSource.link ||
+          previewSource.externalFileUrl ||
+          previewSource.apiFileId ||
+          '',
         isQAImport: false,
-        selector: processParamsForm.getValues('webSelector')
+        selector: processParamsForm.getValues('webSelector'),
+        datasetId
       });
     },
     {

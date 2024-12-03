@@ -10,5 +10,8 @@ export const importType2ReadType = (type: ImportDataSourceEnum) => {
   if (type === ImportDataSourceEnum.externalFile) {
     return DatasetSourceReadTypeEnum.externalFile;
   }
+  if (type === ImportDataSourceEnum.apiDataset) {
+    return DatasetSourceReadTypeEnum.apiFile;
+  }
   return DatasetSourceReadTypeEnum.link;
 };
