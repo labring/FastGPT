@@ -5,14 +5,12 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { createContext, useContextSelector } from 'use-context-selector';
 import TeamList from './TeamList';
 import TeamCard from './TeamCard';
-import { TeamModalContext, TeamModalContextProvider } from './context';
-
-export const TeamContext = createContext<{}>({} as any);
+import { TeamContext, TeamModalContextProvider } from './context';
 
 type Props = { onClose: () => void };
 
 const TeamManageModal = ({ onClose }: Props) => {
-  const { isLoading } = useContextSelector(TeamModalContext, (v) => v);
+  const { isLoading } = useContextSelector(TeamContext, (v) => v);
 
   return (
     <>

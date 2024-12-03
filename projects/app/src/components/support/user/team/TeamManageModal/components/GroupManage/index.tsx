@@ -15,7 +15,7 @@ import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
-import { TeamModalContext } from '../../context';
+import { TeamContext } from '../../context';
 import MyMenu, { MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -42,11 +42,11 @@ function MemberTable({
 
   const { ConfirmModal: ConfirmDeleteGroupModal, openConfirm: openDeleteGroupModal } = useConfirm({
     type: 'delete',
-    content: t('user:team.group.delete_confirm')
+    content: t('account_team:confirm_delete_group')
   });
 
   const { groups, refetchGroups, members, refetchMembers } = useContextSelector(
-    TeamModalContext,
+    TeamContext,
     (v) => v
   );
 
@@ -80,17 +80,17 @@ function MemberTable({
 
   return (
     <MyBox>
-      <TableContainer overflow={'unset'} fontSize={'sm'} mx="6">
+      <TableContainer overflow={'unset'} fontSize={'sm'}>
         <Table overflow={'unset'}>
           <Thead>
             <Tr bg={'white !important'}>
               <Th bg="myGray.100" borderLeftRadius="6px">
-                {t('user:team.group.name')}
+                {t('account_team:group_name')}
               </Th>
-              <Th bg="myGray.100">{t('user:owner')}</Th>
-              <Th bg="myGray.100">{t('user:team.group.members')}</Th>
+              <Th bg="myGray.100">{t('account_team:owner')}</Th>
+              <Th bg="myGray.100">{t('account_team:member')}</Th>
               <Th bg="myGray.100" borderRightRadius="6px">
-                {t('common:common.Action')}
+                {t('account_team:action')}
               </Th>
             </Tr>
           </Thead>
@@ -135,7 +135,7 @@ function MemberTable({
                   {group.name === DefaultGroupName ? (
                     <AvatarGroup avatars={members.map((v) => v.avatar)} groupId={group._id} />
                   ) : hasGroupManagePer(group) ? (
-                    <MyTooltip label={t('user:team.group.manage_member')}>
+                    <MyTooltip label={t('account_team:manage_member')}>
                       <Box cursor="pointer" onClick={() => onManageMember(group._id)}>
                         <AvatarGroup
                           avatars={group.members.map(
@@ -162,14 +162,14 @@ function MemberTable({
                         {
                           children: [
                             {
-                              label: t('user:team.group.edit_info'),
+                              label: t('account_team:edit_info'),
                               icon: 'edit',
                               onClick: () => {
                                 onEditGroup(group._id);
                               }
                             },
                             {
-                              label: t('user:team.group.manage_member'),
+                              label: t('account_team:manage_member'),
                               icon: 'support/team/group',
                               onClick: () => {
                                 onManageMember(group._id);
@@ -178,7 +178,7 @@ function MemberTable({
                             ...(isGroupOwner(group)
                               ? [
                                   {
-                                    label: t('user:team.group.transfer_owner'),
+                                    label: t('account_team:transfer_ownership'),
                                     icon: 'modal/changePer',
                                     onClick: () => {
                                       onChangeOwner(group._id);

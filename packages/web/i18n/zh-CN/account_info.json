@@ -78,5 +78,6 @@
   "old_password": "旧密码",
   "new_password": "新密码",
   "password_length_error": "密码最少 4 位最多 60 位",
-  "confirm_password": "确认密码"
+  "confirm_password": "确认密码",
+  "manage": "管理"
 }

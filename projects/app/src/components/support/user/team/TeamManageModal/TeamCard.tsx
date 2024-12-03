@@ -9,7 +9,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MemberTable from './components/MemberTable';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { TeamModalContext } from './context';
+import { TeamContext } from './context';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
 import dynamic from 'next/dynamic';
@@ -41,7 +41,7 @@ function TeamCard() {
     onSwitchTeam,
     searchKey,
     setSearchKey
-  } = useContextSelector(TeamModalContext, (v) => v);
+  } = useContextSelector(TeamContext, (v) => v);
 
   const { userInfo, teamPlanStatus } = useUserStore();
   const { feConfigs } = useSystemStore();

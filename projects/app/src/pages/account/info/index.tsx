@@ -25,7 +25,6 @@ import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useRouter } from 'next/router';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { putUpdateMemberName } from '@/web/support/user/team/api';
 import { getDocPath } from '@/web/common/system/doc';
@@ -48,6 +47,7 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import AccountContainer, { TabEnum } from '../components/AccountContainer';
 import { serviceSideProps } from '@/web/common/utils/i18n';
+import { useRouter } from 'next/router';
 
 const StandDetailModal = dynamic(() => import('./components/standardDetailModal'));
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
@@ -120,6 +120,8 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const standardPlan = teamPlanStatus?.standardConstants;
   const { isPc } = useSystem();
   const { toast } = useToast();
+  const router = useRouter();
+
   const {
     isOpen: isOpenConversionModal,
     onClose: onCloseConversionModal,
@@ -305,9 +307,16 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         )}
         <Flex mt={6} alignItems={'center'}>
           <Box {...labelStyles}>{t('account_info:user_team_team_name')}:&nbsp;</Box>
-          <Box flex={1}>
-            <TeamMenu />
-          </Box>
+          <Flex flex={1} justify={'space-between'} align={'center'}>
+            <TeamMenu w={'10.5rem'} height={'2rem'} />
+            <Button
+              size={'sm'}
+              variant={'whitePrimary'}
+              onClick={() => router.push('/account/team')}
+            >
+              {t('account_info:manage')}
+            </Button>
+          </Flex>
         </Flex>
         {feConfigs?.isPlus && (userInfo?.team?.balance ?? 0) > 0 && (
           <Box mt={6} whiteSpace={'nowrap'}>

@@ -17,7 +17,7 @@ import { useTranslation } from 'next-i18next';
 import React, { useMemo, useState } from 'react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
-import { TeamModalContext } from '../../context';
+import { TeamContext } from '../../context';
 import { putUpdateGroup } from '@/web/support/user/team/group/api';
 import { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -45,7 +45,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
     refetchGroups,
     groups,
     refetchMembers
-  } = useContextSelector(TeamModalContext, (v) => v);
+  } = useContextSelector(TeamContext, (v) => v);
 
   const group = useMemo(() => {
     return groups.find((item) => item._id === editGroupId);

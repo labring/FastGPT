@@ -26,9 +26,10 @@ type TeamModalContextType = {
   refetchGroups: () => void;
   searchKey: string;
   setSearchKey: React.Dispatch<React.SetStateAction<string>>;
+  teamSize: number;
 };
 
-export const TeamModalContext = createContext<TeamModalContextType>({
+export const TeamContext = createContext<TeamModalContextType>({
   myTeams: [],
   groups: [],
   members: [],
@@ -52,7 +53,8 @@ export const TeamModalContext = createContext<TeamModalContextType>({
   searchKey: '',
   setSearchKey: function (_value: React.SetStateAction<string>): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  teamSize: 0
 });
 
 export const TeamModalContextProvider = ({ children }: { children: ReactNode }) => {
@@ -120,11 +122,12 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     members,
     refetchMembers,
     groups,
-    refetchGroups
+    refetchGroups,
+    teamSize: members.length
   };
 
   return (
-    <TeamModalContext.Provider value={contextValue}>
+    <TeamContext.Provider value={contextValue}>
       {userInfo?.team?.permission && (
         <>
           {children}
@@ -140,6 +143,6 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
           )}
         </>
       )}
-    </TeamModalContext.Provider>
+    </TeamContext.Provider>
   );
 };

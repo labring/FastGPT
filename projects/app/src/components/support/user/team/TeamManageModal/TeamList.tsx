@@ -6,12 +6,12 @@ import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { defaultForm } from './components/EditInfoModal';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useContextSelector } from 'use-context-selector';
-import { TeamModalContext } from './context';
+import { TeamContext } from './context';
 
 function TeamList() {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
-  const { myTeams, onSwitchTeam, setEditTeamData } = useContextSelector(TeamModalContext, (v) => v);
+  const { myTeams, onSwitchTeam, setEditTeamData } = useContextSelector(TeamContext, (v) => v);
 
   return (
     <Flex

@@ -10,7 +10,7 @@ import Tag from '@fastgpt/web/components/common/Tag';
 import Icon from '@fastgpt/web/components/common/Icon';
 import GroupTags from '@/components/support/permission/Group/GroupTags';
 import { useContextSelector } from 'use-context-selector';
-import { TeamModalContext } from '../context';
+import { TeamContext } from '../context';
 
 function MemberTable() {
   const { userInfo } = useUserStore();
@@ -21,22 +21,22 @@ function MemberTable() {
   });
 
   const { members, groups, refetchMembers, refetchGroups } = useContextSelector(
-    TeamModalContext,
+    TeamContext,
     (v) => v
   );
 
   return (
     <MyBox>
-      <TableContainer overflow={'unset'} fontSize={'sm'} mx="6">
+      <TableContainer overflow={'unset'} fontSize={'sm'}>
         <Table overflow={'unset'}>
           <Thead>
             <Tr bgColor={'white !important'}>
               <Th borderLeftRadius="6px" bgColor="myGray.100">
-                {t('common:common.Username')}
+                {t('account_team:user_name')}
               </Th>
-              <Th bgColor="myGray.100">{t('user:team.belong_to_group')}</Th>
+              <Th bgColor="myGray.100">{t('account_team:member_group')}</Th>
               <Th borderRightRadius="6px" bgColor="myGray.100">
-                {t('common:common.Action')}
+                {t('account_team:action')}
               </Th>
             </Tr>
           </Thead>
@@ -50,7 +50,7 @@ function MemberTable() {
                       {item.memberName}
                       {item.status === 'waiting' && (
                         <Tag ml="2" colorSchema="yellow">
-                          {t('common:user.team.member.waiting')}
+                          {t('account_team:waiting')}
                         </Tag>
                       )}
                     </Box>
@@ -85,7 +85,7 @@ function MemberTable() {
                                 Promise.all([refetchGroups(), refetchMembers()])
                               ),
                             undefined,
-                            t('common:user.team.Remove Member Confirm Tip', {
+                            t('account_team:remove_tip', {
                               username: item.memberName
                             })
                           )();

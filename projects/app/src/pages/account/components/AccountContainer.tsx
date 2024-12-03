@@ -20,10 +20,17 @@ export enum TabEnum {
   'inform' = 'inform',
   'individuation' = 'individuation',
   'apikey' = 'apikey',
-  'loginout' = 'loginout'
+  'loginout' = 'loginout',
+  'team' = 'team'
 }
 
-const AccountContainer = ({ children }: { children: React.ReactNode }) => {
+const AccountContainer = ({
+  children,
+  isLoading
+}: {
+  children: React.ReactNode;
+  isLoading?: boolean;
+}) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { userInfo, setUserInfo } = useUserStore();
@@ -43,6 +50,11 @@ const AccountContainer = ({ children }: { children: React.ReactNode }) => {
     },
     ...(feConfigs?.isPlus
       ? [
+          {
+            icon: 'support/user/usersLight',
+            label: t('account:team'),
+            value: TabEnum.team
+          },
           {
             icon: 'support/usage/usageRecordLight',
             label: t('account:usage_records'),
@@ -120,7 +132,7 @@ const AccountContainer = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       <Script src={getWebReqUrl('/js/qrcode.min.js')} strategy="lazyOnload"></Script>
-      <PageContainer>
+      <PageContainer isLoading={isLoading}>
         <Flex flexDirection={['column', 'row']} h={'100%'} pt={[4, 0]}>
           {isPc ? (
             <Flex

@@ -11,7 +11,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
-import { TeamModalContext } from '../../context';
+import { TeamContext } from '../../context';
 import { postCreateGroup, putUpdateGroup } from '@/web/support/user/team/group/api';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 
@@ -21,7 +21,7 @@ export type GroupFormType = {
 };
 
 function GroupInfoModal({ onClose, editGroupId }: { onClose: () => void; editGroupId?: string }) {
-  const { refetchGroups, groups, refetchMembers } = useContextSelector(TeamModalContext, (v) => v);
+  const { refetchGroups, groups, refetchMembers } = useContextSelector(TeamContext, (v) => v);
   const { t } = useTranslation();
   const { File: AvatarSelect, onOpen: onOpenSelectAvatar } = useSelectFile({
     fileType: '.jpg, .jpeg, .png',

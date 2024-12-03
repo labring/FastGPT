@@ -1,4 +1,5 @@
 import 'i18next';
+import account_team from '../i18n/zh-CN/account_team.json';
 import account from '../i18n/zh-CN/account.json';
 import account_promotion from '../i18n/zh-CN/account_promotion.json';
 import account_inform from '../i18n/zh-CN/account_inform.json';
@@ -35,6 +36,7 @@ export interface I18nNamespaces {
   account_inform: typeof account_inform;
   account_promotion: typeof account_promotion;
   account: typeof account;
+  account_team: typeof account_team;
 }
 
 export type I18nNsType = (keyof I18nNamespaces)[];
@@ -67,7 +69,8 @@ declare module 'i18next' {
       'account_individuation',
       'account_inform',
       'account_promotion',
-      'account'
+      'account',
+      'account_team'
     ];
     resources: I18nNamespaces;
   }
