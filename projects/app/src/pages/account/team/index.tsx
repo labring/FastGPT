@@ -5,10 +5,6 @@ import Icon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import TeamMenu from '@/components/support/user/team/TeamMenu';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import {
-  TeamContext,
-  TeamModalContextProvider
-} from '@/components/support/user/team/TeamManageModal/context';
 import React, { useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { useRouter } from 'next/router';
@@ -19,15 +15,18 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { delLeaveTeam } from '@/web/support/user/team/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import TeamTagModal from '@/components/support/user/team/TeamTagModal';
-import GroupInfoModal from '@/components/support/user/team/TeamManageModal/components/GroupManage/GroupInfoModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MemberTable from '@/components/support/user/team/TeamManageModal/components/MemberTable';
-import GroupManage from '@/components/support/user/team/TeamManageModal/components/GroupManage';
-import PermissionManage from '@/components/support/user/team/TeamManageModal/components/PermissionManage';
-import InviteModal from '@/components/support/user/team/TeamManageModal/components/InviteModal';
-import ManageGroupMemberModal from '@/components/support/user/team/TeamManageModal/components/GroupManage/GroupManageMember';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import { TeamContext, TeamModalContextProvider } from './components/context';
+import dynamic from 'next/dynamic';
+import TeamTagModal from '@/components/support/user/team/TeamTagModal';
+import MemberTable from './components/MemberTable';
+
+const InviteModal = dynamic(() => import('./components/InviteModal'));
+const PermissionManage = dynamic(() => import('./components/PermissionManage/index'));
+const GroupManage = dynamic(() => import('./components/GroupManage/index'));
+const GroupInfoModal = dynamic(() => import('./components/GroupManage/GroupInfoModal'));
+const ManageGroupMemberModal = dynamic(() => import('./components/GroupManage/GroupManageMember'));
 
 export enum TeamTabEnum {
   member = 'member',

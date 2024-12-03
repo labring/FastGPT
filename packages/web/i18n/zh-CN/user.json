@@ -107,5 +107,13 @@
   "usage.feishu": "飞书",
   "usage.official_account": "公众号",
   "usage.share": "分享链接",
-  "usage.wecom": "企业微信"
+  "usage.wecom": "企业微信",
+  "team.Invite Member Result Tip": "邀请结果提示",
+  "team.Invite Member Success Tip": "邀请成员完成\n成功：{{success}} 人\n用户名无效：{{inValid}}\n已在团队中：{{inTeam}}",
+  "team.Invite Member Failed Tip": "邀请成员出现异常",
+  "team.Confirm Invite": "确认邀请",
+  "team.Create Team": "创建新团队",
+  "team.Update Team": "更新团队信息",
+  "team.Set Name": "给团队取个名字",
+  "team.Team Name": "团队名"
 }

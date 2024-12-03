@@ -10,7 +10,7 @@ import Tag from '@fastgpt/web/components/common/Tag';
 import Icon from '@fastgpt/web/components/common/Icon';
 import GroupTags from '@/components/support/permission/Group/GroupTags';
 import { useContextSelector } from 'use-context-selector';
-import { TeamContext } from '../context';
+import { TeamContext } from './context';
 
 function MemberTable() {
   const { userInfo } = useUserStore();
@@ -36,7 +36,7 @@ function MemberTable() {
               </Th>
               <Th bgColor="myGray.100">{t('account_team:member_group')}</Th>
               <Th borderRightRadius="6px" bgColor="myGray.100">
-                {t('account_team:action')}
+                {t('common:common.Action')}
               </Th>
             </Tr>
           </Thead>

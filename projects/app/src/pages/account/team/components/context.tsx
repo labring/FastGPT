@@ -1,6 +1,6 @@
 import React, { ReactNode, useState } from 'react';
 import { createContext } from 'use-context-selector';
-import type { EditTeamFormDataType } from './components/EditInfoModal';
+import type { EditTeamFormDataType } from './EditInfoModal';
 import dynamic from 'next/dynamic';
 import { getTeamList, putSwitchTeam } from '@/web/support/user/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
@@ -11,7 +11,7 @@ import { useTranslation } from 'next-i18next';
 import { getGroupList } from '@/web/support/user/team/group/api';
 import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
 
-const EditInfoModal = dynamic(() => import('./components/EditInfoModal'));
+const EditInfoModal = dynamic(() => import('./EditInfoModal'));
 
 type TeamModalContextType = {
   myTeams: TeamTmbItemType[];

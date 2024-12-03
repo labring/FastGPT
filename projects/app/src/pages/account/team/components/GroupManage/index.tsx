@@ -15,14 +15,14 @@ import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
-import { TeamContext } from '../../context';
+import { TeamContext } from '../context';
 import MyMenu, { MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { deleteGroup } from '@/web/support/user/team/group/api';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
-import MemberTag from '../../../Info/MemberTag';
+import MemberTag from '../../../../../components/support/user/team/Info/MemberTag';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
@@ -90,7 +90,7 @@ function MemberTable({
               <Th bg="myGray.100">{t('account_team:owner')}</Th>
               <Th bg="myGray.100">{t('account_team:member')}</Th>
               <Th bg="myGray.100" borderRightRadius="6px">
-                {t('account_team:action')}
+                {t('common:common.Action')}
               </Th>
             </Tr>
           </Thead>
