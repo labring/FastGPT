@@ -92,7 +92,7 @@ const CreateModal = ({
           maxW: 300,
           maxH: 300
         });
-        setValue('avatar', src);
+        setValue('avatar' as const, src);
       } catch (err: any) {
         toast({
           title: getErrText(err, t('common:common.avatar.Select Failed')),
@@ -203,7 +203,7 @@ const CreateModal = ({
                   value: item.model
                 }))}
                 onchange={(e) => {
-                  setValue('vectorModel', e);
+                  setValue('vectorModel' as const, e);
                 }}
               />
             </Box>
@@ -236,7 +236,7 @@ const CreateModal = ({
                   value: item.model
                 }))}
                 onchange={(e) => {
-                  setValue('agentModel', e);
+                  setValue('agentModel' as const, e);
                 }}
               />
             </Box>
