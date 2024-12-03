@@ -146,3 +146,5 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     </TeamContext.Provider>
   );
 };
+
+export default TeamModalContextProvider;
