@@ -30,6 +30,12 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
 
   return {
     ...dataset,
+    apiServer: dataset.apiServer
+      ? {
+          baseUrl: dataset.apiServer.baseUrl,
+          authorization: ''
+        }
+      : undefined,
     permission,
     vectorModel: getVectorModel(dataset.vectorModel),
     agentModel: getLLMModel(dataset.agentModel)

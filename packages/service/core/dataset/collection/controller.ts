@@ -127,7 +127,6 @@ export const createCollectionAndInsertData = async ({
 export type CreateOneCollectionParams = CreateDatasetCollectionParams & {
   teamId: string;
   tmbId: string;
-  [key: string]: any;
   session?: ClientSession;
 };
 export async function createOneCollection({
@@ -156,7 +155,7 @@ export async function createOneCollection({
   metadata = {},
   session,
   tags,
-  ...props
+  createTime
 }: CreateOneCollectionParams) {
   // Create collection tags
   const collectionTags = await createOrGetCollectionTags({ tags, teamId, datasetId, session });
@@ -165,7 +164,6 @@ export async function createOneCollection({
   const [collection] = await MongoDatasetCollection.create(
     [
       {
-        ...props,
         teamId,
         tmbId,
         parentId: parentId || null,
@@ -177,17 +175,18 @@ export async function createOneCollection({
         chunkSize,
         chunkSplitter,
         qaPrompt,
+        metadata,
 
-        fileId,
-        rawLink,
+        ...(fileId ? { fileId } : {}),
+        ...(rawLink ? { rawLink } : {}),
         ...(externalFileId ? { externalFileId } : {}),
-        externalFileUrl,
-        apiFileId,
+        ...(externalFileUrl ? { externalFileUrl } : {}),
+        ...(apiFileId ? { apiFileId } : {}),
 
         rawTextLength,
         hashRawText,
-        metadata,
-        tags: collectionTags
+        tags: collectionTags,
+        createTime
       }
     ],
     { session }

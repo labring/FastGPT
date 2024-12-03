@@ -35,16 +35,18 @@ export type CreateDatasetCollectionParams = DatasetCollectionChunkMetadataType &
   name: string;
   type: DatasetCollectionTypeEnum;
 
-  tags?: string[];
-
   fileId?: string;
   rawLink?: string;
   externalFileId?: string;
+  externalFileUrl?: string;
   apiFileId?: string;
 
-  externalFileUrl?: string;
   rawTextLength?: number;
   hashRawText?: string;
+
+  tags?: string[];
+
+  createTime?: Date;
 };
 
 export type ApiCreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {

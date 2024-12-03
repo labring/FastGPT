@@ -260,7 +260,7 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
           </Button>
         </Flex>
       </Box>
-      <Box flex={'1 0 0'} w={['auto', '0']} h={['auto', '100%']} overflow={'auto'} pl={[0, 3]}>
+      <Box flex={'1 0 0'} w={['auto', '0']} h={['auto', '100%']} pl={[0, 3]}>
         <Preview showPreviewChunks={showPreviewChunks} />
       </Box>
 
