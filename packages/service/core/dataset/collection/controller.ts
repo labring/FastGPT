@@ -3,7 +3,8 @@ import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset
 import { MongoDatasetCollection } from './schema';
 import {
   CollectionWithDatasetType,
-  DatasetCollectionSchemaType
+  DatasetCollectionSchemaType,
+  DatasetSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetTraining } from '../training/schema';
 import { MongoDatasetData } from '../data/schema';
@@ -13,7 +14,122 @@ import { delFileByFileIdList } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { ClientSession } from '../../../common/mongo';
 import { createOrGetCollectionTags } from './utils';
+import { rawText2Chunks } from '../read';
+import { checkDatasetLimit } from '../../../support/permission/teamLimit';
+import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
+import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { createTrainingUsage } from '../../../support/wallet/usage/controller';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { getLLMModel, getVectorModel } from '../../ai/model';
+import { pushDataListToTrainingQueue } from '../training/controller';
+import { MongoImage } from '../../../common/file/image/schema';
 
+export const createCollectionAndInsertData = async ({
+  dataset,
+  rawText,
+  relatedId,
+  createCollectionParams,
+  isQAImport = false
+}: {
+  dataset: DatasetSchemaType;
+  rawText: string;
+  relatedId?: string;
+  createCollectionParams: CreateOneCollectionParams;
+
+  isQAImport?: boolean;
+}) => {
+  const teamId = createCollectionParams.teamId;
+  const tmbId = createCollectionParams.tmbId;
+  // Chunk split params
+  const trainingType = createCollectionParams.trainingType || TrainingModeEnum.chunk;
+  const chunkSize = createCollectionParams.chunkSize;
+  const chunkSplitter = createCollectionParams.chunkSplitter;
+  const qaPrompt = createCollectionParams.qaPrompt;
+  const usageName = createCollectionParams.name;
+
+  // 1. split chunks
+  const chunks = rawText2Chunks({
+    rawText,
+    chunkLen: chunkSize,
+    overlapRatio: trainingType === TrainingModeEnum.chunk ? 0.2 : 0,
+    customReg: chunkSplitter ? [chunkSplitter] : [],
+    isQAImport
+  });
+
+  // 2. auth limit
+  await checkDatasetLimit({
+    teamId,
+    insertLen: predictDataLimitLength(trainingType, chunks)
+  });
+
+  return mongoSessionRun(async (session) => {
+    // 3. create collection
+    const { _id: collectionId } = await createOneCollection({
+      ...createCollectionParams,
+      session
+    });
+
+    // 4. create training bill
+    const { billId } = await createTrainingUsage({
+      teamId,
+      tmbId,
+      appName: usageName,
+      billSource: UsageSourceEnum.training,
+      vectorModel: getVectorModel(dataset.vectorModel)?.name,
+      agentModel: getLLMModel(dataset.agentModel)?.name,
+      session
+    });
+
+    // 5. insert to training queue
+    const insertResults = await pushDataListToTrainingQueue({
+      teamId,
+      tmbId,
+      datasetId: dataset._id,
+      collectionId,
+      agentModel: dataset.agentModel,
+      vectorModel: dataset.vectorModel,
+      trainingMode: trainingType,
+      prompt: qaPrompt,
+      billId,
+      data: chunks.map((item, index) => ({
+        ...item,
+        chunkIndex: index
+      })),
+      session
+    });
+
+    // 6. remove related image ttl
+    if (relatedId) {
+      await MongoImage.updateMany(
+        {
+          teamId,
+          'metadata.relatedId': relatedId
+        },
+        {
+          // Remove expiredTime to avoid ttl expiration
+          $unset: {
+            expiredTime: 1
+          }
+        },
+        {
+          session
+        }
+      );
+    }
+
+    return {
+      collectionId,
+      insertResults
+    };
+  });
+};
+
+export type CreateOneCollectionParams = CreateDatasetCollectionParams & {
+  teamId: string;
+  tmbId: string;
+  [key: string]: any;
+  session?: ClientSession;
+};
 export async function createOneCollection({
   teamId,
   tmbId,
@@ -41,12 +157,7 @@ export async function createOneCollection({
   session,
   tags,
   ...props
-}: CreateDatasetCollectionParams & {
-  teamId: string;
-  tmbId: string;
-  [key: string]: any;
-  session?: ClientSession;
-}) {
+}: CreateOneCollectionParams) {
   // Create collection tags
   const collectionTags = await createOrGetCollectionTags({ tags, teamId, datasetId, session });
 
