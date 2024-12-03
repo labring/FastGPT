@@ -87,7 +87,7 @@ const CollectionCard = () => {
         const status = (() => {
           if (collection.trainingAmount > 0) {
             return {
-              statusText: t('dataset.collections.Collection Embedding', {
+              statusText: t('common:dataset.collections.Collection Embedding', {
                 total: collection.trainingAmount
               }),
               colorSchema: 'gray'

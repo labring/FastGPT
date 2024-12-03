@@ -16,6 +16,7 @@ export type DatasetUpdateBody = {
   websiteConfig?: DatasetSchemaType['websiteConfig'];
   externalReadUrl?: DatasetSchemaType['externalReadUrl'];
   defaultPermission?: DatasetSchemaType['defaultPermission'];
+  apiServer?: DatasetSchemaType['apiServer'];
 };
 
 /* ================= collection ===================== */

@@ -41,8 +41,18 @@ async function handler(
   req: ApiRequestProps<DatasetUpdateBody, DatasetUpdateQuery>,
   _res: ApiResponseType<any>
 ): Promise<DatasetUpdateResponse> {
-  const { id, parentId, name, avatar, intro, agentModel, websiteConfig, externalReadUrl, status } =
-    req.body;
+  const {
+    id,
+    parentId,
+    name,
+    avatar,
+    intro,
+    agentModel,
+    websiteConfig,
+    externalReadUrl,
+    apiServer,
+    status
+  } = req.body;
 
   if (!id) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -103,6 +113,7 @@ async function handler(
         ...(status && { status }),
         ...(intro !== undefined && { intro }),
         ...(externalReadUrl !== undefined && { externalReadUrl }),
+        ...(apiServer !== undefined && { apiServer }),
         ...(isMove && { inheritPermission: true })
       },
       { session }
