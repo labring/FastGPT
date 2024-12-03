@@ -1,22 +1,21 @@
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
-import { Box, Button, Checkbox, Flex, Input, InputGroup } from '@chakra-ui/react';
+import { Box, Button, Checkbox, Flex } from '@chakra-ui/react';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getApiDatasetFileList } from '@/web/core/dataset/api';
-import { GetApiDatasetFileListProps } from '@/pages/api/core/dataset/apiDataset/list';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'react-i18next';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import FolderPath from '@/components/common/folder/Path';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import { useMount } from 'ahooks';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
@@ -49,99 +48,86 @@ const CustomAPIFileInput = () => {
   const [parent, setParent] = useState<ParentTreePathItemType | null>(null);
   const [searchKey, setSearchKey] = useState('');
 
-  const {
-    data: fileList = [],
-    runAsync: refetchFileList,
-    loading
-  } = useRequest2(
-    (params?: { parentId?: string | null; searchKey?: string }) =>
-      getApiDatasetFileList({
-        datasetId: datasetDetail._id,
-        parentId: params?.parentId || null,
-        searchKey: params?.searchKey || ''
-      }),
+  const { data: fileList = [], loading } = useRequest2(
+    async () =>
+      datasetDetail?.apiServer
+        ? getApiDatasetFileList({
+            datasetId: datasetDetail._id,
+            parentId: parent?.parentId,
+            searchKey: searchKey
+          })
+        : [],
     {
-      refreshDeps: [datasetDetail._id, datasetDetail.apiServer],
-      manual: !datasetDetail._id || !datasetDetail.apiServer
+      refreshDeps: [datasetDetail._id, datasetDetail.apiServer, parent, searchKey],
+      throttleWait: 500,
+      manual: false
     }
   );
 
-  useEffect(() => {
-    const currentFileIds = sources.map((item) => item.apiFileId);
-    const currentSelectFiles = fileList.filter((item) => currentFileIds.includes(item.id));
+  // Init selected files
+  useMount(() => {
+    setSelectFiles(sources.map((item) => item.apiFile).filter(Boolean) as APIFileItem[]);
+  });
 
-    setSelectFiles(currentSelectFiles);
-  }, [fileList, sources]);
+  const { runAsync: onclickNext, loading: onNextLoading } = useRequest2(
+    async () => {
+      // Computed all selected files
+      const getFilesRecursively = async (files: APIFileItem[]): Promise<APIFileItem[]> => {
+        const allFiles: APIFileItem[] = [];
 
-  useEffect(() => {
-    refetchFileList({
-      parentId: parent?.parentId || null,
-      searchKey
-    });
-  }, [parent, refetchFileList, searchKey]);
-
-  const getFilesRecursively = useCallback(
-    async (files: APIFileItem[]): Promise<APIFileItem[]> => {
-      const allFiles: APIFileItem[] = [];
-
-      for (const item of files) {
-        if (item.type === 'folder') {
-          const folderFiles = await refetchFileList({
-            parentId: item.id,
-            searchKey: ''
-          });
-          const subFiles = await getFilesRecursively(folderFiles);
-          allFiles.push(...subFiles);
-        } else {
-          allFiles.push(item);
+        for (const file of files) {
+          if (file.type === 'folder') {
+            const folderFiles = await getApiDatasetFileList({
+              datasetId: datasetDetail._id,
+              parentId: file?.id
+            });
+            const subFiles = await getFilesRecursively(folderFiles);
+            allFiles.push(...subFiles);
+          } else {
+            allFiles.push(file);
+          }
         }
-      }
 
-      return allFiles;
-    },
-    [refetchFileList]
-  );
+        return allFiles;
+      };
 
-  const onclickNext = useCallback(async () => {
-    if (!datasetDetail.apiServer) {
-      return;
-    }
-
-    try {
       const allFiles = await getFilesRecursively(selectFiles);
+
       setSources(
         allFiles.map((item) => ({
-          id: getNanoid(32),
+          id: item.id,
           apiFileId: item.id,
+          apiFile: item,
           createStatus: 'waiting',
           sourceName: item.name,
           icon: getSourceNameIcon({ sourceName: item.name }) as any
         }))
       );
-
-      goToNext();
-    } catch (error) {
-      console.error('Error processing files:', error);
+    },
+    {
+      onSuccess() {
+        goToNext();
+      }
     }
-  }, [datasetDetail.apiServer, getFilesRecursively, goToNext, selectFiles, setSources]);
+  );
 
   const handleItemClick = useCallback(
     (item: APIFileItem) => {
       if (item.type === 'folder') {
-        setParent({
+        return setParent({
           parentId: item.id,
           parentName: item.name
         });
+      }
+
+      const isCurrentlySelected = selectFiles.some((file) => file.id === item.id);
+      if (isCurrentlySelected) {
+        setSelectFiles((state) => state.filter((file) => file.id !== item.id));
       } else {
-        const isCurrentlySelected = selectFiles.some((i) => i.id === item.id);
-        if (isCurrentlySelected) {
-          setSelectFiles((state) => state.filter((i) => i.id !== item.id));
-        } else {
-          setSelectFiles((state) => [...state, item]);
-        }
+        setSelectFiles((state) => [...state, item]);
       }
     },
-    [selectFiles]
+    [selectFiles, setSelectFiles]
   );
 
   const handleSelectAll = useCallback(() => {
@@ -206,7 +192,7 @@ const CustomAPIFileInput = () => {
             </Flex>
             {fileList.map((item) => {
               const isFolder = item.type === 'folder';
-              const isChecked = selectFiles.some((i) => i.id === item.id);
+              const isChecked = selectFiles.some((file) => file.id === item.id);
               return (
                 <Flex
                   key={item.id}
@@ -227,7 +213,7 @@ const CustomAPIFileInput = () => {
                     onChange={(e) => {
                       e.stopPropagation();
                       if (isChecked) {
-                        setSelectFiles((state) => state.filter((i) => i.id !== item.id));
+                        setSelectFiles((state) => state.filter((file) => file.id !== item.id));
                       } else {
                         setSelectFiles((state) => [...state, item]);
                       }
@@ -260,7 +246,11 @@ const CustomAPIFileInput = () => {
           right={0}
           p={4}
         >
-          <Button isDisabled={selectFiles.length === 0} onClick={onclickNext}>
+          <Button
+            isDisabled={selectFiles.length === 0}
+            isLoading={onNextLoading}
+            onClick={onclickNext}
+          >
             {selectFiles.length > 0
               ? `${t('common:core.dataset.import.Total files', { total: selectFiles.length })} | `
               : ''}

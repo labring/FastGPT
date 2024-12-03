@@ -505,7 +505,13 @@ data 为集合的 ID。
     "statusText": "",
     "message": "",
     "data": {
-        "collectionId": "65abd0ad9d1448617cba6031"
+        "collectionId": "65abd0ad9d1448617cba6031",
+        "results": {
+            "insertLen": 1,
+            "overToken": [],
+            "repeat": [],
+            "error": []
+        }
     }
 }
 ```
@@ -637,7 +643,12 @@ data 为集合的 ID。
   "message": "",
   "data": {
     "collectionId": "6646fcedfabd823cdc6de746",
-    "insertLen": 3
+    "results": {
+        "insertLen": 1,
+        "overToken": [],
+        "repeat": [],
+        "error": []
+    }
   }
 }
 ```
