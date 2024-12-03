@@ -178,12 +178,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       <MyDivider my={4} h={'2px'} maxW={'500px'} />
 
       <Box overflow={'hidden'}>
-        <Flex justify={'space-between'} alignItems={'center'} fontSize={'mini'} h={'24px'}>
-          <Box fontWeight={'500'} color={'myGray.900'} userSelect={'none'}>
-            {t('common:common.base_config')}
-          </Box>
-        </Flex>
-        <Flex mt={3} w={'100%'} flexDir={'column'}>
+        <Flex w={'100%'} flexDir={'column'}>
           <FormLabel fontSize={'mini'} fontWeight={'500'}>
             {t('common:core.dataset.Dataset ID')}
           </FormLabel>
@@ -275,8 +270,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         {datasetDetail.type === DatasetTypeEnum.apiDataset && (
           <>
             <Box w={'100%'} alignItems={'center'} pt={4}>
-              <Flex justifyContent={'space-between'} mb={2}>
-                <FormLabel display={'flex'} fontSize={'mini'} fontWeight={'500'}>
+              <Flex justifyContent={'space-between'} mb={1}>
+                <FormLabel fontSize={'mini'} fontWeight={'500'}>
                   {t('dataset:api_url')}
                 </FormLabel>
                 <MyIcon

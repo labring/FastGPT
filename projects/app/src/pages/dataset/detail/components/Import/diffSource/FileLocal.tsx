@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ImportSourceItemType } from '@/web/core/dataset/type.d';
-import { Box, Button, Flex } from '@chakra-ui/react';
+import { Box, Button } from '@chakra-ui/react';
 import FileSelector from '../components/FileSelector';
 import { useTranslation } from 'next-i18next';
 
@@ -54,29 +54,26 @@ const SelectFile = React.memo(function SelectFile() {
   }, [goToNext]);
 
   return (
-    <Box position="relative" h="full">
-      <Flex flexDirection={'column'} h="full">
-        <FileSelector
-          fileType={fileType}
-          selectFiles={selectFiles}
-          setSelectFiles={setSelectFiles}
-          onStartSelect={() => setUploading(true)}
-          onFinishSelect={() => setUploading(false)}
-        />
+    <Box>
+      <FileSelector
+        fileType={fileType}
+        selectFiles={selectFiles}
+        setSelectFiles={setSelectFiles}
+        onStartSelect={() => setUploading(true)}
+        onFinishSelect={() => setUploading(false)}
+      />
 
-        <Box flex={1} overflowY="auto" mb={4}>
-          <RenderUploadFiles files={selectFiles} setFiles={setSelectFiles} showPreviewContent />
-        </Box>
+      {/* render files */}
+      <RenderUploadFiles files={selectFiles} setFiles={setSelectFiles} showPreviewContent />
 
-        <Box display={'flex'} justifyContent={'end'}>
-          <Button isDisabled={successFiles.length === 0 || uploading} onClick={onclickNext}>
-            {selectFiles.length > 0
-              ? `${t('common:core.dataset.import.Total files', { total: selectFiles.length })} | `
-              : ''}
-            {t('common:common.Next Step')}
-          </Button>
-        </Box>
-      </Flex>
+      <Box textAlign={'right'} mt={5}>
+        <Button isDisabled={successFiles.length === 0 || uploading} onClick={onclickNext}>
+          {selectFiles.length > 0
+            ? `${t('core.dataset.import.Total files', { total: selectFiles.length })} | `
+            : ''}
+          {t('common:common.Next Step')}
+        </Button>
+      </Box>
     </Box>
   );
 });

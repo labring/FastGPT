@@ -42,7 +42,7 @@ const EditAPIDatasetInfoModal = ({
   );
 
   return (
-    <MyModal isOpen onClose={onClose} iconSrc="edit" title={title}>
+    <MyModal isOpen onClose={onClose} w={'450px'} iconSrc="modal/edit" title={title}>
       <ModalBody>
         <Flex>
           <Flex

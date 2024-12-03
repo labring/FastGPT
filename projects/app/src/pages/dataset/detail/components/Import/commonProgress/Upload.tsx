@@ -184,7 +184,7 @@ const Upload = () => {
   });
 
   return (
-    <Box>
+    <Box h={'100%'} overflow={'auto'}>
       <TableContainer>
         <Table variant={'simple'} fontSize={'sm'} draggable={false}>
           <Thead draggable={false}>
