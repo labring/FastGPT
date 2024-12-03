@@ -49,7 +49,15 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         icon: 'support/user/userLight',
         activeIcon: 'support/user/userFill',
         link: '/account',
-        activeLink: ['/account'],
+        activeLink: [
+          '/account/bill',
+          '/account/info',
+          '/account/usage',
+          '/account/apikey',
+          '/account/individuation',
+          '/account/inform',
+          '/account/promotion'
+        ],
         unread
       }
     ],

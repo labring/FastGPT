@@ -2,6 +2,7 @@ import {
   PushDatasetDataChunkProps,
   PushDatasetDataResponse
 } from '@fastgpt/global/core/dataset/api';
+import { APIFileServer } from '@fastgpt/global/core/dataset/apiDataset';
 import {
   DatasetSearchModeEnum,
   DatasetSourceReadTypeEnum,
@@ -15,7 +16,6 @@ import {
 } from '@fastgpt/global/core/dataset/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { APIFileServer } from './apiDataset';
 
 /* ================= dataset ===================== */
 export type CreateDatasetParams = {

@@ -1,13 +1,14 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { APIFileItem, APIFileListResponse } from '@fastgpt/global/core/dataset/apiDataset';
+import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/api';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import axios from 'axios';
 import { NextApiRequest } from 'next';
 
 export type GetApiDatasetFileListProps = {
   searchKey?: string;
-  parentId?: string | null;
+  parentId?: ParentIdType;
   datasetId: string;
 };
 
@@ -24,36 +25,12 @@ async function handler(req: NextApiRequest) {
     per: ReadPermissionVal
   });
 
-  const { apiServer } = dataset;
-
+  const apiServer = dataset.apiServer;
   if (!apiServer) {
     return Promise.reject('apiServer is required');
   }
 
-  const { baseUrl, authorization } = apiServer;
-
-  const { data } = await axios.post<APIFileListResponse>(
-    `${baseUrl}/v1/file/list`,
-    {
-      searchKey,
-      parentId
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${authorization}`
-      }
-    }
-  );
-
-  const files = data.data;
-  if (!Array.isArray(files)) {
-    return Promise.reject('Invalid file list format');
-  }
-  if (files.some((file) => !file.id || !file.name || typeof file.type === 'undefined')) {
-    return Promise.reject('Invalid file data format');
-  }
-
-  return files;
+  return useApiDatasetRequest({ apiServer }).listFiles({ searchKey, parentId });
 }
 
 export default NextAPI(handler);

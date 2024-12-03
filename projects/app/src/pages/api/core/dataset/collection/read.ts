@@ -11,8 +11,7 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { AIChatItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
-import axios from 'axios';
-import { APIFileReadResponse } from '@fastgpt/global/core/dataset/apiDataset';
+import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/api';
 
 export type readCollectionSourceQuery = {};
 
@@ -148,23 +147,12 @@ async function handler(
       return collection.rawLink;
     }
     if (collection.type === DatasetCollectionTypeEnum.apiFile && collection.apiFileId) {
-      const { datasetId } = collection;
-      const { apiServer } = datasetId;
+      const apiServer = collection.datasetId.apiServer;
       if (!apiServer) return Promise.reject('apiServer not found');
-      const { baseUrl, authorization } = apiServer;
-      const { data } = await axios.get<APIFileReadResponse>(
-        `${baseUrl}/v1/file/read?id=${collection.apiFileId}`,
-        {
-          headers: { Authorization: authorization }
-        }
-      );
 
-      const { url } = data.data;
-      if (!url || typeof url !== 'string') {
-        return Promise.reject('Invalid response url');
-      }
-
-      return url;
+      return useApiDatasetRequest({ apiServer }).getFilePreviewUrl({
+        apiFileId: collection.apiFileId
+      });
     }
     if (collection.type === DatasetCollectionTypeEnum.externalFile) {
       if (collection.externalFileId && collection.datasetId.externalReadUrl) {
