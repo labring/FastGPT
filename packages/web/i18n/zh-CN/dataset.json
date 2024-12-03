@@ -35,7 +35,7 @@
   "permission.des.write": "可增加和变更知识库内容",
   "rebuild_embedding_start_tip": "切换索引模型任务已开始",
   "rebuilding_index_count": "重建中索引数量：{{count}}",
-  "request_headers": "请求头",
+  "request_headers": "请求头参数，会自动补充 Bearer",
   "tag.Add New": "新建",
   "tag.Add_new_tag": "新建标签",
   "tag.Edit_tag": "编辑标签",

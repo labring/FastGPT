@@ -10,6 +10,7 @@ import {
 } from './constants';
 import { DatasetPermission } from '../../support/permission/dataset/controller';
 import { Permission } from '../../support/permission/controller';
+import { APIFileServer } from './apiDataset';
 
 export type DatasetSchemaType = {
   _id: string;
@@ -31,10 +32,7 @@ export type DatasetSchemaType = {
     selector: string;
   };
   inheritPermission: boolean;
-  apiServer?: {
-    baseUrl: string;
-    authorization: string;
-  };
+  apiServer?: APIFileServer;
 
   // abandon
   externalReadUrl?: string;
