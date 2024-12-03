@@ -41,6 +41,7 @@ const PreviewChunks = ({
       }
       if (importSource === ImportDataSourceEnum.csvTable) {
         return getPreviewChunks({
+          datasetId,
           type: importType2ReadType(importSource),
           sourceId:
             previewSource.dbFileId || previewSource.link || previewSource.externalFileUrl || '',
@@ -53,6 +54,7 @@ const PreviewChunks = ({
       }
 
       return getPreviewChunks({
+        datasetId,
         type: importType2ReadType(importSource),
         sourceId:
           previewSource.dbFileId ||
@@ -60,12 +62,14 @@ const PreviewChunks = ({
           previewSource.externalFileUrl ||
           previewSource.apiFileId ||
           '',
+
         chunkSize,
         overlapRatio: chunkOverlapRatio,
         customSplitChar: processParamsForm.getValues('customSplitChar'),
+
         selector: processParamsForm.getValues('webSelector'),
         isQAImport: false,
-        datasetId
+        externalFileId: previewSource.externalFileId
       });
     },
     {

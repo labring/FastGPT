@@ -1,6 +1,4 @@
-import { APIFileContentResponse, APIFileServer } from '@fastgpt/global/core/dataset/apiDataset';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import axios from 'axios';
 
 /**
  * Same value judgment

@@ -12,19 +12,13 @@ export type APIFileServer = {
   authorization: string;
 };
 
-export type APIFileListResponse = {
-  data: APIFileItem[];
-};
+export type APIFileListResponse = APIFileItem[];
 
 export type APIFileContentResponse = {
-  data: {
-    content?: string;
-    previewUrl?: string;
-  };
+  content?: string;
+  previewUrl?: string;
 };
 
 export type APIFileReadResponse = {
-  data: {
-    url: string;
-  };
+  url: string;
 };

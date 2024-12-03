@@ -33,6 +33,7 @@ const PreviewRawText = ({
       }
       if (importSource === ImportDataSourceEnum.csvTable && previewSource.dbFileId) {
         return getPreviewFileContent({
+          datasetId,
           type: importType2ReadType(importSource),
           sourceId: previewSource.dbFileId,
           isQAImport: true
@@ -40,6 +41,7 @@ const PreviewRawText = ({
       }
 
       return getPreviewFileContent({
+        datasetId,
         type: importType2ReadType(importSource),
         sourceId:
           previewSource.dbFileId ||
@@ -47,9 +49,10 @@ const PreviewRawText = ({
           previewSource.externalFileUrl ||
           previewSource.apiFileId ||
           '',
+
         isQAImport: false,
         selector: processParamsForm.getValues('webSelector'),
-        datasetId
+        externalFileId: previewSource.externalFileId
       });
     },
     {
