@@ -77,7 +77,15 @@ const Navbar = ({ unread }: { unread: number }) => {
         icon: 'support/user/userLight',
         activeIcon: 'support/user/userFill',
         link: '/account/info',
-        activeLink: ['/account']
+        activeLink: [
+          '/account/bill',
+          '/account/info',
+          '/account/usage',
+          '/account/apikey',
+          '/account/individuation',
+          '/account/inform',
+          '/account/promotion'
+        ]
       }
     ],
     [lastChatAppId, t]

@@ -334,31 +334,28 @@ const ChatBox = ({
   });
 
   // create question guide
-  const createQuestionGuide = useCallback(
-    async ({ histories }: { histories: ChatSiteItemType[] }) => {
-      if (!questionGuide || chatController.current?.signal?.aborted) return;
-      try {
-        const abortSignal = new AbortController();
-        questionGuideController.current = abortSignal;
+  const createQuestionGuide = useCallback(async () => {
+    if (!questionGuide || chatController.current?.signal?.aborted) return;
+    try {
+      const abortSignal = new AbortController();
+      questionGuideController.current = abortSignal;
 
-        const result = await postQuestionGuide(
-          {
-            appId,
-            messages: chats2GPTMessages({ messages: histories, reserveId: false }).slice(-6),
-            ...outLinkAuthData
-          },
-          abortSignal
-        );
-        if (Array.isArray(result)) {
-          setQuestionGuide(result);
-          setTimeout(() => {
-            scrollToBottom();
-          }, 100);
-        }
-      } catch (error) {}
-    },
-    [questionGuide, appId, outLinkAuthData, scrollToBottom]
-  );
+      const result = await postQuestionGuide(
+        {
+          appId,
+          chatId,
+          ...outLinkAuthData
+        },
+        abortSignal
+      );
+      if (Array.isArray(result)) {
+        setQuestionGuide(result);
+        setTimeout(() => {
+          scrollToBottom();
+        }, 100);
+      }
+    } catch (error) {}
+  }, [questionGuide, appId, outLinkAuthData, scrollToBottom]);
 
   /* Abort chat completions, questionGuide */
   const abortRequest = useMemoizedFn((signal: string = 'stop') => {
@@ -525,9 +522,7 @@ const ChatBox = ({
 
             setTimeout(() => {
               if (!checkIsInteractiveByHistories(newChatHistories)) {
-                createQuestionGuide({
-                  histories: newChatHistories
-                });
+                createQuestionGuide();
               }
 
               generatingScroll(true);
