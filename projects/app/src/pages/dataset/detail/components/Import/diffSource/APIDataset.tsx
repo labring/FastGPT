@@ -42,13 +42,18 @@ const CustomAPIFileInput = () => {
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const goToNext = useContextSelector(DatasetImportContext, (v) => v.goToNext);
 
+  const sources = useContextSelector(DatasetImportContext, (v) => v.sources);
   const setSources = useContextSelector(DatasetImportContext, (v) => v.setSources);
 
   const [selectFiles, setSelectFiles] = useState<APIFileItem[]>([]);
   const [parent, setParent] = useState<ParentTreePathItemType | null>(null);
   const [searchKey, setSearchKey] = useState('');
 
-  const { data: fileList = [], runAsync: refetchFileList } = useRequest2(
+  const {
+    data: fileList = [],
+    runAsync: refetchFileList,
+    loading
+  } = useRequest2(
     (params?: { parentId?: string | null; searchKey?: string }) =>
       getApiDatasetFileList({
         datasetId: datasetDetail._id,
@@ -60,6 +65,13 @@ const CustomAPIFileInput = () => {
       manual: !datasetDetail._id || !datasetDetail.apiServer
     }
   );
+
+  useEffect(() => {
+    const currentFileIds = sources.map((item) => item.apiFileId);
+    const currentSelectFiles = fileList.filter((item) => currentFileIds.includes(item.id));
+
+    setSelectFiles(currentSelectFiles);
+  }, [fileList, sources]);
 
   useEffect(() => {
     refetchFileList({
@@ -145,7 +157,7 @@ const CustomAPIFileInput = () => {
   const paths = useMemo(() => [parent || { parentId: '', parentName: '' }], [parent]);
 
   return (
-    <MyBox isLoading={false} position="relative" h="full">
+    <MyBox isLoading={loading} position="relative" h="full">
       <Flex flexDirection={'column'} h="full">
         <Flex justifyContent={'space-between'}>
           <FolderPath

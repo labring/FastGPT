@@ -21,7 +21,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { DatasetPermissionList } from '@fastgpt/global/support/permission/dataset/constant';
-import MemberManager from '../../component/MemberManager';
+import MemberManager from '../../../component/MemberManager';
 import {
   getCollaboratorList,
   postUpdateDatasetCollaborators,
@@ -29,6 +29,9 @@ import {
 } from '@/web/core/dataset/api/collaborator';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import dynamic from 'next/dynamic';
+import EditAPIDatasetInfoModal, {
+  EditAPIDatasetInfoFormType
+} from './components/EditApiServiceModal';
 import { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
@@ -37,6 +40,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
+  const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();
   const refetchDatasetTraining = useContextSelector(
     DatasetPageContext,
     (v) => v.refetchDatasetTraining
@@ -126,7 +130,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
   useEffect(() => {
     reset(datasetDetail);
-  }, [datasetDetail._id]);
+  }, [datasetDetail, datasetDetail._id, reset]);
 
   return (
     <Box w={'100%'} h={'100%'} p={6}>
@@ -267,6 +271,31 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             </Box>
           </>
         )}
+
+        {datasetDetail.type === DatasetTypeEnum.apiDataset && (
+          <>
+            <Box w={'100%'} alignItems={'center'} pt={4}>
+              <Flex justifyContent={'space-between'} mb={2}>
+                <FormLabel display={'flex'} fontSize={'mini'} fontWeight={'500'}>
+                  {t('dataset:api_url')}
+                </FormLabel>
+                <MyIcon
+                  name={'edit'}
+                  w={'14px'}
+                  _hover={{ color: 'primary.600' }}
+                  cursor={'pointer'}
+                  onClick={() =>
+                    setEditedAPIDataset({
+                      id: datasetDetail._id,
+                      apiServer: datasetDetail.apiServer
+                    })
+                  }
+                />
+              </Flex>
+              <Box fontSize={'mini'}>{datasetDetail.apiServer?.baseUrl}</Box>
+            </Box>
+          </>
+        )}
       </Box>
 
       {datasetDetail.permission.hasManagePer && (
@@ -317,6 +346,19 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               name: data.name,
               intro: data.intro,
               avatar: data.avatar
+            })
+          }
+        />
+      )}
+      {editedAPIDataset && (
+        <EditAPIDatasetInfoModal
+          {...editedAPIDataset}
+          title={t('common:dataset.Edit API Service')}
+          onClose={() => setEditedAPIDataset(undefined)}
+          onEdit={(data) =>
+            updateDataset({
+              id: datasetId,
+              apiServer: data.apiServer
             })
           }
         />

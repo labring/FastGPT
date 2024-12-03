@@ -242,40 +242,44 @@ const CreateModal = ({
             </Box>
           </Flex>
         )}
-        <Flex mt={6}>
-          <Flex
-            alignItems={'center'}
-            flex={['', '0 0 110px']}
-            color={'myGray.900'}
-            fontWeight={500}
-            fontSize={'sm'}
-          >
-            {t('dataset:api_url')}
-          </Flex>
-          <Input
-            bg={'myWhite.600'}
-            placeholder={t('dataset:api_url')}
-            maxLength={200}
-            {...register('apiServer.baseUrl', { required: true })}
-          />
-        </Flex>
-        <Flex mt={6}>
-          <Flex
-            alignItems={'center'}
-            flex={['', '0 0 110px']}
-            color={'myGray.900'}
-            fontWeight={500}
-            fontSize={'sm'}
-          >
-            {t('dataset:request_headers')}
-          </Flex>
-          <Input
-            bg={'myWhite.600'}
-            placeholder={t('dataset:request_headers')}
-            maxLength={200}
-            {...register('apiServer.authorization')}
-          />
-        </Flex>
+        {type === DatasetTypeEnum.apiDataset && (
+          <>
+            <Flex mt={6}>
+              <Flex
+                alignItems={'center'}
+                flex={['', '0 0 110px']}
+                color={'myGray.900'}
+                fontWeight={500}
+                fontSize={'sm'}
+              >
+                {t('dataset:api_url')}
+              </Flex>
+              <Input
+                bg={'myWhite.600'}
+                placeholder={t('dataset:api_url')}
+                maxLength={200}
+                {...register('apiServer.baseUrl', { required: true })}
+              />
+            </Flex>
+            <Flex mt={6}>
+              <Flex
+                alignItems={'center'}
+                flex={['', '0 0 110px']}
+                color={'myGray.900'}
+                fontWeight={500}
+                fontSize={'sm'}
+              >
+                Authorization
+              </Flex>
+              <Input
+                bg={'myWhite.600'}
+                placeholder={t('dataset:request_headers')}
+                maxLength={200}
+                {...register('apiServer.authorization')}
+              />
+            </Flex>
+          </>
+        )}
       </ModalBody>
 
       <ModalFooter px={9}>
