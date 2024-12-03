@@ -1,6 +1,6 @@
 import type { NextApiRequest } from 'next';
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
-import { delCollectionAndRelatedSources } from '@fastgpt/service/core/dataset/collection/controller';
+import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
@@ -32,8 +32,9 @@ async function handler(req: NextApiRequest) {
 
   // delete
   await mongoSessionRun((session) =>
-    delCollectionAndRelatedSources({
+    delCollection({
       collections,
+      delRelatedSource: true,
       session
     })
   );

@@ -43,10 +43,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
       trainingType,
       chunkSize,
       chunkSplitter,
-      qaPrompt,
-
-      hashRawText: hashStr(text),
-      rawTextLength: text.length
+      qaPrompt
     }
   });
 

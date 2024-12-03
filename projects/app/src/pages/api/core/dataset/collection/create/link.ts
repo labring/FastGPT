@@ -50,15 +50,14 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
       tmbId,
       type: DatasetCollectionTypeEnum.link,
       metadata: {
-        relatedImgId: link
+        relatedImgId: link,
+        webPageSelector: body?.metadata?.webPageSelector
       },
 
       trainingType,
       chunkSize,
       chunkSplitter,
       qaPrompt,
-      hashRawText: hashStr(content),
-      rawTextLength: content.length,
 
       rawLink: link
     },

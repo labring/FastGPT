@@ -59,7 +59,10 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
       chunkSize,
       chunkSplitter,
       qaPrompt,
-      apiFileId
+      apiFileId,
+      metadata: {
+        relatedImgId: apiFileId
+      }
     }
   });
 

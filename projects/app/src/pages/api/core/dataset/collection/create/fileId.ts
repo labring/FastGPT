@@ -59,10 +59,7 @@ async function handler(
       trainingType,
       chunkSize,
       chunkSplitter,
-      qaPrompt,
-
-      hashRawText: hashStr(rawText),
-      rawTextLength: rawText.length
+      qaPrompt
     },
 
     relatedId: fileId

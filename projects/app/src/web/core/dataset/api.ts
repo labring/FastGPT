@@ -137,7 +137,7 @@ export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
 export const delDatasetCollectionById = (params: { id: string }) =>
   DELETE(`/core/dataset/collection/delete`, params);
 export const postLinkCollectionSync = (collectionId: string) =>
-  POST<DatasetCollectionSyncResultEnum>(`/core/dataset/collection/sync/link`, {
+  POST<DatasetCollectionSyncResultEnum>(`/core/dataset/collection/sync`, {
     collectionId
   });
 

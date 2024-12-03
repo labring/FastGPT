@@ -82,8 +82,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCo
         tmbId,
         type: DatasetCollectionTypeEnum.file,
         fileId,
-        rawTextLength: rawText.length,
-        hashRawText: hashStr(rawText),
         metadata: {
           ...collectionMetadata,
           relatedImgId
