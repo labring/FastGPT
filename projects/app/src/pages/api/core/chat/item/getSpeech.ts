@@ -8,7 +8,6 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { authType2UsageSource } from '@/service/support/wallet/usage/utils';
 import { getAudioSpeechModel } from '@fastgpt/service/core/ai/model';
 import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
-import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 
 /* 
@@ -93,4 +92,5 @@ async function handler(req: ApiRequestProps<GetChatSpeechProps>, res: NextApiRes
   }
 }
 
-export default NextAPI(handler);
+// 不能使用 NextApiResponse
+export default handler;
