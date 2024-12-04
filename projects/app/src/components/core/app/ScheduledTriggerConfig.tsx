@@ -16,10 +16,11 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { AppScheduledTriggerConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import TimezoneSelect from '@fastgpt/web/components/common/MySelect/TimezoneSelect';
-import ScheduleTimeSelect from '@fastgpt/web/components/common/MySelect/ScheduleTimeSelect';
+import ScheduleTimeSelect, {
+  cronString2Label,
+  defaultCronString
+} from '@fastgpt/web/components/common/MySelect/CronSelector';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { cronString2Label } from '@fastgpt/global/common/time/cron';
-import { defaultCronString } from '@fastgpt/global/common/time/constant';
 
 const ScheduledTriggerConfig = ({
   value,
