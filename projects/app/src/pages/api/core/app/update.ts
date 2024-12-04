@@ -6,8 +6,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import {
   ManagePermissionVal,
   PerResourceTypeEnum,
-  ReadPermissionVal,
-  WritePermissionVal
+  ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -16,7 +15,7 @@ import {
   syncChildrenPermission,
   syncCollaborators
 } from '@fastgpt/service/support/permission/inheritPermission';
-import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ClientSession } from 'mongoose';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
@@ -91,7 +90,10 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
   const onUpdate = async (session?: ClientSession) => {
     // format nodes data
     // 1. dataset search limit, less than model quoteMaxToken
-    const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
+    const { nodes: formatNodes } = beforeUpdateAppFormat({
+      nodes,
+      isPlugin: app.type === AppTypeEnum.plugin
+    });
 
     return MongoApp.findByIdAndUpdate(
       appId,

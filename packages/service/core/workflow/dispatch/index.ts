@@ -72,7 +72,6 @@ import { dispatchLoopEnd } from './loop/runLoopEnd';
 import { dispatchLoopStart } from './loop/runLoopStart';
 import { dispatchFormInput } from './interactive/formInput';
 import { dispatchToolParams } from './agent/runTool/toolParams';
-import { responseWrite } from '../../../common/response';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
