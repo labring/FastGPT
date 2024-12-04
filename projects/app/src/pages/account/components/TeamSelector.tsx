@@ -8,9 +8,17 @@ import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useRouter } from 'next/router';
 
-const TeamSelector = (props: ButtonProps) => {
+const TeamSelector = ({
+  showManage,
+  ...props
+}: ButtonProps & {
+  showManage?: boolean;
+}) => {
   const { t } = useTranslation();
+  const router = useRouter();
   const { userInfo, initUserInfo } = useUserStore();
   const { setLoading } = useSystemStore();
 
@@ -57,22 +65,37 @@ const TeamSelector = (props: ButtonProps) => {
     }));
   }, [myTeams, onSwitchTeam]);
 
-  const defaultList = useMemo(() => {
+  const formatTeamList = useMemo(() => {
     return [
-      {
-        label: t('common:user.team.Personal Team'),
-        value: ''
-      }
+      ...(showManage
+        ? [
+            {
+              label: (
+                <Flex
+                  key={'manage'}
+                  alignItems={'center'}
+                  borderRadius={'md'}
+                  cursor={'default'}
+                  gap={3}
+                  onClick={() => router.push('/account/team')}
+                >
+                  <MyIcon name="common/setting" w={['1.25rem', '1.375rem']} />
+                  <Box flex={'1 0 0'} w={0} className="textEllipsis" fontSize={'sm'}>
+                    {t('user:manage_team')}
+                  </Box>
+                </Flex>
+              ),
+              value: 'manage'
+            }
+          ]
+        : []),
+      ...teamList
     ];
-  }, [t]);
+  }, [showManage, teamList, router]);
 
   return (
     <>
-      <MySelect
-        {...props}
-        value={userInfo?.team?.teamId}
-        list={userInfo?.team ? teamList : defaultList}
-      />
+      <MySelect {...props} value={userInfo?.team?.teamId} list={formatTeamList} />
     </>
   );
 };

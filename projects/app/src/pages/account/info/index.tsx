@@ -308,7 +308,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         <Flex mt={6} alignItems={'center'}>
           <Box {...labelStyles}>{t('account_info:user_team_team_name')}:&nbsp;</Box>
           <Flex flex={'1 0 0'} w={0} align={'center'}>
-            <TeamSelector height={'28px'} w={'100%'} />
+            <TeamSelector height={'28px'} w={'100%'} showManage />
           </Flex>
         </Flex>
         {feConfigs?.isPlus && (userInfo?.team?.balance ?? 0) > 0 && (
