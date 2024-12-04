@@ -17,10 +17,10 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getTeamClbs, updateMemberPermission } from '@/web/support/user/team/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
-import { TeamModalContext } from '../../context';
+import { TeamContext } from '../context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MemberTag from '../../../Info/MemberTag';
+import MemberTag from '../../../../../components/support/user/team/Info/MemberTag';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import {
   TeamManagePermissionVal,
@@ -33,7 +33,7 @@ function PermissionManage() {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const { groups, refetchMembers, refetchGroups, members, searchKey } = useContextSelector(
-    TeamModalContext,
+    TeamContext,
     (v) => v
   );
 
@@ -179,7 +179,7 @@ function PermissionManage() {
   const userManage = userInfo?.permission.hasManagePer;
 
   return (
-    <TableContainer fontSize={'sm'} mx="6">
+    <TableContainer fontSize={'sm'}>
       <Table>
         <Thead>
           <Tr bg={'white !important'}>

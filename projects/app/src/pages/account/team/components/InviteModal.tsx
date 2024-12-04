@@ -19,7 +19,7 @@ const InviteModal = ({
 }) => {
   const { t } = useTranslation();
   const { ConfirmModal, openConfirm } = useConfirm({
-    title: t('common:user.team.Invite Member Result Tip'),
+    title: t('user:team.Invite Member Result Tip'),
     showCancel: false
   });
 
@@ -38,7 +38,7 @@ const InviteModal = ({
           () => onClose(),
           undefined,
           <Box whiteSpace={'pre-wrap'}>
-            {t('user.team.Invite Member Success Tip', {
+            {t('user:team.Invite Member Success Tip', {
               success: res.invite.length,
               inValid: res.inValid.map((item) => item.username).join(', '),
               inTeam: res.inTeam.map((item) => item.username).join(', ')
@@ -46,7 +46,7 @@ const InviteModal = ({
           </Box>
         )();
       },
-      errorToast: t('common:user.team.Invite Member Failed Tip')
+      errorToast: t('user:team.Invite Member Failed Tip')
     }
   );
 
@@ -79,7 +79,7 @@ const InviteModal = ({
           isLoading={isLoading}
           onClick={onInvite}
         >
-          {t('common:user.team.Confirm Invite')}
+          {t('user:team.Confirm Invite')}
         </Button>
       </ModalFooter>
       <ConfirmModal />

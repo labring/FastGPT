@@ -1,5 +1,8 @@
 {
   "Enable": "啟用",
+  "add_file": "新增文件",
+  "api_file": "API 檔案庫",
+  "api_url": "介面位址",
   "collection.Create update time": "建立／更新時間",
   "collection.Training type": "分段模式",
   "collection_tags": "集合標籤",
@@ -32,6 +35,7 @@
   "permission.des.write": "可新增和變更資料集內容",
   "rebuild_embedding_start_tip": "切換索引模型任務已開始",
   "rebuilding_index_count": "重建中索引數量：{{count}}",
+  "request_headers": "請求頭",
   "tag.Add New": "新增",
   "tag.Add_new_tag": "新增標籤",
   "tag.Edit_tag": "編輯標籤",

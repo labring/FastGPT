@@ -9,7 +9,7 @@ if (args.length !== 1) {
 }
 
 const fileName = `${args[0]}.json`; // 生成的文件名
-const languages = ['zh-TW', 'zh-CN', 'en'];
+const languages = ['zh-Hant', 'zh-CN', 'en'];
 // 使用 process.cwd() 获取当前工作目录
 const basePath = path.join(process.cwd(), 'packages', 'web', 'i18n');
 const typesPath = path.join(process.cwd(), 'packages', 'web', 'types', 'i18next.d.ts');
