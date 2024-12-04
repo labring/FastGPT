@@ -94,7 +94,7 @@ export const useDebug = () => {
       });
       return Promise.reject();
     }
-  }, [edges, onUpdateNodeError, t, toast]);
+  }, [edges, getNodes, onUpdateNodeError, t, toast]);
 
   const openDebugNode = useCallback(
     async ({ entryNodeId }: { entryNodeId: string }) => {
@@ -163,7 +163,7 @@ export const useDebug = () => {
 
           return acc;
         }, {}),
-        globalVariables: defaultGlobalVariables
+        variables: defaultGlobalVariables
       }
     });
     const { register, getValues, setValue, handleSubmit } = variablesForm;
@@ -207,11 +207,11 @@ export const useDebug = () => {
             : node
         ),
         runtimeEdges: runtimeEdges,
-        variables: data.globalVariables
+        variables: data.variables
       });
 
       // Filter global variables and set them as default global variable values
-      setDefaultGlobalVariables(data.globalVariables);
+      setDefaultGlobalVariables(data.variables);
 
       onClose();
     };
@@ -225,8 +225,7 @@ export const useDebug = () => {
       }
 
       const hasRequiredGlobalVar =
-        e.globalVariables &&
-        Object.values(e.globalVariables).some((item) => item.type === 'required');
+        e.variables && Object.values(e.variables).some((item) => item.type === 'required');
 
       if (hasRequiredGlobalVar) {
         setCurrentTab(TabEnum.global);
@@ -260,7 +259,7 @@ export const useDebug = () => {
             {filteredVar.map((item) => (
               <VariableInputItem
                 key={item.id}
-                item={{ ...item, key: `globalVariables.${item.key}` }}
+                item={{ ...item, key: item.key }}
                 variablesForm={variablesForm}
               />
             ))}
