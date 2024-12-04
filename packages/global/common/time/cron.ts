@@ -1,5 +1,4 @@
 import { cronParser2Fields } from '../string/time';
-import { TFunction } from 'i18next';
 import { CronJobTypeEnum, defaultValue } from './constant';
 
 export const cronString2Fields = (cronString?: string) => {
@@ -24,7 +23,10 @@ export const cronString2Fields = (cronString?: string) => {
   return [CronJobTypeEnum.interval, 24 / cronField.hour.length, 0];
 };
 
-export const cronString2Label = (cronString: string, t: TFunction) => {
+export const cronString2Label = (
+  cronString: string,
+  t: any // i18nT
+) => {
   const cronField = cronString2Fields(cronString);
   if (!cronField) {
     return t('common:common.Not open');
