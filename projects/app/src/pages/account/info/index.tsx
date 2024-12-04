@@ -45,12 +45,12 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import AccountContainer, { TabEnum } from '../components/AccountContainer';
+import AccountContainer from '../components/AccountContainer';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';
+import TeamSelector from '../components/TeamSelector';
 
 const StandDetailModal = dynamic(() => import('./components/standardDetailModal'));
-const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
 const ConversionModal = dynamic(() => import('./components/ConversionModal'));
 const UpdatePswModal = dynamic(() => import('./components/UpdatePswModal'));
 const UpdateNotification = dynamic(() => import('./components/UpdateNotificationModal'));
@@ -307,15 +307,8 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         )}
         <Flex mt={6} alignItems={'center'}>
           <Box {...labelStyles}>{t('account_info:user_team_team_name')}:&nbsp;</Box>
-          <Flex flex={1} justify={'space-between'} align={'center'}>
-            <TeamMenu w={'10.5rem'} height={'2rem'} />
-            <Button
-              size={'sm'}
-              variant={'whitePrimary'}
-              onClick={() => router.push('/account/team')}
-            >
-              {t('account_info:manage')}
-            </Button>
+          <Flex flex={'1 0 0'} w={0} align={'center'}>
+            <TeamSelector height={'28px'} w={'100%'} showManage />
           </Flex>
         </Flex>
         {feConfigs?.isPlus && (userInfo?.team?.balance ?? 0) > 0 && (

@@ -113,7 +113,10 @@ async function handler(
         ...(status && { status }),
         ...(intro !== undefined && { intro }),
         ...(externalReadUrl !== undefined && { externalReadUrl }),
-        ...(apiServer !== undefined && { apiServer }),
+        ...(!!apiServer?.baseUrl && { 'apiServer.baseUrl': apiServer.baseUrl }),
+        ...(!!apiServer?.authorization && {
+          'apiServer.authorization': apiServer.authorization
+        }),
         ...(isMove && { inheritPermission: true })
       },
       { session }

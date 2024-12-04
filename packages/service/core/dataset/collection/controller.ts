@@ -23,13 +23,15 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { getLLMModel, getVectorModel } from '../../ai/model';
 import { pushDataListToTrainingQueue } from '../training/controller';
 import { MongoImage } from '../../../common/file/image/schema';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 
 export const createCollectionAndInsertData = async ({
   dataset,
   rawText,
   relatedId,
   createCollectionParams,
-  isQAImport = false
+  isQAImport = false,
+  session
 }: {
   dataset: DatasetSchemaType;
   rawText: string;
@@ -37,6 +39,7 @@ export const createCollectionAndInsertData = async ({
   createCollectionParams: CreateOneCollectionParams;
 
   isQAImport?: boolean;
+  session?: ClientSession;
 }) => {
   const teamId = createCollectionParams.teamId;
   const tmbId = createCollectionParams.tmbId;
@@ -62,10 +65,13 @@ export const createCollectionAndInsertData = async ({
     insertLen: predictDataLimitLength(trainingType, chunks)
   });
 
-  return mongoSessionRun(async (session) => {
+  const fn = async (session: ClientSession) => {
     // 3. create collection
     const { _id: collectionId } = await createOneCollection({
       ...createCollectionParams,
+
+      hashRawText: hashStr(rawText),
+      rawTextLength: rawText.length,
       session
     });
 
@@ -121,7 +127,12 @@ export const createCollectionAndInsertData = async ({
       collectionId,
       insertResults
     };
-  });
+  };
+
+  if (session) {
+    return fn(session);
+  }
+  return mongoSessionRun(fn);
 };
 
 export type CreateOneCollectionParams = CreateDatasetCollectionParams & {
@@ -229,12 +240,14 @@ export const delCollectionRelatedSource = async ({
 /**
  * delete collection and it related data
  */
-export async function delCollectionAndRelatedSources({
+export async function delCollection({
   collections,
-  session
+  session,
+  delRelatedSource
 }: {
   collections: (CollectionWithDatasetType | DatasetCollectionSchemaType)[];
   session: ClientSession;
+  delRelatedSource: boolean;
 }) {
   if (collections.length === 0) return;
 
@@ -262,7 +275,9 @@ export async function delCollectionAndRelatedSources({
   });
 
   /* file and imgs */
-  await delCollectionRelatedSource({ collections, session });
+  if (delRelatedSource) {
+    await delCollectionRelatedSource({ collections, session });
+  }
 
   // delete dataset.datas
   await MongoDatasetData.deleteMany(

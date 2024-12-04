@@ -103,7 +103,6 @@ const AccountContainer = ({
           }
         ]
       : []),
-
     {
       icon: 'support/account/loginoutLight',
       label: t('account:logout'),

@@ -3,7 +3,7 @@ import AccountContainer from '../components/AccountContainer';
 import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import TeamMenu from '@/components/support/user/team/TeamMenu';
+import TeamSelector from '../components/TeamSelector';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import React, { useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
@@ -128,7 +128,7 @@ const Team = () => {
             </Box>
           </Flex>
           <Flex align={'center'} ml={6}>
-            <TeamMenu width="12.5rem" />
+            <TeamSelector height={'28px'} />
           </Flex>
           {userInfo?.team.role === TeamMemberRoleEnum.owner && (
             <Flex align={'center'} justify={'center'} ml={2} p={'0.44rem'}>
@@ -175,6 +175,7 @@ const Team = () => {
               { label: t('account_team:group'), value: TeamTabEnum.group },
               { label: t('account_team:permission'), value: TeamTabEnum.permission }
             ]}
+            px={'1rem'}
             value={teamTab}
             onChange={(e) => {
               router.replace({
