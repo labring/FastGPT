@@ -85,7 +85,8 @@ const TeamSelector = ({
                   </Box>
                 </Flex>
               ),
-              value: 'manage'
+              value: 'manage',
+              showBorder: true
             }
           ]
         : []),
