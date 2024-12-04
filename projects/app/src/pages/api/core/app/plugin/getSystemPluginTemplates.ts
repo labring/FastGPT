@@ -25,7 +25,8 @@ async function handler(
   const formatParentId = parentId || null;
 
   // Make sure system plugin callbacks are loaded
-  if (!global.systemPluginCb) await getSystemPluginCb();
+  if (!global.systemPluginCb || Object.keys(global.systemPluginCb).length === 0)
+    await getSystemPluginCb();
 
   return getSystemPlugins().then((res) =>
     res
