@@ -460,7 +460,7 @@ const PlanUsage = () => {
               {t(planName as any)}
             </Box>
           </Box>
-          {subPlans?.planDescriptionUrl?.planDescriptionUrl && (
+          {subPlans?.planDescriptionUrl && (
             <Button
               onClick={() => {
                 router.push('/price');

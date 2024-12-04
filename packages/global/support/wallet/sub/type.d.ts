@@ -25,9 +25,7 @@ export type StandSubPlanLevelMapType = Record<
 
 export type SubPlanType = {
   [SubTypeEnum.standard]: StandSubPlanLevelMapType;
-  [SubTypeEnum.planDescriptionUrl]: {
-    planDescriptionUrl: string;
-  };
+  planDescriptionUrl: string;
   [SubTypeEnum.extraDatasetSize]: {
     price: number;
   };
