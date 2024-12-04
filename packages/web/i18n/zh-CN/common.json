@@ -345,7 +345,7 @@
   "core.app.schedule.Default prompt placeholder": "执行应用时的默认问题",
   "core.app.schedule.Every day": "每天 {{hour}}:00",
   "core.app.schedule.Every month": "每月 {{day}} 号 {{hour}}:00",
-  "core.app.schedule.Every week": "每周{{day}} {{hour}}:00",
+  "core.app.schedule.Every week": "每周 {{day}} {{hour}}:00",
   "core.app.schedule.Interval": "每 {{interval}} 小时",
   "core.app.schedule.Open schedule": "定时执行",
   "core.app.setting": "应用信息设置",

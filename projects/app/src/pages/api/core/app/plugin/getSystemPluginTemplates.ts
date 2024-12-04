@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { NextAPI } from '@/service/middleware/entry';
-import { getSystemPlugins } from '@/service/core/app/plugin';
+import { getSystemPluginCb, getSystemPlugins } from '@/service/core/app/plugin';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
@@ -23,6 +23,10 @@ async function handler(
   const { searchKey, parentId } = req.body;
 
   const formatParentId = parentId || null;
+
+  // Make sure system plugin callbacks are loaded
+  if (!global.systemPluginCb || Object.keys(global.systemPluginCb).length === 0)
+    await getSystemPluginCb();
 
   return getSystemPlugins().then((res) =>
     res
