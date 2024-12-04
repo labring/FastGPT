@@ -2,7 +2,7 @@ import { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from './constants';
 
 // Content of plan
 export type TeamStandardSubPlanItemType = {
-  name: string;
+  name?: string;
   price: number; // read price / month
   pointPrice: number; // read price/ one thousand
   totalPoints: number; // n
