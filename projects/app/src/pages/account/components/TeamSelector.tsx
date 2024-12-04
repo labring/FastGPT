@@ -95,9 +95,9 @@ const TeamSelector = ({
   }, [showManage, teamList, router]);
 
   return (
-    <>
+    <Box w={'100%'}>
       <MySelect {...props} value={userInfo?.team?.teamId} list={formatTeamList} />
-    </>
+    </Box>
   );
 };
 

@@ -89,7 +89,6 @@ const MySelect = <T = any,>(
 
   return (
     <Box
-      w={width}
       css={css({
         '& div': {
           width: 'auto !important'
