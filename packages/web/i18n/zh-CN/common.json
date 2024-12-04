@@ -1182,12 +1182,8 @@
   "user.password_message": "密码最少 4 位最多 60 位",
   "user.team.Balance": "团队余额",
   "user.team.Check Team": "切换",
-  "user.team.Confirm Invite": "确认邀请",
-  "user.team.Create Team": "创建新团队",
+
   "user.team.Invite Member": "邀请成员",
-  "user.team.Invite Member Failed Tip": "邀请成员出现异常",
-  "user.team.Invite Member Result Tip": "邀请结果提示",
-  "user.team.Invite Member Success Tip": "邀请成员完成\n成功：{{success}} 人\n用户名无效：{{inValid}}\n已在团队中：{{inTeam}}",
   "user.team.Invite Member Tips": "对方可查阅或使用团队内的其他资源",
   "user.team.Leave Team": "离开团队",
   "user.team.Leave Team Failed": "离开团队异常",
@@ -1199,13 +1195,13 @@
   "user.team.Processing invitations Tips": "你有 {{amount}} 个需要处理的团队邀请",
   "user.team.Remove Member Confirm Tip": "确认将 {{username}} 移出团队？",
   "user.team.Select Team": "团队选择",
-  "user.team.Set Name": "给团队取个名字",
+
   "user.team.Switch Team Failed": "切换团队异常",
   "user.team.Tags Async": "保存",
-  "user.team.Team Name": "团队名",
+
   "user.team.Team Tags Async": "标签同步",
   "user.team.Team Tags Async Success": "链接报错成功，标签信息更新",
-  "user.team.Update Team": "更新团队信息",
+
   "user.team.invite.Accept Confirm": "确认加入该团队？",
   "user.team.invite.Accepted": "已加入团队",
   "user.team.invite.Deal Width Footer Tip": "处理完会自动关闭噢~",

@@ -101,11 +101,11 @@ function EditModal({
       onClose={onClose}
       iconSrc="support/team/group"
       iconColor="primary.600"
-      title={defaultData.id ? t('common:user.team.Update Team') : t('common:user.team.Create Team')}
+      title={defaultData.id ? t('user:team.Update Team') : t('user:team.Create Team')}
     >
       <ModalBody>
         <Box color={'myGray.800'} fontWeight={'bold'}>
-          {t('common:user.team.Set Name')}
+          {t('user:team.Set Name')}
         </Box>
         <Flex mt={3} alignItems={'center'}>
           <MyTooltip label={t('common:common.Set Avatar')}>
@@ -125,7 +125,7 @@ function EditModal({
             autoFocus
             bg={'myWhite.600'}
             maxLength={20}
-            placeholder={t('common:user.team.Team Name')}
+            placeholder={t('user:team.Team Name')}
             {...register('name', {
               required: t('common:common.Please Input Name')
             })}

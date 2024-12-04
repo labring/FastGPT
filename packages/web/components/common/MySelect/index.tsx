@@ -59,8 +59,7 @@ const MySelect = <T = any,>(
     display: 'flex',
     alignItems: 'center',
     _hover: {
-      backgroundColor: 'myGray.100',
-      color: 'primary.700'
+      backgroundColor: 'myGray.100'
     },
     _notLast: {
       mb: 1
@@ -162,7 +161,8 @@ const MySelect = <T = any,>(
                 ? {
                     ref: SelectedItemRef,
                     color: 'primary.700',
-                    bg: 'myGray.100'
+                    bg: 'myGray.100',
+                    fontWeight: '500'
                   }
                 : {
                     color: 'myGray.900'

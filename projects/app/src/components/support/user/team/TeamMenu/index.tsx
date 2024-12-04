@@ -1,68 +1,88 @@
-import React from 'react';
-import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
+import React, { useMemo } from 'react';
+import { Box, Button, ButtonProps, Flex, SelectProps, useDisclosure } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import { getTeamList, putSwitchTeam } from '@/web/support/user/team/api';
+import {
+  TeamMemberRoleEnum,
+  TeamMemberStatusEnum
+} from '@fastgpt/global/support/user/team/constant';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
-const TeamManageModal = dynamic(() => import('../TeamManageModal'));
-
-const TeamMenu = () => {
-  const { feConfigs } = useSystemStore();
+const TeamMenu = (props: ButtonProps) => {
   const { t } = useTranslation();
-  const { userInfo } = useUserStore();
-  const { toast } = useToast();
+  const { userInfo, initUserInfo } = useUserStore();
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { data: myTeams = [], loading: loadingTeamList } = useRequest2(
+    () => getTeamList(TeamMemberStatusEnum.active),
+    {
+      manual: false,
+      refreshDeps: [userInfo]
+    }
+  );
+
+  const { runAsync: onSwitchTeam, loading: switching } = useRequest2(
+    async (teamId: string) => {
+      await putSwitchTeam(teamId);
+      return initUserInfo();
+    },
+    {
+      errorToast: t('common:user.team.Switch Team Failed')
+    }
+  );
+
+  const teamList = useMemo(() => {
+    return myTeams.map((team) => ({
+      label: (
+        <Flex
+          key={team.teamId}
+          alignItems={'center'}
+          borderRadius={'md'}
+          cursor={'default'}
+          gap={3}
+          onClick={() => onSwitchTeam(team.teamId)}
+          _hover={{
+            cursor: 'pointer'
+          }}
+        >
+          <Avatar src={team.avatar} w={['18px', '22px']} />
+          <Box
+            flex={'1 0 0'}
+            w={0}
+            fontSize={'sm'}
+            {...(team.role === TeamMemberRoleEnum.owner
+              ? {
+                  fontWeight: 'bold'
+                }
+              : {})}
+          >
+            {team.teamName}
+          </Box>
+        </Flex>
+      ),
+      value: team.teamId
+    }));
+  }, [myTeams, onSwitchTeam]);
+
+  const defaultList = useMemo(() => {
+    return [
+      {
+        label: t('common:user.team.Personal Team'),
+        value: ''
+      }
+    ];
+  }, [t]);
 
   return (
     <>
-      <Button
-        variant={'whitePrimary'}
-        userSelect={'none'}
-        w={'100%'}
-        h={'34px'}
-        justifyContent={'space-between'}
-        px={3}
-        css={{
-          '& span': {
-            display: 'block'
-          }
-        }}
-        transform={'none !important'}
-        rightIcon={<MyIcon w={'1rem'} name={'common/select'} />}
-        onClick={() => {
-          if (feConfigs.isPlus) {
-            onOpen();
-          } else {
-            toast({
-              status: 'warning',
-              title: t('common:common.system.Commercial version function')
-            });
-          }
-        }}
-      >
-        <MyTooltip label={t('common:user.team.Select Team')}>
-          <Flex w={'100%'} alignItems={'center'}>
-            {userInfo?.team ? (
-              <>
-                <Avatar src={userInfo.team.avatar} w={'1rem'} />
-                <Box ml={2}>{userInfo.team.teamName}</Box>
-              </>
-            ) : (
-              <>
-                <Box w={'8px'} h={'8px'} mr={3} borderRadius={'50%'} bg={'#67c13b'} />
-                {t('common:user.team.Personal Team')}
-              </>
-            )}
-          </Flex>
-        </MyTooltip>
-      </Button>
-      {isOpen && <TeamManageModal onClose={onClose} />}
+      <MySelect
+        {...props}
+        value={userInfo?.team?.teamId}
+        list={userInfo?.team ? teamList : defaultList}
+      />
     </>
   );
 };

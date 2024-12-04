@@ -1,0 +1,29 @@
+{
+  "total_team_members": "共 {{amount}} 名成员",
+  "member": "成员",
+  "group": "群组",
+  "permission": "权限",
+  "user_name": "用户名",
+  "member_group": "所属成员组",
+  "action": "操作",
+  "waiting": "待接受",
+  "remove_tip": "确认将 {{username}} 移出团队？",
+
+  "confirm_leave_team": "确认离开该团队？  \n 退出后，您在该团队所有的资源（ 应用、知识库、文件夹、管理的群组等）均转让给团队所有者。",
+  "leave_team_failed": "离开团队异常",
+  "label_sync": "标签同步",
+  "user_team_invite_member": "邀请成员",
+  "user_team_leave_team": "离开团队",
+  "user_team_leave_team_failed": "离开团队失败",
+  "create_group": "创建群组",
+  "search_member_group_name": "搜索成员/群组名称",
+  "confirm_delete_group": "确认删除群组？",
+  "group_name": "群组名称",
+  "owner": "所有者",
+  "manage_member": "管理成员",
+  "edit_info": "编辑信息",
+
+  "transfer_ownership": "转让所有者",
+  "delete": "删除",
+  "retain_admin_permissions": "保留管理员权限"
+}

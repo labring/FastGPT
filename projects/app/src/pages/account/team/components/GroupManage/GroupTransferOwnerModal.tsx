@@ -16,7 +16,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useState } from 'react';
-import { TeamModalContext } from '../../context';
+import { TeamContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
 
 export type ChangeOwnerModalProps = {
@@ -29,11 +29,7 @@ export function ChangeOwnerModal({
 }: ChangeOwnerModalProps & { onClose: () => void }) {
   const { t } = useTranslation();
   const [inputValue, setInputValue] = React.useState('');
-  const {
-    members: allMembers,
-    groups,
-    refetchGroups
-  } = useContextSelector(TeamModalContext, (v) => v);
+  const { members: allMembers, groups, refetchGroups } = useContextSelector(TeamContext, (v) => v);
   const group = useMemo(() => {
     return groups.find((item) => item._id === groupId);
   }, [groupId, groups]);
@@ -180,7 +176,7 @@ export function ChangeOwnerModal({
                 setKeepAdmin(e.target.checked);
               }}
             >
-              {t('user:team.group.keep_admin')}
+              {t('account_team:retain_admin_permissions')}
             </Checkbox>
           </Box>
         </Flex>
