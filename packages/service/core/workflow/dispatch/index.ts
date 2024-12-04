@@ -499,8 +499,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       value = replaceEditorVariable({
         text: value,
         nodes: runtimeNodes,
-        variables,
-        runningNode: node
+        variables
       });
 
       // replace reference variables
@@ -692,9 +691,17 @@ export function getSystemVariable({
   chatId,
   responseChatItemId,
   histories = [],
-  uid
+  uid,
+  chatConfig
 }: Props): SystemVariablesType {
+  const variables = chatConfig?.variables || [];
+  const variablesMap = variables.reduce<Record<string, any>>((acc, item) => {
+    acc[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+    return acc;
+  }, {});
+
   return {
+    ...variablesMap,
     userId: uid,
     appId: String(runningAppInfo.id),
     chatId,
