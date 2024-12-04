@@ -64,7 +64,6 @@ export const VariableInputItem = ({
           maxLength={item.maxLength || 4000}
         />
       )}
-
       {item.type === VariableInputEnum.select && (
         <Controller
           key={`variables.${item.key}`}

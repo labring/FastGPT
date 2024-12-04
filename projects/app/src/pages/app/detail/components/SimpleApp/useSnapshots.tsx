@@ -35,8 +35,7 @@ export const compareSimpleAppSnapshot = (
         ttsConfig: appForm1.chatConfig?.ttsConfig || undefined,
         whisperConfig: appForm1.chatConfig?.whisperConfig || undefined,
         chatInputGuide: appForm1.chatConfig?.chatInputGuide || undefined,
-        fileSelectConfig: appForm1.chatConfig?.fileSelectConfig || undefined,
-        instruction: appForm1.chatConfig?.instruction || ''
+        fileSelectConfig: appForm1.chatConfig?.fileSelectConfig || undefined
       },
       {
         welcomeText: appForm2.chatConfig?.welcomeText || '',
@@ -45,8 +44,7 @@ export const compareSimpleAppSnapshot = (
         ttsConfig: appForm2.chatConfig?.ttsConfig || undefined,
         whisperConfig: appForm2.chatConfig?.whisperConfig || undefined,
         chatInputGuide: appForm2.chatConfig?.chatInputGuide || undefined,
-        fileSelectConfig: appForm2.chatConfig?.fileSelectConfig || undefined,
-        instruction: appForm2.chatConfig?.instruction || ''
+        fileSelectConfig: appForm2.chatConfig?.fileSelectConfig || undefined
       }
     )
   ) {

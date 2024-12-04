@@ -283,68 +283,47 @@ export const getReferenceVariableValue = ({
 export function replaceEditorVariable({
   text,
   nodes,
-  variables,
-  runningNode
+  variables
 }: {
   text: any;
   nodes: RuntimeNodeItemType[];
   variables: Record<string, any>; // global variables
-  runningNode: RuntimeNodeItemType;
 }) {
   if (typeof text !== 'string') return text;
 
-  const globalVariables = Object.keys(variables).map((key) => {
-    return {
-      nodeId: VARIABLE_NODE_ID,
-      id: key,
-      value: variables[key]
-    };
-  });
+  const variablePattern = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
+  const matches = [...text.matchAll(variablePattern)];
+  if (matches.length === 0) return text;
 
-  // Upstream node outputs
-  const nodeVariables = nodes
-    .map((node) => {
-      return node.outputs.map((output) => {
-        return {
-          nodeId: node.nodeId,
-          id: output.id,
-          value: output.value
-        };
-      });
-    })
-    .flat();
+  matches.forEach((match) => {
+    const nodeId = match[1];
+    const id = match[2];
 
-  // Get runningNode inputs(Will be replaced with reference)
-  const customInputs = runningNode.inputs.flatMap((item) => {
-    return [
-      {
-        id: item.key,
-        value: getReferenceVariableValue({
-          value: item.value,
-          nodes,
-          variables
-        }),
-        nodeId: runningNode.nodeId
+    const variableVal = (() => {
+      if (nodeId === VARIABLE_NODE_ID) {
+        return variables[id];
       }
-    ];
-  });
+      // Find upstream node input/output
+      const node = nodes.find((node) => node.nodeId === nodeId);
+      if (!node) return;
 
-  const allVariables = [...globalVariables, ...nodeVariables, ...customInputs];
+      const output = node.outputs.find((output) => output.id === id);
+      if (output) return output.value;
 
-  // Replace {{$xxx.xxx$}} to value
-  for (const key in allVariables) {
-    const variable = allVariables[key];
-    const val = variable.value;
-    const formatVal = (() => {
-      if (val === undefined) return '';
-      if (val === null) return 'null';
-
-      return typeof val === 'object' ? JSON.stringify(val) : String(val);
+      const input = node.inputs.find((input) => input.key === id);
+      if (input) return getReferenceVariableValue({ value: input.value, nodes, variables });
     })();
 
-    const regex = new RegExp(`\\{\\{\\$(${variable.nodeId}\\.${variable.id})\\$\\}\\}`, 'g');
+    const formatVal = (() => {
+      if (variableVal === undefined) return 'undefined';
+      if (variableVal === null) return 'null';
+      return typeof variableVal === 'object' ? JSON.stringify(variableVal) : String(variableVal);
+    })();
+
+    const regex = new RegExp(`\\{\\{\\$(${nodeId}\\.${id})\\$\\}\\}`, 'g');
     text = text.replace(regex, formatVal);
-  }
+  });
+
   return text || '';
 }
 
