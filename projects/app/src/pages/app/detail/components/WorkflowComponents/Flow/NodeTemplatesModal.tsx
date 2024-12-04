@@ -57,6 +57,7 @@ import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workfl
 import { WorkflowNodeEdgeContext } from '../context/workflowInitContext';
 import CostTooltip from '@/components/core/app/plugin/CostTooltip';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
+import { useMemoizedFn } from 'ahooks';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -475,7 +476,7 @@ const RenderList = React.memo(function RenderList({
     return data.filter(({ list }) => list.length > 0);
   }, [type, templates, pluginGroups]);
 
-  const onAddNode = useCallback(
+  const onAddNode = useMemoizedFn(
     async ({
       template,
       position
@@ -593,8 +594,7 @@ const RenderList = React.memo(function RenderList({
           .concat(newNodes);
         return newState;
       });
-    },
-    [screenToFlowPosition, nodeList, computedNewNodeName, t, setNodes, setLoading, toast]
+    }
   );
 
   const gridStyle = useMemo(() => {
@@ -617,142 +617,125 @@ const RenderList = React.memo(function RenderList({
     };
   }, [type]);
 
-  const PluginListRender = useCallback(
-    ({ list = [] }: { list: NodeTemplateListType }) => {
-      return (
-        <>
-          {list.map((item, i) => {
-            return (
-              <Box
-                key={item.type}
-                css={css({
-                  span: {
-                    display: 'block'
-                  }
-                })}
-              >
-                <Flex>
-                  <Box fontSize={'sm'} my={2} fontWeight={'500'} flex={1} color={'myGray.900'}>
-                    {t(item.label as any)}
-                  </Box>
-                </Flex>
-                <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={2}>
-                  {item.list.map((template) => {
-                    return (
-                      <MyTooltip
-                        key={template.id}
-                        placement={'right'}
-                        label={
-                          <Box py={2}>
-                            <Flex alignItems={'center'}>
-                              <MyAvatar
-                                src={template.avatar}
-                                w={'1.75rem'}
-                                objectFit={'contain'}
-                                borderRadius={'sm'}
-                              />
-                              <Box fontWeight={'bold'} ml={3} color={'myGray.900'}>
-                                {t(template.name as any)}
-                              </Box>
-                            </Flex>
-                            <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
-                              {t(template.intro as any) || t('common:core.workflow.Not intro')}
-                            </Box>
-                            <CostTooltip
-                              cost={template.currentCost}
-                              hasTokenFee={template.hasTokenFee}
+  const PluginListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
+    return (
+      <>
+        {list.map((item, i) => {
+          return (
+            <Box
+              key={item.type}
+              css={css({
+                span: {
+                  display: 'block'
+                }
+              })}
+            >
+              <Flex>
+                <Box fontSize={'sm'} my={2} fontWeight={'500'} flex={1} color={'myGray.900'}>
+                  {t(item.label as any)}
+                </Box>
+              </Flex>
+              <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={2}>
+                {item.list.map((template) => {
+                  return (
+                    <MyTooltip
+                      key={template.id}
+                      placement={'right'}
+                      label={
+                        <Box py={2}>
+                          <Flex alignItems={'center'}>
+                            <MyAvatar
+                              src={template.avatar}
+                              w={'1.75rem'}
+                              objectFit={'contain'}
+                              borderRadius={'sm'}
                             />
+                            <Box fontWeight={'bold'} ml={3} color={'myGray.900'}>
+                              {t(template.name as any)}
+                            </Box>
+                          </Flex>
+                          <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
+                            {t(template.intro as any) || t('common:core.workflow.Not intro')}
                           </Box>
-                        }
-                      >
-                        <Flex
-                          alignItems={'center'}
-                          py={gridStyle.py}
-                          px={3}
-                          cursor={'pointer'}
-                          _hover={{ bg: 'myWhite.600' }}
-                          borderRadius={'sm'}
-                          draggable={!template.isFolder}
-                          onDragEnd={(e) => {
-                            if (e.clientX < sliderWidth) return;
-                            onAddNode({
-                              template,
-                              position: { x: e.clientX, y: e.clientY }
-                            });
-                          }}
-                          onClick={(e) => {
-                            if (template.isFolder) {
-                              return setParentId(template.id);
-                            }
-                            if (isPc) {
-                              return onAddNode({
-                                template,
-                                position: { x: sliderWidth * 1.5, y: 200 }
-                              });
-                            }
-                            onAddNode({
-                              template,
-                              position: { x: e.clientX, y: e.clientY }
-                            });
-                            onClose();
-                          }}
-                          whiteSpace={'nowrap'}
-                          overflow={'hidden'}
-                          textOverflow={'ellipsis'}
-                        >
-                          <MyAvatar
-                            src={template.avatar}
-                            w={gridStyle.avatarSize}
-                            objectFit={'contain'}
-                            borderRadius={'sm'}
-                            flexShrink={0}
+                          <CostTooltip
+                            cost={template.currentCost}
+                            hasTokenFee={template.hasTokenFee}
                           />
-                          <Box
-                            color={'myGray.900'}
-                            fontWeight={'500'}
-                            fontSize={'sm'}
-                            flex={'1 0 0'}
-                            ml={3}
-                            className="textEllipsis"
-                          >
-                            {t(template.name as any)}
-                          </Box>
+                        </Box>
+                      }
+                    >
+                      <Flex
+                        alignItems={'center'}
+                        py={gridStyle.py}
+                        px={3}
+                        cursor={'pointer'}
+                        _hover={{ bg: 'myWhite.600' }}
+                        borderRadius={'sm'}
+                        draggable={!template.isFolder}
+                        onDragEnd={(e) => {
+                          if (e.clientX < sliderWidth) return;
+                          onAddNode({
+                            template,
+                            position: { x: e.clientX, y: e.clientY }
+                          });
+                        }}
+                        onClick={(e) => {
+                          if (template.isFolder) {
+                            return setParentId(template.id);
+                          }
+                          if (isPc) {
+                            return onAddNode({
+                              template,
+                              position: { x: sliderWidth * 1.5, y: 200 }
+                            });
+                          }
+                          onAddNode({
+                            template,
+                            position: { x: e.clientX, y: e.clientY }
+                          });
+                          onClose();
+                        }}
+                        whiteSpace={'nowrap'}
+                        overflow={'hidden'}
+                        textOverflow={'ellipsis'}
+                      >
+                        <MyAvatar
+                          src={template.avatar}
+                          w={gridStyle.avatarSize}
+                          objectFit={'contain'}
+                          borderRadius={'sm'}
+                          flexShrink={0}
+                        />
+                        <Box
+                          color={'myGray.900'}
+                          fontWeight={'500'}
+                          fontSize={'sm'}
+                          flex={'1 0 0'}
+                          ml={3}
+                          className="textEllipsis"
+                        >
+                          {t(template.name as any)}
+                        </Box>
 
-                          {gridStyle.authorInRight && template.authorAvatar && template.author && (
-                            <HStack spacing={1} maxW={'120px'} flexShrink={0}>
-                              <MyAvatar
-                                src={template.authorAvatar}
-                                w={'1rem'}
-                                borderRadius={'50%'}
-                              />
-                              <Box fontSize={'xs'} className="textEllipsis">
-                                {template.author}
-                              </Box>
-                            </HStack>
-                          )}
-                        </Flex>
-                      </MyTooltip>
-                    );
-                  })}
-                </Grid>
-              </Box>
-            );
-          })}
-        </>
-      );
-    },
-    [
-      gridStyle.authorInRight,
-      gridStyle.avatarSize,
-      gridStyle.gridTemplateColumns,
-      gridStyle.py,
-      isPc,
-      onAddNode,
-      onClose,
-      setParentId,
-      t
-    ]
-  );
+                        {gridStyle.authorInRight && template.authorAvatar && template.author && (
+                          <HStack spacing={1} maxW={'120px'} flexShrink={0}>
+                            <MyAvatar src={template.authorAvatar} w={'1rem'} borderRadius={'50%'} />
+                            <Box fontSize={'xs'} className="textEllipsis">
+                              {template.author}
+                            </Box>
+                          </HStack>
+                        )}
+                      </Flex>
+                    </MyTooltip>
+                  );
+                })}
+              </Grid>
+            </Box>
+          );
+        })}
+      </>
+    );
+  });
 
   return templates.length === 0 ? (
     <EmptyTip text={t('app:module.No Modules')} />
