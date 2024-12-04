@@ -1,35 +1,34 @@
 import React, { useMemo } from 'react';
-import { Box, Button, ButtonProps, Flex, SelectProps, useDisclosure } from '@chakra-ui/react';
+import { Box, ButtonProps, Flex } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
-import dynamic from 'next/dynamic';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getTeamList, putSwitchTeam } from '@/web/support/user/team/api';
-import {
-  TeamMemberRoleEnum,
-  TeamMemberStatusEnum
-} from '@fastgpt/global/support/user/team/constant';
+import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
-const TeamMenu = (props: ButtonProps) => {
+const TeamSelector = (props: ButtonProps) => {
   const { t } = useTranslation();
   const { userInfo, initUserInfo } = useUserStore();
+  const { setLoading } = useSystemStore();
 
-  const { data: myTeams = [], loading: loadingTeamList } = useRequest2(
-    () => getTeamList(TeamMemberStatusEnum.active),
-    {
-      manual: false,
-      refreshDeps: [userInfo]
-    }
-  );
+  const { data: myTeams = [] } = useRequest2(() => getTeamList(TeamMemberStatusEnum.active), {
+    manual: false,
+    refreshDeps: [userInfo]
+  });
 
-  const { runAsync: onSwitchTeam, loading: switching } = useRequest2(
+  const { runAsync: onSwitchTeam } = useRequest2(
     async (teamId: string) => {
+      setLoading(true);
       await putSwitchTeam(teamId);
       return initUserInfo();
     },
     {
+      onFinally: () => {
+        setLoading(false);
+      },
       errorToast: t('common:user.team.Switch Team Failed')
     }
   );
@@ -48,17 +47,8 @@ const TeamMenu = (props: ButtonProps) => {
             cursor: 'pointer'
           }}
         >
-          <Avatar src={team.avatar} w={['18px', '22px']} />
-          <Box
-            flex={'1 0 0'}
-            w={0}
-            fontSize={'sm'}
-            {...(team.role === TeamMemberRoleEnum.owner
-              ? {
-                  fontWeight: 'bold'
-                }
-              : {})}
-          >
+          <Avatar src={team.avatar} w={['1.25rem', '1.375rem']} />
+          <Box flex={'1 0 0'} w={0} className="textEllipsis" fontSize={'sm'}>
             {team.teamName}
           </Box>
         </Flex>
@@ -87,4 +77,4 @@ const TeamMenu = (props: ButtonProps) => {
   );
 };
 
-export default TeamMenu;
+export default TeamSelector;

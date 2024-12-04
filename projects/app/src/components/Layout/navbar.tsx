@@ -80,6 +80,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: [
           '/account/bill',
           '/account/info',
+          '/account/team',
           '/account/usage',
           '/account/apikey',
           '/account/individuation',

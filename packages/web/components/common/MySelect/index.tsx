@@ -18,7 +18,6 @@ import {
   Flex
 } from '@chakra-ui/react';
 import type { ButtonProps, MenuItemProps } from '@chakra-ui/react';
-import { ChevronDownIcon } from '@chakra-ui/icons';
 import MyIcon from '../Icon';
 import { useRequest2 } from '../../../hooks/useRequest';
 
@@ -88,6 +87,7 @@ const MySelect = <T = any,>(
 
   return (
     <Box
+      w={width}
       css={css({
         '& div': {
           width: 'auto !important'
@@ -162,7 +162,7 @@ const MySelect = <T = any,>(
                     ref: SelectedItemRef,
                     color: 'primary.700',
                     bg: 'myGray.100',
-                    fontWeight: '500'
+                    fontWeight: '600'
                   }
                 : {
                     color: 'myGray.900'
