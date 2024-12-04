@@ -404,7 +404,12 @@ const ChatBox = ({
           // Only declared variables are kept
           const requestVariables: Record<string, any> = {};
           allVariableList?.forEach((item) => {
-            requestVariables[item.key] = variables[item.key];
+            requestVariables[item.key] =
+              variables[item.key] === '' ||
+              variables[item.key] === undefined ||
+              variables[item.key] === null
+                ? item.defaultValue
+                : variables[item.key];
           });
 
           const responseChatId = getNanoid(24);

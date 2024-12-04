@@ -12,6 +12,7 @@ import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pages/app/detail/components/WorkflowComponents/context';
 import { getWebLLMModel } from '@/web/common/system/utils';
+import { defaultDatasetMaxTokens } from '@fastgpt/global/core/app/constants';
 
 const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
@@ -31,13 +32,13 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   });
 
   const tokenLimit = useMemo(() => {
-    let maxTokens = 13000;
+    let maxTokens = defaultDatasetMaxTokens;
 
     nodeList.forEach((item) => {
       if ([FlowNodeTypeEnum.chatNode, FlowNodeTypeEnum.tools].includes(item.flowNodeType)) {
         const model =
           item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
-        const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 13000;
+        const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || defaultDatasetMaxTokens;
 
         maxTokens = Math.max(maxTokens, quoteMaxToken);
       }
