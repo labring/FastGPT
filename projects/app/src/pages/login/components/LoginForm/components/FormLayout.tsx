@@ -86,7 +86,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   ];
 
   const show_oauth =
-    !sessionStorage.getItem('bd_vid') && !!(feConfigs?.sso || oAuthList.length > 0);
+    !sessionStorage.getItem('bd_vid') && !!(feConfigs?.sso?.url || oAuthList.length > 0);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
@@ -146,7 +146,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
               </Box>
             ))}
 
-            {feConfigs?.sso && (
+            {feConfigs?.sso?.url && (
               <Box mt={4} color={'primary.700'} cursor={'pointer'} textAlign={'center'}>
                 <Button
                   variant={'whitePrimary'}

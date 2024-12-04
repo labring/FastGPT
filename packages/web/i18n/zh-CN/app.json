@@ -107,7 +107,6 @@
   "template.standard_template": "标准模板",
   "template.standard_template_des": "标准提示词，用于结构不固定的知识库。",
   "templateMarket.Search_template": "搜索模板",
-  "templateMarket.Template_market": "模板市场",
   "templateMarket.Use": "使用",
   "templateMarket.no_intro": "还没有介绍～",
   "templateMarket.templateTags.Image_generation": "图片生成",

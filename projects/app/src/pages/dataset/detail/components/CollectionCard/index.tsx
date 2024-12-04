@@ -28,7 +28,8 @@ import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import {
   DatasetCollectionTypeEnum,
   DatasetStatusEnum,
-  DatasetCollectionSyncResultMap
+  DatasetCollectionSyncResultMap,
+  DatasetTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import { TabEnum } from '../../index';
@@ -65,9 +66,6 @@ const CollectionCard = () => {
   const { openConfirm: openDeleteConfirm, ConfirmModal: ConfirmDeleteModal } = useConfirm({
     content: t('common:dataset.Confirm to delete the file'),
     type: 'delete'
-  });
-  const { openConfirm: openSyncConfirm, ConfirmModal: ConfirmSyncModal } = useConfirm({
-    content: t('common:core.dataset.collection.Start Sync Tip')
   });
 
   const { onOpenModal: onOpenEditTitleModal, EditModal: EditTitleModal } = useEditTitle({
@@ -132,6 +130,9 @@ const CollectionCard = () => {
     }
   );
 
+  const { openConfirm: openSyncConfirm, ConfirmModal: ConfirmSyncModal } = useConfirm({
+    content: t('dataset:collection_sync_confirm_tip')
+  });
   const { runAsync: onclickStartSync, loading: isSyncing } = useRequest2(postLinkCollectionSync, {
     onSuccess(res: DatasetCollectionSyncResultEnum) {
       getData(pageNum);
@@ -309,7 +310,8 @@ const CollectionCard = () => {
                         menuList={[
                           {
                             children: [
-                              ...(collection.type === DatasetCollectionTypeEnum.link
+                              ...(collection.type === DatasetCollectionTypeEnum.link ||
+                              datasetDetail.type === DatasetTypeEnum.apiDataset
                                 ? [
                                     {
                                       label: (
@@ -319,7 +321,7 @@ const CollectionCard = () => {
                                             w={'0.9rem'}
                                             mr={2}
                                           />
-                                          {t('common:core.dataset.collection.Sync')}
+                                          {t('dataset:collection_sync')}
                                         </Flex>
                                       ),
                                       onClick: () =>

@@ -26,6 +26,7 @@
   "login.error": "Login Error",
   "login.password_condition": "Password can be up to 60 characters",
   "login.success": "Login Successful",
+  "manage_team": "Manage team",
   "name": "Name",
   "notification.Bind Notification Pipe Hint": "Please bind a notification receiving account to ensure you receive notifications such as plan expiration reminders, ensuring your service runs smoothly.",
   "notification.remind_owner_bind": "Please remind the creator to bind a notification account",

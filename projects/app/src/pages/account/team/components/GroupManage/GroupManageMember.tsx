@@ -134,14 +134,17 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
       title={t('user:team.group.manage_member')}
       iconSrc={group?.avatar ?? DEFAULT_TEAM_AVATAR}
       iconColor="primary.600"
-      minW={['70vw', '800px']}
+      minW="800px"
+      h={'100%'}
+      isCentered
     >
-      <ModalBody flex={1} display={'flex'} flexDirection={'column'} gap={4}>
+      <ModalBody flex={1}>
         <Grid
-          templateColumns="1fr 1fr"
-          borderRadius="8px"
           border="1px solid"
           borderColor="myGray.200"
+          borderRadius="0.5rem"
+          gridTemplateColumns="1fr 1fr"
+          h={'100%'}
         >
           <Flex flexDirection="column" p="4">
             <SearchInput

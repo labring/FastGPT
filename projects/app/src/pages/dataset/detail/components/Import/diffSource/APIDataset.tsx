@@ -45,7 +45,10 @@ const CustomAPIFileInput = () => {
   const setSources = useContextSelector(DatasetImportContext, (v) => v.setSources);
 
   const [selectFiles, setSelectFiles] = useState<APIFileItem[]>([]);
-  const [parent, setParent] = useState<ParentTreePathItemType | null>(null);
+  const [parent, setParent] = useState<ParentTreePathItemType>({
+    parentId: '',
+    parentName: ''
+  });
   const [searchKey, setSearchKey] = useState('');
 
   const { data: fileList = [], loading } = useRequest2(
@@ -148,12 +151,13 @@ const CustomAPIFileInput = () => {
         <Flex justifyContent={'space-between'}>
           <FolderPath
             paths={paths}
-            hoverStyle={{ bg: 'myGray.200' }}
             onClick={(parentId) => {
-              setParent({
-                parentId,
-                parentName: ''
-              });
+              if (parentId !== parent?.parentId) {
+                setParent({
+                  parentId,
+                  parentName: ''
+                });
+              }
             }}
           />
           <Box w={'240px'}>
