@@ -29,7 +29,6 @@ export type FastGPTFeConfigsType = {
   find_password_method?: ['email' | 'phone'];
   bind_notification_method?: ['email' | 'phone'];
   show_appStore?: boolean;
-  show_git?: boolean;
   show_pay?: boolean;
   show_openai_account?: boolean;
   show_promotion?: boolean;
@@ -38,7 +37,6 @@ export type FastGPTFeConfigsType = {
   concatMd?: string;
 
   docUrl?: string;
-  chatbotUrl?: string;
   openAPIDocUrl?: string;
   systemPluginCourseUrl?: string;
   appTemplateCourse?: string;

@@ -18,15 +18,6 @@ const More = () => {
       label: t('common:navbar.Toolkit'),
       link: '/toolkit'
     },
-    ...(feConfigs?.show_git
-      ? [
-          {
-            icon: 'common/gitLight',
-            label: t('common:core.app.tool_label.github'),
-            link: 'https://github.com/labring/FastGPT'
-          }
-        ]
-      : []),
     ...(feConfigs?.docUrl
       ? [
           {

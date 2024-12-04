@@ -1,6 +1,7 @@
 import { i18nT } from '../../../../web/i18n/utils';
 
 export enum SubTypeEnum {
+  planDescriptionUrl = 'planDescriptionUrl',
   standard = 'standard',
   extraDatasetSize = 'extraDatasetSize',
   extraPoints = 'extraPoints'

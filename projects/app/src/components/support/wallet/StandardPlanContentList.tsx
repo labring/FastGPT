@@ -25,6 +25,7 @@ const StandardPlanContentList = ({
     const plan = subPlans?.standard?.[level];
     if (!plan) return;
     return {
+      name: plan.name,
       price: plan.price * (mode === SubModeEnum.month ? 1 : 10),
       level: level as `${StandardSubLevelEnum}`,
       ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],

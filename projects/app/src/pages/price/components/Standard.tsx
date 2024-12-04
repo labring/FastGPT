@@ -41,6 +41,7 @@ const Standard = ({
     return subPlans?.standard
       ? Object.entries(subPlans.standard).map(([level, value]) => {
           return {
+            name: value.name,
             price: value.price * (selectSubMode === SubModeEnum.month ? 1 : 10),
             level: level as `${StandardSubLevelEnum}`,
             ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
