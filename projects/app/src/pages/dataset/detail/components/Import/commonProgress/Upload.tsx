@@ -27,7 +27,8 @@ import {
   postCreateDatasetExternalFileCollection,
   postCreateDatasetFileCollection,
   postCreateDatasetLinkCollection,
-  postCreateDatasetTextCollection
+  postCreateDatasetTextCollection,
+  postreTrainingDatasetFileCollection
 } from '@/web/core/dataset/api';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useI18n } from '@/web/context/I18n';
@@ -41,6 +42,9 @@ const Upload = () => {
   const { toast } = useToast();
   const router = useRouter();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const { collectionId = '' } = router.query as {
+    collectionId: string;
+  };
   const { importSource, parentId, sources, setSources, processParamsForm, chunkSize } =
     useContextSelector(DatasetImportContext, (v) => v);
 
@@ -101,7 +105,12 @@ const Upload = () => {
 
           name: item.sourceName
         };
-        if (importSource === ImportDataSourceEnum.fileLocal && item.dbFileId) {
+        if (importSource === ImportDataSourceEnum.reTraining) {
+          await postreTrainingDatasetFileCollection({
+            ...commonParams,
+            collectionId
+          });
+        } else if (importSource === ImportDataSourceEnum.fileLocal && item.dbFileId) {
           await postCreateDatasetFileCollection({
             ...commonParams,
             fileId: item.dbFileId

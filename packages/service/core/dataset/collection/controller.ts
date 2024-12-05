@@ -297,3 +297,57 @@ export async function delCollection({
   // no session delete: delete files, vector data
   await deleteDatasetDataVector({ teamId, datasetIds, collectionIds });
 }
+
+/**
+ * delete delOnlyCollection
+ */
+export async function delOnlyCollection({
+  collections,
+  session
+}: {
+  collections: (CollectionWithDatasetType | DatasetCollectionSchemaType)[];
+  session: ClientSession;
+}) {
+  if (collections.length === 0) return;
+
+  const teamId = collections[0].teamId;
+
+  if (!teamId) return Promise.reject('teamId is not exist');
+
+  const datasetIds = Array.from(
+    new Set(
+      collections.map((item) => {
+        if (typeof item.datasetId === 'string') {
+          return String(item.datasetId);
+        }
+        return String(item.datasetId._id);
+      })
+    )
+  );
+  const collectionIds = collections.map((item) => String(item._id));
+
+  // delete training data
+  await MongoDatasetTraining.deleteMany({
+    teamId,
+    datasetIds: { $in: datasetIds },
+    collectionId: { $in: collectionIds }
+  });
+
+  // delete dataset.datas
+  await MongoDatasetData.deleteMany(
+    { teamId, datasetIds: { $in: datasetIds }, collectionId: { $in: collectionIds } },
+    { session }
+  );
+
+  // delete collections
+  await MongoDatasetCollection.deleteMany(
+    {
+      teamId,
+      _id: { $in: collectionIds }
+    },
+    { session }
+  );
+
+  // no session delete: delete files, vector data
+  await deleteDatasetDataVector({ teamId, datasetIds, collectionIds });
+}

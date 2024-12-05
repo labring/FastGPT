@@ -67,6 +67,9 @@ export type ApiDatasetCreateDatasetCollectionParams = ApiCreateDatasetCollection
 export type FileIdCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   fileId: string;
 };
+export type reTrainingDatasetFileCollectionParams = ApiCreateDatasetCollectionParams & {
+  collectionId?: string;
+};
 export type FileCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   fileMetadata?: Record<string, any>;
   collectionMetadata?: Record<string, any>;

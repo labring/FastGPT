@@ -28,6 +28,8 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import Markdown from '@/components/Markdown';
 import { useMemoizedFn } from 'ahooks';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { TabEnum } from './NavBar';
+import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 
 const DataCard = () => {
   const theme = useTheme();
@@ -43,6 +45,17 @@ const DataCard = () => {
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
   const { toast } = useToast();
+
+  const handlereTraining = async () => {
+    router.push({
+      query: {
+        datasetId: router.query.datasetId,
+        currentTab: TabEnum.import,
+        source: ImportDataSourceEnum.reTraining,
+        collectionId: collectionId
+      }
+    });
+  };
 
   const scrollParams = useMemo(
     () => ({
@@ -137,6 +150,18 @@ const DataCard = () => {
               <TagsPopOver currentCollection={collection} />
             )}
           </Box>
+          {collection && (collection.type === 'file' || collection.type === 'link') && (
+            <Box>
+              <Button
+                ml={2}
+                variant={'whitePrimary'}
+                size={['sm', 'md']}
+                onClick={handlereTraining}
+              >
+                {t('dataset:dataset.Adjust Training Parameters')}
+              </Button>
+            </Box>
+          )}
           {canWrite && (
             <Box>
               <Button

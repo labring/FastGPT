@@ -86,6 +86,10 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
 
   // step
   const modeSteps: Record<ImportDataSourceEnum, { title: string }[]> = {
+    [ImportDataSourceEnum.reTraining]: [
+      { title: t('dataset:core.dataset.import.Adjust parameters') },
+      { title: t('common:core.dataset.import.Upload data') }
+    ],
     [ImportDataSourceEnum.fileLocal]: [
       {
         title: t('common:core.dataset.import.Select file')
